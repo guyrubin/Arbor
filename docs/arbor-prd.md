@@ -1,9 +1,9 @@
 # Arbor — Parenting AI Platform PRD
 
-**Version:** 1.0  
-**Product type:** AI-powered child-development, parenting, co-therapy, and school-support platform  
-**Age range:** Birth to 12  
-**Markets:** Israel, Netherlands, Belgium, later broader EU  
+**Version:** 1.0
+**Product type:** AI-powered child-development, parenting, co-therapy, and school-support platform
+**Age range:** Birth to 12
+**Markets:** Israel, Netherlands, Belgium, later broader EU
 
 ## Executive Summary
 
@@ -50,6 +50,57 @@ Institutional customers include schools, kindergartens, therapy clinics, municip
 3. **Practical over theoretical** — every answer should explain what is happening, what to do today, what to avoid, and when to escalate.
 4. **Longitudinal memory is the moat** — the app improves because it remembers the child over time.
 5. **Parent confidence, not parent guilt** — the tone should reduce panic and shame.
+
+---
+
+## Product Philosophy — The Six Frames
+
+Every feature in Arbor must inherit from an articulated aim. Tracking is not the goal. Formation is the goal. The platform is organized into six frames; each frame is a coherent cluster of features filling a specific gap that purely-clinical or purely-tracking products leave open. No feature ships that does not map to a frame.
+
+### Frame 1 — The Aim
+What the child is being formed into. Without this frame the rest of the product is rudderless.
+
+- **Family Charter** — three to five parent-authored values that define what kind of human this family is raising. Generated in onboarding, revisited annually. Every AI response is calibrated against it. *MVP.*
+- **Developmental Arc** — Eriksonian view (trust, autonomy, initiative, industry, identity) replacing the milestone checklist. Each band carries the developmental task and what the parent's response shapes. *MVP.*
+- **The Reckoning** — quarterly parent examen. What kind of parent have you been? What have you avoided? What do you owe? Hard mirror not soft mirror. *Phase 1 Q3.*
+
+### Frame 2 — The Two Axes
+Restore the paternal half. The clinical scaffolding is maternal: attunement, co-regulation, soothing. Necessary but insufficient. Children also need structure, expectation, productive resistance.
+
+- **Responsibility Ladder** — age-banded ladder of what the child should be carrying, and which risks the parent should stop intervening on. *Phase 1 Q4.*
+- **Productive Friction Scripts** — how to say no, hold the line, let a child fail at the right size, deliver an unwelcome truth. *MVP.*
+- **The Hard Thing** — standing weekly prompt: what age-appropriate hard thing did your child do this week that they did not want to do. Absence is a flag. *Phase 1 Q2.*
+
+### Frame 3 — The Story
+Meaning, ritual, transmission. Children are shaped by narrative more than by behavior modification.
+
+- **Family Story Canon** — curated, age-calibrated sequence of texts the family reads together. Not a content library; a deepening canon with discussion scaffolding. *Phase 2.*
+- **Ritual Architecture** — daily, weekly, seasonal, and milestone rituals with templates and adaptation logic. *Phase 1 Q3.*
+- **Generational Memory** — capture and transmit family narrative across generations; voice memos, photos, written fragments with age-gated release schedules. *Phase 2.*
+- **Truth Practice** — helps parents notice and repair their own dishonesties with the child. Spine of long-run trust. *Phase 1 Q4.*
+
+### Frame 4 — The Shadow
+Let the dark in. Childhood includes fear, death, anger, envy, cruelty, loss. The product walks parents into these, not around them.
+
+- **The Hard Conversations** — age-banded scripted library: death, divorce, illness, friend moves away, money trouble, parent job loss, sex, drugs. Each with weeks-long follow-up arc. *Phase 2.*
+- **The Dark Emotions** — parent guidance for acknowledging and integrating anger, envy, hatred, jealousy in the child rather than suppressing them. *Phase 2.*
+
+### Frame 5 — The Marriage
+The foundation under the child. The single best predictor of child outcomes is the quality and stability of the parental partnership. Treating the parent as one entity is the wrong abstraction.
+
+- **Partner Pair** — two distinct accounts with a shared child profile. *MVP architectural prerequisite; UI Phase 1 Q3.*
+- **Parenting-Style Conflict** — structured workflow when partners disagree on bedtime, screens, discipline, school choice. *Phase 1 Q4.*
+- **Repair After Rupture** — scripts for repairing in front of the child after parental disagreement. *Phase 1 Q4.*
+
+### Frame 6 — The Shepherd
+One integrator, not five specialists. Replaces the atomized care marketplace with a persistent mentor relationship.
+
+- **Family Shepherd** — one senior clinician or developmental coach assigned to the family for years. Holds the whole picture. Specialists feed the Shepherd, not the parent directly. *Phase 2.*
+- **Family Council** — for children aged eight and up, structured monthly meeting where the child is heard as a developing agent. *Phase 2.*
+
+### Feature-to-frame discipline
+
+Every roadmap proposal from this point forward must declare which Frame it belongs to and which feature within the frame it extends. Proposals that do not map to a frame are rejected or sent back for re-framing. This is the discipline that prevents Arbor from drifting back into a feature factory of disconnected capabilities.
 
 ---
 
@@ -121,11 +172,11 @@ Arbor should operate as a multi-theory child-development engine.
 
 | Scholar / School | Capability | Product Value |
 |---|---|---|
-| Vygotsky | Next Best Challenge Engine | Finds the child’s learning edge and scaffolds practice |
+| Vygotsky | Next Best Challenge Engine | Finds the child's learning edge and scaffolds practice |
 | Bowlby | Attachment & Repair Coach | Builds secure connection and conflict recovery |
 | Harvard Serve & Return | Interaction Trainer | Coaches back-and-forth caregiver interaction |
 | Bronfenbrenner | Child Ecosystem Map | Maps family, school, language, culture, routines, and stressors |
-| Piaget | Stage-Aware Activity Generator | Adapts expectations to the child’s cognitive stage |
+| Piaget | Stage-Aware Activity Generator | Adapts expectations to the child's cognitive stage |
 | Montessori | Independence Planner | Builds practical life skills and prepared environments |
 | Reggio Emilia | Curiosity Project Generator | Turns child interests into project-based learning |
 | Erikson | Psychosocial Stage Coach | Supports autonomy, initiative, confidence, and industry |
@@ -143,7 +194,7 @@ Arbor should operate as a multi-theory child-development engine.
 
 ### Parent Home Dashboard
 
-Today’s insight, active action plan, recent logs, next milestone, AI quick question, recommended activity, weekly snapshot, reminders, professional messages, and school notes.
+Today's insight, active action plan, recent logs, next milestone, AI quick question, recommended activity, weekly snapshot, reminders, professional messages, and school notes.
 
 ### Child Profile Dashboard
 
@@ -217,8 +268,8 @@ Requirements:
 
 ### B2C
 
-Free: basic AI Q&A, one child profile, limited logs, limited stories.  
-Premium: full profile, unlimited AI guidance, action plans, milestones, behavior analytics, stories, reports.  
+Free: basic AI Q&A, one child profile, limited logs, limited stories.
+Premium: full profile, unlimited AI guidance, action plans, milestones, behavior analytics, stories, reports.
 Family Plus: multiple children, advanced insights, school reports, language learning, co-parent access.
 
 ### B2B
