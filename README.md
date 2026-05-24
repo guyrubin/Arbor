@@ -7,6 +7,7 @@ Arbor is a private-beta parent support product for child-development concerns. T
 - `docs/arbor-prd.md` - product requirements, positioning, MVP scope, safety requirements, roadmap, and metrics.
 - `docs/developmental-ai-operating-model.md` - source-grounded child-development framework and AI operating model.
 - `mockups/arbor-platform-mockup.html` - static product mockup for the private-beta parent support loop.
+- `prototype/arbor-private-beta-app.html` - interactive app prototype with intake, developmental routing, AI plan generation, memory approval, handoff, and eval screens.
 
 ## Private Beta Loop
 
@@ -31,3 +32,10 @@ Arbor is a private-beta parent support product for child-development concerns. T
 - The AI response is generated as structured data first, then rendered into calm parent-facing guidance.
 - Saved child memory contains parent-approved observations, not diagnostic labels.
 - Prompt, model, and knowledge changes require targeted evals before release.
+
+## Prototype Design Principles
+
+- Start on the usable app workspace, not a marketing landing page.
+- Use calm parent-support surfaces: restrained color, compact cards, clear hierarchy, and visible safety states.
+- Keep product actions concrete: generate plan, review memory, prepare handoff, and inspect eval gates.
+- Treat the child-development framework as interaction design, not background copy.

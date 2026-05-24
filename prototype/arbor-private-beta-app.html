@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arbor Private Beta App Prototype</title>
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --surface: #ffffff;
+      --soft: #eef4f0;
+      --soft-blue: #edf3f8;
+      --ink: #17211d;
+      --muted: #65716c;
+      --line: #d9ded8;
+      --green: #2f6f5e;
+      --green-strong: #214f44;
+      --amber: #b7792d;
+      --rose: #a94c4c;
+      --blue: #385f86;
+      --shadow: 0 18px 48px rgba(28, 39, 34, .1);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      min-height: 40px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    textarea,
+    input,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 11px;
+    }
+
+    textarea {
+      min-height: 112px;
+      resize: vertical;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    p {
+      margin-top: 0;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 264px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 22px;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, .86);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 26px;
+    }
+
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--green);
+      color: #fff;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .brand h1 {
+      margin-bottom: 1px;
+      font-size: 22px;
+    }
+
+    .brand p,
+    .muted {
+      color: var(--muted);
+    }
+
+    nav {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    nav button {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      text-align: left;
+    }
+
+    nav button.active,
+    nav button:hover {
+      border-color: var(--line);
+      background: var(--soft);
+      color: var(--ink);
+    }
+
+    .sidebar-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--soft);
+    }
+
+    .sidebar-panel strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    main {
+      padding: 22px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .topbar h2 {
+      margin-bottom: 4px;
+      font-size: 28px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .primary {
+      background: var(--green);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(47, 111, 94, .18);
+    }
+
+    .secondary {
+      border-color: var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .ghost {
+      border-color: transparent;
+      background: transparent;
+      color: var(--green-strong);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(360px, .9fr) minmax(440px, 1.1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfbf8;
+    }
+
+    .panel-header h3 {
+      margin-bottom: 2px;
+      font-size: 18px;
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field {
+      margin-bottom: 13px;
+    }
+
+    .span-2 {
+      grid-column: 1 / -1;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--green-strong);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .pill.amber {
+      background: #f8eddd;
+      color: var(--amber);
+    }
+
+    .pill.rose {
+      background: #f7e8e8;
+      color: var(--rose);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfbf8;
+      overflow-x: auto;
+    }
+
+    .tabs button {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .tabs button.active {
+      border-color: var(--line);
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .screen {
+      display: none;
+      padding: 16px;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .card,
+    .metric,
+    .memory-item,
+    .timeline-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 13px;
+    }
+
+    .card h4,
+    .memory-item h4 {
+      margin-bottom: 7px;
+      font-size: 16px;
+    }
+
+    .card p,
+    .timeline-item p,
+    .memory-item p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .metric b {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 24px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .plan-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .plan-list li {
+      display: grid;
+      grid-template-columns: 108px 1fr;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .plan-list strong {
+      color: var(--green-strong);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .domain-bars {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bar {
+      display: grid;
+      grid-template-columns: 140px 1fr 42px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .track {
+      height: 8px;
+      border-radius: 999px;
+      background: #edf0eb;
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .memory-item {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .memory-item input {
+      width: 20px;
+      height: 20px;
+      margin-top: 2px;
+      accent-color: var(--green);
+    }
+
+    .handoff-report {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 16px;
+    }
+
+    .report-row {
+      display: grid;
+      grid-template-columns: 132px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .report-row:last-child {
+      border-bottom: 0;
+    }
+
+    .eval-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+    }
+
+    .eval-row:last-child {
+      border-bottom: 0;
+    }
+
+    .screen-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      max-width: 360px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--ink);
+      color: #fff;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1160px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        position: static;
+        height: auto;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      main,
+      aside {
+        padding: 16px;
+      }
+
+      .topbar,
+      .panel-header {
+        display: block;
+      }
+
+      .actions {
+        margin-top: 10px;
+      }
+
+      .form-grid,
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .plan-list li,
+      .bar,
+      .report-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">
+        <div class="logo">A</div>
+        <div>
+          <h1>Arbor</h1>
+          <p class="muted">Parent support beta</p>
+        </div>
+      </div>
+
+      <nav aria-label="Prototype navigation">
+        <button class="active" data-screen-link="coach">Coach <span>01</span></button>
+        <button data-screen-link="framework">Development <span>02</span></button>
+        <button data-screen-link="memory">Memory <span>03</span></button>
+        <button data-screen-link="handoff">Handoff <span>04</span></button>
+        <button data-screen-link="evals">AI Evals <span>05</span></button>
+      </nav>
+
+      <div class="sidebar-panel">
+        <strong>Dylan, 5y 2m</strong>
+        <p class="muted">Kindergarten transition, Hebrew home language, English school environment.</p>
+        <span class="pill">3-5y age band</span>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div>
+          <h2>Private Beta Workspace</h2>
+          <p class="muted">A working prototype for intake, developmental routing, AI guidance, memory approval, and handoff.</p>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="resetButton">Reset Case</button>
+          <button class="primary" id="generateButton">Generate Plan</button>
+        </div>
+      </div>
+
+      <div class="workspace">
+        <section class="panel" aria-label="Parent intake">
+          <div class="panel-header">
+            <div>
+              <h3>Parent Intake</h3>
+              <p class="muted">Capture the smallest useful context before AI routing.</p>
+            </div>
+            <span class="pill amber">Not diagnostic</span>
+          </div>
+          <div class="panel-body">
+            <div class="form-grid">
+              <div class="field">
+                <label for="childName">Child</label>
+                <input id="childName" value="Dylan" />
+              </div>
+              <div class="field">
+                <label for="ageBand">Age band</label>
+                <select id="ageBand">
+                  <option>0-12m</option>
+                  <option>12-36m</option>
+                  <option selected>3-5y</option>
+                  <option>6-8y</option>
+                  <option>9-12y</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="setting">Setting</label>
+                <select id="setting">
+                  <option selected>Kindergarten arrival</option>
+                  <option>Morning routine</option>
+                  <option>Bedtime</option>
+                  <option>Screen-time boundary</option>
+                  <option>Sibling conflict</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="urgency">Parent urgency</label>
+                <select id="urgency">
+                  <option selected>Routine support</option>
+                  <option>Monitor closely</option>
+                  <option>Ask professional</option>
+                  <option>Urgent concern</option>
+                </select>
+              </div>
+              <div class="field span-2">
+                <label for="concern">What happened?</label>
+                <textarea id="concern">Dylan cried and refused to enter kindergarten after a rushed morning. He recovered after the teacher sat with him, but this happened three times this week.</textarea>
+              </div>
+              <div class="field span-2">
+                <label for="alreadyTried">Already tried</label>
+                <input id="alreadyTried" value="Reassurance, extra time, teacher handoff" />
+              </div>
+            </div>
+
+            <div class="grid-3">
+              <div class="metric"><b id="riskMetric">Monitor</b><span>Risk route</span></div>
+              <div class="metric"><b id="domainMetric">4</b><span>Domains touched</span></div>
+              <div class="metric"><b id="confidenceMetric">72%</b><span>Plan confidence</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-label="AI output">
+          <div class="tabs" role="tablist">
+            <button class="active" data-screen="coach">Coach</button>
+            <button data-screen="framework">Framework</button>
+            <button data-screen="memory">Memory</button>
+            <button data-screen="handoff">Handoff</button>
+            <button data-screen="evals">Evals</button>
+          </div>
+
+          <div class="screen active" id="coach">
+            <div class="panel-header">
+              <div>
+                <h3>AI Parent Plan</h3>
+                <p class="muted">Structured first, then rendered as calm guidance.</p>
+              </div>
+              <span class="pill" id="riskPill">Monitor</span>
+            </div>
+            <div class="panel-body">
+              <ul class="plan-list">
+                <li><strong>May be</strong><span id="hypothesisText">A transition-stress pattern amplified by rushed mornings and language load.</span></li>
+                <li><strong>Today</strong><span id="todayText">Use a visual three-step arrival ritual: bag, teacher hello, window wave.</span></li>
+                <li><strong>Script</strong><span id="scriptText">"This is hard, and you are safe. I will do one window wave, then your teacher will help you start."</span></li>
+                <li><strong>Avoid</strong><span id="avoidText">Avoid long negotiations at the door; they can make the transition feel less predictable.</span></li>
+                <li><strong>Observe</strong><span id="observeText">Track frequency, recovery time, sleep, appetite, and whether distress spreads beyond drop-off.</span></li>
+                <li><strong>Escalate</strong><span id="escalateText">Ask a professional if refusal becomes daily, recovery takes longer, or distress appears in other settings.</span></li>
+              </ul>
+              <div class="screen-footer">
+                <button class="primary" data-jump="memory">Review Memory</button>
+                <button class="secondary" data-jump="handoff">Prepare Handoff</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="screen" id="framework">
+            <div class="panel-header">
+              <div>
+                <h3>Developmental Routing</h3>
+                <p class="muted">Arbor translates theory into domain-specific action.</p>
+              </div>
+              <span class="pill">3-5y: initiative</span>
+            </div>
+            <div class="panel-body">
+              <div class="domain-bars">
+                <div class="bar"><strong>Regulation</strong><div class="track"><div class="fill" style="width: 88%"></div></div><span>High</span></div>
+                <div class="bar"><strong>Language</strong><div class="track"><div class="fill" style="width: 66%"></div></div><span>Med</span></div>
+                <div class="bar"><strong>Executive function</strong><div class="track"><div class="fill" style="width: 72%"></div></div><span>Med</span></div>
+                <div class="bar"><strong>Ecosystem</strong><div class="track"><div class="fill" style="width: 78%"></div></div><span>High</span></div>
+              </div>
+              <div class="grid-2" style="margin-top: 14px;">
+                <div class="card">
+                  <h4>Next Best Challenge</h4>
+                  <p>Practice carrying the bag to the classroom door, then handing off to the teacher without parent rescue.</p>
+                </div>
+                <div class="card">
+                  <h4>Serve and Return</h4>
+                  <p>Name Dylan's cue, respond with one predictable phrase, wait, then repeat the ritual once.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="screen" id="memory">
+            <div class="panel-header">
+              <div>
+                <h3>Memory Review</h3>
+                <p class="muted">Save observations, not labels. Parent approval is required.</p>
+              </div>
+              <span class="pill" id="memoryCount">3 proposed</span>
+            </div>
+            <div class="panel-body">
+              <div class="memory-item">
+                <input type="checkbox" checked />
+                <div><h4>Drop-off distress pattern</h4><p>Dylan cried at kindergarten arrival three times this week and recovered with teacher support.</p></div>
+              </div>
+              <div class="memory-item">
+                <input type="checkbox" checked />
+                <div><h4>Helpful support</h4><p>Visual routine, teacher greeting, and short goodbye ritual appear helpful.</p></div>
+              </div>
+              <div class="memory-item">
+                <input type="checkbox" />
+                <div><h4>Review in 30 days</h4><p>Prompt parent to review whether this concern is still active before keeping it in the child profile.</p></div>
+              </div>
+              <div class="screen-footer">
+                <button class="primary" id="approveMemoryButton">Approve Selected</button>
+                <button class="secondary">Edit Before Saving</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="screen" id="handoff">
+            <div class="panel-header">
+              <div>
+                <h3>Audience-Specific Handoff</h3>
+                <p class="muted">Useful summary without oversharing child data.</p>
+              </div>
+              <span class="pill">Teacher</span>
+            </div>
+            <div class="panel-body">
+              <div class="handoff-report">
+                <div class="report-row"><strong>Concern</strong><span>Morning separation distress after rushed transitions.</span></div>
+                <div class="report-row"><strong>Pattern</strong><span>Three incidents this week; recovery within 8 to 12 minutes with teacher support.</span></div>
+                <div class="report-row"><strong>Helps</strong><span>Visual arrival ritual, short goodbye phrase, known teacher greeting.</span></div>
+                <div class="report-row"><strong>Watch</strong><span>Escalate if refusal becomes daily, recovery lengthens, or distress appears outside arrival.</span></div>
+                <div class="report-row"><strong>Parent asks</strong><span>Can a teacher greet Dylan at the same spot for one week and note recovery time?</span></div>
+              </div>
+              <div class="screen-footer">
+                <button class="primary" id="copyHandoffButton">Copy Summary</button>
+                <button class="secondary">Switch Audience</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="screen" id="evals">
+            <div class="panel-header">
+              <div>
+                <h3>AI Quality Gates</h3>
+                <p class="muted">Every model or prompt change must keep these passing.</p>
+              </div>
+              <span class="pill">Beta guardrail</span>
+            </div>
+            <div class="panel-body">
+              <div class="eval-row"><strong>Safety triage</strong><span>Pass: monitor route, escalation visible</span></div>
+              <div class="eval-row"><strong>No diagnosis</strong><span>Pass: observation language only</span></div>
+              <div class="eval-row"><strong>Age fit</strong><span>Pass: 3-5y transition, initiative, school readiness</span></div>
+              <div class="eval-row"><strong>Practicality</strong><span>Pass: parent can act in under 10 minutes</span></div>
+              <div class="eval-row"><strong>Memory hygiene</strong><span>Pass: facts proposed, labels avoided</span></div>
+              <div class="eval-row"><strong>Handoff</strong><span>Pass: teacher-safe detail level</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const screens = [...document.querySelectorAll(".screen")];
+    const tabButtons = [...document.querySelectorAll("[data-screen]")];
+    const navButtons = [...document.querySelectorAll("[data-screen-link]")];
+    const toast = document.querySelector("#toast");
+    const concern = document.querySelector("#concern");
+    const urgency = document.querySelector("#urgency");
+    const setting = document.querySelector("#setting");
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.setTimeout(() => toast.classList.remove("show"), 2600);
+    }
+
+    function activateScreen(id) {
+      screens.forEach(screen => screen.classList.toggle("active", screen.id === id));
+      tabButtons.forEach(button => button.classList.toggle("active", button.dataset.screen === id));
+      navButtons.forEach(button => button.classList.toggle("active", button.dataset.screenLink === id));
+    }
+
+    function updatePlan() {
+      const text = concern.value.toLowerCase();
+      const urgent = urgency.value === "Urgent concern" || text.includes("hurt") || text.includes("danger");
+      const pro = urgency.value === "Ask professional";
+      const bedtime = setting.value === "Bedtime";
+      const screen = setting.value === "Screen-time boundary";
+
+      const risk = urgent ? "Urgent" : pro ? "Professional advice" : "Monitor";
+      document.querySelector("#riskMetric").textContent = risk;
+      document.querySelector("#riskPill").textContent = risk;
+      document.querySelector("#riskPill").className = "pill" + (urgent ? " rose" : pro ? " amber" : "");
+
+      document.querySelector("#hypothesisText").textContent = bedtime
+        ? "A regulation pattern around separation, fatigue, and predictability at the end of the day."
+        : screen
+          ? "A boundary-friction pattern where the child needs structure, warning, and a replacement activity."
+          : "A transition-stress pattern amplified by rushed mornings and language load.";
+
+      document.querySelector("#todayText").textContent = bedtime
+        ? "Use a fixed two-step closing ritual: one story, one phrase, lights out."
+        : screen
+          ? "Use a timer, one warning, and a prepared next activity before the screen ends."
+          : "Use a visual three-step arrival ritual: bag, teacher hello, window wave.";
+
+      document.querySelector("#scriptText").textContent = bedtime
+        ? "\"Your body is learning bedtime. I will sit for two minutes, then you will practice resting.\""
+        : screen
+          ? "\"The screen is done. You can be upset, and the rule stays. Your next choice is blocks or drawing.\""
+          : "\"This is hard, and you are safe. I will do one window wave, then your teacher will help you start.\"";
+
+      document.querySelector("#avoidText").textContent = urgent
+        ? "Avoid waiting for the pattern to resolve on its own if safety, self-harm language, or severe distress is present."
+        : "Avoid long negotiations; they can make the boundary or transition feel less predictable.";
+
+      document.querySelector("#observeText").textContent = "Track frequency, duration, recovery time, setting, sleep, appetite, and what helped.";
+      document.querySelector("#escalateText").textContent = urgent
+        ? "Seek urgent local help now if there is immediate danger, self-harm language, abuse disclosure, or medical emergency."
+        : "Ask a professional if the pattern becomes daily, recovery takes longer, or distress spreads into other settings.";
+
+      showToast("Plan regenerated with developmental routing and safety triage.");
+    }
+
+    tabButtons.forEach(button => {
+      button.addEventListener("click", () => activateScreen(button.dataset.screen));
+    });
+
+    navButtons.forEach(button => {
+      button.addEventListener("click", () => activateScreen(button.dataset.screenLink));
+    });
+
+    document.querySelectorAll("[data-jump]").forEach(button => {
+      button.addEventListener("click", () => activateScreen(button.dataset.jump));
+    });
+
+    document.querySelector("#generateButton").addEventListener("click", updatePlan);
+    document.querySelector("#approveMemoryButton").addEventListener("click", () => showToast("Selected memories approved for Dylan's profile."));
+    document.querySelector("#copyHandoffButton").addEventListener("click", () => showToast("Teacher handoff summary prepared."));
+    document.querySelector("#resetButton").addEventListener("click", () => {
+      concern.value = "Dylan cried and refused to enter kindergarten after a rushed morning. He recovered after the teacher sat with him, but this happened three times this week.";
+      setting.value = "Kindergarten arrival";
+      urgency.value = "Routine support";
+      updatePlan();
+    });
+  </script>
+</body>
+</html>
