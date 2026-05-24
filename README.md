@@ -8,6 +8,7 @@ Arbor is a private-beta parent support product for child-development concerns. T
 - `docs/developmental-ai-operating-model.md` - source-grounded child-development framework and AI operating model.
 - `mockups/arbor-platform-mockup.html` - static product mockup for the private-beta parent support loop.
 - `prototype/arbor-private-beta-app.html` - interactive app prototype with intake, developmental routing, AI plan generation, memory approval, handoff, and eval screens.
+- `app/` - imported AI Studio React/Gemini app, hardened behind a non-diagnostic developmental AI contract.
 
 ## Private Beta Loop
 
@@ -32,6 +33,24 @@ Arbor is a private-beta parent support product for child-development concerns. T
 - The AI response is generated as structured data first, then rendered into calm parent-facing guidance.
 - Saved child memory contains parent-approved observations, not diagnostic labels.
 - Prompt, model, and knowledge changes require targeted evals before release.
+
+## React App
+
+The production-direction prototype now lives in `app/`. It keeps the AI Studio implementation separate from the no-build static prototype while adding Arbor guardrails:
+
+- `GEMINI_MODEL` defaults to `gemini-2.5-flash`.
+- `/api/chat` returns structured coach data plus rendered parent guidance.
+- Every generation endpoint includes the non-diagnostic developmental AI contract.
+- `npm run eval:safety` checks for stale model and over-clinical copy regressions.
+
+Run locally:
+
+```bash
+cd app
+npm install
+cp .env.example .env.local
+npm run dev
+```
 
 ## Prototype Design Principles
 
