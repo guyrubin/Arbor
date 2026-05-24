@@ -3,54 +3,665 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Arbor — Parenting AI Platform Mockup</title>
+  <title>Arbor Private Beta Product Loop</title>
   <style>
     :root {
-      --bg:#08090c; --panel:#141821; --panel2:#1c2230; --gold:#d7aa55; --gold2:#f4d991;
-      --text:#f7f1e7; --muted:#a8a093; --line:rgba(255,255,255,.10); --radius:24px;
-      --shadow:0 30px 90px rgba(0,0,0,.45);
+      --bg: #f6f4ef;
+      --surface: #ffffff;
+      --surface-soft: #eef4f1;
+      --ink: #17201d;
+      --muted: #65716c;
+      --line: #d9ded8;
+      --green: #2f6f5e;
+      --green-dark: #214f44;
+      --amber: #b8792f;
+      --blue: #375f89;
+      --rose: #a94c4c;
+      --shadow: 0 18px 48px rgba(28, 39, 34, .12);
     }
-    *{box-sizing:border-box} html{scroll-behavior:smooth}
-    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at 10% 0%,rgba(215,170,85,.22),transparent 32%),radial-gradient(circle at 90% 4%,rgba(143,184,223,.16),transparent 28%),var(--bg);line-height:1.45}
-    .layout{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
-    aside{position:sticky;top:0;height:100vh;overflow:auto;padding:28px 22px;border-right:1px solid var(--line);background:rgba(8,9,12,.84);backdrop-filter:blur(18px)}
-    .brand{display:flex;align-items:center;gap:13px;margin-bottom:30px}.logo{width:48px;height:48px;border-radius:17px;background:linear-gradient(135deg,var(--gold2),#9a6922);color:#111;display:grid;place-items:center;font-weight:950;font-size:23px;box-shadow:0 14px 40px rgba(215,170,85,.22)}
-    .brand h1{margin:0;font-size:23px;letter-spacing:-.05em}.brand p{margin:1px 0 0;color:var(--muted);font-size:12px}
-    nav{display:grid;gap:8px}nav a{text-decoration:none;color:var(--muted);padding:12px 13px;border-radius:15px;display:flex;justify-content:space-between;align-items:center;border:1px solid transparent;font-size:14px}nav a:hover,nav a.active{background:rgba(255,255,255,.055);color:var(--text);border-color:var(--line)}
-    .pill{font-size:10px;padding:3px 7px;border-radius:99px;background:var(--gold);color:#18130a;font-weight:800}main{padding:34px}
-    .hero{border:1px solid var(--line);border-radius:36px;padding:46px;background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.025)),linear-gradient(135deg,rgba(215,170,85,.18),transparent 44%),var(--panel);box-shadow:var(--shadow);display:grid;grid-template-columns:1.12fr .88fr;gap:34px;align-items:center;overflow:hidden;position:relative}.hero:after{content:"";position:absolute;right:-120px;top:-120px;width:390px;height:390px;border-radius:50%;border:1px solid rgba(215,170,85,.22)}
-    .eyebrow{color:var(--gold2);text-transform:uppercase;letter-spacing:.15em;font-size:12px;font-weight:900;margin-bottom:14px}h2{margin:0 0 18px;font-size:clamp(42px,6vw,78px);line-height:.9;letter-spacing:-.08em}.hero p{margin:0 0 27px;max-width:720px;color:var(--muted);font-size:18px}.actions{display:flex;flex-wrap:wrap;gap:12px}.btn{border:0;border-radius:15px;padding:13px 18px;background:var(--gold);color:#18130a;font-weight:900;box-shadow:0 15px 40px rgba(215,170,85,.22)}.btn.secondary{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--text);box-shadow:none}
-    .phone{width:330px;max-width:100%;justify-self:center;z-index:1;padding:13px;border-radius:42px;background:#07080b;border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 80px rgba(0,0,0,.6)}.screen{min-height:610px;border-radius:31px;padding:19px;background:linear-gradient(180deg,#1a202b,#0b0d11);border:1px solid rgba(255,255,255,.08)}
-    .mobile-card{border:1px solid var(--line);border-radius:22px;padding:16px;background:rgba(255,255,255,.045);margin-bottom:12px}.mobile-card.feature{background:linear-gradient(135deg,rgba(215,170,85,.19),rgba(255,255,255,.04))}.mobile-card h3{margin:0 0 6px;font-size:18px;letter-spacing:-.03em}.mobile-card p{margin:0;color:var(--muted);font-size:13px}.progress{height:8px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:13px}.progress span{display:block;height:100%;width:74%;background:var(--gold)}.mobile-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}.stat{border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:17px;padding:13px}.stat b{display:block;font-size:25px;letter-spacing:-.06em}.stat span{color:var(--muted);font-size:11px}
-    section.block{margin-top:34px;padding:30px;border-radius:30px;border:1px solid var(--line);background:rgba(20,24,33,.76);box-shadow:var(--shadow)}.section-head{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:22px}.section-head h3{margin:0;font-size:35px;line-height:1;letter-spacing:-.06em}.section-head p{margin:0;max-width:680px;color:var(--muted)}
-    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{min-height:185px;padding:20px;border-radius:var(--radius);background:var(--panel2);border:1px solid var(--line)}.icon{width:39px;height:39px;border-radius:14px;display:grid;place-items:center;background:rgba(215,170,85,.15);color:var(--gold2);font-weight:950;margin-bottom:13px}.card h4{margin:0 0 8px;font-size:18px;letter-spacing:-.03em}.card p{margin:0 0 14px;color:var(--muted);font-size:14px}.chips{display:flex;gap:7px;flex-wrap:wrap}.chip{font-size:11px;padding:5px 8px;border:1px solid var(--line);border-radius:99px;color:var(--muted);background:rgba(255,255,255,.03)}
-    .dashboard{display:grid;grid-template-columns:1.08fr .92fr;gap:16px}.dash{border-radius:25px;border:1px solid var(--line);background:#11151d;padding:20px}.dash h4{margin:0 0 8px;font-size:22px;letter-spacing:-.04em}.dash p{margin:0;color:var(--muted);font-size:14px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin:17px 0}.metric{padding:14px;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid var(--line)}.metric b{display:block;font-size:27px;letter-spacing:-.06em}.metric span{color:var(--muted);font-size:12px}.timeline{display:grid;gap:11px;margin-top:16px}.event{display:grid;grid-template-columns:78px 1fr;gap:12px;padding:13px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid var(--line)}.event small{color:var(--gold2);font-weight:900}.event b{display:block}.event p{margin:3px 0 0;font-size:13px}
-    table{width:100%;border-collapse:collapse;border-radius:18px;overflow:hidden;border:1px solid var(--line)}th,td{padding:14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:14px}th{color:var(--gold2);background:rgba(255,255,255,.045)}td{color:var(--muted)}td:first-child{color:var(--text);font-weight:850}.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}.tab{padding:13px;text-align:center;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.04);color:var(--muted);font-weight:900}.tab.active{color:var(--gold2);background:rgba(215,170,85,.16)}footer{color:var(--muted);text-align:center;padding:30px 0 6px}
-    @media(max-width:1180px){.layout{grid-template-columns:1fr}aside{display:none}.hero{grid-template-columns:1fr}.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3,.dashboard{grid-template-columns:1fr}}@media(max-width:740px){main{padding:18px}.hero,section.block{padding:22px;border-radius:24px}.section-head{display:block}.section-head h3{margin-bottom:12px}.grid-4,.grid-3,.metrics,.tabs{grid-template-columns:1fr}}
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 28px 22px;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, .84);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--green);
+      color: #fff;
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    h1, h2, h3, h4, p { margin-top: 0; }
+
+    .brand h1 {
+      margin-bottom: 0;
+      font-size: 25px;
+      letter-spacing: 0;
+    }
+
+    .brand p,
+    .muted {
+      color: var(--muted);
+    }
+
+    nav {
+      display: grid;
+      gap: 7px;
+    }
+
+    nav a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    nav a:hover,
+    nav a.active {
+      border-color: var(--line);
+      background: var(--surface-soft);
+      color: var(--ink);
+    }
+
+    main {
+      padding: 28px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(330px, .98fr);
+      gap: 28px;
+      align-items: stretch;
+      min-height: calc(100vh - 56px);
+      padding-bottom: 26px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 760px;
+    }
+
+    .eyebrow {
+      margin-bottom: 14px;
+      color: var(--green-dark);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      font-size: clamp(44px, 6vw, 82px);
+      line-height: .94;
+      letter-spacing: 0;
+    }
+
+    .hero-copy p {
+      max-width: 680px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      min-height: 44px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 11px 15px;
+      font: inherit;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .secondary {
+      border-color: var(--line);
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .product-shell {
+      align-self: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .app-topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfbf8;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #e7f0ec;
+      color: var(--green-dark);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .app-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .panel,
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .panel {
+      padding: 16px;
+    }
+
+    .panel.soft {
+      background: var(--surface-soft);
+    }
+
+    .field {
+      margin-top: 13px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 11px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .risk {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .risk-row {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .risk-row strong {
+      color: var(--green-dark);
+    }
+
+    .risk-row.monitor strong { color: var(--amber); }
+    .risk-row.urgent strong { color: var(--rose); }
+
+    section {
+      padding: 34px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+
+    .section-head h3 {
+      margin-bottom: 0;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      max-width: 640px;
+      margin-bottom: 0;
+      color: var(--muted);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      min-height: 178px;
+      padding: 18px;
+    }
+
+    .card h4 {
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      margin: 0 6px 6px 0;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+    }
+
+    .step {
+      min-height: 150px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .step b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--green-dark);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .handoff {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .report {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .report-row {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .report-row:last-child { border-bottom: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--surface-soft);
+      color: var(--green-dark);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    td { color: var(--muted); }
+    td:first-child { color: var(--ink); font-weight: 850; }
+
+    footer {
+      padding: 28px 0 10px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 1120px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { display: none; }
+      .hero,
+      .app-body,
+      .handoff { grid-template-columns: 1fr; }
+      .grid-4,
+      .workflow { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 720px) {
+      main { padding: 18px; }
+      .hero { min-height: auto; }
+      h2 { font-size: 44px; }
+      .section-head { display: block; }
+      .section-head h3 { margin-bottom: 10px; }
+      .grid-3,
+      .grid-4,
+      .workflow { grid-template-columns: 1fr; }
+      .report-row,
+      .risk-row { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="layout">
     <aside>
-      <div class="brand"><div class="logo">A</div><div><h1>Arbor</h1><p>Child Development Intelligence</p></div></div>
+      <div class="brand">
+        <div class="logo">A</div>
+        <div>
+          <h1>Arbor</h1>
+          <p>Private beta product loop</p>
+        </div>
+      </div>
       <nav>
-        <a class="active" href="#overview">Overview <span class="pill">OS</span></a><a href="#parent">Parent App</a><a href="#ai">AI Engines</a><a href="#science">Scholar Layer</a><a href="#dashboards">Dashboards</a><a href="#professional">Professional</a><a href="#school">School</a><a href="#safety">Safety</a><a href="#roadmap">Roadmap</a>
+        <a class="active" href="#overview">Overview <span>Beta</span></a>
+        <a href="#loop">Product Loop</a>
+        <a href="#safety">Safety</a>
+        <a href="#memory">Child Memory</a>
+        <a href="#handoff">Handoff</a>
+        <a href="#roadmap">Roadmap</a>
       </nav>
     </aside>
+
     <main>
       <section id="overview" class="hero">
-        <div><div class="eyebrow">Parenting OS · Birth to Age 12</div><h2>Not a parenting chatbot. A child-development operating system.</h2><p>Arbor combines longitudinal child memory, developmental science, AI coaching, behavior analytics, school collaboration, and professional co-therapy workflows into one premium platform.</p><div class="actions"><button class="btn">Ask Arbor</button><button class="btn secondary">View Child Dashboard</button><button class="btn secondary">Generate Action Plan</button></div></div>
-        <div class="phone"><div class="screen"><div class="mobile-card feature"><h3>Dylan · Age 5</h3><p>Hebrew native · English transition · Kindergarten readiness</p><div class="progress"><span></span></div></div><div class="mobile-grid"><div class="stat"><b>74%</b><span>School readiness</span></div><div class="stat"><b>4</b><span>Active plans</span></div><div class="stat"><b>Low</b><span>Risk level</span></div><div class="stat"><b>8m</b><span>Today’s practice</span></div></div><div class="mobile-card"><h3>Today’s Guidance</h3><p>Use visual routine + two controlled choices before kindergarten.</p></div><div class="mobile-card"><h3>Next Best Challenge</h3><p>Practice: “Can I play?”, “I need help”, “Where is my bag?”</p></div><div class="mobile-card"><h3>Repair Script</h3><p>“You were upset. The rule remains. We try again together.”</p></div><div class="mobile-card"><h3>Story</h3><p>The Brave New School — personalized transition story.</p></div></div></div>
+        <div class="hero-copy">
+          <div class="eyebrow">Parent support MVP | Birth to age 12</div>
+          <h2>Turn one hard parenting moment into a safe next step.</h2>
+          <p>Arbor's first product should not try to launch the whole child-development platform. The private beta focuses on the trust loop: intake, safety triage, practical plan, approved memory, follow-up log, and professional handoff.</p>
+          <div class="actions">
+            <button class="primary">Start Parent Intake</button>
+            <button class="secondary">Create Handoff Summary</button>
+            <button class="secondary">Review Saved Memory</button>
+          </div>
+        </div>
+
+        <div class="product-shell" aria-label="Arbor parent intake preview">
+          <div class="app-topbar">
+            <div>
+              <strong>Dylan, age 5</strong>
+              <div class="muted">Kindergarten transition | English practice | Morning routine</div>
+            </div>
+            <span class="status-pill">Private beta</span>
+          </div>
+          <div class="app-body">
+            <div class="panel">
+              <h3>Parent Intake</h3>
+              <div class="field">
+                <label for="concern">What happened?</label>
+                <textarea id="concern">Dylan cried and refused to enter kindergarten after a rushed morning.</textarea>
+              </div>
+              <div class="field">
+                <label for="urgency">Urgency</label>
+                <select id="urgency">
+                  <option>Routine support</option>
+                  <option>Monitor closely</option>
+                  <option>Ask professional</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="tried">Already tried</label>
+                <input id="tried" value="Reassurance, extra time, teacher handoff" />
+              </div>
+            </div>
+
+            <div class="panel soft">
+              <h3>Arbor Response</h3>
+              <div class="risk">
+                <div class="risk-row">
+                  <strong>Safe</strong>
+                  <span>Likely transition stress. No emergency signal from the parent intake.</span>
+                </div>
+                <div class="risk-row monitor">
+                  <strong>Monitor</strong>
+                  <span>Track frequency, duration, recovery time, and whether refusal spreads to other settings.</span>
+                </div>
+                <div class="risk-row urgent">
+                  <strong>Escalate</strong>
+                  <span>Seek professional advice if refusal persists, sleep or appetite changes, or distress intensifies.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
-      <section id="parent" class="block"><div class="section-head"><div><div class="eyebrow">Parent App</div><h3>Daily command center</h3></div><p>The product loop is simple: ask, understand, act, track, improve. The app must give parents confidence, not more anxiety.</p></div><div class="grid-4"><div class="card"><div class="icon">01</div><h4>Ask Arbor</h4><p>Personalized answers based on age, history, behavior, language, and family context.</p><div class="chips"><span class="chip">Scripts</span><span class="chip">Plans</span><span class="chip">Escalation</span></div></div><div class="card"><div class="icon">02</div><h4>Child Profile</h4><p>Longitudinal memory across milestones, routines, sleep, language, school, emotions, and strengths.</p></div><div class="card"><div class="icon">03</div><h4>Behavior Logs</h4><p>Track tantrums, sleep, anxiety, food refusal, aggression, sensory overload, and school refusal.</p></div><div class="card"><div class="icon">04</div><h4>Action Plans</h4><p>Structured plans for sleep, toilet training, language, screens, routines, transitions, and anxiety.</p></div></div></section>
-      <section id="ai" class="block"><div class="section-head"><div><div class="eyebrow">AI Engines</div><h3>Capability architecture</h3></div><p>The moat is orchestration: memory, safety, expert-reviewed knowledge, structured workflows, and feedback loops.</p></div><div class="grid-4"><div class="card"><div class="icon">AI</div><h4>Parent Coach</h4><p>Turns concerns into explanation, scripts, and next actions.</p></div><div class="card"><div class="icon">AI</div><h4>Case Summarizer</h4><p>Creates parent, teacher, therapist, and pediatrician-ready summaries.</p></div><div class="card"><div class="icon">AI</div><h4>Pattern Detector</h4><p>Finds trigger patterns across behavior, sleep, routines, and school.</p></div><div class="card"><div class="icon">AI</div><h4>Risk Classifier</h4><p>Routes medical, safety, developmental, and mental-health concerns safely.</p></div><div class="card"><div class="icon">AI</div><h4>Story Generator</h4><p>Creates bedtime, transition, emotional, and language-learning stories.</p></div><div class="card"><div class="icon">AI</div><h4>Language Coach</h4><p>Builds daily language routines for multilingual and expat children.</p></div><div class="card"><div class="icon">AI</div><h4>Professional Assistant</h4><p>Prepares session summaries, homework, progress reports, and intervention plans.</p></div><div class="card"><div class="icon">AI</div><h4>Knowledge Router</h4><p>Routes questions to medical, education, behavior, language, or special-needs knowledge.</p></div></div></section>
-      <section id="science" class="block"><div class="section-head"><div><div class="eyebrow">Scholar Layer</div><h3>Developmental science as product features</h3></div><p>Each school of thought becomes a capability. This keeps the product serious, differentiated, and defensible.</p></div><div class="grid-4"><div class="card"><div class="icon">V</div><h4>Vygotsky</h4><p>Next Best Challenge Engine: scaffolded learning at the child’s edge.</p></div><div class="card"><div class="icon">B</div><h4>Bowlby</h4><p>Attachment & Repair Coach: connection moments and conflict recovery scripts.</p></div><div class="card"><div class="icon">H</div><h4>Harvard</h4><p>Serve & Return Trainer: micro-coaching for parent-child interaction.</p></div><div class="card"><div class="icon">Br</div><h4>Bronfenbrenner</h4><p>Ecosystem Map: family, school, language, culture, routines, and stressors.</p></div><div class="card"><div class="icon">P</div><h4>Piaget</h4><p>Stage-aware activity generator and realistic parent expectations.</p></div><div class="card"><div class="icon">M</div><h4>Montessori</h4><p>Independence Planner: practical life skills and prepared environments.</p></div><div class="card"><div class="icon">R</div><h4>Reggio Emilia</h4><p>Curiosity Project Generator based on the child’s interests.</p></div><div class="card"><div class="icon">W</div><h4>Winnicott</h4><p>Good Enough Parent Coach: reduces guilt and supports repair.</p></div></div></section>
-      <section id="dashboards" class="block"><div class="section-head"><div><div class="eyebrow">Dashboard</div><h3>Child intelligence cockpit</h3></div><p>One operating picture: development, behavior, language, attachment, risk, school, and professional actions.</p></div><div class="dashboard"><div class="dash"><h4>Dylan’s Development Timeline</h4><p>Current focus: English transition, school confidence, morning routine, emotional regulation.</p><div class="metrics"><div class="metric"><b>74%</b><span>School readiness</span></div><div class="metric"><b>18</b><span>Milestones tracked</span></div><div class="metric"><b>3</b><span>Patterns detected</span></div></div><div class="timeline"><div class="event"><small>Today</small><div><b>Morning routine friction</b><p>Trigger: transition pressure. Suggested: visual sequence + two choices.</p></div></div><div class="event"><small>Week</small><div><b>Language practice improving</b><p>English help phrases practiced four days this week.</p></div></div><div class="event"><small>Next</small><div><b>Teacher handoff note</b><p>Create one-page adaptation brief for kindergarten.</p></div></div></div></div><div class="dash"><h4>Active Recommendations</h4><div class="timeline"><div class="event"><small>Plan</small><div><b>Kindergarten Adaptation</b><p>Predictable arrival ritual and phrase cards.</p></div></div><div class="event"><small>Story</small><div><b>The Brave New School</b><p>Personalized transition story with child as hero.</p></div></div><div class="event"><small>Repair</small><div><b>After-Tantrum Script</b><p>Name feeling, hold boundary, reconnect through ritual.</p></div></div><div class="event"><small>Safety</small><div><b>No urgent risk</b><p>Monitor pattern. Escalate if intensity or frequency rises.</p></div></div></div></div></div></section>
-      <section id="professional" class="block"><div class="section-head"><div><div class="eyebrow">Professional Platform</div><h3>Co-therapy workflow layer</h3></div><p>For therapists, psychologists, speech therapists, occupational therapists, educational consultants, and clinics.</p></div><div class="tabs"><div class="tab active">Therapist</div><div class="tab">Psychologist</div><div class="tab">Speech</div><div class="tab">OT</div><div class="tab">Clinic</div></div><div class="grid-3"><div class="card"><div class="icon">P</div><h4>Case Summary</h4><p>AI summary of child profile, logs, concerns, interventions, and progress.</p></div><div class="card"><div class="icon">P</div><h4>Session Prep</h4><p>Agenda, hypotheses, questions, and homework before the session.</p></div><div class="card"><div class="icon">P</div><h4>Reports</h4><p>Structured reports for parents, schools, pediatricians, and care teams.</p></div></div></section>
-      <section id="school" class="block"><div class="section-head"><div><div class="eyebrow">School Layer</div><h3>Bridge home and education</h3></div><p>Critical for expat families, language transitions, school readiness, and behavioral support.</p></div><table><thead><tr><th>Capability</th><th>Parent Value</th><th>School Value</th><th>Output</th></tr></thead><tbody><tr><td>Teacher Handoff</td><td>Reduces transition anxiety</td><td>Gives context fast</td><td>One-page child brief</td></tr><tr><td>Language Transition</td><td>Daily school phrases</td><td>Supports classroom integration</td><td>Phrase cards + practice plan</td></tr><tr><td>Behavior Observations</td><td>Connects home and school patterns</td><td>Improves consistency</td><td>Weekly pattern report</td></tr><tr><td>School Readiness</td><td>Clear view of gaps</td><td>Better support decisions</td><td>Readiness dashboard</td></tr></tbody></table></section>
-      <section id="safety" class="block"><div class="section-head"><div><div class="eyebrow">Trust & Safety</div><h3>Safety is a product feature</h3></div><p>The app handles sensitive child data. Privacy, escalation, compliance, and content governance must be first-class capabilities.</p></div><div class="grid-3"><div class="card"><div class="icon">S</div><h4>Medical Guardrails</h4><p>No diagnosis claims. Red-flag escalation. Doctor guidance where appropriate.</p></div><div class="card"><div class="icon">G</div><h4>GDPR Controls</h4><p>Consent, deletion, export, audit logs, role-based access, and data minimization.</p></div><div class="card"><div class="icon">K</div><h4>Knowledge Governance</h4><p>Expert review, versioning, source status, country applicability, and risk labels.</p></div></div></section>
-      <section id="roadmap" class="block"><div class="section-head"><div><div class="eyebrow">Roadmap</div><h3>From MVP to platform</h3></div><p>Build the core loop first. Do not build the empire before proving retention.</p></div><table><thead><tr><th>Phase</th><th>Scope</th><th>Goal</th></tr></thead><tbody><tr><td>MVP</td><td>Parent app, child profile, AI coach, logs, action plans, story generator, safety layer</td><td>Validate weekly parent retention</td></tr><tr><td>V1</td><td>Milestones, scholar engines, behavior analytics, language module, school reports</td><td>Become daily parenting utility</td></tr><tr><td>V2</td><td>Professional dashboard, case summaries, homework, reports, secure messaging</td><td>Enter co-therapy market</td></tr><tr><td>V3</td><td>School, clinic, municipality dashboards, subsidy workflows, B2B analytics</td><td>Scale institutional adoption</td></tr><tr><td>V4</td><td>AR stories, supervised child mode, voice, advanced learning quests</td><td>Expand premium child experience</td></tr></tbody></table></section>
-      <footer>Arbor thesis: longitudinal child memory + expert-reviewed knowledge + parent workflows + professional collaboration = defensible child-development intelligence platform.</footer>
+
+      <section id="loop">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">MVP loop</div>
+            <h3>Six screens that prove retention</h3>
+          </div>
+          <p>The beta should make parents feel helped today and more understood tomorrow. Each step creates a reason to return.</p>
+        </div>
+        <div class="workflow">
+          <div class="step"><b>01 Intake</b><p>Capture child, age, setting, concern, urgency, and what the parent already tried.</p></div>
+          <div class="step"><b>02 Triage</b><p>Classify routine, monitor, professional advice, urgent care, or emergency guidance.</p></div>
+          <div class="step"><b>03 Plan</b><p>Give today action, exact script, avoid list, observation target, and follow-up prompt.</p></div>
+          <div class="step"><b>04 Memory</b><p>Ask parent which facts to save. Every memory stays editable and source-linked.</p></div>
+          <div class="step"><b>05 Log</b><p>Record what happened next, whether the script helped, and what changed.</p></div>
+          <div class="step"><b>06 Handoff</b><p>Create a compact summary for a teacher, therapist, doctor, or co-parent.</p></div>
+        </div>
+      </section>
+
+      <section id="safety">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Trust layer</div>
+            <h3>Safety is visible in the answer</h3>
+          </div>
+          <p>Parents should never wonder whether the app is diagnosing, minimizing risk, or pretending to replace a clinician.</p>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <h4>No diagnosis boundary</h4>
+            <p>Every response states that Arbor supports observation and planning, not diagnosis or treatment.</p>
+            <span class="tag">Required</span><span class="tag">Every answer</span>
+          </div>
+          <div class="card">
+            <h4>Escalation thresholds</h4>
+            <p>Risk guidance is explicit, including when to call emergency services or consult a professional.</p>
+            <span class="tag">Medical</span><span class="tag">Mental health</span>
+          </div>
+          <div class="card">
+            <h4>Expert review queue</h4>
+            <p>High-risk or ambiguous beta cases are flagged for manual review before scaling automation.</p>
+            <span class="tag">Beta ops</span><span class="tag">Governance</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="memory">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Child memory</div>
+            <h3>The moat starts as consented facts</h3>
+          </div>
+          <p>The MVP memory model should feel careful and legible: parents approve, edit, export, and delete what Arbor remembers.</p>
+        </div>
+        <div class="grid-4">
+          <div class="card"><h4>Saved context</h4><p>Language exposure, routines, school setting, strengths, sensitivities, and active plans.</p></div>
+          <div class="card"><h4>Evidence link</h4><p>Each saved fact points back to a parent intake, log, or imported document.</p></div>
+          <div class="card"><h4>Retention control</h4><p>Parents can remove stale details and keep private notes out of exports.</p></div>
+          <div class="card"><h4>Family access</h4><p>Co-parent support is architectural from day one, even if UI launches later.</p></div>
+        </div>
+      </section>
+
+      <section id="handoff">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Professional handoff</div>
+            <h3>One page, no oversharing</h3>
+          </div>
+          <p>The beta export should reduce parent cognitive load while protecting child privacy.</p>
+        </div>
+        <div class="handoff">
+          <div class="report">
+            <h3>Kindergarten Handoff</h3>
+            <div class="report-row"><strong>Concern</strong><span>Morning separation distress after rushed transitions.</span></div>
+            <div class="report-row"><strong>Pattern</strong><span>Three incidents this week, recovery within 8 to 12 minutes.</span></div>
+            <div class="report-row"><strong>Helps</strong><span>Visual routine, two choices, short goodbye ritual, known teacher greeting.</span></div>
+            <div class="report-row"><strong>Watch</strong><span>Escalate if refusal becomes daily or distress spreads beyond arrival.</span></div>
+          </div>
+          <div class="panel">
+            <h3>Export Controls</h3>
+            <p class="muted">Parents choose the audience before export. Teacher, therapist, pediatrician, and co-parent summaries use different detail levels.</p>
+            <div class="field">
+              <label for="audience">Audience</label>
+              <select id="audience">
+                <option>Teacher</option>
+                <option>Therapist</option>
+                <option>Pediatrician</option>
+                <option>Co-parent</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="include">Include</label>
+              <input id="include" value="Concern, pattern, tried scripts, questions, risk level" />
+            </div>
+            <div class="actions">
+              <button class="primary">Generate Summary</button>
+              <button class="secondary">Preview Data</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Build order</div>
+            <h3>Private beta before platform expansion</h3>
+          </div>
+          <p>The empire can wait. First prove a narrow, safe, repeatable parent-support workflow.</p>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Stage</th><th>Scope</th><th>Success signal</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Beta 0</td><td>Static prototype, interview script, expert review rubric</td><td>10 parent interviews and 3 expert reviewers</td></tr>
+            <tr><td>Beta 1</td><td>Intake, safety triage, parent plan, approved memory</td><td>20 invited families complete 3 support sessions</td></tr>
+            <tr><td>Beta 2</td><td>Follow-up logs, handoff summaries, export/delete controls</td><td>40 percent weekly return rate</td></tr>
+            <tr><td>V1</td><td>Milestones, routines, behavior analytics, multilingual support</td><td>Parent confidence improvement over 30 days</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <footer>Arbor private beta thesis: safer answers, approved child memory, practical scripts, and careful handoff create the first defensible loop.</footer>
     </main>
   </div>
 </body>

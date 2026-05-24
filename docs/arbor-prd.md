@@ -284,6 +284,8 @@ Per family, per school/kindergarten, per municipal program, outcome-based pilots
 
 ## MVP Scope
 
+The first release should be a **private-beta parent support product**, not the full Arbor platform. It should prove that parents return because Arbor helps them turn one difficult moment into a safer plan, a calmer script, a useful log, and a better next step.
+
 Build first:
 
 1. Parent onboarding
@@ -292,10 +294,10 @@ Build first:
 4. Behavior logging
 5. Basic milestone tracker
 6. Action plan generator
-7. Story generator
+7. Safety classifier
 8. Parent dashboard
-9. Safety classifier
-10. PDF export
+9. Professional handoff summary
+10. Exportable child context
 
 Do not build first:
 
@@ -305,10 +307,32 @@ Do not build first:
 - School integrations
 - Municipality dashboards
 - Complex child-facing interface
+- Unsupervised child chat
+- Expert marketplace
 
 MVP loop:
 
 **Parent asks → AI gives useful plan → parent logs outcome → platform becomes smarter → parent returns.**
+
+### Private Beta Product Loop
+
+1. **Intake** - parent names the child, age, concern, setting, urgency, and what has already been tried.
+2. **Safety triage** - Arbor classifies the situation as routine, monitor, professional advice, urgent care, or emergency guidance, with a clear "not a diagnosis" boundary.
+3. **Parent plan** - Arbor returns a brief explanation, a same-day action, an exact parent script, what to avoid, what to observe, and when to escalate.
+4. **Child memory update** - parent approves which facts should be saved to the child profile.
+5. **Follow-up log** - parent records whether the plan helped, what changed, and what still feels hard.
+6. **Handoff** - Arbor can generate a one-page parent, teacher, or professional summary without exposing unnecessary child data.
+
+### MVP Acceptance Criteria
+
+| Capability | Acceptance Criteria |
+|---|---|
+| Safety triage | Every AI response includes risk level, escalation guidance, and a no-diagnosis boundary. |
+| Parent plan | Every plan includes today action, exact script, avoid list, observation target, and follow-up prompt. |
+| Child memory | Saved memories are explicit, editable, time-stamped, and source-linked to parent input. |
+| Privacy | Parent can export and delete child data. Child-facing AI is disabled in MVP. |
+| Professional handoff | Export includes concern, context, logs, tried interventions, risk level, and parent questions. |
+| Beta readiness | Product can support 20 to 50 invited families with manual expert review of high-risk scenarios. |
 
 ---
 
