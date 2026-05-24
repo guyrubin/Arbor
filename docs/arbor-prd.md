@@ -170,6 +170,15 @@ Premium content library with masterclasses, short explainers, parent scripts, pl
 
 Arbor should operate as a multi-theory child-development engine.
 
+The framework is not a content library. Every capability must map to:
+
+1. A child-development domain
+2. An age-band expectation
+3. A parent-visible intervention
+4. A child-memory field
+5. A safety or escalation rule
+6. An evaluation scenario
+
 | Scholar / School | Capability | Product Value |
 |---|---|---|
 | Vygotsky | Next Best Challenge Engine | Finds the child's learning edge and scaffolds practice |
@@ -187,6 +196,16 @@ Arbor should operate as a multi-theory child-development engine.
 | Gardner | Strengths Discovery Dashboard | Detects strengths and preferred learning modalities |
 | Executive Function Science | Self-Regulation Builder | Builds planning, inhibition, working memory, and flexibility |
 | Trauma-Informed Development | Family Stress & Resilience Monitor | Tracks stressors and recommends stabilizing routines |
+
+### Developmental Domains
+
+Arbor's MVP should route every concern through one or more of these domains: attachment and regulation, language and communication, cognition and executive function, social development, independence and adaptive skills, sensory and motor patterns, and child ecosystem/stressors.
+
+### Age-Band Operating Logic
+
+The same issue should produce different guidance for different ages. A toddler refusing a transition, a five-year-old refusing school entry, and a ten-year-old avoiding schoolwork require different explanations, scripts, responsibility levels, and escalation thresholds.
+
+The detailed implementation model lives in `docs/developmental-ai-operating-model.md`.
 
 ---
 
@@ -242,6 +261,22 @@ Suggested stack:
 - Reporting: PDF export service
 - Notifications: email, push, optional WhatsApp
 
+### AI Enhancement Architecture
+
+The AI layer should be structured as a disciplined pipeline, not a single free-form chatbot:
+
+1. Intent and developmental-domain classifier
+2. Safety triage classifier
+3. Developmental formulation generator with uncertainty labels
+4. Parent plan generator
+5. Parent-approved memory proposal generator
+6. Audience-specific handoff generator
+7. Evaluation logger for safety, helpfulness, confidence, and outcome signals
+
+Every AI response should be generated as structured data before UI rendering. Required fields include risk level, age band, domains, non-diagnostic hypotheses, today plan, parent script, what to avoid, what to observe, escalation thresholds, memory proposals, and handoff notes.
+
+High-risk outputs require human review during beta. The product should use a prompt registry, source-card knowledge base, red-team scenario suite, and regression evals before changing prompts or models.
+
 ---
 
 ## Compliance, Privacy & Safety
@@ -284,6 +319,8 @@ Per family, per school/kindergarten, per municipal program, outcome-based pilots
 
 ## MVP Scope
 
+The first release should be a **private-beta parent support product**, not the full Arbor platform. It should prove that parents return because Arbor helps them turn one difficult moment into a safer plan, a calmer script, a useful log, and a better next step.
+
 Build first:
 
 1. Parent onboarding
@@ -292,10 +329,10 @@ Build first:
 4. Behavior logging
 5. Basic milestone tracker
 6. Action plan generator
-7. Story generator
+7. Safety classifier
 8. Parent dashboard
-9. Safety classifier
-10. PDF export
+9. Professional handoff summary
+10. Exportable child context
 
 Do not build first:
 
@@ -305,10 +342,34 @@ Do not build first:
 - School integrations
 - Municipality dashboards
 - Complex child-facing interface
+- Unsupervised child chat
+- Expert marketplace
 
 MVP loop:
 
 **Parent asks → AI gives useful plan → parent logs outcome → platform becomes smarter → parent returns.**
+
+### Private Beta Product Loop
+
+1. **Intake** - parent names the child, age, concern, setting, urgency, and what has already been tried.
+2. **Safety triage** - Arbor classifies the situation as routine, monitor, professional advice, urgent care, or emergency guidance, with a clear "not a diagnosis" boundary.
+3. **Parent plan** - Arbor returns a brief explanation, a same-day action, an exact parent script, what to avoid, what to observe, and when to escalate.
+4. **Child memory update** - parent approves which facts should be saved to the child profile.
+5. **Follow-up log** - parent records whether the plan helped, what changed, and what still feels hard.
+6. **Handoff** - Arbor can generate a one-page parent, teacher, or professional summary without exposing unnecessary child data.
+
+### MVP Acceptance Criteria
+
+| Capability | Acceptance Criteria |
+|---|---|
+| Developmental routing | Every parent concern maps to child age band, developmental domain, and practical intervention type. |
+| Safety triage | Every AI response includes risk level, escalation guidance, and a no-diagnosis boundary. |
+| Parent plan | Every plan includes today action, exact script, avoid list, observation target, and follow-up prompt. |
+| Child memory | Saved memories are explicit, editable, time-stamped, and source-linked to parent input. |
+| Privacy | Parent can export and delete child data. Child-facing AI is disabled in MVP. |
+| Professional handoff | Export includes concern, context, logs, tried interventions, risk level, and parent questions. |
+| AI quality | Prompt or model changes require targeted evals for safety, age fit, no-diagnosis behavior, practicality, and handoff quality. |
+| Beta readiness | Product can support 20 to 50 invited families with manual expert review of high-risk scenarios. |
 
 ---
 
@@ -317,8 +378,8 @@ MVP loop:
 | Phase | Scope | Goal |
 |---|---|---|
 | Phase 0 | Discovery, interviews, market research, regulatory scan, advisory board | Validate problem and risk |
-| Phase 1 | Parent MVP, AI coach, child profile, logs, plans, stories, safety | Validate retention |
-| Phase 2 | 100–300 family beta, Hebrew/English support, expat use case, professional export | Validate usage |
+| Phase 1 | Parent MVP, AI coach, child profile, developmental routing, logs, plans, safety | Validate retention |
+| Phase 2 | 100–300 family beta, Hebrew/English support, expat use case, professional export, AI eval suite | Validate usage |
 | Phase 3 | Therapist dashboard, case summary, homework, clinic workflow | Validate professional value |
 | Phase 4 | School support, municipality/insurer pilot, organization dashboard | Validate institutional model |
 | Phase 5 | Multilingual expansion, professional marketplace, AR stories, APIs, analytics | Scale |
