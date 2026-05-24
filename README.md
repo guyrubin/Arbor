@@ -40,3 +40,16 @@ Arbor is a private-beta parent support product for child-development concerns. T
 - Keep the product feeling like a daily field notebook: evidence-first, calm, precise, and parent-readable.
 - Keep product actions concrete: generate plan, review memory, prepare handoff, and inspect eval gates.
 - Treat the child-development framework as interaction design, not background copy.
+
+## Two registers — Six Frames + operational layer
+
+The product is described in two complementary vocabularies that map onto each other. The PRD's *Six Frames* are the philosophical register — what we are forming the child into and why. The operational layer above (domain / age band / parent intervention / memory field / safety rule / eval scenario) is the engineering register — how each capability is built and verified. Every feature should be expressible in both.
+
+| Six Frames (philosophy) | Operational layer (engineering) |
+|---|---|
+| The Aim — articulated direction (Family Charter, Developmental Arc, Reckoning) | Domain + age band per response; AI output calibrated against parent-authored values |
+| The Two Axes — restore the paternal half (Responsibility Ladder, Friction Scripts, Hard Thing) | Parent intervention field; safety rule that distinguishes age-appropriate stretch from over-load |
+| The Story — meaning, ritual, transmission (Family Story Canon, Ritual Architecture, Truth Practice) | Memory field that captures parent-approved narrative; ritual templates in plan generation |
+| The Shadow — let the dark in (Hard Conversations, Dark Emotions) | Safety rule that allows hard topics with structured scaffolding rather than deflecting |
+| The Marriage — partner pair, repair (Partner Pair, Style Conflict, Rupture Repair) | Account model; conflict workflow; co-parent handoff fields |
+| The Shepherd — one integrator (Family Shepherd, Family Council) | Professional handoff and consent contract; structured AI output fed to a human integrator |
