@@ -36,6 +36,7 @@ Arbor is a private-beta parent support product for child-development concerns. T
 ## Prototype Design Principles
 
 - Start on the usable app workspace, not a marketing landing page.
-- Use calm parent-support surfaces: restrained color, compact cards, clear hierarchy, and visible safety states.
+- Use the downloaded `Arbor-standalone.html` design language: warm paper, true ink, signal-orange clay, Delft blue, sage, rectilinear radii, hairline grids, mono labels, and editorial serif accents.
+- Keep the product feeling like a daily field notebook: evidence-first, calm, precise, and parent-readable.
 - Keep product actions concrete: generate plan, review memory, prepare handoff, and inspect eval gates.
 - Treat the child-development framework as interaction design, not background copy.
