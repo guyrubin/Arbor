@@ -1,6 +1,7 @@
 import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory } from "./types";
 
 export const defaultChildProfile: ChildProfile = {
+  id: "dylan-demo",
   name: "Dylan",
   age: 5,
   languages: ["Hebrew (Native)", "English (Transition)"],

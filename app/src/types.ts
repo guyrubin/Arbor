@@ -1,4 +1,5 @@
 export interface ChildProfile {
+  id: string;
   name: string;
   age: number;
   languages: string[];
@@ -6,6 +7,43 @@ export interface ChildProfile {
   strengths: string[];
   challenges: string[];
   riskLevel: 'Low' | 'Moderate' | 'High';
+}
+
+export interface FrameRouting {
+  aim: string;
+  twoAxes: string;
+  story: string;
+  shadow: string;
+  marriage: string;
+  shepherd: string;
+}
+
+export interface MemoryReviewItem {
+  memoryId: string;
+  childId: string;
+  status: 'pending' | 'approved' | 'rejected' | 'deleted';
+  fact: string;
+  source: string;
+  retention: string;
+  createdAt: string;
+  prompt?: string;
+  frameRouting?: FrameRouting;
+  latestEventId: string;
+}
+
+export interface CoachContract {
+  riskLevel: string;
+  ageBand: string;
+  domains: string[];
+  nonDiagnosticHypotheses: { label: string; confidence: string; rationale: string }[];
+  todayPlan: string[];
+  parentScript: string;
+  avoid: string[];
+  observe: string[];
+  escalateIf: string[];
+  frameRouting: FrameRouting;
+  memoryProposals: { fact: string; source: string; retention: string }[];
+  handoffNotes: { teacher: string; professional: string };
 }
 
 export interface BehaviorLog {

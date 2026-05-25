@@ -1,5 +1,7 @@
 import express from "express";
+import fs from "fs/promises";
 import path from "path";
+import { randomUUID } from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
@@ -7,11 +9,13 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "250kb" }));
 
 const PORT = 3000;
 const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const IS_BUNDLED_SERVER = path.basename(__dirname) === "dist";
+const SERVER_ENTRY = process.argv[1] || "";
+const IS_BUNDLED_SERVER = /[\\/]dist[\\/]server\.cjs$/.test(SERVER_ENTRY);
+const MEMORY_LEDGER_PATH = path.join(process.cwd(), ".data", "memory-ledger.json");
 
 const NON_DIAGNOSTIC_CONTRACT = `
 ARBOR DEVELOPMENTAL AI CONTRACT:
@@ -27,7 +31,13 @@ const DEVELOPMENTAL_FRAMEWORK = `
 DEVELOPMENTAL FRAMEWORK:
 - Domains: attachment_regulation, language_communication, cognition_executive_function, social_development, independence_adaptive_skills, sensory_motor_patterns, ecosystem_stressors.
 - Age bands: 0-12m, 12-36m, 3-5y, 6-8y, 9-12y.
-- Six Frames: Aim, Two Axes, Story, Shadow, Marriage, Shepherd.
+- Six Frames:
+  * Aim: what human formation or developmental aim this response serves.
+  * Two Axes: how the response balances warmth/attunement with structure/responsibility.
+  * Story: what ritual, narrative, or meaning-making thread the family can carry.
+  * Shadow: what hard emotion, avoidance, fear, anger, or rupture must be faced instead of bypassed.
+  * Marriage: what co-parent/caregiver alignment or repair is needed around the child.
+  * Shepherd: which adult, professional, or institutional steward should hold the next handoff.
 - AI pipeline: classify intent/domain, safety triage, non-diagnostic hypotheses, same-day plan, parent script, observation target, memory proposal, audience handoff.
 `;
 
@@ -41,8 +51,37 @@ type CoachResponse = {
   avoid: string[];
   observe: string[];
   escalateIf: string[];
+  frameRouting: {
+    aim: string;
+    twoAxes: string;
+    story: string;
+    shadow: string;
+    marriage: string;
+    shepherd: string;
+  };
   memoryProposals: { fact: string; source: string; retention: string }[];
   handoffNotes: { teacher: string; professional: string };
+};
+
+type MemoryStatus = "pending" | "approved" | "rejected" | "deleted";
+
+type MemoryLedgerEvent = {
+  eventId: string;
+  memoryId: string;
+  childId: string;
+  eventType: "proposed" | "approved" | "rejected" | "deleted" | "edited";
+  status: MemoryStatus;
+  fact: string;
+  source: string;
+  retention: string;
+  createdAt: string;
+  actor: "system" | "parent";
+  prompt?: string;
+  frameRouting?: CoachResponse["frameRouting"];
+};
+
+type MemoryReviewItem = Omit<MemoryLedgerEvent, "eventId" | "eventType" | "actor"> & {
+  latestEventId: string;
 };
 
 const renderCoachResponse = (response: CoachResponse) => {
@@ -71,13 +110,146 @@ ${response.observe.map((item) => `- ${item}`).join("\n")}
 ### 7. When To Escalate
 ${response.escalateIf.map((item) => `- ${item}`).join("\n")}
 
-### Memory Proposal
+### Frame Routing
+- **Aim:** ${response.frameRouting.aim}
+- **Two Axes:** ${response.frameRouting.twoAxes}
+- **Story:** ${response.frameRouting.story}
+- **Shadow:** ${response.frameRouting.shadow}
+- **Marriage:** ${response.frameRouting.marriage}
+- **Shepherd:** ${response.frameRouting.shepherd}
+
+### Pending Memory Review
 ${response.memoryProposals.map((item) => `- ${item.fact} (${item.source}; ${item.retention})`).join("\n")}
 
 ### Handoff Note
 Teacher: ${response.handoffNotes.teacher}
 
 Professional: ${response.handoffNotes.professional}`;
+};
+
+const readMemoryLedger = async (): Promise<MemoryLedgerEvent[]> => {
+  try {
+    const raw = await fs.readFile(MEMORY_LEDGER_PATH, "utf8");
+    const parsed = JSON.parse(raw.replace(/^\uFEFF/, ""));
+    return Array.isArray(parsed) ? (parsed as MemoryLedgerEvent[]) : [];
+  } catch (error: any) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+};
+
+const writeMemoryLedger = async (events: MemoryLedgerEvent[]) => {
+  await fs.mkdir(path.dirname(MEMORY_LEDGER_PATH), { recursive: true });
+  await fs.writeFile(MEMORY_LEDGER_PATH, JSON.stringify(events, null, 2));
+};
+
+const toChildId = (childProfile: any) => {
+  if (childProfile?.id) return String(childProfile.id);
+  if (childProfile?.name) return String(childProfile.name).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return "default-child";
+};
+
+const foldMemoryEvents = (events: MemoryLedgerEvent[], childId?: string): MemoryReviewItem[] => {
+  const latest = new Map<string, MemoryReviewItem>();
+
+  for (const event of events) {
+    if (childId && event.childId !== childId) continue;
+    latest.set(event.memoryId, {
+      memoryId: event.memoryId,
+      childId: event.childId,
+      status: event.status,
+      fact: event.fact,
+      source: event.source,
+      retention: event.retention,
+      createdAt: event.createdAt,
+      prompt: event.prompt,
+      frameRouting: event.frameRouting,
+      latestEventId: event.eventId
+    });
+  }
+
+  return [...latest.values()]
+    .filter((item) => item.status !== "deleted")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+};
+
+const appendMemoryProposals = async (
+  childId: string,
+  proposals: CoachResponse["memoryProposals"],
+  context: { prompt: string; frameRouting: CoachResponse["frameRouting"] }
+) => {
+  if (proposals.length === 0) return foldMemoryEvents(await readMemoryLedger(), childId);
+
+  const events = await readMemoryLedger();
+  const current = foldMemoryEvents(events, childId);
+  const now = new Date().toISOString();
+  const nextEvents = [...events];
+
+  for (const proposal of proposals) {
+    const duplicate = current.find(
+      (item) =>
+        item.fact.trim().toLowerCase() === proposal.fact.trim().toLowerCase() &&
+        item.status !== "rejected"
+    );
+    if (duplicate) continue;
+
+    nextEvents.push({
+      eventId: randomUUID(),
+      memoryId: randomUUID(),
+      childId,
+      eventType: "proposed",
+      status: "pending",
+      fact: proposal.fact,
+      source: proposal.source,
+      retention: proposal.retention,
+      createdAt: now,
+      actor: "system",
+      prompt: context.prompt,
+      frameRouting: context.frameRouting
+    });
+  }
+
+  await writeMemoryLedger(nextEvents);
+  return foldMemoryEvents(nextEvents, childId);
+};
+
+const transitionMemory = async (
+  memoryId: string,
+  status: MemoryStatus,
+  edits: Partial<Pick<MemoryLedgerEvent, "fact" | "retention" | "source">> = {}
+) => {
+  const events = await readMemoryLedger();
+  const current = foldMemoryEvents(events).find((item) => item.memoryId === memoryId);
+  if (!current) return null;
+
+  const eventTypeByStatus: Record<MemoryStatus, MemoryLedgerEvent["eventType"]> = {
+    pending: "edited",
+    approved: "approved",
+    rejected: "rejected",
+    deleted: "deleted"
+  };
+
+  const nextEvent: MemoryLedgerEvent = {
+    eventId: randomUUID(),
+    memoryId,
+    childId: current.childId,
+    eventType: eventTypeByStatus[status],
+    status,
+    fact: edits.fact ?? current.fact,
+    source: edits.source ?? current.source,
+    retention: edits.retention ?? current.retention,
+    createdAt: new Date().toISOString(),
+    actor: "parent",
+    prompt: current.prompt,
+    frameRouting: current.frameRouting
+  };
+
+  const nextEvents = [...events, nextEvent];
+  await writeMemoryLedger(nextEvents);
+  return {
+    item: foldMemoryEvents(nextEvents).find((item) => item.memoryId === memoryId),
+    items: foldMemoryEvents(nextEvents, current.childId)
+  };
 };
 
 const immediateEscalationPatterns = [
@@ -148,6 +320,43 @@ const checkApiKey = (res: express.Response) => {
   return true;
 };
 
+// --- API ENDPOINT: CHILD MEMORY REVIEW ---
+app.get("/api/memory/:childId", async (req, res) => {
+  try {
+    const events = await readMemoryLedger();
+    let items = foldMemoryEvents(events, req.params.childId);
+    const status = req.query.status ? String(req.query.status) : undefined;
+    if (status) {
+      items = items.filter((item) => item.status === status);
+    }
+    res.json({ items });
+  } catch (error: any) {
+    console.error("Memory Read Error:", error);
+    res.status(500).json({ error: "Failed to read memory review ledger", details: error.message });
+  }
+});
+
+app.patch("/api/memory/:memoryId", async (req, res) => {
+  try {
+    const { status, fact, retention, source } = req.body;
+    if (!["pending", "approved", "rejected", "deleted"].includes(status)) {
+      res.status(400).json({ error: "Invalid memory status" });
+      return;
+    }
+
+    const result = await transitionMemory(req.params.memoryId, status, { fact, retention, source });
+    if (!result) {
+      res.status(404).json({ error: "Memory item not found" });
+      return;
+    }
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("Memory Update Error:", error);
+    res.status(500).json({ error: "Failed to update memory review item", details: error.message });
+  }
+});
+
 // --- API ENDPOINT: CHAT COACH ---
 app.post("/api/chat", async (req, res) => {
   if (!checkApiKey(res)) return;
@@ -197,6 +406,7 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps.
             "avoid",
             "observe",
             "escalateIf",
+            "frameRouting",
             "memoryProposals",
             "handoffNotes"
           ],
@@ -221,6 +431,18 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps.
             avoid: { type: Type.ARRAY, items: { type: Type.STRING } },
             observe: { type: Type.ARRAY, items: { type: Type.STRING } },
             escalateIf: { type: Type.ARRAY, items: { type: Type.STRING } },
+            frameRouting: {
+              type: Type.OBJECT,
+              required: ["aim", "twoAxes", "story", "shadow", "marriage", "shepherd"],
+              properties: {
+                aim: { type: Type.STRING },
+                twoAxes: { type: Type.STRING },
+                story: { type: Type.STRING },
+                shadow: { type: Type.STRING },
+                marriage: { type: Type.STRING },
+                shepherd: { type: Type.STRING }
+              }
+            },
             memoryProposals: {
               type: Type.ARRAY,
               items: {
@@ -248,7 +470,11 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps.
     });
 
     const structured = JSON.parse(response.text.trim()) as CoachResponse;
-    res.json({ text: renderCoachResponse(structured), contract: structured });
+    const memoryReviewItems = await appendMemoryProposals(toChildId(childProfile), structured.memoryProposals, {
+      prompt: message,
+      frameRouting: structured.frameRouting
+    });
+    res.json({ text: renderCoachResponse(structured), contract: structured, memoryReviewItems });
   } catch (error: any) {
     console.error("Gemini Chat Error:", error);
     res.status(500).json({ error: "Failed to query parenting AI coach", details: error.message });

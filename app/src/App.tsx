@@ -32,7 +32,7 @@ import {
   Shield,
   ExternalLink
 } from "lucide-react";
-import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief } from "./types";
+import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, MemoryReviewItem } from "./types";
 import {
   defaultChildProfile,
   sampleBehaviorLogs,
@@ -103,6 +103,8 @@ export default function App() {
   // Form states: School Brief
   const [schoolBrief, setSchoolBrief] = useState<SchoolBrief | null>(null);
   const [isGeneratingBrief, setIsGeneratingBrief] = useState<boolean>(false);
+  const [memoryReviewItems, setMemoryReviewItems] = useState<MemoryReviewItem[]>([]);
+  const [isMemoryUpdating, setIsMemoryUpdating] = useState<string | null>(null);
 
   // Embedded Interactive AI States and Helpers
   const [handoffAudience, setHandoffAudience] = useState<"teacher" | "clinician" | "pediatrician">("teacher");
@@ -225,6 +227,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   const checkedMilestones = milestones.filter(m => m.checked).length;
   const totalMilestones = milestones.length;
   const milestonesPercent = totalMilestones > 0 ? Math.round((checkedMilestones / totalMilestones) * 100) : 0;
+  const pendingMemoryItems = memoryReviewItems.filter(item => item.status === "pending");
+  const approvedMemoryItems = memoryReviewItems.filter(item => item.status === "approved");
 
   // Render custom markdown styling parser
   function renderMarkdown(text: string) {
@@ -279,6 +283,39 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
   // --- HANDLERS: SERVER API CALLS ---
 
+  const refreshMemoryReview = async () => {
+    try {
+      const res = await fetch(`/api/memory/${encodeURIComponent(childProfile.id)}`);
+      if (!res.ok) throw new Error("Memory review fetch failed");
+      const data = await res.json();
+      setMemoryReviewItems(data.items || []);
+    } catch (err) {
+      console.warn("Could not load memory review items", err);
+    }
+  };
+
+  useEffect(() => {
+    refreshMemoryReview();
+  }, [childProfile.id]);
+
+  const handleMemoryDecision = async (memoryId: string, status: "approved" | "rejected" | "deleted") => {
+    setIsMemoryUpdating(memoryId);
+    try {
+      const res = await fetch(`/api/memory/${encodeURIComponent(memoryId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+      if (!res.ok) throw new Error("Memory review update failed");
+      const data = await res.json();
+      setMemoryReviewItems(data.items || []);
+    } catch (err: any) {
+      alert(err.message || "Could not update memory review item.");
+    } finally {
+      setIsMemoryUpdating(null);
+    }
+  };
+
   // Handle Parent Coach Chat
   const handleChatSend = async (customPrompt?: string) => {
     const promptValue = customPrompt || chatInput;
@@ -312,6 +349,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       }
 
       const data = await res.json();
+      if (data.memoryReviewItems) {
+        setMemoryReviewItems(data.memoryReviewItems);
+      }
       setChatMessages(prev => [
         ...prev,
         { sender: "ai", text: data.text, lens: selectedLens }
@@ -1106,6 +1146,80 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   </div>
                 </div>
 
+              </div>
+
+              {/* Parent-approved memory review */}
+              <div className="border border-white/10 rounded-2xl bg-[#141821] p-5 space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">Memory Review</span>
+                    <h3 className="text-lg font-extrabold text-white mt-1">Parent approval queue</h3>
+                    <p className="text-xs text-[#a8a093] mt-1">
+                      Arbor saves proposed observations as pending review. They become active child memory only after approval.
+                    </p>
+                  </div>
+                  <div className="text-xs text-[#a8a093]">
+                    <strong className="text-white">{pendingMemoryItems.length}</strong> pending · <strong className="text-white">{approvedMemoryItems.length}</strong> approved
+                  </div>
+                </div>
+
+                {memoryReviewItems.length === 0 ? (
+                  <div className="text-xs text-[#a8a093] border border-white/5 rounded-xl p-4 bg-white/[0.01]">
+                    Ask the coach a question to generate reviewable observations. Nothing is active memory yet.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    {memoryReviewItems.slice(0, 6).map(item => (
+                      <div key={item.memoryId} className="border border-white/5 rounded-xl p-4 bg-white/[0.015] space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded ${
+                            item.status === "approved"
+                              ? "bg-green-500/10 text-green-500"
+                              : item.status === "rejected"
+                                ? "bg-red-500/10 text-red-500"
+                                : "bg-[#d7aa55]/10 text-[#f4d991]"
+                          }`}>
+                            {item.status}
+                          </span>
+                          <span className="text-[10px] text-[#a8a093]">{new Date(item.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-sm text-gray-200 leading-relaxed">{item.fact}</p>
+                        <div className="text-[10px] text-[#a8a093] space-y-1">
+                          <p><strong className="text-white">Source:</strong> {item.source}</p>
+                          <p><strong className="text-white">Retention:</strong> {item.retention}</p>
+                          {item.frameRouting?.aim && <p><strong className="text-white">Frame:</strong> {item.frameRouting.aim}</p>}
+                        </div>
+                        {item.status === "pending" && (
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => handleMemoryDecision(item.memoryId, "approved")}
+                              disabled={isMemoryUpdating === item.memoryId}
+                              className="flex-1 bg-[#d7aa55] text-black font-extrabold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+                            >
+                              <Check className="w-3.5 h-3.5" /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleMemoryDecision(item.memoryId, "rejected")}
+                              disabled={isMemoryUpdating === item.memoryId}
+                              className="flex-1 bg-white/5 border border-white/10 text-[#a8a093] font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Reject
+                            </button>
+                          </div>
+                        )}
+                        {item.status === "approved" && (
+                          <button
+                            onClick={() => handleMemoryDecision(item.memoryId, "deleted")}
+                            disabled={isMemoryUpdating === item.memoryId}
+                            className="w-full bg-white/5 border border-white/10 text-[#a8a093] font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete from active memory
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

@@ -33,6 +33,20 @@ for (const file of files) {
   }
 }
 
+const serverText = fs.readFileSync(path.join(root, "server.ts"), "utf8");
+const appText = fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8");
+const structuralChecks = [
+  { name: "coach frameRouting contract", passed: /frameRouting/.test(serverText) },
+  { name: "memory ledger path", passed: /MEMORY_LEDGER_PATH/.test(serverText) },
+  { name: "memory review read endpoint", passed: /app\.get\("\/api\/memory\/:childId"/.test(serverText) },
+  { name: "memory review update endpoint", passed: /app\.patch\("\/api\/memory\/:memoryId"/.test(serverText) },
+  { name: "parent approval queue UI", passed: /Parent approval queue/.test(appText) }
+];
+
+for (const check of structuralChecks) {
+  if (!check.passed) failures.push(`structural: ${check.name}`);
+}
+
 if (failures.length > 0) {
   console.error("Arbor safety copy eval failed:");
   for (const failure of failures) console.error(`- ${failure}`);

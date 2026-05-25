@@ -39,9 +39,10 @@ Arbor is a private-beta parent support product for child-development concerns. T
 The production-direction prototype now lives in `app/`. It keeps the AI Studio implementation separate from the no-build static prototype while adding Arbor guardrails:
 
 - `GEMINI_MODEL` defaults to `gemini-2.5-flash`.
-- `/api/chat` returns structured coach data plus rendered parent guidance.
+- `/api/chat` returns structured coach data plus rendered parent guidance, including Six Frames routing.
 - Every generation endpoint includes the non-diagnostic developmental AI contract.
-- `npm run eval:safety` checks for stale model and over-clinical copy regressions.
+- The app includes an append-only local memory review ledger under `.data/` for pending, approved, rejected, and deleted memory states.
+- `npm run eval:safety` checks for stale model, over-clinical copy regressions, frame routing, and memory-review structure.
 
 Run locally:
 
