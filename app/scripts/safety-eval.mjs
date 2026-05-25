@@ -45,6 +45,9 @@ const structuralChecks = [
   { name: "caregiver distress safety category", passed: /caregiver_distress/.test(serverText) },
   { name: "category-specific escalation copy", passed: /renderEscalationMarkdown/.test(serverText) && /Local Resource Placeholder/.test(serverText) },
   { name: "typed safety extraction", passed: /extractSafetyText/.test(serverText) && !/JSON\.stringify/.test(safetyFunction) },
+  { name: "streaming chat transport", passed: /generateContentStream/.test(serverText) && /text\/event-stream/.test(serverText) },
+  { name: "Express hardening middleware", passed: /helmet/.test(serverText) && /cors/.test(serverText) && /rateLimit/.test(serverText) },
+  { name: "client chat abort controller", passed: /AbortController/.test(appText) && /chatAbortRef/.test(appText) },
   { name: "parent approval queue UI", passed: /Parent approval queue/.test(appText) }
 ];
 

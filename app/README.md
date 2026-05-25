@@ -11,6 +11,8 @@ This app is the hardened import of the AI Studio React/Gemini prototype. It live
 - Append-only local memory review ledger with pending, approved, rejected, and deleted states.
 - `src/framework.json` as the single source of truth for domains, age bands, and Six Frames prompt construction.
 - Non-diagnostic safety contract on every generation endpoint.
+- Streaming `/api/chat` transport with server-sent events and client-side cancellation for the live parent coach.
+- Express hardening with `helmet`, CORS allow-listing, 250kb JSON bodies, and 30 requests/min/IP rate limiting.
 - Arbor design-token skin based on the standalone field-notebook direction.
 
 ## Local Setup
@@ -37,6 +39,12 @@ npm run dev
 
 The default local URL is `http://localhost:3000`.
 
+Optional runtime variables:
+
+- `GEMINI_MODEL`: defaults to `gemini-2.5-flash`.
+- `CORS_ORIGINS`: comma-separated browser origins allowed to call the API. Defaults to `http://localhost:3000,http://127.0.0.1:3000`.
+- `PORT`: defaults to `3000`.
+
 ## Memory Review
 
 Generated memory proposals are written to `.data/memory-ledger.json` as pending review items. This file is ignored by Git. The UI shows a parent approval queue, and the server exposes:
@@ -52,6 +60,7 @@ Only approved items should be treated as active child memory.
 npm run lint
 npm run check:framework
 npm run eval:safety
+npm run build
 ```
 
 `GEMINI_MODEL` defaults to `gemini-2.5-flash`, which the Gemini API model docs list as the stable Gemini 2.5 Flash model.

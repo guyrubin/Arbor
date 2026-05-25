@@ -30,7 +30,8 @@ import {
   Check,
   Sliders,
   Shield,
-  ExternalLink
+  ExternalLink,
+  X
 } from "lucide-react";
 import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, MemoryReviewItem } from "./types";
 import {
@@ -42,6 +43,9 @@ import {
   scholarsInfo
 } from "./initialData";
 import framework from "./framework.json";
+
+type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string };
+type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[] };
 
 export default function App() {
   const showSandboxBanner = import.meta.env.VITE_HAS_GEMINI_API !== "true";
@@ -63,7 +67,7 @@ export default function App() {
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>("Integrated Balanced");
   const [chatInput, setChatInput] = useState<string>("");
-  const [chatMessages, setChatMessages] = useState<{ sender: "user" | "ai"; text: string; lens?: string }[]>([
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       sender: "ai",
       text: "### Welcome to Arbor Parent Coach\n" +
@@ -77,7 +81,9 @@ export default function App() {
     }
   ]);
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+  const [chatStreamStatus, setChatStreamStatus] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
 
   // Form states: Log Behavior
   const [newLogType, setNewLogType] = useState<string>("Transition Refusal");
@@ -318,13 +324,80 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     }
   };
 
+  const readStreamingChatResponse = async (res: Response): Promise<ChatResponsePayload> => {
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error("Streaming response body unavailable");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalPayload: ChatResponsePayload | null = null;
+
+    const handleBlock = (block: string) => {
+      if (!block.trim()) return;
+
+      let eventName = "message";
+      const dataLines: string[] = [];
+      for (const rawLine of block.split("\n")) {
+        const line = rawLine.trimEnd();
+        if (line.startsWith("event:")) {
+          eventName = line.slice(6).trim();
+        } else if (line.startsWith("data:")) {
+          dataLines.push(line.slice(5).trimStart());
+        }
+      }
+      if (dataLines.length === 0) return;
+
+      const data = JSON.parse(dataLines.join("\n"));
+      if (eventName === "status") {
+        setChatStreamStatus(data.text || "Arbor is preparing the developmental response...");
+      } else if (eventName === "chunk") {
+        setChatStreamStatus(`Receiving structured guidance (${data.characters || 0} chars)`);
+      } else if (eventName === "done") {
+        finalPayload = data as ChatResponsePayload;
+      } else if (eventName === "error") {
+        throw new Error(data.details || data.error || "Streaming chat failed");
+      }
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let splitAt = buffer.indexOf("\n\n");
+      while (splitAt !== -1) {
+        handleBlock(buffer.slice(0, splitAt));
+        buffer = buffer.slice(splitAt + 2);
+        splitAt = buffer.indexOf("\n\n");
+      }
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) handleBlock(buffer);
+    if (!finalPayload) throw new Error("Streaming chat ended without a final Arbor response");
+    return finalPayload;
+  };
+
+  const readChatPayload = async (res: Response): Promise<ChatResponsePayload> => {
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("text/event-stream")) {
+      return readStreamingChatResponse(res);
+    }
+    return await res.json();
+  };
+
+  const handleCancelChat = () => {
+    setChatStreamStatus("Stopping request...");
+    chatAbortRef.current?.abort();
+  };
+
   // Handle Parent Coach Chat
   const handleChatSend = async (customPrompt?: string) => {
     const promptValue = customPrompt || chatInput;
-    if (!promptValue.trim()) return;
+    if (!promptValue.trim() || isChatLoading) return;
 
     if (!customPrompt) setChatInput("");
     setApiError(null);
+    setChatStreamStatus("Connecting to Arbor...");
 
     // Append user message
     const updatedMessages = [
@@ -334,10 +407,14 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setChatMessages(updatedMessages);
     setIsChatLoading(true);
 
+    const controller = new AbortController();
+    chatAbortRef.current = controller;
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        signal: controller.signal,
         body: JSON.stringify({
           message: promptValue,
           childProfile: childProfile,
@@ -350,7 +427,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         throw new Error(errData.details || errData.error || "Server response failed");
       }
 
-      const data = await res.json();
+      const data = await readChatPayload(res);
       if (data.memoryReviewItems) {
         setMemoryReviewItems(data.memoryReviewItems);
       }
@@ -360,6 +437,16 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       ]);
     } catch (err: any) {
       console.error(err);
+      if (err.name === "AbortError") {
+        setChatMessages(prev => [
+          ...prev,
+          {
+            sender: "ai",
+            text: "### Request Stopped\nThe live Arbor response was cancelled before completion."
+          }
+        ]);
+        return;
+      }
       setApiError(err.message || "An exception occurred while connecting to Arbor services.");
       setChatMessages(prev => [
         ...prev,
@@ -370,6 +457,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       ]);
     } finally {
       setIsChatLoading(false);
+      setChatStreamStatus(null);
+      chatAbortRef.current = null;
     }
   };
 
@@ -1102,8 +1191,17 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       <div className="w-8 h-8 rounded-xl bg-[#d7aa55]/20 text-[#f4d991] flex items-center justify-center text-xs font-bold animate-spin">
                         <RefreshCw className="w-4 h-4" />
                       </div>
-                      <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 text-xs text-gray-500 animate-pulse flex items-center gap-2">
-                        Arbor developmental model synthesizing guidance...
+                      <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 text-xs text-gray-400 flex items-center gap-3">
+                        <span className="animate-pulse">
+                          {chatStreamStatus || "Arbor developmental model synthesizing guidance..."}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCancelChat}
+                          className="bg-white/5 hover:bg-white/10 border border-white/10 text-[#a8a093] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" /> Stop
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1135,12 +1233,14 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                     <span className="font-bold">Suggested Sandbox prompts:</span>
                     <button
                       onClick={() => handleChatSend("Dylan screams and hides behind the couch during shoe departures.")}
+                      disabled={isChatLoading}
                       className="hover:text-white bg-white/5 px-2 py-0.5 rounded border border-white/5"
                     >
                       Shoe departure tantrum
                     </button>
                     <button
                       onClick={() => handleChatSend("Suggestions for switching Hebrew and English language routines.")}
+                      disabled={isChatLoading}
                       className="hover:text-white bg-white/5 px-2 py-0.5 rounded border border-white/5"
                     >
                       Bilingual balance routine

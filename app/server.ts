@@ -1,4 +1,7 @@
 import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { promises as fs, readFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
@@ -9,12 +12,39 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error("Origin is not allowed by Arbor CORS policy."));
+  }
+}));
+const apiRateLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "Rate limit exceeded",
+    details: "Too many Arbor requests from this IP. Please wait a minute and try again."
+  }
+});
+
+app.use("/api", apiRateLimiter);
 app.use(express.json({ limit: "250kb" }));
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const SERVER_ENTRY = process.argv[1] || "";
-const IS_BUNDLED_SERVER = /[\\/]dist[\\/]server\.cjs$/.test(SERVER_ENTRY);
+const IS_BUNDLED_SERVER = /(^|[\\/])dist[\\/]server\.cjs$/.test(SERVER_ENTRY);
 const MEMORY_LEDGER_PATH = path.join(process.cwd(), ".data", "memory-ledger.json");
 const FRAMEWORK_PATH = path.join(process.cwd(), "src", "framework.json");
 
@@ -411,6 +441,22 @@ const checkApiKey = (res: express.Response) => {
   return true;
 };
 
+const wantsSse = (req: express.Request) => req.headers.accept?.includes("text/event-stream") ?? false;
+
+const beginSse = (res: express.Response) => {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no"
+  });
+};
+
+const writeSse = (res: express.Response, event: string, data: unknown) => {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+};
+
 // --- API ENDPOINT: CHILD MEMORY REVIEW ---
 app.get("/api/memory/:childId", async (req, res) => {
   try {
@@ -448,21 +494,109 @@ app.patch("/api/memory/:memoryId", async (req, res) => {
   }
 });
 
+const coachResponseSchema = {
+  type: Type.OBJECT,
+  required: [
+    "riskLevel",
+    "ageBand",
+    "domains",
+    "nonDiagnosticHypotheses",
+    "todayPlan",
+    "parentScript",
+    "avoid",
+    "observe",
+    "escalateIf",
+    "frameRouting",
+    "memoryProposals",
+    "handoffNotes"
+  ],
+  properties: {
+    riskLevel: { type: Type.STRING },
+    ageBand: { type: Type.STRING },
+    domains: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.STRING,
+        enum: FRAMEWORK.domains.map((domain) => domain.id)
+      }
+    },
+    nonDiagnosticHypotheses: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        required: ["label", "confidence", "rationale"],
+        properties: {
+          label: { type: Type.STRING },
+          confidence: { type: Type.STRING },
+          rationale: { type: Type.STRING }
+        }
+      }
+    },
+    todayPlan: { type: Type.ARRAY, items: { type: Type.STRING } },
+    parentScript: { type: Type.STRING },
+    avoid: { type: Type.ARRAY, items: { type: Type.STRING } },
+    observe: { type: Type.ARRAY, items: { type: Type.STRING } },
+    escalateIf: { type: Type.ARRAY, items: { type: Type.STRING } },
+    frameRouting: {
+      type: Type.OBJECT,
+      required: ["aim", "twoAxes", "story", "shadow", "marriage", "shepherd"],
+      properties: {
+        aim: { type: Type.STRING },
+        twoAxes: { type: Type.STRING },
+        story: { type: Type.STRING },
+        shadow: { type: Type.STRING },
+        marriage: { type: Type.STRING },
+        shepherd: { type: Type.STRING }
+      }
+    },
+    memoryProposals: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        required: ["fact", "source", "retention"],
+        properties: {
+          fact: { type: Type.STRING },
+          source: { type: Type.STRING },
+          retention: { type: Type.STRING }
+        }
+      }
+    },
+    handoffNotes: {
+      type: Type.OBJECT,
+      required: ["teacher", "professional"],
+      properties: {
+        teacher: { type: Type.STRING },
+        professional: { type: Type.STRING }
+      }
+    }
+  }
+};
+
 // --- API ENDPOINT: CHAT COACH ---
 app.post("/api/chat", async (req, res) => {
   const { message, childProfile, scholarLens } = req.body;
+  const streamResponse = wantsSse(req);
 
   const escalationMatch = screenForImmediateEscalation({ message });
   if (escalationMatch) {
-    res.json({
+    const payload = {
       text: renderEscalationMarkdown(escalationMatch),
       riskLevel: "urgent",
       escalationCategory: escalationMatch.category
-    });
+    };
+    if (streamResponse) {
+      beginSse(res);
+      writeSse(res, "done", payload);
+      res.end();
+    } else {
+      res.json(payload);
+    }
     return;
   }
 
   if (!checkApiKey(res)) return;
+  const abortController = new AbortController();
+  req.on("close", () => abortController.abort());
 
   try {
     const prompt = `
@@ -485,101 +619,57 @@ ${message}
 Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps.
 `;
 
-    const response = await ai.models.generateContent({
+    const responseStream = await ai.models.generateContentStream({
       model: MODEL_NAME,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: [
-            "riskLevel",
-            "ageBand",
-            "domains",
-            "nonDiagnosticHypotheses",
-            "todayPlan",
-            "parentScript",
-            "avoid",
-            "observe",
-            "escalateIf",
-            "frameRouting",
-            "memoryProposals",
-            "handoffNotes"
-          ],
-          properties: {
-            riskLevel: { type: Type.STRING },
-            ageBand: { type: Type.STRING },
-            domains: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.STRING,
-                enum: FRAMEWORK.domains.map((domain) => domain.id)
-              }
-            },
-            nonDiagnosticHypotheses: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                required: ["label", "confidence", "rationale"],
-                properties: {
-                  label: { type: Type.STRING },
-                  confidence: { type: Type.STRING },
-                  rationale: { type: Type.STRING }
-                }
-              }
-            },
-            todayPlan: { type: Type.ARRAY, items: { type: Type.STRING } },
-            parentScript: { type: Type.STRING },
-            avoid: { type: Type.ARRAY, items: { type: Type.STRING } },
-            observe: { type: Type.ARRAY, items: { type: Type.STRING } },
-            escalateIf: { type: Type.ARRAY, items: { type: Type.STRING } },
-            frameRouting: {
-              type: Type.OBJECT,
-              required: ["aim", "twoAxes", "story", "shadow", "marriage", "shepherd"],
-              properties: {
-                aim: { type: Type.STRING },
-                twoAxes: { type: Type.STRING },
-                story: { type: Type.STRING },
-                shadow: { type: Type.STRING },
-                marriage: { type: Type.STRING },
-                shepherd: { type: Type.STRING }
-              }
-            },
-            memoryProposals: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                required: ["fact", "source", "retention"],
-                properties: {
-                  fact: { type: Type.STRING },
-                  source: { type: Type.STRING },
-                  retention: { type: Type.STRING }
-                }
-              }
-            },
-            handoffNotes: {
-              type: Type.OBJECT,
-              required: ["teacher", "professional"],
-              properties: {
-                teacher: { type: Type.STRING },
-                professional: { type: Type.STRING }
-              }
-            }
-          }
-        },
+        responseSchema: coachResponseSchema,
         temperature: 0.7,
       }
     });
 
-    const structured = JSON.parse(response.text.trim()) as CoachResponse;
+    let rawResponse = "";
+    if (streamResponse) {
+      beginSse(res);
+      writeSse(res, "status", {
+        text: "Arbor is routing the question through developmental domains, safety, and Six Frames."
+      });
+    }
+
+    for await (const chunk of responseStream) {
+      if (abortController.signal.aborted) return;
+      const text = chunk.text || "";
+      if (!text) continue;
+      rawResponse += text;
+      if (streamResponse) {
+        writeSse(res, "chunk", { characters: rawResponse.length });
+      }
+    }
+
+    const structured = JSON.parse(rawResponse.trim()) as CoachResponse;
     const memoryReviewItems = await appendMemoryProposals(toChildId(childProfile), structured.memoryProposals, {
       prompt: message,
       frameRouting: structured.frameRouting
     });
-    res.json({ text: renderCoachResponse(structured), contract: structured, memoryReviewItems });
+    const payload = { text: renderCoachResponse(structured), contract: structured, memoryReviewItems };
+    if (streamResponse) {
+      writeSse(res, "done", payload);
+      res.end();
+    } else {
+      res.json(payload);
+    }
   } catch (error: any) {
+    if (abortController.signal.aborted) return;
     console.error("Gemini Chat Error:", error);
-    res.status(500).json({ error: "Failed to query parenting AI coach", details: error.message });
+    const payload = { error: "Failed to query parenting AI coach", details: error.message };
+    if (streamResponse) {
+      if (!res.headersSent) beginSse(res);
+      writeSse(res, "error", payload);
+      res.end();
+    } else {
+      res.status(500).json(payload);
+    }
   }
 });
 
