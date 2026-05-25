@@ -35,11 +35,16 @@ for (const file of files) {
 
 const serverText = fs.readFileSync(path.join(root, "server.ts"), "utf8");
 const appText = fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8");
+const safetyFunction = serverText.match(/const screenForImmediateEscalation[\s\S]*?^};/m)?.[0] || "";
 const structuralChecks = [
   { name: "coach frameRouting contract", passed: /frameRouting/.test(serverText) },
   { name: "memory ledger path", passed: /MEMORY_LEDGER_PATH/.test(serverText) },
   { name: "memory review read endpoint", passed: /app\.get\("\/api\/memory\/:childId"/.test(serverText) },
   { name: "memory review update endpoint", passed: /app\.patch\("\/api\/memory\/:memoryId"/.test(serverText) },
+  { name: "Hebrew safety patterns", passed: /להתאבד/.test(serverText) && /התעללות/.test(serverText) },
+  { name: "caregiver distress safety category", passed: /caregiver_distress/.test(serverText) },
+  { name: "category-specific escalation copy", passed: /renderEscalationMarkdown/.test(serverText) && /Local Resource Placeholder/.test(serverText) },
+  { name: "typed safety extraction", passed: /extractSafetyText/.test(serverText) && !/JSON\.stringify/.test(safetyFunction) },
   { name: "parent approval queue UI", passed: /Parent approval queue/.test(appText) }
 ];
 
