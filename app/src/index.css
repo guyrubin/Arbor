@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+:root {
+  --arbor-paper: #ece6d8;
+  --arbor-paper-elevated: #f6f1e8;
+  --arbor-ink: #14160f;
+  --arbor-muted: #625f55;
+  --arbor-rule: rgba(20, 22, 15, 0.16);
+  --arbor-clay: #e2562d;
+  --arbor-blue: #1c3d6b;
+  --arbor-sage: #5d7a55;
+  --arbor-ochre: #c89637;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--arbor-paper);
+  color: var(--arbor-ink);
+}
+
+.arbor-app {
+  background:
+    linear-gradient(var(--arbor-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--arbor-rule) 1px, transparent 1px),
+    var(--arbor-paper);
+  background-size: 40px 40px;
+  color: var(--arbor-ink);
+}
+
+.arbor-app .rounded-xl,
+.arbor-app .rounded-2xl,
+.arbor-app .rounded-3xl,
+.arbor-app .rounded-\[36px\] {
+  border-radius: 6px !important;
+}
+
+.arbor-app [class*="bg-[#08090c]"],
+.arbor-app [class*="bg-[#141821]"],
+.arbor-app [class*="bg-[#12141c]"],
+.arbor-app [class*="bg-[#04060c]"] {
+  background-color: var(--arbor-paper-elevated) !important;
+  background-image: none !important;
+}
+
+.arbor-app [class*="text-[#f7f1e7]"],
+.arbor-app .text-white,
+.arbor-app .text-gray-200,
+.arbor-app .text-gray-300,
+.arbor-app .text-gray-350 {
+  color: var(--arbor-ink) !important;
+}
+
+.arbor-app [class*="text-[#a8a093]"],
+.arbor-app .text-gray-400,
+.arbor-app .text-slate-400,
+.arbor-app .text-gray-500 {
+  color: var(--arbor-muted) !important;
+}
+
+.arbor-app [class*="text-[#f4d991]"],
+.arbor-app [class*="text-[#d7aa55]"],
+.arbor-app .text-amber-200,
+.arbor-app .text-amber-300,
+.arbor-app .text-amber-400 {
+  color: var(--arbor-clay) !important;
+}
+
+.arbor-app [class*="bg-[#d7aa55]"],
+.arbor-app [class*="bg-[#f4d991]"],
+.arbor-app .bg-amber-500,
+.arbor-app .bg-yellow-500 {
+  background-color: var(--arbor-clay) !important;
+}
+
+.arbor-app .bg-blue-500 {
+  background-color: var(--arbor-blue) !important;
+}
+
+.arbor-app [class*="text-blue-"],
+.arbor-app [class*="border-blue-"] {
+  color: var(--arbor-blue) !important;
+  border-color: rgba(28, 61, 107, 0.26) !important;
+}
+
+.arbor-app [class*="border-white"],
+.arbor-app [class*="border-[#d7aa55]"] {
+  border-color: var(--arbor-rule) !important;
+}
+
+.arbor-app [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.arbor-app button,
+.arbor-app input,
+.arbor-app textarea,
+.arbor-app select {
+  letter-spacing: 0;
+}
