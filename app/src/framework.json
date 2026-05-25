@@ -1,0 +1,125 @@
+{
+  "version": "2026-05-25",
+  "domains": [
+    {
+      "id": "attachment_regulation",
+      "label": "Attachment and regulation",
+      "tracks": "Separation, repair, comfort-seeking, recovery time, parent response",
+      "guidanceOutput": "Co-regulation script, repair script, transition ritual",
+      "safetyBoundary": "Escalate severe distress, regression, self-harm language, or sustained functional impairment",
+      "milestoneAliases": ["Emotional"]
+    },
+    {
+      "id": "language_communication",
+      "label": "Language and communication",
+      "tracks": "Expressive language, receptive language, multilingual exposure, school phrases",
+      "guidanceOutput": "Daily phrase practice, serve-and-return prompts, teacher notes",
+      "safetyBoundary": "No speech-delay diagnosis; route persistent concern to screening/professional advice",
+      "milestoneAliases": ["Language"]
+    },
+    {
+      "id": "cognition_executive_function",
+      "label": "Cognition and executive function",
+      "tracks": "Attention, planning, flexibility, working memory, problem-solving",
+      "guidanceOutput": "Next best challenge, visual routine, step-down task",
+      "safetyBoundary": "Avoid labeling the child; distinguish skill gap from willful behavior",
+      "milestoneAliases": ["Cognitive"]
+    },
+    {
+      "id": "social_development",
+      "label": "Social development",
+      "tracks": "Peer play, turn-taking, empathy, conflict, social confidence",
+      "guidanceOutput": "Play script, social story, exposure ladder",
+      "safetyBoundary": "Escalate isolation, bullying, aggression, or sudden social withdrawal",
+      "milestoneAliases": ["Social"]
+    },
+    {
+      "id": "independence_adaptive_skills",
+      "label": "Independence and adaptive skills",
+      "tracks": "Sleep, toileting, dressing, eating, chores, transitions",
+      "guidanceOutput": "Independence ladder, prepared environment, responsibility step",
+      "safetyBoundary": "Avoid shame or coercive plans; watch for medical or sensory explanations",
+      "milestoneAliases": ["Independence"]
+    },
+    {
+      "id": "sensory_motor_patterns",
+      "label": "Sensory and motor patterns",
+      "tracks": "Sound, texture, movement, fatigue, fine/gross motor observations",
+      "guidanceOutput": "Sensory-aware routine, environment change, observation log",
+      "safetyBoundary": "Observation only; professional referral for persistent sensory or motor concerns",
+      "milestoneAliases": ["Motor"]
+    },
+    {
+      "id": "ecosystem_stressors",
+      "label": "Ecosystem and stressors",
+      "tracks": "Family routines, school context, languages, moves, illness, conflict, caregiver stress",
+      "guidanceOutput": "Context-aware plan, co-parent alignment prompt, handoff summary",
+      "safetyBoundary": "Do not assign blame; route safety, abuse, or crisis concerns to appropriate help",
+      "milestoneAliases": ["Ecosystem"]
+    }
+  ],
+  "ageBands": [
+    {
+      "id": "0-12m",
+      "label": "0 to 12 months",
+      "coreTask": "Trust, regulation, caregiver responsiveness",
+      "productBehavior": "Emphasize serve-and-return, feeding/sleep observation, parent reassurance, pediatric escalation for red flags"
+    },
+    {
+      "id": "12-36m",
+      "label": "12 to 36 months",
+      "coreTask": "Autonomy, language growth, frustration tolerance",
+      "productBehavior": "Offer simple choices, visual routines, naming feelings, safe limits, milestone monitoring"
+    },
+    {
+      "id": "3-5y",
+      "label": "3 to 5 years",
+      "coreTask": "Initiative, play, school readiness, emotional language",
+      "productBehavior": "Generate scripts, social stories, transition rituals, practice games, teacher handoff notes"
+    },
+    {
+      "id": "6-8y",
+      "label": "6 to 8 years",
+      "coreTask": "Industry, competence, routines, peer belonging",
+      "productBehavior": "Build responsibility ladders, problem-solving scripts, school collaboration, confidence tracking"
+    },
+    {
+      "id": "9-12y",
+      "label": "9 to 12 years",
+      "coreTask": "Identity seeds, agency, executive function, social complexity",
+      "productBehavior": "Use collaborative planning, family council prompts, habit design, privacy-respecting reflection"
+    }
+  ],
+  "sixFrames": [
+    {
+      "id": "aim",
+      "label": "Aim",
+      "description": "What human formation or developmental aim this response serves"
+    },
+    {
+      "id": "twoAxes",
+      "label": "Two Axes",
+      "description": "How the response balances warmth/attunement with structure/responsibility"
+    },
+    {
+      "id": "story",
+      "label": "Story",
+      "description": "What ritual, narrative, or meaning-making thread the family can carry"
+    },
+    {
+      "id": "shadow",
+      "label": "Shadow",
+      "description": "What hard emotion, avoidance, fear, anger, or rupture must be faced instead of bypassed"
+    },
+    {
+      "id": "marriage",
+      "label": "Marriage",
+      "description": "What co-parent/caregiver alignment or repair is needed around the child"
+    },
+    {
+      "id": "shepherd",
+      "label": "Shepherd",
+      "description": "Which adult, professional, or institutional steward should hold the next handoff"
+    }
+  ]
+}

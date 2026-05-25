@@ -9,6 +9,7 @@ This app is the hardened import of the AI Studio React/Gemini prototype. It live
 - Structured AI output for the parent coach: risk level, age band, developmental domains, hypotheses, plan, script, observe, escalate, memory proposal, and handoff notes.
 - Six Frames routing in the coach contract: Aim, Two Axes, Story, Shadow, Marriage, and Shepherd.
 - Append-only local memory review ledger with pending, approved, rejected, and deleted states.
+- `src/framework.json` as the single source of truth for domains, age bands, and Six Frames prompt construction.
 - Non-diagnostic safety contract on every generation endpoint.
 - Arbor design-token skin based on the standalone field-notebook direction.
 
@@ -49,6 +50,7 @@ Only approved items should be treated as active child memory.
 
 ```bash
 npm run lint
+npm run check:framework
 npm run eval:safety
 ```
 

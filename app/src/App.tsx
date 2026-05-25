@@ -41,9 +41,11 @@ import {
   sampleBedtimeStory,
   scholarsInfo
 } from "./initialData";
+import framework from "./framework.json";
 
 export default function App() {
   const showSandboxBanner = import.meta.env.VITE_HAS_GEMINI_API !== "true";
+  const domainOptions = framework.domains;
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<
@@ -1564,15 +1566,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
               {/* Checklist domains */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-                {["Emotional", "Language", "Social", "Independence", "Motor", "Cognitive"].map((dom, domIdx) => {
-                  const itemsInDom = milestones.filter(m => m.domain === dom);
+                {domainOptions.map((dom, domIdx) => {
+                  const itemsInDom = milestones.filter(m => m.domain === dom.id);
                   return (
                     <div key={domIdx} className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-3">
                       <h3 className="text-sm font-extrabold text-[#f4d991] flex items-center gap-2">
                         <span className="p-1.5 bg-[#d7aa55]/10 rounded-lg text-[#f4d991] flex items-center justify-center">
                           <Check className="w-4 h-4" />
                         </span>
-                        {dom} Domain Checklist
+                        {dom.label} Domain Checklist
                       </h3>
 
                       <div className="space-y-2">

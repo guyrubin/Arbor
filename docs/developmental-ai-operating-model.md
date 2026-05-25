@@ -14,27 +14,40 @@ This document turns Arbor's child-development theory into product behavior. The 
 
 Arbor should model the child across seven domains. Each parent concern should be routed to one or more domains, then converted into a practical parent action.
 
-| Domain | What Arbor Tracks | Parent Guidance Output | Safety Boundary |
-|---|---|---|---|
-| Attachment and regulation | Separation, repair, comfort-seeking, recovery time, parent response | Co-regulation script, repair script, transition ritual | Escalate severe distress, regression, self-harm language, or sustained functional impairment |
-| Language and communication | Expressive language, receptive language, multilingual exposure, school phrases | Daily phrase practice, serve-and-return prompts, teacher notes | No speech-delay diagnosis; route persistent concern to screening/professional advice |
-| Cognition and executive function | Attention, planning, flexibility, working memory, problem-solving | Next best challenge, visual routine, step-down task | Avoid labeling the child; distinguish skill gap from willful behavior |
-| Social development | Peer play, turn-taking, empathy, conflict, social confidence | Play script, social story, exposure ladder | Escalate isolation, bullying, aggression, or sudden social withdrawal |
-| Independence and adaptive skills | Sleep, toileting, dressing, eating, chores, transitions | Independence ladder, prepared environment, responsibility step | Avoid shame or coercive plans; watch for medical or sensory explanations |
-| Sensory and motor patterns | Sound, texture, movement, fatigue, fine/gross motor observations | Sensory-aware routine, environment change, observation log | Observation only; professional referral for persistent sensory or motor concerns |
-| Ecosystem and stressors | Family routines, school context, languages, moves, illness, conflict, caregiver stress | Context-aware plan, co-parent alignment prompt, handoff summary | Do not assign blame; route safety, abuse, or crisis concerns to appropriate help |
+| Domain | Domain ID | What Arbor Tracks | Parent Guidance Output | Safety Boundary |
+|---|---|---|---|---|
+| Attachment and regulation | `attachment_regulation` | Separation, repair, comfort-seeking, recovery time, parent response | Co-regulation script, repair script, transition ritual | Escalate severe distress, regression, self-harm language, or sustained functional impairment |
+| Language and communication | `language_communication` | Expressive language, receptive language, multilingual exposure, school phrases | Daily phrase practice, serve-and-return prompts, teacher notes | No speech-delay diagnosis; route persistent concern to screening/professional advice |
+| Cognition and executive function | `cognition_executive_function` | Attention, planning, flexibility, working memory, problem-solving | Next best challenge, visual routine, step-down task | Avoid labeling the child; distinguish skill gap from willful behavior |
+| Social development | `social_development` | Peer play, turn-taking, empathy, conflict, social confidence | Play script, social story, exposure ladder | Escalate isolation, bullying, aggression, or sudden social withdrawal |
+| Independence and adaptive skills | `independence_adaptive_skills` | Sleep, toileting, dressing, eating, chores, transitions | Independence ladder, prepared environment, responsibility step | Avoid shame or coercive plans; watch for medical or sensory explanations |
+| Sensory and motor patterns | `sensory_motor_patterns` | Sound, texture, movement, fatigue, fine/gross motor observations | Sensory-aware routine, environment change, observation log | Observation only; professional referral for persistent sensory or motor concerns |
+| Ecosystem and stressors | `ecosystem_stressors` | Family routines, school context, languages, moves, illness, conflict, caregiver stress | Context-aware plan, co-parent alignment prompt, handoff summary | Do not assign blame; route safety, abuse, or crisis concerns to appropriate help |
 
 ## Age-Band Logic
 
 Arbor should never answer a parent concern without first considering the child's age band and developmental task.
 
-| Age Band | Core Developmental Task | Product Behavior |
-|---|---|---|
-| 0 to 12 months | Trust, regulation, caregiver responsiveness | Emphasize serve-and-return, feeding/sleep observation, parent reassurance, pediatric escalation for red flags |
-| 12 to 36 months | Autonomy, language growth, frustration tolerance | Offer simple choices, visual routines, naming feelings, safe limits, milestone monitoring |
-| 3 to 5 years | Initiative, play, school readiness, emotional language | Generate scripts, social stories, transition rituals, practice games, teacher handoff notes |
-| 6 to 8 years | Industry, competence, routines, peer belonging | Build responsibility ladders, problem-solving scripts, school collaboration, confidence tracking |
-| 9 to 12 years | Identity seeds, agency, executive function, social complexity | Use collaborative planning, family council prompts, habit design, privacy-respecting reflection |
+| Age Band | Age Band ID | Core Developmental Task | Product Behavior |
+|---|---|---|---|
+| 0 to 12 months | `0-12m` | Trust, regulation, caregiver responsiveness | Emphasize serve-and-return, feeding/sleep observation, parent reassurance, pediatric escalation for red flags |
+| 12 to 36 months | `12-36m` | Autonomy, language growth, frustration tolerance | Offer simple choices, visual routines, naming feelings, safe limits, milestone monitoring |
+| 3 to 5 years | `3-5y` | Initiative, play, school readiness, emotional language | Generate scripts, social stories, transition rituals, practice games, teacher handoff notes |
+| 6 to 8 years | `6-8y` | Industry, competence, routines, peer belonging | Build responsibility ladders, problem-solving scripts, school collaboration, confidence tracking |
+| 9 to 12 years | `9-12y` | Identity seeds, agency, executive function, social complexity | Use collaborative planning, family council prompts, habit design, privacy-respecting reflection |
+
+## Six Frames Routing
+
+The Six Frames are not decorative labels. The app-level framework artifact (`app/src/framework.json`) requires every coach response to route through:
+
+| Frame | Required Routing Meaning |
+|---|---|
+| Aim | What human formation or developmental aim this response serves |
+| Two Axes | How the response balances warmth/attunement with structure/responsibility |
+| Story | What ritual, narrative, or meaning-making thread the family can carry |
+| Shadow | What hard emotion, avoidance, fear, anger, or rupture must be faced instead of bypassed |
+| Marriage | What co-parent/caregiver alignment or repair is needed around the child |
+| Shepherd | Which adult, professional, or institutional steward should hold the next handoff |
 
 ## Theory-to-Feature Mapping
 
@@ -71,7 +84,7 @@ Every AI coaching response should be generated as structured data first, then re
 {
   "riskLevel": "routine | monitor | professional_advice | urgent | emergency",
   "ageBand": "0-12m | 12-36m | 3-5y | 6-8y | 9-12y",
-  "domains": ["attachment_regulation", "language", "executive_function"],
+  "domains": ["attachment_regulation", "language_communication", "cognition_executive_function"],
   "nonDiagnosticHypotheses": [
     {
       "label": "transition stress",

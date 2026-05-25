@@ -40,6 +40,7 @@ The production-direction prototype now lives in `app/`. It keeps the AI Studio i
 
 - `GEMINI_MODEL` defaults to `gemini-2.5-flash`.
 - `/api/chat` returns structured coach data plus rendered parent guidance, including Six Frames routing.
+- `app/src/framework.json` is the app source of truth for developmental domains, age bands, and Six Frames prompt construction.
 - Every generation endpoint includes the non-diagnostic developmental AI contract.
 - The app includes an append-only local memory review ledger under `.data/` for pending, approved, rejected, and deleted memory states.
 - `npm run eval:safety` checks for stale model, over-clinical copy regressions, frame routing, and memory-review structure.

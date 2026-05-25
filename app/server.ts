@@ -1,5 +1,5 @@
 import express from "express";
-import fs from "fs/promises";
+import { promises as fs, readFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { createServer as createViteServer } from "vite";
@@ -16,6 +16,34 @@ const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const SERVER_ENTRY = process.argv[1] || "";
 const IS_BUNDLED_SERVER = /[\\/]dist[\\/]server\.cjs$/.test(SERVER_ENTRY);
 const MEMORY_LEDGER_PATH = path.join(process.cwd(), ".data", "memory-ledger.json");
+const FRAMEWORK_PATH = path.join(process.cwd(), "src", "framework.json");
+
+type FrameworkDefinition = {
+  domains: {
+    id: string;
+    label: string;
+    tracks: string;
+    guidanceOutput: string;
+    safetyBoundary: string;
+    milestoneAliases: string[];
+  }[];
+  ageBands: { id: string; label: string; coreTask: string; productBehavior: string }[];
+  sixFrames: { id: string; label: string; description: string }[];
+};
+
+const FRAMEWORK = JSON.parse(readFileSync(FRAMEWORK_PATH, "utf8")) as FrameworkDefinition;
+
+const buildDevelopmentalFrameworkPrompt = (framework: FrameworkDefinition) => `
+DEVELOPMENTAL FRAMEWORK:
+- Domains:
+${framework.domains.map((domain) => `  * ${domain.id} (${domain.label}): tracks ${domain.tracks}; outputs ${domain.guidanceOutput}; boundary ${domain.safetyBoundary}.`).join("\n")}
+- Age bands:
+${framework.ageBands.map((band) => `  * ${band.id} (${band.label}): ${band.coreTask}; product behavior ${band.productBehavior}.`).join("\n")}
+- Six Frames:
+${framework.sixFrames.map((frame) => `  * ${frame.label}: ${frame.description}.`).join("\n")}
+- AI pipeline: classify intent/domain, safety triage, non-diagnostic hypotheses, same-day plan, parent script, observation target, memory proposal, audience handoff.
+- Return domain ids exactly as listed above, not display labels or milestone aliases.
+`;
 
 const NON_DIAGNOSTIC_CONTRACT = `
 ARBOR DEVELOPMENTAL AI CONTRACT:
@@ -27,19 +55,7 @@ ARBOR DEVELOPMENTAL AI CONTRACT:
 - Ask for professional advice when a concern is persistent, severe, sudden, medical, or outside parent coaching.
 `;
 
-const DEVELOPMENTAL_FRAMEWORK = `
-DEVELOPMENTAL FRAMEWORK:
-- Domains: attachment_regulation, language_communication, cognition_executive_function, social_development, independence_adaptive_skills, sensory_motor_patterns, ecosystem_stressors.
-- Age bands: 0-12m, 12-36m, 3-5y, 6-8y, 9-12y.
-- Six Frames:
-  * Aim: what human formation or developmental aim this response serves.
-  * Two Axes: how the response balances warmth/attunement with structure/responsibility.
-  * Story: what ritual, narrative, or meaning-making thread the family can carry.
-  * Shadow: what hard emotion, avoidance, fear, anger, or rupture must be faced instead of bypassed.
-  * Marriage: what co-parent/caregiver alignment or repair is needed around the child.
-  * Shepherd: which adult, professional, or institutional steward should hold the next handoff.
-- AI pipeline: classify intent/domain, safety triage, non-diagnostic hypotheses, same-day plan, parent script, observation target, memory proposal, audience handoff.
-`;
+const DEVELOPMENTAL_FRAMEWORK = buildDevelopmentalFrameworkPrompt(FRAMEWORK);
 
 type CoachResponse = {
   riskLevel: string;
@@ -413,7 +429,13 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps.
           properties: {
             riskLevel: { type: Type.STRING },
             ageBand: { type: Type.STRING },
-            domains: { type: Type.ARRAY, items: { type: Type.STRING } },
+            domains: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.STRING,
+                enum: FRAMEWORK.domains.map((domain) => domain.id)
+              }
+            },
             nonDiagnosticHypotheses: {
               type: Type.ARRAY,
               items: {

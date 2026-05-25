@@ -9,6 +9,15 @@ export interface ChildProfile {
   riskLevel: 'Low' | 'Moderate' | 'High';
 }
 
+export type DevelopmentalDomainId =
+  | 'attachment_regulation'
+  | 'language_communication'
+  | 'cognition_executive_function'
+  | 'social_development'
+  | 'independence_adaptive_skills'
+  | 'sensory_motor_patterns'
+  | 'ecosystem_stressors';
+
 export interface FrameRouting {
   aim: string;
   twoAxes: string;
@@ -34,7 +43,7 @@ export interface MemoryReviewItem {
 export interface CoachContract {
   riskLevel: string;
   ageBand: string;
-  domains: string[];
+  domains: DevelopmentalDomainId[];
   nonDiagnosticHypotheses: { label: string; confidence: string; rationale: string }[];
   todayPlan: string[];
   parentScript: string;
@@ -59,7 +68,7 @@ export interface BehaviorLog {
 
 export interface Milestone {
   id: string;
-  domain: 'Emotional' | 'Language' | 'Social' | 'Motor' | 'Cognitive' | 'Independence';
+  domain: DevelopmentalDomainId;
   ageGroup: string;
   title: string;
   description: string;

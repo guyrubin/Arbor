@@ -9,7 +9,8 @@
     "start": "node dist/server.cjs",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('server.js',{force:true});\"",
     "lint": "tsc --noEmit",
-    "eval:safety": "node scripts/safety-eval.mjs"
+    "eval:safety": "node scripts/safety-eval.mjs",
+    "check:framework": "node scripts/framework-check.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

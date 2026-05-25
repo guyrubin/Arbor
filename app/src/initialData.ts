@@ -64,18 +64,18 @@ export const sampleBehaviorLogs: BehaviorLog[] = [
 
 export const initialMilestones: Milestone[] = [
   // Age 4-5 Milestones
-  { id: "m-1", domain: "Emotional", ageGroup: "Age 4-5", title: "Regulates with Prompting", description: "Can calm down within 15 minutes with warm adult co-regulation.", checked: true },
-  { id: "m-2", domain: "Language", ageGroup: "Age 4-5", title: "Uses Full Sentences", description: "Speaks in sentences of 5-6 words, sharing clear thoughts on what they did during the day.", checked: true },
-  { id: "m-3", domain: "Social", ageGroup: "Age 4-5", title: "Imaginative Cooperative Play", description: "Plays 'makeup' games with other children, successfully negotiating simple rules.", checked: true },
-  { id: "m-4", domain: "Independence", ageGroup: "Age 4-5", title: "Dresses Independently", description: "Can button shirts, pull up pants, and arrange shoes with minimal direction.", checked: true },
-  { id: "m-5", domain: "Motor", ageGroup: "Age 4-5", title: "Hops on One Foot", description: "Balances and hops comfortably on one foot for 3-4 consecutive bounds.", checked: true },
+  { id: "m-1", domain: "attachment_regulation", ageGroup: "Age 4-5", title: "Regulates with Prompting", description: "Can calm down within 15 minutes with warm adult co-regulation.", checked: true },
+  { id: "m-2", domain: "language_communication", ageGroup: "Age 4-5", title: "Uses Full Sentences", description: "Speaks in sentences of 5-6 words, sharing clear thoughts on what they did during the day.", checked: true },
+  { id: "m-3", domain: "social_development", ageGroup: "Age 4-5", title: "Imaginative Cooperative Play", description: "Plays 'makeup' games with other children, successfully negotiating simple rules.", checked: true },
+  { id: "m-4", domain: "independence_adaptive_skills", ageGroup: "Age 4-5", title: "Dresses Independently", description: "Can button shirts, pull up pants, and arrange shoes with minimal direction.", checked: true },
+  { id: "m-5", domain: "sensory_motor_patterns", ageGroup: "Age 4-5", title: "Hops on One Foot", description: "Balances and hops comfortably on one foot for 3-4 consecutive bounds.", checked: true },
   
   // Age 5-6 Milestones
-  { id: "m-6", domain: "Emotional", ageGroup: "Age 5-6", title: "Articulates Specific Feelings", description: "Can verbally name complex feelings: e.g., 'I am lonely,' 'I feel disappointed.'", checked: false },
-  { id: "m-7", domain: "Language", ageGroup: "Age 5-6", title: "Handles Code-Switching", description: "Can comfortably shift phrases between Hebrew and English depending on the listener.", checked: false },
-  { id: "m-8", domain: "Social", ageGroup: "Age 5-6", title: "Conflict Resolution Process", description: "Suggests simple compromises when a toy dispute arises ('You play 5 mins, then me').", checked: false },
-  { id: "m-9", domain: "Cognitive", ageGroup: "Age 5-6", title: "Time Sequencing", description: "Correctly sequences days, understand 'tomorrow vs yesterday', and basic morning schedule.", checked: true },
-  { id: "m-10", domain: "Independence", ageGroup: "Age 5-6", title: "Manages Senses Pre-emptively", description: "Can say 'It is too loud here' and requests headphones or leaving space.", checked: false }
+  { id: "m-6", domain: "attachment_regulation", ageGroup: "Age 5-6", title: "Articulates Specific Feelings", description: "Can verbally name complex feelings: e.g., 'I am lonely,' 'I feel disappointed.'", checked: false },
+  { id: "m-7", domain: "language_communication", ageGroup: "Age 5-6", title: "Handles Code-Switching", description: "Can comfortably shift phrases between Hebrew and English depending on the listener.", checked: false },
+  { id: "m-8", domain: "social_development", ageGroup: "Age 5-6", title: "Conflict Resolution Process", description: "Suggests simple compromises when a toy dispute arises ('You play 5 mins, then me').", checked: false },
+  { id: "m-9", domain: "cognition_executive_function", ageGroup: "Age 5-6", title: "Time Sequencing", description: "Correctly sequences days, understand 'tomorrow vs yesterday', and basic morning schedule.", checked: true },
+  { id: "m-10", domain: "sensory_motor_patterns", ageGroup: "Age 5-6", title: "Manages Senses Pre-emptively", description: "Can say 'It is too loud here' and requests headphones or leaving space.", checked: false }
 ];
 
 export const defaultActionPlans: ActionPlan[] = [
@@ -184,7 +184,7 @@ export const scholarsInfo = [
     concept: "Independence Planner",
     color: "from-green-500/10 to-transparent",
     theory: "Prepared Environments & Practical Autonomy",
-    value: "Coachella parents on preparing home tasks and routines so the child can exercise self-governance. Swaps child-restraint with structured freedoms.",
+    value: "Coaches parents on preparing home tasks and routines so the child can exercise self-governance. Swaps child-restraint with structured freedoms.",
     examplePrompt: "Create a prepared bedroom environment routine to help a 5-year-old learn to dress and select clothes independently in the morning.",
     slug: "montessori"
   },
