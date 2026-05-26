@@ -13,6 +13,7 @@
     "check:framework": "node scripts/framework-check.mjs"
   },
   "dependencies": {
+    "@google-cloud/vertexai": "^1.12.0",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
@@ -20,12 +21,14 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.2",
+    "firebase-admin": "^13.10.0",
     "helmet": "^8.2.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

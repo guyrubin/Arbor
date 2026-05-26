@@ -1,0 +1,29 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - app
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - arbor-api
+      - --image
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - --region
+      - ${_REGION}
+      - --platform
+      - managed
+      - --allow-unauthenticated
+      - --set-env-vars
+      - ARBOR_ENV=${_ARBOR_ENV},MODEL_PROVIDER=vertex,MEMORY_ADAPTER=firestore,ENABLE_LOCAL_MEMORY_ADAPTER=false
+substitutions:
+  _REGION: europe-west4
+  _ARBOR_ENV: stage
