@@ -5,6 +5,7 @@ Arbor is a private-beta parent support product for child-development concerns. T
 ## Current Artifacts
 
 - `docs/arbor-prd.md` - product requirements, positioning, MVP scope, safety requirements, roadmap, and metrics.
+- `docs/adr/` - short Architecture Decision Records anchoring M0/F-07 platform decisions.
 - `docs/developmental-ai-operating-model.md` - source-grounded child-development framework and AI operating model.
 - `docs/architecture/` - Arbor v2 production architecture for Vertex AI, Firestore, Firebase Hosting/Auth, Cloud Run, AI Wiki, security, and environment gates.
 - `docs/compliance/` - legal/compliance skeleton for privacy, non-diagnostic boundary, retention, incident response, DPA, insurance, and trademark review.
