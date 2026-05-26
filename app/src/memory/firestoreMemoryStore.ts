@@ -26,11 +26,49 @@ export class FirestoreMemoryStore implements MemoryStore {
   }
 
   async appendEvent(event: MemoryLedgerEvent) {
+    const child = await this.db.collection("children").doc(event.childId).get();
+    if (!child.exists) {
+      throw new Error(`Cannot append Arbor memory event because children/${event.childId} does not exist.`);
+    }
     await this.db
       .collection("children")
       .doc(event.childId)
       .collection("memoryEvents")
       .doc(event.eventId)
       .set(event);
+  }
+
+  async ensureFamilyChild(input: {
+    familyId: string;
+    childId: string;
+    userId: string;
+    childProfile?: Record<string, unknown>;
+  }) {
+    const now = new Date().toISOString();
+    const batch = this.db.batch();
+    const familyRef = this.db.collection("families").doc(input.familyId);
+    const memberRef = familyRef.collection("members").doc(input.userId);
+    const childRef = this.db.collection("children").doc(input.childId);
+
+    batch.set(familyRef, {
+      familyId: input.familyId,
+      createdAt: now,
+      updatedAt: now
+    }, { merge: true });
+    batch.set(memberRef, {
+      userId: input.userId,
+      role: "parent",
+      createdAt: now,
+      updatedAt: now
+    }, { merge: true });
+    batch.set(childRef, {
+      ...(input.childProfile || {}),
+      childId: input.childId,
+      familyId: input.familyId,
+      createdAt: now,
+      updatedAt: now
+    }, { merge: true });
+
+    await batch.commit();
   }
 }

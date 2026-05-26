@@ -45,8 +45,10 @@ The production-direction Arbor app now lives in `app/`. It keeps the AI Studio i
 
 - `server.ts` is a thin bootstrapper; API, model, memory, safety, contracts, config, and server wiring live under `app/src/`.
 - `MODEL_PROVIDER=gemini_dev` is allowed for local development; `ARBOR_ENV=prod` requires `MODEL_PROVIDER=vertex`.
+- `VERTEX_MODEL_CHAT` defaults to `claude-3-5-sonnet@anthropic`, normalized to the Anthropic publisher model id for Vertex API calls.
 - `MEMORY_ADAPTER=local` is allowed for local development; `ARBOR_ENV=prod` requires `MEMORY_ADAPTER=firestore`.
 - `/api/chat` retrieves approved child memory plus Arbor AI Wiki source cards, then returns structured coach data with Six Frames routing and `sourceCardsUsed`.
+- `/api/architecture/knowledge` reports how many Arbor AI Wiki cards were loaded in the deployed runtime.
 - `app/src/framework.json` is the app source of truth for developmental domains, age bands, and Six Frames prompt construction.
 - Every generation endpoint includes the non-diagnostic developmental AI contract.
 - Arbor uses an append-only memory event service: local JSON in development, Firestore in production.
@@ -65,6 +67,7 @@ Production-direction checks:
 
 ```bash
 npm run lint
+npm test
 npm run check:framework
 npm run eval:safety
 npm run build

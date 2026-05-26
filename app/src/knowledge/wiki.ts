@@ -13,6 +13,15 @@ export type KnowledgeCard = {
   body: string;
 };
 
+const resolveKnowledgeRoot = () => {
+  const candidates = [
+    process.env.KNOWLEDGE_PATH,
+    path.join(process.cwd(), "knowledge"),
+    path.join(process.cwd(), "..", "knowledge")
+  ].filter(Boolean) as string[];
+  return candidates;
+};
+
 const parseFrontMatter = (text: string) => {
   const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match) return { meta: {}, body: text };
@@ -48,8 +57,12 @@ const walkMarkdown = async (dir: string): Promise<string[]> => {
 };
 
 export const loadKnowledgeCards = async () => {
-  const knowledgeRoot = path.join(process.cwd(), "..", "knowledge");
-  const files = await walkMarkdown(knowledgeRoot);
+  const roots = resolveKnowledgeRoot();
+  let files: string[] = [];
+  for (const root of roots) {
+    files = await walkMarkdown(root);
+    if (files.length > 0) break;
+  }
   const cards: KnowledgeCard[] = [];
 
   for (const file of files) {
@@ -72,16 +85,22 @@ export const loadKnowledgeCards = async () => {
   return cards;
 };
 
-export const retrieveKnowledgeCards = async (filters: {
+export const filterKnowledgeCards = (cards: KnowledgeCard[], filters: {
   ageBand?: string;
   domains?: string[];
   allowedUse?: string;
   riskLevel?: string;
   limit?: number;
 }) => {
-  const cards = await loadKnowledgeCards();
   const limit = filters.limit ?? 5;
-  const scored = cards.map((card) => {
+  const scoped = cards.filter((card) => {
+    if (filters.allowedUse && !card.allowed_uses.includes(filters.allowedUse)) return false;
+    if (filters.ageBand && !card.age_bands.includes(filters.ageBand)) return false;
+    if (filters.domains?.length && !filters.domains.some((domain) => card.domains.includes(domain))) return false;
+    if (filters.riskLevel && card.risk_level !== filters.riskLevel) return false;
+    return true;
+  });
+  const scored = scoped.map((card) => {
     let score = 0;
     if (filters.allowedUse && card.allowed_uses.includes(filters.allowedUse)) score += 3;
     if (filters.ageBand && card.age_bands.includes(filters.ageBand)) score += 2;
@@ -95,6 +114,9 @@ export const retrieveKnowledgeCards = async (filters: {
     .slice(0, limit)
     .map((item) => item.card);
 };
+
+export const retrieveKnowledgeCards = async (filters: Parameters<typeof filterKnowledgeCards>[1]) =>
+  filterKnowledgeCards(await loadKnowledgeCards(), filters);
 
 export const renderKnowledgeContext = (cards: KnowledgeCard[]) =>
   cards.map((card) => `- ${card.id} (${card.type}): ${card.title}\n${card.body.slice(0, 900)}`).join("\n\n");

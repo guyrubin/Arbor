@@ -2,9 +2,11 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - build
+      - -f
+      - app/Dockerfile
       - -t
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
-      - app
+      - .
   - name: gcr.io/cloud-builders/docker
     args:
       - push

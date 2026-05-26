@@ -11,7 +11,7 @@ export type EscalationMatch = {
   resourcePlaceholder: string;
 };
 
-const escalationCategories: {
+export const escalationCategories: {
   category: EscalationCategory;
   label: string;
   resourcePlaceholder: string;

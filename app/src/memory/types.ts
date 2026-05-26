@@ -24,4 +24,10 @@ export type MemoryReviewItem = Omit<MemoryLedgerEvent, "eventId" | "eventType" |
 export type MemoryStore = {
   listEvents(childId?: string): Promise<MemoryLedgerEvent[]>;
   appendEvent(event: MemoryLedgerEvent): Promise<void>;
+  ensureFamilyChild?(input: {
+    familyId: string;
+    childId: string;
+    userId: string;
+    childProfile?: Record<string, unknown>;
+  }): Promise<void>;
 };

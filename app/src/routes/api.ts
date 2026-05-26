@@ -6,7 +6,7 @@ import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, transitionMemory } from "../memory/memoryService.js";
-import { renderKnowledgeContext, retrieveKnowledgeCards } from "../knowledge/wiki.js";
+import { loadKnowledgeCards, renderKnowledgeContext, retrieveKnowledgeCards } from "../knowledge/wiki.js";
 import { Type } from "@google/genai";
 
 type ApiDeps = {
@@ -72,6 +72,25 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, framework 
     } catch (error: any) {
       console.error("Memory Update Error:", error);
       res.status(500).json({ error: "Failed to update Arbor memory review item", details: error.message });
+    }
+  });
+
+  router.post("/onboarding/family-child", async (req, res) => {
+    try {
+      const { familyId, childId, userId, childProfile } = req.body;
+      if (!familyId || !childId || !userId) {
+        res.status(400).json({ error: "familyId, childId, and userId are required" });
+        return;
+      }
+      if (!memoryStore.ensureFamilyChild) {
+        res.json({ familyId, childId, userId, adapter: "local", created: false });
+        return;
+      }
+      await memoryStore.ensureFamilyChild({ familyId, childId, userId, childProfile });
+      res.json({ familyId, childId, userId, adapter: "firestore", created: true });
+    } catch (error: any) {
+      console.error("Arbor Onboarding Error:", error);
+      res.status(500).json({ error: "Failed to create Arbor family/child documents", details: error.message });
     }
   });
 
@@ -365,6 +384,15 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       modelProvider: config.modelProvider,
       memoryAdapter: config.memoryAdapter,
       highRiskReviewQueueEnabled: config.enableHighRiskReviewQueue
+    });
+  });
+
+  router.get("/architecture/knowledge", async (_req, res) => {
+    const cards = await loadKnowledgeCards();
+    res.json({
+      product: "Arbor",
+      cardCount: cards.length,
+      cardIds: cards.map((card) => card.id)
     });
   });
 
