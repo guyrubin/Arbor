@@ -82,6 +82,7 @@ export const defaultActionPlans: ActionPlan[] = [
   {
     id: "plan-1",
     title: "Preschool Transition & Morning Arrival Plan",
+    scholarBadge: "Bowlby · Winnicott",
     issue: "Transition anxiety triggered by departure pressure and bilingual friction on leaving high-comfort home zone.",
     phases: [
       {
@@ -126,6 +127,501 @@ export const defaultActionPlans: ActionPlan[] = [
       "No physical freeze or hiding during departure shoes sequence.",
       "Crying at separation resolves under 4 minutes with co-regulation.",
       "Actively uses transitional courage pebble object."
+    ]
+  },
+
+  // ── ROUTINE 2: SLEEP & BEDTIME RITUAL ───────────────────────────────────────
+  {
+    id: "plan-2",
+    title: "Sleep & Bedtime Ritual",
+    scholarBadge: "Bowlby · Winnicott",
+    issue: "Resistance to sleep onset, separation anxiety at lights-out, and repeated requests to delay the transition to sleep.",
+    phases: [
+      {
+        name: "Phase 1: Environment & Wind-Down Cue",
+        description: "Signal the nervous system 45 minutes before sleep that the day is closing. Lower arousal gradually.",
+        steps: [
+          { text: "Dim all overhead lights and switch to warm lamp light 45 min before sleep.", completed: false },
+          { text: "Introduce a consistent bedtime scent (lavender diffuser) as a Pavlovian sleep anchor.", completed: false },
+          { text: "No screens within 45 minutes of target sleep time — replace with calm physical play or drawing.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 2: Ritual Sequence & Transitional Object",
+        description: "Use a fixed 4-step sequence so the child predicts what comes next. Sequence reduces demand-refusal by providing structure.",
+        steps: [
+          { text: "Run the BBSB sequence nightly: Bath → Brush → Story → Bed (same order, no skipping).", completed: false },
+          { text: "Place the transitional comfort object (plush, blanket) into bed before the child arrives — it 'holds' the space.", completed: false },
+          { text: "Read one physical book with the child in bed. Narrate slowly; pace naturally slows breath.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 3: Secure Goodbye & Night Protocol",
+        description: "Execute a warm, confident, and predictable separation so the child's attachment system registers safety.",
+        steps: [
+          { text: "Give a 'heartbeat hug' — hold for 20 seconds so child feels the parent's calm heartbeat rate.", completed: false },
+          { text: "Use the same goodnight phrase every night: 'I love you. I am close. You are safe. Sleep tight.'", completed: false },
+          { text: "Leave the room confidently. If the child calls out once, respond briefly from outside the door without re-entering.", completed: false }
+        ]
+      }
+    ],
+    scripts: [
+      {
+        scenario: "Child says 'I'm not tired' and gets out of bed repeatedly",
+        say: "Your body needs sleep even when your brain wants more fun. You can rest — that's all. Close your eyes and let the rest happen.",
+        avoid: "Negotiating extra time or starting new activities, which rewards the avoidance loop."
+      },
+      {
+        scenario: "Child cries and says they are scared of the dark or alone",
+        say: "Feeling a little scared at night is normal. I am right here in the house. Your [comfort object] is with you. I will check on you in 5 minutes.",
+        avoid: "Staying until fully asleep every night, which prevents the child from developing independent sleep onset skills."
+      }
+    ],
+    successIndicators: [
+      "Child is in bed within 10 minutes of starting the BBSB sequence.",
+      "Sleep onset occurs within 20 minutes of lights-out without parent present.",
+      "Child wakes at night but self-settles without calling out within 5 minutes.",
+      "Child reports feeling safe and calm at bedtime when asked."
+    ]
+  },
+
+  // ── ROUTINE 3: MORNING WAKE-UP & BREAKFAST ──────────────────────────────────
+  {
+    id: "plan-3",
+    title: "Morning Wake-Up & Breakfast Routine",
+    scholarBadge: "Montessori · Piaget",
+    issue: "Slow, resistant morning starts that create stress and conflict before school, often linked to hunger dysregulation and lack of autonomy in the sequence.",
+    phases: [
+      {
+        name: "Phase 1: Prepared Morning Environment",
+        description: "Set up the night before so the morning requires zero adult decisions — the environment does the managing (Montessori prepared environment).",
+        steps: [
+          { text: "Night-before prep: clothes laid out (child chose two options), bag packed, shoes at the door.", completed: false },
+          { text: "Set a consistent wake-up time 30 minutes earlier than needed — no rushing.", completed: false },
+          { text: "Post a visual morning chart (icons, not words) at child height on the fridge or door.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 2: Autonomy-Led Getting Ready",
+        description: "Give the child a sense of agency in the sequence. Piaget's preoperational child responds to concrete choice-making, not abstract instruction.",
+        steps: [
+          { text: "Child dresses independently — parent is nearby but does not intervene unless asked.", completed: false },
+          { text: "Child selects their own breakfast from two prepared options (e.g., 'eggs or oats today?').", completed: false },
+          { text: "Child checks the visual chart and marks off each step as done using a magnet or sticker.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 3: Breakfast Connection Moment",
+        description: "Breakfast is not fuel only — it is the first co-regulation event of the day. A calm table sets the emotional tone.",
+        steps: [
+          { text: "Sit together at the table for breakfast — no phones, no news, no screens.", completed: false },
+          { text: "Use the '1 thing I'm looking forward to today' conversation starter at the table.", completed: false },
+          { text: "End with a fixed departure ritual: 'Fist-bump → high five → see you later'.", completed: false }
+        ]
+      }
+    ],
+    scripts: [
+      {
+        scenario: "Child refuses to get out of bed and says they don't want to go to school",
+        say: "I know it feels hard to leave the warm bed. Your body will wake up faster once you move. Which do you want first — clothes or bathroom?",
+        avoid: "Carrying the child or completing tasks for them, which removes the proprioceptive wake-up signals and reduces independence."
+      },
+      {
+        scenario: "Child says they are not hungry and refuses breakfast",
+        say: "Your body might not feel hungry yet — that's normal when we first wake up. Sit with me for 5 minutes and try two bites.",
+        avoid: "Forcing full portions or offering alternative snacks that delay the seated breakfast routine."
+      }
+    ],
+    successIndicators: [
+      "Child is dressed and ready without physical adult assistance 4 out of 5 mornings.",
+      "Family leaves the house without shouting or physical conflict.",
+      "Child eats breakfast before departure on most mornings.",
+      "Child can describe the morning routine sequence independently."
+    ]
+  },
+
+  // ── ROUTINE 4: FAMILY MEALTIME & EATING ─────────────────────────────────────
+  {
+    id: "plan-4",
+    title: "Family Mealtime & Eating Routine",
+    scholarBadge: "Bronfenbrenner · Montessori",
+    issue: "Selective eating, mealtime refusal, food sensory aversions, and loss of the shared family table as a social-regulation anchor.",
+    phases: [
+      {
+        name: "Phase 1: Table Structure & Sensory Safety",
+        description: "Build a consistent, low-stimulation mealtime container. Bronfenbrenner: the microsystem table becomes the child's first social governance experience.",
+        steps: [
+          { text: "Eat at the same table, at approximately the same time, every day — habit formation is biochemical.", completed: false },
+          { text: "Reduce sensory load: no TV, no loud music, familiar plates and utensils the child prefers.", completed: false },
+          { text: "Serve small portions — overfull plates trigger aversion in sensory-sensitive children.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 2: Participation & Autonomy",
+        description: "Involve the child in food preparation. Montessori: a child who helped make the food is significantly more likely to try it.",
+        steps: [
+          { text: "Assign one simple mealtime job per day: stir, set napkins, pour water, wash vegetables.", completed: false },
+          { text: "Apply the Division of Responsibility: parent decides what and when; child decides how much and whether.", completed: false },
+          { text: "Always include one food the child reliably eats alongside new exposures — safety food reduces meal anxiety.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 3: New Food Exposure & Table Ritual",
+        description: "Repeated neutral exposure to new foods without pressure. Research shows 10–15 exposures before acceptance — most parents give up at 3.",
+        steps: [
+          { text: "Introduce one new food item per week on the plate — no pressure to eat, only to see it.", completed: false },
+          { text: "Name the meal together: 'This is Tuesday pasta.' Ritual naming reduces novelty anxiety.", completed: false },
+          { text: "End with a short connection question: 'What was the best part of today?'", completed: false }
+        ]
+      }
+    ],
+    scripts: [
+      {
+        scenario: "Child refuses a food and says 'I hate this, it's disgusting'",
+        say: "You don't have to eat it today. It just needs to sit on the plate. Maybe next time your taste buds will be curious.",
+        avoid: "Forcing the food, bribing with dessert, or removing it immediately — all three increase food aversion over time."
+      },
+      {
+        scenario: "Child leaves the table after 3 minutes and says they're done",
+        say: "The table rule is we stay until everyone is finished. You can sit quietly if you're done eating.",
+        avoid: "Allowing early departure consistently, which teaches the child that table time is optional and disrupts family rhythm."
+      }
+    ],
+    successIndicators: [
+      "Family eats together at least 5 evenings per week.",
+      "Child tries a new food at least once per week without physical distress.",
+      "Mealtime tantrums decrease to fewer than 2 per week.",
+      "Child completes a mealtime job at least 4 nights per week."
+    ]
+  },
+
+  // ── ROUTINE 5: EMOTIONAL REGULATION TOOLKIT ─────────────────────────────────
+  {
+    id: "plan-5",
+    title: "Emotional Regulation Toolkit",
+    scholarBadge: "Bowlby · Vygotsky",
+    issue: "Escalating meltdowns, emotional flooding, and lack of a personal toolkit to self-regulate without full adult co-regulation every time.",
+    phases: [
+      {
+        name: "Phase 1: Build the Calm-Down Corner",
+        description: "Create a physical regulation station the child owns and chooses. Vygotsky: the scaffold is a place before it is a skill.",
+        steps: [
+          { text: "Designate a small, low-stimulus corner of the home as the 'Calm Space' — cozy pillow, fidget tool, one comfort object.", completed: false },
+          { text: "Introduce the space during a calm moment — never as punishment.", completed: false },
+          { text: "Practice using it together during calm time so the child can access it independently during activation.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 2: The Regulation Menu",
+        description: "Give the child a personal toolkit of 3–4 regulation strategies they can call by name. Naming = ownership.",
+        steps: [
+          { text: "Teach 'Balloon Breathing': breathe in slowly for 4, hold 2, blow out for 6 — practice daily.", completed: false },
+          { text: "Teach 'Shake It Out': 30-second full-body shake to discharge fight-or-flight cortisol.", completed: false },
+          { text: "Build a personal 'Feelings Map' picture — child draws their face when mad, sad, scared, calm.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 3: Co-Regulation to Self-Regulation Bridge",
+        description: "Bowlby: the parent is the external regulation system. Gradually fade co-regulation over weeks as the child internalizes the skill.",
+        steps: [
+          { text: "During meltdown: stay close, lower your own voice and body, narrate calmly — 'I see you're really upset. I'm here.'", completed: false },
+          { text: "After calm returns (not during): run the 3-question repair — 'What happened? What did your body feel? What could we do next time?'", completed: false },
+          { text: "Track each week: count how many times the child used their toolkit independently vs. needed full adult support.", completed: false }
+        ]
+      }
+    ],
+    scripts: [
+      {
+        scenario: "Child is mid-meltdown, hitting or throwing",
+        say: "Your body is really full right now. I am going to stay close. When you are ready, I am here.",
+        avoid: "Attempting logical explanation or consequence-giving during activation — the cortex is offline and cannot receive information."
+      },
+      {
+        scenario: "After the meltdown, child is calm and quiet",
+        say: "That was a big one. I love you through the hard stuff. Can you tell me what your body felt like when it started?",
+        avoid: "Jumping straight to consequences or 'you shouldn't have done that' — repair must precede correction."
+      }
+    ],
+    successIndicators: [
+      "Child can name at least 2 feelings in their body without prompting.",
+      "Child uses a regulation strategy (breathing, shake, calm space) at least once per week independently.",
+      "Meltdown duration decreases by 30% over 6 weeks.",
+      "Child initiates repair conversation after incidents at least occasionally."
+    ]
+  },
+
+  // ── ROUTINE 6: SCREEN TIME & DIGITAL TRANSITIONS ────────────────────────────
+  {
+    id: "plan-6",
+    title: "Screen Time Limits & Digital Transitions",
+    scholarBadge: "Piaget · Winnicott",
+    issue: "Intense dysregulation when screens are removed, inability to transition back to physical reality, and digital over-reliance replacing boredom tolerance.",
+    phases: [
+      {
+        name: "Phase 1: Predictable Screen Schedule",
+        description: "Remove uncertainty from screen access. Piaget: the preoperational child cannot abstract 'later' — concrete time anchors are critical.",
+        steps: [
+          { text: "Establish fixed screen time slots posted on the visual schedule — 'after school snack' and/or 'after dinner' only.", completed: false },
+          { text: "Use a visible physical timer (hourglass or clock) — the child watches time passing, not a parent removing access.", completed: false },
+          { text: "Define a maximum daily limit appropriate to age: 1 hour for 3–5 year olds, 1.5 hours for 6–8 year olds.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 2: 5-Minute Transition Warning Protocol",
+        description: "The transition warning is the most important intervention. Abrupt removal is the single biggest trigger of screen-related dysregulation.",
+        steps: [
+          { text: "Give a 5-minute verbal + timer warning: 'Five minutes left. Timer is running. When it rings, screen goes off.'", completed: false },
+          { text: "At zero: parent turns off screen (not child, initially) — calmly, without negotiation.", completed: false },
+          { text: "Immediately offer a transition bridge activity: snack, outdoor play, physical game — fill the gap instantly.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 3: Boredom Tolerance & Non-Screen Alternatives",
+        description: "Winnicott: a child who can tolerate boredom is developing a rich inner world. Build the muscle.",
+        steps: [
+          { text: "Designate one 30-minute 'boredom slot' per day — parent does not entertain or suggest; child discovers their own play.", completed: false },
+          { text: "Build an accessible 'yes shelf': low-shelf art supplies, building blocks, sensory bins — materials the child can self-initiate.", completed: false },
+          { text: "Celebrate self-initiated play: 'I noticed you built that entire train track yourself. That was your idea.'", completed: false }
+        ]
+      }
+    ],
+    scripts: [
+      {
+        scenario: "Child screams and throws device when screen time ends",
+        say: "I hear you — stopping is really hard. The timer said our time is up. The tablet is resting now. Let's have your snack.",
+        avoid: "Giving 'just 5 more minutes' as a response to the tantrum — this teaches escalation as an effective strategy."
+      },
+      {
+        scenario: "Child says 'I'm bored' immediately after screens are off",
+        say: "Boredom is okay. Your brain is looking for what to do next. What's on the yes shelf that you haven't tried this week?",
+        avoid: "Immediately suggesting activities or turning screens back on — sit with the discomfort together briefly first."
+      }
+    ],
+    successIndicators: [
+      "Child turns off screen with verbal warning in under 3 minutes without physical conflict.",
+      "Child engages in self-initiated non-screen play for 20+ minutes at least 3 times per week.",
+      "Screen transitions do not trigger meltdowns more than once per week.",
+      "Child can describe when their screen time slots are without asking."
+    ]
+  },
+
+  // ── ROUTINE 7: DAILY READING & LANGUAGE PRACTICE ────────────────────────────
+  {
+    id: "plan-7",
+    title: "Daily Reading & Language Practice",
+    scholarBadge: "Vygotsky · Piaget",
+    issue: "Insufficient daily language input, bilingual code-switching hesitation, and inconsistent reading habits that slow vocabulary acquisition and pre-literacy skills.",
+    phases: [
+      {
+        name: "Phase 1: Daily Reading Ritual",
+        description: "Vygotsky: shared reading is the highest-quality ZPD language scaffold available. 15 minutes of daily read-aloud is more powerful than any app.",
+        steps: [
+          { text: "Lock in a daily reading slot — same time, same cozy location (bed, bean bag, reading nook).", completed: false },
+          { text: "Read one physical book per session: alternate between the child's choice and the parent's choice.", completed: false },
+          { text: "After reading, ask one open question: 'What do you think happened before this story started?'", completed: false }
+        ]
+      },
+      {
+        name: "Phase 2: Conversation-Based Vocabulary Building",
+        description: "Piaget: language develops through interaction with objects and people — not passive consumption. Build vocabulary through conversation, not flashcards.",
+        steps: [
+          { text: "Use the 'word of the day' technique: introduce one interesting word at breakfast, use it 3 times during the day naturally.", completed: false },
+          { text: "Narrate activities aloud together: 'We're chopping the carrots diagonally — diagonally means at an angle.'", completed: false },
+          { text: "During play, extend the child's sentences: child says 'car go fast' → parent says 'yes, the red car is racing really fast down the ramp'.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 3: Bilingual Support Practice",
+        description: "For bilingual children: each language needs daily activation. Passive exposure is not enough — production practice is critical.",
+        steps: [
+          { text: "Designate a language-of-the-moment: dinner in Language A, bath in Language B — consistency anchors the switch.", completed: false },
+          { text: "Play the 'translator game': child translates a sentence from Language A to B — celebrate attempts not perfection.", completed: false },
+          { text: "Read one book per week in the minority language — make it a special ritual, not a chore.", completed: false }
+        ]
+      }
+    ],
+    scripts: [
+      {
+        scenario: "Child refuses to sit for a book and runs away",
+        say: "Okay, I'm going to read to myself over here. You don't have to sit — but I bet you'll want to hear what happens.",
+        avoid: "Forcing seated attention or skipping reading entirely — proximity listening is still beneficial."
+      },
+      {
+        scenario: "Child switches to dominant language and refuses to speak in minority language",
+        say: "I know it's easier in [language A]. Can you try to say just that one word in [language B]? Even one word counts.",
+        avoid: "Refusing to respond unless the child speaks in the minority language — this creates shame and aversion to the language."
+      }
+    ],
+    successIndicators: [
+      "Parent reads aloud with child at least 5 evenings per week.",
+      "Child requests books independently or asks to continue a story.",
+      "Child uses at least one new vocabulary word per week in conversation.",
+      "Bilingual child attempts responses in minority language without shutting down."
+    ]
+  },
+
+  // ── ROUTINE 8: PHYSICAL PLAY & MOVEMENT ─────────────────────────────────────
+  {
+    id: "plan-8",
+    title: "Physical Play & Daily Movement",
+    scholarBadge: "Piaget · Bronfenbrenner",
+    issue: "Sedentary default, sensory under-stimulation leading to dysregulation indoors, and insufficient proprioceptive input for gross motor development.",
+    phases: [
+      {
+        name: "Phase 1: Daily Movement Minimum",
+        description: "Piaget: sensorimotor-to-concrete operational children learn through the body first. Movement is not a break from learning — it is learning.",
+        steps: [
+          { text: "Guarantee 60 minutes of active outdoor play per day (WHO guidelines for under-5s).", completed: false },
+          { text: "Schedule movement BEFORE sedentary tasks like homework or quiet activities — not as a reward after.", completed: false },
+          { text: "Include one full-body proprioceptive activity daily: jumping, climbing, carrying, rolling, wrestling.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 2: Sensory Regulation Through Movement",
+        description: "Children with sensory sensitivities need heavy-work proprioceptive input to regulate their arousal baseline throughout the day.",
+        steps: [
+          { text: "Morning heavy-work routine: 5 minutes of jumping, pushing against a wall, or carrying a 'helper bag' with books.", completed: false },
+          { text: "Post-school decompression: unstructured outdoor run or playground before entering the home or starting homework.", completed: false },
+          { text: "Before high-demand transitions (dinner, bath, bed): a 3-minute gross motor discharge (dance, jump, spin).", completed: false }
+        ]
+      },
+      {
+        name: "Phase 3: Social Play & Community Ecosystem",
+        description: "Bronfenbrenner: peer play in neighborhood ecosystems is a developmental right, not a luxury. Facilitate access to other children.",
+        steps: [
+          { text: "Arrange at least one unstructured peer play session per week — not structured classes, free play.", completed: false },
+          { text: "Reduce structured activity overload: children need unscheduled outdoor time, not more clubs.", completed: false },
+          { text: "Make park/playground visits a weekly ritual — same park, familiar environment, lower adaptation demand.", completed: false }
+        ]
+      }
+    ],
+    scripts: [
+      {
+        scenario: "Child says 'I don't want to go outside' and prefers screens or couch",
+        say: "Your body needs to move — even when your brain doesn't feel like it yet. We're going for 15 minutes. You can choose: bike, ball, or run?",
+        avoid: "Offering screens as an alternative to outdoor time or skipping outdoor play due to minor weather discomfort."
+      },
+      {
+        scenario: "Child has a sensory meltdown from an over-stimulating environment (loud park, crowded birthday party)",
+        say: "This place has a lot of noise. Let's move to the edge where it's quieter. You don't have to stay in the middle.",
+        avoid: "Forcing the child to remain in the overwhelm zone or leaving immediately every time — graduated exposure builds tolerance over time."
+      }
+    ],
+    successIndicators: [
+      "Child gets 60 minutes of active outdoor play at least 5 days per week.",
+      "Afternoon sensory dysregulation episodes decrease after post-school movement routine is established.",
+      "Child initiates outdoor or physical play independently at least 3 times per week.",
+      "Child plays with at least one peer in unstructured play weekly."
+    ]
+  },
+
+  // ── ROUTINE 9: RESPONSIBILITY & CHORES ──────────────────────────────────────
+  {
+    id: "plan-9",
+    title: "Responsibility & Age-Appropriate Chores",
+    scholarBadge: "Montessori · Bronfenbrenner",
+    issue: "Child has no consistent household responsibilities, leading to a low sense of contribution, learned helplessness, and missed opportunities for practical competence-building.",
+    phases: [
+      {
+        name: "Phase 1: Identify & Assign Contribution Tasks",
+        description: "Montessori: children are neurobiologically driven to contribute. Blocking this drive by doing everything for them increases dependence, not security.",
+        steps: [
+          { text: "Select 2–3 age-appropriate daily tasks: clearing plate, making bed, wiping spills, feeding a pet, sorting laundry.", completed: false },
+          { text: "Create a visual chore chart at child height with icons — child marks tasks done with a magnet or sticker.", completed: false },
+          { text: "Introduce tasks during a calm, joint practice session — do it together first, then fade support over 2 weeks.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 2: Execution with Autonomy",
+        description: "Resist the urge to redo or correct the task. A poorly made bed made by the child is more developmentally valuable than a perfect bed made by the parent.",
+        steps: [
+          { text: "Allow the child to complete the task without intervention unless there is a safety issue.", completed: false },
+          { text: "If the task is done imperfectly, acknowledge the effort specifically: 'You folded that towel all by yourself — I noticed.'", completed: false },
+          { text: "Link the task to family contribution: 'When you clear your plate, it helps our whole family keep the kitchen clean.'", completed: false }
+        ]
+      },
+      {
+        name: "Phase 3: Mastery Expansion & Natural Consequences",
+        description: "Bronfenbrenner: family role and responsibility are the child's first microsystem governance training.",
+        steps: [
+          { text: "After 4 weeks of consistency on current tasks, add one new responsibility.", completed: false },
+          { text: "Use natural consequences (not punishment) when tasks are skipped — 'Since the toys weren't tidied, we don't have floor space to play the game tonight.'", completed: false },
+          { text: "Hold a short weekly family check-in: 'What did everyone contribute this week?'", completed: false }
+        ]
+      }
+    ],
+    scripts: [
+      {
+        scenario: "Child refuses to do their chore and says 'it's too hard' or 'I don't want to'",
+        say: "This is your job in our family. I know it feels like a lot — let's start with just the first step together.",
+        avoid: "Doing the task for the child to avoid conflict — this teaches that persistence is never required."
+      },
+      {
+        scenario: "Child does the task poorly (e.g., half-made bed, plate still has food) and looks for approval",
+        say: "You did it! I see you worked hard on that. The bed is made — it's your bed, and you made it.",
+        avoid: "Re-making the bed or pointing out what was missed — this communicates that their effort is insufficient."
+      }
+    ],
+    successIndicators: [
+      "Child completes assigned daily chore without reminder at least 4 days per week.",
+      "Child can describe their household role when asked: 'My job in this family is...'",
+      "Child demonstrates task pride and identifies as a contributing family member.",
+      "Parent refrains from redoing the child's completed tasks."
+    ]
+  },
+
+  // ── ROUTINE 10: EVENING WIND-DOWN & FAMILY CONNECTION ───────────────────────
+  {
+    id: "plan-10",
+    title: "Evening Wind-Down & Family Connection",
+    scholarBadge: "Bowlby · Winnicott",
+    issue: "Fragmented evenings with parallel screen use, missed co-regulation and debrief windows, and poor arousal-to-sleep transition leading to later sleep onset.",
+    phases: [
+      {
+        name: "Phase 1: Unplug & Reconnect Window",
+        description: "The one hour after the family reunites in the evening is the highest-value attachment co-regulation window of the day. Protect it.",
+        steps: [
+          { text: "Declare a 'phones-away' zone from dinner through bedtime — both parents included.", completed: false },
+          { text: "Start the evening with 10 minutes of physical connection: tickle, pillow fight, cuddle, or dance — let the child lead.", completed: false },
+          { text: "Ask the 'rose & thorn' question at dinner: one thing that felt good today, one thing that felt hard.", completed: false }
+        ]
+      },
+      {
+        name: "Phase 2: Debrief & Emotional Processing",
+        description: "Bowlby: the child uses the parent as a 'safe haven' to process the day's stress. A brief debrief before sleep prevents nighttime rumination.",
+        steps: [
+          { text: "After bath, sit together for 5 minutes with no agenda — follow the child's narrative if they choose to share.", completed: false },
+          { text: "If the child had a hard day, name it: 'It sounded like the playground was hard today. That makes sense that you feel grumpy.'", completed: false },
+          { text: "End the debrief with a forward bridge: 'Tomorrow is a fresh start. What are you looking forward to?'", completed: false }
+        ]
+      },
+      {
+        name: "Phase 3: Arousal Ramp-Down & Sleep Handoff",
+        description: "Winnicott: the 'holding environment' at sleep is the transition from external regulation to internal. The parent's calm presence is the scaffold the child internalizes.",
+        steps: [
+          { text: "Enforce a consistent lights-off time 7 days per week — including weekends (within 30 minutes).", completed: false },
+          { text: "Complete the BBSB sequence (Bath, Brush, Story, Bed — see Sleep Routine plan).", completed: false },
+          { text: "Final connection point: gratitude ritual — each person names one thing they are grateful for from today.", completed: false }
+        ]
+      }
+    ],
+    scripts: [
+      {
+        scenario: "Child says they don't want to talk about their day and shuts down",
+        say: "That's okay. You don't have to talk. I'm just going to sit here with you for a bit.",
+        avoid: "Pressing with questions or filling the silence immediately — presence without pressure is the most effective invitation to open up."
+      },
+      {
+        scenario: "Parents are tired and want to skip the connection window and go straight to screens",
+        say: "(to yourself and co-parent) 10 minutes of real connection now prevents 45 minutes of bedtime resistance later. The investment pays off tonight.",
+        avoid: "Parallel screen evenings 5+ nights per week — this is the most common cause of child's nighttime anxiety and sleep-onset difficulty."
+      }
+    ],
+    successIndicators: [
+      "Family has at least 20 minutes of device-free shared time at least 5 evenings per week.",
+      "Child shares at least one event from their day unprompted at least 3 times per week.",
+      "Child transitions to the bedtime sequence within 5 minutes of the wind-down cue.",
+      "Both parents report feeling genuinely reconnected with the child by the end of most evenings."
     ]
   }
 ];

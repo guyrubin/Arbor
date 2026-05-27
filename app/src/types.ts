@@ -70,6 +70,7 @@ export interface ActionPlan {
   id: string;
   title: string;
   issue: string;
+  scholarBadge?: string;
   phases: {
     name: string;
     description: string;

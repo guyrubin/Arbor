@@ -1729,7 +1729,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                         <p className="text-xs text-[#a8a093] mt-1 italic">Focus Issue: {plan.issue}</p>
                       </div>
                       <span className="text-[10px] bg-[#d7aa55]/15 text-[#f4d991] font-bold px-3 py-1 rounded-full border border-[#d7aa55]/20">
-                        Blueprints Frame
+                        {plan.scholarBadge ?? "Blueprints Frame"}
                       </span>
                     </div>
 

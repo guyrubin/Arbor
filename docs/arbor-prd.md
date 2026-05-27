@@ -437,6 +437,47 @@ Secondary north star:
 
 ---
 
+## Developmental Routine Library
+
+**Version:** 1.0 — Added 2026-05-28
+
+The Developmental Routine Library is the core pre-built content layer of Arbor. It ships with ten evidence-based action plan routines covering the most critical behavioral domains for children aged 0–12. Each routine is grounded in one or more of the six Arbor Scholar Lenses, structured in three phases, and includes parent scripts and success indicators.
+
+### Library Contents
+
+| # | Routine | Scholar Basis | Primary Domain |
+|---|---------|--------------|----------------|
+| 1 | Preschool Transition & Morning Arrival | Bowlby · Winnicott | Attachment / School Readiness |
+| 2 | Sleep & Bedtime Ritual | Bowlby · Winnicott | Self-Regulation / Attachment |
+| 3 | Morning Wake-Up & Breakfast | Montessori · Piaget | Independence / Executive Function |
+| 4 | Family Mealtime & Eating | Bronfenbrenner · Montessori | Nutrition / Microsystem |
+| 5 | Emotional Regulation Toolkit | Bowlby · Vygotsky | Emotional Development / Co-Regulation |
+| 6 | Screen Time Limits & Digital Transitions | Piaget · Winnicott | Impulse Control / Boredom Tolerance |
+| 7 | Daily Reading & Language Practice | Vygotsky · Piaget | Language / Cognition |
+| 8 | Physical Play & Daily Movement | Piaget · Bronfenbrenner | Sensory / Gross Motor / Ecosystem |
+| 9 | Responsibility & Age-Appropriate Chores | Montessori · Bronfenbrenner | Independence / Family Role |
+| 10 | Evening Wind-Down & Family Connection | Bowlby · Winnicott | Attachment / Sleep Readiness |
+
+### Design Principles
+
+1. **Three-phase structure:** Every routine has an Environment phase (preparing the context), an Execution phase (parent and child doing the work), and a Mastery phase (natural consequences, escalation, or habit consolidation).
+2. **Parent scripts included:** Every routine ships with at least two specific scripted responses — what to say and what to avoid in the hardest moments.
+3. **Success indicators are observable:** Routines define success through measurable behavioral outcomes, not vague improvement language.
+4. **Scholar-grounded:** Each routine cites the developmental framework that explains why the approach works, not just what to do.
+5. **AI-extensible:** Parents can refine any routine via the AI Coach using the scholar lens that grounds it.
+
+### Future Library Expansion
+
+The routine library will expand in future releases to include:
+- Sibling conflict resolution
+- Homework and learning habits
+- Social skills and playdates
+- Sensory diet planning (for sensory-sensitive children)
+- Co-parenting alignment routines
+- Cultural and language-specific routine variants (NL / IL editions)
+
+---
+
 ## Final Thesis
 
 Arbor should be built as a child-development intelligence layer that sits between parents, children, schools, therapists, and care systems.
