@@ -1,30 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 @import "tailwindcss";
 
+/* ─── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
-  --arbor-paper: #ece6d8;
-  --arbor-paper-elevated: #f6f1e8;
-  --arbor-ink: #14160f;
-  --arbor-muted: #625f55;
-  --arbor-rule: rgba(20, 22, 15, 0.16);
-  --arbor-clay: #e2562d;
-  --arbor-blue: #1c3d6b;
-  --arbor-sage: #5d7a55;
-  --arbor-ochre: #c89637;
+  --arbor-paper:          #e9e2d0;
+  --arbor-paper-elevated: #f2ece0;
+  --arbor-paper-deep:     #dbd3c0;
+  --arbor-ink:            #14160f;
+  --arbor-muted:          #6a6455;
+  --arbor-rule:           rgba(20, 22, 15, 0.09);
+  --arbor-rule-strong:    rgba(20, 22, 15, 0.15);
+  --arbor-clay:           #e2562d;
+  --arbor-clay-dim:       rgba(226, 86, 45, 0.10);
+  --arbor-blue:           #1c3d6b;
+  --arbor-sage:           #5d7a55;
+  --arbor-ochre:          #c89637;
+
+  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-sans:    'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --shadow-xs:   0 1px 2px rgba(20,22,15,0.06), 0 0 0 1px rgba(20,22,15,0.05);
+  --shadow-sm:   0 2px 8px rgba(20,22,15,0.08), 0 0 0 1px rgba(20,22,15,0.06);
+  --shadow-md:   0 4px 20px rgba(20,22,15,0.11), 0 1px 4px rgba(20,22,15,0.06);
+  --shadow-clay: 0 4px 16px rgba(226,86,45,0.22), 0 1px 4px rgba(226,86,45,0.12);
 }
 
-html,
-body,
-#root {
-  min-height: 100%;
-}
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+html, body, #root { min-height: 100%; }
 
 body {
   margin: 0;
   background: var(--arbor-paper);
   color: var(--arbor-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* ─── App Shell ──────────────────────────────────────────────────────────── */
 .arbor-app {
+  font-family: var(--font-sans);
   background:
     linear-gradient(var(--arbor-rule) 1px, transparent 1px),
     linear-gradient(90deg, var(--arbor-rule) 1px, transparent 1px),
@@ -33,13 +48,50 @@ body {
   color: var(--arbor-ink);
 }
 
+/* Subtle grain/paper texture overlay */
+.arbor-app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: multiply;
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* ─── Typography ─────────────────────────────────────────────────────────── */
+.arbor-app h1,
+.arbor-app h2,
+.arbor-app h3 {
+  font-family: var(--font-display) !important;
+  letter-spacing: -0.025em;
+}
+
+.arbor-app h4,
+.arbor-app h5,
+.arbor-app h6 {
+  font-family: var(--font-sans) !important;
+}
+
+.arbor-app button,
+.arbor-app input,
+.arbor-app textarea,
+.arbor-app select {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+
+/* ─── Border Radius — Architectural, not bubbly ──────────────────────────── */
 .arbor-app .rounded-xl,
 .arbor-app .rounded-2xl,
 .arbor-app .rounded-3xl,
 .arbor-app .rounded-\[36px\] {
-  border-radius: 6px !important;
+  border-radius: 8px !important;
 }
 
+/* ─── Background Color Remapping ─────────────────────────────────────────── */
 .arbor-app [class*="bg-[#08090c]"],
 .arbor-app [class*="bg-[#141821]"],
 .arbor-app [class*="bg-[#12141c]"],
@@ -48,8 +100,25 @@ body {
   background-image: none !important;
 }
 
+/* Sidebar: distinctly deeper tone than main content */
+.arbor-app aside {
+  background-color: var(--arbor-paper-deep) !important;
+}
+
+/* Left sidebar specifically */
+.arbor-app aside:first-of-type {
+  border-right: 1px solid var(--arbor-rule-strong) !important;
+}
+
+/* Right AI rail */
+.arbor-app aside:last-of-type {
+  border-left: 1px solid var(--arbor-rule-strong) !important;
+}
+
+/* ─── Text Color Remapping ───────────────────────────────────────────────── */
 .arbor-app [class*="text-[#f7f1e7]"],
 .arbor-app .text-white,
+.arbor-app .text-gray-100,
 .arbor-app .text-gray-200,
 .arbor-app .text-gray-300,
 .arbor-app .text-gray-350 {
@@ -58,11 +127,12 @@ body {
 
 .arbor-app [class*="text-[#a8a093]"],
 .arbor-app .text-gray-400,
-.arbor-app .text-slate-400,
-.arbor-app .text-gray-500 {
+.arbor-app .text-gray-500,
+.arbor-app .text-slate-400 {
   color: var(--arbor-muted) !important;
 }
 
+/* Clay accent (was amber/ochre in dark mode) */
 .arbor-app [class*="text-[#f4d991]"],
 .arbor-app [class*="text-[#d7aa55]"],
 .arbor-app .text-amber-200,
@@ -71,35 +141,179 @@ body {
   color: var(--arbor-clay) !important;
 }
 
+/* ─── Background Accent Remapping ────────────────────────────────────────── */
 .arbor-app [class*="bg-[#d7aa55]"],
 .arbor-app [class*="bg-[#f4d991]"],
 .arbor-app .bg-amber-500,
 .arbor-app .bg-yellow-500 {
   background-color: var(--arbor-clay) !important;
+  color: #fff !important;
+}
+
+.arbor-app [class*="bg-[#d7aa55]/10"],
+.arbor-app [class*="bg-[#d7aa55]/15"],
+.arbor-app [class*="bg-[#d7aa55]/5"],
+.arbor-app [class*="bg-[#f4d991]/10"],
+.arbor-app [class*="bg-amber-500/10"],
+.arbor-app [class*="bg-amber-500/15"] {
+  background-color: var(--arbor-clay-dim) !important;
 }
 
 .arbor-app .bg-blue-500 {
   background-color: var(--arbor-blue) !important;
 }
 
-.arbor-app [class*="text-blue-"],
-.arbor-app [class*="border-blue-"] {
+.arbor-app [class*="text-blue-"] {
   color: var(--arbor-blue) !important;
-  border-color: rgba(28, 61, 107, 0.26) !important;
 }
 
-.arbor-app [class*="border-white"],
-.arbor-app [class*="border-[#d7aa55]"] {
+.arbor-app [class*="border-blue-"] {
+  border-color: rgba(28, 61, 107, 0.20) !important;
+}
+
+/* ─── Border Remapping ───────────────────────────────────────────────────── */
+.arbor-app [class*="border-white/10"],
+.arbor-app [class*="border-white/15"],
+.arbor-app [class*="border-white/20"] {
+  border-color: var(--arbor-rule-strong) !important;
+}
+
+.arbor-app [class*="border-white/5"],
+.arbor-app [class*="border-white/\[0"] {
   border-color: var(--arbor-rule) !important;
 }
 
-.arbor-app [class*="shadow-"] {
-  box-shadow: none !important;
+.arbor-app [class*="border-[#d7aa55]"],
+.arbor-app [class*="border-[#d7aa55]/"] {
+  border-color: rgba(226, 86, 45, 0.25) !important;
 }
 
-.arbor-app button,
+/* ─── Shadows: Restored with paper depth ─────────────────────────────────── */
+.arbor-app [class*="shadow-"] {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.arbor-app [class*="shadow-xl"] {
+  box-shadow: var(--shadow-md) !important;
+}
+
+.arbor-app [class*="shadow-2xl"] {
+  box-shadow: var(--shadow-md) !important;
+}
+
+.arbor-app [class*="shadow-lg"] {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* ─── Nav: Active + Hover States ─────────────────────────────────────────── */
+.arbor-app nav button {
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.arbor-app nav button[class*="bg-white/5"] {
+  background-color: rgba(20, 22, 15, 0.07) !important;
+  border-color: var(--arbor-rule-strong) !important;
+}
+
+.arbor-app nav button:not([class*="bg-white/5"]):hover {
+  background-color: rgba(20, 22, 15, 0.04) !important;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+/* Clay primary CTA */
+.arbor-app button[class*="bg-[#d7aa55]"]:hover,
+.arbor-app button[class*="bg-amber-500"]:hover {
+  background-color: #c9471f !important;
+  box-shadow: var(--shadow-clay) !important;
+  transform: translateY(-1px);
+}
+
+.arbor-app button[class*="bg-[#d7aa55]"],
+.arbor-app button[class*="bg-amber-500"] {
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+/* Ghost buttons */
+.arbor-app button[class*="bg-white/5"] {
+  background-color: rgba(20, 22, 15, 0.04) !important;
+}
+
+.arbor-app button[class*="bg-white/5"]:hover {
+  background-color: rgba(20, 22, 15, 0.08) !important;
+}
+
+/* ─── Form Controls ───────────────────────────────────────────────────────── */
 .arbor-app input,
 .arbor-app textarea,
 .arbor-app select {
-  letter-spacing: 0;
+  background-color: rgba(20, 22, 15, 0.04) !important;
+  border-color: var(--arbor-rule-strong) !important;
+  color: var(--arbor-ink) !important;
+}
+
+.arbor-app input:focus,
+.arbor-app textarea:focus,
+.arbor-app select:focus {
+  outline: none !important;
+  border-color: var(--arbor-clay) !important;
+  box-shadow: 0 0 0 3px rgba(226, 86, 45, 0.10) !important;
+}
+
+.arbor-app input::placeholder,
+.arbor-app textarea::placeholder {
+  color: var(--arbor-muted) !important;
+  opacity: 0.7;
+}
+
+/* ─── Scrollbars ──────────────────────────────────────────────────────────── */
+.arbor-app ::-webkit-scrollbar          { width: 3px; height: 3px; }
+.arbor-app ::-webkit-scrollbar-track   { background: transparent; }
+.arbor-app ::-webkit-scrollbar-thumb   { background: var(--arbor-rule-strong); border-radius: 99px; }
+.arbor-app ::-webkit-scrollbar-thumb:hover { background: var(--arbor-muted); }
+
+/* ─── Status Colors ───────────────────────────────────────────────────────── */
+.arbor-app [class*="text-green-400"] { color: var(--arbor-sage) !important; }
+.arbor-app [class*="bg-green-500"]   { background-color: var(--arbor-sage) !important; }
+.arbor-app [class*="bg-green-500/"]  { background-color: rgba(93,122,85,0.15) !important; }
+
+/* ─── Stagger Entry Animations ────────────────────────────────────────────── */
+@keyframes arbor-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.arbor-app main > div > *:nth-child(1) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay:   0ms; }
+.arbor-app main > div > *:nth-child(2) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay:  70ms; }
+.arbor-app main > div > *:nth-child(3) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 140ms; }
+.arbor-app main > div > *:nth-child(4) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 210ms; }
+.arbor-app main > div > *:nth-child(5) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 280ms; }
+.arbor-app main > div > *:nth-child(6) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 350ms; }
+
+/* ─── AI Rail Engine Cards ────────────────────────────────────────────────── */
+.arbor-app aside button[class*="rounded-xl"] {
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.arbor-app aside button[class*="rounded-xl"]:hover {
+  transform: translateX(2px);
+}
+
+/* ─── Progress / Range ────────────────────────────────────────────────────── */
+.arbor-app input[type="range"] {
+  accent-color: var(--arbor-clay);
+}
+
+.arbor-app input[type="checkbox"] {
+  accent-color: var(--arbor-clay);
+}
+
+/* Progress bars (inline width style) */
+.arbor-app [class*="bg-[#d7aa55]"][style*="width"] {
+  background-color: var(--arbor-clay) !important;
+}
+
+/* ─── Pulse animation override ────────────────────────────────────────────── */
+.arbor-app .animate-pulse:not(button):not(span[class*="bg-purple"]) {
+  animation: pulse 2.5s cubic-bezier(0.4,0,0.6,1) infinite;
 }
