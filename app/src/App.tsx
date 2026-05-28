@@ -47,7 +47,7 @@ export default function App() {
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<
-    "overview" | "coach" | "behaviors" | "milestones" | "plans" | "stories" | "scholar" | "handoff" | "safety"
+    "overview" | "coach" | "behaviors" | "milestones" | "plans" | "stories" | "scholar" | "language" | "handoff" | "safety"
   >("overview");
   const [showAiRail, setShowAiRail] = useState<boolean>(true);
 
@@ -676,6 +676,20 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
               <span className="flex items-center gap-3">
                 <Compass className="w-4 h-4" /> Scholar Academy
               </span>
+              <span className="text-xs text-[#a8a093] font-bold">15</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("language")}
+              className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
+                activeTab === "language"
+                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <Languages className="w-4 h-4" /> Language Lab
+              </span>
             </button>
 
             <button
@@ -1000,8 +1014,111 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                     <b className="text-xs text-[#f4d991] block group-hover:text-white transition">Bilingual Scaffolding ➔</b>
                     <p className="text-[10px] text-gray-400 mt-1 lines-clamp-2 leading-relaxed">Construct parent guidance words to scaffold shifting between English and Hebrew transitions.</p>
                   </button>
+                  <button
+                    onClick={() => {
+                      setSelectedLens("Diana Baumrind");
+                      setChatInput("I notice I swing between very lenient and very harsh depending on my stress level. Give me 3 productive friction scripts for holding the line with Dylan on screen time without shouting.");
+                      setActiveTab("coach");
+                    }}
+                    className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer"
+                  >
+                    <b className="text-xs text-[#f4d991] block group-hover:text-white transition">Productive Friction Script ➔</b>
+                    <p className="text-[10px] text-gray-400 mt-1 lines-clamp-2 leading-relaxed">Hold the line with calm authority. Say no, hold structure, let the child meet productive resistance.</p>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedLens("Erik Erikson");
+                      setChatInput("Dylan avoided a hard task this week — he gave up on building a block tower and said 'I can't do it.' Using Erikson's Initiative vs Guilt stage, give me a script to rebuild initiative without rescuing him.");
+                      setActiveTab("coach");
+                    }}
+                    className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer"
+                  >
+                    <b className="text-xs text-[#f4d991] block group-hover:text-white transition">Initiative Builder ➔</b>
+                    <p className="text-[10px] text-gray-400 mt-1 lines-clamp-2 leading-relaxed">Erikson lens: build initiative and competence without rescuing the child from productive struggle.</p>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedLens("Executive Function Science");
+                      setChatInput("Dylan struggles to follow multi-step instructions and switch tasks. Give me a 10-minute daily executive function workout using games for a 5-year-old.");
+                      setActiveTab("coach");
+                    }}
+                    className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer"
+                  >
+                    <b className="text-xs text-[#f4d991] block group-hover:text-white transition">EF Daily Workout ➔</b>
+                    <p className="text-[10px] text-gray-400 mt-1 lines-clamp-2 leading-relaxed">Build working memory, inhibitory control, and cognitive flexibility through daily play games.</p>
+                  </button>
                 </div>
               </div>
+
+              {/* ── SIX FRAMES PANEL ─────────────────────────────────────── */}
+              <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">Product Philosophy</span>
+                    <h3 className="text-xl font-bold text-white mt-1">The Six Frames</h3>
+                    <p className="text-xs text-[#a8a093] mt-1">Every Arbor feature maps to one of six formation frames. Tracking is not the goal — formation is.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-xs">
+                  {[
+                    { num: "01", title: "The Aim", sub: "What is Dylan being formed into?", desc: "Family Charter · Developmental Arc (Erikson) · The Reckoning", prompt: "Help me write a 3-sentence Family Charter — the values our family is actively raising Dylan toward." },
+                    { num: "02", title: "The Two Axes", sub: "Warmth + Structure in balance", desc: "Responsibility Ladder · Productive Friction Scripts · The Hard Thing weekly prompt", prompt: "What is one age-appropriate hard thing Dylan should do this week that he does not want to do? Give me 3 options." },
+                    { num: "03", title: "The Story", sub: "Meaning, ritual & transmission", desc: "Family Story Canon · Ritual Architecture · Generational Memory", prompt: "Suggest a daily ritual we can start this week that gives Dylan a sense of meaning and family identity." },
+                    { num: "04", title: "The Shadow", sub: "Let the dark in — don't bypass it", desc: "The Hard Conversations · Dark Emotions guidance", prompt: "Dylan saw a news headline about war and is asking questions about death. Give me an age-appropriate shadow conversation script for a 5-year-old." },
+                    { num: "05", title: "The Marriage", sub: "The foundation under the child", desc: "Co-parent alignment · Parenting-Style Conflict · Repair After Rupture", prompt: "My co-parent and I disagree on screen-time limits. Give me a structured 10-minute co-parent alignment conversation to reach a shared policy." },
+                    { num: "06", title: "The Shepherd", sub: "One integrator, not five specialists", desc: "Family Shepherd · Family Council (age 8+)", prompt: "Summarize Dylan's full developmental picture in 5 sentences so I can brief a new professional joining his support team." },
+                  ].map((frame) => (
+                    <button
+                      key={frame.num}
+                      onClick={() => {
+                        setChatInput(frame.prompt);
+                        setActiveTab("coach");
+                      }}
+                      className="p-4 bg-white/[0.02] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer space-y-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-[#d7aa55] font-mono">{frame.num}</span>
+                        <b className="text-white group-hover:text-[#f4d991] transition text-xs">{frame.title}</b>
+                      </div>
+                      <p className="text-[10px] text-[#f4d991]/70 font-medium">{frame.sub}</p>
+                      <p className="text-[10px] text-gray-500 leading-relaxed">{frame.desc}</p>
+                      <p className="text-[10px] text-[#a8a093] italic group-hover:text-gray-300 transition">Ask Coach ➔</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── THE HARD THING — WEEKLY PROMPT ───────────────────────── */}
+              <div className="bg-[#141821] border border-[#d7aa55]/20 rounded-3xl p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-[#d7aa55]/15 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-[#f4d991]" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">Weekly Check — Frame 2</span>
+                    <h3 className="text-base font-bold text-white">The Hard Thing</h3>
+                  </div>
+                </div>
+                <p className="text-xs text-[#a8a093] leading-relaxed">
+                  The single most important weekly parenting question: <b className="text-white">What age-appropriate hard thing did Dylan do this week that he did not want to do?</b> Absence of an answer is a flag. Competence is built through productive struggle, not comfort.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  {[
+                    { label: "Suggest this week's hard thing", prompt: "Suggest 3 age-appropriate hard things Dylan (age 5) could do this week that he would resist but benefit from — one physical, one social, one at home." },
+                    { label: "He avoided something hard — what now?", prompt: "Dylan avoided a hard task this week and I let him off the hook. Using Erikson's Initiative vs Guilt framework, what should I do differently next time?" },
+                    { label: "Log what he achieved", prompt: "Dylan completed a hard thing this week: he stayed at his desk to finish a drawing even when he wanted to quit. Give me a 2-sentence acknowledgment that builds competence identity, not just praise." },
+                  ].map((opt) => (
+                    <button
+                      key={opt.label}
+                      onClick={() => { setChatInput(opt.prompt); setActiveTab("coach"); }}
+                      className="p-3 bg-white/[0.02] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-xl transition group cursor-pointer"
+                    >
+                      <b className="text-[#f4d991] group-hover:text-white transition block">{opt.label} ➔</b>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
             </motion.div>
           )}
 
@@ -2051,6 +2168,113 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                     </button>
                   </div>
                 ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB: LANGUAGE LAB */}
+          {activeTab === "language" && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="space-y-8"
+            >
+              <div>
+                <h2 className="text-3xl font-extrabold tracking-tight">Language Lab</h2>
+                <p className="text-sm text-[#a8a093] mt-1">Multilingual child development support — daily practice, bilingual scaffolding, and language profile tracking.</p>
+              </div>
+
+              {/* Language Profile Card */}
+              <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-5">
+                <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">Language Profile — Dylan · Age 5</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 space-y-2">
+                    <b className="text-white block">Home Language</b>
+                    <p className="text-[#a8a093]">Hebrew (Native) — dominant language, full fluency, rich vocabulary in familiar domains.</p>
+                    <span className="text-[10px] bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-bold">Native</span>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 space-y-2">
+                    <b className="text-white block">School Language</b>
+                    <p className="text-[#a8a093]">English (Transition) — entering bilingual kindergarten in 3 months. Understands well, production hesitancy with adults.</p>
+                    <span className="text-[10px] bg-amber-500/15 text-[#f4d991] px-2 py-0.5 rounded-full font-bold">Emerging A2–B1</span>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 space-y-2">
+                    <b className="text-white block">Target Language</b>
+                    <p className="text-[#a8a093]">Dutch (Ambient) — low exposure, not yet a priority. Will become relevant post-kindergarten integration.</p>
+                    <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded-full font-bold">Pre-A1</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Daily Practice Module */}
+              <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">Daily Practice — Vygotsky ZPD</span>
+                    <h3 className="text-xl font-bold text-white mt-1">English Activation Routines</h3>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  {[
+                    { title: "Morning Phrase Card", time: "2 min", desc: "One English sentence Dylan can use at school today. Practice together at breakfast.", phrase: '"Can I play with you?" / "Where do I put my bag?" / "I need help, please."', lens: "Vygotsky" },
+                    { title: "Translator Game", time: "5 min", desc: "Say a Hebrew sentence, Dylan translates to English. Celebrate attempts not perfection.", phrase: "Start with emotion words: angry, scared, hungry, tired, happy. Body first, then school.", lens: "Vygotsky · Piaget" },
+                    { title: "Bedtime Story — English", time: "10 min", desc: "Read one physical book per night in English. Narrate slowly. Ask one question after.", phrase: '"What do you think happened before the story started?"', lens: "Serve & Return" },
+                    { title: "Serve & Return Practice", time: "Daily", desc: "Follow Dylan's lead on any English bid — if he says one word, expand to a sentence back. Don't correct, extend.", phrase: "Dylan: 'car' → Parent: 'yes, the red car is going really fast!'", lens: "Harvard S&R" },
+                  ].map((item) => (
+                    <div key={item.title} className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <b className="text-white">{item.title}</b>
+                        <span className="text-[10px] bg-[#d7aa55]/15 text-[#f4d991] px-2 py-0.5 rounded-full font-bold">{item.time}</span>
+                      </div>
+                      <p className="text-[#a8a093] leading-relaxed">{item.desc}</p>
+                      <p className="text-white/60 italic bg-white/[0.02] border border-white/5 rounded-xl p-2 text-[11px]">{item.phrase}</p>
+                      <span className="text-[10px] text-[#d7aa55]/70 font-mono">{item.lens}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* School Phrase Library */}
+              <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-5">
+                <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">School Phrase Cards — Kindergarten Ready</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-xs">
+                  {[
+                    { category: "Arrival", en: "Good morning. My name is Dylan.", he: "בוקר טוב. שמי דילן." },
+                    { category: "Play", en: "Can I play with you?", he: "אפשר לשחק איתך?" },
+                    { category: "Needs", en: "I need to go to the bathroom.", he: "אני צריך לשירותים." },
+                    { category: "Help", en: "I need help, please.", he: "אני צריך עזרה, בבקשה." },
+                    { category: "Feelings", en: "I feel sad / scared / happy.", he: "אני מרגיש עצוב / מפוחד / שמח." },
+                    { category: "Departure", en: "See you tomorrow. Goodbye!", he: "להתראות מחר. ביי!" },
+                  ].map((card) => (
+                    <div key={card.category} className="bg-white/[0.02] border border-white/5 rounded-2xl p-3 space-y-2">
+                      <span className="text-[10px] font-black text-[#f4d991] uppercase tracking-wider">{card.category}</span>
+                      <p className="text-white font-semibold">{card.en}</p>
+                      <p className="text-[#a8a093] text-right" dir="rtl">{card.he}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Language Coach prompts */}
+              <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-4">
+                <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">AI Language Coach — Quick Prompts</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {[
+                    { label: "Build a 3-day English scaffolding plan", prompt: "Dylan needs to introduce himself in English at kindergarten in 3 months. Build a 3-day step-by-step Vygotsky scaffolding plan starting from zero production confidence." },
+                    { label: "Language switch confidence script", prompt: "Dylan freezes when adults speak to him in English. Give me a 5-step de-sensitization practice to build confidence answering adults in English." },
+                    { label: "Bilingual meltdown support", prompt: "Dylan had a meltdown at school because he couldn't express himself in English. Give me a Bowlby-grounded repair script and a language support bridge for the next morning." },
+                    { label: "Teacher handoff note — language", prompt: "Write a language handoff note for Dylan's kindergarten teacher explaining his bilingual profile, his Hebrew dominance, his English hesitation with adults, and 3 recommended classroom strategies." },
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      onClick={() => { setChatInput(item.prompt); setSelectedLens("Lev Vygotsky"); setActiveTab("coach"); }}
+                      className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group cursor-pointer"
+                    >
+                      <b className="text-[#f4d991] group-hover:text-white transition block">{item.label} ➔</b>
+                    </button>
+                  ))}
+                </div>
               </div>
             </motion.div>
           )}

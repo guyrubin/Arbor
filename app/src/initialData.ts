@@ -661,7 +661,7 @@ export const scholarsInfo = [
     color: "from-blue-500/10 to-transparent",
     theory: "Secure Base & Adaptive Attachment Behaviours",
     value: "Designs emotional interaction guidelines and rupture-repair scripts. Strengthens the child's relational security, viewing tantrums as dysregulated communication rather than misbehavior.",
-    examplePrompt: "Give me an conflict-repair script for after Dylan screamed and threw toys, and we both got dysregulated.",
+    examplePrompt: "Give me a conflict-repair script for after Dylan screamed and threw toys, and we both got dysregulated.",
     slug: "bowlby"
   },
   {
@@ -680,7 +680,7 @@ export const scholarsInfo = [
     concept: "Independence Planner",
     color: "from-green-500/10 to-transparent",
     theory: "Prepared Environments & Practical Autonomy",
-    value: "Coachella parents on preparing home tasks and routines so the child can exercise self-governance. Swaps child-restraint with structured freedoms.",
+    value: "Coaches parents on preparing home tasks and routines so the child can exercise self-governance. Swaps child-restraint with structured freedoms.",
     examplePrompt: "Create a prepared bedroom environment routine to help a 5-year-old learn to dress and select clothes independently in the morning.",
     slug: "montessori"
   },
@@ -703,5 +703,95 @@ export const scholarsInfo = [
     value: "Keeps expectations grounded in biological reality. Reminds parents that a 5-year-old operates in the intuitive Preoperational stage (egocentric, magical thinking, struggles with abstract rules).",
     examplePrompt: "Explain Dylan's transition refusal through Piaget's Preoperational cognitive framework. What can we realistically expect?",
     slug: "piaget"
+  },
+  {
+    name: "Erik Erikson",
+    initial: "E",
+    concept: "Psychosocial Stage Coach",
+    color: "from-indigo-500/10 to-transparent",
+    theory: "Eight Stages of Psychosocial Development",
+    value: "Maps the child's core psychosocial task at each age — trust vs mistrust (0-1), autonomy vs shame (1-3), initiative vs guilt (3-6), industry vs inferiority (6-12). Aligns parent responses with the developmental task rather than just the symptom.",
+    examplePrompt: "Dylan is 5 and in the Initiative vs Guilt stage. He feels ashamed when he makes a mistake at school. Give me 5 ways to support healthy initiative-taking without removing consequences.",
+    slug: "erikson"
+  },
+  {
+    name: "Diana Baumrind",
+    initial: "Bm",
+    concept: "Parenting Style Analyzer",
+    color: "from-rose-500/10 to-transparent",
+    theory: "Authoritative vs Permissive vs Authoritarian Parenting",
+    value: "Diagnoses where the parent's style sits on the warmth/structure matrix and recommends calibrations. Authoritative (high warmth + high structure) is the research-validated gold standard. Detects drift toward permissive or authoritarian in high-stress moments.",
+    examplePrompt: "I notice I swing between very lenient (no consequences) and very harsh (shouting) depending on my stress level. Help me build a more consistent authoritative response to Dylan's screen-time refusals.",
+    slug: "baumrind"
+  },
+  {
+    name: "Albert Bandura",
+    initial: "Ba",
+    concept: "Modeling Coach",
+    color: "from-orange-500/10 to-transparent",
+    theory: "Social Learning Theory & Self-Efficacy",
+    value: "Helps parents recognize that children learn primarily through observation, not instruction. Designs explicit modeling sequences where the parent demonstrates the target behavior before expecting the child to do it. Builds child self-efficacy through mastery experiences.",
+    examplePrompt: "Dylan avoids trying new things because he's afraid of failing. Using Bandura's self-efficacy model, give me a week-long plan of small mastery experiences to rebuild his confidence.",
+    slug: "bandura"
+  },
+  {
+    name: "B.F. Skinner",
+    initial: "Sk",
+    concept: "Behavior Design Studio",
+    color: "from-cyan-500/10 to-transparent",
+    theory: "Operant Conditioning & Habit Loops",
+    value: "Designs reward schedules, token economies, habit stacks, and natural consequence plans. Identifies which behaviors are being inadvertently reinforced. Particularly effective for toilet training, chore compliance, and reducing attention-seeking behavior.",
+    examplePrompt: "Dylan gets more attention after meltdowns than during calm behavior. Design a simple Skinner-style reinforcement plan that shifts our attention economy to reward regulation, not dysregulation.",
+    slug: "skinner"
+  },
+  {
+    name: "Howard Gardner",
+    initial: "G",
+    concept: "Strengths Discovery Dashboard",
+    color: "from-lime-500/10 to-transparent",
+    theory: "Multiple Intelligences (9 types)",
+    value: "Identifies the child's dominant intelligence profile — linguistic, logical-mathematical, spatial, musical, bodily-kinesthetic, interpersonal, intrapersonal, naturalist, or existential. Adapts learning activities, stories, and routines to the child's natural entry points.",
+    examplePrompt: "Dylan builds incredibly detailed imaginary worlds and asks deep physics questions. Which of Gardner's multiple intelligences are strongest and how should we structure his learning environment to match?",
+    slug: "gardner"
+  },
+  {
+    name: "Reggio Emilia",
+    initial: "Re",
+    concept: "Curiosity Project Generator",
+    color: "from-yellow-500/10 to-transparent",
+    theory: "Child as Protagonist & Hundred Languages",
+    value: "Turns the child's current obsessions into structured inquiry projects. Reggio treats play as research and the child as an active knowledge-builder. Generates project-based learning sequences from real child interests (bugs, dinosaurs, water, space, vehicles).",
+    examplePrompt: "Dylan is obsessed with how gravity works and keeps asking why things fall. Design a 2-week Reggio-style inquiry project around his gravity fascination using household materials.",
+    slug: "reggio"
+  },
+  {
+    name: "Harvard Serve & Return",
+    initial: "SR",
+    concept: "Interaction Trainer",
+    color: "from-sky-500/10 to-transparent",
+    theory: "Serve & Return Neural Architecture (Center on the Developing Child)",
+    value: "Coaches the quality and frequency of back-and-forth caregiver-child interaction — the primary driver of early brain architecture. Each serve (child's bid for attention) and return (caregiver's response) builds neural connections faster than any app or curriculum.",
+    examplePrompt: "I often miss Dylan's conversational bids because I'm distracted. Give me a daily serve-and-return practice routine to do during meals, bath, and bedtime over the next week.",
+    slug: "serve-return"
+  },
+  {
+    name: "Executive Function Science",
+    initial: "EF",
+    concept: "Self-Regulation Builder",
+    color: "from-violet-500/10 to-transparent",
+    theory: "Working Memory, Inhibitory Control & Cognitive Flexibility",
+    value: "Targets the three core executive function pillars: working memory (hold rules in mind), inhibitory control (resist impulses), and cognitive flexibility (switch tasks). Designs games and routines that build each pillar in age-appropriate increments.",
+    examplePrompt: "Dylan struggles to switch tasks and remember multi-step instructions. Design a 10-minute daily executive function workout using games for a 5-year-old that targets working memory and cognitive flexibility.",
+    slug: "exec-function"
+  },
+  {
+    name: "Trauma-Informed Development",
+    initial: "Ti",
+    concept: "Family Stress & Resilience Monitor",
+    color: "from-stone-500/10 to-transparent",
+    theory: "ACEs, Window of Tolerance & Polyvagal Theory",
+    value: "Tracks cumulative family stressors (ACEs), identifies when the child's window of tolerance is exceeded, and designs stabilizing routines and co-regulation sequences. Distinguishes trauma responses from behavioral choice. Guides sensory-informed, predictability-based recovery plans.",
+    examplePrompt: "Our family went through a major relocation and language change this year. Dylan is showing signs of chronic stress — sleep disruption, clinginess, regression. Using a trauma-informed framework, what stabilizing routines should we prioritize?",
+    slug: "trauma-informed"
   }
 ];
