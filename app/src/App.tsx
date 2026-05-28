@@ -108,6 +108,11 @@ export default function App() {
 
   // Embedded Interactive AI States and Helpers
   const [handoffAudience, setHandoffAudience] = useState<"teacher" | "clinician" | "pediatrician">("teacher");
+  const [handoffCountry, setHandoffCountry] = useState<"nl" | "il" | "be" | "international">("nl");
+  const [handoffType, setHandoffType] = useState<string>("home-to-school");
+  const [handoffNoteType, setHandoffNoteType] = useState<string>("start-of-year");
+  const [consentAcknowledged, setConsentAcknowledged] = useState<boolean>(false);
+  const [showMeetingPrep, setShowMeetingPrep] = useState<boolean>(false);
   const [milestoneAnalysisOfGaps, setMilestoneAnalysisOfGaps] = useState<string>("");
   const [isAnalyzingMilestones, setIsAnalyzingMilestones] = useState<boolean>(false);
   const [inlineCoRegulationScripts, setInlineCoRegulationScripts] = useState<{ [logId: string]: string }>({});
@@ -2299,6 +2304,246 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                 >
                   {isGeneratingBrief ? "Weaving Brief..." : "Compile Brief Summary"}
                 </button>
+              </div>
+
+              {/* MODULE 11: Country / Market Selector */}
+              <div className="bg-[#141821] border border-white/10 p-5 rounded-2xl space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-[#f4d991] flex items-center gap-1">
+                  <Compass className="w-3.5 h-3.5 text-[#d7aa55]" />
+                  Country / Market Context — Module 11
+                </span>
+                <p className="text-xs text-slate-400 leading-relaxed">Select the operating country to apply the correct national compliance framework for support documentation.</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {([
+                    { id: "nl", label: "🇳🇱 Netherlands", badge: "Passend Onderwijs", law: "OPP / WPO Art. 8.18" },
+                    { id: "il", label: "🇮🇱 Israel", badge: "ועדת שילוב", law: "Special Education Law 5748" },
+                    { id: "be", label: "🇧🇪 Belgium", badge: "M-Decree", law: "M-decreet 2014" },
+                    { id: "international", label: "🌐 International", badge: "Generic IEP", law: "SEND / IDEA framework" },
+                  ] as { id: "nl" | "il" | "be" | "international"; label: string; badge: string; law: string }[]).map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setHandoffCountry(c.id)}
+                      className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex flex-col justify-center text-left gap-0.5 ${
+                        handoffCountry === c.id
+                          ? "bg-[#d7aa55]/10 border-[#d7aa55]/40 text-[#f4d991]"
+                          : "bg-white/[0.01] border-white/5 text-slate-400 hover:bg-white/5 hover:border-white/15"
+                      }`}
+                    >
+                      <span className="font-extrabold text-white text-[11px]">{c.label}</span>
+                      <span className="text-[9px] font-semibold text-[#d7aa55]">{c.badge}</span>
+                      <span className="text-[9px] font-normal text-slate-500">{c.law}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Active Support Plan:</span>
+                  <span className="text-[10px] bg-[#d7aa55]/15 text-[#f4d991] px-2 py-0.5 rounded-full font-black border border-[#d7aa55]/20">
+                    {handoffCountry === "nl" && "OPP — Ontwikkelingsperspectiefplan"}
+                    {handoffCountry === "il" && "TTA — תוכנית תמיכה אישית (ועדת שילוב)"}
+                    {handoffCountry === "be" && "M-Decree Reasonable Accommodations Plan"}
+                    {handoffCountry === "international" && "IEP — Individual Education Program"}
+                  </span>
+                </div>
+              </div>
+
+              {/* MODULE 13: Handoff Type Panel */}
+              <div className="bg-[#141821] border border-white/10 p-5 rounded-2xl space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-[#f4d991] flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5 text-[#d7aa55]" />
+                  Handoff Type — Module 13
+                </span>
+                <p className="text-xs text-slate-400 leading-relaxed">Select the type of handoff to apply the correct protocol, consent scope, and quality standards for this transfer.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {[
+                    { id: "home-to-school", icon: "🏫", label: "Home-to-School", desc: "Parent shares observation data with the educational team" },
+                    { id: "professional-intake", icon: "📋", label: "Professional Intake", desc: "Transfer to a new specialist, therapist, or clinic" },
+                    { id: "school-initiated", icon: "📨", label: "School-Initiated Referral", desc: "School flags a concern and refers for external assessment" },
+                    { id: "professional-transfer", icon: "🔄", label: "Professional Transfer", desc: "Clinician-to-clinician case transfer between providers" },
+                    { id: "mdt-transfer", icon: "👥", label: "MDT Case Transfer", desc: "Multi-disciplinary team handoff with integrated summary" },
+                    { id: "discharge-to-parent", icon: "🏠", label: "Discharge to Parent", desc: "End of professional support cycle — plan returned to family" },
+                  ].map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setHandoffType(t.id)}
+                      className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center text-left gap-2.5 ${
+                        handoffType === t.id
+                          ? "bg-[#d7aa55]/10 border-[#d7aa55]/40 text-[#f4d991]"
+                          : "bg-white/[0.01] border-white/5 text-slate-400 hover:bg-white/5 hover:border-white/15"
+                      }`}
+                    >
+                      <span className="text-xl shrink-0">{t.icon}</span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-extrabold text-white text-[11px]">{t.label}</span>
+                        <span className="text-[9px] font-normal text-slate-400">{t.desc}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* MODULE 11: Handoff Note Type */}
+              <div className="bg-[#141821] border border-white/10 p-5 rounded-2xl space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-[#f4d991] flex items-center gap-1">
+                  <FileText className="w-3.5 h-3.5 text-[#d7aa55]" />
+                  Handoff Note Type — Module 11.3
+                </span>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {[
+                    { id: "start-of-year", label: "Start of Year", desc: "New school year orientation brief" },
+                    { id: "mid-year", label: "Mid-Year", desc: "Progress update & strategy review" },
+                    { id: "end-of-year", label: "End of Year", desc: "Annual summary & forward plan" },
+                    { id: "stage-transition", label: "Stage Transition", desc: "Nursery → primary, primary → secondary" },
+                    { id: "school-change", label: "School Change", desc: "Moving to a new school or district" },
+                  ].map(n => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => setHandoffNoteType(n.id)}
+                      className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex flex-col justify-center text-left gap-0.5 ${
+                        handoffNoteType === n.id
+                          ? "bg-[#d7aa55]/10 border-[#d7aa55]/40 text-[#f4d991]"
+                          : "bg-white/[0.01] border-white/5 text-slate-400 hover:bg-white/5 hover:border-white/15"
+                      }`}
+                    >
+                      <span className="font-extrabold text-white text-[11px]">{n.label}</span>
+                      <span className="text-[9px] font-normal text-slate-400">{n.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* MODULE 13: Consent Management — GDPR Art. 9 / 15 / 20 */}
+              <div className="bg-[#141821] border border-amber-500/20 p-5 rounded-2xl space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                  <Shield className="w-3.5 h-3.5 text-amber-400" />
+                  Consent & GDPR Compliance — Art. 9 / 15 / 20
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="bg-amber-500/5 border border-amber-500/15 rounded-xl p-3 space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-300">What Is Shared</span>
+                    <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-3">
+                      <li>Behavioral observation logs (anonymized)</li>
+                      <li>Developmental milestone progress</li>
+                      <li>Language profile & bilingual notes</li>
+                      <li>Actionable co-regulation strategies</li>
+                    </ul>
+                  </div>
+                  <div className="bg-amber-500/5 border border-amber-500/15 rounded-xl p-3 space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-300">With Whom</span>
+                    <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-3">
+                      <li>Named receiving educator or school team</li>
+                      <li>Named professional (clinician / therapist)</li>
+                      <li>No third-party sharing without re-consent</li>
+                      <li>No diagnostic labels transmitted</li>
+                    </ul>
+                  </div>
+                  <div className="bg-amber-500/5 border border-amber-500/15 rounded-xl p-3 space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-300">Retention & Rights</span>
+                    <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-3">
+                      <li>Valid for this academic year only</li>
+                      <li>Art. 15: Right to access — on request</li>
+                      <li>Art. 20: Right to portability — export</li>
+                      <li>Revoke at any time from Memory Settings</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="border-t border-white/5 pt-3 flex items-start gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setConsentAcknowledged(!consentAcknowledged)}
+                    className={`mt-0.5 w-4 h-4 shrink-0 rounded border flex items-center justify-center transition ${
+                      consentAcknowledged
+                        ? "bg-[#d7aa55] border-[#d7aa55]"
+                        : "bg-white/5 border-white/20"
+                    }`}
+                  >
+                    {consentAcknowledged && <Check className="w-2.5 h-2.5 text-black" />}
+                  </button>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    I confirm this information is shared with the named recipient under Art. 9 special category data provisions. The data is non-diagnostic and prepared by a parent, not a clinical professional. I understand my rights under GDPR Art. 15, 20, and the right to revoke consent at any time.
+                  </p>
+                </div>
+                {!consentAcknowledged && (
+                  <p className="text-[10px] text-amber-400 font-semibold">⚠ Acknowledge consent before compiling or sharing the handoff brief.</p>
+                )}
+              </div>
+
+              {/* MODULE 11.6: School Meeting Preparation */}
+              <div className="bg-[#141821] border border-white/10 p-5 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-[#f4d991] flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-[#d7aa55]" />
+                    School Meeting Preparation — Module 11.6
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowMeetingPrep(!showMeetingPrep)}
+                    className="text-[10px] text-[#d7aa55] hover:text-[#f4d991] font-bold transition"
+                  >
+                    {showMeetingPrep ? "Collapse ▲" : "Expand ▼"}
+                  </button>
+                </div>
+                {showMeetingPrep && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-slate-400 leading-relaxed">Quick agenda prompts for your school meeting. Each button loads a prompt into the AI Coach tab.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {[
+                        {
+                          icon: "📋",
+                          label: "Pre-Meeting Agenda",
+                          prompt: `Generate a structured pre-meeting agenda for a ${handoffCountry === "nl" ? "OPP (Passend Onderwijs)" : handoffCountry === "il" ? "TTA / ועדת שילוב" : handoffCountry === "be" ? "M-Decree reasonable accommodations" : "IEP"} meeting for Dylan aged ${childProfile.age}. Include: parent priorities, developmental observations, specific support requests, and questions for the school team.`
+                        },
+                        {
+                          icon: "🎯",
+                          label: "My Support Requests",
+                          prompt: `Help me articulate 3 specific, reasonable support requests I can make at Dylan's school meeting based on his behavioral patterns and developmental needs. Keep requests non-diagnostic, parent-framed, and actionable for the classroom.`
+                        },
+                        {
+                          icon: "📊",
+                          label: "Progress Evidence Summary",
+                          prompt: `Summarize Dylan's recent behavioral patterns and milestone progress into a concise 1-page evidence summary I can share at the school meeting. Use only observation-based language — no diagnostic terms.`
+                        },
+                        {
+                          icon: "✅",
+                          label: "Post-Meeting Action Tracker",
+                          prompt: `Create a post-school-meeting action tracker with: agreed actions, responsible party (school vs parent), target deadline, and follow-up review date. Format as a printable checklist with a header row.`
+                        },
+                      ].map((item, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => { setChatInput(item.prompt); setActiveTab("coach"); }}
+                          className="py-3 px-4 rounded-xl border border-white/10 bg-white/[0.02] text-left hover:bg-white/5 hover:border-white/20 transition flex items-center gap-3 group"
+                        >
+                          <span className="text-xl shrink-0">{item.icon}</span>
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="font-extrabold text-white text-[11px] group-hover:text-[#f4d991] transition">{item.label}</span>
+                            <span className="text-[9px] font-normal text-slate-500 leading-relaxed line-clamp-2">{item.prompt.slice(0, 80)}…</span>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-[#d7aa55] ml-auto shrink-0 transition" />
+                        </button>
+                      ))}
+                    </div>
+                    {/* School Readiness Self-Assessment */}
+                    <div className="bg-white/[0.02] rounded-xl border border-white/5 p-4 space-y-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">School Readiness Self-Assessment — Module 11.9</span>
+                      {[
+                        "Dylan can follow 2-step instructions in at least one language",
+                        "Dylan can manage separation from primary caregiver for 30+ minutes",
+                        "Dylan can engage in parallel play with peers without adult mediation",
+                        "Dylan can use words or gestures to express basic needs",
+                        "Dylan can manage basic self-care (toileting, dressing with support)",
+                      ].map((item, i) => (
+                        <label key={i} className="flex items-center gap-2 cursor-pointer group">
+                          <input type="checkbox" className="accent-[#d7aa55] w-3.5 h-3.5 shrink-0" />
+                          <span className="text-[10px] text-slate-400 group-hover:text-slate-200 transition leading-relaxed">{item}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Dynamic Handoff Audience Specific Customization Selector */}
