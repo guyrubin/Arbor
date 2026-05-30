@@ -1,6 +1,6 @@
 # Arbor — Parenting AI Platform PRD
 
-**Version:** 1.0
+**Version:** 1.1
 **Product type:** AI-powered child-development, parenting, co-therapy, and school-support platform
 **Age range:** Birth to 12
 **Markets:** Israel, Netherlands, Belgium, later broader EU
@@ -154,15 +154,220 @@ Generates bedtime stories, school-transition stories, emotional-regulation stori
 
 ### 10. Professional Co-Therapy Platform
 
-For therapists, clinics, schools, and municipalities. Includes professional dashboard, assigned child profiles, parent logs, AI case summaries, intervention templates, session prep, homework plans, progress tracking, secure messaging, reports, and multi-professional collaboration.
+Arbor's professional layer matches clinical workflow standards comparable to SimplePractice, TinyEYE, and Goalbook Toolkit — adapted for child development and built for parent-professional co-delivery. Every professional feature is consent-gated, role-scoped, and GDPR-compliant.
+
+#### 10.1 Professional Account & Caseload
+
+- Credentialed professional registration with role verification step (license number, institution, profession type)
+- Supported role types: child psychologist, speech therapist, occupational therapist, parenting coach, educational consultant, pediatrician, social worker, SEN coordinator
+- Caseload view: assigned families, active cases, flagged items, pending actions, and upcoming sessions in a single dashboard
+- Child profile access is always parent-consent-gated; access automatically expires on case closure or parent revocation
+
+#### 10.2 Structured Intake Workflow
+
+- Professional sends a consent-linked intake invitation to the parent via Arbor
+- Parent selects the access scope they approve: logs only, full profile, or profile plus the ability to add notes visible to parent
+- AI-generated intake summary delivered to professional within 24 hours of access grant: child age, presenting concern, developmental history, behavior patterns, active plans, language profile, school context, and prior professional involvement
+- Intake package is exportable as a structured PDF
+
+#### 10.3 Session Preparation
+
+- Pre-session AI brief: last three parent log entries, behavior trends since the previous session, parent-flagged questions, active action plan progress, and any milestone changes
+- Session goal tracking: professionals set measurable goals per session in SMART format (Specific, Measurable, Achievable, Relevant, Time-bound)
+- Between-session parent guidance: structured observation prompts the professional assigns for parents to log before the next session
+
+#### 10.4 Session Notes & Progress Documentation
+
+- **SOAP format** (Subjective, Objective, Assessment, Plan) — industry-standard clinical documentation
+- **DAP format** (Data, Assessment, Plan) as an alternative for narrative-style practitioners
+- Goal progress rating per session on a defined scale from baseline to target
+- Outcome measure integration for pre-validated tools: SDQ (Strengths and Difficulties Questionnaire), PEDS, CBCL, Vineland Adaptive Behavior Scales, ASQ, and GARS for autism/ADHD observation
+- Session notes are private to the professional by default; the professional may choose to generate a parent-facing plain-language summary
+
+#### 10.5 Treatment & Intervention Planning
+
+- Structured treatment plan fields: presenting issue, measurable goals, intervention approach, frequency, estimated duration, and review date
+- Intervention plan templates: behavior support plan, language intervention plan, sensory diet, toilet training protocol, anxiety management plan, and school transition plan
+- Plan review cycle: system prompts the professional to update the plan at defined intervals (default: every six sessions or 90 days)
+- Treatment plan is shareable with the parent and, with separate explicit consent, with the child's school SEN coordinator
+
+#### 10.6 Parent Homework & Between-Session Coordination
+
+- Professional assigns structured homework tasks linked directly to the child's active Arbor action plan
+- Parent logs task completion via the standard behavior and routine log; professional sees completion rate and any parent notes
+- Secure in-app messaging between professional and parent — not relayed via email; messages are part of the case record
+- Parent can flag an urgent item between sessions; professional receives a timestamped notification
+
+#### 10.7 Multi-Disciplinary Team (MDT) Coordination
+
+- A case can be shared across multiple professionals — for example, a speech therapist, psychologist, and school SEN coordinator — with separate parent consent for each party
+- Each professional sees only their own session notes plus the shared child profile summary; no cross-professional note access without explicit disclosure consent
+- MDT case conference tool: structured meeting agenda generator producing an action list with named owner and due date
+- Lead professional designation: one professional holds the integrator role and serves as the parent's primary point of contact — aligned with Frame 6 (The Shepherd)
+
+#### 10.8 Risk Escalation
+
+- AI monitors parent logs for clinical risk indicators: persistent sleep regression, toileting regression after age four, sustained social withdrawal, escalating aggression, or language plateau — and surfaces flagged items to the assigned professional within 24 hours
+- Professional can acknowledge, escalate, or dismiss a flag with a mandatory written note
+- Critical flags (child safety indicators, acute mental health risk, abuse indicators) trigger a mandatory human-review gate; AI does not autonomously handle or communicate these
+
+#### 10.9 Reports & Exports
+
+- AI-generated case summary report in narrative format, suitable for sharing with schools or onward professionals with consent
+- Progress report: goal status over time, behavior trend summary, intervention response, and parent homework completion rate
+- Professional referral letter template: structured onward referral to pediatrician, psychiatrist, or specialist service
+- All report exports comply with GDPR Articles 15 and 20 (data access and portability); PDF output includes an audit timestamp, consent scope, and document version
+
+#### 10.10 Discharge & Case Closure
+
+- Structured discharge workflow: goal achievement summary, ongoing parent recommendations, school-facing notes, and onward referral if continued care is needed
+- Discharge summary auto-populated from session notes and progress data, with professional review and edit before release
+- Child profile is retained in Arbor after case closure; professional access is revoked immediately; parent retains full interaction history
 
 ### 11. School & Kindergarten Collaboration
 
-Includes teacher handoff notes, parent-school summaries, kindergarten adaptation plan, school behavior observations, language-support notes, school-readiness checklist, meeting preparation, and IEP-style support notes where relevant.
+Arbor's school layer matches the information-sharing and support planning standards of ClassDojo, Seesaw, Goalbook Toolkit, and Frontline Special Education — adapted for a parent-held, child-centered model and compliant with Passend Onderwijs (Netherlands), Israeli special education law (ועדת שילוב), and Belgian M-decree inclusive education frameworks.
+
+#### 11.1 School Profile
+
+- Parent creates a school profile for each enrolled child: school name, type (mainstream, SEN, international, Montessori, Steiner, religious), year group, class size, language of instruction, and SEN coordinator contact
+- Country-specific fields: Netherlands → Schoolondersteuningsprofiel (SOP) support level (Basic / Extra / Specialist); Israel → integration status and weekly support hours; Belgium → M-decree inclusion type (I / II / III)
+- School profile data informs all AI coaching responses — recommendations account for the child's educational environment
+
+#### 11.2 Teacher & SEN Coordinator Accounts
+
+- Parent invites a teacher or SEN coordinator by email; they receive a role-scoped account with limited, consent-defined access
+- **Teacher role**: read access to the child profile summary, active behavior and routine logs, language profile, and parent-shared notes; no access to medical records or professional therapy content
+- **SEN coordinator role**: teacher-level access plus active support plans and professional co-therapy summaries, each requiring separate consent per professional
+- School staff access is time-limited to the academic year and auto-expires at year end; parent can renew or revoke at any time
+- All invitations, access grants, scope changes, and revocations are logged with timestamp for audit purposes
+
+#### 11.3 Structured Handoff Notes
+
+Standardized templates comparable to Understood.org school advocate packs and ClassDojo portfolio exports:
+
+- **Start-of-year handoff note** — what this child needs to succeed: communication style, known triggers, regulation strategies, language context, existing support plans, professional involvement summary, and what worked in the prior year
+- **Mid-year update note** — progress summary, behavioral changes since September, emerging concerns, and updated classroom strategies
+- **End-of-year handoff note** — full-year summary for the receiving teacher, including unresolved concerns and recommended next steps
+- **Stage transition handoff** — preschool to primary school, or primary year to year; covers academic readiness, social-emotional profile, language status, and specific recommendations for the receiving teacher or school
+- **School-change handoff** — for families relocating or changing schools mid-year; includes everything in the transition handoff plus a parent-authored context note
+- All handoff notes are AI-drafted from the child's Arbor profile; parent reviews and approves the content before the document is shared with the school
+
+#### 11.4 Country-Specific Support Plan Documentation
+
+Comparable to Goalbook Toolkit and Frontline Special Education:
+
+- **Netherlands — OPP (Ontwikkelingsperspectiefplan)**: expected developmental trajectory, current functioning level (uitstroomprofiel), support goals, responsible parties, and review date — structured to meet Passend Onderwijs requirements and Zorgplicht obligations
+- **Israel — Individual Support Plan (תוכנית תמיכה אישית)**: goals, weekly support hours, integration committee (ועדת שילוב) summary, responsible parties, and reassessment schedule
+- **Belgium / EU — Support Level Document**: M-decree classification, reasonable accommodations (redelijke aanpassingen), responsible parties, and review date
+- **Generic IEP-style (international schools and other markets)**: present levels of performance, SMART goals, accommodations, supplementary aids, responsible parties, and review cycle
+- Plans are co-authored: parent inputs their priorities and concerns; AI drafts the structured document; SEN coordinator or assigned professional can review and co-sign within Arbor
+
+#### 11.5 School Meeting Preparation & Follow-Up
+
+- **Pre-meeting prep**: parent selects meeting type (parent-teacher conference, SEN review, IEP or support plan meeting, school refusal discussion); AI generates an agenda with the parent's top priorities, a child profile summary, and suggested talking points
+- **In-meeting notes**: a structured note-capture field for recording key decisions, agreed actions, and unresolved items
+- **Post-meeting action tracker**: actions assigned to parent, school, or professional with due dates and automated reminders; linked to the child's Arbor profile
+
+#### 11.6 School Behavior Observations
+
+- Teachers or SEN coordinators with write access can log structured observations in Arbor: setting, trigger, behavior type, intensity, teacher response, and outcome
+- School observations are tagged separately from home observations and displayed as a distinct data stream in the behavior dashboard
+- AI generates a home-school pattern analysis: compares behavior across contexts and surfaces discrepancies that may indicate environment-specific or relationship-specific triggers
+
+#### 11.7 Language & EAL Support Documentation
+
+- AI generates a language profile document for the school: home language(s), school language proficiency level, EAL stage (using CEFR A1–C2 for EU markets), specific vocabulary and instruction-following challenges, and recommended classroom strategies
+- Teacher can add classroom language observations; parent adds home language context; both feed the shared language profile
+- Output format is aligned with Common European Framework of Reference (CEFR) for EU markets and the Israeli Ministry of Education language support framework
+
+#### 11.8 School Readiness Assessment
+
+- Structured readiness checklist administered at ages three, four, and five across five domains: cognitive, language, social-emotional, physical, and self-care
+- AI generates a readiness report for the parent: domain-level readiness summary, specific strengths, and gaps relative to age-expected benchmarks
+- Gap-closing activity plan: four to six weeks of targeted daily activities to address readiness gaps before school enrollment, derived from the scholar capability layer
+
+#### 11.9 School Refusal & Attendance Support
+
+- Dedicated workflow for school refusal: symptom log, trigger identification, anxiety-based versus avoidance-based distinction using established ABSA (Anxiety-Based School Avoidance) criteria used by UK CAMHS and US school psychologists
+- Graduated re-entry plan: structured day-by-day return schedule with daily check-ins, parent script, and teacher accommodation script
+- School-facing communication template: conveys the child's support needs to the teacher without medical disclosure; includes agreed classroom accommodations for the re-entry period
 
 ### 12. Parent Education Academy
 
 Premium content library with masterclasses, short explainers, parent scripts, playbooks, interactive courses, worksheets, audio guidance, expert interviews, and country-specific guides.
+
+---
+
+### 13. Support Handoff Protocol
+
+Arbor operationalizes the structured transfer of child information between parents, professionals, and schools — replacing the current market standard of PDF email attachments and informal verbal handoffs with a consent-managed, AI-assisted handoff workflow. This is a distinct capability layer that sits across Modules 10 and 11 rather than belonging to either one.
+
+#### 13.1 Handoff Types
+
+| Handoff Type | From | To | Trigger |
+|---|---|---|---|
+| Professional Intake | Parent | Therapist / Clinic | Parent requests referral or professional initiates onboarding |
+| Professional Transfer | Outgoing professional | Incoming professional | Case closure, relocation, or professional change |
+| Home-to-School | Parent | Teacher / SEN Coordinator | Year start, school change, or ongoing coordination |
+| School-Initiated Referral | Teacher / SEN Coordinator | Professional | School flags developmental or behavioral concern |
+| MDT Case Transfer | Lead professional | Co-professional | Adding a specialist to an active case |
+| Discharge to Parent | Professional | Parent | Case closure; professional involvement ends |
+
+#### 13.2 Handoff Package Contents
+
+Each handoff generates a structured package assembled from the child's Arbor profile. Contents are consent-scoped per recipient type and assembled automatically from live profile data.
+
+**Professional intake package:**
+- Child summary: age, presenting concern, developmental history in narrative form
+- Active behavior and routine logs (last 90 days, with trigger and response data)
+- Milestone status and any flagged delays or regressions
+- Active action plans and parent completion rate
+- Language profile
+- School context and current support plan summary
+- Prior professional involvement: role and timing only, unless full disclosure is separately consented
+
+**School transition package:**
+- Behavioral profile: strengths, known triggers, and effective regulation strategies
+- Language profile and EAL stage
+- Active country-specific support plan (OPP / IEP / TTA; see Module 11.4)
+- Handoff note (start-of-year, stage transition, or school-change; see Module 11.3)
+- Professional involvement summary: role only; no clinical content unless the parent provides separate explicit consent
+
+**Professional transfer package:**
+- Full treatment history from outgoing professional's notes — shared only with that professional's explicit export authorization
+- Goal progress summary from baseline to current status
+- Discharge summary from outgoing professional
+- Current active treatment plan
+- Parent consent re-signed specifically for the incoming professional before access is granted
+
+**Discharge-to-parent package:**
+- Goal achievement summary for each treatment goal
+- Ongoing parent recommendations in plain language
+- School-facing recommendations (parent may share or withhold)
+- Onward referral letter if further professional support is recommended
+
+#### 13.3 Consent Management
+
+- Every handoff requires the parent to explicitly select: what is shared, with whom, and for how long — no default sharing
+- Consent is recorded in Arbor's audit log with timestamp, parent identity, scope, and document version
+- Default scope is minimum necessary data; parent must actively expand scope to include clinical session notes or professional summaries
+- Health and disability data (GDPR Special Category, Article 9) requires a separate explicit consent action, distinct from general profile consent
+- Consent can be revoked at any time; all access is removed within 24 hours of revocation and the revocation is logged
+- Parents can download a full consent log at any time as part of GDPR Article 15 subject access rights
+
+#### 13.4 Handoff Quality Standards
+
+Market comparators: TinyEYE referral workflow, SimplePractice intake forms, Goalbook transition document templates, Dutch Zorgplicht school-transfer documentation requirements.
+
+Each generated handoff document meets the following standards:
+
+- Structured format readable by the receiving professional or school without requiring an Arbor account
+- Exportable as PDF with audit metadata: date, consent scope, document version, and generator identifier
+- Plain-language parent-facing version generated alongside any professional-facing version
+- No AI-generated clinical conclusions, diagnoses, or risk assessments in handoff documents — only structured factual data and parent-authored observations
+- Human review gate required for any handoff document touching child safety, acute mental health content, or abuse indicators; AI does not autonomously release these
+- All documents include a visible disclaimer: this document summarizes parent-logged observations and professional records; it does not constitute a clinical assessment or diagnosis
 
 ---
 
