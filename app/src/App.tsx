@@ -1,6 +1,7 @@
 import React from "react";
 import { RefreshCw } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ProfileProvider } from "./context/ProfileContext";
 import { ArborProvider } from "./context/ArborContext";
 import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
@@ -30,9 +31,11 @@ export default function App() {
   return (
     <AuthProvider>
       <AuthGate>
-        <ArborProvider>
-          <Shell />
-        </ArborProvider>
+        <ProfileProvider>
+          <ArborProvider>
+            <Shell />
+          </ArborProvider>
+        </ProfileProvider>
       </AuthGate>
     </AuthProvider>
   );
