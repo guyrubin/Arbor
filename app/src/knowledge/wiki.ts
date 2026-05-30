@@ -13,8 +13,15 @@ export type KnowledgeCard = {
   body: string;
 };
 
-const resolveKnowledgeRoot = () => {
+export type KnowledgeLoadResult = {
+  cards: KnowledgeCard[];
+  loadedFrom: string | null;
+  byType: Record<string, number>;
+};
+
+export const resolveKnowledgeRoots = () => {
   const candidates = [
+    process.env.ARBOR_KNOWLEDGE_PATH,
     process.env.KNOWLEDGE_PATH,
     path.join(process.cwd(), "knowledge"),
     path.join(process.cwd(), "..", "knowledge")
@@ -56,12 +63,16 @@ const walkMarkdown = async (dir: string): Promise<string[]> => {
   }
 };
 
-export const loadKnowledgeCards = async () => {
-  const roots = resolveKnowledgeRoot();
+export const loadKnowledgeCardsWithMetadata = async (): Promise<KnowledgeLoadResult> => {
+  const roots = resolveKnowledgeRoots();
   let files: string[] = [];
+  let loadedFrom: string | null = null;
   for (const root of roots) {
     files = await walkMarkdown(root);
-    if (files.length > 0) break;
+    if (files.length > 0) {
+      loadedFrom = root;
+      break;
+    }
   }
   const cards: KnowledgeCard[] = [];
 
@@ -82,8 +93,15 @@ export const loadKnowledgeCards = async () => {
     });
   }
 
-  return cards;
+  const byType = cards.reduce<Record<string, number>>((counts, card) => {
+    counts[card.type] = (counts[card.type] || 0) + 1;
+    return counts;
+  }, {});
+
+  return { cards, loadedFrom, byType };
 };
+
+export const loadKnowledgeCards = async () => (await loadKnowledgeCardsWithMetadata()).cards;
 
 export const filterKnowledgeCards = (cards: KnowledgeCard[], filters: {
   ageBand?: string;

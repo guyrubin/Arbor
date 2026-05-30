@@ -10,6 +10,7 @@
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('server.js',{force:true});\"",
     "lint": "tsc --noEmit",
     "test": "vitest run --config scripts/vitest.config.mjs",
+    "test:coverage": "vitest run --config scripts/vitest.config.mjs --coverage",
     "eval:safety": "node scripts/safety-eval.mjs",
     "check:framework": "node scripts/framework-check.mjs"
   },
@@ -37,6 +38,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
+    "@vitest/coverage-v8": "^4.1.7",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",

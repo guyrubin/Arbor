@@ -4,7 +4,6 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import type { ArborConfig } from "../config/env.js";
 import { createModelProvider } from "../ai/modelRouter.js";
-import { loadKnowledgeCards } from "../knowledge/wiki.js";
 import { LocalMemoryStore } from "../memory/localMemoryStore.js";
 import { FirestoreMemoryStore } from "../memory/firestoreMemoryStore.js";
 import { loadFramework } from "../services/framework.js";
@@ -40,10 +39,6 @@ export const createApp = (config: ArborConfig) => {
   }));
   app.use(express.json({ limit: "250kb" }));
   app.use("/api", createApiRouter({ config, modelProvider, memoryStore, framework }));
-
-  loadKnowledgeCards()
-    .then((cards) => console.log(`[Arbor Knowledge] Loaded ${cards.length} source cards.`))
-    .catch((error) => console.warn("[Arbor Knowledge] Failed to load source cards:", error));
 
   return app;
 };

@@ -76,7 +76,7 @@ export const loadConfig = (): ArborConfig => {
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT_ID,
     firestoreDatabaseId: process.env.FIRESTORE_DATABASE_ID || "(default)",
-    knowledgePath: process.env.KNOWLEDGE_PATH,
+    knowledgePath: process.env.ARBOR_KNOWLEDGE_PATH || process.env.KNOWLEDGE_PATH,
     memoryAdapter,
     enableLocalMemoryAdapter,
     enableHighRiskReviewQueue: boolFromEnv(process.env.ENABLE_HIGH_RISK_REVIEW_QUEUE, true)

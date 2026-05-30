@@ -8,7 +8,7 @@ RUN npm run build
 FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-ENV KNOWLEDGE_PATH=/app/knowledge
+ENV ARBOR_KNOWLEDGE_PATH=/app/knowledge
 COPY --from=build /app/package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist

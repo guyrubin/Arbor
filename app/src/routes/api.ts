@@ -5,8 +5,8 @@ import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse } from "../contracts/coach.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
-import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, transitionMemory } from "../memory/memoryService.js";
-import { loadKnowledgeCards, renderKnowledgeContext, retrieveKnowledgeCards } from "../knowledge/wiki.js";
+import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
+import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards } from "../knowledge/wiki.js";
 import { Type } from "@google/genai";
 
 type ApiDeps = {
@@ -120,6 +120,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, framework 
 
     try {
       const childId = toChildId(childProfile);
+      const familyId = toFamilyId(childProfile);
       const approvedMemory = await getApprovedMemoryContext(memoryStore, childId);
       const knowledgeCards = await retrieveKnowledgeCards({
         ageBand: childProfile?.ageBand,
@@ -173,6 +174,7 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
         structured.sourceCardsUsed = knowledgeCards.map((card) => card.id);
       }
       const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, structured.memoryProposals, {
+        familyId,
         prompt: message,
         frameRouting: structured.frameRouting
       });
@@ -388,11 +390,13 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
   });
 
   router.get("/architecture/knowledge", async (_req, res) => {
-    const cards = await loadKnowledgeCards();
+    const knowledge = await loadKnowledgeCardsWithMetadata();
     res.json({
       product: "Arbor",
-      cardCount: cards.length,
-      cardIds: cards.map((card) => card.id)
+      cardCount: knowledge.cards.length,
+      byType: knowledge.byType,
+      loadedFrom: knowledge.loadedFrom,
+      cardIds: knowledge.cards.map((card) => card.id)
     });
   });
 

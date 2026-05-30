@@ -5,6 +5,7 @@ export type MemoryStatus = "pending" | "approved" | "rejected" | "deleted" | "ex
 export type MemoryLedgerEvent = {
   eventId: string;
   memoryId: string;
+  familyId: string;
   childId: string;
   eventType: "proposed" | "approved" | "rejected" | "deleted" | "edited" | "expired";
   status: MemoryStatus;

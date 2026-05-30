@@ -15,9 +15,9 @@ const createStore = (seed: MemoryLedgerEvent[] = []): MemoryStore & { events: Me
 describe("memory ledger service", () => {
   it("folds append-only events to the latest non-deleted review item", () => {
     const events: MemoryLedgerEvent[] = [
-      { eventId: "e1", memoryId: "m1", childId: "c1", eventType: "proposed", status: "pending", fact: "Needs visual transition", source: "chat", retention: "30d", createdAt: "2026-01-01T00:00:00.000Z", actor: "system" },
-      { eventId: "e2", memoryId: "m1", childId: "c1", eventType: "approved", status: "approved", fact: "Needs visual transition", source: "chat", retention: "30d", createdAt: "2026-01-02T00:00:00.000Z", actor: "parent" },
-      { eventId: "e3", memoryId: "m2", childId: "c1", eventType: "deleted", status: "deleted", fact: "Remove me", source: "chat", retention: "30d", createdAt: "2026-01-03T00:00:00.000Z", actor: "parent" }
+      { eventId: "e1", memoryId: "m1", familyId: "f1", childId: "c1", eventType: "proposed", status: "pending", fact: "Needs visual transition", source: "chat", retention: "30d", createdAt: "2026-01-01T00:00:00.000Z", actor: "system" },
+      { eventId: "e2", memoryId: "m1", familyId: "f1", childId: "c1", eventType: "approved", status: "approved", fact: "Needs visual transition", source: "chat", retention: "30d", createdAt: "2026-01-02T00:00:00.000Z", actor: "parent" },
+      { eventId: "e3", memoryId: "m2", familyId: "f1", childId: "c1", eventType: "deleted", status: "deleted", fact: "Remove me", source: "chat", retention: "30d", createdAt: "2026-01-03T00:00:00.000Z", actor: "parent" }
     ];
 
     expect(foldMemoryEvents(events, "c1")).toHaveLength(1);
@@ -27,6 +27,7 @@ describe("memory ledger service", () => {
   it("transitions memory and injects approved memory only", async () => {
     const store = createStore();
     await appendMemoryProposals(store, "c1", [{ fact: "Uses a picture card before shoes", source: "parent chat", retention: "review in 30 days" }], {
+      familyId: "f1",
       prompt: "morning transition",
       frameRouting: { aim: "agency", twoAxes: "warmth and structure", story: "morning ritual", shadow: "frustration", marriage: "align", shepherd: "parent" }
     });

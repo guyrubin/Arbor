@@ -8,6 +8,11 @@ export const toChildId = (childProfile: any) => {
   return "default-child";
 };
 
+export const toFamilyId = (childProfile: any) => {
+  if (childProfile?.familyId) return String(childProfile.familyId);
+  return "default-family";
+};
+
 export const foldMemoryEvents = (events: MemoryLedgerEvent[], childId?: string): MemoryReviewItem[] => {
   const latest = new Map<string, MemoryReviewItem>();
 
@@ -15,6 +20,7 @@ export const foldMemoryEvents = (events: MemoryLedgerEvent[], childId?: string):
     if (childId && event.childId !== childId) continue;
     latest.set(event.memoryId, {
       memoryId: event.memoryId,
+      familyId: event.familyId,
       childId: event.childId,
       status: event.status,
       fact: event.fact,
@@ -44,7 +50,7 @@ export const appendMemoryProposals = async (
   store: MemoryStore,
   childId: string,
   proposals: CoachResponse["memoryProposals"],
-  context: { prompt: string; frameRouting: CoachResponse["frameRouting"] }
+  context: { familyId: string; prompt: string; frameRouting: CoachResponse["frameRouting"] }
 ) => {
   if (proposals.length === 0) return foldMemoryEvents(await store.listEvents(childId), childId);
 
@@ -62,6 +68,7 @@ export const appendMemoryProposals = async (
     await store.appendEvent({
       eventId: randomUUID(),
       memoryId: randomUUID(),
+      familyId: context.familyId,
       childId,
       eventType: "proposed",
       status: "pending",
@@ -99,6 +106,7 @@ export const transitionMemory = async (
   await store.appendEvent({
     eventId: randomUUID(),
     memoryId,
+    familyId: current.familyId,
     childId: current.childId,
     eventType: eventTypeByStatus[status],
     status,

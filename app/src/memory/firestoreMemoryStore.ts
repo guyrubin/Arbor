@@ -1,10 +1,12 @@
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
+import { FamilyService } from "../families/familyService.js";
 import type { MemoryLedgerEvent, MemoryStore } from "./types.js";
 
 export class FirestoreMemoryStore implements MemoryStore {
   private readonly db;
+  private readonly families;
 
   constructor(config: ArborConfig) {
     if (!getApps().length) {
@@ -14,6 +16,7 @@ export class FirestoreMemoryStore implements MemoryStore {
       });
     }
     this.db = getFirestore(config.firestoreDatabaseId);
+    this.families = new FamilyService(this.db);
   }
 
   async listEvents(childId?: string) {
@@ -26,10 +29,7 @@ export class FirestoreMemoryStore implements MemoryStore {
   }
 
   async appendEvent(event: MemoryLedgerEvent) {
-    const child = await this.db.collection("children").doc(event.childId).get();
-    if (!child.exists) {
-      throw new Error(`Cannot append Arbor memory event because children/${event.childId} does not exist.`);
-    }
+    await this.families.ensureChild(event.familyId, event.childId);
     await this.db
       .collection("children")
       .doc(event.childId)
@@ -44,31 +44,7 @@ export class FirestoreMemoryStore implements MemoryStore {
     userId: string;
     childProfile?: Record<string, unknown>;
   }) {
-    const now = new Date().toISOString();
-    const batch = this.db.batch();
-    const familyRef = this.db.collection("families").doc(input.familyId);
-    const memberRef = familyRef.collection("members").doc(input.userId);
-    const childRef = this.db.collection("children").doc(input.childId);
-
-    batch.set(familyRef, {
-      familyId: input.familyId,
-      createdAt: now,
-      updatedAt: now
-    }, { merge: true });
-    batch.set(memberRef, {
-      userId: input.userId,
-      role: "parent",
-      createdAt: now,
-      updatedAt: now
-    }, { merge: true });
-    batch.set(childRef, {
-      ...(input.childProfile || {}),
-      childId: input.childId,
-      familyId: input.familyId,
-      createdAt: now,
-      updatedAt: now
-    }, { merge: true });
-
-    await batch.commit();
+    await this.families.ensureFamilyMembership(input.familyId, input.userId);
+    await this.families.ensureChild(input.familyId, input.childId, input.childProfile);
   }
 }
