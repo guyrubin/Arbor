@@ -8,6 +8,7 @@ import {
   BehaviorAnalysis,
   SchoolBrief,
   MemoryReviewItem,
+  BehaviorContext,
 } from "../types";
 import {
   sampleBehaviorLogs,
@@ -85,6 +86,7 @@ function useArborState() {
   const [newLogTrigger, setNewLogTrigger] = useState<string>("");
   const [newLogResponse, setNewLogResponse] = useState<string>("");
   const [newLogNotes, setNewLogNotes] = useState<string>("");
+  const [newLogContext, setNewLogContext] = useState<BehaviorContext>("Home");
 
   // Form states: Generated Action Plan
   const [planChallengeTopic, setPlanChallengeTopic] = useState<string>(
@@ -456,6 +458,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       trigger: newLogTrigger,
       response: newLogResponse,
       notes: newLogNotes || undefined,
+      context: newLogContext,
+      resolved: false,
     };
 
     setBehaviorLogs([logItem, ...behaviorLogs]);
@@ -583,6 +587,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     }
   };
 
+  // Mark a behavior log resolved / unresolved
+  const toggleLogResolved = (id: string) => {
+    setBehaviorLogs((prev) => prev.map((l) => (l.id === id ? { ...l, resolved: !l.resolved } : l)));
+  };
+
   // Toggle milestone checking
   const handleToggleMilestone = (id: string) => {
     setMilestones((prev) => prev.map((m) => (m.id === id ? { ...m, checked: !m.checked } : m)));
@@ -642,6 +651,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setNewLogResponse,
     newLogNotes,
     setNewLogNotes,
+    newLogContext,
+    setNewLogContext,
+    toggleLogResolved,
     planChallengeTopic,
     setPlanChallengeTopic,
     isPlanGenerating,

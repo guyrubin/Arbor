@@ -9,6 +9,8 @@ export interface ChildProfile {
   riskLevel: 'Low' | 'Moderate' | 'High';
 }
 
+export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';
+
 export type DevelopmentalDomainId =
   | 'attachment_regulation'
   | 'language_communication'
@@ -64,6 +66,10 @@ export interface BehaviorLog {
   trigger: string;
   response: string;
   notes?: string;
+  context?: BehaviorContext;
+  resolved?: boolean;
+  resolutionNotes?: string;
+  photoAttachment?: string;
 }
 
 export interface Milestone {
