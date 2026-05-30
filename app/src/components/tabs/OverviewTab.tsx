@@ -1,183 +1,227 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Brain, ChevronRight, AlertTriangle, Sparkles, Play } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { TrendingUp, TrendingDown, Minus, MessageSquare, Plus, Sparkles } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { AnimatedNumber } from "../ui/AnimatedNumber";
+import { ProgressRing } from "../ui/ProgressRing";
+import QuickLogModal from "../overview/QuickLogModal";
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Map an intensity (1-5) to the sage → clay scale. */
+function intensityColor(intensity: number): string {
+  if (intensity <= 1) return "#6f9e6f";
+  if (intensity <= 2) return "#9bbf5a";
+  if (intensity <= 3) return "#d7aa55";
+  if (intensity <= 4) return "#e08a3c";
+  return "#e2562d";
+}
 
 export default function OverviewTab() {
   const {
     setActiveTab,
     actionPlans,
     milestonesPercent,
-    childProfile,
+    checkedMilestones,
+    totalMilestones,
     behaviorLogs,
+    chatMessages,
     currentStory,
     setActiveStoryPage,
-    setSelectedLens,
-    setChatInput,
-    handleTogglePlanStep,
   } = useArbor();
 
+  const [quickLog, setQuickLog] = useState(false);
+
+  // 7-day intensity trend vs the previous 7 days.
+  const { weekAvg, trend } = useMemo(() => {
+    const now = Date.now();
+    const day = 86_400_000;
+    const window = (start: number, end: number) =>
+      behaviorLogs.filter((l) => {
+        const t = new Date(l.timestamp).getTime();
+        return t >= start && t < end;
+      });
+    const recent = window(now - 7 * day, now + day);
+    const prior = window(now - 14 * day, now - 7 * day);
+    const avg = (arr: typeof behaviorLogs) =>
+      arr.length ? arr.reduce((s, l) => s + l.intensity, 0) / arr.length : 0;
+    const r = avg(recent);
+    const p = avg(prior);
+    const t: "up" | "down" | "flat" = r > p + 0.1 ? "up" : r < p - 0.1 ? "down" : "flat";
+    return { weekAvg: r, trend: t };
+  }, [behaviorLogs]);
+
+  // Behavior events grouped by weekday over the last 28 days.
+  const weeklyData = useMemo(() => {
+    const now = Date.now();
+    const cutoff = now - 28 * 86_400_000;
+    const buckets = DAYS.map((d) => ({ day: d, count: 0, intensitySum: 0 }));
+    for (const log of behaviorLogs) {
+      const t = new Date(log.timestamp).getTime();
+      if (t < cutoff) continue;
+      const idx = new Date(log.timestamp).getDay();
+      buckets[idx].count += 1;
+      buckets[idx].intensitySum += log.intensity;
+    }
+    return buckets.map((b) => ({
+      day: b.day,
+      count: b.count,
+      avgIntensity: b.count ? b.intensitySum / b.count : 0,
+    }));
+  }, [behaviorLogs]);
+
+  const coachSessions = useMemo(
+    () => chatMessages.filter((m) => m.sender === "user").length,
+    [chatMessages]
+  );
+
+  const topTrigger = useMemo(() => {
+    const counts = new Map<string, number>();
+    behaviorLogs.forEach((l) => counts.set(l.behaviorType, (counts.get(l.behaviorType) || 0) + 1));
+    let top = "";
+    let max = 0;
+    counts.forEach((v, k) => {
+      if (v > max) {
+        max = v;
+        top = k;
+      }
+    });
+    return top;
+  }, [behaviorLogs]);
+
+  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+  const trendColor = trend === "up" ? "text-[#e2562d]" : trend === "down" ? "text-emerald-400" : "text-[#a8a093]";
+
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
-      {/* Giant Banner/Hero Block */}
-      <div className="border border-white/10 rounded-3xl p-6 md:p-10 bg-gradient-to-br from-white/[0.08] to-white/[0.025] from-amber-500/[0.03] to-transparent bg-[#141821] shadow-xl relative overflow-hidden grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8 items-center">
-        <div className="space-y-4 relative z-10">
-          <span className="text-xs font-black uppercase tracking-wider text-[#f4d991]">Parenting Intelligence Cockpit</span>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-            Not a parenting chatbot.<br />A development intelligence operating system.
-          </h2>
-          <p className="text-sm md:text-base text-[#a8a093] leading-relaxed max-w-lg">
-            Welcome back. Arbor turns today&apos;s parenting signal into a safety-aware plan, parent script, approved memory, and handoff note without diagnosing the child.
-          </p>
-          <div className="flex flex-wrap gap-3 pt-2">
-            <button
-              onClick={() => setActiveTab("coach")}
-              className="bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold text-sm px-5 py-3 rounded-2xl transition shadow-lg shadow-[#d7aa55]/10 flex items-center gap-2"
-            >
-              <Brain className="w-4 h-4" /> Ask Parent Coach
-            </button>
-            <button
-              onClick={() => setActiveTab("plans")}
-              className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-sm px-5 py-3 rounded-2xl transition"
-            >
-              View Active Plans ({actionPlans.length})
-            </button>
-          </div>
-        </div>
-
-        {/* Handheld Live HUD preview */}
-        <div className="bg-[#08090c] border border-white/15 rounded-[36px] p-5 shadow-2xl w-full max-w-[340px] mx-auto text-sm space-y-4">
-          <div className="bg-gradient-to-br from-[#d7aa55]/20 to-transparent border border-[#d7aa55]/20 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-black text-[#f4d991]">Dylan · Age 5</h3>
-              <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold">Stable</span>
-            </div>
-            <p className="text-[11px] text-gray-300 mt-1">Kindergarten readiness timeline</p>
-            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mt-3">
-              <div className="bg-[#d7aa55] h-full" style={{ width: `${milestonesPercent}%` }} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-white/[0.03] border border-white/5 p-2 rounded-xl text-center">
-              <b className="block text-lg font-black text-white">{milestonesPercent}%</b>
-              <span className="text-[9px] text-[#a8a093] tracking-wide uppercase">Readiness Score</span>
-            </div>
-            <div className="bg-white/[0.03] border border-white/5 p-2 rounded-xl text-center">
-              <b className="block text-lg font-black text-white">{actionPlans.length}</b>
-              <span className="text-[9px] text-[#a8a093] tracking-wide uppercase">Active Plans</span>
-            </div>
-            <div className="bg-white/[0.03] border border-white/5 p-2 rounded-xl text-center">
-              <b className="block text-lg font-black text-white">{childProfile.riskLevel}</b>
-              <span className="text-[9px] text-[#a8a093] tracking-wide uppercase">Safety Tier</span>
-            </div>
-            <div className="bg-white/[0.03] border border-white/5 p-2 rounded-xl text-center">
-              <b className="block text-lg font-black text-white">8m</b>
-              <span className="text-[9px] text-[#a8a093] tracking-wide uppercase">Story Readtime</span>
-            </div>
-          </div>
-
-          <div className="bg-white/5 border border-white/10 p-3 rounded-2xl space-y-1">
-            <span className="text-[9px] font-black uppercase text-[#f4d991] tracking-wider block">Co-Regulation Script</span>
-            <p className="text-xs text-gray-200">“You are upset. The rule remains. We try again together.”</p>
-          </div>
-        </div>
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8 relative">
+      <div>
+        <span className="text-xs font-black uppercase tracking-wider text-[#f4d991]">Parenting Intelligence Cockpit</span>
+        <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-tight mt-1">Today&apos;s development dashboard</h2>
       </div>
 
-      {/* Sub cockpit panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-[#141821] border border-white/10 p-6 rounded-3xl space-y-6">
+      {/* KPI ROW */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Behavior intensity trend */}
+        <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 hover:-translate-y-0.5 hover:shadow-xl transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider">🔴 Behavior intensity</span>
+            <TrendIcon className={`w-4 h-4 ${trendColor}`} />
+          </div>
+          <div className="mt-3 text-4xl font-black text-white">
+            <AnimatedNumber value={weekAvg} decimals={1} />
+            <span className="text-lg text-[#a8a093] font-bold"> / 5</span>
+          </div>
+          <p className="text-[11px] text-[#a8a093] mt-1">7-day rolling average ({trend === "up" ? "rising" : trend === "down" ? "easing" : "steady"})</p>
+        </div>
+
+        {/* Milestone progress */}
+        <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 hover:-translate-y-0.5 hover:shadow-xl transition flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">Behavior Time analysis</span>
-            <h3 className="text-xl font-bold text-white mt-1">Longitudinal Insights Map</h3>
+            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider">✅ Milestones</span>
+            <div className="mt-3 text-4xl font-black text-white">
+              <AnimatedNumber value={checkedMilestones} /> <span className="text-lg text-[#a8a093] font-bold">/ {totalMilestones}</span>
+            </div>
+            <p className="text-[11px] text-[#a8a093] mt-1">{milestonesPercent}% readiness</p>
           </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-gray-300">
-              <span>Total logged incidents: <b>{behaviorLogs.length} entries</b></span>
-              <button onClick={() => setActiveTab("behaviors")} className="text-[#f4d991] hover:underline">
-                Adjust logs +
-              </button>
-            </div>
-
-            <div className="grid grid-cols-4 gap-2 h-16 items-end mt-4">
-              {[
-                { d: "Mon", h: "40%" },
-                { d: "Tue", h: "80%" },
-                { d: "Wed", h: "20%" },
-                { d: "Thu", h: "60%" },
-              ].map((bar) => (
-                <div key={bar.d} className="bg-blue-500/10 rounded-lg p-2 flex flex-col items-center justify-end h-full">
-                  <div className="bg-blue-500 w-full rounded-md" style={{ height: bar.h }}></div>
-                  <span className="text-[9px] text-gray-400 mt-1">{bar.d}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-2">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-[#d7aa55]" />
-                Attachment Co-Regulation Pattern:
-              </span>
-              <p className="text-xs text-[#a8a093] leading-relaxed">
-                Transition refusal on morning departure accounts for 75% of high-intensity outbursts this week. Note: Dylan calming duration falls from 25 mins to 10 mins when presented with controlled boundaries and a dual-language school prep card.
-              </p>
-            </div>
-          </div>
+          <ProgressRing value={milestonesPercent} size={64}>
+            <span className="text-xs font-black text-[#f4d991]">{milestonesPercent}%</span>
+          </ProgressRing>
         </div>
 
-        <div className="bg-[#141821] border border-white/10 p-6 rounded-3xl flex flex-col justify-between gap-6">
-          <div className="space-y-4">
-            <div>
-              <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">In-Progress Strategy</span>
-              <h3 className="text-xl font-bold text-white mt-1">Action Plan Practice</h3>
-            </div>
-
-            {actionPlans.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-[#f4d991]">{actionPlans[0].title}</span>
-                  <span className="text-[10px] bg-amber-500/15 text-[#f4d991] px-2 py-0.5 rounded-full font-bold">Active Plan</span>
-                </div>
-                <p className="text-xs text-gray-400">{actionPlans[0].issue}</p>
-
-                <div className="space-y-2 mt-2">
-                  {actionPlans[0].phases[0].steps.map((st, i) => (
-                    <label
-                      key={i}
-                      className="flex items-start gap-2.5 p-2 bg-white/[0.01] hover:bg-white/[0.04] transition rounded-xl cursor-copy text-xs text-gray-300"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={st.completed}
-                        onChange={() => handleTogglePlanStep(actionPlans[0].id, 0, i)}
-                        className="mt-0.5 accent-[#d7aa55]"
-                      />
-                      <span className={st.completed ? "line-through text-gray-500" : ""}>{st.text}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
+        {/* Coach sessions */}
+        <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 hover:-translate-y-0.5 hover:shadow-xl transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider">💬 Coach sessions</span>
+            <MessageSquare className="w-4 h-4 text-[#a8a093]" />
           </div>
-
-          <button
-            onClick={() => setActiveTab("plans")}
-            className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 transition font-bold text-xs rounded-2xl flex items-center justify-center gap-2"
-          >
-            Manage action worksheets <ChevronRight className="w-4 h-4" />
-          </button>
+          <div className="mt-3 text-4xl font-black text-white">
+            <AnimatedNumber value={coachSessions} />
+          </div>
+          <button onClick={() => setActiveTab("coach")} className="text-[11px] text-[#f4d991] hover:underline mt-1">Open Parent Coach ➔</button>
         </div>
       </div>
 
-      {/* Bedtime Stories quick card */}
+      {/* WEEKLY PATTERN CHART */}
+      <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-4">
+        <div>
+          <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">Weekly pattern</span>
+          <h3 className="text-xl font-bold text-white mt-1">Behavior events by day (last 4 weeks)</h3>
+        </div>
+        <div className="h-56 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyData} onClick={() => setActiveTab("behaviors")} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+              <XAxis dataKey="day" stroke="#a8a093" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis allowDecimals={false} stroke="#a8a093" fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                contentStyle={{ background: "#0c0e14", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, fontSize: 12 }}
+                labelStyle={{ color: "#f4d991" }}
+                formatter={(v: any, _n: any, item: any) => [`${v} events · avg ${item?.payload?.avgIntensity?.toFixed(1) || 0}/5`, "Behavior"]}
+              />
+              <Bar dataKey="count" radius={[6, 6, 0, 0]} cursor="pointer">
+                {weeklyData.map((entry, i) => (
+                  <Cell key={i} fill={entry.count ? intensityColor(entry.avgIntensity) : "rgba(255,255,255,0.08)"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-[11px] text-[#a8a093]">Bar color reflects average intensity (sage → clay). Click a bar to review behavior logs.</p>
+      </div>
+
+      {/* BOTTOM ROW */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Today's focus */}
+        <div className="bg-gradient-to-br from-[#d7aa55]/8 to-transparent border border-[#d7aa55]/15 rounded-3xl p-6 space-y-3">
+          <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-[#d7aa55]" /> Today&apos;s focus
+          </span>
+          {behaviorLogs.length ? (
+            <p className="text-sm text-gray-200 leading-relaxed">
+              <strong className="text-white">{topTrigger || "Transitions"}</strong> is the most frequent pattern right now. Lead with a calm, predictable boundary and a transitional object — and capture how it goes with a quick log.
+            </p>
+          ) : (
+            <p className="text-sm text-[#a8a093]">No logs yet. Capture your first moment to unlock tailored focus guidance.</p>
+          )}
+          <button onClick={() => setActiveTab("coach")} className="text-xs font-bold text-[#f4d991] hover:underline">Ask the coach about this ➔</button>
+        </div>
+
+        {/* Active action plans */}
+        <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider">Active action plans</span>
+            <button onClick={() => setActiveTab("plans")} className="text-[11px] text-[#a8a093] hover:text-white">Manage ➔</button>
+          </div>
+          <div className="space-y-3">
+            {actionPlans.slice(0, 3).map((plan) => {
+              const steps = plan.phases.flatMap((ph) => ph.steps);
+              const done = steps.filter((s) => s.completed).length;
+              const pct = steps.length ? Math.round((done / steps.length) * 100) : 0;
+              return (
+                <div key={plan.id} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-white truncate pr-2">{plan.title}</span>
+                    <span className="text-[#a8a093]">{done}/{steps.length}</span>
+                  </div>
+                  <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                    <div className="bg-[#d7aa55] h-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+            {actionPlans.length === 0 && <p className="text-xs text-[#a8a093]">No active plans yet.</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* Bedtime story quick card */}
       <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-5">
-          <div className="w-16 h-16 bg-[#d7aa55]/10 rounded-2xl flex items-center justify-center text-3xl">📚</div>
+          <div className="w-14 h-14 bg-[#d7aa55]/10 rounded-2xl flex items-center justify-center text-2xl">📚</div>
           <div>
-            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">Co-Regulated Story Teller</span>
-            <h3 className="text-xl font-extrabold text-white mt-0.5">{currentStory.title}</h3>
-            <p className="text-xs text-[#a8a093] leading-relaxed mt-1 max-w-md">{currentStory.summary}</p>
+            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">Tonight&apos;s story</span>
+            <h3 className="text-lg font-extrabold text-white mt-0.5">{currentStory.title}</h3>
           </div>
         </div>
         <button
@@ -185,62 +229,21 @@ export default function OverviewTab() {
             setActiveStoryPage(0);
             setActiveTab("stories");
           }}
-          className="bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold text-xs px-5 py-3.5 rounded-2xl transition shadow-lg shadow-[#d7aa55]/10 flex items-center gap-2 w-full md:w-auto justify-center"
+          className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs px-5 py-3 rounded-2xl transition"
         >
-          Open Reading Book <Play className="w-3 px-0.5" />
+          Open reading book
         </button>
       </div>
 
-      {/* Contextual Interactive AI Widget */}
-      <div className="bg-gradient-to-br from-[#d7aa55]/5 to-transparent border border-[#d7aa55]/15 rounded-3xl p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#d7aa55]/10 text-[#f4d991] flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-[#d7aa55]" />
-          </div>
-          <div>
-            <h4 className="text-base font-extrabold text-white flex items-center gap-1.5">
-              Contextual AI Co-Regulation Guide
-              <span className="animate-pulse w-2 h-2 rounded-full bg-emerald-400" />
-            </h4>
-            <p className="text-xs text-[#a8a093]">Generate prompt guidelines instantly tailored to Dylan's current developmental stage and active logs.</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <button
-            onClick={() => {
-              setSelectedLens("Bowlby's Attachment Model");
-              setChatInput("Dylan screamed and threw toys. Give me an immediate relational rupture-repair script.");
-              setActiveTab("coach");
-            }}
-            className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer"
-          >
-            <b className="text-xs text-[#f4d991] block group-hover:text-white transition">Rupture-Repair Script ➔</b>
-            <p className="text-[10px] text-gray-400 mt-1 lines-clamp-2 leading-relaxed">Get an attachment-based script to soothe frustration and repair relational warmth.</p>
-          </button>
-          <button
-            onClick={() => {
-              setSelectedLens("Piaget's Cognitive Stages");
-              setChatInput("Dylan is refusing transitions. Explain his mindset through Piaget's Preoperational cognitive perspective and suggest a boundary strategy.");
-              setActiveTab("coach");
-            }}
-            className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer"
-          >
-            <b className="text-xs text-[#f4d991] block group-hover:text-white transition">Piaget Mindset Scaffold ➔</b>
-            <p className="text-[10px] text-gray-400 mt-1 lines-clamp-2 leading-relaxed">Translate preschool self-centered cognitive schema into calm transition boundaries.</p>
-          </button>
-          <button
-            onClick={() => {
-              setSelectedLens("Vygotsky's Scaffolding");
-              setChatInput("Dylan is learning bilingual English/Hebrew co-regulation phrases. Give me a 10-minute game to build code-switching confidence.");
-              setActiveTab("coach");
-            }}
-            className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer"
-          >
-            <b className="text-xs text-[#f4d991] block group-hover:text-white transition">Bilingual Scaffolding ➔</b>
-            <p className="text-[10px] text-gray-400 mt-1 lines-clamp-2 leading-relaxed">Construct parent guidance words to scaffold shifting between English and Hebrew transitions.</p>
-          </button>
-        </div>
-      </div>
+      {/* Floating quick-log button */}
+      <button
+        onClick={() => setQuickLog(true)}
+        className="fixed bottom-6 right-6 z-30 bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold rounded-2xl shadow-2xl shadow-[#d7aa55]/20 px-5 py-3.5 flex items-center gap-2 transition active:scale-[0.97]"
+      >
+        <Plus className="w-4 h-4" /> Quick log
+      </button>
+
+      <QuickLogModal open={quickLog} onClose={() => setQuickLog(false)} />
     </motion.div>
   );
 }
