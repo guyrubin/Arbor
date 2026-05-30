@@ -8,6 +8,7 @@ import { LocalMemoryStore } from "../memory/localMemoryStore.js";
 import { FirestoreMemoryStore } from "../memory/firestoreMemoryStore.js";
 import { loadFramework } from "../services/framework.js";
 import { createApiRouter } from "../routes/api.js";
+import { createAuthMiddleware } from "./authMiddleware.js";
 
 export const createApp = (config: ArborConfig) => {
   const app = express();
@@ -38,6 +39,7 @@ export const createApp = (config: ArborConfig) => {
     }
   }));
   app.use(express.json({ limit: "250kb" }));
+  app.use("/api", createAuthMiddleware(config));
   app.use("/api", createApiRouter({ config, modelProvider, memoryStore, framework }));
 
   return app;
