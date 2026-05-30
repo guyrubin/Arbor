@@ -10,12 +10,12 @@ import {
   MemoryReviewItem,
 } from "../types";
 import {
-  defaultChildProfile,
   sampleBehaviorLogs,
   initialMilestones,
   defaultActionPlans,
   sampleBedtimeStory,
 } from "../initialData";
+import { useProfile } from "./ProfileContext";
 
 export type ActiveTab =
   | "overview"
@@ -39,12 +39,16 @@ export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryRevi
 function useArborState() {
   const showSandboxBanner = import.meta.env.VITE_HAS_GEMINI_API !== "true";
 
+  // Active child comes from ProfileContext so every AI call, log, and plan is
+  // scoped to the selected child rather than a hardcoded profile.
+  const { activeChild, updateChild } = useProfile();
+  const childProfile: ChildProfile = activeChild;
+
   // Navigation State
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
   const [showAiRail, setShowAiRail] = useState<boolean>(true);
 
   // App Core States
-  const [childProfile, setChildProfile] = useState<ChildProfile>(defaultChildProfile);
   const [behaviorLogs, setBehaviorLogs] = useState<BehaviorLog[]>(sampleBehaviorLogs);
   const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
   const [actionPlans, setActionPlans] = useState<ActionPlan[]>(defaultActionPlans);
@@ -578,7 +582,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     showAiRail,
     setShowAiRail,
     childProfile,
-    setChildProfile,
+    updateChild,
     behaviorLogs,
     setBehaviorLogs,
     milestones,

@@ -11,9 +11,10 @@ import {
   Shield,
 } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
+import ProfileSwitcher from "../profile/ProfileSwitcher";
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab, childProfile, milestonesPercent, actionPlans } = useArbor();
+  const { activeTab, setActiveTab, milestonesPercent, actionPlans } = useArbor();
 
   const navItemClass = (tab: ActiveTab) =>
     `flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
@@ -53,21 +54,8 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Micro Child Summary */}
-      <div className="bg-[#141821] border border-white/5 rounded-2xl p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-500/10 text-blue-400 font-bold rounded-xl flex items-center justify-center text-sm">
-            {childProfile.name.slice(0, 2)}
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-white leading-tight">{childProfile.name}</h4>
-            <p className="text-xs text-[#a8a093]">Age {childProfile.age} · Hebrew native</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <span className="text-[10px] font-bold bg-[#d7aa55]/10 text-[#f4d991] px-2 py-0.5 rounded-full">OS v1.0</span>
-        </div>
-      </div>
+      {/* Child profile switcher */}
+      <ProfileSwitcher />
 
       {/* Navigation Items */}
       <nav className="flex flex-col gap-1.5 flex-1">
