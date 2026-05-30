@@ -31,6 +31,21 @@ export type ActiveTab =
 export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string };
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[] };
 
+export const WELCOME_MESSAGE: ChatMessage = {
+  sender: "ai",
+  text:
+    "### Welcome to Arbor Parent Coach\n" +
+    "I help turn parenting concerns into age-aware, non-diagnostic next steps. Share a hard moment, a behavior pattern, or a developmental question your child is facing.\n\n" +
+    "### Suggested starting points:\n" +
+    "- **\"Transition tantrums when leaving for school in the mornings.\"**\n" +
+    "- **\"Refuses to switch off the screen at night and screams.\"**\n" +
+    "- **\"Suggestions for improving confidence when switching between languages.\"**\n\n" +
+    "Select a **Scholar Lens** above to focus guidance through a developmental frame (Vygotsky, Bowlby, Piaget, Winnicott, etc.).",
+  lens: "Integrated Balanced",
+};
+
+const chatStorageKey = (childId: string) => `arbor.chat.${childId}`;
+
 /**
  * Holds the full Arbor application state and the API handlers that were
  * previously inlined in App.tsx. Exposed via ArborProvider / useArbor so the
@@ -57,20 +72,7 @@ function useArborState() {
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>("Integrated Balanced");
   const [chatInput, setChatInput] = useState<string>("");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      sender: "ai",
-      text:
-        "### Welcome to Arbor Parent Coach\n" +
-        "I help turn parenting concerns into age-aware, non-diagnostic next steps. Share a hard moment, a behavior pattern, or a developmental question Dylan is facing.\n\n" +
-        "### Suggested starting points:\n" +
-        "- **\"Dylan has transition tantrums when leaving for school in the mornings.\"**\n" +
-        "- **\"Dylan refuses to switch off his screen at night and screams.\"**\n" +
-        "- **\"Suggestions for improving his confidence when switching between languages.\"**\n\n" +
-        "Select a **Scholar Lens** above to focus guidance through a developmental frame (Vygotsky, Bowlby, Piaget, Winnicott, etc.).",
-      lens: "Integrated Balanced",
-    },
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
   const [chatStreamStatus, setChatStreamStatus] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -229,6 +231,35 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, isChatLoading]);
+
+  // Restore each child's last conversation when the active child changes.
+  const loadedChatChild = useRef<string | null>(null);
+  useEffect(() => {
+    if (loadedChatChild.current === childProfile.id) return;
+    loadedChatChild.current = childProfile.id;
+    try {
+      const raw = localStorage.getItem(chatStorageKey(childProfile.id));
+      if (raw) {
+        const parsed = JSON.parse(raw) as ChatMessage[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setChatMessages(parsed);
+          return;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    setChatMessages([WELCOME_MESSAGE]);
+  }, [childProfile.id]);
+
+  // Persist the last 10 messages per child.
+  useEffect(() => {
+    try {
+      localStorage.setItem(chatStorageKey(childProfile.id), JSON.stringify(chatMessages.slice(-10)));
+    } catch {
+      /* ignore */
+    }
+  }, [chatMessages, childProfile.id]);
 
   // Story reading progress calculation
   useEffect(() => {

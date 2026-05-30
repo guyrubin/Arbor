@@ -1,9 +1,15 @@
 import React from "react";
 import { motion } from "motion/react";
-import { RefreshCw, X, Check, Trash2 } from "lucide-react";
+import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
+
+const FOLLOW_UPS = [
+  "What should I avoid saying in that moment?",
+  "How do I repair the connection afterwards?",
+  "Give me a 1-minute calming routine to try.",
+];
 
 export default function CoachTab() {
   const {
@@ -22,7 +28,12 @@ export default function CoachTab() {
     approvedMemoryItems,
     handleMemoryDecision,
     isMemoryUpdating,
+    setActiveTab,
+    setPlanChallengeTopic,
   } = useArbor();
+
+  const lastMessage = chatMessages[chatMessages.length - 1];
+  const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && chatMessages.length > 1;
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
@@ -69,14 +80,17 @@ export default function CoachTab() {
       {/* Chat Viewport Area */}
       <div className="border border-white/10 rounded-2xl bg-[#141821] flex flex-col h-[520px] overflow-hidden justify-between">
         <div className="bg-white/[0.03] px-4 py-2 text-xs text-[#a8a093] border-b border-white/5 flex items-center justify-between">
-          <span>Conversation Frame: <strong>Dylan (Age 5) Context</strong></span>
-          <span className="text-[#f4d991] font-bold">Lens: {selectedLens}</span>
+          <span>Conversation Frame: <strong>Active child context</strong></span>
+          <span className="text-[#f4d991] font-bold flex items-center gap-1.5">
+            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full bg-[#d7aa55] animate-pulse" />}
+            Lens: {selectedLens}
+          </span>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           {chatMessages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-3 max-w-[85%] ${msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"}`}>
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${
+            <div key={idx} className={`flex gap-3 max-w-[85%] group ${msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"}`}>
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                 msg.sender === "user" ? "bg-blue-500/20 text-blue-400" : "bg-[#d7aa55]/20 text-[#f4d991]"
               }`}>
                 {msg.sender === "user" ? "U" : "Ar"}
@@ -92,9 +106,43 @@ export default function CoachTab() {
                   </span>
                 )}
                 <MarkdownBlock text={msg.text} />
+
+                {msg.sender === "ai" && (
+                  <div className="flex items-center gap-3 mt-3 pt-2 border-t border-white/5 opacity-0 group-hover:opacity-100 transition">
+                    <button onClick={() => navigator.clipboard?.writeText(msg.text)} className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1">
+                      <Copy className="w-3 h-3" /> Copy
+                    </button>
+                    <button onClick={() => setActiveTab("behaviors")} className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1">
+                      <ClipboardList className="w-3 h-3" /> Log this
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPlanChallengeTopic(msg.text.replace(/[#*]/g, "").slice(0, 140));
+                        setActiveTab("plans");
+                      }}
+                      className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1"
+                    >
+                      <ListPlus className="w-3 h-3" /> Save to Action Plan
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
+
+          {showFollowUps && (
+            <div className="flex flex-wrap gap-2 mr-auto max-w-[85%] pl-11">
+              {FOLLOW_UPS.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleChatSend(q)}
+                  className="text-[11px] text-[#f4d991] bg-[#d7aa55]/10 hover:bg-[#d7aa55]/20 border border-[#d7aa55]/25 px-3 py-1.5 rounded-full transition flex items-center gap-1.5"
+                >
+                  {q} <ArrowRight className="w-3 h-3" />
+                </button>
+              ))}
+            </div>
+          )}
 
           {isChatLoading && (
             <div className="flex gap-3 max-w-[85%] mr-auto">
