@@ -9,6 +9,15 @@ import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toCh
 import { loadKnowledgeCards, renderKnowledgeContext, retrieveKnowledgeCards } from "../knowledge/wiki.js";
 import { Type } from "@google/genai";
 
+let storageClient: any = null;
+const getStorageClient = async () => {
+  if (!storageClient) {
+    const { Storage } = await import("@google-cloud/storage");
+    storageClient = new Storage();
+  }
+  return storageClient;
+};
+
 type ApiDeps = {
   config: ArborConfig;
   modelProvider: ModelProvider;
@@ -374,6 +383,58 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     } catch (error: any) {
       console.error("Arbor Handoff Brief Error:", error);
       res.status(500).json({ error: "Failed to generate Arbor handoff brief", details: error.message });
+    }
+  });
+
+  // ── Cloud Storage handoff export ─────────────────────────────────────────
+  router.post("/export/handoff", async (req, res) => {
+    if (!config.gcsBucketName) {
+      res.status(503).json({
+        error: "Cloud Storage export is not configured. Set GCS_BUCKET_NAME to enable."
+      });
+      return;
+    }
+
+    try {
+      const { handoffData, userId, childName } = req.body;
+      if (!handoffData || !userId) {
+        res.status(400).json({ error: "handoffData and userId are required" });
+        return;
+      }
+
+      const storage = await getStorageClient();
+      const bucket = storage.bucket(config.gcsBucketName);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeName = (childName || "child").toLowerCase().replace(/[^a-z0-9]/g, "-");
+      const objectName = `exports/${userId}/${safeName}-handoff-${timestamp}.json`;
+
+      const file = bucket.file(objectName);
+      await file.save(JSON.stringify(handoffData, null, 2), {
+        contentType: "application/json",
+        metadata: {
+          cacheControl: "private, no-cache",
+          metadata: {
+            arborExport: "handoff",
+            userId,
+            childName: childName || "unknown",
+            createdAt: new Date().toISOString()
+          }
+        }
+      });
+
+      const [url] = await file.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 24 * 60 * 60 * 1000  // 24 hours
+      });
+
+      res.json({
+        downloadUrl: url,
+        objectName,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      });
+    } catch (error: any) {
+      console.error("Arbor Cloud Storage Export Error:", error);
+      res.status(500).json({ error: "Failed to export handoff document", details: error.message });
     }
   });
 

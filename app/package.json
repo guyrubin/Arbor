@@ -14,6 +14,7 @@
     "check:framework": "node scripts/framework-check.mjs"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "@google-cloud/vertexai": "^1.12.0",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
@@ -22,6 +23,7 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.2",
+    "firebase": "^12.13.0",
     "firebase-admin": "^13.10.0",
     "google-auth-library": "^10.6.2",
     "helmet": "^8.2.0",

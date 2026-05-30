@@ -1,17 +1,30 @@
 steps:
+  # ── Build Docker image ──────────────────────────────────────────────────────
   - name: gcr.io/cloud-builders/docker
+    id: build
     args:
       - build
       - -f
       - app/Dockerfile
       - -t
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:latest
       - .
+
+  # ── Push image ───────────────────────────────────────────────────────────────
   - name: gcr.io/cloud-builders/docker
+    id: push
+    waitFor: [build]
     args:
       - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api
+
+  # ── Deploy to Cloud Run ──────────────────────────────────────────────────────
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: deploy
+    waitFor: [push]
     entrypoint: gcloud
     args:
       - run
@@ -24,8 +37,62 @@ steps:
       - --platform
       - managed
       - --allow-unauthenticated
+      - --service-account
+      - arbor-cloudrun@$PROJECT_ID.iam.gserviceaccount.com
+      - --cpu
+      - "1"
+      - --memory
+      - 512Mi
+      - --min-instances
+      - "0"
+      - --max-instances
+      - "10"
+      - --concurrency
+      - "80"
+      - --timeout
+      - "60s"
       - --set-env-vars
-      - ARBOR_ENV=${_ARBOR_ENV},MODEL_PROVIDER=vertex,MEMORY_ADAPTER=firestore,ENABLE_LOCAL_MEMORY_ADAPTER=false
+      - >-
+        ARBOR_ENV=${_ARBOR_ENV},
+        NODE_ENV=production,
+        MODEL_PROVIDER=vertex,
+        MEMORY_ADAPTER=firestore,
+        ENABLE_LOCAL_MEMORY_ADAPTER=false,
+        ENABLE_HIGH_RISK_REVIEW_QUEUE=true,
+        GCP_PROJECT_ID=$PROJECT_ID,
+        FIREBASE_PROJECT_ID=$PROJECT_ID,
+        GCP_REGION=${_REGION},
+        VERTEX_LOCATION=${_REGION},
+        GCS_BUCKET_NAME=$PROJECT_ID-arbor-exports,
+        VERTEX_MODEL_CHAT=gemini-2.5-pro,
+        VERTEX_MODEL_STORY=gemini-2.5-pro,
+        VERTEX_MODEL_ANALYSIS=gemini-2.5-pro,
+        VERTEX_MODEL_HANDOFF=gemini-2.5-pro,
+        CORS_ORIGINS=${_APP_URL}
+
+  # ── Run smoke test ───────────────────────────────────────────────────────────
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: smoke-test
+    waitFor: [deploy]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        SERVICE_URL=$(gcloud run services describe arbor-api \
+          --region=${_REGION} --format='value(status.url)')
+        echo "Arbor Cloud Run URL: $SERVICE_URL"
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/api/architecture/status")
+        echo "Health check status: $STATUS"
+        [ "$STATUS" = "200" ] || exit 1
+        echo "Smoke test passed."
+
 substitutions:
   _REGION: europe-west4
-  _ARBOR_ENV: stage
+  _ARBOR_ENV: prod
+  _APP_URL: https://arbor-api-placeholder.a.run.app  # update after first deploy
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+timeout: 1200s
