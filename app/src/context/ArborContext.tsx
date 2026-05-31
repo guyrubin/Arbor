@@ -614,6 +614,23 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     ]);
   };
 
+  // Set a step's kanban status (todo / doing / done); keeps `completed` in sync.
+  const setPlanStepStatus = (planId: string, phaseIdx: number, stepIdx: number, status: "todo" | "doing" | "done") => {
+    setActionPlans((prev) =>
+      prev.map((p) => {
+        if (p.id !== planId) return p;
+        const phases = p.phases.map((ph, phI) => {
+          if (phI !== phaseIdx) return ph;
+          const steps = ph.steps.map((st, stI) =>
+            stI === stepIdx ? { ...st, status, completed: status === "done" } : st
+          );
+          return { ...ph, steps };
+        });
+        return { ...p, phases };
+      })
+    );
+  };
+
   // Toggle checklist inside Action Phase
   const handleTogglePlanStep = (planId: string, phaseIdx: number, stepIdx: number) => {
     setActionPlans((prev) =>
@@ -714,6 +731,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     handleToggleMilestone,
     addCustomMilestone,
     handleTogglePlanStep,
+    setPlanStepStatus,
   };
 }
 

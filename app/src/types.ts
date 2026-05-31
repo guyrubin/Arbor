@@ -83,6 +83,8 @@ export interface Milestone {
   custom?: boolean;
 }
 
+export type StepStatus = 'todo' | 'doing' | 'done';
+
 export interface ActionPlan {
   id: string;
   title: string;
@@ -90,7 +92,7 @@ export interface ActionPlan {
   phases: {
     name: string;
     description: string;
-    steps: { text: string; completed: boolean }[];
+    steps: { text: string; completed: boolean; status?: StepStatus }[];
   }[];
   scripts: { scenario: string; say: string; avoid: string }[];
   successIndicators: string[];
