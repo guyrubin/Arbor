@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Sliders,
   BookOpen,
+  BarChart2,
   Compass,
   FileText,
   Shield,
@@ -96,6 +97,12 @@ export default function Sidebar() {
         <button onClick={() => setActiveTab("stories")} className={navItemClass("stories")}>
           <span className="flex items-center gap-3">
             <BookOpen className="w-4 h-4" /> AI Bedtime Stories
+          </span>
+        </button>
+
+        <button onClick={() => setActiveTab("weekly")} className={navItemClass("weekly")}>
+          <span className="flex items-center gap-3">
+            <BarChart2 className="w-4 h-4" /> Weekly Report
           </span>
         </button>
 

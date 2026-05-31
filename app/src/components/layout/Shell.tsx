@@ -10,6 +10,7 @@ import BehaviorsTab from "../tabs/BehaviorsTab";
 import MilestonesTab from "../tabs/MilestonesTab";
 import PlansTab from "../tabs/PlansTab";
 import StoriesTab from "../tabs/StoriesTab";
+import WeeklyTab from "../tabs/WeeklyTab";
 import ScholarTab from "../tabs/ScholarTab";
 import HandoffTab from "../tabs/HandoffTab";
 import SafetyTab from "../tabs/SafetyTab";
@@ -21,6 +22,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   milestones: MilestonesTab,
   plans: PlansTab,
   stories: StoriesTab,
+  weekly: WeeklyTab,
   scholar: ScholarTab,
   handoff: HandoffTab,
   safety: SafetyTab,

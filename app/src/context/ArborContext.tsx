@@ -26,6 +26,7 @@ export type ActiveTab =
   | "milestones"
   | "plans"
   | "stories"
+  | "weekly"
   | "scholar"
   | "handoff"
   | "safety";
