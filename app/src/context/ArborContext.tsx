@@ -9,6 +9,7 @@ import {
   SchoolBrief,
   MemoryReviewItem,
   BehaviorContext,
+  DevelopmentalDomainId,
 } from "../types";
 import {
   sampleBehaviorLogs,
@@ -597,6 +598,22 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setMilestones((prev) => prev.map((m) => (m.id === id ? { ...m, checked: !m.checked } : m)));
   };
 
+  // Add a custom milestone to a chosen domain
+  const addCustomMilestone = (title: string, domain: DevelopmentalDomainId) => {
+    setMilestones((prev) => [
+      ...prev,
+      {
+        id: `ms-${Date.now()}`,
+        domain,
+        ageGroup: "Custom",
+        title,
+        description: "Custom milestone added by parent.",
+        checked: false,
+        custom: true,
+      },
+    ]);
+  };
+
   // Toggle checklist inside Action Phase
   const handleTogglePlanStep = (planId: string, phaseIdx: number, stepIdx: number) => {
     setActionPlans((prev) =>
@@ -695,6 +712,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     handleGenerateStory,
     handleGenerateBrief,
     handleToggleMilestone,
+    addCustomMilestone,
     handleTogglePlanStep,
   };
 }

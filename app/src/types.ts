@@ -79,6 +79,8 @@ export interface Milestone {
   title: string;
   description: string;
   checked: boolean;
+  references?: { label: string; url: string }[];
+  custom?: boolean;
 }
 
 export interface ActionPlan {
