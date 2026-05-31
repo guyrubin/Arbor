@@ -1,6 +1,6 @@
 # Arbor — Parenting AI Platform PRD
 
-**Version:** 1.0
+**Version:** 1.1 (2026-05-31 — added Capability Backlog v1.1; see end of document)
 **Product type:** AI-powered child-development, parenting, co-therapy, and school-support platform
 **Age range:** Birth to 12
 **Markets:** Israel, Netherlands, Belgium, later broader EU
@@ -444,3 +444,92 @@ Arbor should be built as a child-development intelligence layer that sits betwee
 The defensible asset is longitudinal child memory, expert-reviewed knowledge, practical intervention workflows, parent engagement data, professional collaboration, country-specific care pathways, and a trustworthy safety architecture.
 
 That is the moat.
+
+---
+
+# Capability Backlog v1.1 (2026-05-31)
+
+> Source: in-depth feature analysis of the shipped, production-deployed app.
+> Format: Now / Next / Later. Each capability is outcome-led and has acceptance
+> criteria so "done" is unambiguous. Value/Effort/Confidence on H/M/L.
+
+## Central finding
+
+The app surface is mature (10 tabs, AI throughout) but **most parent-generated
+data is not yet persisted to the backend** — behavior logs, milestones, action
+plans, the story library, and safety contacts live in React state / localStorage.
+Only auth, child profiles, and the memory-review queue are Firestore-backed.
+Durable, real-time, per-child persistence is the foundation that unblocks ~70% of
+the backlog and is therefore the first commitment.
+
+## Outcome themes (the most valuable capabilities)
+
+1. **"My data is safe and with me everywhere"** — durable, real-time, per-child Firestore persistence.
+2. **"I can capture the hard moment as it happens"** — voice + offline + 2-tap logging.
+3. **"Arbor tells me what matters before I ask"** — proactive insights, reminders, auto weekly report, real pattern detection.
+4. **"Arbor speaks my child's languages"** — Hebrew/English bilingual + RTL.
+5. **"I can hand off with confidence"** — saved, versioned, clinician-ready exports + GDPR portability.
+
+## NOW — committed
+
+### N1 — Real Firestore persistence (V:H / E:M / Conf:H)
+**Outcome:** A parent never loses their child's history and it follows them across devices.
+**Definition:** Behavior logs, milestones, action plans, saved stories, and safety
+contacts/checklist read and write to `users/{uid}/children/{childId}/…` via real-time
+`onSnapshot`. localStorage remains the fallback only in sandbox mode (no Firebase).
+**Acceptance:**
+- Creating/editing any of the above writes to Firestore and survives reload + second device.
+- Two browser tabs reflect each other's changes live (onSnapshot).
+- Sandbox mode (no `VITE_FIREBASE_*`) still works against localStorage.
+
+### N2 — Per-child data isolation (V:H / E:S / Conf:H)
+**Outcome:** Switching to a second child shows their data, not the first child's.
+**Definition:** All collections are keyed by `activeChild.id`; switching profiles re-subscribes.
+**Acceptance:** Logs/milestones/plans/stories/safety differ per child and persist independently.
+
+### N3 — AI "Today's Focus", cached 24h (V:M / E:S / Conf:M)
+**Outcome:** The parent opens Arbor and instantly knows today's one thing.
+**Definition:** Overview "Today's Focus" is a Gemini summary of recent signals, cached in
+Firestore with a 24h TTL and regenerated on demand.
+**Acceptance:** Card shows an AI insight; repeated opens within 24h read cache, not re-generate.
+
+### N4 — Auto-generated Weekly Report + history (V:H / E:M / Conf:M)
+**Outcome:** A real weekly recap lands without the parent asking, and past weeks are browseable.
+**Definition:** Reports are generated (on a weekly cadence and on demand), stored at
+`…/weeklyReports/{weekId}`, and listed with history.
+**Acceptance:** Generating a report persists it; the tab lists prior weeks and reopens them.
+
+### N5 — Quick-win polish (V:M / E:S / Conf:H)
+**Outcome:** AI suggestions become one-tap actions; sparse data looks intentional, not broken.
+**Definition:** Coach "Log this" pre-fills a real log; "Save to Action Plan" seeds a plan;
+Overview chart shows a proper empty state when there are few logs.
+**Acceptance:** Those actions create/seed real records; empty states render with a CTA.
+
+## NEXT — planned
+
+| ID | Capability | Outcome | V/E/Conf |
+|---|---|---|---|
+| X1 | Voice-to-log capture | Log a meltdown by talking, in the moment | H/M/M |
+| X2 | Reminders & nudges | Don't forget to log / review milestones / monthly safety check | H/M/M |
+| X3 | Bilingual (Hebrew/English) + RTL | The app and its scripts/stories speak the child's languages | H/M/M |
+| X4 | Photo attachments on logs | Capture the drawing/setting that triggered an event | M/S/H |
+| X5 | Pattern intelligence v2 (correlations) | "Meltdowns spike on low-sleep school mornings," not just counts | H/M/M |
+| X6 | Saved & versioned briefs + PDF | Reuse and track what was shared with whom | M/S/M |
+| X7 | PWA + offline capture | Log with no signal; sync later | M/M/M |
+
+## LATER — directional
+
+| ID | Capability | Outcome | V/E/Conf |
+|---|---|---|---|
+| L1 | GDPR data export / delete | Own and take (or erase) the child's full record | M/M/M |
+| L2 | Milestone research depth | Each milestone links to credible guidance | M/M/L |
+| L3 | Action-plan templates | Start from an expert blueprint, not a blank prompt | M/M/M |
+| L4 | Accessibility (WCAG AA) | Works for every parent | M/M/H |
+| L5 | Analytics instrumentation | Learn which capabilities help; prioritize with data | M/S/H |
+
+## Dependencies & non-goals
+
+- **Critical dependency:** N1 gates N2–N4 and most of Next/Later. Build it first.
+- **Cost/safety:** more AI surface raises Vertex/Gemini spend — add per-user rate/cost caps before the Next tier.
+- **Non-goals (unchanged):** no multi-caregiver/sharing/collaboration (single-parent tool),
+  no external image-generation API, no third-party analytics scripts, no change to the parchment design system.
