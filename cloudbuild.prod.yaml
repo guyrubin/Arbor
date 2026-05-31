@@ -1,0 +1,50 @@
+# Production deploy for the Arbor API (Cloud Run) via Cloud Build.
+#
+# Usage:
+#   gcloud builds submit --config cloudbuild.prod.yaml \
+#     --substitutions=_REGION=europe-west4 \
+#     --project <PROD_PROJECT_ID>
+#
+# Notes:
+# - env.ts enforces prod invariants: MODEL_PROVIDER=vertex, MEMORY_ADAPTER=firestore,
+#   ENABLE_LOCAL_MEMORY_ADAPTER=false, and BOTH GCP_PROJECT_ID and FIREBASE_PROJECT_ID
+#   must be set or the server refuses to boot. The stage cloudbuild.yaml omits the
+#   two project ids; this prod config sets them from $PROJECT_ID.
+# - REQUIRE_AUTH=true makes /api routes verify Firebase ID tokens. On Cloud Run the
+#   Admin SDK uses the service account's Application Default Credentials, so no
+#   FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY secrets are required.
+# - The browser client is served by Firebase Hosting (see firebase.json), not this
+#   image. Build + deploy hosting separately with the VITE_FIREBASE_* build env set
+#   (see docs/deployment-production.md).
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - app/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - arbor-api
+      - --image
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - --region
+      - ${_REGION}
+      - --platform
+      - managed
+      - --allow-unauthenticated
+      - --set-env-vars
+      - ARBOR_ENV=prod,MODEL_PROVIDER=vertex,MEMORY_ADAPTER=firestore,ENABLE_LOCAL_MEMORY_ADAPTER=false,ENABLE_HIGH_RISK_REVIEW_QUEUE=true,REQUIRE_AUTH=true,GCP_PROJECT_ID=$PROJECT_ID,FIREBASE_PROJECT_ID=$PROJECT_ID,GCP_REGION=${_REGION},VERTEX_LOCATION=${_REGION}
+substitutions:
+  _REGION: europe-west4
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
