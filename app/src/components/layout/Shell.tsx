@@ -4,6 +4,7 @@ import { Sparkles, AlertTriangle } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import Sidebar from "./Sidebar";
 import AiRail from "./AiRail";
+import MobileNav from "./MobileNav";
 import OverviewTab from "../tabs/OverviewTab";
 import CoachTab from "../tabs/CoachTab";
 import BehaviorsTab from "../tabs/BehaviorsTab";
@@ -35,7 +36,7 @@ export default function Shell() {
   return (
     <div className="arbor-app min-h-screen select-none text-sans antialiased overflow-x-hidden relative">
       <div
-        className={`grid grid-cols-1 ${
+        className={`grid grid-cols-1 md:grid-cols-[260px_1fr] ${
           showAiRail
             ? "xl:grid-cols-[290px_1fr_340px] 2xl:grid-cols-[290px_1fr_365px]"
             : "xl:grid-cols-[290px_1fr]"
@@ -43,7 +44,7 @@ export default function Shell() {
       >
         <Sidebar />
 
-        <main className="px-6 py-8 xl:px-12 xl:py-10 overflow-y-auto max-h-screen">
+        <main className="px-5 py-6 pb-24 md:px-6 md:py-8 md:pb-10 xl:px-12 xl:py-10 overflow-y-auto max-h-screen">
           {/* Top workspace accessories header row */}
           <div className="flex justify-between items-center mb-6 gap-4">
             <span className="text-xs text-[#a8a093] font-medium flex items-center gap-1.5">
@@ -85,6 +86,8 @@ export default function Shell() {
 
         {showAiRail && <AiRail />}
       </div>
+
+      <MobileNav />
     </div>
   );
 }

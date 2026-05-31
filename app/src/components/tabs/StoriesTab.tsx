@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { StoryIllustration } from "../stories/StoryIllustration";
 import ReadingMode from "../stories/ReadingMode";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
+import { useToast } from "../../context/ToastContext";
 import { BedtimeStory } from "../../types";
 
 type SavedStory = { story: BedtimeStory; savedAt: string };
@@ -25,6 +26,7 @@ export default function StoriesTab() {
     childProfile,
   } = useArbor();
 
+  const { toast } = useToast();
   const [reading, setReading] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [discussed, setDiscussed] = useState<Record<number, boolean>>({});
@@ -51,8 +53,12 @@ export default function StoriesTab() {
   };
 
   const saveCurrent = () => {
-    if (library.some((s) => s.story.title === currentStory.title)) return;
+    if (library.some((s) => s.story.title === currentStory.title)) {
+      toast("Already in your library", "info");
+      return;
+    }
     persist([{ story: currentStory, savedAt: new Date().toISOString() }, ...library]);
+    toast("Saved to story library", "success");
   };
 
   const isCover = activeStoryPage >= currentStory.pages.length;

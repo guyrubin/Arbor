@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { useProfile } from "../../context/ProfileContext";
+import { useToast } from "../../context/ToastContext";
 
 const LANGUAGE_OPTIONS = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
 export default function AddChildModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { addChild } = useProfile();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [age, setAge] = useState<number>(4);
@@ -39,8 +41,9 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
   const finish = async () => {
     setSaving(true);
     try {
+      const childName = name.trim() || "New Child";
       await addChild({
-        name: name.trim() || "New Child",
+        name: childName,
         age,
         languages: languages.length ? languages : ["English"],
         schoolContext: "",
@@ -48,6 +51,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
         challenges: toLines(challenges),
         riskLevel: "Low",
       });
+      toast(`${childName}'s profile added`, "success");
       close();
     } finally {
       setSaving(false);

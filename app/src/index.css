@@ -317,3 +317,20 @@ body {
 .arbor-app .animate-pulse:not(button):not(span[class*="bg-purple"]) {
   animation: pulse 2.5s cubic-bezier(0.4,0,0.6,1) infinite;
 }
+
+/* ─── Typography scale (ARBOR_NEXT §5.3) ──────────────────────────────────── */
+.arbor-display-xl { font: 700 2.5rem/1.1 var(--font-display); }
+.arbor-display-lg { font: 700 1.75rem/1.2 var(--font-display); }
+.arbor-label {
+  font: 600 0.6875rem/1 var(--font-sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.arbor-muted-text { color: var(--arbor-muted); font-size: 0.875rem; }
+
+/* ─── Skeleton shimmer ────────────────────────────────────────────────────── */
+.arbor-skeleton {
+  background: rgba(20, 22, 15, 0.06);
+  border-radius: 0.75rem;
+}
+.arbor-app .arbor-skeleton { animation: pulse 1.6s cubic-bezier(0.4,0,0.6,1) infinite; }

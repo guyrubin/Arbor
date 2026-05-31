@@ -25,7 +25,7 @@ export default function Sidebar() {
     }`;
 
   return (
-    <aside className="border-r border-white/10 bg-[#08090c]/90 backdrop-blur-2xl px-6 py-8 flex flex-col gap-8 h-auto xl:h-screen xl:sticky xl:top-0 overflow-y-auto">
+    <aside className="hidden md:flex border-r border-white/10 bg-[#08090c]/90 backdrop-blur-2xl px-6 py-8 flex-col gap-8 h-auto xl:h-screen xl:sticky xl:top-0 overflow-y-auto">
       {/* Brand header */}
       <div className="flex items-center gap-3">
         <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">

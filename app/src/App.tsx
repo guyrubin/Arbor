@@ -3,6 +3,7 @@ import { RefreshCw } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProfileProvider } from "./context/ProfileContext";
 import { ArborProvider } from "./context/ArborContext";
+import { ToastProvider } from "./context/ToastContext";
 import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
 
@@ -29,14 +30,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 /** Thin application shell: auth gate → state provider → layout. */
 export default function App() {
   return (
-    <AuthProvider>
-      <AuthGate>
-        <ProfileProvider>
-          <ArborProvider>
-            <Shell />
-          </ArborProvider>
-        </ProfileProvider>
-      </AuthGate>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <AuthGate>
+          <ProfileProvider>
+            <ArborProvider>
+              <Shell />
+            </ArborProvider>
+          </ProfileProvider>
+        </AuthGate>
+      </AuthProvider>
+    </ToastProvider>
   );
 }
