@@ -1,20 +1,24 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { AnimatePresence } from "motion/react";
 import { Sparkles, AlertTriangle } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import Sidebar from "./Sidebar";
 import AiRail from "./AiRail";
 import MobileNav from "./MobileNav";
-import OverviewTab from "../tabs/OverviewTab";
-import CoachTab from "../tabs/CoachTab";
-import BehaviorsTab from "../tabs/BehaviorsTab";
-import MilestonesTab from "../tabs/MilestonesTab";
-import PlansTab from "../tabs/PlansTab";
-import StoriesTab from "../tabs/StoriesTab";
-import WeeklyTab from "../tabs/WeeklyTab";
-import ScholarTab from "../tabs/ScholarTab";
-import HandoffTab from "../tabs/HandoffTab";
-import SafetyTab from "../tabs/SafetyTab";
+import { ErrorBoundary } from "../ErrorBoundary";
+import { TabSkeleton } from "../ui/Skeleton";
+
+// Code-split each tab so the initial bundle stays lean.
+const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
+const CoachTab = lazy(() => import("../tabs/CoachTab"));
+const BehaviorsTab = lazy(() => import("../tabs/BehaviorsTab"));
+const MilestonesTab = lazy(() => import("../tabs/MilestonesTab"));
+const PlansTab = lazy(() => import("../tabs/PlansTab"));
+const StoriesTab = lazy(() => import("../tabs/StoriesTab"));
+const WeeklyTab = lazy(() => import("../tabs/WeeklyTab"));
+const ScholarTab = lazy(() => import("../tabs/ScholarTab"));
+const HandoffTab = lazy(() => import("../tabs/HandoffTab"));
+const SafetyTab = lazy(() => import("../tabs/SafetyTab"));
 
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
@@ -79,9 +83,13 @@ export default function Shell() {
             </div>
           )}
 
-          <AnimatePresence mode="wait">
-            <ActiveTabComponent key={activeTab} />
-          </AnimatePresence>
+          <ErrorBoundary key={activeTab}>
+            <Suspense fallback={<TabSkeleton />}>
+              <AnimatePresence mode="wait">
+                <ActiveTabComponent />
+              </AnimatePresence>
+            </Suspense>
+          </ErrorBoundary>
         </main>
 
         {showAiRail && <AiRail />}

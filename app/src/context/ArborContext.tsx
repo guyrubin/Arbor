@@ -18,6 +18,22 @@ import {
   sampleBedtimeStory,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
+import { api, authHeaders } from "../lib/api";
+
+const readLS = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const writeLS = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+};
 
 export type ActiveTab =
   | "overview"
@@ -62,9 +78,9 @@ function useArborState() {
   const { activeChild, updateChild } = useProfile();
   const childProfile: ChildProfile = activeChild;
 
-  // Navigation State
-  const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
-  const [showAiRail, setShowAiRail] = useState<boolean>(true);
+  // Navigation State (persisted preferences)
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => (readLS("arbor.activeTab") as ActiveTab) || "overview");
+  const [showAiRail, setShowAiRail] = useState<boolean>(() => readLS("arbor.aiRail") !== "false");
 
   // App Core States
   const [behaviorLogs, setBehaviorLogs] = useState<BehaviorLog[]>(sampleBehaviorLogs);
@@ -73,7 +89,7 @@ function useArborState() {
   const [currentStory, setCurrentStory] = useState<BedtimeStory>(sampleBedtimeStory);
 
   // Active Interactive / Selection States
-  const [selectedLens, setSelectedLens] = useState<string>("Integrated Balanced");
+  const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
   const [chatInput, setChatInput] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
@@ -127,7 +143,7 @@ function useArborState() {
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders(),
         body: JSON.stringify({
           message: `Create a brief, highly actionable parental co-regulation script for a ${childProfile.age}-year-old child experiencing the following event:
 Type of challenge: ${log.behaviorType}
@@ -175,7 +191,7 @@ Respond with EXACTLY three short markdown items:
         .join("\n");
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders(),
         body: JSON.stringify({
           message: `Analyze checked vs unchecked milestones for a ${childProfile.age}-year-old child named ${childProfile.name} in transition:
 Checked:
@@ -265,6 +281,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     }
   }, [chatMessages, childProfile.id]);
 
+  // Persist UI preferences.
+  useEffect(() => writeLS("arbor.activeTab", activeTab), [activeTab]);
+  useEffect(() => writeLS("arbor.aiRail", String(showAiRail)), [showAiRail]);
+  useEffect(() => writeLS("arbor.lens", selectedLens), [selectedLens]);
+
   // Story reading progress calculation
   useEffect(() => {
     if (currentStory && currentStory.pages) {
@@ -284,7 +305,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
   const refreshMemoryReview = async () => {
     try {
-      const res = await fetch(`/api/memory/${encodeURIComponent(childProfile.id)}`);
+      const res = await fetch(`/api/memory/${encodeURIComponent(childProfile.id)}`, {
+        headers: await authHeaders(),
+      });
       if (!res.ok) throw new Error("Memory review fetch failed");
       const data = await res.json();
       setMemoryReviewItems(data.items || []);
@@ -303,7 +326,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     try {
       const res = await fetch(`/api/memory/${encodeURIComponent(memoryId)}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders(),
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error("Memory review update failed");
@@ -401,7 +424,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        headers: await authHeaders({ Accept: "text/event-stream" }),
         signal: controller.signal,
         body: JSON.stringify({
           message: promptValue,
@@ -476,18 +499,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setIsAnalyzingBehavior(true);
     setApiError(null);
     try {
-      const res = await fetch("/api/analyze-behavior", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logs: behaviorLogs, childProfile: childProfile }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.details || errData.error || "Failed to generate analysis");
-      }
-
-      const data = await res.json();
+      const data = await api.analyzeBehavior({ logs: behaviorLogs, childProfile });
       setBehaviorAnalysis(data);
     } catch (err: any) {
       console.error(err);
@@ -502,18 +514,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setIsPlanGenerating(true);
     setApiError(null);
     try {
-      const res = await fetch("/api/generate-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challengeTopic: planChallengeTopic, childProfile: childProfile }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.details || errData.error || "Failed to generate plan");
-      }
-
-      const planData: ActionPlan = await res.json();
+      const planData = await api.generatePlan({ challengeTopic: planChallengeTopic, childProfile });
       planData.id = `plan-${Date.now()}`;
       setActionPlans([planData, ...actionPlans]);
       alert(`Action Plan successfully woven: "${planData.title}"`);
@@ -530,23 +531,12 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setIsStoryGenerating(true);
     setApiError(null);
     try {
-      const res = await fetch("/api/generate-story", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          childName: childProfile.name,
-          age: childProfile.age,
-          topic: storyTopic,
-          moral: storyMoral,
-        }),
+      const newStory = await api.generateStory({
+        childName: childProfile.name,
+        age: childProfile.age,
+        topic: storyTopic,
+        moral: storyMoral,
       });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.details || errData.error || "Failed to write story");
-      }
-
-      const newStory: BedtimeStory = await res.json();
       setCurrentStory(newStory);
       setActiveStoryPage(0);
       alert(`Co-regulated Bedtime Story completed: "${newStory.title}"`);
@@ -563,23 +553,12 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setIsGeneratingBrief(true);
     setApiError(null);
     try {
-      const res = await fetch("/api/generate-handoff", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          childProfile: childProfile,
-          logs: behaviorLogs,
-          milestones: milestones,
-          audience: handoffAudience,
-        }),
+      const briefData = await api.generateBrief({
+        childProfile,
+        logs: behaviorLogs,
+        milestones,
+        audience: handoffAudience,
       });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.details || errData.error || "Failed to build briefing");
-      }
-
-      const briefData = await res.json();
       setSchoolBrief(briefData);
     } catch (err: any) {
       console.error(err);

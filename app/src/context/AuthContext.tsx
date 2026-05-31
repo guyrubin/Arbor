@@ -8,6 +8,7 @@ import {
   type User,
 } from "firebase/auth";
 import { auth, firebaseEnabled } from "../lib/firebase";
+import { setAuthTokenProvider } from "../lib/api";
 
 export type AuthUser = {
   uid: string;
@@ -90,6 +91,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!firebaseEnabled || !auth?.currentUser) return null;
     return auth.currentUser.getIdToken();
   };
+
+  // Let the API layer attach the current ID token to outgoing requests.
+  useEffect(() => {
+    setAuthTokenProvider(getIdToken);
+  }, []);
 
   const value: AuthContextValue = {
     user,
