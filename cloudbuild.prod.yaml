@@ -23,12 +23,12 @@ steps:
       - -f
       - app/Dockerfile
       - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:${_TAG}
       - .
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:${_TAG}
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -36,7 +36,7 @@ steps:
       - deploy
       - arbor-api
       - --image
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:${_TAG}
       - --region
       - ${_REGION}
       - --platform
@@ -46,5 +46,8 @@ steps:
       - ARBOR_ENV=prod,MODEL_PROVIDER=vertex,MEMORY_ADAPTER=firestore,ENABLE_LOCAL_MEMORY_ADAPTER=false,ENABLE_HIGH_RISK_REVIEW_QUEUE=true,REQUIRE_AUTH=true,GCP_PROJECT_ID=$PROJECT_ID,FIREBASE_PROJECT_ID=$PROJECT_ID,GCP_REGION=${_REGION},VERTEX_LOCATION=${_REGION}
 substitutions:
   _REGION: europe-west4
+  # _TAG is supplied at submit time (git short SHA). Defaults to "latest" so the
+  # config is valid for manual `gcloud builds submit` runs where $SHORT_SHA is unset.
+  _TAG: latest
 images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:${_TAG}

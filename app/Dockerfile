@@ -12,6 +12,8 @@ ENV ARBOR_KNOWLEDGE_PATH=/app/knowledge
 COPY --from=build /app/package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
+# loadFramework() reads <cwd>/src/framework.json at runtime, so it must ship in the image.
+COPY --from=build /app/src/framework.json ./src/framework.json
 COPY knowledge ./knowledge
 EXPOSE 3000
 CMD ["node", "dist/server.cjs"]
