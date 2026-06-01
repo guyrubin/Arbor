@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { TrendingUp, TrendingDown, Minus, MessageSquare, Plus, Sparkles } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, MessageSquare, Plus, Sparkles, RefreshCw } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { AnimatedNumber } from "../ui/AnimatedNumber";
 import { ProgressRing } from "../ui/ProgressRing";
+import { Skeleton } from "../ui/Skeleton";
+import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import QuickLogModal from "../overview/QuickLogModal";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -29,9 +31,15 @@ export default function OverviewTab() {
     chatMessages,
     currentStory,
     setActiveStoryPage,
+    childProfile,
   } = useArbor();
 
   const [quickLog, setQuickLog] = useState(false);
+
+  const recentCount = useMemo(() => {
+    const cutoff = Date.now() - 7 * 86_400_000;
+    return behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= cutoff).length;
+  }, [behaviorLogs]);
 
   // 7-day intensity trend vs the previous 7 days.
   const { weekAvg, trend } = useMemo(() => {
@@ -92,6 +100,13 @@ export default function OverviewTab() {
 
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
   const trendColor = trend === "up" ? "text-[#e2562d]" : trend === "down" ? "text-emerald-400" : "text-[#a8a093]";
+
+  const { focus, loading: focusLoading, regenerate } = useTodaysFocus(childProfile, {
+    count: recentCount,
+    avg: weekAvg,
+    topTrigger,
+    milestonesPercent,
+  });
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8 relative">
@@ -172,15 +187,30 @@ export default function OverviewTab() {
 
       {/* BOTTOM ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Today's focus */}
+        {/* Today's focus — AI-generated, cached 24h */}
         <div className="bg-gradient-to-br from-[#d7aa55]/8 to-transparent border border-[#d7aa55]/15 rounded-3xl p-6 space-y-3">
-          <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#d7aa55]" /> Today&apos;s focus
-          </span>
-          {behaviorLogs.length ? (
-            <p className="text-sm text-gray-200 leading-relaxed">
-              <strong className="text-white">{topTrigger || "Transitions"}</strong> is the most frequent pattern right now. Lead with a calm, predictable boundary and a transitional object — and capture how it goes with a quick log.
-            </p>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#d7aa55]" /> Today&apos;s focus
+            </span>
+            <button
+              onClick={() => void regenerate()}
+              disabled={focusLoading}
+              title="Regenerate"
+              className="text-[#a8a093] hover:text-white transition disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${focusLoading ? "animate-spin text-[#d7aa55]" : ""}`} />
+            </button>
+          </div>
+          {focusLoading && !focus ? (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          ) : focus ? (
+            <p className="text-sm text-gray-200 leading-relaxed">{focus.text}</p>
+          ) : recentCount > 0 ? (
+            <p className="text-sm text-[#a8a093]">Generating today&apos;s focus…</p>
           ) : (
             <p className="text-sm text-[#a8a093]">No logs yet. Capture your first moment to unlock tailored focus guidance.</p>
           )}
