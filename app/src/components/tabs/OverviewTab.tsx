@@ -163,6 +163,13 @@ export default function OverviewTab() {
           <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">Weekly pattern</span>
           <h3 className="text-xl font-bold text-white mt-1">Behavior events by day (last 4 weeks)</h3>
         </div>
+        {weeklyData.every((d) => d.count === 0) ? (
+          <div className="h-40 flex flex-col items-center justify-center text-center gap-2 border border-dashed border-white/10 rounded-2xl">
+            <span className="text-sm font-bold text-[#f7f1e7]">No behavior events yet</span>
+            <p className="text-xs text-[#a8a093] max-w-xs">Log a moment and your weekly pattern will appear here.</p>
+            <button onClick={() => setQuickLog(true)} className="text-xs font-bold text-[#f4d991] hover:underline">Quick log a moment ➔</button>
+          </div>
+        ) : (
         <div className="h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={weeklyData} onClick={() => setActiveTab("behaviors")} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
@@ -182,6 +189,7 @@ export default function OverviewTab() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+        )}
         <p className="text-[11px] text-[#a8a093]">Bar color reflects average intensity (sage → clay). Click a bar to review behavior logs.</p>
       </div>
 

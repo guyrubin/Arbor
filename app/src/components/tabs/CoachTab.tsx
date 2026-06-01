@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useToast } from "../../context/ToastContext";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 
@@ -30,7 +31,9 @@ export default function CoachTab() {
     isMemoryUpdating,
     setActiveTab,
     setPlanChallengeTopic,
+    setNewLogNotes,
   } = useArbor();
+  const { toast } = useToast();
 
   const lastMessage = chatMessages[chatMessages.length - 1];
   const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && chatMessages.length > 1;
@@ -112,13 +115,21 @@ export default function CoachTab() {
                     <button onClick={() => navigator.clipboard?.writeText(msg.text)} className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1">
                       <Copy className="w-3 h-3" /> Copy
                     </button>
-                    <button onClick={() => setActiveTab("behaviors")} className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setNewLogNotes(msg.text.replace(/[#*]/g, "").trim().slice(0, 400));
+                        setActiveTab("behaviors");
+                        toast("Pre-filled a log from this guidance — review and save", "info");
+                      }}
+                      className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1"
+                    >
                       <ClipboardList className="w-3 h-3" /> Log this
                     </button>
                     <button
                       onClick={() => {
                         setPlanChallengeTopic(msg.text.replace(/[#*]/g, "").slice(0, 140));
                         setActiveTab("plans");
+                        toast("Seeded the plan generator — tap Generate", "info");
                       }}
                       className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1"
                     >
