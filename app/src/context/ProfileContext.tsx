@@ -17,6 +17,8 @@ type ProfileContextValue = {
   /** The currently selected child (always defined once loaded). */
   activeChild: ChildProfile;
   loading: boolean;
+  /** True for a new authenticated account with no children yet. */
+  needsOnboarding: boolean;
   setActiveChild: (id: string) => void;
   addChild: (input: NewChildInput) => Promise<ChildProfile>;
   updateChild: (id: string, patch: Partial<ChildProfile>) => Promise<void>;
@@ -72,13 +74,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       if (useFirestore && db && user) {
         try {
           const snap = await getDocs(collection(db, profilesPath));
-          let loaded = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChildProfile, "id">) }));
-          if (loaded.length === 0) {
-            // Seed a first profile for new accounts.
-            const seed = { ...defaultChildProfile, id: `child-${Date.now()}` };
-            await setDoc(doc(db, profilesPath, seed.id), seed);
-            loaded = [seed];
-          }
+          // Real accounts are NOT seeded with demo data — an empty result means the
+          // user is new and onboarding will create their first child.
+          const loaded = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChildProfile, "id">) }));
           if (!cancelled) setProfiles(loaded);
         } catch {
           if (!cancelled) setProfiles(readLocalProfiles());
@@ -162,10 +160,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const activeChild =
     profiles.find((p) => p.id === activeChildId) || profiles[0] || defaultChildProfile;
 
+  const needsOnboarding = useFirestore && !loading && profiles.length === 0;
+
   const value: ProfileContextValue = {
     profiles,
     activeChild,
     loading,
+    needsOnboarding,
     setActiveChild,
     addChild,
     updateChild,

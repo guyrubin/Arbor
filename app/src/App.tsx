@@ -1,12 +1,13 @@
 import React from "react";
 import { RefreshCw } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ProfileProvider } from "./context/ProfileContext";
+import { ProfileProvider, useProfile } from "./context/ProfileContext";
 import { ArborProvider } from "./context/ArborContext";
 import { ToastProvider } from "./context/ToastContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
+import OnboardingFlow from "./components/auth/OnboardingFlow";
 
 /**
  * Gates the app behind authentication. When Firebase is configured, unauthenticated
@@ -28,7 +29,24 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/** Thin application shell: auth gate → state provider → layout. */
+/**
+ * Routes a signed-in user to onboarding (new account, no children) or the app.
+ */
+function ProfileGate({ children }: { children: React.ReactNode }) {
+  const { loading, needsOnboarding } = useProfile();
+
+  if (loading) {
+    return (
+      <div className="arbor-app min-h-screen flex items-center justify-center text-[#a8a093]">
+        <RefreshCw className="w-5 h-5 animate-spin text-[#d7aa55]" />
+      </div>
+    );
+  }
+  if (needsOnboarding) return <OnboardingFlow />;
+  return <>{children}</>;
+}
+
+/** Thin application shell: auth gate → profile gate → state provider → layout. */
 export default function App() {
   return (
     <LanguageProvider>
@@ -36,9 +54,11 @@ export default function App() {
         <AuthProvider>
           <AuthGate>
             <ProfileProvider>
-              <ArborProvider>
-                <Shell />
-              </ArborProvider>
+              <ProfileGate>
+                <ArborProvider>
+                  <Shell />
+                </ArborProvider>
+              </ProfileGate>
             </ProfileProvider>
           </AuthGate>
         </AuthProvider>
