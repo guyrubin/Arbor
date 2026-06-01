@@ -51,6 +51,7 @@ export type ActiveTab =
 
 export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string };
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[] };
+export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
 
 export const WELCOME_MESSAGE: ChatMessage = {
   sender: "ai",
@@ -65,7 +66,6 @@ export const WELCOME_MESSAGE: ChatMessage = {
   lens: "Integrated Balanced",
 };
 
-const chatStorageKey = (childId: string) => `arbor.chat.${childId}`;
 
 /**
  * Holds the full Arbor application state and the API handlers that were
@@ -115,6 +115,13 @@ function useArborState() {
   const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
   const [chatInput, setChatInput] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  // Multi-thread coach conversations (persisted per child).
+  const conversationsCol = useChildCollection<Conversation>(childProfile.id, "conversations");
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const conversations = useMemo(
+    () => [...conversationsCol.items].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
+    [conversationsCol.items]
+  );
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
   const [chatStreamStatus, setChatStreamStatus] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -276,34 +283,44 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, isChatLoading]);
 
-  // Restore each child's last conversation when the active child changes.
+  // Start a fresh (unsaved) conversation when the active child changes.
   const loadedChatChild = useRef<string | null>(null);
   useEffect(() => {
     if (loadedChatChild.current === childProfile.id) return;
     loadedChatChild.current = childProfile.id;
-    try {
-      const raw = localStorage.getItem(chatStorageKey(childProfile.id));
-      if (raw) {
-        const parsed = JSON.parse(raw) as ChatMessage[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setChatMessages(parsed);
-          return;
-        }
-      }
-    } catch {
-      /* ignore */
-    }
+    setActiveConversationId(null);
     setChatMessages([WELCOME_MESSAGE]);
   }, [childProfile.id]);
 
-  // Persist the last 10 messages per child.
+  // Persist the active conversation (once it has real content).
   useEffect(() => {
-    try {
-      localStorage.setItem(chatStorageKey(childProfile.id), JSON.stringify(chatMessages.slice(-10)));
-    } catch {
-      /* ignore */
-    }
-  }, [chatMessages, childProfile.id]);
+    if (!activeConversationId || chatMessages.length <= 1) return;
+    const firstUser = chatMessages.find((m) => m.sender === "user");
+    const title = (firstUser ? firstUser.text : "Conversation").replace(/[#*]/g, "").trim().slice(0, 48) || "Conversation";
+    void conversationsCol.upsert({
+      id: activeConversationId,
+      title,
+      messages: chatMessages.slice(-30),
+      updatedAt: new Date().toISOString(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatMessages, activeConversationId]);
+
+  // Coach conversation thread controls.
+  const newConversation = () => {
+    setActiveConversationId(null);
+    setChatMessages([WELCOME_MESSAGE]);
+  };
+  const openConversation = (id: string) => {
+    const c = conversationsCol.items.find((x) => x.id === id);
+    if (!c) return;
+    setActiveConversationId(id);
+    setChatMessages(c.messages.length ? c.messages : [WELCOME_MESSAGE]);
+  };
+  const deleteConversation = (id: string) => {
+    void conversationsCol.remove(id);
+    if (id === activeConversationId) newConversation();
+  };
 
   // Persist UI preferences.
   useEffect(() => writeLS("arbor.activeTab", activeTab), [activeTab]);
@@ -437,6 +454,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     if (!customPrompt) setChatInput("");
     setApiError(null);
     setChatStreamStatus("Connecting to Arbor...");
+
+    // Begin a persisted conversation on the first message of a fresh thread.
+    if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
 
     const updatedMessages = [...chatMessages, { sender: "user" as const, text: promptValue, lens: selectedLens }];
     setChatMessages(updatedMessages);
@@ -670,6 +690,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     chatInput,
     setChatInput,
     chatMessages,
+    conversations,
+    activeConversationId,
+    newConversation,
+    openConversation,
+    deleteConversation,
     isChatLoading,
     chatStreamStatus,
     apiError,

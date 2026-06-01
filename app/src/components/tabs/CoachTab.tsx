@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { motion } from "motion/react";
-import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight } from "lucide-react";
+import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, Plus, MessageSquare } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -34,6 +34,11 @@ export default function CoachTab() {
     setActiveTab,
     setPlanChallengeTopic,
     setNewLogNotes,
+    conversations,
+    activeConversationId,
+    newConversation,
+    openConversation,
+    deleteConversation,
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, setAiLang } = useLanguage();
@@ -101,6 +106,31 @@ export default function CoachTab() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Conversation threads */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <button
+          onClick={newConversation}
+          className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full border border-[#d7aa55]/25 bg-[#d7aa55]/10 text-[#f4d991] hover:bg-[#d7aa55]/20 transition"
+        >
+          <Plus className="w-3.5 h-3.5" /> New
+        </button>
+        {conversations.map((c) => (
+          <div
+            key={c.id}
+            className={`flex-shrink-0 flex items-center gap-1.5 rounded-full border pl-3 pr-1.5 py-1 transition ${
+              c.id === activeConversationId ? "bg-white/5 border-white/15" : "bg-white/[0.02] border-white/5 hover:bg-white/5"
+            }`}
+          >
+            <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold text-[#a8a093] hover:text-white max-w-[160px] truncate">
+              <MessageSquare className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{c.title}</span>
+            </button>
+            <button onClick={() => deleteConversation(c.id)} aria-label="Delete conversation" className="text-[#a8a093] hover:text-red-400 transition">
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Chat Viewport Area */}
