@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Sparkles, RefreshCw, Brain, ExternalLink, Download, ChevronDown, Check, RotateCcw } from "lucide-react";
+import { Plus, Sparkles, RefreshCw, Brain, ExternalLink, Download, ChevronDown, Check, RotateCcw, Mic, Square } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useToast } from "../../context/ToastContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Sparkline } from "../ui/Sparkline";
 import PatternInsights from "../behaviors/PatternInsights";
+import { speechSupported, startDictation } from "../../lib/speech";
+import { authHeaders } from "../../lib/api";
 import { BehaviorContext, BehaviorLog } from "../../types";
 
 const CONTEXTS: BehaviorContext[] = ["Home", "School", "Transit", "Public"];
@@ -59,7 +62,70 @@ export default function BehaviorsTab() {
     setChatInput,
     setSelectedLens,
     setActiveTab,
+    childProfile,
   } = useArbor();
+  const { toast } = useToast();
+
+  // Voice-to-log
+  const [listening, setListening] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const stopRef = useRef<(() => void) | null>(null);
+
+  const parseVoice = async (text: string) => {
+    setParsing(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({
+          message: `Extract a structured behavior log from this parent's spoken note about ${childProfile.name}. Return ONLY compact JSON (no prose, no code fence) with keys: type (one of "Transition Refusal","Sensory Overload","Screentime Dispute","Sibling Conflict","Food Refusal","Sleep Meltdown"), intensity (integer 1-5), context (one of "Home","School","Transit","Public"), trigger (string), response (string), notes (string). Spoken note: "${text}"`,
+          childProfile,
+          scholarLens: "Integrated Balanced",
+        }),
+      });
+      if (!res.ok) throw new Error("parse failed");
+      const data = await res.json();
+      const match = /\{[\s\S]*\}/.exec(String(data.text || ""));
+      if (match) {
+        const p = JSON.parse(match[0]);
+        if (p.type) setNewLogType(p.type);
+        if (p.intensity) setNewLogIntensity(Math.max(1, Math.min(5, Number(p.intensity))));
+        if (p.context) setNewLogContext(p.context as BehaviorContext);
+        if (p.trigger) setNewLogTrigger(p.trigger);
+        if (p.response) setNewLogResponse(p.response);
+        if (p.notes) setNewLogNotes(p.notes);
+        toast("Voice note parsed into the form — review and save", "success");
+        return;
+      }
+      throw new Error("no json");
+    } catch {
+      // Fallback: keep the raw transcript so nothing is lost.
+      setNewLogTrigger(text);
+      toast("Captured your note into the trigger field", "info");
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const toggleVoice = () => {
+    if (listening) {
+      stopRef.current?.();
+      return;
+    }
+    if (!speechSupported()) {
+      toast("Voice capture isn't supported in this browser", "error");
+      return;
+    }
+    setListening(true);
+    stopRef.current = startDictation({
+      onResult: (text) => void parseVoice(text),
+      onError: () => toast("Couldn't hear that — try again", "error"),
+      onEnd: () => {
+        setListening(false);
+        stopRef.current = null;
+      },
+    });
+  };
 
   // Filters
   const [search, setSearch] = useState("");
@@ -151,10 +217,26 @@ export default function BehaviorsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8">
         {/* Form column */}
         <form onSubmit={handleAddLog} className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-4 text-sm self-start">
-          <h3 className="text-base font-extrabold text-white pb-2 border-b border-white/5 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-[#d7aa55]" />
-            Record Co-Regulation Event
-          </h3>
+          <div className="flex items-center justify-between pb-2 border-b border-white/5">
+            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+              <Plus className="w-4 h-4 text-[#d7aa55]" />
+              Record Co-Regulation Event
+            </h3>
+            <button
+              type="button"
+              onClick={toggleVoice}
+              disabled={parsing}
+              title="Speak to log"
+              className={`flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg border transition ${
+                listening
+                  ? "bg-[#e2562d]/15 text-[#ffb59c] border-[#e2562d]/40 animate-pulse"
+                  : "bg-[#d7aa55]/10 text-[#f4d991] border-[#d7aa55]/25 hover:bg-[#d7aa55]/20"
+              }`}
+            >
+              {parsing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : listening ? <Square className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+              {parsing ? "Parsing…" : listening ? "Stop" : "Speak"}
+            </button>
+          </div>
 
           <div className="p-3 border border-[#d7aa55]/20 bg-[#d7aa55]/5 rounded-xl space-y-1.5">
             <span className="text-[10px] font-extrabold uppercase text-[#f4d991] tracking-wider block flex items-center gap-1">
