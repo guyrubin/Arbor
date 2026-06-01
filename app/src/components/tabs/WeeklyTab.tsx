@@ -6,7 +6,7 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Skeleton } from "../ui/Skeleton";
 import { scholarsInfo } from "../../initialData";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { authHeaders } from "../../lib/api";
+import { authHeaders, aiLanguageInstruction } from "../../lib/api";
 
 const DAY = 86_400_000;
 
@@ -83,7 +83,7 @@ export default function WeeklyTab() {
           method: "POST",
           headers: await authHeaders(),
           body: JSON.stringify({
-            message: `Write a single concise paragraph (3-4 sentences) analyzing this week's parenting patterns for ${childProfile.name} (age ${childProfile.age}). Data: ${snapshot.summary.count} behavior events, average intensity ${snapshot.summary.avg.toFixed(1)}/5, top trigger "${snapshot.summary.topTrigger}", ${snapshot.milestoneWins.length} milestones achieved, ${snapshot.planProgress.done}/${snapshot.planProgress.total} action steps complete. Warm, non-diagnostic, end with one concrete focus for next week. No headings.`,
+            message: `Write a single concise paragraph (3-4 sentences) analyzing this week's parenting patterns for ${childProfile.name} (age ${childProfile.age}). Data: ${snapshot.summary.count} behavior events, average intensity ${snapshot.summary.avg.toFixed(1)}/5, top trigger "${snapshot.summary.topTrigger}", ${snapshot.milestoneWins.length} milestones achieved, ${snapshot.planProgress.done}/${snapshot.planProgress.total} action steps complete. Warm, non-diagnostic, end with one concrete focus for next week. No headings.` + aiLanguageInstruction(),
             childProfile,
             scholarLens: "Integrated Balanced",
           }),

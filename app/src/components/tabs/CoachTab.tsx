@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 
@@ -34,6 +35,7 @@ export default function CoachTab() {
     setNewLogNotes,
   } = useArbor();
   const { toast } = useToast();
+  const { aiLang, setAiLang } = useLanguage();
 
   const lastMessage = chatMessages[chatMessages.length - 1];
   const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && chatMessages.length > 1;
@@ -42,9 +44,25 @@ export default function CoachTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       {/* Header section with lens selector */}
       <div className="space-y-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Parent Development Coach</h2>
-          <p className="text-sm text-[#a8a093] mt-1">Customize AI reasoning using developmental frameworks, age bands, and non-diagnostic parent support boundaries.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-extrabold tracking-tight">Parent Development Coach</h2>
+            <p className="text-sm text-[#a8a093] mt-1">Customize AI reasoning using developmental frameworks, age bands, and non-diagnostic parent support boundaries.</p>
+          </div>
+          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/10 rounded-xl p-1 flex-shrink-0" title="Language for AI responses">
+            <button
+              onClick={() => setAiLang("en")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${aiLang === "en" ? "bg-[#d7aa55] text-black" : "text-[#a8a093] hover:text-white"}`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setAiLang("he")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${aiLang === "he" ? "bg-[#d7aa55] text-black" : "text-[#a8a093] hover:text-white"}`}
+            >
+              עב
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2">

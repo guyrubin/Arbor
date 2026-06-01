@@ -18,7 +18,7 @@ import {
   sampleBedtimeStory,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
-import { api, authHeaders } from "../lib/api";
+import { api, authHeaders, aiLanguageInstruction } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 
 const readLS = (key: string): string | null => {
@@ -183,7 +183,7 @@ Respond with EXACTLY three short markdown items:
 (Provide real direct verbal scripts parent can say immediately to support)
 
 ### 3. Key Trap to Avoid
-(State what the parent should avoid doing/saying)`,
+(State what the parent should avoid doing/saying)` + aiLanguageInstruction(),
           childProfile: childProfile,
           scholarLens: "Bowlby's Attachment Model",
         }),
@@ -223,7 +223,7 @@ ${checkedList || "None"}
 Unchecked:
 ${uncheckedList || "None"}
 
-Give a Vygotskian scaffolding learning assessment, outlining a real plan of how to master these goals. Highlight the path to bilingual confidence (Hebrew-English) and sensory self-regulation. Give 2 custom interactive exercises the parent can embed in daily play. Format with exact clean display headings.`,
+Give a Vygotskian scaffolding learning assessment, outlining a real plan of how to master these goals. Highlight the path to bilingual confidence (Hebrew-English) and sensory self-regulation. Give 2 custom interactive exercises the parent can embed in daily play. Format with exact clean display headings.` + aiLanguageInstruction(),
           childProfile: childProfile,
           scholarLens: "Vygotskian Scaffolding",
         }),
@@ -450,7 +450,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         headers: await authHeaders({ Accept: "text/event-stream" }),
         signal: controller.signal,
         body: JSON.stringify({
-          message: promptValue,
+          message: promptValue + aiLanguageInstruction(),
           childProfile: childProfile,
           scholarLens: selectedLens || "Integrated Balanced",
         }),
@@ -560,7 +560,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         childName: childProfile.name,
         age: childProfile.age,
         topic: storyTopic,
-        moral: storyMoral,
+        moral: storyMoral + aiLanguageInstruction(),
       });
       setCurrentStory(newStory);
       setActiveStoryPage(0);

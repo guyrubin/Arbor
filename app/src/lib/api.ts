@@ -12,6 +12,20 @@ export function setAuthTokenProvider(fn: TokenProvider) {
   tokenProvider = fn;
 }
 
+// Preferred language for AI-generated content (parenting guidance, scripts,
+// stories, insights). Set by LanguageContext; appended to outgoing AI prompts.
+let aiLanguage: "en" | "he" = "en";
+
+export function setAiLanguage(lang: "en" | "he") {
+  aiLanguage = lang;
+}
+
+export function aiLanguageInstruction(): string {
+  return aiLanguage === "he"
+    ? "\n\nIMPORTANT: Respond entirely in Hebrew (עברית), using warm, natural parent-facing language."
+    : "";
+}
+
 export async function authHeaders(extra: Record<string, string> = {}): Promise<Record<string, string>> {
   const headers: Record<string, string> = { "Content-Type": "application/json", ...extra };
   try {

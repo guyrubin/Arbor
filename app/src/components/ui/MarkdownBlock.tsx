@@ -62,7 +62,12 @@ export function renderMarkdown(text: string) {
 
 /** Renders AI markdown output inside a consistently spaced container. */
 export function MarkdownBlock({ text, className = "space-y-1" }: { text: string; className?: string }) {
-  return <div className={className}>{renderMarkdown(text)}</div>;
+  // dir="auto" lets Hebrew (and other RTL) AI output render right-to-left per block.
+  return (
+    <div className={className} dir="auto">
+      {renderMarkdown(text)}
+    </div>
+  );
 }
 
 export default MarkdownBlock;

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProfileProvider } from "./context/ProfileContext";
 import { ArborProvider } from "./context/ArborContext";
 import { ToastProvider } from "./context/ToastContext";
+import { LanguageProvider } from "./context/LanguageContext";
 import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
 
@@ -30,16 +31,18 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 /** Thin application shell: auth gate → state provider → layout. */
 export default function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <AuthGate>
-          <ProfileProvider>
-            <ArborProvider>
-              <Shell />
-            </ArborProvider>
-          </ProfileProvider>
-        </AuthGate>
-      </AuthProvider>
-    </ToastProvider>
+    <LanguageProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AuthGate>
+            <ProfileProvider>
+              <ArborProvider>
+                <Shell />
+              </ArborProvider>
+            </ProfileProvider>
+          </AuthGate>
+        </AuthProvider>
+      </ToastProvider>
+    </LanguageProvider>
   );
 }
