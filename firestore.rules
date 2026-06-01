@@ -16,8 +16,14 @@ service cloud.firestore {
         && isFamilyMember(get(/databases/$(database)/documents/children/$(childId)).data.familyId);
     }
 
+    // A user owns everything under their own document, including children and
+    // all per-child subcollections (behaviorLogs, milestones, actionPlans,
+    // savedStories, contacts, weeklyReports, insights, settings, …).
     match /users/{userId} {
       allow read, write: if signedIn() && request.auth.uid == userId;
+      match /{document=**} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
     }
 
     match /families/{familyId} {

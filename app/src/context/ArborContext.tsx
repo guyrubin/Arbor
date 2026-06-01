@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from "react";
 import {
   ChildProfile,
   BehaviorLog,
@@ -19,6 +19,7 @@ import {
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
 import { api, authHeaders } from "../lib/api";
+import { useChildCollection } from "../hooks/useChildCollection";
 
 const readLS = (key: string): string | null => {
   try {
@@ -82,10 +83,31 @@ function useArborState() {
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => (readLS("arbor.activeTab") as ActiveTab) || "overview");
   const [showAiRail, setShowAiRail] = useState<boolean>(() => readLS("arbor.aiRail") !== "false");
 
-  // App Core States
-  const [behaviorLogs, setBehaviorLogs] = useState<BehaviorLog[]>(sampleBehaviorLogs);
-  const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
-  const [actionPlans, setActionPlans] = useState<ActionPlan[]>(defaultActionPlans);
+  // App Core States — persisted per child (Firestore when authed, localStorage in sandbox)
+  const logsCol = useChildCollection<BehaviorLog>(childProfile.id, "behaviorLogs", { sandboxSeed: sampleBehaviorLogs });
+  const milestonesCol = useChildCollection<Milestone>(childProfile.id, "milestones", {
+    seed: initialMilestones,
+    sandboxSeed: initialMilestones,
+  });
+  const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: defaultActionPlans });
+
+  const behaviorLogs = useMemo(
+    () => [...logsCol.items].sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1)),
+    [logsCol.items]
+  );
+  const milestones = useMemo(() => {
+    const order = new Map(initialMilestones.map((m, i) => [m.id, i]));
+    const list = milestonesCol.items.length > 0 ? milestonesCol.items : initialMilestones;
+    return [...list].sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
+  }, [milestonesCol.items]);
+  const actionPlans = useMemo(() => {
+    const ts = (id: string) => {
+      const m = /(\d{10,})/.exec(id);
+      return m ? Number(m[1]) : 0;
+    };
+    return [...plansCol.items].sort((a, b) => ts(b.id) - ts(a.id));
+  }, [plansCol.items]);
+
   const [currentStory, setCurrentStory] = useState<BedtimeStory>(sampleBedtimeStory);
 
   // Active Interactive / Selection States
@@ -487,11 +509,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       resolved: false,
     };
 
-    setBehaviorLogs([logItem, ...behaviorLogs]);
+    void logsCol.upsert(logItem);
     setNewLogTrigger("");
     setNewLogResponse("");
     setNewLogNotes("");
-    alert("Behavior log saved to Dylan's developmental observation timeline.");
+    alert(`Behavior log saved to ${childProfile.name}'s developmental observation timeline.`);
   };
 
   // Trigger analysis for logs
@@ -516,7 +538,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     try {
       const planData = await api.generatePlan({ challengeTopic: planChallengeTopic, childProfile });
       planData.id = `plan-${Date.now()}`;
-      setActionPlans([planData, ...actionPlans]);
+      await plansCol.upsert(planData);
       alert(`Action Plan successfully woven: "${planData.title}"`);
     } catch (err: any) {
       console.error(err);
@@ -570,63 +592,51 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
   // Mark a behavior log resolved / unresolved
   const toggleLogResolved = (id: string) => {
-    setBehaviorLogs((prev) => prev.map((l) => (l.id === id ? { ...l, resolved: !l.resolved } : l)));
+    const log = behaviorLogs.find((l) => l.id === id);
+    if (log) void logsCol.upsert({ ...log, resolved: !log.resolved });
   };
 
   // Toggle milestone checking
   const handleToggleMilestone = (id: string) => {
-    setMilestones((prev) => prev.map((m) => (m.id === id ? { ...m, checked: !m.checked } : m)));
+    const m = milestones.find((x) => x.id === id);
+    if (m) void milestonesCol.upsert({ ...m, checked: !m.checked });
   };
 
   // Add a custom milestone to a chosen domain
   const addCustomMilestone = (title: string, domain: DevelopmentalDomainId) => {
-    setMilestones((prev) => [
-      ...prev,
-      {
-        id: `ms-${Date.now()}`,
-        domain,
-        ageGroup: "Custom",
-        title,
-        description: "Custom milestone added by parent.",
-        checked: false,
-        custom: true,
-      },
-    ]);
+    void milestonesCol.upsert({
+      id: `ms-${Date.now()}`,
+      domain,
+      ageGroup: "Custom",
+      title,
+      description: "Custom milestone added by parent.",
+      checked: false,
+      custom: true,
+    });
   };
 
   // Set a step's kanban status (todo / doing / done); keeps `completed` in sync.
   const setPlanStepStatus = (planId: string, phaseIdx: number, stepIdx: number, status: "todo" | "doing" | "done") => {
-    setActionPlans((prev) =>
-      prev.map((p) => {
-        if (p.id !== planId) return p;
-        const phases = p.phases.map((ph, phI) => {
-          if (phI !== phaseIdx) return ph;
-          const steps = ph.steps.map((st, stI) =>
-            stI === stepIdx ? { ...st, status, completed: status === "done" } : st
-          );
-          return { ...ph, steps };
-        });
-        return { ...p, phases };
-      })
-    );
+    const plan = actionPlans.find((p) => p.id === planId);
+    if (!plan) return;
+    const phases = plan.phases.map((ph, phI) => {
+      if (phI !== phaseIdx) return ph;
+      const steps = ph.steps.map((st, stI) => (stI === stepIdx ? { ...st, status, completed: status === "done" } : st));
+      return { ...ph, steps };
+    });
+    void plansCol.upsert({ ...plan, phases });
   };
 
   // Toggle checklist inside Action Phase
   const handleTogglePlanStep = (planId: string, phaseIdx: number, stepIdx: number) => {
-    setActionPlans((prev) =>
-      prev.map((p) => {
-        if (p.id !== planId) return p;
-        const updatedPhases = p.phases.map((ph, phI) => {
-          if (phI !== phaseIdx) return ph;
-          const updatedSteps = ph.steps.map((st, stI) => {
-            if (stI !== stepIdx) return st;
-            return { ...st, completed: !st.completed };
-          });
-          return { ...ph, steps: updatedSteps };
-        });
-        return { ...p, phases: updatedPhases };
-      })
-    );
+    const plan = actionPlans.find((p) => p.id === planId);
+    if (!plan) return;
+    const updatedPhases = plan.phases.map((ph, phI) => {
+      if (phI !== phaseIdx) return ph;
+      const updatedSteps = ph.steps.map((st, stI) => (stI === stepIdx ? { ...st, completed: !st.completed } : st));
+      return { ...ph, steps: updatedSteps };
+    });
+    void plansCol.upsert({ ...plan, phases: updatedPhases });
   };
 
   return {
@@ -638,11 +648,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     childProfile,
     updateChild,
     behaviorLogs,
-    setBehaviorLogs,
+    logsLoaded: logsCol.loaded,
     milestones,
-    setMilestones,
     actionPlans,
-    setActionPlans,
     currentStory,
     setCurrentStory,
     selectedLens,

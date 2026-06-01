@@ -6,9 +6,10 @@ import { StoryIllustration } from "../stories/StoryIllustration";
 import ReadingMode from "../stories/ReadingMode";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { useToast } from "../../context/ToastContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
 import { BedtimeStory } from "../../types";
 
-type SavedStory = { story: BedtimeStory; savedAt: string };
+type SavedStory = { id: string; story: BedtimeStory; savedAt: string };
 
 export default function StoriesTab() {
   const {
@@ -27,37 +28,21 @@ export default function StoriesTab() {
   } = useArbor();
 
   const { toast } = useToast();
+  const storiesCol = useChildCollection<SavedStory>(childProfile.id, "savedStories");
+  const library = useMemo(
+    () => [...storiesCol.items].sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1)),
+    [storiesCol.items]
+  );
   const [reading, setReading] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [discussed, setDiscussed] = useState<Record<number, boolean>>({});
-  const [library, setLibrary] = useState<SavedStory[]>([]);
-
-  const libKey = useMemo(() => `arbor.stories.${childProfile.id}`, [childProfile.id]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(libKey);
-      setLibrary(raw ? (JSON.parse(raw) as SavedStory[]) : []);
-    } catch {
-      setLibrary([]);
-    }
-  }, [libKey]);
-
-  const persist = (next: SavedStory[]) => {
-    setLibrary(next);
-    try {
-      localStorage.setItem(libKey, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-  };
 
   const saveCurrent = () => {
     if (library.some((s) => s.story.title === currentStory.title)) {
       toast("Already in your library", "info");
       return;
     }
-    persist([{ story: currentStory, savedAt: new Date().toISOString() }, ...library]);
+    void storiesCol.upsert({ id: `story-${Date.now()}`, story: currentStory, savedAt: new Date().toISOString() });
     toast("Saved to story library", "success");
   };
 

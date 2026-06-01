@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { ShieldAlert, Phone, Plus, Trash2, CalendarCheck, AlertTriangle } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
 
 type Contact = { id: string; name: string; role: string; phone: string; notes: string };
 
@@ -23,29 +24,25 @@ const RISK_STYLES: Record<string, { banner: string; label: string }> = {
 export default function SafetyTab() {
   const { childProfile } = useArbor();
 
-  const contactsKey = useMemo(() => `arbor.contacts.${childProfile.id}`, [childProfile.id]);
   const reviewedKey = useMemo(() => `arbor.safetyReviewed.${childProfile.id}`, [childProfile.id]);
   const checklistKey = useMemo(() => `arbor.safetyChecklist.${childProfile.id}`, [childProfile.id]);
 
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  // Emergency contacts persist to Firestore (per child); checklist + last-reviewed
+  // are lightweight device-local notes.
+  const contactsCol = useChildCollection<Contact>(childProfile.id, "contacts");
+  const contacts = contactsCol.items;
   const [checked, setChecked] = useState<Record<number, boolean>>({});
   const [lastReviewed, setLastReviewed] = useState<string | null>(null);
   const [form, setForm] = useState<Contact>({ id: "", name: "", role: "", phone: "", notes: "" });
 
   useEffect(() => {
     try {
-      setContacts(JSON.parse(localStorage.getItem(contactsKey) || "[]"));
       setChecked(JSON.parse(localStorage.getItem(checklistKey) || "{}"));
       setLastReviewed(localStorage.getItem(reviewedKey));
     } catch {
-      setContacts([]);
+      setChecked({});
     }
-  }, [contactsKey, reviewedKey, checklistKey]);
-
-  const persistContacts = (next: Contact[]) => {
-    setContacts(next);
-    try { localStorage.setItem(contactsKey, JSON.stringify(next)); } catch { /* ignore */ }
-  };
+  }, [reviewedKey, checklistKey]);
 
   const toggleSign = (i: number) => {
     const next = { ...checked, [i]: !checked[i] };
@@ -56,7 +53,7 @@ export default function SafetyTab() {
   const addContact = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
-    persistContacts([...contacts, { ...form, id: `c-${Date.now()}` }]);
+    void contactsCol.upsert({ ...form, id: `c-${Date.now()}` });
     setForm({ id: "", name: "", role: "", phone: "", notes: "" });
   };
 
@@ -147,7 +144,7 @@ export default function SafetyTab() {
                   <span className="text-[#a8a093]">{c.role}{c.role && c.phone ? " · " : ""}{c.phone}</span>
                   {c.notes && <p className="text-[10px] text-[#a8a093] mt-1">{c.notes}</p>}
                 </div>
-                <button onClick={() => persistContacts(contacts.filter((x) => x.id !== c.id))} className="text-[#a8a093] hover:text-red-400 transition" aria-label="Remove contact">
+                <button onClick={() => void contactsCol.remove(c.id)} className="text-[#a8a093] hover:text-red-400 transition" aria-label="Remove contact">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
