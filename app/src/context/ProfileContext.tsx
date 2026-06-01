@@ -4,6 +4,7 @@ import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "./AuthContext";
 import { ChildProfile } from "../types";
 import { defaultChildProfile } from "../initialData";
+import { deleteChildData } from "../lib/childData";
 
 const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
@@ -19,6 +20,8 @@ type ProfileContextValue = {
   setActiveChild: (id: string) => void;
   addChild: (input: NewChildInput) => Promise<ChildProfile>;
   updateChild: (id: string, patch: Partial<ChildProfile>) => Promise<void>;
+  /** Permanently delete a child and all of their data (GDPR). */
+  deleteChild: (id: string) => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
@@ -144,6 +147,18 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     [useFirestore, profilesPath]
   );
 
+  const deleteChild = useCallback(
+    async (id: string) => {
+      await deleteChildData(user?.uid, id);
+      setProfiles((prev) => {
+        const next = prev.filter((p) => p.id !== id);
+        if (id === activeChildId) setActiveChildId(next[0]?.id ?? null);
+        return next;
+      });
+    },
+    [user?.uid, activeChildId]
+  );
+
   const activeChild =
     profiles.find((p) => p.id === activeChildId) || profiles[0] || defaultChildProfile;
 
@@ -154,6 +169,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     setActiveChild,
     addChild,
     updateChild,
+    deleteChild,
   };
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

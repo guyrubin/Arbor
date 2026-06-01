@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X } from "lucide-react";
+import { X, Download, Trash2 } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+import { exportChildData, downloadJson } from "../../lib/childData";
 import { ChildProfile } from "../../types";
 
 const RISK_LEVELS: ChildProfile["riskLevel"][] = ["Low", "Moderate", "High"];
 
 export default function ProfileEditDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { activeChild, updateChild } = useProfile();
+  const { activeChild, updateChild, deleteChild, profiles } = useProfile();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState(activeChild.name);
   const [age, setAge] = useState(activeChild.age);
   const [schoolContext, setSchoolContext] = useState(activeChild.schoolContext);
@@ -28,6 +34,33 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setChallenges(activeChild.challenges.join("\n"));
     setRiskLevel(activeChild.riskLevel);
   }, [open, activeChild]);
+
+  const handleExport = async () => {
+    setBusy(true);
+    try {
+      const data = await exportChildData(user?.uid, activeChild);
+      downloadJson(`arbor-${activeChild.name.toLowerCase().replace(/\s+/g, "-")}-export.json`, data);
+      toast("Data exported", "success");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (profiles.length <= 1) {
+      toast("Can't delete your only child profile", "error");
+      return;
+    }
+    if (!window.confirm(`Permanently delete ${activeChild.name} and ALL of their data? This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      await deleteChild(activeChild.id);
+      toast(`${activeChild.name}'s data was deleted`, "success");
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -122,6 +155,17 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               >
                 {saving ? "Saving…" : "Save changes"}
               </button>
+
+              {/* Data & privacy (GDPR) */}
+              <div className="pt-4 mt-2 border-t border-white/5 space-y-2">
+                <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">Data & privacy</span>
+                <button onClick={handleExport} disabled={busy} className="w-full py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60">
+                  <Download className="w-3.5 h-3.5 text-[#d7aa55]" /> Export {activeChild.name}&apos;s data (JSON)
+                </button>
+                <button onClick={handleDelete} disabled={busy} className="w-full py-2.5 bg-[#e2562d]/10 border border-[#e2562d]/30 hover:bg-[#e2562d]/20 text-[#ffb59c] font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete this child & all data
+                </button>
+              </div>
             </div>
           </motion.div>
         </motion.div>
