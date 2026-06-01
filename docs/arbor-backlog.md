@@ -38,6 +38,14 @@
 > streaming partial JSON would render as gibberish. V2-C delivers the perceived-
 > streaming benefit client-side instead.
 
+## v1.3 — follow-on
+
+| ID | Capability | Value | Effort | Status |
+|---|---|---|---|---|
+| V3-A | Delete logs / plans / custom milestones (data correction) | M | S | Shipped |
+| V3-B | Multi-thread Coach conversations | H | M | Shipped |
+| V3-C | Curated milestone research references | L | S | Shipped |
+
 ## LATER — directional
 
 | ID | Capability | Value | Effort | Status |
