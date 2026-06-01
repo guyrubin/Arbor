@@ -8,6 +8,7 @@ import { ProgressRing } from "../ui/ProgressRing";
 import { Skeleton } from "../ui/Skeleton";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import QuickLogModal from "../overview/QuickLogModal";
+import RemindersCard from "../overview/RemindersCard";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -252,6 +253,9 @@ export default function OverviewTab() {
           </div>
         </div>
       </div>
+
+      {/* Reminders */}
+      <RemindersCard />
 
       {/* Bedtime story quick card */}
       <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
