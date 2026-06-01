@@ -9,6 +9,7 @@ import {
 } from "firebase/auth";
 import { auth, firebaseEnabled } from "../lib/firebase";
 import { setAuthTokenProvider } from "../lib/api";
+import { setAnalyticsUser } from "../lib/analytics";
 
 export type AuthUser = {
   uid: string;
@@ -95,7 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Let the API layer attach the current ID token to outgoing requests.
   useEffect(() => {
     setAuthTokenProvider(getIdToken);
-  }, []);
+    setAnalyticsUser(() => user?.uid);
+  }, [user?.uid]);
 
   const value: AuthContextValue = {
     user,

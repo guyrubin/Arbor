@@ -20,6 +20,7 @@ import {
 import { useProfile } from "./ProfileContext";
 import { api, authHeaders, aiLanguageInstruction } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
+import { track } from "../lib/analytics";
 
 const readLS = (key: string): string | null => {
   try {
@@ -466,6 +467,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         setMemoryReviewItems(data.memoryReviewItems);
       }
       setChatMessages((prev) => [...prev, { sender: "ai", text: data.text, lens: selectedLens }]);
+      track("coach_message", { lens: selectedLens });
     } catch (err: any) {
       console.error(err);
       if (err.name === "AbortError") {
@@ -512,6 +514,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     };
 
     void logsCol.upsert(logItem);
+    track("log_created", { type: newLogType, intensity: newLogIntensity, context: newLogContext });
     setNewLogTrigger("");
     setNewLogResponse("");
     setNewLogNotes("");
@@ -542,6 +545,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       const planData = await api.generatePlan({ challengeTopic: planChallengeTopic, childProfile });
       planData.id = `plan-${Date.now()}`;
       await plansCol.upsert(planData);
+      track("plan_generated", { title: planData.title });
       alert(`Action Plan successfully woven: "${planData.title}"`);
     } catch (err: any) {
       console.error(err);

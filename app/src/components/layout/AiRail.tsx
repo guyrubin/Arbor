@@ -107,6 +107,7 @@ export default function AiRail() {
         <button
           onClick={() => setShowAiRail(false)}
           title="Collapse Panel"
+          aria-label="Collapse AI engines panel"
           className="p-1 px-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-[#a8a093] hover:text-white transition cursor-pointer"
         >
           ➔

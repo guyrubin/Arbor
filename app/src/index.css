@@ -334,3 +334,24 @@ body {
   border-radius: 0.75rem;
 }
 .arbor-app .arbor-skeleton { animation: pulse 1.6s cubic-bezier(0.4,0,0.6,1) infinite; }
+
+/* ─── Accessibility: keyboard focus ring ──────────────────────────────────── */
+/* Restores a visible focus indicator for keyboard users even where component
+   styles set focus:outline-none. Mouse clicks don't trigger :focus-visible. */
+.arbor-app a:focus-visible,
+.arbor-app button:focus-visible,
+.arbor-app input:focus-visible,
+.arbor-app select:focus-visible,
+.arbor-app textarea:focus-visible,
+.arbor-app [tabindex]:focus-visible {
+  outline: 2px solid var(--arbor-clay);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arbor-app *, .arbor-app *::before, .arbor-app *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
