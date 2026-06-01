@@ -690,6 +690,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     behaviorAnalysis,
     isAnalyzingBehavior,
     schoolBrief,
+    setSchoolBrief,
     isGeneratingBrief,
     memoryReviewItems,
     isMemoryUpdating,

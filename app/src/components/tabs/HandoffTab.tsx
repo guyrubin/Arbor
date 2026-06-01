@@ -1,10 +1,27 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "motion/react";
-import { Sparkles, School, Printer } from "lucide-react";
+import { Sparkles, School, Printer, Save, FolderOpen } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { useToast } from "../../context/ToastContext";
+import { SchoolBrief } from "../../types";
+
+type SavedBrief = { id: string; audience: string; generatedAt: string; brief: SchoolBrief };
 
 export default function HandoffTab() {
-  const { handleGenerateBrief, isGeneratingBrief, handoffAudience, setHandoffAudience, schoolBrief } = useArbor();
+  const { handleGenerateBrief, isGeneratingBrief, handoffAudience, setHandoffAudience, schoolBrief, setSchoolBrief, childProfile } = useArbor();
+  const { toast } = useToast();
+  const briefsCol = useChildCollection<SavedBrief>(childProfile.id, "briefs");
+  const savedBriefs = useMemo(
+    () => [...briefsCol.items].sort((a, b) => (a.generatedAt < b.generatedAt ? 1 : -1)),
+    [briefsCol.items]
+  );
+
+  const saveBrief = () => {
+    if (!schoolBrief) return;
+    void briefsCol.upsert({ id: `brief-${Date.now()}`, audience: handoffAudience, generatedAt: new Date().toISOString(), brief: schoolBrief });
+    toast("Brief saved to history", "success");
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
@@ -51,9 +68,16 @@ export default function HandoffTab() {
               Target Audience: Educators, Occupational Therapists, speech consultants & intake teams
             </p>
           </div>
-          <button onClick={() => window.print()} className="border border-white/10 hover:bg-white/5 text-[#a8a093] hover:text-white px-3.5 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 self-end sm:self-auto">
-            <Printer className="w-3.5 h-3.5" /> Print Summary Document
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {schoolBrief && (
+              <button onClick={saveBrief} className="border border-white/10 hover:bg-white/5 text-[#f4d991] hover:text-white px-3.5 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5">
+                <Save className="w-3.5 h-3.5" /> Save
+              </button>
+            )}
+            <button onClick={() => window.print()} className="border border-white/10 hover:bg-white/5 text-[#a8a093] hover:text-white px-3.5 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5">
+              <Printer className="w-3.5 h-3.5" /> Print
+            </button>
+          </div>
         </div>
 
         {schoolBrief ? (
@@ -108,10 +132,33 @@ export default function HandoffTab() {
         ) : (
           <div className="text-center py-12 text-gray-500 space-y-2">
             <b className="text-[#a8a093] block">No brief summary compiled yet.</b>
-            <p className="text-xs">Click "Compile Brief Summary" at the top to generate a custom printable support brief using Dylan&apos;s current milestones and logs.</p>
+            <p className="text-xs">Click "Compile Brief Summary" at the top to generate a custom printable support brief using {childProfile.name}&apos;s current milestones and logs.</p>
           </div>
         )}
       </div>
+
+      {/* Saved briefs */}
+      {savedBriefs.length > 0 && (
+        <div className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-3">
+          <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
+            <FolderOpen className="w-3.5 h-3.5 text-[#d7aa55]" /> Saved briefs ({savedBriefs.length})
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {savedBriefs.map((b) => (
+              <div key={b.id} className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-center justify-between gap-2">
+                <div className="text-xs min-w-0">
+                  <strong className="text-white capitalize block">{b.audience} brief</strong>
+                  <span className="text-[10px] text-[#a8a093]">{new Date(b.generatedAt).toLocaleDateString()} {new Date(b.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => setSchoolBrief(b.brief)} className="text-[10px] font-bold text-[#f4d991] hover:underline">Open</button>
+                  <button onClick={() => void briefsCol.remove(b.id)} className="text-[10px] text-[#a8a093] hover:text-red-400">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
