@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { motion } from "motion/react";
 import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
+import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
 
 const FOLLOW_UPS = [
   "What should I avoid saying in that moment?",
@@ -36,6 +37,10 @@ export default function CoachTab() {
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, setAiLang } = useLanguage();
+
+  // Animate (typewriter) only AI messages that arrive after mount, not restored history.
+  const revealedRef = useRef<number | null>(null);
+  if (revealedRef.current === null) revealedRef.current = chatMessages.length - 1;
 
   const lastMessage = chatMessages[chatMessages.length - 1];
   const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && chatMessages.length > 1;
@@ -126,7 +131,17 @@ export default function CoachTab() {
                     Aligned with {msg.lens}
                   </span>
                 )}
-                <MarkdownBlock text={msg.text} />
+                {msg.sender === "ai" ? (
+                  <TypewriterMarkdown
+                    text={msg.text}
+                    enabled={idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
+                    onDone={() => {
+                      revealedRef.current = idx;
+                    }}
+                  />
+                ) : (
+                  <MarkdownBlock text={msg.text} />
+                )}
 
                 {msg.sender === "ai" && (
                   <div className="flex items-center gap-3 mt-3 pt-2 border-t border-white/5 opacity-0 group-hover:opacity-100 transition">

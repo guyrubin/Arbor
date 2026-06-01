@@ -29,9 +29,9 @@
 
 | ID | Capability | Value | Effort | Status |
 |---|---|---|---|---|
-| V2-A | Account menu + Sign out (UI gap) | H | S | In progress |
-| V2-B | First-run onboarding (create first child) | M | S | Not started |
-| V2-C | Typewriter reveal for Coach replies (perceived streaming) | M | S | Not started |
+| V2-A | Account menu + Sign out (UI gap) | H | S | Shipped |
+| V2-B | First-run onboarding (create first child) | M | S | Shipped |
+| V2-C | Typewriter reveal for Coach replies (perceived streaming) | M | S | Shipped |
 
 > Note: true token streaming is intentionally not pursued — the Parent Coach
 > response is a structured JSON contract rendered to markdown at the end, so
