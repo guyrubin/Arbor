@@ -603,6 +603,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     if (log) void logsCol.upsert({ ...log, resolved: !log.resolved });
   };
 
+  // Deletions (data correction)
+  const deleteLog = (id: string) => void logsCol.remove(id);
+  const deletePlan = (id: string) => void plansCol.remove(id);
+  const deleteMilestone = (id: string) => void milestonesCol.remove(id);
+
   // Toggle milestone checking
   const handleToggleMilestone = (id: string) => {
     const m = milestones.find((x) => x.id === id);
@@ -685,6 +690,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     newLogPhoto,
     setNewLogPhoto,
     toggleLogResolved,
+    deleteLog,
+    deletePlan,
+    deleteMilestone,
     planChallengeTopic,
     setPlanChallengeTopic,
     isPlanGenerating,

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { Check, Sparkles, RefreshCw, Brain, AlertTriangle, Plus, ExternalLink, PartyPopper, BookOpen } from "lucide-react";
+import { Check, Sparkles, RefreshCw, Brain, AlertTriangle, Plus, ExternalLink, PartyPopper, BookOpen, Trash2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { ProgressRing } from "../ui/ProgressRing";
@@ -33,6 +33,7 @@ export default function MilestonesTab() {
     setSelectedLens,
     setActiveTab,
     childProfile,
+    deleteMilestone,
   } = useArbor();
 
   const domainOptions = framework.domains;
@@ -162,6 +163,16 @@ export default function MilestonesTab() {
                         <div className="flex items-center gap-2 flex-wrap pt-1">
                           {item.ageGroup && <span className="text-[9px] font-bold text-[#a8a093] bg-white/5 px-1.5 py-0.5 rounded">Age: {item.ageGroup}</span>}
                           {item.custom && <span className="text-[9px] font-bold text-[#f4d991] bg-[#d7aa55]/10 px-1.5 py-0.5 rounded">Custom</span>}
+                          {item.custom && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); if (window.confirm("Delete this custom milestone?")) deleteMilestone(item.id); }}
+                              aria-label="Delete custom milestone"
+                              className="text-[9px] text-[#a8a093] hover:text-red-400 transition"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          )}
                           {item.references?.map((r, i) => (
                             <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
                               {r.label} <ExternalLink className="w-2.5 h-2.5" />

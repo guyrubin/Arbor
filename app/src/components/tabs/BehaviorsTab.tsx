@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Sparkles, RefreshCw, Brain, ExternalLink, Download, ChevronDown, Check, RotateCcw, Mic, Square } from "lucide-react";
+import { Plus, Sparkles, RefreshCw, Brain, ExternalLink, Download, ChevronDown, Check, RotateCcw, Mic, Square, Trash2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
@@ -66,6 +66,7 @@ export default function BehaviorsTab() {
     setSelectedLens,
     setActiveTab,
     childProfile,
+    deleteLog,
   } = useArbor();
   const { toast } = useToast();
 
@@ -456,6 +457,13 @@ export default function BehaviorsTab() {
                                     className={`px-2 py-0.5 rounded font-bold flex items-center gap-1 transition ${log.resolved ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-[#a8a093] hover:text-white"}`}
                                   >
                                     <Check className="w-3 h-3" /> {log.resolved ? "Resolved" : "Mark resolved"}
+                                  </button>
+                                  <button
+                                    onClick={() => { if (window.confirm("Delete this log?")) deleteLog(log.id); }}
+                                    aria-label="Delete log"
+                                    className="px-1.5 py-0.5 rounded text-[#a8a093] hover:text-red-400 transition"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
                                   </button>
                                 </div>
                               </div>

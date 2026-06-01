@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { DndContext, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 import { ProgressRing } from "../ui/ProgressRing";
 import { useArbor } from "../../context/ArborContext";
 import { ActionPlan, StepStatus } from "../../types";
@@ -62,7 +62,7 @@ function Column({ planId, status, label, tint, items }: { planId: string; status
 }
 
 export default function PlanKanban({ plan }: { plan: ActionPlan }) {
-  const { setPlanStepStatus } = useArbor();
+  const { setPlanStepStatus, deletePlan } = useArbor();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const items: Item[] = useMemo(() => {
@@ -97,9 +97,18 @@ export default function PlanKanban({ plan }: { plan: ActionPlan }) {
           <p className="text-xs text-[#a8a093] mt-1 italic">Focus Issue: {plan.issue}</p>
           {days !== null && <p className="text-[10px] text-[#a8a093] mt-1">{days} {days === 1 ? "day" : "days"} active</p>}
         </div>
-        <ProgressRing value={pct} size={56}>
-          <span className="text-[11px] font-black text-[#f4d991]">{pct}%</span>
-        </ProgressRing>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <ProgressRing value={pct} size={56}>
+            <span className="text-[11px] font-black text-[#f4d991]">{pct}%</span>
+          </ProgressRing>
+          <button
+            onClick={() => { if (window.confirm(`Delete the plan "${plan.title}"?`)) deletePlan(plan.id); }}
+            aria-label="Delete plan"
+            className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-[#a8a093] hover:text-red-400 transition self-start"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
