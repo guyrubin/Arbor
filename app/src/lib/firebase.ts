@@ -1,6 +1,12 @@
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+} from "firebase/firestore";
 
 /**
  * Firebase client initialization. Reads VITE_FIREBASE_* env vars (exposed to the
@@ -27,7 +33,15 @@ let db: Firestore | undefined;
 if (firebaseEnabled) {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  db = getFirestore(app);
+  // Offline-first: IndexedDB-backed cache so logs/milestones/plans read and write
+  // offline and sync when the connection returns (multi-tab safe).
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    db = getFirestore(app);
+  }
 }
 
 export { app, auth, db };
