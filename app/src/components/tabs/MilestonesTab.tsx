@@ -6,6 +6,7 @@ import { useArbor } from "../../context/ArborContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { ProgressRing } from "../ui/ProgressRing";
 import { authHeaders, aiLanguageInstruction } from "../../lib/api";
+import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import framework from "../../framework.json";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 
@@ -178,6 +179,17 @@ export default function MilestonesTab() {
                               {r.label} <ExternalLink className="w-2.5 h-2.5" />
                             </a>
                           ))}
+                          {!item.custom && DOMAIN_REFERENCES[item.domain] && (
+                            <a
+                              href={DOMAIN_REFERENCES[item.domain].url}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[9px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
+                            >
+                              {DOMAIN_REFERENCES[item.domain].label} <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          )}
                           <button
                             type="button"
                             onClick={(e) => { e.preventDefault(); void explain(item); }}
