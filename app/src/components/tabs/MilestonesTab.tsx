@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { Check, Sparkles, RefreshCw, Brain, AlertTriangle, Plus, ExternalLink, PartyPopper } from "lucide-react";
+import { Check, Sparkles, RefreshCw, Brain, AlertTriangle, Plus, ExternalLink, PartyPopper, BookOpen } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { ProgressRing } from "../ui/ProgressRing";
+import { authHeaders, aiLanguageInstruction } from "../../lib/api";
 import framework from "../../framework.json";
-import { DevelopmentalDomainId } from "../../types";
+import { DevelopmentalDomainId, Milestone } from "../../types";
 
 function celebrate() {
   confetti({
@@ -31,10 +32,43 @@ export default function MilestonesTab() {
     setChatInput,
     setSelectedLens,
     setActiveTab,
+    childProfile,
   } = useArbor();
 
   const domainOptions = framework.domains;
   const [activeDomain, setActiveDomain] = useState<string>("all");
+  const [explanations, setExplanations] = useState<Record<string, string>>({});
+  const [explaining, setExplaining] = useState<Record<string, boolean>>({});
+
+  const explain = async (item: Milestone) => {
+    if (explanations[item.id]) {
+      setExplanations((p) => {
+        const n = { ...p };
+        delete n[item.id];
+        return n;
+      });
+      return;
+    }
+    setExplaining((p) => ({ ...p, [item.id]: true }));
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({
+          message: `Briefly explain the developmental milestone "${item.title}" for a ${childProfile.age}-year-old. Cover: typical age range, what it looks like in everyday life, and 2 concrete ways a parent can support it. Non-diagnostic, warm, short. Use the headings ### Typical age, ### What it looks like, ### How to support.` + aiLanguageInstruction(),
+          childProfile,
+          scholarLens: "Integrated Balanced",
+        }),
+      });
+      if (!res.ok) throw new Error("fail");
+      const data = await res.json();
+      setExplanations((p) => ({ ...p, [item.id]: String(data.text || "") }));
+    } catch {
+      setExplanations((p) => ({ ...p, [item.id]: "### Unavailable\nCould not load guidance right now." }));
+    } finally {
+      setExplaining((p) => ({ ...p, [item.id]: false }));
+    }
+  };
   const [showAdd, setShowAdd] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDomain, setNewDomain] = useState<DevelopmentalDomainId>(domainOptions[0].id as DevelopmentalDomainId);
@@ -133,6 +167,15 @@ export default function MilestonesTab() {
                               {r.label} <ExternalLink className="w-2.5 h-2.5" />
                             </a>
                           ))}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); void explain(item); }}
+                            disabled={explaining[item.id]}
+                            className="text-[9px] font-bold text-[#f4d991] hover:text-white bg-[#d7aa55]/10 hover:bg-[#d7aa55]/20 px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+                          >
+                            {explaining[item.id] ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <BookOpen className="w-2.5 h-2.5" />}
+                            {explanations[item.id] ? "Hide" : "Explain"}
+                          </button>
                         </div>
                       </div>
                       {item.checked && (
@@ -141,6 +184,15 @@ export default function MilestonesTab() {
                         </button>
                       )}
                     </label>
+                    <AnimatePresence initial={false}>
+                      {explanations[item.id] && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                          <div className="mt-2 p-3 bg-[#08090c]/40 border border-[#d7aa55]/15 rounded-xl text-[11px] leading-relaxed select-text">
+                            <MarkdownBlock text={explanations[item.id]} className="space-y-1.5" />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 ))}
                 {itemsInDom.length === 0 && <p className="text-[10px] text-[#a8a093] italic">No milestones in this domain yet.</p>}

@@ -25,6 +25,29 @@ export default function PlansTab() {
 
       <div className="bg-[#141821] border border-white/10 rounded-2xl p-6 space-y-4">
         <span className="text-xs font-bold text-[#f4d991] tracking-wider uppercase block">Weave Custom Child Action Blueprint</span>
+
+        {/* Templates — start from a common challenge */}
+        <div className="flex flex-wrap gap-1.5">
+          <span className="text-[10px] text-[#a8a093] font-bold self-center mr-1">Templates:</span>
+          {[
+            "Morning departure refusal and tantrums when leaving for school",
+            "Screen-time shut-off meltdowns at night",
+            "Sibling sharing conflicts and hitting",
+            "Bedtime resistance and stalling",
+            "Refusing new or non-preferred foods",
+            "Separation anxiety at drop-off",
+          ].map((tpl) => (
+            <button
+              key={tpl}
+              type="button"
+              onClick={() => setPlanChallengeTopic(tpl)}
+              className="bg-white/5 hover:bg-[#d7aa55]/15 hover:text-[#f4d991] text-[#a8a093] px-2.5 py-1 rounded-lg text-[10px] font-bold transition"
+            >
+              {tpl.split(" ").slice(0, 3).join(" ")}…
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
