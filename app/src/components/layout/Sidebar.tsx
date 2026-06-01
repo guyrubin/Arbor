@@ -11,11 +11,14 @@ import {
   FileText,
   Shield,
 } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import ProfileSwitcher from "../profile/ProfileSwitcher";
 
 export default function Sidebar() {
   const { activeTab, setActiveTab, milestonesPercent, actionPlans } = useArbor();
+  const { user, signOut, firebaseEnabled } = useAuth();
 
   const navItemClass = (tab: ActiveTab) =>
     `flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
@@ -126,9 +129,27 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto pt-6 border-t border-white/5 text-[11px] text-[#a8a093] leading-relaxed">
-        <span className="font-bold text-white mb-1 block">Arbor Architecture:</span>
-        Expert-reviewed knowledge modules + parent-approved child memory.
+      <div className="mt-auto pt-6 border-t border-white/5 space-y-3">
+        {firebaseEnabled && user && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-white truncate">{user.displayName || "Signed in"}</p>
+              {user.email && <p className="text-[10px] text-[#a8a093] truncate">{user.email}</p>}
+            </div>
+            <button
+              onClick={() => void signOut()}
+              title="Sign out"
+              aria-label="Sign out"
+              className="flex-shrink-0 p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-[#a8a093] hover:text-[#ffb59c] transition"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        <p className="text-[11px] text-[#a8a093] leading-relaxed">
+          <span className="font-bold text-white mb-1 block">Arbor Architecture:</span>
+          Expert-reviewed knowledge modules + parent-approved child memory.
+        </p>
       </div>
     </aside>
   );

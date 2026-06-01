@@ -1,7 +1,8 @@
 import React, { lazy, Suspense } from "react";
 import { AnimatePresence } from "motion/react";
-import { Sparkles, AlertTriangle } from "lucide-react";
+import { Sparkles, AlertTriangle, LogOut } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import Sidebar from "./Sidebar";
 import AiRail from "./AiRail";
 import MobileNav from "./MobileNav";
@@ -35,6 +36,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
 
 export default function Shell() {
   const { activeTab, showAiRail, setShowAiRail, showSandboxBanner } = useArbor();
+  const { user, signOut, firebaseEnabled } = useAuth();
   const ActiveTabComponent = tabRegistry[activeTab];
 
   return (
@@ -55,14 +57,26 @@ export default function Shell() {
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               Active Care Platform: <strong className="text-white">Dylan · Age 5</strong> (English Transition)
             </span>
-            {!showAiRail && (
-              <button
-                onClick={() => setShowAiRail(true)}
-                className="hidden xl:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25 text-[#f4d991] px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-[#d7aa55]" /> Show AI Engines ➔
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {!showAiRail && (
+                <button
+                  onClick={() => setShowAiRail(true)}
+                  className="hidden xl:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25 text-[#f4d991] px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#d7aa55]" /> Show AI Engines ➔
+                </button>
+              )}
+              {firebaseEnabled && user && (
+                <button
+                  onClick={() => void signOut()}
+                  aria-label="Sign out"
+                  title="Sign out"
+                  className="md:hidden flex items-center gap-1.5 border border-white/10 text-[#a8a093] hover:text-[#ffb59c] px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Sign out
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Sandbox banner if API key is missing */}

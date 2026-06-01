@@ -25,6 +25,19 @@
 | X6 | Saved & versioned briefs + PDF | M | S | Shipped |
 | X7 | PWA + offline capture | M | M | Shipped |
 
+## v1.2 — follow-on (in progress)
+
+| ID | Capability | Value | Effort | Status |
+|---|---|---|---|---|
+| V2-A | Account menu + Sign out (UI gap) | H | S | In progress |
+| V2-B | First-run onboarding (create first child) | M | S | Not started |
+| V2-C | Typewriter reveal for Coach replies (perceived streaming) | M | S | Not started |
+
+> Note: true token streaming is intentionally not pursued — the Parent Coach
+> response is a structured JSON contract rendered to markdown at the end, so
+> streaming partial JSON would render as gibberish. V2-C delivers the perceived-
+> streaming benefit client-side instead.
+
 ## LATER — directional
 
 | ID | Capability | Value | Effort | Status |
