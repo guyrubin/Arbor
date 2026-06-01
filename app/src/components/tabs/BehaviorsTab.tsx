@@ -4,6 +4,7 @@ import { Plus, Sparkles, RefreshCw, Brain, ExternalLink, Download, ChevronDown, 
 import { useArbor } from "../../context/ArborContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Sparkline } from "../ui/Sparkline";
+import PatternInsights from "../behaviors/PatternInsights";
 import { BehaviorContext, BehaviorLog } from "../../types";
 
 const CONTEXTS: BehaviorContext[] = ["Home", "School", "Transit", "Public"];
@@ -231,6 +232,9 @@ export default function BehaviorsTab() {
 
         {/* List column */}
         <div className="space-y-6">
+          {/* Correlations / pattern intelligence */}
+          <PatternInsights logs={behaviorLogs} />
+
           {/* Per-type intensity sparklines */}
           {sparkSeries.length > 0 && (
             <div className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-3">
