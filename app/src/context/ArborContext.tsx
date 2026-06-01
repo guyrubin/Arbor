@@ -127,6 +127,7 @@ function useArborState() {
   const [newLogResponse, setNewLogResponse] = useState<string>("");
   const [newLogNotes, setNewLogNotes] = useState<string>("");
   const [newLogContext, setNewLogContext] = useState<BehaviorContext>("Home");
+  const [newLogPhoto, setNewLogPhoto] = useState<string>("");
 
   // Form states: Generated Action Plan
   const [planChallengeTopic, setPlanChallengeTopic] = useState<string>(
@@ -507,12 +508,14 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       notes: newLogNotes || undefined,
       context: newLogContext,
       resolved: false,
+      photoAttachment: newLogPhoto || undefined,
     };
 
     void logsCol.upsert(logItem);
     setNewLogTrigger("");
     setNewLogResponse("");
     setNewLogNotes("");
+    setNewLogPhoto("");
     alert(`Behavior log saved to ${childProfile.name}'s developmental observation timeline.`);
   };
 
@@ -675,6 +678,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setNewLogNotes,
     newLogContext,
     setNewLogContext,
+    newLogPhoto,
+    setNewLogPhoto,
     toggleLogResolved,
     planChallengeTopic,
     setPlanChallengeTopic,

@@ -8,6 +8,7 @@ import { Sparkline } from "../ui/Sparkline";
 import PatternInsights from "../behaviors/PatternInsights";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { authHeaders } from "../../lib/api";
+import { fileToThumbnail } from "../../lib/image";
 import { BehaviorContext, BehaviorLog } from "../../types";
 
 const CONTEXTS: BehaviorContext[] = ["Home", "School", "Transit", "Public"];
@@ -51,6 +52,8 @@ export default function BehaviorsTab() {
     setNewLogNotes,
     newLogContext,
     setNewLogContext,
+    newLogPhoto,
+    setNewLogPhoto,
     toggleLogResolved,
     handleAnalyzeBehaviors,
     isAnalyzingBehavior,
@@ -307,6 +310,34 @@ export default function BehaviorsTab() {
             <textarea value={newLogNotes} onChange={(e) => setNewLogNotes(e.target.value)} rows={2} placeholder="Notes on calming down time, physical behavior..." className="w-full bg-[#08090c] border border-white/10 rounded-xl p-2 text-white text-xs" />
           </div>
 
+          <div className="space-y-1">
+            <label className="text-xs text-[#a8a093] font-bold block">Photo (Optional)</label>
+            {newLogPhoto ? (
+              <div className="relative inline-block">
+                <img src={newLogPhoto} alt="attachment" className="h-20 rounded-lg border border-white/10 object-cover" />
+                <button type="button" onClick={() => setNewLogPhoto("")} className="absolute -top-2 -right-2 bg-[#e2562d] text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">×</button>
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 text-[11px] text-[#a8a093] bg-[#08090c] border border-dashed border-white/15 rounded-xl px-3 py-2 cursor-pointer hover:border-[#d7aa55]/40 transition">
+                <Plus className="w-3.5 h-3.5 text-[#d7aa55]" /> Add a photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    try {
+                      setNewLogPhoto(await fileToThumbnail(f));
+                    } catch {
+                      toast("Couldn't process that image", "error");
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
           <button type="submit" className="w-full py-3 bg-[#d7aa55] hover:bg-[#c39947] transition text-black font-extrabold text-xs rounded-xl active:scale-[0.98]">
             Save Log Incident
           </button>
@@ -434,6 +465,9 @@ export default function BehaviorsTab() {
                                 <p><strong>Parent Action:</strong> {log.response}</p>
                               </div>
                               {log.notes && <p className="p-2 bg-[#08090c] rounded text-gray-400 border border-white/5 italic"><strong>Observer Note:</strong> {log.notes}</p>}
+                              {log.photoAttachment && (
+                                <img src={log.photoAttachment} alt="log attachment" className="h-24 rounded-lg border border-white/10 object-cover" />
+                              )}
 
                               <div className="pt-2.5 border-t border-white/5 mt-2 flex flex-col gap-2">
                                 <div className="flex justify-between items-center">
