@@ -83,6 +83,26 @@ export const usePersistentState = <T>(
 /** Build a child-scoped storage key so each child's data is isolated. */
 export const childKey = (childId: string, bucket: string): string => `child:${childId}:${bucket}`;
 
+/** Every child-scoped data bucket Arbor persists (for export + right-to-be-forgotten). */
+export const CHILD_BUCKETS = [
+  "logs",
+  "milestones",
+  "plans",
+  "tracking",
+  "outcomes",
+  "feedback",
+  "savedMsgs",
+  "trackedMsgs",
+  "handoff"
+] as const;
+
+/** Collect everything Arbor holds about one child (K-05 data export). */
+export const collectChildData = (childId: string): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const bucket of CHILD_BUCKETS) out[bucket] = loadJSON(childKey(childId, bucket), null);
+  return out;
+};
+
 /** List all child ids that currently have persisted data of any bucket. */
 export const listPersistedChildIds = (): string[] => {
   if (!hasStorage()) return [];

@@ -47,7 +47,9 @@ import {
   scholarsInfo
 } from "./initialData";
 import framework from "./framework.json";
-import { usePersistentState, childKey } from "./state/persistence";
+import { usePersistentState, childKey, collectChildData, purgeChild } from "./state/persistence";
+import { detectPatterns } from "./state/patterns";
+import { isRetentionExpired } from "./state/retention";
 import { contractToActionPlan, observeToTrackingPrompts, dueFollowUps, addDays } from "./state/loop";
 import { briefToMarkdown, downloadTextFile, safeFileName } from "./state/exporters";
 import { useSpeech, useSpeechInput, speechLocaleFor } from "./state/voice";
@@ -96,6 +98,36 @@ export default function App() {
     } else {
       handleAddChild(input);
     }
+  };
+
+  // K-05: GDPR/AVG — export everything Arbor holds about a child.
+  const handleExportChildData = () => {
+    const bundle = {
+      product: "Arbor",
+      exportedAt: new Date().toISOString(),
+      profile: childProfile,
+      data: collectChildData(childId)
+    };
+    downloadTextFile(
+      `arbor-data-${safeFileName(childProfile.name)}-${new Date().toISOString().slice(0, 10)}.json`,
+      JSON.stringify(bundle, null, 2),
+      "application/json"
+    );
+  };
+
+  // K-05: right-to-be-forgotten — hard delete a child and all their data.
+  const handleDeleteChildData = () => {
+    if (children.length <= 1) {
+      alert("Add another child before deleting this one — Arbor needs at least one profile.");
+      return;
+    }
+    if (!confirm(`Permanently delete ${childProfile.name} and ALL their data (logs, plans, memory, tracking)? This cannot be undone.`)) {
+      return;
+    }
+    purgeChild(childId);
+    const remaining = children.filter(c => c.id !== childId);
+    setChildren(remaining);
+    setActiveChildId(remaining[0].id);
   };
   // Persisted, child-scoped collections (A-05/H-05: nothing evaporates on refresh).
   const [behaviorLogs, setBehaviorLogs] = usePersistentState<BehaviorLog[]>(childKey(childId, "logs"), sampleBehaviorLogs);
@@ -380,7 +412,26 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       const res = await fetch(`/api/memory/${encodeURIComponent(childProfile.id)}`);
       if (!res.ok) throw new Error("Memory review fetch failed");
       const data = await res.json();
-      setMemoryReviewItems(data.items || []);
+      const items: MemoryReviewItem[] = data.items || [];
+
+      // K-04: enforce retention. Expire approved items past their window.
+      const expired = items.filter(
+        (item) => item.status === "approved" && isRetentionExpired(item.retention, item.createdAt)
+      );
+      if (expired.length > 0) {
+        await Promise.all(
+          expired.map((item) =>
+            fetch(`/api/memory/${encodeURIComponent(item.memoryId)}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: "expired" })
+            }).catch(() => undefined)
+          )
+        );
+        setMemoryReviewItems(items.filter((item) => !expired.some((e) => e.memoryId === item.memoryId)));
+        return;
+      }
+      setMemoryReviewItems(items);
     } catch (err) {
       console.warn("Could not load memory review items", err);
     }
@@ -879,6 +930,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
   const dueFollowUpPlans = dueFollowUps(actionPlans, outcomes);
   const activeTrackingPrompts = trackingPrompts.filter(t => t.active);
+  const behaviorPatterns = detectPatterns(behaviorLogs);
 
   return (
     <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
@@ -1193,16 +1245,33 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       </div>
                     </div>
 
-                    {/* Static developmental insights analysis */}
-                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-2">
-                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-[#d7aa55]" />
-                        Attachment Co-Regulation Pattern:
-                      </span>
-                      <p className="text-xs text-[#a8a093] leading-relaxed">
-                        Transition refusal on morning departure accounts for 75% of high-intensity outbursts this week. Note: Dylan calming duration falls from 25 mins to 10 mins when presented with controlled boundaries and a dual-language school prep card.
-                      </p>
-                    </div>
+                    {/* K-09: real detected patterns from logged moments */}
+                    {behaviorPatterns.length > 0 ? (
+                      <div className="space-y-2">
+                        {behaviorPatterns.map((p, i) => (
+                          <div
+                            key={i}
+                            className={`p-4 rounded-2xl space-y-1 border ${
+                              p.severity === "watch"
+                                ? "bg-amber-500/[0.06] border-amber-500/20"
+                                : "bg-white/[0.02] border-white/5"
+                            }`}
+                          >
+                            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <AlertTriangle className={`w-3.5 h-3.5 ${p.severity === "watch" ? "text-amber-400" : "text-[#d7aa55]"}`} />
+                              {p.title}
+                            </span>
+                            <p className="text-xs text-[#a8a093] leading-relaxed">{p.detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                        <p className="text-xs text-[#a8a093] leading-relaxed">
+                          Log a few moments in the Behavior tracker and Arbor will start noticing patterns — recurring triggers, rising intensity, the things worth a calm second look.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1399,6 +1468,29 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       </div>
                     );
                   })()}
+                </div>
+              </div>
+
+              {/* E-03/E-06/E-07/E-11: guided starters for popular topics */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">Guided help</span>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: "sleep", label: "😴 Sleep & bedtime", lens: "John Bowlby", prompt: `Bedtime and night wakings are hard for ${childProfile.name} (age ${childProfile.age}). Give me an age-appropriate, gentle sleep plan with a calming routine and what to watch over the next week.` },
+                    { id: "ladder", label: "🪜 Responsibility ladder", lens: "Maria Montessori", prompt: `What age-appropriate responsibilities and routines can ${childProfile.name} (age ${childProfile.age}) start owning? Give me a responsibility ladder: what they can own now, next, and later.` },
+                    { id: "meal", label: "🍽️ Mealtime & eating", lens: "Integrated Balanced", prompt: `Mealtimes are a struggle with ${childProfile.name} (age ${childProfile.age}) — picky eating and resistance. Give me a calm, non-coercive plan and what to avoid.` },
+                    { id: "screen", label: "📱 Screen-time", lens: "Integrated Balanced", prompt: `Turning off screens triggers big reactions from ${childProfile.name} (age ${childProfile.age}). Give me a simple family screen-time approach, transition scripts, and what to expect.` }
+                  ].map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      disabled={isChatLoading}
+                      onClick={() => { setSelectedLens(s.lens); handleChatSend(s.prompt); }}
+                      className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-xs font-bold text-[#a8a093] transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+                    >
+                      {s.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -2547,13 +2639,22 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   <h2 className="text-3xl font-extrabold tracking-tight">School & Support Handoff Hub</h2>
                   <p className="text-sm text-[#a8a093] mt-1">Export structured summaries detailing behavioral trends and developmental check-ins for teachers, clinics or occupational therapists.</p>
                 </div>
-                <button
-                  onClick={handleGenerateBrief}
-                  disabled={isGeneratingBrief}
-                  className="bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 text-black font-extrabold text-xs px-5 py-3 rounded-2xl transition flex items-center gap-2"
-                >
-                  {isGeneratingBrief ? "Weaving Brief..." : "Compile Brief Summary"}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => { setHandoffAudience("pediatrician"); handleGenerateBrief(); }}
+                    disabled={isGeneratingBrief}
+                    className="bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50 text-white font-bold text-xs px-4 py-3 rounded-2xl transition flex items-center gap-2"
+                  >
+                    🩺 Prep for a doctor visit
+                  </button>
+                  <button
+                    onClick={handleGenerateBrief}
+                    disabled={isGeneratingBrief}
+                    className="bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 text-black font-extrabold text-xs px-5 py-3 rounded-2xl transition flex items-center gap-2"
+                  >
+                    {isGeneratingBrief ? "Compiling…" : "Compile brief"}
+                  </button>
+                </div>
               </div>
 
               {/* Dynamic Handoff Audience Specific Customization Selector */}
@@ -2803,6 +2904,33 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* K-05: GDPR / AVG — your data, your control */}
+              <div className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-[#d7aa55]" />
+                  <h3 className="text-sm font-extrabold text-white">Your data, your control</h3>
+                </div>
+                <p className="text-xs text-[#a8a093] leading-relaxed">
+                  Everything about {childProfile.name} is stored on your device. You can take it with you any time, or erase it completely.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportChildData}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#d7aa55]/25 bg-[#d7aa55]/10 px-3 py-1.5 text-[11px] font-bold text-[#f4d991] hover:bg-[#d7aa55]/20"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Export {childProfile.name}'s data (JSON)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteChildData}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-1.5 text-[11px] font-bold text-red-300 hover:bg-red-500/10"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete {childProfile.name} & all data
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
