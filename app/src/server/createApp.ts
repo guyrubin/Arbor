@@ -9,6 +9,7 @@ import { FirestoreMemoryStore } from "../memory/firestoreMemoryStore.js";
 import { loadFramework } from "../services/framework.js";
 import { createApiRouter } from "../routes/api.js";
 import { createAuthMiddleware } from "./authMiddleware.js";
+import { aiQuota } from "./aiQuota.js";
 
 export const createApp = (config: ArborConfig) => {
   const app = express();
@@ -40,6 +41,11 @@ export const createApp = (config: ArborConfig) => {
   }));
   app.use(express.json({ limit: "250kb" }));
   app.use("/api", createAuthMiddleware(config));
+  // Per-user hourly cap on the AI-generating endpoints (cost guardrail).
+  app.use(
+    ["/api/chat", "/api/generate-plan", "/api/generate-story", "/api/analyze-behavior", "/api/generate-handoff"],
+    aiQuota
+  );
   app.use("/api", createApiRouter({ config, modelProvider, memoryStore, framework }));
 
   return app;
