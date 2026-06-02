@@ -16,5 +16,20 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== "true",
       watch: process.env.DISABLE_HMR === "true" ? null : {},
     },
+    build: {
+      chunkSizeWarningLimit: 900,
+      rollupOptions: {
+        output: {
+          // Split heavy vendors so the app chunk stays lean and vendors cache
+          // independently across deploys (A9).
+          manualChunks: {
+            "vendor-firebase": ["firebase/app", "firebase/auth", "firebase/firestore"],
+            "vendor-charts": ["recharts"],
+            "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable"],
+            "vendor-motion": ["motion"],
+          },
+        },
+      },
+    },
   };
 });

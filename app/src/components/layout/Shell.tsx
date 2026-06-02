@@ -1,5 +1,5 @@
-import React, { lazy, Suspense } from "react";
-import { AnimatePresence } from "motion/react";
+import React, { lazy, Suspense, useRef } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Sparkles, AlertTriangle, LogOut } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
@@ -21,6 +21,19 @@ const ScholarTab = lazy(() => import("../tabs/ScholarTab"));
 const HandoffTab = lazy(() => import("../tabs/HandoffTab"));
 const SafetyTab = lazy(() => import("../tabs/SafetyTab"));
 
+const TAB_ORDER: ActiveTab[] = [
+  "overview",
+  "coach",
+  "behaviors",
+  "milestones",
+  "plans",
+  "stories",
+  "weekly",
+  "scholar",
+  "handoff",
+  "safety",
+];
+
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
   coach: CoachTab,
@@ -38,6 +51,12 @@ export default function Shell() {
   const { activeTab, showAiRail, setShowAiRail, showSandboxBanner } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const ActiveTabComponent = tabRegistry[activeTab];
+
+  // Slide direction based on tab order (later tab → slide in from the right).
+  const prevIndexRef = useRef(TAB_ORDER.indexOf(activeTab));
+  const curIndex = TAB_ORDER.indexOf(activeTab);
+  const direction = curIndex >= prevIndexRef.current ? 1 : -1;
+  prevIndexRef.current = curIndex;
 
   return (
     <div className="arbor-app min-h-screen select-none text-sans antialiased overflow-x-hidden relative">
@@ -97,13 +116,22 @@ export default function Shell() {
             </div>
           )}
 
-          <ErrorBoundary key={activeTab}>
-            <Suspense fallback={<TabSkeleton />}>
-              <AnimatePresence mode="wait">
-                <ActiveTabComponent />
-              </AnimatePresence>
-            </Suspense>
-          </ErrorBoundary>
+          <Suspense fallback={<TabSkeleton />}>
+            <AnimatePresence mode="wait" custom={direction}>
+              <motion.div
+                key={activeTab}
+                custom={direction}
+                initial={{ opacity: 0, x: 24 * direction }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -24 * direction }}
+                transition={{ duration: 0.18 }}
+              >
+                <ErrorBoundary>
+                  <ActiveTabComponent />
+                </ErrorBoundary>
+              </motion.div>
+            </AnimatePresence>
+          </Suspense>
         </main>
 
         {showAiRail && <AiRail />}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 
@@ -16,6 +16,16 @@ export function Modal({
   children: React.ReactNode;
   maxWidth?: string;
 }) {
+  // Close on Escape for keyboard users.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -27,6 +37,8 @@ export function Modal({
           onClick={onClose}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
             className={`w-full ${maxWidth} bg-[#141821] border border-white/10 rounded-3xl p-6 shadow-2xl`}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
