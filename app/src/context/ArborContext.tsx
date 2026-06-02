@@ -46,6 +46,7 @@ export type ActiveTab =
   | "stories"
   | "weekly"
   | "scholar"
+  | "language"
   | "handoff"
   | "safety";
 

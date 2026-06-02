@@ -9,6 +9,7 @@ import {
   Sliders,
   BookOpen,
   Compass,
+  Languages,
   FileText,
   Shield,
   MoreHorizontal,
@@ -30,6 +31,7 @@ const MORE: Item[] = [
   { tab: "plans", label: "Action Plans", icon: <Sliders className="w-5 h-5" /> },
   { tab: "stories", label: "Bedtime Stories", icon: <BookOpen className="w-5 h-5" /> },
   { tab: "scholar", label: "Scholar Academy", icon: <Compass className="w-5 h-5" /> },
+  { tab: "language", label: "Language Lab", icon: <Languages className="w-5 h-5" /> },
   { tab: "handoff", label: "School Handoff", icon: <FileText className="w-5 h-5" /> },
   { tab: "safety", label: "Safety", icon: <Shield className="w-5 h-5" /> },
 ];

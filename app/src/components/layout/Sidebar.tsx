@@ -8,6 +8,7 @@ import {
   BookOpen,
   BarChart2,
   Compass,
+  Languages,
   FileText,
   Shield,
 } from "lucide-react";
@@ -112,6 +113,12 @@ export default function Sidebar() {
         <button onClick={() => setActiveTab("scholar")} className={navItemClass("scholar")}>
           <span className="flex items-center gap-3">
             <Compass className="w-4 h-4" /> Scholar Academy
+          </span>
+        </button>
+
+        <button onClick={() => setActiveTab("language")} className={navItemClass("language")}>
+          <span className="flex items-center gap-3">
+            <Languages className="w-4 h-4" /> Language Lab
           </span>
         </button>
 

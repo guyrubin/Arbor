@@ -19,6 +19,7 @@ const PlansTab = lazy(() => import("../tabs/PlansTab"));
 const StoriesTab = lazy(() => import("../tabs/StoriesTab"));
 const WeeklyTab = lazy(() => import("../tabs/WeeklyTab"));
 const ScholarTab = lazy(() => import("../tabs/ScholarTab"));
+const LanguageLabTab = lazy(() => import("../tabs/LanguageLabTab"));
 const HandoffTab = lazy(() => import("../tabs/HandoffTab"));
 const SafetyTab = lazy(() => import("../tabs/SafetyTab"));
 
@@ -31,6 +32,7 @@ const TAB_ORDER: ActiveTab[] = [
   "stories",
   "weekly",
   "scholar",
+  "language",
   "handoff",
   "safety",
 ];
@@ -44,6 +46,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   stories: StoriesTab,
   weekly: WeeklyTab,
   scholar: ScholarTab,
+  language: LanguageLabTab,
   handoff: HandoffTab,
   safety: SafetyTab,
 };
