@@ -6,10 +6,13 @@ import { track } from "../lib/analytics";
  * Catches render errors in a subtree and shows a friendly retry card instead of
  * crashing the whole app. (Class component is required for error boundaries.)
  */
-export class ErrorBoundary extends React.Component {
-  state = { hasError: false, message: "" };
+type ErrorBoundaryProps = { children?: React.ReactNode };
+type ErrorBoundaryState = { hasError: boolean; message: string };
 
-  static getDerivedStateFromError(error: any) {
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false, message: "" };
+
+  static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, message: error?.message || "Something went wrong." };
   }
 
@@ -25,20 +28,19 @@ export class ErrorBoundary extends React.Component {
     }
   }
 
-  reset = () => (this as any).setState({ hasError: false, message: "" });
+  reset = () => this.setState({ hasError: false, message: "" });
 
   render() {
-    const state = this.state as { hasError: boolean; message: string };
-    const props = (this as any).props as { children: React.ReactNode };
+    const { hasError, message } = this.state;
 
-    if (state.hasError) {
+    if (hasError) {
       return (
         <div className="bg-[#141821] border border-[#e2562d]/30 rounded-3xl p-8 text-center space-y-4 max-w-md mx-auto mt-10">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-[#e2562d]/15 flex items-center justify-center">
             <AlertTriangle className="w-6 h-6 text-[#e2562d]" />
           </div>
           <h3 className="text-lg font-extrabold text-white">This section hit a snag</h3>
-          <p className="text-xs text-[#a8a093] leading-relaxed">{state.message}</p>
+          <p className="text-xs text-[#a8a093] leading-relaxed">{message}</p>
           <button
             onClick={this.reset}
             className="inline-flex items-center gap-2 bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold text-xs px-4 py-2.5 rounded-xl transition active:scale-[0.97]"
@@ -48,7 +50,7 @@ export class ErrorBoundary extends React.Component {
         </div>
       );
     }
-    return props.children;
+    return this.props.children;
   }
 }
 
