@@ -1,6 +1,6 @@
-import React, { lazy, Suspense, useRef } from "react";
+import React, { lazy, Suspense, useRef, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Sparkles, AlertTriangle, LogOut } from "lucide-react";
+import { Sparkles, AlertTriangle, LogOut, Search } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import Sidebar from "./Sidebar";
@@ -8,6 +8,7 @@ import AiRail from "./AiRail";
 import MobileNav from "./MobileNav";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { TabSkeleton } from "../ui/Skeleton";
+import SearchModal from "../search/SearchModal";
 
 // Code-split each tab so the initial bundle stays lean.
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -52,6 +53,18 @@ export default function Shell() {
   const { user, signOut, firebaseEnabled } = useAuth();
   const ActiveTabComponent = tabRegistry[activeTab];
 
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((s) => !s);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Slide direction based on tab order (later tab → slide in from the right).
   const prevIndexRef = useRef(TAB_ORDER.indexOf(activeTab));
   const curIndex = TAB_ORDER.indexOf(activeTab);
@@ -77,6 +90,14 @@ export default function Shell() {
               Active Care Platform: <strong className="text-white">Dylan · Age 5</strong> (English Transition)
             </span>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSearchOpen(true)}
+                aria-label="Search"
+                title="Search (Ctrl/Cmd+K)"
+                className="flex items-center gap-1.5 border border-white/10 text-[#a8a093] hover:text-white px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition"
+              >
+                <Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Search</span>
+              </button>
               {!showAiRail && (
                 <button
                   onClick={() => setShowAiRail(true)}
@@ -138,6 +159,7 @@ export default function Shell() {
       </div>
 
       <MobileNav />
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
