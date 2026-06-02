@@ -27,6 +27,13 @@ export type ModelProvider = {
   generateJson(options: GenerateJsonOptions): Promise<unknown>;
   generateJsonStream(options: GenerateJsonOptions): AsyncIterable<string>;
   routeDecision(route: ModelRoute): RouteDecision;
+  /**
+   * H-04 — Generate a single illustration for a story page. Returns a data URL
+   * (data:image/png;base64,…) or null when image generation is unavailable
+   * (no key, unsupported provider, or any failure). Callers must degrade
+   * gracefully; an illustration is a delight, never a dependency.
+   */
+  generateImage?(prompt: string): Promise<string | null>;
 };
 
 export const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
@@ -103,6 +110,39 @@ export class GeminiDevProvider implements ModelProvider {
 
     for await (const chunk of responseStream) {
       if (chunk.text) yield chunk.text;
+    }
+  }
+
+  async generateImage(prompt: string): Promise<string | null> {
+    if (!this.config.geminiApiKey) return null;
+    try {
+      const ai = this.ai as any;
+      // Preferred path: Imagen image generation.
+      if (typeof ai.models.generateImages === "function") {
+        const result = await ai.models.generateImages({
+          model: this.config.geminiImageModel,
+          prompt,
+          config: { numberOfImages: 1, aspectRatio: "4:3" }
+        });
+        const bytes = result?.generatedImages?.[0]?.image?.imageBytes;
+        if (bytes) return `data:image/png;base64,${bytes}`;
+      }
+      // Fallback: multimodal model returning inline image data.
+      const response = await this.ai.models.generateContent({
+        model: this.config.geminiImageModel,
+        contents: prompt,
+        config: { responseModalities: ["IMAGE", "TEXT"] } as any
+      });
+      const parts = (response as any)?.candidates?.[0]?.content?.parts ?? [];
+      for (const part of parts) {
+        const data = part?.inlineData?.data;
+        const mime = part?.inlineData?.mimeType || "image/png";
+        if (data) return `data:${mime};base64,${data}`;
+      }
+      return null;
+    } catch (error) {
+      console.warn("[Arbor Image] Illustration generation failed:", (error as Error)?.message);
+      return null;
     }
   }
 

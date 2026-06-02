@@ -295,6 +295,40 @@ Return JSON with title, pages, illustrationPrompt, discussionQuestions, summary.
     }
   });
 
+  // H-04 — Generate a single story illustration from the story's illustrationPrompt.
+  // Degrades gracefully: returns { imageDataUrl: null } when image generation is unavailable.
+  router.post("/generate-illustration", async (req, res) => {
+    const { illustrationPrompt } = req.body;
+    if (!illustrationPrompt || typeof illustrationPrompt !== "string") {
+      res.status(400).json({ error: "illustrationPrompt is required" });
+      return;
+    }
+
+    const escalationMatch = screenForImmediateEscalation({ illustrationPrompt });
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `This illustration topic should be reviewed by a qualified adult first. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category
+      });
+      return;
+    }
+
+    if (typeof modelProvider.generateImage !== "function") {
+      res.json({ imageDataUrl: null, reason: "Image generation is not supported by the active model provider." });
+      return;
+    }
+
+    try {
+      const safePrompt = `A gentle, warm, child-friendly storybook illustration. No text. ${illustrationPrompt}`;
+      const imageDataUrl = await modelProvider.generateImage(safePrompt);
+      res.json({ imageDataUrl, reason: imageDataUrl ? undefined : "No image model configured (set GEMINI_API_KEY and GEMINI_IMAGE_MODEL)." });
+    } catch (error: any) {
+      console.error("Arbor Illustration Error:", error);
+      res.status(500).json({ error: "Failed to generate illustration", details: error.message });
+    }
+  });
+
   router.post("/analyze-behavior", async (req, res) => {
     const { logs, childProfile } = req.body;
     const safetyLogText = Array.isArray(logs)

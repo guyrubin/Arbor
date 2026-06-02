@@ -18,6 +18,7 @@ export type ArborConfig = {
   modelProvider: ModelProviderKind;
   geminiApiKey?: string;
   geminiModel: string;
+  geminiImageModel: string;
   firebaseProjectId?: string;
   firestoreDatabaseId: string;
   gcsBucketName?: string;
@@ -75,6 +76,7 @@ export const loadConfig = (): ArborConfig => {
     modelProvider,
     geminiApiKey: process.env.GEMINI_API_KEY,
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-pro",
+    geminiImageModel: process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002",
     gcsBucketName: process.env.GCS_BUCKET_NAME,
     firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT_ID,
     firestoreDatabaseId: process.env.FIRESTORE_DATABASE_ID || "(default)",

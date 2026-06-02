@@ -103,3 +103,33 @@ body {
 .arbor-app select {
   letter-spacing: 0;
 }
+
+/* H-08 — Print only the handoff document, on clean white paper. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-area,
+  .printable-area * {
+    visibility: visible;
+  }
+  .printable-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    padding: 24px;
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .printable-area *,
+  .arbor-app .printable-area [class*="text-"] {
+    color: #111111 !important;
+    background-image: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

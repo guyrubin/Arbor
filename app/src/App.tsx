@@ -34,7 +34,7 @@ import {
   Eye,
   X
 } from "lucide-react";
-import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, MemoryReviewItem, CoachContract, TrackingPrompt, InterventionOutcome, AnswerFeedback, FeedbackRating, OutcomeRating } from "./types";
+import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, MemoryReviewItem, CoachContract, TrackingPrompt, InterventionOutcome, AnswerFeedback, FeedbackRating, OutcomeRating, HandoffFragment } from "./types";
 import {
   defaultChildProfile,
   sampleBehaviorLogs,
@@ -46,6 +46,7 @@ import {
 import framework from "./framework.json";
 import { usePersistentState, childKey } from "./state/persistence";
 import { contractToActionPlan, observeToTrackingPrompts, dueFollowUps, addDays } from "./state/loop";
+import { briefToMarkdown, downloadTextFile, safeFileName } from "./state/exporters";
 import { CoachAnswerActions, FollowUpCheckins, LeadFrameCallout, SourceGrounding } from "./components/coachLoop";
 
 type ChatMessage = { id: string; sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract; sourcePrompt?: string };
@@ -81,6 +82,7 @@ export default function App() {
   const [answerFeedback, setAnswerFeedback] = usePersistentState<AnswerFeedback[]>(childKey(childId, "feedback"), []);
   const [savedPlanMsgIds, setSavedPlanMsgIds] = usePersistentState<string[]>(childKey(childId, "savedMsgs"), []);
   const [trackedMsgIds, setTrackedMsgIds] = usePersistentState<string[]>(childKey(childId, "trackedMsgs"), []);
+  const [handoffFragments, setHandoffFragments] = usePersistentState<HandoffFragment[]>(childKey(childId, "handoff"), []);
 
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>("Integrated Balanced");
@@ -122,6 +124,10 @@ export default function App() {
   const [isStoryGenerating, setIsStoryGenerating] = useState<boolean>(false);
   const [activeStoryPage, setActiveStoryPage] = useState<number>(0);
   const [storyReadingProgress, setStoryReadingProgress] = useState<number>(0);
+  // H-04: optional story illustration (degrades gracefully when no image model).
+  const [storyImage, setStoryImage] = useState<string | null>(null);
+  const [isIllustrating, setIsIllustrating] = useState<boolean>(false);
+  const [illustrationNote, setIllustrationNote] = useState<string | null>(null);
 
   // Form states: Behavior Analysis
   const [behaviorAnalysis, setBehaviorAnalysis] = useState<BehaviorAnalysis | null>(null);
@@ -458,6 +464,20 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         ...prev,
         { id: newId(), sender: "ai", text: data.text, lens: selectedLens, contract: data.contract, sourcePrompt: promptValue }
       ]);
+      // H-07: accumulate teacher/professional handoff notes from real conversations.
+      if (data.contract?.handoffNotes?.teacher || data.contract?.handoffNotes?.professional) {
+        setHandoffFragments(prev => [
+          {
+            id: newId(),
+            childId,
+            createdAt: new Date().toISOString(),
+            prompt: promptValue,
+            teacher: data.contract!.handoffNotes.teacher,
+            professional: data.contract!.handoffNotes.professional
+          },
+          ...prev
+        ].slice(0, 30));
+      }
     } catch (err: any) {
       console.error(err);
       if (err.name === "AbortError") {
@@ -605,12 +625,36 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       const newStory: BedtimeStory = await res.json();
       setCurrentStory(newStory);
       setActiveStoryPage(0);
-      alert(`Co-regulated Bedtime Story completed: "${newStory.title}"`);
+      setStoryImage(null);
+      setIllustrationNote(null);
     } catch (err: any) {
       console.error(err);
       setApiError(err.message || "Failed to write story.");
     } finally {
       setIsStoryGenerating(false);
+    }
+  };
+
+  // H-04: generate an illustration for the current story (optional, graceful).
+  const handleIllustrateStory = async () => {
+    setIsIllustrating(true);
+    setIllustrationNote(null);
+    try {
+      const res = await fetch("/api/generate-illustration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ illustrationPrompt: currentStory.illustrationPrompt })
+      });
+      const data = await res.json();
+      if (data.imageDataUrl) {
+        setStoryImage(data.imageDataUrl);
+      } else {
+        setIllustrationNote(data.reason || "Illustrations aren't available right now.");
+      }
+    } catch (err: any) {
+      setIllustrationNote(err.message || "Could not generate an illustration.");
+    } finally {
+      setIsIllustrating(false);
     }
   };
 
@@ -710,6 +754,35 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
   const handleStopTracking = (id: string) => {
     setTrackingPrompts(prev => prev.map(t => (t.id === id ? { ...t, active: false } : t)));
+  };
+
+  // H-08: download the handoff brief as a clean Markdown document (works offline).
+  const handleDownloadBrief = () => {
+    if (!schoolBrief) return;
+    const md = briefToMarkdown(schoolBrief, childProfile.name, handoffAudience);
+    downloadTextFile(`arbor-handoff-${safeFileName(childProfile.name)}-${new Date().toISOString().slice(0, 10)}.md`, md);
+  };
+
+  // H-08: optional cloud export via signed URL (gracefully reports when not configured).
+  const [cloudExportStatus, setCloudExportStatus] = useState<string | null>(null);
+  const handleCloudExportBrief = async () => {
+    if (!schoolBrief) return;
+    setCloudExportStatus("Exporting…");
+    try {
+      const res = await fetch("/api/export/handoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handoffData: schoolBrief, userId: childProfile.id, childName: childProfile.name })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCloudExportStatus(data.error || "Cloud export is not configured on this server.");
+        return;
+      }
+      setCloudExportStatus(`Shareable link ready (expires in 24h): ${data.downloadUrl}`);
+    } catch (err: any) {
+      setCloudExportStatus(err.message || "Cloud export failed.");
+    }
   };
 
   const feedbackFor = (messageId: string): FeedbackRating | undefined =>
@@ -2191,6 +2264,33 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                     <span>Page {activeStoryPage + 1} of {currentStory.pages.length + 1}</span>
                   </div>
 
+                  {/* H-04: story illustration (or a gentle invitation to generate one) */}
+                  <div className="space-y-2">
+                    {storyImage ? (
+                      <img
+                        src={storyImage}
+                        alt={`Illustration for ${currentStory.title}`}
+                        className="w-full max-h-56 object-cover rounded-2xl border border-white/10"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleIllustrateStory}
+                        disabled={isIllustrating}
+                        className="w-full rounded-2xl border border-dashed border-[#d7aa55]/30 bg-[#d7aa55]/[0.04] py-4 text-[11px] font-bold text-[#f4d991] transition hover:bg-[#d7aa55]/10 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isIllustrating ? (
+                          <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Painting the scene…</>
+                        ) : (
+                          <><Sparkles className="w-3.5 h-3.5" /> Illustrate this story</>
+                        )}
+                      </button>
+                    )}
+                    {illustrationNote && (
+                      <p className="text-[10px] text-[#a8a093] text-center">{illustrationNote}</p>
+                    )}
+                  </div>
+
                   {/* Render cover or page */}
                   <div className="flex-1 flex flex-col justify-center space-y-4 py-4">
                     {activeStoryPage < currentStory.pages.length ? (
@@ -2389,6 +2489,31 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                 </div>
               </div>
 
+              {/* H-07: notes gathered from real coach conversations */}
+              {handoffFragments.length > 0 && (
+                <div className="no-print bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-[#d7aa55]" />
+                    <h3 className="text-sm font-extrabold text-white">Notes from your coach conversations</h3>
+                    <span className="text-[10px] text-[#a8a093]">{handoffFragments.length} captured · informs the brief below</span>
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {handoffFragments.slice(0, 8).map(frag => (
+                      <div key={frag.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-[11px]">
+                        {frag.prompt && <p className="text-[#a8a093] italic mb-1">"{frag.prompt}"</p>}
+                        <p className="text-gray-200">
+                          <strong className="text-[#f4d991]">
+                            {handoffAudience === "teacher" ? "For the teacher: " : "For the professional: "}
+                          </strong>
+                          {handoffAudience === "teacher" ? frag.teacher : frag.professional}
+                        </p>
+                        <span className="text-[9px] text-[#a8a093]">{new Date(frag.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* School Brief printable preview */}
               <div className="border border-white/10 bg-[#141821] rounded-3xl p-6 md:p-8 space-y-6 text-xs text-left shadow-2xl printable-area">
                 
@@ -2403,13 +2528,36 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       Target Audience: Educators, Occupational Therapists, speech consultants & intake teams
                     </p>
                   </div>
-                  <button
-                    onClick={() => window.print()}
-                    className="border border-white/10 hover:bg-white/5 text-[#a8a093] hover:text-white px-3.5 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 self-end sm:self-auto"
-                  >
-                    <Printer className="w-3.5 h-3.5" /> Print Summary Document
-                  </button>
+                  <div className="no-print flex flex-wrap gap-2 self-end sm:self-auto">
+                    <button
+                      onClick={handleDownloadBrief}
+                      disabled={!schoolBrief}
+                      className="border border-[#d7aa55]/25 bg-[#d7aa55]/10 hover:bg-[#d7aa55]/20 text-[#f4d991] px-3.5 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-40"
+                    >
+                      <FileText className="w-3.5 h-3.5" /> Download (.md)
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      disabled={!schoolBrief}
+                      className="border border-white/10 hover:bg-white/5 text-[#a8a093] hover:text-white px-3.5 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-40"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Print
+                    </button>
+                    <button
+                      onClick={handleCloudExportBrief}
+                      disabled={!schoolBrief}
+                      className="border border-white/10 hover:bg-white/5 text-[#a8a093] hover:text-white px-3.5 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-40"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" /> Share link
+                    </button>
+                  </div>
                 </div>
+
+                {cloudExportStatus && (
+                  <div className="no-print rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[11px] text-[#a8a093] break-all">
+                    {cloudExportStatus}
+                  </div>
+                )}
 
                 {/* Show compiled brief */}
                 {schoolBrief ? (

@@ -128,6 +128,20 @@ export interface InterventionOutcome {
 
 export type FeedbackRating = 'useful' | 'partly' | 'not';
 
+/**
+ * A teacher/professional note fragment captured from a coach answer. Lets the
+ * Handoff Hub compose from real logged interactions instead of a cold
+ * regeneration (H-07).
+ */
+export interface HandoffFragment {
+  id: string;
+  childId: string;
+  createdAt: string;
+  prompt?: string;
+  teacher: string;
+  professional: string;
+}
+
 /** Per-answer usefulness rating — the measurable basis for the PRD's "70% useful today" metric. */
 export interface AnswerFeedback {
   id: string;

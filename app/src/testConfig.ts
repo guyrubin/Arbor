@@ -16,6 +16,7 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   modelProvider: "vertex",
   geminiApiKey: "test-key",
   geminiModel: "gemini-2.5-flash",
+  geminiImageModel: "imagen-3.0-generate-002",
   firebaseProjectId: "arbor-test",
   firestoreDatabaseId: "(default)",
   memoryAdapter: "local",
