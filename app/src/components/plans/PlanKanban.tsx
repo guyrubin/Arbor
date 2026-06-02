@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { DndContext, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { GripVertical, Trash2 } from "lucide-react";
+import { GripVertical, Trash2, Pencil } from "lucide-react";
 import { ProgressRing } from "../ui/ProgressRing";
 import { useArbor } from "../../context/ArborContext";
 import { ActionPlan, StepStatus } from "../../types";
@@ -27,17 +27,29 @@ function daysActive(planId: string): number | null {
 
 function StepCard({ item }: { item: Item }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id });
+  const { updatePlanStepText } = useArbor();
+  const planId = item.id.split("::")[0];
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white/[0.03] border border-white/10 rounded-xl p-2.5 text-[11px] text-gray-200 flex items-start gap-2 ${isDragging ? "opacity-60 ring-1 ring-[#d7aa55]/50" : ""}`}
+      className={`group bg-white/[0.03] border border-white/10 rounded-xl p-2.5 text-[11px] text-gray-200 flex items-start gap-2 ${isDragging ? "opacity-60 ring-1 ring-[#d7aa55]/50" : ""}`}
     >
       <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-[#a8a093] hover:text-white mt-0.5" aria-label="Drag step">
         <GripVertical className="w-3.5 h-3.5" />
       </button>
-      <span className={item.status === "done" ? "line-through text-gray-500" : ""}>{item.text}</span>
+      <span className={`flex-1 ${item.status === "done" ? "line-through text-gray-500" : ""}`}>{item.text}</span>
+      <button
+        onClick={() => {
+          const t = window.prompt("Edit step", item.text);
+          if (t) updatePlanStepText(planId, item.phaseIdx, item.stepIdx, t);
+        }}
+        aria-label="Edit step"
+        className="text-[#a8a093] hover:text-[#f4d991] opacity-0 group-hover:opacity-100 transition mt-0.5"
+      >
+        <Pencil className="w-3 h-3" />
+      </button>
     </div>
   );
 }

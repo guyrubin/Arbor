@@ -136,6 +136,7 @@ function useArborState() {
   const [newLogNotes, setNewLogNotes] = useState<string>("");
   const [newLogContext, setNewLogContext] = useState<BehaviorContext>("Home");
   const [newLogPhoto, setNewLogPhoto] = useState<string>("");
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
 
   // Form states: Generated Action Plan
   const [planChallengeTopic, setPlanChallengeTopic] = useState<string>(
@@ -513,15 +514,24 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   };
 
   // Add a Custom Behavior Log
+  const resetLogForm = () => {
+    setNewLogTrigger("");
+    setNewLogResponse("");
+    setNewLogNotes("");
+    setNewLogPhoto("");
+    setEditingLogId(null);
+  };
+
   const handleAddLog = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLogTrigger.trim() || !newLogResponse.trim()) {
       alert("Please provide trigger details and active response summary.");
       return;
     }
+    const existing = editingLogId ? behaviorLogs.find((l) => l.id === editingLogId) : null;
     const logItem: BehaviorLog = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+      id: existing ? existing.id : `log-${Date.now()}`,
+      timestamp: existing ? existing.timestamp : new Date().toISOString(),
       behaviorType: newLogType,
       intensity: newLogIntensity,
       durationMinutes: newLogDuration,
@@ -529,17 +539,48 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       response: newLogResponse,
       notes: newLogNotes || undefined,
       context: newLogContext,
-      resolved: false,
+      resolved: existing ? existing.resolved : false,
+      resolutionNotes: existing?.resolutionNotes,
       photoAttachment: newLogPhoto || undefined,
     };
 
     void logsCol.upsert(logItem);
-    track("log_created", { type: newLogType, intensity: newLogIntensity, context: newLogContext });
-    setNewLogTrigger("");
-    setNewLogResponse("");
-    setNewLogNotes("");
-    setNewLogPhoto("");
-    alert(`Behavior log saved to ${childProfile.name}'s developmental observation timeline.`);
+    if (!existing) track("log_created", { type: newLogType, intensity: newLogIntensity, context: newLogContext });
+    resetLogForm();
+  };
+
+  // Load a log into the form for editing.
+  const startEditLog = (id: string) => {
+    const log = behaviorLogs.find((l) => l.id === id);
+    if (!log) return;
+    setNewLogType(log.behaviorType);
+    setNewLogIntensity(log.intensity);
+    setNewLogDuration(log.durationMinutes);
+    setNewLogTrigger(log.trigger);
+    setNewLogResponse(log.response);
+    setNewLogNotes(log.notes || "");
+    setNewLogContext(log.context || "Home");
+    setNewLogPhoto(log.photoAttachment || "");
+    setEditingLogId(id);
+  };
+  const cancelEditLog = () => resetLogForm();
+
+  // Edit a custom milestone's title.
+  const updateMilestoneTitle = (id: string, title: string) => {
+    const m = milestones.find((x) => x.id === id);
+    if (m && title.trim()) void milestonesCol.upsert({ ...m, title: title.trim() });
+  };
+
+  // Edit a plan step's text.
+  const updatePlanStepText = (planId: string, phaseIdx: number, stepIdx: number, text: string) => {
+    const plan = actionPlans.find((p) => p.id === planId);
+    if (!plan || !text.trim()) return;
+    const phases = plan.phases.map((ph, phI) => {
+      if (phI !== phaseIdx) return ph;
+      const steps = ph.steps.map((st, stI) => (stI === stepIdx ? { ...st, text: text.trim() } : st));
+      return { ...ph, steps };
+    });
+    void plansCol.upsert({ ...plan, phases });
   };
 
   // Trigger analysis for logs
@@ -714,6 +755,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setNewLogContext,
     newLogPhoto,
     setNewLogPhoto,
+    editingLogId,
+    startEditLog,
+    cancelEditLog,
+    updateMilestoneTitle,
+    updatePlanStepText,
     toggleLogResolved,
     deleteLog,
     deletePlan,

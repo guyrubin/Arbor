@@ -35,6 +35,7 @@ export default function MilestonesTab() {
     setActiveTab,
     childProfile,
     deleteMilestone,
+    updateMilestoneTitle,
   } = useArbor();
 
   const domainOptions = framework.domains;
@@ -164,6 +165,16 @@ export default function MilestonesTab() {
                         <div className="flex items-center gap-2 flex-wrap pt-1">
                           {item.ageGroup && <span className="text-[9px] font-bold text-[#a8a093] bg-white/5 px-1.5 py-0.5 rounded">Age: {item.ageGroup}</span>}
                           {item.custom && <span className="text-[9px] font-bold text-[#f4d991] bg-[#d7aa55]/10 px-1.5 py-0.5 rounded">Custom</span>}
+                          {item.custom && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); const t = window.prompt("Rename milestone", item.title); if (t) updateMilestoneTitle(item.id, t); }}
+                              aria-label="Rename custom milestone"
+                              className="text-[9px] text-[#a8a093] hover:text-[#f4d991] transition"
+                            >
+                              <Pencil className="w-2.5 h-2.5" />
+                            </button>
+                          )}
                           {item.custom && (
                             <button
                               type="button"

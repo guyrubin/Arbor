@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Sparkles, RefreshCw, Brain, ExternalLink, Download, ChevronDown, Check, RotateCcw, Mic, Square, Trash2 } from "lucide-react";
+import { Plus, Sparkles, RefreshCw, Brain, ExternalLink, Download, ChevronDown, Check, RotateCcw, Mic, Square, Trash2, Pencil } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
@@ -67,6 +67,9 @@ export default function BehaviorsTab() {
     setActiveTab,
     childProfile,
     deleteLog,
+    editingLogId,
+    startEditLog,
+    cancelEditLog,
   } = useArbor();
   const { toast } = useToast();
 
@@ -223,8 +226,8 @@ export default function BehaviorsTab() {
         <form onSubmit={handleAddLog} className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-4 text-sm self-start">
           <div className="flex items-center justify-between pb-2 border-b border-white/5">
             <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-              <Plus className="w-4 h-4 text-[#d7aa55]" />
-              Record Co-Regulation Event
+              {editingLogId ? <Pencil className="w-4 h-4 text-[#d7aa55]" /> : <Plus className="w-4 h-4 text-[#d7aa55]" />}
+              {editingLogId ? "Edit log" : "Record Co-Regulation Event"}
             </h3>
             <button
               type="button"
@@ -339,9 +342,16 @@ export default function BehaviorsTab() {
             )}
           </div>
 
-          <button type="submit" className="w-full py-3 bg-[#d7aa55] hover:bg-[#c39947] transition text-black font-extrabold text-xs rounded-xl active:scale-[0.98]">
-            Save Log Incident
-          </button>
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 py-3 bg-[#d7aa55] hover:bg-[#c39947] transition text-black font-extrabold text-xs rounded-xl active:scale-[0.98]">
+              {editingLogId ? "Update log" : "Save Log Incident"}
+            </button>
+            {editingLogId && (
+              <button type="button" onClick={cancelEditLog} className="px-4 py-3 bg-white/5 border border-white/10 text-[#a8a093] hover:text-white font-bold text-xs rounded-xl transition">
+                Cancel
+              </button>
+            )}
+          </div>
         </form>
 
         {/* List column */}
@@ -457,6 +467,13 @@ export default function BehaviorsTab() {
                                     className={`px-2 py-0.5 rounded font-bold flex items-center gap-1 transition ${log.resolved ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-[#a8a093] hover:text-white"}`}
                                   >
                                     <Check className="w-3 h-3" /> {log.resolved ? "Resolved" : "Mark resolved"}
+                                  </button>
+                                  <button
+                                    onClick={() => startEditLog(log.id)}
+                                    aria-label="Edit log"
+                                    className="px-1.5 py-0.5 rounded text-[#a8a093] hover:text-[#f4d991] transition"
+                                  >
+                                    <Pencil className="w-3 h-3" />
                                   </button>
                                   <button
                                     onClick={() => { if (window.confirm("Delete this log?")) deleteLog(log.id); }}
