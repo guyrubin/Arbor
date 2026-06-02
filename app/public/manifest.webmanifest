@@ -1,0 +1,14 @@
+{
+  "name": "Arbor — Parent Development Support",
+  "short_name": "Arbor",
+  "description": "Your child's development, thoughtfully guided.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06070a",
+  "theme_color": "#0c0e14",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

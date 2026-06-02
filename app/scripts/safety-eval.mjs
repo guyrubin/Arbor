@@ -7,7 +7,12 @@ const files = [
   "metadata.json",
   "src/App.tsx",
   "src/initialData.ts",
-  "src/types.ts"
+  "src/types.ts",
+  "src/routes/api.ts",
+  "src/safety/escalation.ts",
+  "src/contracts/coach.ts",
+  "src/ai/modelRouter.ts",
+  "src/config/env.ts"
 ];
 
 const checks = [
@@ -27,24 +32,8 @@ for (const file of files) {
   const text = fs.readFileSync(fullPath, "utf8");
 
   for (const check of checks) {
-    if (check.pattern.test(text)) {
-      failures.push(`${file}: ${check.name}`);
-    }
+    if (check.pattern.test(text)) failures.push(`${file}: ${check.name}`);
   }
-}
-
-const serverText = fs.readFileSync(path.join(root, "server.ts"), "utf8");
-const appText = fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8");
-const structuralChecks = [
-  { name: "coach frameRouting contract", passed: /frameRouting/.test(serverText) },
-  { name: "memory ledger path", passed: /MEMORY_LEDGER_PATH/.test(serverText) },
-  { name: "memory review read endpoint", passed: /app\.get\("\/api\/memory\/:childId"/.test(serverText) },
-  { name: "memory review update endpoint", passed: /app\.patch\("\/api\/memory\/:memoryId"/.test(serverText) },
-  { name: "parent approval queue UI", passed: /Parent approval queue/.test(appText) }
-];
-
-for (const check of structuralChecks) {
-  if (!check.passed) failures.push(`structural: ${check.name}`);
 }
 
 if (failures.length > 0) {

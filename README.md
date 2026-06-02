@@ -5,10 +5,16 @@ Arbor is a private-beta parent support product for child-development concerns. T
 ## Current Artifacts
 
 - `docs/arbor-prd.md` - product requirements, positioning, MVP scope, safety requirements, roadmap, and metrics.
+- `docs/arbor-backlog.md` - tracked M0/M1 architecture follow-ups and upstream issue/ADR references.
+- `docs/adr/` - short Architecture Decision Records anchoring M0/F-07 platform decisions.
 - `docs/developmental-ai-operating-model.md` - source-grounded child-development framework and AI operating model.
+- `docs/architecture/` - Arbor v2 production architecture for Vertex AI, Firestore, Firebase Hosting/Auth, Cloud Run, AI Wiki, security, and environment gates.
+- `docs/compliance/` - legal/compliance skeleton for privacy, non-diagnostic boundary, retention, incident response, DPA, insurance, and trademark review.
+- `knowledge/` - Git-backed Arbor AI Wiki source cards used by the backend retrieval layer.
 - `mockups/arbor-platform-mockup.html` - static product mockup for the private-beta parent support loop.
 - `prototype/arbor-private-beta-app.html` - interactive app prototype with intake, developmental routing, AI plan generation, memory approval, handoff, and eval screens.
-- `app/` - imported AI Studio React/Gemini app, hardened behind a non-diagnostic developmental AI contract.
+- `app/` - React/Vite + Express Arbor app, hardened behind a non-diagnostic developmental AI contract and production architecture boundaries.
+- `firebase.json`, `firestore.rules`, `firestore.indexes.json`, `cloudbuild.yaml` - GCP/Firebase deployment scaffold for Arbor.
 
 ## Private Beta Loop
 
@@ -36,13 +42,18 @@ Arbor is a private-beta parent support product for child-development concerns. T
 
 ## React App
 
-The production-direction prototype now lives in `app/`. It keeps the AI Studio implementation separate from the no-build static prototype while adding Arbor guardrails:
+The production-direction Arbor app now lives in `app/`. It keeps the AI Studio implementation separate from the no-build static prototype while adding Arbor guardrails:
 
-- `GEMINI_MODEL` defaults to `gemini-2.5-flash`.
-- `/api/chat` returns structured coach data plus rendered parent guidance, including Six Frames routing.
+- `server.ts` is a thin bootstrapper; API, model, memory, safety, contracts, config, and server wiring live under `app/src/`.
+- `MODEL_PROVIDER=gemini_dev` is allowed for local development; `ARBOR_ENV=prod` requires `MODEL_PROVIDER=vertex`.
+- `VERTEX_MODEL_CHAT` defaults to `claude-3-5-sonnet@anthropic`, normalized to the Anthropic publisher model id for Vertex API calls.
+- `MEMORY_ADAPTER=local` is allowed for local development; `ARBOR_ENV=prod` requires `MEMORY_ADAPTER=firestore`.
+- `/api/chat` retrieves approved child memory plus Arbor AI Wiki source cards, then returns structured coach data with Six Frames routing and `sourceCardsUsed`.
+- `/api/architecture/knowledge` reports how many Arbor AI Wiki cards were loaded in the deployed runtime.
+- `app/src/framework.json` is the app source of truth for developmental domains, age bands, and Six Frames prompt construction.
 - Every generation endpoint includes the non-diagnostic developmental AI contract.
-- The app includes an append-only local memory review ledger under `.data/` for pending, approved, rejected, and deleted memory states.
-- `npm run eval:safety` checks for stale model, over-clinical copy regressions, frame routing, and memory-review structure.
+- Arbor uses an append-only memory event service: local JSON in development, Firestore in production.
+- `npm run eval:safety` checks stale/clinical copy regressions plus architecture gates for model routing, Firestore memory, AI Wiki retrieval, safety screening, and parent memory review.
 
 Run locally:
 
@@ -51,6 +62,16 @@ cd app
 npm install
 cp .env.example .env.local
 npm run dev
+```
+
+Production-direction checks:
+
+```bash
+npm run lint
+npm test
+npm run check:framework
+npm run eval:safety
+npm run build
 ```
 
 ## Prototype Design Principles

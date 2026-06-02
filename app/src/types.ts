@@ -9,6 +9,17 @@ export interface ChildProfile {
   riskLevel: 'Low' | 'Moderate' | 'High';
 }
 
+export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';
+
+export type DevelopmentalDomainId =
+  | 'attachment_regulation'
+  | 'language_communication'
+  | 'cognition_executive_function'
+  | 'social_development'
+  | 'independence_adaptive_skills'
+  | 'sensory_motor_patterns'
+  | 'ecosystem_stressors';
+
 export interface FrameRouting {
   aim: string;
   twoAxes: string;
@@ -34,7 +45,7 @@ export interface MemoryReviewItem {
 export interface CoachContract {
   riskLevel: string;
   ageBand: string;
-  domains: string[];
+  domains: DevelopmentalDomainId[];
   nonDiagnosticHypotheses: { label: string; confidence: string; rationale: string }[];
   todayPlan: string[];
   parentScript: string;
@@ -55,26 +66,33 @@ export interface BehaviorLog {
   trigger: string;
   response: string;
   notes?: string;
+  context?: BehaviorContext;
+  resolved?: boolean;
+  resolutionNotes?: string;
+  photoAttachment?: string;
 }
 
 export interface Milestone {
   id: string;
-  domain: 'Emotional' | 'Language' | 'Social' | 'Motor' | 'Cognitive' | 'Independence';
+  domain: DevelopmentalDomainId;
   ageGroup: string;
   title: string;
   description: string;
   checked: boolean;
+  references?: { label: string; url: string }[];
+  custom?: boolean;
 }
+
+export type StepStatus = 'todo' | 'doing' | 'done';
 
 export interface ActionPlan {
   id: string;
   title: string;
   issue: string;
-  scholarBadge?: string;
   phases: {
     name: string;
     description: string;
-    steps: { text: string; completed: boolean }[];
+    steps: { text: string; completed: boolean; status?: StepStatus }[];
   }[];
   scripts: { scenario: string; say: string; avoid: string }[];
   successIndicators: string[];
