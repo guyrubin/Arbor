@@ -51,8 +51,10 @@ import { usePersistentState, childKey } from "./state/persistence";
 import { contractToActionPlan, observeToTrackingPrompts, dueFollowUps, addDays } from "./state/loop";
 import { briefToMarkdown, downloadTextFile, safeFileName } from "./state/exporters";
 import { useSpeech, useSpeechInput, speechLocaleFor } from "./state/voice";
+import { createChildProfile, updateChildProfile, type NewChildInput } from "./state/children";
 import { CoachAnswerActions, FollowUpCheckins, LeadFrameCallout, SourceGrounding } from "./components/coachLoop";
 import { PanicMode } from "./components/PanicMode";
+import { ChildSwitcher, ChildOnboarding } from "./components/ChildManager";
 
 type ChatMessage = { id: string; sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract; sourcePrompt?: string };
 type ReviewQueueItem = { id: string; createdAt: string; trigger: string; category: string; riskLevel?: string; excerpt: string; status: "open" | "reviewed" | "dismissed" };
@@ -73,9 +75,28 @@ export default function App() {
   >("overview");
   const [showAiRail, setShowAiRail] = useState<boolean>(true);
 
-  // App Core States
-  const [childProfile, setChildProfile] = useState<ChildProfile>(defaultChildProfile);
+  // App Core States — multi-child family model (A-01/A-02).
+  const [children, setChildren] = usePersistentState<ChildProfile[]>("children", [defaultChildProfile]);
+  const [activeChildId, setActiveChildId] = usePersistentState<string>("activeChildId", defaultChildProfile.id);
+  const childProfile = children.find(c => c.id === activeChildId) ?? children[0] ?? defaultChildProfile;
   const childId = childProfile.id;
+
+  // Onboarding modal state.
+  const [onboardingOpen, setOnboardingOpen] = useState<boolean>(false);
+  const [onboardingChild, setOnboardingChild] = useState<ChildProfile | null>(null);
+
+  const handleAddChild = (input: NewChildInput) => {
+    const profile = createChildProfile(input);
+    setChildren(prev => [...prev, profile]);
+    setActiveChildId(profile.id);
+  };
+  const handleSaveChild = (input: NewChildInput) => {
+    if (onboardingChild) {
+      setChildren(prev => prev.map(c => (c.id === onboardingChild.id ? updateChildProfile(c, input) : c)));
+    } else {
+      handleAddChild(input);
+    }
+  };
   // Persisted, child-scoped collections (A-05/H-05: nothing evaporates on refresh).
   const [behaviorLogs, setBehaviorLogs] = usePersistentState<BehaviorLog[]>(childKey(childId, "logs"), sampleBehaviorLogs);
   const [milestones, setMilestones] = usePersistentState<Milestone[]>(childKey(childId, "milestones"), initialMilestones);
@@ -126,12 +147,12 @@ export default function App() {
       id: "welcome",
       sender: "ai",
       text: "### Welcome to Arbor Parent Coach\n" +
-        "I help turn parenting concerns into age-aware, non-diagnostic next steps. Share a hard moment, a behavior pattern, or a developmental question Dylan is facing.\n\n" +
-        "### Suggested starting points:\n" +
-        "- **\"Dylan has transition tantrums when leaving for school in the mornings.\"**\n" +
-        "- **\"Dylan refuses to switch off his screen at night and screams.\"**\n" +
-        "- **\"Suggestions for improving his confidence when switching between languages.\"**\n\n" +
-        "Select a **Scholar Lens** above to focus guidance through a developmental frame (Vygotsky, Bowlby, Piaget, Winnicott, etc.).",
+        "I help turn a hard parenting moment into a calm next step — age-aware, never a diagnosis. Tell me what happened, a pattern you're noticing, or a question on your mind.\n\n" +
+        "### A few ways to start:\n" +
+        "- **\"There are tantrums every morning when we leave for school.\"**\n" +
+        "- **\"Bedtime turns into a battle and ends in screaming.\"**\n" +
+        "- **\"How do I build her confidence switching between languages?\"**\n\n" +
+        "Pick a **Scholar Lens** above to steer the guidance through a developmental frame (Vygotsky, Bowlby, Piaget, Winnicott, and more).",
       lens: "Integrated Balanced"
     }
   ]);
@@ -597,7 +618,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setNewLogTrigger("");
     setNewLogResponse("");
     setNewLogNotes("");
-    alert("Behavior log saved to Dylan's developmental observation timeline.");
+    alert(`Behavior log saved to ${childProfile.name}'s timeline.`);
   };
 
   // Trigger analysis for logs
@@ -860,7 +881,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   const activeTrackingPrompts = trackingPrompts.filter(t => t.active);
 
   return (
-    <div className="arbor-app min-h-screen select-none text-sans antialiased overflow-x-hidden relative">
+    <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
       {/* Main Grid Layout and Three Column Grid on Desktop */}
       <div className={`grid grid-cols-1 ${showAiRail ? "xl:grid-cols-[290px_1fr_340px] 2xl:grid-cols-[290px_1fr_365px]" : "xl:grid-cols-[290px_1fr]"} min-h-screen relative z-10 transition-all duration-300`}>
         
@@ -877,23 +898,14 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
             </div>
           </div>
 
-          {/* Micro Child Summary */}
-          <div className="bg-[#141821] border border-white/5 rounded-2xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-blue-500/10 text-blue-400 font-bold rounded-xl flex items-center justify-center text-sm">
-                Dy
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-white leading-tight">{childProfile.name}</h4>
-                <p className="text-xs text-[#a8a093]">Age {childProfile.age} · Hebrew native</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold bg-[#d7aa55]/10 text-[#f4d991] px-2 py-0.5 rounded-full">
-                OS v1.0
-              </span>
-            </div>
-          </div>
+          {/* A-02: child switcher (multi-child family model) */}
+          <ChildSwitcher
+            children={children}
+            activeId={activeChildId}
+            onSelect={setActiveChildId}
+            onAdd={() => { setOnboardingChild(null); setOnboardingOpen(true); }}
+            onEdit={() => { setOnboardingChild(childProfile); setOnboardingOpen(true); }}
+          />
 
           {/* Navigation Items */}
           <nav className="flex flex-col gap-1.5 flex-1">
@@ -1032,8 +1044,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
           {/* Top workspace accessories header row */}
           <div className="flex justify-between items-center mb-6 gap-4">
             <span className="text-xs text-[#a8a093] font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              Active Care Platform: <strong className="text-white">Dylan · Age 5</strong> (English Transition)
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              Today with <strong className="text-white">{childProfile.name} · Age {childProfile.age}</strong>
             </span>
             {!showAiRail && (
               <button
@@ -1074,12 +1086,12 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
               {/* Giant Banner/Hero Block */}
               <div className="border border-white/10 rounded-3xl p-6 md:p-10 bg-gradient-to-br from-white/[0.08] to-white/[0.025] from-amber-500/[0.03] to-transparent bg-[#141821] shadow-xl relative overflow-hidden grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8 items-center">
                 <div className="space-y-4 relative z-10">
-                  <span className="text-xs font-black uppercase tracking-wider text-[#f4d991]">Parenting Intelligence Cockpit</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-[#f4d991]">A calm place to think</span>
                   <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-                    Not a parenting chatbot.<br />A development intelligence operating system.
+                    What&apos;s happening with {childProfile.name} today?
                   </h2>
                   <p className="text-sm md:text-base text-[#a8a093] leading-relaxed max-w-lg">
-                    Welcome back. Arbor turns today&apos;s parenting signal into a safety-aware plan, parent script, approved memory, and handoff note without diagnosing the child.
+                    Tell Arbor what&apos;s going on. You&apos;ll get a calm read, one thing to try today, what to watch for, and when it&apos;s worth asking a professional — never a diagnosis.
                   </p>
                   <div className="flex flex-wrap gap-3 pt-2">
                     <button
@@ -1102,10 +1114,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   {/* Card head: dylan profile */}
                   <div className="bg-gradient-to-br from-[#d7aa55]/20 to-transparent border border-[#d7aa55]/20 rounded-2xl p-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-base font-black text-[#f4d991]">Dylan · Age 5</h3>
+                      <h3 className="text-base font-black text-[#f4d991]">{childProfile.name} · Age {childProfile.age}</h3>
                       <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold">Stable</span>
                     </div>
-                    <p className="text-[11px] text-gray-300 mt-1">Kindergarten readiness timeline</p>
+                    <p className="text-[11px] text-gray-300 mt-1">{childProfile.schoolContext || "Developmental snapshot"}</p>
                     <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mt-3">
                       <div className="bg-[#d7aa55] h-full" style={{ width: `${milestonesPercent}%` }} />
                     </div>
@@ -1145,8 +1157,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                 {/* Panel 1: Main statistics cockpit */}
                 <div className="bg-[#141821] border border-white/10 p-6 rounded-3xl space-y-6">
                   <div>
-                    <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">Behavior Time analysis</span>
-                    <h3 className="text-xl font-bold text-white mt-1">Longitudinal Insights Map</h3>
+                    <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">Patterns over time</span>
+                    <h3 className="text-xl font-bold text-white mt-1">What's been happening</h3>
                   </div>
 
                   {/* Mini log frequency heatmap list */}
@@ -1395,7 +1407,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                 
                 {/* Active Info Indicator */}
                 <div className="bg-white/[0.03] px-4 py-2 text-xs text-[#a8a093] border-b border-white/5 flex items-center justify-between">
-                  <span>Conversation Frame: <strong>Dylan (Age 5) Context</strong></span>
+                  <span>Talking about <strong>{childProfile.name} (Age {childProfile.age})</strong></span>
                   <span className="text-[#f4d991] font-bold">Lens: {selectedLens}</span>
                 </div>
 
@@ -2120,7 +2132,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
               {/* Trigger Generator Card */}
               <div className="bg-[#141821] border border-white/10 rounded-2xl p-6 space-y-4">
-                <span className="text-xs font-bold text-[#f4d991] tracking-wider uppercase block">Weave Custom Child Action Blueprint</span>
+                <span className="text-xs font-bold text-[#f4d991] tracking-wider uppercase block">Create a plan for a specific challenge</span>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input
                     type="text"
@@ -2240,7 +2252,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
                     {/* Success indicators list */}
                     <div className="space-y-2 text-xs">
-                      <span className="font-bold text-white block">Woven success completion flags:</span>
+                      <span className="font-bold text-white block">Signs it's working:</span>
                       <ul className="list-disc pl-5 text-[#a8a093] space-y-1 leading-relaxed">
                         {plan.successIndicators.map((sc, scIdx) => (
                           <li key={scIdx}>{sc}</li>
@@ -3029,7 +3041,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                 Run AI Checks
               </button>
               <p className="text-[10px] text-gray-500 text-center">
-                System status: Fully calibrated & HIPAA-compliant lock.
+                Private by default. Child data stays on your device unless you choose to share it.
               </p>
             </div>
           </aside>
@@ -3051,6 +3063,13 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         onClose={() => setPanicOpen(false)}
         childProfile={childProfile}
         onLog={handlePanicLog}
+      />
+
+      <ChildOnboarding
+        open={onboardingOpen}
+        initial={onboardingChild}
+        onSave={handleSaveChild}
+        onClose={() => setOnboardingOpen(false)}
       />
     </div>
   );
