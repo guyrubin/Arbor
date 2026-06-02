@@ -209,7 +209,7 @@ export default function BehaviorsTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
       <div>
         <h2 className="text-3xl font-extrabold tracking-tight">Behavior & Emotion Tracker</h2>
-        <p className="text-sm text-[#a8a093] mt-1">Log dysregulation events to map heatmaps, triggers, duration and attach expert research insights.</p>
+        <p className="text-sm text-[#a8a093] mt-1">Log the hard moments to see patterns, triggers, and what actually helps over time.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8">

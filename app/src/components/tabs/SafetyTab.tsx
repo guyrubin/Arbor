@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { ShieldAlert, Phone, Plus, Trash2, CalendarCheck, AlertTriangle } from "lucide-react";
+import { ShieldAlert, Phone, Plus, Trash2, CalendarCheck, AlertTriangle, BrainCircuit } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 
@@ -22,7 +22,7 @@ const RISK_STYLES: Record<string, { banner: string; label: string }> = {
 };
 
 export default function SafetyTab() {
-  const { childProfile } = useArbor();
+  const { childProfile, approvedMemoryItems, handleMemoryDecision, isMemoryUpdating } = useArbor();
 
   const reviewedKey = useMemo(() => `arbor.safetyReviewed.${childProfile.id}`, [childProfile.id]);
   const checklistKey = useMemo(() => `arbor.safetyChecklist.${childProfile.id}`, [childProfile.id]);
@@ -161,6 +161,32 @@ export default function SafetyTab() {
             <button type="submit" className="bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold px-3 rounded-lg flex items-center"><Plus className="w-4 h-4" /></button>
           </div>
         </form>
+      </div>
+
+      {/* What Arbor knows (approved memory) */}
+      <div className="bg-[#141821] border border-white/10 rounded-2xl p-6 space-y-3">
+        <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
+          <BrainCircuit className="w-3.5 h-3.5 text-[#d7aa55]" /> What Arbor knows about {childProfile.name}
+        </span>
+        <p className="text-xs text-[#a8a093]">Only parent-approved observations become active memory. Forget any of them at any time.</p>
+        {approvedMemoryItems.length === 0 ? (
+          <p className="text-xs text-[#a8a093] border border-white/5 rounded-xl p-3 bg-white/[0.01]">No approved memory yet. Approve observations from the Parent Coach memory queue.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {approvedMemoryItems.map((item) => (
+              <div key={item.memoryId} className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-start justify-between gap-2">
+                <p className="text-xs text-gray-200 leading-relaxed">{item.fact}</p>
+                <button
+                  onClick={() => handleMemoryDecision(item.memoryId, "deleted")}
+                  disabled={isMemoryUpdating === item.memoryId}
+                  className="text-[10px] font-bold text-[#a8a093] hover:text-red-400 flex-shrink-0 disabled:opacity-50"
+                >
+                  Forget
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Static safeguards */}
