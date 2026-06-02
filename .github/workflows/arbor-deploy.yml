@@ -1,0 +1,84 @@
+# Auto-deploy Arbor to GCP on push to main (A8).
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   GCP_PROJECT_ID            e.g. arborprd-westeu
+#   GCP_SA_KEY               JSON key for a service account with roles:
+#                            Cloud Build Editor, Cloud Run Admin, Artifact
+#                            Registry Writer, Service Account User, Firebase
+#                            Admin, Datastore Owner.
+#   VITE_FIREBASE_API_KEY    Firebase web config (baked into the client build)
+#   VITE_FIREBASE_APP_ID
+# Optional vars: VITE_FIREBASE_AUTH_DOMAIN / _PROJECT_ID / _STORAGE_BUCKET
+# default to <project>.firebaseapp.com / <project> / <project>.firebasestorage.app
+#
+# Gated behind the same quality checks as CI; only runs on main.
+name: Arbor Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: arbor-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # Quality gates (fail the deploy if these fail).
+      - run: npm ci
+        working-directory: app
+      - run: npm run lint
+        working-directory: app
+      - run: npm test
+        working-directory: app
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # 1) Build + deploy the API (Cloud Run) via Cloud Build.
+      - name: Deploy API (Cloud Run)
+        run: |
+          gcloud builds submit \
+            --config cloudbuild.prod.yaml \
+            --substitutions=_REGION=europe-west4,_TAG=${GITHUB_SHA::7} \
+            --default-buckets-behavior=regional-user-owned-bucket \
+            --project "$PROJECT_ID"
+
+      # 2) Build the client with the Firebase web config baked in.
+      - name: Build client
+        working-directory: app
+        env:
+          VITE_HAS_GEMINI_API: "true"
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN || format('{0}.firebaseapp.com', secrets.GCP_PROJECT_ID) }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET || format('{0}.firebasestorage.app', secrets.GCP_PROJECT_ID) }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: |
+          npm run build
+          rm -f dist/server.cjs dist/server.cjs.map
+
+      # 3) Deploy Hosting + Firestore rules/indexes.
+      - name: Deploy Hosting + Firestore
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+        run: |
+          npx --yes firebase-tools deploy --only hosting,firestore \
+            --project "$PROJECT_ID" --non-interactive
