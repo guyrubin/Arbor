@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { Skeleton } from "../ui/Skeleton";
 import { EmptyState } from "../ui/EmptyState";
 import PlanKanban from "../plans/PlanKanban";
+import RoutinesCard from "../plans/RoutinesCard";
 
 export default function PlansTab() {
   const {
@@ -68,6 +69,8 @@ export default function PlansTab() {
           </button>
         </div>
       </div>
+
+      <RoutinesCard />
 
       {!plansLoaded && (
         <div className="space-y-4"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>
