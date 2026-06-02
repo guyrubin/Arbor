@@ -7,6 +7,10 @@
   --arbor-muted: #625f55;
   --arbor-rule: rgba(20, 22, 15, 0.16);
   --arbor-clay: #e2562d;
+  /* Clay reads at only ~3:1 on paper — too low for body/label text (WCAG 1.4.3
+     needs 4.5:1). This darker brick tone hits ~5:1 and is used for clay *text*
+     only; fills/badges keep the brighter --arbor-clay. */
+  --arbor-clay-text: #a83e1d;
   --arbor-blue: #1c3d6b;
   --arbor-sage: #5d7a55;
   --arbor-ochre: #c89637;
@@ -43,6 +47,7 @@ body {
 .arbor-app [class*="bg-[#08090c]"],
 .arbor-app [class*="bg-[#141821]"],
 .arbor-app [class*="bg-[#12141c]"],
+.arbor-app [class*="bg-[#0d1117]"],
 .arbor-app [class*="bg-[#04060c]"] {
   background-color: var(--arbor-paper-elevated) !important;
   background-image: none !important;
@@ -68,7 +73,7 @@ body {
 .arbor-app .text-amber-200,
 .arbor-app .text-amber-300,
 .arbor-app .text-amber-400 {
-  color: var(--arbor-clay) !important;
+  color: var(--arbor-clay-text) !important;
 }
 
 .arbor-app [class*="bg-[#d7aa55]"],
@@ -97,11 +102,99 @@ body {
   box-shadow: none !important;
 }
 
+/* Status/category accent text carried over from the dark theme renders far too
+   light on paper (green/cyan/emerald/orange/purple/yellow/red all fail 1.4.3 at
+   ~1.5–2.8:1). Remap each to a darker, hue-preserving shade that clears 4.5:1
+   on both paper and elevated surfaces. Fills (bg-*-500/10 tints) are decorative
+   and left as-is. */
+.arbor-app .text-green-300,
+.arbor-app .text-green-400,
+.arbor-app .text-green-500 {
+  color: #166534 !important;
+}
+.arbor-app .text-emerald-300,
+.arbor-app .text-emerald-400,
+.arbor-app .text-emerald-500 {
+  color: #065f46 !important;
+}
+.arbor-app .text-cyan-300,
+.arbor-app .text-cyan-400,
+.arbor-app .text-cyan-500 {
+  color: #155e75 !important;
+}
+.arbor-app .text-orange-300,
+.arbor-app .text-orange-400,
+.arbor-app .text-orange-500 {
+  color: #9a3412 !important;
+}
+.arbor-app .text-purple-300,
+.arbor-app .text-purple-400,
+.arbor-app .text-purple-500 {
+  color: #7e22ce !important;
+}
+.arbor-app .text-yellow-300,
+.arbor-app .text-yellow-400 {
+  color: #854d0e !important;
+}
+.arbor-app .text-red-300,
+.arbor-app .text-red-400,
+.arbor-app .text-red-500 {
+  color: #b91c1c !important;
+}
+
+/* 2.4.7 — many controls set focus:outline-none with no replacement, leaving
+   keyboard users with no visible focus. Restore a high-contrast ring (~8.7:1 on
+   paper) for keyboard focus across every interactive element. */
+.arbor-app a:focus-visible,
+.arbor-app button:focus-visible,
+.arbor-app input:focus-visible,
+.arbor-app select:focus-visible,
+.arbor-app textarea:focus-visible,
+.arbor-app [tabindex]:focus-visible {
+  outline: 2px solid var(--arbor-blue) !important;
+  outline-offset: 2px !important;
+  border-radius: 6px;
+}
+
+/* Active nav state: the inherited bg-white/5 is nearly invisible on paper, so
+   active vs inactive read as color-only (1.4.1). Give it a clay left-rule, a
+   subtle wash, and heavier weight — a non-color-dependent cue. Paired with
+   aria-current="page" in the markup for screen readers. */
+.arbor-app .arbor-nav-active {
+  background-color: rgba(226, 86, 45, 0.1) !important;
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 0 var(--arbor-clay) !important;
+}
+
+/* 2.5.5 — guarantee a 44×44 CSS-pixel hit area on icon-only controls without
+   enlarging the icon glyph itself. */
+.arbor-app .arbor-tap {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .arbor-app button,
 .arbor-app input,
 .arbor-app textarea,
 .arbor-app select {
   letter-spacing: 0;
+}
+
+/* 2.3.3 — honor the OS "reduce motion" setting. Collapses CSS transitions/
+   animations app-wide; framer-motion's looping breathing pacer is handled
+   separately in PanicMode via useReducedMotion. */
+@media (prefers-reduced-motion: reduce) {
+  .arbor-app *,
+  .arbor-app *::before,
+  .arbor-app *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* H-08 — Print only the handoff document, on clean white paper. */

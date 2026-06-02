@@ -25,6 +25,16 @@ describe("model route decisions", () => {
     });
   });
 
+  it("routes the coach to Gemini on Vertex when configured with a Gemini chat model", () => {
+    // Prod config uses VERTEX_MODEL_CHAT=gemini-2.5-pro; the coach must NOT be
+    // sent to the Anthropic endpoint (which would hang and 504).
+    const config = createTestConfig({ vertexModelChat: "gemini-2.5-pro" });
+    expect(routeDecisionFor(config, "coach_high_stakes")).toMatchObject({
+      provider: "vertex_gemini",
+      model: "gemini-2.5-pro"
+    });
+  });
+
   it("normalizes the Claude shorthand to the Vertex Anthropic model id", () => {
     expect(toAnthropicVertexModelId("claude-3-5-sonnet@anthropic")).toBe("claude-3-5-sonnet-v2@20241022");
   });

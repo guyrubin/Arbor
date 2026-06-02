@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { X, Volume2, Square, LifeBuoy, NotebookPen } from "lucide-react";
 import { CO_REGULATION_SCRIPTS, pickCoRegulationScript } from "../state/coRegulation";
 import { useSpeech, speechLocaleFor } from "../state/voice";
@@ -30,6 +30,7 @@ export const PanicMode: React.FC<PanicModeProps> = ({ open, onClose, childProfil
   const [activeId, setActiveId] = useState<string | null>(null);
   const [crisis, setCrisis] = useState<EscalationMatch | null>(null);
   const [logged, setLogged] = useState(false);
+  const reduceMotion = useReducedMotion();
   const { supported: ttsSupported, speaking, speak, stop } = useSpeech();
 
   const locale = resolveCrisisLocale(childProfile);
@@ -61,7 +62,7 @@ export const PanicMode: React.FC<PanicModeProps> = ({ open, onClose, childProfil
           type="button"
           onClick={handleClose}
           aria-label="Close calm mode"
-          className="absolute right-3 top-3 rounded-lg p-1.5 text-[#a8a093] hover:bg-white/10 hover:text-white"
+          className="arbor-tap absolute right-2 top-2 rounded-lg text-[#a8a093] hover:bg-white/10 hover:text-white"
         >
           <X className="h-5 w-5" />
         </button>
@@ -74,13 +75,13 @@ export const PanicMode: React.FC<PanicModeProps> = ({ open, onClose, childProfil
           <div className="relative flex h-40 w-40 items-center justify-center">
             <motion.div
               className="absolute h-32 w-32 rounded-full bg-[#d7aa55]/20"
-              animate={{ scale: [1, 1.5, 1.5, 1], opacity: [0.5, 0.85, 0.85, 0.5] }}
-              transition={{ duration: 14, times: [0, 0.29, 0.57, 1], repeat: Infinity, ease: "easeInOut" }}
+              animate={reduceMotion ? { scale: 1.35, opacity: 0.7 } : { scale: [1, 1.5, 1.5, 1], opacity: [0.5, 0.85, 0.85, 0.5] }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 14, times: [0, 0.29, 0.57, 1], repeat: Infinity, ease: "easeInOut" }}
             />
             <motion.div
               className="absolute h-24 w-24 rounded-full bg-[#d7aa55]/40"
-              animate={{ scale: [1, 1.5, 1.5, 1] }}
-              transition={{ duration: 14, times: [0, 0.29, 0.57, 1], repeat: Infinity, ease: "easeInOut" }}
+              animate={reduceMotion ? { scale: 1.25 } : { scale: [1, 1.5, 1.5, 1] }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 14, times: [0, 0.29, 0.57, 1], repeat: Infinity, ease: "easeInOut" }}
             />
             <span className="relative text-xs font-bold text-white">in · hold · out</span>
           </div>
@@ -118,7 +119,7 @@ export const PanicMode: React.FC<PanicModeProps> = ({ open, onClose, childProfil
               <button
                 type="button"
                 onClick={() => (speaking ? stop() : speak(script.say, { lang: speechLang }))}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#d7aa55]/25 bg-[#d7aa55]/10 px-3 py-1.5 text-[11px] font-bold text-[#f4d991] hover:bg-[#d7aa55]/20"
+                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#d7aa55]/25 bg-[#d7aa55]/10 px-3 py-2 text-[11px] font-bold text-[#f4d991] hover:bg-[#d7aa55]/20"
               >
                 {speaking ? <><Square className="h-3.5 w-3.5" /> Stop</> : <><Volume2 className="h-3.5 w-3.5" /> Read it to me</>}
               </button>
@@ -136,7 +137,7 @@ export const PanicMode: React.FC<PanicModeProps> = ({ open, onClose, childProfil
                 setActiveId(s.id);
                 setCrisis(null);
               }}
-              className={`rounded-full border px-2.5 py-1 text-[10px] font-bold transition ${
+              className={`min-h-[36px] rounded-full border px-3 py-1.5 text-[10px] font-bold transition ${
                 !crisis && script.id === s.id
                   ? "border-[#d7aa55]/50 bg-[#d7aa55]/20 text-[#f4d991]"
                   : "border-white/10 bg-white/[0.02] text-[#a8a093] hover:bg-white/[0.06]"
@@ -152,6 +153,7 @@ export const PanicMode: React.FC<PanicModeProps> = ({ open, onClose, childProfil
           type="text"
           value={context}
           onChange={(e) => handleContext(e.target.value)}
+          aria-label="What's happening right now (optional)"
           placeholder="What's happening right now? (optional)"
           className="mt-4 w-full rounded-lg border border-white/10 bg-[#08090c] px-3 py-2 text-xs text-white placeholder:text-[#a8a093] focus:border-[#d7aa55]/40 focus:outline-none"
         />
@@ -166,7 +168,7 @@ export const PanicMode: React.FC<PanicModeProps> = ({ open, onClose, childProfil
                 setLogged(true);
               }}
               disabled={logged}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] font-bold text-[#a8a093] hover:bg-white/[0.06] disabled:opacity-50"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] font-bold text-[#a8a093] hover:bg-white/[0.06] disabled:opacity-50"
             >
               <NotebookPen className="h-3.5 w-3.5" /> {logged ? "Logged" : "Log what happened"}
             </button>
@@ -174,7 +176,7 @@ export const PanicMode: React.FC<PanicModeProps> = ({ open, onClose, childProfil
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-lg bg-[#d7aa55] px-4 py-1.5 text-[11px] font-extrabold text-black hover:bg-[#c39947]"
+            className="min-h-[40px] rounded-lg bg-[#d7aa55] px-5 py-2 text-[11px] font-extrabold text-black hover:bg-[#c39947]"
           >
             We're okay now
           </button>

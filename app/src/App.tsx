@@ -964,9 +964,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
           <nav className="flex flex-col gap-1.5 flex-1">
             <button
               onClick={() => setActiveTab("overview")}
+              aria-current={activeTab === "overview" ? "page" : undefined}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
                 activeTab === "overview"
-                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  ? "arbor-nav-active text-[#f7f1e7] border-transparent"
                   : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -978,9 +979,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
             <button
               onClick={() => setActiveTab("coach")}
+              aria-current={activeTab === "coach" ? "page" : undefined}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
                 activeTab === "coach"
-                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  ? "arbor-nav-active text-[#f7f1e7] border-transparent"
                   : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -992,9 +994,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
             <button
               onClick={() => setActiveTab("behaviors")}
+              aria-current={activeTab === "behaviors" ? "page" : undefined}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
                 activeTab === "behaviors"
-                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  ? "arbor-nav-active text-[#f7f1e7] border-transparent"
                   : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -1005,9 +1008,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
             <button
               onClick={() => setActiveTab("milestones")}
+              aria-current={activeTab === "milestones" ? "page" : undefined}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
                 activeTab === "milestones"
-                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  ? "arbor-nav-active text-[#f7f1e7] border-transparent"
                   : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -1019,9 +1023,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
             <button
               onClick={() => setActiveTab("plans")}
+              aria-current={activeTab === "plans" ? "page" : undefined}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
                 activeTab === "plans"
-                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  ? "arbor-nav-active text-[#f7f1e7] border-transparent"
                   : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -1033,9 +1038,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
             <button
               onClick={() => setActiveTab("stories")}
+              aria-current={activeTab === "stories" ? "page" : undefined}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
                 activeTab === "stories"
-                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  ? "arbor-nav-active text-[#f7f1e7] border-transparent"
                   : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -1046,9 +1052,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
             <button
               onClick={() => setActiveTab("scholar")}
+              aria-current={activeTab === "scholar" ? "page" : undefined}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
                 activeTab === "scholar"
-                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  ? "arbor-nav-active text-[#f7f1e7] border-transparent"
                   : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -1059,9 +1066,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
             <button
               onClick={() => setActiveTab("handoff")}
+              aria-current={activeTab === "handoff" ? "page" : undefined}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
                 activeTab === "handoff"
-                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  ? "arbor-nav-active text-[#f7f1e7] border-transparent"
                   : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -1072,9 +1080,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
             <button
               onClick={() => setActiveTab("safety")}
+              aria-current={activeTab === "safety" ? "page" : undefined}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left border text-sm transition ${
                 activeTab === "safety"
-                  ? "bg-white/5 text-[#f7f1e7] border-white/10"
+                  ? "arbor-nav-active text-[#f7f1e7] border-transparent"
                   : "text-[#a8a093] border-transparent hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -1595,6 +1604,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && handleChatSend()}
                       disabled={isChatLoading}
+                      aria-label="Ask the parent coach"
                       placeholder="Discuss behavior logs, dropoff problems or trigger resets (e.g. tablet disputes)..."
                       className="flex-1 bg-[#08090c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#d7aa55]/50 transition"
                     />
@@ -3204,18 +3214,18 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       {apiError && (
         <div
           role="alert"
-          className="fixed bottom-5 left-1/2 z-[60] flex max-w-md -translate-x-1/2 items-start gap-3 rounded-2xl border border-red-500/40 bg-[#1a0e0e] px-4 py-3 text-sm text-red-100 shadow-2xl"
+          className="fixed bottom-5 left-1/2 z-[60] flex max-w-md -translate-x-1/2 items-start gap-3 rounded-2xl border border-red-500/40 bg-[#08090c] px-4 py-3 text-sm shadow-2xl"
         >
-          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
           <div className="space-y-0.5">
             <p className="font-bold text-white">Something didn't work</p>
-            <p className="text-xs leading-relaxed text-red-200/90">{apiError}</p>
+            <p className="text-xs leading-relaxed text-red-500">{apiError}</p>
           </div>
           <button
             type="button"
             onClick={() => setApiError(null)}
             aria-label="Dismiss"
-            className="ml-1 rounded-lg p-1 text-red-200/70 hover:bg-white/10 hover:text-white"
+            className="arbor-tap ml-1 rounded-lg text-[#a8a093] hover:bg-black/5 hover:text-[#14160f]"
           >
             <X className="h-4 w-4" />
           </button>

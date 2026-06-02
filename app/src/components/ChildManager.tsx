@@ -41,7 +41,7 @@ export const ChildSwitcher: React.FC<{
           type="button"
           onClick={onEdit}
           aria-label="Edit child"
-          className="rounded-lg p-1.5 text-[#a8a093] hover:bg-white/10 hover:text-white"
+          className="arbor-tap rounded-lg text-[#a8a093] hover:bg-white/10 hover:text-white"
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
@@ -138,7 +138,7 @@ export const ChildOnboarding: React.FC<{
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-3 top-3 rounded-lg p-1.5 text-[#a8a093] hover:bg-white/10 hover:text-white"
+          className="arbor-tap absolute right-2 top-2 rounded-lg text-[#a8a093] hover:bg-white/10 hover:text-white"
         >
           <X className="h-5 w-5" />
         </button>

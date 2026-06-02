@@ -50,7 +50,7 @@ steps:
       - --concurrency
       - "80"
       - --timeout
-      - "60s"
+      - "300s"
       - --set-env-vars
       - >-
         ARBOR_ENV=${_ARBOR_ENV},

@@ -48,16 +48,20 @@ export const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
   return map[route];
 };
 
+/** A model is served by the Anthropic (Claude) publisher only if its id says so. */
+export const isClaudeModel = (model: string) => /claude|@anthropic/i.test(model);
+
 export const routeDecisionFor = (config: ArborConfig, route: ModelRoute): RouteDecision => {
   if (config.modelProvider === "gemini_dev") {
     return { route, provider: "gemini_dev", model: config.geminiModel };
   }
 
-  if (route === "coach_high_stakes") {
-    return { route, provider: "vertex_claude", model: config.vertexModelChat };
-  }
-
-  return { route, provider: "vertex_gemini", model: modelForRoute(config, route) };
+  // Choose the provider by the configured model, not the route. The coach route
+  // is high-stakes and *prefers* Claude, but if it is configured with a Gemini
+  // model (e.g. VERTEX_MODEL_CHAT=gemini-2.5-pro) it must use the Gemini
+  // provider — otherwise it would POST a Gemini id to the Anthropic endpoint.
+  const model = modelForRoute(config, route);
+  return { route, provider: isClaudeModel(model) ? "vertex_claude" : "vertex_gemini", model };
 };
 
 export const toAnthropicVertexModelId = (model: string) => {
@@ -272,7 +276,7 @@ export class VertexModelProvider implements ModelProvider {
   }
 
   private providerFor(route: ModelRoute) {
-    return route === "coach_high_stakes" ? this.claude : this.gemini;
+    return isClaudeModel(modelForRoute(this.config, route)) ? this.claude : this.gemini;
   }
 }
 
