@@ -16,6 +16,7 @@ export type NewChildInput = {
   schoolContext?: string;
   strengths?: string[];
   challenges?: string[];
+  photoUrl?: string;
 };
 
 const slug = (value: string) =>
@@ -51,7 +52,8 @@ export const createChildProfile = (input: NewChildInput): ChildProfile => {
     schoolContext: input.schoolContext?.trim() || "",
     strengths: input.strengths ?? [],
     challenges: input.challenges ?? [],
-    riskLevel: "Low"
+    riskLevel: "Low",
+    photoUrl: input.photoUrl
   };
 };
 
@@ -61,5 +63,6 @@ export const updateChildProfile = (existing: ChildProfile, input: NewChildInput)
   name: input.name.trim() || existing.name,
   age: input.age ?? (input.birthMonthYear ? ageFromBirth(input.birthMonthYear) : existing.age),
   languages: input.languages?.length ? input.languages : existing.languages,
-  schoolContext: input.schoolContext?.trim() ?? existing.schoolContext
+  schoolContext: input.schoolContext?.trim() ?? existing.schoolContext,
+  photoUrl: input.photoUrl !== undefined ? input.photoUrl : existing.photoUrl
 });

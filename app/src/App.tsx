@@ -35,6 +35,7 @@ import {
   Mic,
   Volume2,
   Square,
+  Info,
   X
 } from "lucide-react";
 import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, MemoryReviewItem, CoachContract, TrackingPrompt, InterventionOutcome, AnswerFeedback, FeedbackRating, OutcomeRating, HandoffFragment } from "./types";
@@ -1358,14 +1359,14 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       Contextual AI Co-Regulation Guide
                       <span className="animate-pulse w-2 h-2 rounded-full bg-emerald-400" />
                     </h4>
-                    <p className="text-xs text-[#a8a093]">Generate prompt guidelines instantly tailored to Dylan's current developmental stage and active logs.</p>
+                    <p className="text-xs text-[#a8a093]">A calm script for right now, tailored to {childProfile.name}&apos;s stage and recent logs.</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <button
                     onClick={() => {
                       setSelectedLens("Bowlby's Attachment Model");
-                      setChatInput("Dylan screamed and threw toys. Give me an immediate relational rupture-repair script.");
+                      setChatInput(`${childProfile.name} screamed and threw toys. Give me an immediate relational rupture-repair script.`);
                       setActiveTab("coach");
                     }}
                     className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer"
@@ -1376,7 +1377,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   <button
                     onClick={() => {
                       setSelectedLens("Piaget's Cognitive Stages");
-                      setChatInput("Dylan is refusing transitions. Explain his mindset through Piaget's Preoperational cognitive perspective and suggest a boundary strategy.");
+                      setChatInput(`${childProfile.name} is refusing transitions. Explain the mindset through Piaget's Preoperational cognitive perspective and suggest a boundary strategy.`);
                       setActiveTab("coach");
                     }}
                     className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer"
@@ -1387,7 +1388,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   <button
                     onClick={() => {
                       setSelectedLens("Vygotsky's Scaffolding");
-                      setChatInput("Dylan is learning bilingual English/Hebrew co-regulation phrases. Give me a 10-minute game to build code-switching confidence.");
+                      setChatInput(`${childProfile.name} is learning bilingual co-regulation phrases. Give me a 10-minute game to build code-switching confidence.`);
                       setActiveTab("coach");
                     }}
                     className="p-4 bg-white/[0.01] border border-white/5 hover:border-[#d7aa55]/30 hover:bg-[#d7aa55]/5 text-left rounded-2xl transition group focus:outline-none cursor-pointer"
@@ -1624,7 +1625,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-400">
                     <span className="font-bold">Suggested Sandbox prompts:</span>
                     <button
-                      onClick={() => handleChatSend("Dylan screams and hides behind the couch during shoe departures.")}
+                      onClick={() => handleChatSend(`${childProfile.name} screams and hides behind the couch during shoe departures.`)}
                       disabled={isChatLoading}
                       className="hover:text-white bg-white/5 px-2 py-0.5 rounded border border-white/5"
                     >
@@ -2043,7 +2044,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setChatInput(`Regarding the log event where Dylan did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${inlineCoRegulationScripts[log.id]}\n\nHow do I adapt this if Dylan continues to resist or acts physically aggressive?`);
+                                      setChatInput(`Regarding the log event where ${childProfile.name} did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${inlineCoRegulationScripts[log.id]}\n\nHow do I adapt this if ${childProfile.name} continues to resist or acts physically aggressive?`);
                                       setSelectedLens("Bowlby's Attachment Model");
                                       setActiveTab("coach");
                                     }}
@@ -2081,7 +2082,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                 </div>
                 {/* Score badge */}
                 <div className="bg-[#141821] border border-white/10 p-4 rounded-2xl text-center">
-                  <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">Total Mastery</span>
+                  <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">Milestones met</span>
                   <div className="text-2xl font-black text-[#f4d991]">{checkedMilestones} / {totalMilestones}</div>
                 </div>
               </div>
@@ -2089,8 +2090,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
               {/* Progress bar */}
               <div className="w-full bg-[#141821] border border-white/10 rounded-2xl p-4 space-y-2">
                 <div className="flex justify-between text-xs text-gray-300">
-                  <span>Development Readiness (Active Domain Score Archive)</span>
-                  <span className="font-bold">{milestonesPercent}% Complete</span>
+                  <span>Milestones completed</span>
+                  <span className="font-bold">{milestonesPercent}% complete</span>
                 </div>
                 <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden">
                   <div className="bg-[#d7aa55] h-full transition-all duration-500" style={{ width: `${milestonesPercent}%` }} />
@@ -2146,11 +2147,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
               <div className="bg-gradient-to-br from-[#d7aa55]/5 to-transparent border border-[#d7aa55]/20 rounded-2xl p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <h4 className="text-base font-extrabold text-[#f7f1e7] flex items-center gap-1.5ClassName">
+                    <h4 className="text-base font-extrabold text-[#f7f1e7] flex items-center gap-1.5">
                       <Sparkles className="w-4 h-4 text-[#d7aa55]" />
-                      Vygotskian AI Scaffolding Analyzer
+                      Find the next small step
                     </h4>
-                    <p className="text-xs text-[#a8a093] mt-0.5">Maps active gaps dynamically based on Dylan&apos;s checked/unchecked milestones list.</p>
+                    <p className="text-xs text-[#a8a093] mt-0.5">Looks at what {childProfile.name} has and hasn&apos;t reached yet, and suggests what to gently work on next.</p>
                   </div>
                   <button
                     type="button"
@@ -2164,7 +2165,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       </>
                     ) : (
                       <>
-                        <Brain className="w-3.5 h-3.5 text-black" /> Run AI Gap Review
+                        <Brain className="w-3.5 h-3.5 text-black" /> Suggest next steps
                       </>
                     )}
                   </button>
@@ -2179,7 +2180,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       <button
                         type="button"
                         onClick={() => {
-                          setChatInput(`Regarding Dylan's scaffolding gap analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate his sensory resilience relative to these milestone hurdles?`);
+                          setChatInput(`Regarding ${childProfile.name}'s next-step analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?`);
                           setSelectedLens("Vygotsky's Scaffolding");
                           setActiveTab("coach");
                         }}
@@ -2191,18 +2192,18 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   </div>
                 ) : (
                   <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl text-center text-xs text-gray-500">
-                    Click "Run AI Gap Review" above to map Dylan&apos;s progress and formulate custom, co-active routine play exercises.
+                    Click "Suggest next steps" above to see where {childProfile.name} is doing well, where to focus next, and simple things to try at home.
                   </div>
                 )}
               </div>
 
-              {/* Delay cautions based on incomplete progress */}
-              <div className="p-5 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-4 text-xs text-[#f4d991]">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-400 mt-0.5" />
+              {/* Honest, non-alarmist note about how to read this checklist */}
+              <div className="p-5 bg-white/[0.02] border border-white/10 rounded-2xl flex items-start gap-4 text-xs text-[#a8a093]">
+                <Info className="w-5 h-5 flex-shrink-0 text-[#a8a093] mt-0.5" />
                 <div className="space-y-1 leading-relaxed">
-                  <strong className="text-white text-sm block">System Watch/Wait delay checklist check:</strong>
-                  <p className="text-[#a8a093]">
-                    Two key social and language-switching delay thresholds remain unchecked for target age (5-6). If Dylan fails to acquire verbal comfort code-switching between Hebrew and English within 3 months, consider running the visual dropoff routing, or hand school notes for evaluation.
+                  <strong className="text-white text-sm block">A note on milestones</strong>
+                  <p>
+                    Children reach these at their own pace, and an unchecked box is not a diagnosis. If a milestone is well past {childProfile.name}&apos;s age band and you&apos;re worried, note what you&apos;re seeing and raise it with your doctor or {childProfile.name}&apos;s teacher — that&apos;s exactly what these notes are for.
                   </p>
                 </div>
               </div>
@@ -2240,11 +2241,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   >
                     {isPlanGenerating ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" /> Structuring guidelines...
+                        <RefreshCw className="w-4 h-4 animate-spin" /> Building the plan…
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4" /> Generate AI Blueprint
+                        <Sparkles className="w-4 h-4" /> Generate plan
                       </>
                     )}
                   </button>
@@ -2330,7 +2331,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                         <button
                           type="button"
                           onClick={() => {
-                            setChatInput(`Regarding the Action Plan: "${plan.title}". Let's formulate two additional specific co-regulation dialogue scripts dealing with Dylan's preoperational language-switching triggers.`);
+                            setChatInput(`Regarding the Action Plan: "${plan.title}". Let's formulate two additional specific co-regulation dialogue scripts dealing with ${childProfile.name}'s preoperational language-switching triggers.`);
                             setSelectedLens("Bowlby's Attachment Model");
                             setActiveTab("coach");
                           }}
@@ -2561,7 +2562,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   </div>
                   <div className="space-y-1 p-3 bg-white/[0.01] border border-white/5 rounded-xl">
                     <span className="font-bold text-white block text-[11px] uppercase tracking-wider text-[#f4d991] mr-1">2. Somatic Mimicry (Bowlby)</span>
-                    <p>At Page 2, put the child’s hand on your ribcage. Breathe slowly together so Dylan mimics your vagus nerve calming rhythm directly.</p>
+                    <p>At Page 2, put the child’s hand on your ribcage. Breathe slowly together so {childProfile.name} mimics your calming rhythm directly.</p>
                   </div>
                   <div className="space-y-1 p-3 bg-white/[0.01] border border-white/5 rounded-xl">
                     <span className="font-bold text-white block text-[11px] uppercase tracking-wider text-[#f4d991] mr-1">3. Vygotskian Prompts</span>
@@ -2612,13 +2613,12 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                     <button
                       onClick={() => {
                         setSelectedLens(sch.name);
-                        setChatInput(sch.examplePrompt);
+                        setChatInput(sch.examplePrompt.replaceAll("Dylan", childProfile.name));
                         setActiveTab("coach");
-                        alert(`Loaded prompt aligned with the ${sch.name} lens! Press 'Send Inquiry' inside the chat to try it.`);
                       }}
                       className="w-full py-2.5 bg-white/5 border border-white/5 group-hover:bg-[#d7aa55]/10 group-hover:border-[#d7aa55]/20 group-hover:text-[#f4d991] text-[#a8a093] font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
                     >
-                      Use Sandbox Inquiry <ExternalLink className="w-3.5 h-3.5" />
+                      Try this in the coach <ExternalLink className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -2663,7 +2663,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   <Sparkles className="w-3.5 h-3.5 text-[#d7aa55]" />
                   Customized AI Briefing Audience Strategy:
                 </span>
-                <p className="text-xs text-slate-400 leading-relaxed">Arbor customizes professional language, support strategies, and developmental observations depending on who is reading Dylan&apos;s progress summary.</p>
+                <p className="text-xs text-slate-400 leading-relaxed">Arbor customizes professional language, support strategies, and developmental observations depending on who is reading {childProfile.name}&apos;s progress summary.</p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <button
                     type="button"
@@ -2827,7 +2827,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                 ) : (
                   <div className="text-center py-12 text-gray-500 space-y-2">
                     <b className="text-[#a8a093] block">No brief summary compiled yet.</b>
-                    <p className="text-xs">Click "Compile Brief Summary" at the top to generate a custom printable support brief using Dylan&apos;s current milestones and logs.</p>
+                    <p className="text-xs">Click "Compile Brief Summary" at the top to generate a custom printable support brief using {childProfile.name}&apos;s current milestones and logs.</p>
                   </div>
                 )}
 
@@ -3094,7 +3094,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                     </span>
                   </div>
                   <p className="text-[10px] text-[#a8a093] leading-normal">
-                    Crafts customized supportive transition stories featuring Dylan&apos;s strengths and next brave step.
+                    Crafts customized supportive transition stories featuring {childProfile.name}&apos;s strengths and next brave step.
                   </p>
                 </button>
 
@@ -3199,6 +3199,28 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         onSave={handleSaveChild}
         onClose={() => setOnboardingOpen(false)}
       />
+
+      {/* G-01: surface API errors so actions never silently "do nothing" */}
+      {apiError && (
+        <div
+          role="alert"
+          className="fixed bottom-5 left-1/2 z-[60] flex max-w-md -translate-x-1/2 items-start gap-3 rounded-2xl border border-red-500/40 bg-[#1a0e0e] px-4 py-3 text-sm text-red-100 shadow-2xl"
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
+          <div className="space-y-0.5">
+            <p className="font-bold text-white">Something didn't work</p>
+            <p className="text-xs leading-relaxed text-red-200/90">{apiError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setApiError(null)}
+            aria-label="Dismiss"
+            className="ml-1 rounded-lg p-1 text-red-200/70 hover:bg-white/10 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

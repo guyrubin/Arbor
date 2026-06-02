@@ -7,6 +7,7 @@ export interface ChildProfile {
   strengths: string[];
   challenges: string[];
   riskLevel: 'Low' | 'Moderate' | 'High';
+  photoUrl?: string;
 }
 
 export type DevelopmentalDomainId =

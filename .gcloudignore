@@ -1,0 +1,27 @@
+# Keep the Cloud Build upload small and secret-free.
+# The Docker build runs `npm ci` and `npm run build` itself, so deps and build
+# artifacts must NOT be uploaded.
+.git
+.gitignore
+
+# Dependencies and build outputs (rebuilt inside the image)
+**/node_modules
+node_modules
+**/dist
+dist
+app/dist
+
+# Local runtime data and secrets — never upload
+**/.data
+.data
+**/.env
+**/.env.*
+.env
+.env.local
+*.log
+
+# Local-only references / heavy non-deploy assets
+prototype
+mockups
+docs
+terraform

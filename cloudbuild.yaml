@@ -7,7 +7,7 @@ steps:
       - -f
       - app/Dockerfile
       - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$BUILD_ID
       - -t
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:latest
       - .
@@ -31,14 +31,14 @@ steps:
       - deploy
       - arbor-api
       - --image
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$SHORT_SHA
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:$BUILD_ID
       - --region
       - ${_REGION}
       - --platform
       - managed
       - --allow-unauthenticated
       - --service-account
-      - arbor-cloudrun@$PROJECT_ID.iam.gserviceaccount.com
+      - arbor-deploy@$PROJECT_ID.iam.gserviceaccount.com
       - --cpu
       - "1"
       - --memory
@@ -78,12 +78,12 @@ steps:
     args:
       - -c
       - |
-        SERVICE_URL=$(gcloud run services describe arbor-api \
+        SERVICE_URL=$$(gcloud run services describe arbor-api \
           --region=${_REGION} --format='value(status.url)')
-        echo "Arbor Cloud Run URL: $SERVICE_URL"
-        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/api/architecture/status")
-        echo "Health check status: $STATUS"
-        [ "$STATUS" = "200" ] || exit 1
+        echo "Arbor Cloud Run URL: $$SERVICE_URL"
+        STATUS=$$(curl -s -o /dev/null -w "%{http_code}" "$$SERVICE_URL/api/architecture/status")
+        echo "Health check status: $$STATUS"
+        [ "$$STATUS" = "200" ] || exit 1
         echo "Smoke test passed."
 
 substitutions:

@@ -22,8 +22,12 @@ export const ChildSwitcher: React.FC<{
           onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-3 text-left"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-sm font-bold text-blue-400">
-            {active?.name?.slice(0, 2) || "Ch"}
+          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-blue-500/10 text-sm font-bold text-blue-400">
+            {active?.photoUrl ? (
+              <img src={active.photoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              active?.name?.slice(0, 2) || "Ch"
+            )}
           </div>
           <div>
             <h4 className="text-sm font-bold leading-tight text-white">{active?.name || "Add a child"}</h4>
@@ -91,6 +95,7 @@ export const ChildOnboarding: React.FC<{
   const [age, setAge] = useState<string>(initial?.age != null ? String(initial.age) : "");
   const [languages, setLanguages] = useState((initial?.languages ?? []).join(", "));
   const [school, setSchool] = useState(initial?.schoolContext ?? "");
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(initial?.photoUrl);
 
   // Re-seed when the target child changes.
   React.useEffect(() => {
@@ -98,6 +103,7 @@ export const ChildOnboarding: React.FC<{
     setAge(initial?.age != null ? String(initial.age) : "");
     setLanguages((initial?.languages ?? []).join(", "));
     setSchool(initial?.schoolContext ?? "");
+    setPhotoUrl(initial?.photoUrl);
     setBirth("");
   }, [initial, open]);
 
@@ -105,13 +111,22 @@ export const ChildOnboarding: React.FC<{
 
   const canSave = name.trim().length > 0 && (birth.trim() !== "" || age.trim() !== "");
 
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhotoUrl(typeof reader.result === "string" ? reader.result : undefined);
+    reader.readAsDataURL(file);
+  };
+
   const submit = () => {
     onSave({
       name,
       birthMonthYear: birth || undefined,
       age: birth ? undefined : age ? Number(age) : undefined,
       languages: languages.split(",").map((l) => l.trim()).filter(Boolean),
-      schoolContext: school
+      schoolContext: school,
+      photoUrl
     });
     onClose();
   };
@@ -129,6 +144,32 @@ export const ChildOnboarding: React.FC<{
         </button>
         <h2 className="text-lg font-extrabold text-white">{initial ? "Edit child" : "Add a child"}</h2>
         <p className="mt-1 text-xs text-[#a8a093]">A little context helps Arbor give age-true, specific guidance.</p>
+
+        <div className="mt-4 flex items-center gap-4">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-blue-500/10 text-lg font-bold text-blue-400">
+            {photoUrl ? (
+              <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              name.trim().slice(0, 2).toUpperCase() || "Ch"
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-1.5 text-xs font-bold text-[#a8a093] hover:bg-white/5 hover:text-white">
+              {photoUrl ? "Change photo" : "Add a photo"}
+              <input type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
+            </label>
+            {photoUrl && (
+              <button
+                type="button"
+                onClick={() => setPhotoUrl(undefined)}
+                className="ml-2 text-xs font-bold text-[#a8a093] hover:text-white"
+              >
+                Remove
+              </button>
+            )}
+            <p className="text-[10px] text-[#a8a093]">Optional. Stored only on this device.</p>
+          </div>
+        </div>
 
         <div className="mt-4 space-y-3 text-sm">
           <label className="block space-y-1">
