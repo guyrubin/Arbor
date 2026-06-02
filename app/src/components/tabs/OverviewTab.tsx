@@ -10,6 +10,7 @@ import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import { intensityColor } from "../../lib/behaviorUtils";
 import QuickLogModal from "../overview/QuickLogModal";
 import RemindersCard from "../overview/RemindersCard";
+import TrendsChart from "../overview/TrendsChart";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -185,6 +186,10 @@ export default function OverviewTab() {
         )}
         <p className="text-[11px] text-[#a8a093]">Bar color reflects average intensity (sage → clay). Click a bar to review behavior logs.</p>
       </div>
+
+      {/* Multi-month trend */}
+      <TrendsChart logs={behaviorLogs} milestonesPercent={milestonesPercent} />
+
 
       {/* BOTTOM ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
