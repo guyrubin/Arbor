@@ -2235,7 +2235,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                     className="flex-1 bg-[#08090c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none"
                   />
                   <button
-                    onClick={handleGenerateActionPlan}
+                    onClick={() => handleGenerateActionPlan()}
                     disabled={isPlanGenerating}
                     className="bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 disabled:text-[#a8a093] text-black font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2"
                   >
