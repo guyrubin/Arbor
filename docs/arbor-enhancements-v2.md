@@ -81,3 +81,29 @@
 
 No multi-caregiver/collaboration, no external image-generation API, no third-party
 analytics scripts, parchment-editorial design intent.
+
+---
+
+## Implementation status (2026-06-02)
+
+Shipped end-to-end (typechecked + built + tested + deployed):
+
+| Track | Done |
+| :--- | :--- |
+| **App** | A1 AI cost cap · A2 server-owned language · A3 @types/react · A4 front-end tests (+tz fix) · A6 log pagination · A7 error monitoring · A8 deploy CI workflow · A9 vendor chunking |
+| **Capabilities** | C1 edit · C2 trends · C5 routines · C6 goals · C7 global search · C8 scholar "apply to my child" · C9 daily check-in · C10 memory view |
+| **Design** | D1 mobile nav (P0) · D2 token layer + Card · D3 load skeletons · D4 modal/toast a11y · D6 Hebrew RTL content · D7 microcopy · D8 directional tabs |
+| **Covered by existing** | D5 empty states (added across tabs) · D9 generative SVG story illustrations · D10 onboarding (V2-B) |
+
+### Deferred — infrastructure-heavy (need deliberate setup; documented, not rushed)
+
+| ID | Status & remaining work |
+| :--- | :--- |
+| **A5 Photo → Storage** | **Code-complete with graceful fallback.** `lib/storage.ts` uploads downscaled thumbnails to `users/{uid}/children/{childId}/photos/…`; `storage.rules` (owner-only, 5MB cap) + `firebase.json` are in place; the log photo input uploads to Storage and **falls back to inline base64** if Storage is unavailable. **One activation step left:** click "Get Started" at console.firebase.google.com → Storage (a region/ToS step like Auth), then `firebase deploy --only storage`. Until then it transparently uses base64 — no regression. |
+| **A11 Listener consolidation** | 8+ `onSnapshot` listeners per child. Remaining: lazy-subscribe per active tab (or a shared subscription registry). Performance/cost optimization; low user value, moderate refactor risk — do with profiling. |
+| **C3 Server-scheduled weekly report + email** | Reports generate client-side today (auto on open + on demand, with history). Remaining: port report generation to a server endpoint, add a Cloud Scheduler job hitting it weekly, and an email transport (e.g. SendGrid). Larger server effort + new infra. |
+| **C4 Background push (FCM)** | Reminders fire in-app today. Remaining: VAPID key, SW push handler, token registration/storage per user, and a server send path. Significant; needs FCM setup. |
+
+Recommendation: schedule the four deferred items as a dedicated "infra hardening"
+iteration with the GCP console steps done deliberately (each can hit an
+initialization wall), rather than folded into a feature sweep.

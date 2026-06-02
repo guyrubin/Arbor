@@ -10,6 +10,8 @@ import PatternInsights from "../behaviors/PatternInsights";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { authHeaders } from "../../lib/api";
 import { fileToThumbnail } from "../../lib/image";
+import { uploadChildPhoto } from "../../lib/storage";
+import { useAuth } from "../../context/AuthContext";
 import { weekStartKey, escapeHtml } from "../../lib/behaviorUtils";
 import { BehaviorContext, BehaviorLog } from "../../types";
 
@@ -63,6 +65,7 @@ export default function BehaviorsTab() {
     logsLoaded,
   } = useArbor();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Voice-to-log
   const [listening, setListening] = useState(false);
@@ -322,11 +325,23 @@ export default function BehaviorsTab() {
                   onChange={async (e) => {
                     const f = e.target.files?.[0];
                     if (!f) return;
+                    let thumb: string;
                     try {
-                      setNewLogPhoto(await fileToThumbnail(f));
+                      thumb = await fileToThumbnail(f);
                     } catch {
                       toast("Couldn't process that image", "error");
+                      return;
                     }
+                    // Prefer Firebase Storage; fall back to inlining if it's unavailable.
+                    if (user?.uid && user.uid !== "local-sandbox") {
+                      try {
+                        setNewLogPhoto(await uploadChildPhoto(user.uid, childProfile.id, thumb));
+                        return;
+                      } catch {
+                        /* fall through to inline */
+                      }
+                    }
+                    setNewLogPhoto(thumb);
                   }}
                 />
               </label>

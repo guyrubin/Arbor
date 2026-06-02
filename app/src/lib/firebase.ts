@@ -7,6 +7,7 @@ import {
   persistentMultipleTabManager,
   type Firestore,
 } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 /**
  * Firebase client initialization. Reads VITE_FIREBASE_* env vars (exposed to the
@@ -29,10 +30,16 @@ export const firebaseEnabled = Boolean(
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
+let storage: FirebaseStorage | undefined;
 
 if (firebaseEnabled) {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
+  try {
+    storage = getStorage(app);
+  } catch {
+    storage = undefined;
+  }
   // Offline-first: IndexedDB-backed cache so logs/milestones/plans read and write
   // offline and sync when the connection returns (multi-tab safe).
   try {
@@ -44,4 +51,4 @@ if (firebaseEnabled) {
   }
 }
 
-export { app, auth, db };
+export { app, auth, db, storage };
