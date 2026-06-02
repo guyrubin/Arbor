@@ -1,7 +1,9 @@
 import React from "react";
 import { motion } from "motion/react";
-import { RefreshCw, Sparkles, MessageSquare } from "lucide-react";
+import { RefreshCw, Sparkles, MessageSquare, Sliders } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { Skeleton } from "../ui/Skeleton";
+import { EmptyState } from "../ui/EmptyState";
 import PlanKanban from "../plans/PlanKanban";
 
 export default function PlansTab() {
@@ -11,6 +13,7 @@ export default function PlansTab() {
     handleGenerateActionPlan,
     isPlanGenerating,
     actionPlans,
+    plansLoaded,
     setChatInput,
     setSelectedLens,
     setActiveTab,
@@ -65,6 +68,17 @@ export default function PlansTab() {
           </button>
         </div>
       </div>
+
+      {!plansLoaded && (
+        <div className="space-y-4"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>
+      )}
+      {plansLoaded && actionPlans.length === 0 && (
+        <EmptyState
+          icon={<Sliders className="w-8 h-8" />}
+          headline="No action plans yet"
+          body="Describe a challenge above (or pick a template) and generate your first AI blueprint."
+        />
+      )}
 
       <div className="space-y-8">
         {actionPlans.map((plan) => (

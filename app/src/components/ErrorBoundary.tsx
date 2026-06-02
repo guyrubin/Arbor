@@ -1,5 +1,6 @@
 import React from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
+import { track } from "../lib/analytics";
 
 /**
  * Catches render errors in a subtree and shows a friendly retry card instead of
@@ -14,6 +15,14 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error: any) {
     console.error("Arbor tab error:", error);
+    try {
+      track("error", {
+        message: String(error?.message || error).slice(0, 300),
+        stack: String(error?.stack || "").slice(0, 600),
+      });
+    } catch {
+      /* never let logging crash the boundary */
+    }
   }
 
   reset = () => (this as any).setState({ hasError: false, message: "" });

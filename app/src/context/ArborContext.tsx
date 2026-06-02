@@ -724,6 +724,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     logsLoaded: logsCol.loaded,
     milestones,
     actionPlans,
+    plansLoaded: plansCol.loaded,
     currentStory,
     setCurrentStory,
     selectedLens,

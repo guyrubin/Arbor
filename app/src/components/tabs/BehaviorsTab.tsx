@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Sparkline } from "../ui/Sparkline";
+import { Skeleton } from "../ui/Skeleton";
 import PatternInsights from "../behaviors/PatternInsights";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { authHeaders } from "../../lib/api";
@@ -70,6 +71,7 @@ export default function BehaviorsTab() {
     editingLogId,
     startEditLog,
     cancelEditLog,
+    logsLoaded,
   } = useArbor();
   const { toast } = useToast();
 
@@ -433,7 +435,10 @@ export default function BehaviorsTab() {
 
             {/* Weekly grouped logs */}
             <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
-              {grouped.length === 0 && (
+              {!logsLoaded && (
+                <div className="space-y-2"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div>
+              )}
+              {logsLoaded && grouped.length === 0 && (
                 <div className="text-center py-10 text-xs text-[#a8a093] border border-white/5 rounded-xl bg-white/[0.01]">No logs match these filters.</div>
               )}
               {grouped.map(([weekKey, logs]) => {

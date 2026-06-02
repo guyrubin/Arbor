@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Sparkles, RefreshCw, BookOpen, ChevronLeft, ChevronRight, Maximize2, Volume2, VolumeX, Save, Check, Library } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { StoryIllustration } from "../stories/StoryIllustration";
+import { Skeleton } from "../ui/Skeleton";
 import ReadingMode from "../stories/ReadingMode";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { useToast } from "../../context/ToastContext";
@@ -174,7 +175,11 @@ export default function StoriesTab() {
         <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
           <Library className="w-3.5 h-3.5 text-[#d7aa55]" /> Story library ({library.length})
         </span>
-        {library.length === 0 ? (
+        {!storiesCol.loaded ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" />
+          </div>
+        ) : library.length === 0 ? (
           <p className="text-xs text-[#a8a093]">No saved stories yet. Generate a story and tap “Save to library”.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
