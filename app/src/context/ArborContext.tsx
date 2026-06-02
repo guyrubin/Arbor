@@ -85,7 +85,12 @@ function useArborState() {
   const [showAiRail, setShowAiRail] = useState<boolean>(() => readLS("arbor.aiRail") !== "false");
 
   // App Core States — persisted per child (Firestore when authed, localStorage in sandbox)
-  const logsCol = useChildCollection<BehaviorLog>(childProfile.id, "behaviorLogs", { sandboxSeed: sampleBehaviorLogs });
+  const logsCol = useChildCollection<BehaviorLog>(childProfile.id, "behaviorLogs", {
+    sandboxSeed: sampleBehaviorLogs,
+    orderByField: "timestamp",
+    orderDir: "desc",
+    max: 300,
+  });
   const milestonesCol = useChildCollection<Milestone>(childProfile.id, "milestones", {
     seed: initialMilestones,
     sandboxSeed: initialMilestones,

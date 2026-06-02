@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { collection, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, limit as fbLimit, onSnapshot, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
@@ -29,7 +29,7 @@ export interface ChildCollection<T extends WithId> {
 export function useChildCollection<T extends WithId>(
   childId: string,
   name: string,
-  opts?: { seed?: T[]; sandboxSeed?: T[] }
+  opts?: { seed?: T[]; sandboxSeed?: T[]; orderByField?: string; orderDir?: "asc" | "desc"; max?: number }
 ): ChildCollection<T> {
   const { user } = useAuth();
   const remote = firebaseEnabled && !!user && user.uid !== "local-sandbox" && !!db;
@@ -61,8 +61,12 @@ export function useChildCollection<T extends WithId>(
 
     if (remote && db && uid) {
       const colRef = collection(db, `users/${uid}/children/${childId}/${name}`);
+      // Bound large collections with orderBy + limit (pagination guardrail).
+      const q = opts?.orderByField
+        ? query(colRef, orderBy(opts.orderByField, opts.orderDir || "desc"), fbLimit(opts.max || 300))
+        : colRef;
       const unsub = onSnapshot(
-        colRef,
+        q,
         (snap) => {
           if (snap.empty && opts?.seed && opts.seed.length > 0 && !seededRef.current) {
             seededRef.current = true;
