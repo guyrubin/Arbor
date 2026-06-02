@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { Check, Sparkles, RefreshCw, Brain, AlertTriangle, Plus, ExternalLink, PartyPopper, BookOpen, Trash2 } from "lucide-react";
+import { Check, Sparkles, RefreshCw, Brain, AlertTriangle, Plus, ExternalLink, PartyPopper, BookOpen, Trash2, Pencil } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { ProgressRing } from "../ui/ProgressRing";
