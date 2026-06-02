@@ -11,6 +11,7 @@ import { intensityColor } from "../../lib/behaviorUtils";
 import QuickLogModal from "../overview/QuickLogModal";
 import RemindersCard from "../overview/RemindersCard";
 import TrendsChart from "../overview/TrendsChart";
+import GoalsCard from "../overview/GoalsCard";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -251,8 +252,11 @@ export default function OverviewTab() {
         </div>
       </div>
 
-      {/* Reminders */}
-      <RemindersCard />
+      {/* Goals + reminders */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GoalsCard />
+        <RemindersCard />
+      </div>
 
       {/* Bedtime story quick card */}
       <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
