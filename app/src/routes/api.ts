@@ -104,7 +104,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, framework 
   });
 
   router.post("/chat", async (req, res) => {
-    const { message, childProfile, scholarLens } = req.body;
+    const { message, childProfile, scholarLens, recentOutcomes } = req.body;
     const streamResponse = wantsSse(req);
 
     const escalationMatch = screenForImmediateEscalation({ message });
@@ -143,6 +143,9 @@ ${developmentalFramework}
 
 ARBOR APPROVED CHILD MEMORY:
 ${approvedMemory || "No parent-approved child memory available."}
+
+RECENT INTERVENTION OUTCOMES (what the parent tried before and how it went — build on what worked, change what did not):
+${(typeof recentOutcomes === "string" && recentOutcomes.trim()) || "No recorded outcomes yet."}
 
 ARBOR AI WIKI SOURCE CARDS:
 ${renderKnowledgeContext(knowledgeCards) || "No matching Arbor AI Wiki cards found. Use the framework contract and keep uncertainty explicit."}

@@ -31,9 +31,10 @@ import {
   Sliders,
   Shield,
   ExternalLink,
+  Eye,
   X
 } from "lucide-react";
-import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, MemoryReviewItem } from "./types";
+import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, MemoryReviewItem, CoachContract, TrackingPrompt, InterventionOutcome, AnswerFeedback, FeedbackRating, OutcomeRating } from "./types";
 import {
   defaultChildProfile,
   sampleBehaviorLogs,
@@ -43,9 +44,17 @@ import {
   scholarsInfo
 } from "./initialData";
 import framework from "./framework.json";
+import { usePersistentState, childKey } from "./state/persistence";
+import { contractToActionPlan, observeToTrackingPrompts, dueFollowUps, addDays } from "./state/loop";
+import { CoachAnswerActions, FollowUpCheckins, LeadFrameCallout } from "./components/coachLoop";
 
-type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string };
-type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[] };
+type ChatMessage = { id: string; sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract; sourcePrompt?: string };
+type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract };
+
+const newId = () =>
+  (typeof crypto !== "undefined" && "randomUUID" in crypto)
+    ? crypto.randomUUID()
+    : `id-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 export default function App() {
   const showSandboxBanner = import.meta.env.VITE_HAS_GEMINI_API !== "true";
@@ -59,16 +68,26 @@ export default function App() {
 
   // App Core States
   const [childProfile, setChildProfile] = useState<ChildProfile>(defaultChildProfile);
-  const [behaviorLogs, setBehaviorLogs] = useState<BehaviorLog[]>(sampleBehaviorLogs);
-  const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
-  const [actionPlans, setActionPlans] = useState<ActionPlan[]>(defaultActionPlans);
+  const childId = childProfile.id;
+  // Persisted, child-scoped collections (A-05/H-05: nothing evaporates on refresh).
+  const [behaviorLogs, setBehaviorLogs] = usePersistentState<BehaviorLog[]>(childKey(childId, "logs"), sampleBehaviorLogs);
+  const [milestones, setMilestones] = usePersistentState<Milestone[]>(childKey(childId, "milestones"), initialMilestones);
+  const [actionPlans, setActionPlans] = usePersistentState<ActionPlan[]>(childKey(childId, "plans"), defaultActionPlans);
   const [currentStory, setCurrentStory] = useState<BedtimeStory>(sampleBedtimeStory);
+
+  // Closed-loop state (Wave 1 harvest): tracking prompts, outcomes, per-answer feedback.
+  const [trackingPrompts, setTrackingPrompts] = usePersistentState<TrackingPrompt[]>(childKey(childId, "tracking"), []);
+  const [outcomes, setOutcomes] = usePersistentState<InterventionOutcome[]>(childKey(childId, "outcomes"), []);
+  const [answerFeedback, setAnswerFeedback] = usePersistentState<AnswerFeedback[]>(childKey(childId, "feedback"), []);
+  const [savedPlanMsgIds, setSavedPlanMsgIds] = usePersistentState<string[]>(childKey(childId, "savedMsgs"), []);
+  const [trackedMsgIds, setTrackedMsgIds] = usePersistentState<string[]>(childKey(childId, "trackedMsgs"), []);
 
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>("Integrated Balanced");
   const [chatInput, setChatInput] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
+      id: "welcome",
       sender: "ai",
       text: "### Welcome to Arbor Parent Coach\n" +
         "I help turn parenting concerns into age-aware, non-diagnostic next steps. Share a hard moment, a behavior pattern, or a developmental question Dylan is facing.\n\n" +
@@ -402,7 +421,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     // Append user message
     const updatedMessages = [
       ...chatMessages,
-      { sender: "user" as const, text: promptValue, lens: selectedLens }
+      { id: newId(), sender: "user" as const, text: promptValue, lens: selectedLens }
     ];
     setChatMessages(updatedMessages);
     setIsChatLoading(true);
@@ -418,7 +437,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         body: JSON.stringify({
           message: promptValue,
           childProfile: childProfile,
-          scholarLens: selectedLens || "Integrated Balanced"
+          scholarLens: selectedLens || "Integrated Balanced",
+          recentOutcomes: outcomes
+            .slice(-5)
+            .map(o => `- "${actionPlans.find(p => p.id === o.planId)?.title || "a saved plan"}": parent reported it got ${o.rating}`)
+            .join("\n")
         })
       });
 
@@ -433,7 +456,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       }
       setChatMessages(prev => [
         ...prev,
-        { sender: "ai", text: data.text, lens: selectedLens }
+        { id: newId(), sender: "ai", text: data.text, lens: selectedLens, contract: data.contract, sourcePrompt: promptValue }
       ]);
     } catch (err: any) {
       console.error(err);
@@ -441,6 +464,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         setChatMessages(prev => [
           ...prev,
           {
+            id: newId(),
             sender: "ai",
             text: "### Request Stopped\nThe live Arbor response was cancelled before completion."
           }
@@ -451,6 +475,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       setChatMessages(prev => [
         ...prev,
         {
+          id: newId(),
           sender: "ai",
           text: `### Connection Error\nCould not fetch response from the server.\n\n**Reason:** ${err.message}\n\nPlease verify that your **Google Gemini API Key** is saved correctly in \`.env.local\`.`
         }
@@ -635,6 +660,54 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       })
     );
   };
+
+  // --- CLOSED-LOOP HANDLERS (Wave 1 harvest) ---
+
+  // H-01: materialize a coach answer into a saved, checkable, trackable plan.
+  const handleSavePlanFromAnswer = (msg: ChatMessage) => {
+    if (!msg.contract || savedPlanMsgIds.includes(msg.id)) return;
+    const plan = contractToActionPlan(msg.contract, msg.sourcePrompt || "", childId);
+    setActionPlans(prev => [plan, ...prev]);
+    setSavedPlanMsgIds(prev => [...prev, msg.id]);
+  };
+
+  // H-02: turn the answer's observation list into active tracking prompts.
+  const handleTrackFromAnswer = (msg: ChatMessage) => {
+    if (!msg.contract || trackedMsgIds.includes(msg.id)) return;
+    const prompts = observeToTrackingPrompts(msg.contract, msg.sourcePrompt || "", childId);
+    if (prompts.length === 0) return;
+    setTrackingPrompts(prev => [...prompts, ...prev]);
+    setTrackedMsgIds(prev => [...prev, msg.id]);
+  };
+
+  // H-12: record per-answer usefulness — the basis for the "useful today" metric.
+  const handleAnswerFeedback = (msg: ChatMessage, rating: FeedbackRating) => {
+    setAnswerFeedback(prev => {
+      const without = prev.filter(f => f.messageRef !== msg.id);
+      return [
+        ...without,
+        { id: newId(), childId, messageRef: msg.id, rating, lens: msg.lens, createdAt: new Date().toISOString() }
+      ];
+    });
+  };
+
+  // H-03: record how a saved plan went; the outcome feeds future coach context.
+  const handleRecordOutcome = (plan: ActionPlan, rating: OutcomeRating) => {
+    setOutcomes(prev => [
+      ...prev.filter(o => o.planId !== plan.id),
+      { id: newId(), planId: plan.id, childId, rating, createdAt: new Date().toISOString() }
+    ]);
+  };
+
+  const handleStopTracking = (id: string) => {
+    setTrackingPrompts(prev => prev.map(t => (t.id === id ? { ...t, active: false } : t)));
+  };
+
+  const feedbackFor = (messageId: string): FeedbackRating | undefined =>
+    answerFeedback.find(f => f.messageRef === messageId)?.rating;
+
+  const dueFollowUpPlans = dueFollowUps(actionPlans, outcomes);
+  const activeTrackingPrompts = trackingPrompts.filter(t => t.active);
 
   return (
     <div className="arbor-app min-h-screen select-none text-sans antialiased overflow-x-hidden relative">
@@ -1104,6 +1177,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
               exit={{ opacity: 0 }}
               className="space-y-6"
             >
+              {/* H-03: due follow-ups on previously saved plans */}
+              <FollowUpCheckins plans={dueFollowUpPlans} onRecord={handleRecordOutcome} />
+
               {/* Header section with lens selector */}
               <div className="space-y-4">
                 <div>
@@ -1178,9 +1254,24 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                             Aligned with {msg.lens}
                           </span>
                         )}
+                        {msg.sender === "ai" && msg.contract && (
+                          <LeadFrameCallout frame={msg.contract.frameRouting} />
+                        )}
                         <div className="space-y-1">
                           {renderMarkdown(msg.text)}
                         </div>
+                        {msg.sender === "ai" && msg.contract && (
+                          <CoachAnswerActions
+                            contract={msg.contract}
+                            saved={savedPlanMsgIds.includes(msg.id)}
+                            tracked={trackedMsgIds.includes(msg.id)}
+                            feedback={feedbackFor(msg.id)}
+                            observeCount={msg.contract.observe.length}
+                            onSavePlan={() => handleSavePlanFromAnswer(msg)}
+                            onTrack={() => handleTrackFromAnswer(msg)}
+                            onFeedback={(rating) => handleAnswerFeedback(msg, rating)}
+                          />
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1338,6 +1429,34 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                 <h2 className="text-3xl font-extrabold tracking-tight">Behavior & Emotion Tracker</h2>
                 <p className="text-sm text-[#a8a093] mt-1">Log dysregulation events to map heatmaps, triggers, duration and attach expert research insights.</p>
               </div>
+
+              {/* H-02: what you agreed to watch, drawn from coach answers */}
+              {activeTrackingPrompts.length > 0 && (
+                <div className="bg-[#141821] border border-[#d7aa55]/20 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-[#d7aa55]" />
+                    <h3 className="text-sm font-extrabold text-white">What you're watching for</h3>
+                    <span className="text-[10px] text-[#a8a093]">from your coach answers</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {activeTrackingPrompts.slice(0, 8).map(t => (
+                      <div key={t.id} className="flex items-start justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                        <div>
+                          <p className="text-xs text-gray-200 leading-relaxed">{t.metric}</p>
+                          <span className="text-[10px] text-[#a8a093] uppercase tracking-wider">{t.frequency}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleStopTracking(t.id)}
+                          className="text-[10px] font-bold text-[#a8a093] hover:text-white shrink-0"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Grid block: form left, list right */}
               <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8">

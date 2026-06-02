@@ -86,6 +86,56 @@ export interface ActionPlan {
   }[];
   scripts: { scenario: string; say: string; avoid: string }[];
   successIndicators: string[];
+  // Provenance + closed-loop fields (optional so existing seed data stays valid).
+  childId?: string;
+  createdAt?: string;
+  source?: 'coach' | 'generated' | 'seed';
+  sourcePrompt?: string;
+  followUpDueAt?: string;
+}
+
+/**
+ * A single thing the parent agreed to watch for over time, derived from a
+ * coach answer's `observe` list. Closes the "Track over time" loop the PRD
+ * promises (data-model object #8, previously unimplemented).
+ */
+export interface TrackingPrompt {
+  id: string;
+  childId: string;
+  metric: string;
+  prompt: string;
+  frequency: 'daily' | 'weekly' | 'event';
+  createdAt: string;
+  sourcePrompt?: string;
+  active: boolean;
+}
+
+export type OutcomeRating = 'worse' | 'same' | 'better' | 'resolved';
+
+/**
+ * The result of a saved plan, captured at follow-up. Feeds back into future
+ * coach context (data-model object #9, previously unimplemented).
+ */
+export interface InterventionOutcome {
+  id: string;
+  planId: string;
+  childId: string;
+  rating: OutcomeRating;
+  note?: string;
+  createdAt: string;
+}
+
+export type FeedbackRating = 'useful' | 'partly' | 'not';
+
+/** Per-answer usefulness rating — the measurable basis for the PRD's "70% useful today" metric. */
+export interface AnswerFeedback {
+  id: string;
+  childId: string;
+  messageRef: string;
+  rating: FeedbackRating;
+  note?: string;
+  lens?: string;
+  createdAt: string;
 }
 
 export interface BedtimeStory {
