@@ -50,6 +50,7 @@ import { briefToMarkdown, downloadTextFile, safeFileName } from "./state/exporte
 import { CoachAnswerActions, FollowUpCheckins, LeadFrameCallout, SourceGrounding } from "./components/coachLoop";
 
 type ChatMessage = { id: string; sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract; sourcePrompt?: string };
+type ReviewQueueItem = { id: string; createdAt: string; trigger: string; category: string; riskLevel?: string; excerpt: string; status: "open" | "reviewed" | "dismissed" };
 type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract };
 
 const newId = () =>
@@ -138,6 +139,10 @@ export default function App() {
   const [isGeneratingBrief, setIsGeneratingBrief] = useState<boolean>(false);
   const [memoryReviewItems, setMemoryReviewItems] = useState<MemoryReviewItem[]>([]);
   const [isMemoryUpdating, setIsMemoryUpdating] = useState<string | null>(null);
+
+  // K-02: high-risk human review queue (server-backed).
+  const [reviewQueueItems, setReviewQueueItems] = useState<ReviewQueueItem[]>([]);
+  const [reviewQueueEnabled, setReviewQueueEnabled] = useState<boolean>(true);
 
   // Embedded Interactive AI States and Helpers
   const [handoffAudience, setHandoffAudience] = useState<"teacher" | "clinician" | "pediatrician">("teacher");
@@ -330,6 +335,36 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   useEffect(() => {
     refreshMemoryReview();
   }, [childProfile.id]);
+
+  const refreshReviewQueue = async () => {
+    try {
+      const res = await fetch(`/api/safety/review-queue?childId=${encodeURIComponent(childId)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setReviewQueueItems(data.items || []);
+      setReviewQueueEnabled(data.enabled !== false);
+    } catch (err) {
+      console.warn("Could not load review queue", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "safety") refreshReviewQueue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, childId]);
+
+  const handleReviewStatus = async (id: string, status: "reviewed" | "dismissed") => {
+    try {
+      await fetch(`/api/safety/review-queue/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+      refreshReviewQueue();
+    } catch (err: any) {
+      alert(err.message || "Could not update review item.");
+    }
+  };
 
   const handleMemoryDecision = async (memoryId: string, status: "approved" | "rejected" | "deleted") => {
     setIsMemoryUpdating(memoryId);
@@ -2631,6 +2666,64 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
               <div>
                 <h2 className="text-3xl font-extrabold tracking-tight">Trust & Safety Guidelines</h2>
                 <p className="text-sm text-[#a8a093] mt-1">Our platform enforces safety as a top-level product feature. Secure data processing and boundaries.</p>
+              </div>
+
+              {/* K-02: high-risk human review queue */}
+              <div className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-[#d7aa55]" />
+                    <h3 className="text-sm font-extrabold text-white">High-risk review queue</h3>
+                  </div>
+                  <span className="text-[10px] text-[#a8a093]">
+                    {reviewQueueEnabled ? `${reviewQueueItems.filter(i => i.status === "open").length} open` : "disabled"}
+                  </span>
+                </div>
+                <p className="text-xs text-[#a8a093] leading-relaxed">
+                  Interactions that were blocked, flagged by the semantic safety layer, or rated urgent by the model are logged here for a human to review. This is how Arbor keeps "no unsafe escalation missed" operationally real.
+                </p>
+                {reviewQueueItems.length === 0 ? (
+                  <div className="text-xs text-[#a8a093] border border-white/5 rounded-xl p-4 bg-white/[0.01]">
+                    No flagged interactions. The queue is clear.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {reviewQueueItems.slice(0, 10).map(item => (
+                      <div key={item.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-3 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                          <span className={`font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                            item.status === "open" ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-500"
+                          }`}>
+                            {item.status}
+                          </span>
+                          <span className="text-[#f4d991] font-bold">{item.trigger.replace(/_/g, " ")}</span>
+                          <span className="text-[#a8a093]">· {item.category.replace(/_/g, " ")}</span>
+                          {item.riskLevel && <span className="text-[#a8a093]">· risk: {item.riskLevel}</span>}
+                          <span className="text-[#a8a093] ml-auto">{new Date(item.createdAt).toLocaleString()}</span>
+                        </div>
+                        <p className="text-xs text-gray-200 leading-relaxed">{item.excerpt}</p>
+                        {item.status === "open" && (
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleReviewStatus(item.id, "reviewed")}
+                              className="rounded-lg border border-[#d7aa55]/25 bg-[#d7aa55]/10 px-2.5 py-1 text-[11px] font-bold text-[#f4d991] hover:bg-[#d7aa55]/20"
+                            >
+                              Mark reviewed
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleReviewStatus(item.id, "dismissed")}
+                              className="rounded-lg border border-white/10 bg-white/[0.02] px-2.5 py-1 text-[11px] font-bold text-[#a8a093] hover:bg-white/[0.06]"
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">

@@ -8,6 +8,7 @@ import { loadKnowledgeCards } from "../knowledge/wiki.js";
 import { LocalMemoryStore } from "../memory/localMemoryStore.js";
 import { FirestoreMemoryStore } from "../memory/firestoreMemoryStore.js";
 import { loadFramework } from "../services/framework.js";
+import { LocalReviewQueueStore } from "../safety/reviewQueue.js";
 import { createApiRouter } from "../routes/api.js";
 
 export const createApp = (config: ArborConfig) => {
@@ -17,6 +18,7 @@ export const createApp = (config: ArborConfig) => {
   const memoryStore = config.memoryAdapter === "firestore"
     ? new FirestoreMemoryStore(config)
     : new LocalMemoryStore();
+  const reviewQueue = new LocalReviewQueueStore();
 
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cors({
@@ -39,7 +41,7 @@ export const createApp = (config: ArborConfig) => {
     }
   }));
   app.use(express.json({ limit: "250kb" }));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, framework }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, framework, reviewQueue }));
 
   loadKnowledgeCards()
     .then((cards) => console.log(`[Arbor Knowledge] Loaded ${cards.length} source cards.`))

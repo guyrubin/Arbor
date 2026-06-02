@@ -4,7 +4,8 @@ import type { ModelProvider } from "../ai/modelRouter.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse } from "../contracts/coach.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
-import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
+import { screenForImmediateEscalation, renderEscalationMarkdown, resolveCrisisLocale, screenForElevatedConcern, isModelFlaggedUrgent, renderSafetyFooter } from "../safety/escalation.js";
+import { buildReviewItem, type ReviewQueueStore, type ReviewStatus } from "../safety/reviewQueue.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCards, renderKnowledgeContext, retrieveKnowledgeCards } from "../knowledge/wiki.js";
 import { Type } from "@google/genai";
@@ -23,6 +24,7 @@ type ApiDeps = {
   modelProvider: ModelProvider;
   memoryStore: MemoryStore;
   framework: FrameworkDefinition;
+  reviewQueue: ReviewQueueStore;
 };
 
 const wantsSse = (req: express.Request) => req.headers.accept?.includes("text/event-stream") ?? false;
@@ -46,8 +48,15 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, framework }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, framework, reviewQueue }: ApiDeps) => {
   const router = express.Router();
+
+  const recordReview = (item: Parameters<typeof buildReviewItem>[0]) => {
+    if (!config.enableHighRiskReviewQueue) return;
+    reviewQueue.append(buildReviewItem(item)).catch((error) =>
+      console.error("[Arbor Safety] Failed to record review item:", error)
+    );
+  };
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
 
@@ -107,10 +116,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, framework 
     const { message, childProfile, scholarLens, recentOutcomes } = req.body;
     const streamResponse = wantsSse(req);
 
+    const crisisLocale = resolveCrisisLocale(childProfile);
     const escalationMatch = screenForImmediateEscalation({ message });
     if (escalationMatch) {
+      recordReview({ childId: toChildId(childProfile), trigger: "hard_block", category: escalationMatch.category, message });
       const payload = {
-        text: renderEscalationMarkdown(escalationMatch),
+        text: renderEscalationMarkdown(escalationMatch, crisisLocale),
         riskLevel: "urgent",
         escalationCategory: escalationMatch.category
       };
@@ -188,7 +199,21 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
         prompt: message,
         frameRouting: structured.frameRouting
       });
-      const payload = { text: renderCoachResponse(structured), contract: structured, memoryReviewItems };
+
+      // K-01: semantic safety layer (soft gate). The explicit regex already ran
+      // above; here we catch paraphrase/indirection and trust the model's own
+      // conservative risk rating, flagging for human review (K-02).
+      let text = renderCoachResponse(structured);
+      const elevated = screenForElevatedConcern({ message });
+      const modelUrgent = isModelFlaggedUrgent(structured.riskLevel);
+      if (elevated) {
+        text += `\n\n${renderSafetyFooter(elevated, crisisLocale)}`;
+        recordReview({ childId, trigger: "elevated_concern", category: elevated.category, riskLevel: structured.riskLevel, message });
+      } else if (modelUrgent) {
+        recordReview({ childId, trigger: "model_urgent", category: "model_flagged", riskLevel: structured.riskLevel, message });
+      }
+
+      const payload = { text, contract: structured, memoryReviewItems };
       if (streamResponse) {
         writeSse(res, "done", payload);
         res.end();
@@ -472,6 +497,37 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     } catch (error: any) {
       console.error("Arbor Cloud Storage Export Error:", error);
       res.status(500).json({ error: "Failed to export handoff document", details: error.message });
+    }
+  });
+
+  // K-02: high-risk human review queue.
+  router.get("/safety/review-queue", async (req, res) => {
+    try {
+      const childId = req.query.childId ? String(req.query.childId) : undefined;
+      const items = await reviewQueue.list(childId);
+      res.json({ enabled: config.enableHighRiskReviewQueue, items });
+    } catch (error: any) {
+      console.error("Arbor Review Queue Read Error:", error);
+      res.status(500).json({ error: "Failed to read review queue", details: error.message });
+    }
+  });
+
+  router.patch("/safety/review-queue/:id", async (req, res) => {
+    try {
+      const status = req.body?.status as ReviewStatus;
+      if (!["open", "reviewed", "dismissed"].includes(status)) {
+        res.status(400).json({ error: "Invalid review status" });
+        return;
+      }
+      const updated = await reviewQueue.setStatus(req.params.id, status);
+      if (!updated) {
+        res.status(404).json({ error: "Review item not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Arbor Review Queue Update Error:", error);
+      res.status(500).json({ error: "Failed to update review item", details: error.message });
     }
   });
 
