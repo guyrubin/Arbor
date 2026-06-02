@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import path from "path";
 
 export type FrameworkDefinition = {
@@ -15,7 +15,20 @@ export type FrameworkDefinition = {
 };
 
 export const loadFramework = () => {
-  const frameworkPath = path.join(process.cwd(), "src", "framework.json");
+  // Resolve framework.json across dev (src/), bundled prod (dist/), and the
+  // Docker runtime image (which copies dist/ but not src/). The build step
+  // copies framework.json into dist/ so it travels with the server bundle.
+  const candidates = [
+    process.env.FRAMEWORK_PATH,
+    path.join(process.cwd(), "src", "framework.json"),
+    path.join(process.cwd(), "dist", "framework.json"),
+    path.join(process.cwd(), "framework.json")
+  ].filter(Boolean) as string[];
+
+  const frameworkPath = candidates.find((candidate) => existsSync(candidate));
+  if (!frameworkPath) {
+    throw new Error(`Could not locate framework.json. Looked in: ${candidates.join(", ")}`);
+  }
   return JSON.parse(readFileSync(frameworkPath, "utf8")) as FrameworkDefinition;
 };
 
