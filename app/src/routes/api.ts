@@ -234,8 +234,40 @@ Return JSON with title, issue, phases, scripts, and successIndicators.
           properties: {
             title: { type: Type.STRING },
             issue: { type: Type.STRING },
-            phases: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {} } },
-            scripts: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {} } },
+            phases: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ["name", "description", "steps"],
+                properties: {
+                  name: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  steps: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      required: ["text", "completed"],
+                      properties: {
+                        text: { type: Type.STRING },
+                        completed: { type: Type.BOOLEAN }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            scripts: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ["scenario", "say", "avoid"],
+                properties: {
+                  scenario: { type: Type.STRING },
+                  say: { type: Type.STRING },
+                  avoid: { type: Type.STRING }
+                }
+              }
+            },
             successIndicators: { type: Type.ARRAY, items: { type: Type.STRING } }
           }
         }
@@ -322,9 +354,30 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
           properties: {
             frequencyCount: { type: Type.OBJECT, properties: {} },
             intensityTrend: { type: Type.STRING },
-            triggerBreakdown: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {} } },
+            triggerBreakdown: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ["trigger", "percentage"],
+                properties: {
+                  trigger: { type: Type.STRING },
+                  percentage: { type: Type.NUMBER }
+                }
+              }
+            },
             effectivenessRating: { type: Type.STRING },
-            expertInsights: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {} } },
+            expertInsights: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ["heading", "text"],
+                properties: {
+                  heading: { type: Type.STRING },
+                  text: { type: Type.STRING },
+                  scholarLens: { type: Type.STRING }
+                }
+              }
+            },
             actionPlanSuggestion: { type: Type.STRING }
           }
         }
