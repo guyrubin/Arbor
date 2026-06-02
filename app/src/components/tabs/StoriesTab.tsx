@@ -130,7 +130,7 @@ export default function StoriesTab() {
             {!isCover ? (
               <div className="space-y-3">
                 <em className="text-xs text-[#a8a093] block text-center">Section {activeStoryPage + 1}</em>
-                <p className="text-sm md:text-base leading-relaxed text-gray-200 indent-4 font-medium italic text-center">"{pageText}"</p>
+                <p dir="auto" className="text-sm md:text-base leading-relaxed text-gray-200 indent-4 font-medium italic text-center">"{pageText}"</p>
               </div>
             ) : (
               <div className="space-y-4">

@@ -86,7 +86,7 @@ export default function ReadingMode({ open, onClose }: { open: boolean; onClose:
                   </div>
                 </div>
               ) : (
-                <p className="text-2xl md:text-4xl leading-relaxed text-gray-100" style={{ fontFamily: "var(--font-display, Georgia), serif" }}>
+                <p dir="auto" className="text-2xl md:text-4xl leading-relaxed text-gray-100" style={{ fontFamily: "var(--font-display, Georgia), serif" }}>
                   {pageText}
                 </p>
               )}

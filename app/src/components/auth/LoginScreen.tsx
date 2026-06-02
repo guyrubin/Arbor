@@ -30,11 +30,25 @@ function ArborMark() {
 }
 
 export default function LoginScreen() {
-  const { signInWithGoogle, signInWithEmail, error } = useAuth();
+  const { signInWithGoogle, signInWithEmail, resetPassword, error } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showEmail, setShowEmail] = useState(false);
   const [busy, setBusy] = useState<"google" | "email" | null>(null);
+  const [resetMsg, setResetMsg] = useState("");
+
+  const handleReset = async () => {
+    if (!email.trim()) {
+      setResetMsg("Enter your email above first.");
+      return;
+    }
+    try {
+      await resetPassword(email.trim());
+      setResetMsg("Password reset email sent — check your inbox.");
+    } catch {
+      setResetMsg("Couldn't send a reset email for that address.");
+    }
+  };
 
   const handleGoogle = async () => {
     setBusy("google");
@@ -143,6 +157,12 @@ export default function LoginScreen() {
               {busy === "email" ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
               Sign in
             </button>
+            <div className="flex items-center justify-between">
+              <button type="button" onClick={handleReset} className="text-[11px] text-[#a8a093] hover:text-[#f4d991] transition">
+                Forgot password?
+              </button>
+              {resetMsg && <span className="text-[10px] text-[#f4d991]">{resetMsg}</span>}
+            </div>
           </form>
         )}
 

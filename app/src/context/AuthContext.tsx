@@ -3,6 +3,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User,
@@ -25,6 +26,7 @@ type AuthContextValue = {
   error: string | null;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
 };
@@ -83,6 +85,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    if (!firebaseEnabled || !auth) return;
+    setError(null);
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const signOut = async () => {
     if (!firebaseEnabled || !auth) return;
     await firebaseSignOut(auth);
@@ -106,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     signInWithGoogle,
     signInWithEmail,
+    resetPassword,
     signOut,
     getIdToken,
   };

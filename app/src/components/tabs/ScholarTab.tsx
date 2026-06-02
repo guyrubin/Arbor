@@ -1,11 +1,11 @@
 import React from "react";
 import { motion } from "motion/react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Sparkles } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { scholarsInfo } from "../../initialData";
 
 export default function ScholarTab() {
-  const { setSelectedLens, setChatInput, setActiveTab } = useArbor();
+  const { setSelectedLens, setChatInput, setActiveTab, childProfile } = useArbor();
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
@@ -34,17 +34,28 @@ export default function ScholarTab() {
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                setSelectedLens(sch.name);
-                setChatInput(sch.examplePrompt);
-                setActiveTab("coach");
-                alert(`Loaded prompt aligned with the ${sch.name} lens! Press 'Send Inquiry' inside the chat to try it.`);
-              }}
-              className="w-full py-2.5 bg-white/5 border border-white/5 group-hover:bg-[#d7aa55]/10 group-hover:border-[#d7aa55]/20 group-hover:text-[#f4d991] text-[#a8a093] font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
-            >
-              Use Sandbox Inquiry <ExternalLink className="w-3.5 h-3.5" />
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  setSelectedLens(sch.name);
+                  setChatInput(`Using ${sch.name}'s ${sch.concept} lens, give me practical, non-diagnostic guidance for ${childProfile.name} (age ${childProfile.age}) — what to notice and two things to try this week.`);
+                  setActiveTab("coach");
+                }}
+                className="w-full py-2.5 bg-[#d7aa55]/10 border border-[#d7aa55]/25 hover:bg-[#d7aa55]/20 text-[#f4d991] font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Apply to {childProfile.name}
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedLens(sch.name);
+                  setChatInput(sch.examplePrompt);
+                  setActiveTab("coach");
+                }}
+                className="w-full py-2 bg-white/5 border border-white/5 hover:text-[#f4d991] text-[#a8a093] font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                Try an example <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
