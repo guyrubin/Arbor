@@ -2,6 +2,11 @@
 
 > Capability backlog v1.1 (2026-05-31). Full definitions + acceptance criteria in
 > `docs/arbor-prd.md` → "Capability Backlog v1.1". Status tracked here.
+>
+> **Deep enhancement analysis (v2, 2026-06-02)** — App / Capabilities / Design
+> tracks with verified severity callouts: see `docs/arbor-enhancements-v2.md`.
+> Top fix-first items: D1 (mobile nav dead-ends), A1 (AI cost caps), C1 (edit),
+> D3 (load skeletons), A7 (error monitoring).
 
 ## NOW — committed
 
