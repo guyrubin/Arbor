@@ -32,6 +32,9 @@ import {
   Shield,
   ExternalLink,
   Eye,
+  Mic,
+  Volume2,
+  Square,
   X
 } from "lucide-react";
 import { ChildProfile, BehaviorLog, Milestone, ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, MemoryReviewItem, CoachContract, TrackingPrompt, InterventionOutcome, AnswerFeedback, FeedbackRating, OutcomeRating, HandoffFragment } from "./types";
@@ -47,7 +50,9 @@ import framework from "./framework.json";
 import { usePersistentState, childKey } from "./state/persistence";
 import { contractToActionPlan, observeToTrackingPrompts, dueFollowUps, addDays } from "./state/loop";
 import { briefToMarkdown, downloadTextFile, safeFileName } from "./state/exporters";
+import { useSpeech, useSpeechInput, speechLocaleFor } from "./state/voice";
 import { CoachAnswerActions, FollowUpCheckins, LeadFrameCallout, SourceGrounding } from "./components/coachLoop";
+import { PanicMode } from "./components/PanicMode";
 
 type ChatMessage = { id: string; sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract; sourcePrompt?: string };
 type ReviewQueueItem = { id: string; createdAt: string; trigger: string; category: string; riskLevel?: string; excerpt: string; status: "open" | "reviewed" | "dismissed" };
@@ -84,6 +89,34 @@ export default function App() {
   const [savedPlanMsgIds, setSavedPlanMsgIds] = usePersistentState<string[]>(childKey(childId, "savedMsgs"), []);
   const [trackedMsgIds, setTrackedMsgIds] = usePersistentState<string[]>(childKey(childId, "trackedMsgs"), []);
   const [handoffFragments, setHandoffFragments] = usePersistentState<HandoffFragment[]>(childKey(childId, "handoff"), []);
+
+  // E-01/E-02: panic mode + voice.
+  const [panicOpen, setPanicOpen] = useState<boolean>(false);
+  const speechLang = speechLocaleFor(childProfile.languages);
+  const { supported: ttsSupported, speaking: isReadingAloud, speak: readAloud, stop: stopReadAloud } = useSpeech();
+  const { supported: sttSupported, listening: isListening, start: startListening, stop: stopListening } =
+    useSpeechInput((text) => setChatInput(prev => (prev ? `${prev} ${text}` : text)));
+
+  // E-01: log a calm-mode moment to the behavior timeline.
+  const handlePanicLog = (note: string) => {
+    setBehaviorLogs(prev => [
+      {
+        id: `log-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        behaviorType: "Calm-mode moment",
+        intensity: 3,
+        durationMinutes: 5,
+        trigger: note,
+        response: "Used Arbor calm mode: breathing + a co-regulation script."
+      },
+      ...prev
+    ]);
+  };
+
+  const toggleReadAloud = (text: string) => {
+    if (isReadingAloud) stopReadAloud();
+    else readAloud(text, { lang: speechLang });
+  };
 
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>("Integrated Balanced");
@@ -1399,6 +1432,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                         {msg.sender === "ai" && msg.contract && (
                           <SourceGrounding cards={msg.contract.sourceCardsUsed} />
                         )}
+                        {msg.sender === "ai" && msg.contract?.parentScript && ttsSupported && (
+                          <button
+                            type="button"
+                            onClick={() => toggleReadAloud(msg.contract!.parentScript)}
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.02] px-2.5 py-1 text-[11px] font-bold text-[#a8a093] hover:text-white"
+                          >
+                            {isReadingAloud ? <><Square className="h-3 w-3" /> Stop</> : <><Volume2 className="h-3 w-3" /> Read the script aloud</>}
+                          </button>
+                        )}
                         {msg.sender === "ai" && msg.contract && (
                           <CoachAnswerActions
                             contract={msg.contract}
@@ -1451,6 +1493,22 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       placeholder="Discuss behavior logs, dropoff problems or trigger resets (e.g. tablet disputes)..."
                       className="flex-1 bg-[#08090c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#d7aa55]/50 transition"
                     />
+                    {sttSupported && (
+                      <button
+                        type="button"
+                        onClick={() => (isListening ? stopListening() : startListening(speechLang))}
+                        disabled={isChatLoading}
+                        aria-label={isListening ? "Stop listening" : "Speak your question"}
+                        title={isListening ? "Listening… tap to stop" : "Speak your question"}
+                        className={`px-3.5 py-3 rounded-xl border transition flex items-center ${
+                          isListening
+                            ? "bg-[#d7aa55]/20 border-[#d7aa55]/40 text-[#f4d991] animate-pulse"
+                            : "bg-white/[0.02] border-white/10 text-[#a8a093] hover:text-white"
+                        }`}
+                      >
+                        <Mic className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleChatSend()}
                       disabled={isChatLoading}
@@ -2330,10 +2388,19 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                   <div className="flex-1 flex flex-col justify-center space-y-4 py-4">
                     {activeStoryPage < currentStory.pages.length ? (
                       <div className="space-y-4">
-                        <em className="text-xs text-[#a8a093] block">Section {activeStoryPage + 1} of Alek rabbit story</em>
+                        <em className="text-xs text-[#a8a093] block">Section {activeStoryPage + 1} of {currentStory.title}</em>
                         <p className="text-sm md:text-base leading-relaxed text-gray-200 indent-4 font-medium italic">
                           "{currentStory.pages[activeStoryPage]}"
                         </p>
+                        {ttsSupported && (
+                          <button
+                            type="button"
+                            onClick={() => toggleReadAloud(currentStory.pages[activeStoryPage])}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-bold text-amber-200 hover:text-white"
+                          >
+                            {isReadingAloud ? <><Square className="h-3.5 w-3.5" /> Stop reading</> : <><Volume2 className="h-3.5 w-3.5" /> Read this page aloud</>}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -2969,6 +3036,22 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         )}
 
       </div>
+
+      {/* E-01: always-available calm button */}
+      <button
+        type="button"
+        onClick={() => setPanicOpen(true)}
+        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-[#d7aa55] px-5 py-3 text-sm font-extrabold text-black shadow-xl transition hover:bg-[#c39947]"
+      >
+        <Heart className="h-4 w-4" /> I need help now
+      </button>
+
+      <PanicMode
+        open={panicOpen}
+        onClose={() => setPanicOpen(false)}
+        childProfile={childProfile}
+        onLog={handlePanicLog}
+      />
     </div>
   );
 }
