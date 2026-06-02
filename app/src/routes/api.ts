@@ -95,7 +95,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, framework 
   });
 
   router.post("/chat", async (req, res) => {
-    const { message, childProfile, scholarLens } = req.body;
+    const { message, childProfile, scholarLens, language } = req.body;
+    const languageDirective =
+      language === "he"
+        ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
+        : "";
     const streamResponse = wantsSse(req);
 
     const escalationMatch = screenForImmediateEscalation({ message });
@@ -147,7 +151,7 @@ Active Scholar Lens/Concept: ${scholarLens || "Integrated Balanced"}
 Parent question:
 ${message}
 
-Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used.
+Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used.${languageDirective}
 `;
 
       let rawResponse = "";

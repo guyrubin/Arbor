@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
-import { authHeaders, aiLanguageInstruction } from "../lib/api";
+import { authHeaders, getAiLanguage } from "../lib/api";
 import { ChildProfile } from "../types";
 
 export type FocusSignals = {
@@ -41,9 +41,10 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
         method: "POST",
         headers: await authHeaders(),
         body: JSON.stringify({
-          message: `In 2 short sentences, give me today's single most useful parenting focus for ${child.name} (age ${child.age}). Signals this week: ${signals.count} behavior events, average intensity ${signals.avg.toFixed(1)}/5, most frequent pattern "${signals.topTrigger || "transitions"}", milestone readiness ${signals.milestonesPercent}%. Warm, concrete, non-diagnostic, no headings or markdown.` + aiLanguageInstruction(),
+          message: `In 2 short sentences, give me today's single most useful parenting focus for ${child.name} (age ${child.age}). Signals this week: ${signals.count} behavior events, average intensity ${signals.avg.toFixed(1)}/5, most frequent pattern "${signals.topTrigger || "transitions"}", milestone readiness ${signals.milestonesPercent}%. Warm, concrete, non-diagnostic, no headings or markdown.`,
           childProfile: child,
           scholarLens: "Integrated Balanced",
+          language: getAiLanguage(),
         }),
       });
       if (!res.ok) throw new Error("focus generation failed");

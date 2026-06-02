@@ -5,7 +5,7 @@ import { Check, Sparkles, RefreshCw, Brain, AlertTriangle, Plus, ExternalLink, P
 import { useArbor } from "../../context/ArborContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { ProgressRing } from "../ui/ProgressRing";
-import { authHeaders, aiLanguageInstruction } from "../../lib/api";
+import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import framework from "../../framework.json";
 import { DevelopmentalDomainId, Milestone } from "../../types";
@@ -58,9 +58,10 @@ export default function MilestonesTab() {
         method: "POST",
         headers: await authHeaders(),
         body: JSON.stringify({
-          message: `Briefly explain the developmental milestone "${item.title}" for a ${childProfile.age}-year-old. Cover: typical age range, what it looks like in everyday life, and 2 concrete ways a parent can support it. Non-diagnostic, warm, short. Use the headings ### Typical age, ### What it looks like, ### How to support.` + aiLanguageInstruction(),
+          message: `Briefly explain the developmental milestone "${item.title}" for a ${childProfile.age}-year-old. Cover: typical age range, what it looks like in everyday life, and 2 concrete ways a parent can support it. Non-diagnostic, warm, short. Use the headings ### Typical age, ### What it looks like, ### How to support.`,
           childProfile,
           scholarLens: "Integrated Balanced",
+          language: getAiLanguage(),
         }),
       });
       if (!res.ok) throw new Error("fail");

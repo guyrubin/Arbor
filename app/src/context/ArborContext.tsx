@@ -18,7 +18,7 @@ import {
   sampleBedtimeStory,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
-import { api, authHeaders, aiLanguageInstruction } from "../lib/api";
+import { api, authHeaders, getAiLanguage } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 import { track } from "../lib/analytics";
 
@@ -192,9 +192,10 @@ Respond with EXACTLY three short markdown items:
 (Provide real direct verbal scripts parent can say immediately to support)
 
 ### 3. Key Trap to Avoid
-(State what the parent should avoid doing/saying)` + aiLanguageInstruction(),
+(State what the parent should avoid doing/saying)`,
           childProfile: childProfile,
           scholarLens: "Bowlby's Attachment Model",
+          language: getAiLanguage(),
         }),
       });
       if (!res.ok) throw new Error("Fetch failed");
@@ -232,9 +233,10 @@ ${checkedList || "None"}
 Unchecked:
 ${uncheckedList || "None"}
 
-Give a Vygotskian scaffolding learning assessment, outlining a real plan of how to master these goals. Highlight the path to bilingual confidence (Hebrew-English) and sensory self-regulation. Give 2 custom interactive exercises the parent can embed in daily play. Format with exact clean display headings.` + aiLanguageInstruction(),
+Give a Vygotskian scaffolding learning assessment, outlining a real plan of how to master these goals. Highlight the path to bilingual confidence (Hebrew-English) and sensory self-regulation. Give 2 custom interactive exercises the parent can embed in daily play. Format with exact clean display headings.`,
           childProfile: childProfile,
           scholarLens: "Vygotskian Scaffolding",
+          language: getAiLanguage(),
         }),
       });
       if (!res.ok) throw new Error("Fetch failed");
@@ -472,9 +474,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         headers: await authHeaders({ Accept: "text/event-stream" }),
         signal: controller.signal,
         body: JSON.stringify({
-          message: promptValue + aiLanguageInstruction(),
+          message: promptValue,
           childProfile: childProfile,
           scholarLens: selectedLens || "Integrated Balanced",
+          language: getAiLanguage(),
         }),
       });
 
@@ -625,7 +628,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         childName: childProfile.name,
         age: childProfile.age,
         topic: storyTopic,
-        moral: storyMoral + aiLanguageInstruction(),
+        moral: storyMoral + (getAiLanguage() === "he" ? " (Write the entire story in warm, natural Hebrew.)" : ""),
       });
       setCurrentStory(newStory);
       setActiveStoryPage(0);

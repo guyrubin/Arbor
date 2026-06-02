@@ -20,6 +20,12 @@ export function setAiLanguage(lang: "en" | "he") {
   aiLanguage = lang;
 }
 
+/** Current AI content language — pass as `language` in AI request bodies so the
+ *  server owns prompt localization (preferred over the client-side directive). */
+export function getAiLanguage(): "en" | "he" {
+  return aiLanguage;
+}
+
 export function aiLanguageInstruction(): string {
   return aiLanguage === "he"
     ? "\n\nIMPORTANT: Respond entirely in Hebrew (עברית), using warm, natural parent-facing language."
