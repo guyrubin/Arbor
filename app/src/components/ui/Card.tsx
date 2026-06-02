@@ -7,12 +7,16 @@ export interface CardProps {
   [key: string]: any;
 }
 
-/** Parchment/ink panel card used across tabs. */
+/**
+ * Parchment panel card. Uses the token-based `.arbor-surface` semantic class
+ * (design item D2) rather than hard-coded hex, so it doesn't depend on the
+ * legacy dark-class override layer.
+ */
 export function Card({ hover = false, className = "", children, ...props }: CardProps) {
   return (
     <div
-      className={`bg-[#141821] border border-white/10 rounded-3xl transition ${
-        hover ? "hover:border-white/20 hover:-translate-y-0.5 hover:shadow-xl" : ""
+      className={`arbor-surface rounded-3xl transition ${
+        hover ? "hover:-translate-y-0.5 hover:shadow-xl" : ""
       } ${className}`}
       {...props}
     >

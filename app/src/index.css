@@ -25,6 +25,20 @@
   --shadow-clay: 0 4px 16px rgba(226,86,45,0.22), 0 1px 4px rgba(226,86,45,0.12);
 }
 
+/* ─── Semantic surfaces (token-based; preferred for new/refactored UI) ───────
+   The app renders on the warm parchment token system above. Historically many
+   components author dark Tailwind color classes that a compatibility layer
+   (the `!important` overrides further down) remaps to these tokens. New and
+   refactored components should use these semantic classes / CSS variables
+   directly instead of hard-coded hex, so the override layer can shrink over
+   time. (Tracked as design item D2 in docs/arbor-enhancements-v2.md.) */
+.arbor-surface       { background: var(--arbor-paper-elevated); border: 1px solid var(--arbor-rule); }
+.arbor-surface-deep  { background: var(--arbor-paper-deep); border: 1px solid var(--arbor-rule); }
+.arbor-hairline      { border-color: var(--arbor-rule) !important; }
+.arbor-accent-text   { color: var(--arbor-clay); }
+.arbor-ink-text      { color: var(--arbor-ink); }
+.arbor-muted-tone    { color: var(--arbor-muted); }
+
 /* ─── Base ───────────────────────────────────────────────────────────────── */
 html, body, #root { min-height: 100%; }
 
