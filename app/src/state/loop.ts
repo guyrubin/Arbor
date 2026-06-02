@@ -189,3 +189,17 @@ export const leadFrame = (
 
   return { key: best, label: FRAME_LABELS[best], text: (frame[best] || "").trim() };
 };
+
+/**
+ * H-11 — Turn a knowledge-card id ("transition-bridge-3-5y") into a readable
+ * label ("Transition Bridge 3-5y") so parents can see what the guidance rests on.
+ */
+export const humanizeCardId = (id: string): string =>
+  id
+    .trim()
+    .replace(/[_]+/g, "-")
+    .split("-")
+    .filter(Boolean)
+    .map((word) => (/^\d/.test(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)))
+    .join(" ")
+    .replace(/\b(\d+) (\d+[a-z]?)\b/i, "$1-$2");

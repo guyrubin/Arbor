@@ -46,7 +46,7 @@ import {
 import framework from "./framework.json";
 import { usePersistentState, childKey } from "./state/persistence";
 import { contractToActionPlan, observeToTrackingPrompts, dueFollowUps, addDays } from "./state/loop";
-import { CoachAnswerActions, FollowUpCheckins, LeadFrameCallout } from "./components/coachLoop";
+import { CoachAnswerActions, FollowUpCheckins, LeadFrameCallout, SourceGrounding } from "./components/coachLoop";
 
 type ChatMessage = { id: string; sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract; sourcePrompt?: string };
 type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract };
@@ -541,8 +541,13 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     }
   };
 
-  // Generate Custom Action Plan
-  const handleGenerateActionPlan = async () => {
+  // Generate Custom Action Plan (optional topic override powers H-06: analysis → plan)
+  const handleGenerateActionPlan = async (topicOverride?: string) => {
+    const challengeTopic = (topicOverride ?? planChallengeTopic).trim();
+    if (!challengeTopic) {
+      setApiError("Describe a challenge before generating a plan.");
+      return;
+    }
     setIsPlanGenerating(true);
     setApiError(null);
     try {
@@ -550,7 +555,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          challengeTopic: planChallengeTopic,
+          challengeTopic,
           childProfile: childProfile
         })
       });
@@ -562,8 +567,12 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
       const planData: ActionPlan = await res.json();
       planData.id = `plan-${Date.now()}`;
-      setActionPlans([planData, ...actionPlans]);
-      alert(`Action Plan successfully woven: "${planData.title}"`);
+      planData.childId = childId;
+      planData.createdAt = new Date().toISOString();
+      planData.source = "generated";
+      planData.sourcePrompt = challengeTopic;
+      setActionPlans(prev => [planData, ...prev]);
+      alert(`Action plan created: "${planData.title}"`);
     } catch (err: any) {
       console.error(err);
       setApiError(err.message || "Failed to generate developmental Action Plan.");
@@ -1218,6 +1227,25 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                       </button>
                     ))}
                   </div>
+
+                  {/* H-09: make the active lens legible — what it does, in plain words */}
+                  {(() => {
+                    const active = scholarsInfo.find(s => s.name === selectedLens);
+                    return (
+                      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                        {active ? (
+                          <p className="text-[11px] leading-relaxed text-[#a8a093]">
+                            <strong className="text-[#f4d991]">{active.concept}</strong>
+                            <span className="text-gray-500"> · {active.theory}</span> — {active.value}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] leading-relaxed text-[#a8a093]">
+                            <strong className="text-[#f4d991]">Integrated Balanced</strong> — Arbor weighs attachment, cognition, and environment together and picks the most useful frame for your question. Choose a specific scholar above to steer the reasoning.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1260,6 +1288,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                         <div className="space-y-1">
                           {renderMarkdown(msg.text)}
                         </div>
+                        {msg.sender === "ai" && msg.contract && (
+                          <SourceGrounding cards={msg.contract.sourceCardsUsed} />
+                        )}
                         {msg.sender === "ai" && msg.contract && (
                           <CoachAnswerActions
                             contract={msg.contract}
@@ -1642,6 +1673,19 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
                           <div className="space-y-2">
                             <span className="font-bold text-white block">Developmental Recommendation:</span>
                             <p className="text-[#a8a093] leading-relaxed">{behaviorAnalysis.actionPlanSuggestion}</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const topic = behaviorAnalysis.actionPlanSuggestion;
+                                setPlanChallengeTopic(topic);
+                                setActiveTab("plans");
+                                handleGenerateActionPlan(topic);
+                              }}
+                              disabled={isPlanGenerating}
+                              className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-[#d7aa55]/25 bg-[#d7aa55]/10 px-2.5 py-1.5 text-[11px] font-bold text-[#f4d991] transition hover:bg-[#d7aa55]/20 disabled:opacity-50"
+                            >
+                              <Sliders className="h-3.5 w-3.5" /> Build a plan from this
+                            </button>
                           </div>
                         </div>
 

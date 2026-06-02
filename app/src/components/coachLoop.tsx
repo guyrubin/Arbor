@@ -1,7 +1,30 @@
 import React from "react";
-import { Compass, ClipboardCheck, Eye, ThumbsUp, ThumbsDown, Minus, CalendarClock } from "lucide-react";
+import { Compass, ClipboardCheck, Eye, ThumbsUp, ThumbsDown, Minus, CalendarClock, BookMarked } from "lucide-react";
 import type { ActionPlan, CoachContract, FeedbackRating, FrameRouting, OutcomeRating } from "../types";
-import { FRAME_BLURBS, leadFrame } from "../state/loop";
+import { FRAME_BLURBS, humanizeCardId, leadFrame } from "../state/loop";
+
+/**
+ * H-11 — Show the knowledge cards the answer rests on. Grounded answers build
+ * trust; ungrounded confidence destroys it.
+ */
+export const SourceGrounding: React.FC<{ cards?: string[] }> = ({ cards }) => {
+  if (!cards || cards.length === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#a8a093]">
+        <BookMarked className="h-3 w-3 text-[#d7aa55]" /> Grounded in
+      </span>
+      {cards.map((card) => (
+        <span
+          key={card}
+          className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-gray-300"
+        >
+          {humanizeCardId(card)}
+        </span>
+      ))}
+    </div>
+  );
+};
 
 /**
  * H-10 — Surface the single load-bearing developmental frame inline, at the

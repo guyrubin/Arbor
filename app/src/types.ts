@@ -53,6 +53,7 @@ export interface CoachContract {
   frameRouting: FrameRouting;
   memoryProposals: { fact: string; source: string; retention: string }[];
   handoffNotes: { teacher: string; professional: string };
+  sourceCardsUsed?: string[];
 }
 
 export interface BehaviorLog {

@@ -3,6 +3,7 @@ import {
   addDays,
   contractToActionPlan,
   dueFollowUps,
+  humanizeCardId,
   leadFrame,
   observeToTrackingPrompts
 } from "./loop.js";
@@ -101,5 +102,12 @@ describe("leadFrame (H-10)", () => {
   it("falls back gracefully when frames are sparse", () => {
     const lead = leadFrame({ aim: "calm", twoAxes: "", story: "", shadow: "", marriage: "", shepherd: "" });
     expect(lead.key).toBe("aim");
+  });
+});
+
+describe("humanizeCardId (H-11)", () => {
+  it("renders a readable label and preserves age bands", () => {
+    expect(humanizeCardId("transition-bridge-3-5y")).toBe("Transition Bridge 3-5y");
+    expect(humanizeCardId("sleep_routine_0-12m")).toBe("Sleep Routine 0-12m");
   });
 });
