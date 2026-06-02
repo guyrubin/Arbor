@@ -1,19 +1,9 @@
 import React, { useMemo } from "react";
 import { Activity, MapPin, CalendarDays, Clock, CheckCircle2 } from "lucide-react";
 import { BehaviorLog } from "../../types";
+import { timeBand } from "../../lib/behaviorUtils";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const BANDS = [
-  { label: "Morning", from: 5, to: 12 },
-  { label: "Afternoon", from: 12, to: 17 },
-  { label: "Evening", from: 17, to: 21 },
-  { label: "Night", from: 21, to: 29 }, // 21:00–05:00 (wraps)
-];
-
-function bandOf(hour: number): string {
-  const h = hour < 5 ? hour + 24 : hour;
-  return (BANDS.find((b) => h >= b.from && h < b.to) || BANDS[0]).label;
-}
 
 /** Surfaces correlations from behavior logs, not just counts. */
 export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
@@ -46,7 +36,7 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
 
     const context = avgBy((l) => l.context);
     const day = avgBy((l) => DAYS[new Date(l.timestamp).getDay()]);
-    const time = avgBy((l) => bandOf(new Date(l.timestamp).getHours()));
+    const time = avgBy((l) => timeBand(new Date(l.timestamp).getHours()));
     const resolved = logs.filter((l) => l.resolved).length;
     const resolveRate = Math.round((resolved / logs.length) * 100);
 

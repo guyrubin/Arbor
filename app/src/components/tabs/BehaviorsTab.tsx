@@ -10,18 +10,11 @@ import PatternInsights from "../behaviors/PatternInsights";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { authHeaders } from "../../lib/api";
 import { fileToThumbnail } from "../../lib/image";
+import { weekStartKey, escapeHtml } from "../../lib/behaviorUtils";
 import { BehaviorContext, BehaviorLog } from "../../types";
 
 const CONTEXTS: BehaviorContext[] = ["Home", "School", "Transit", "Public"];
 const DAY = 86_400_000;
-
-function weekStartKey(iso: string): string {
-  const d = new Date(iso);
-  const dow = (d.getDay() + 6) % 7; // Monday = 0
-  d.setDate(d.getDate() - dow);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().slice(0, 10);
-}
 
 function weekLabel(key: string): string {
   const start = new Date(key);
@@ -29,10 +22,6 @@ function weekLabel(key: string): string {
   end.setDate(end.getDate() + 6);
   const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   return `${fmt(start)} – ${fmt(end)}`;
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] || c));
 }
 
 export default function BehaviorsTab() {

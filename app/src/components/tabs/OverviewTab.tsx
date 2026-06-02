@@ -7,19 +7,11 @@ import { AnimatedNumber } from "../ui/AnimatedNumber";
 import { ProgressRing } from "../ui/ProgressRing";
 import { Skeleton } from "../ui/Skeleton";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
+import { intensityColor } from "../../lib/behaviorUtils";
 import QuickLogModal from "../overview/QuickLogModal";
 import RemindersCard from "../overview/RemindersCard";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-/** Map an intensity (1-5) to the sage → clay scale. */
-function intensityColor(intensity: number): string {
-  if (intensity <= 1) return "#6f9e6f";
-  if (intensity <= 2) return "#9bbf5a";
-  if (intensity <= 3) return "#d7aa55";
-  if (intensity <= 4) return "#e08a3c";
-  return "#e2562d";
-}
 
 export default function OverviewTab() {
   const {
