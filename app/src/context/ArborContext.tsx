@@ -114,6 +114,7 @@ function useArborState() {
   const setActiveTab = (t: ActiveTab) => {
     setActiveTabState(t);
     try { if (window.location.hash.replace(/^#\/?/, "") !== t) window.location.hash = `/${t}`; } catch { /* noop */ }
+    try { track("view_tab", { tab: t }); } catch { /* noop */ }
   };
   const [showAiRail, setShowAiRail] = useState<boolean>(() => readLS("arbor.aiRail") !== "false");
 
