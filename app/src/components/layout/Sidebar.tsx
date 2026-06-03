@@ -5,7 +5,7 @@ import {
   Clock,
   CheckCircle2,
   Sliders,
-  BookOpen,
+  Mountain,
   BarChart2,
   Compass,
   Languages,
@@ -100,8 +100,9 @@ export default function Sidebar() {
 
         <button onClick={() => setActiveTab("stories")} className={navItemClass("stories")}>
           <span className="flex items-center gap-3">
-            <BookOpen className="w-4 h-4" /> AI Bedtime Stories
+            <Mountain className="w-4 h-4" /> Hero Journeys
           </span>
+          <span className="text-[10px] bg-blue-500/20 text-blue-400 font-bold px-1.5 py-0.5 rounded-md">AI</span>
         </button>
 
         <button onClick={() => setActiveTab("weekly")} className={navItemClass("weekly")}>

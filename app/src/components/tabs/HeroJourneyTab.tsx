@@ -1,0 +1,496 @@
+import React, { useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
+import confetti from "canvas-confetti";
+import {
+  Sparkles,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  X,
+  Check,
+  Library,
+  Mountain,
+  Trophy,
+  ArrowLeft,
+} from "lucide-react";
+import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { useToast } from "../../context/ToastContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { api } from "../../lib/api";
+import {
+  HERO_STORIES,
+  PACKS,
+  METRIC_IDS,
+  METRIC_LABELS,
+  emptyMetrics,
+  addMetrics,
+  applyChoice,
+  getStorySpec,
+  storiesInPack,
+} from "../../lib/heroJourneys";
+import type {
+  DevelopmentMetricId,
+  HeroJourneyRender,
+  HeroJourneyRun,
+  HeroPackId,
+  HeroSceneRender,
+  HeroStorySpec,
+} from "../../types";
+import { HeroScenePlayer } from "../stories/HeroScenePlayer";
+import { EmptyState } from "../ui/EmptyState";
+
+const PACK_COLORS: Record<HeroPackId, string> = {
+  courage: "#e2562d",
+  responsibility: "#d7aa55",
+  growth: "#6f9e6f",
+  wisdom: "#68B4FF",
+};
+
+const METRIC_COLORS: Record<DevelopmentMetricId, string> = {
+  courage: "#e2562d",
+  responsibility: "#d7aa55",
+  resilience: "#A07AF8",
+  empathy: "#38C8F0",
+  wisdom: "#68B4FF",
+};
+
+export default function HeroJourneyTab() {
+  const { childProfile } = useArbor();
+  const { aiLang } = useLanguage();
+  const { toast } = useToast();
+
+  const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+  const runs = runsCol.items;
+  const photoUrl = (childProfile as unknown as { photoUrl?: string }).photoUrl;
+
+  const totalMetrics = useMemo(
+    () => runs.reduce((acc, r) => addMetrics(acc, r.metricsEarned ?? {}), emptyMetrics()),
+    [runs]
+  );
+  const metricMax = Math.max(1, ...METRIC_IDS.map((m) => totalMetrics[m]));
+
+  const [packFilter, setPackFilter] = useState<HeroPackId | "all">("all");
+  const [activeStory, setActiveStory] = useState<HeroStorySpec | null>(null);
+  const [render, setRender] = useState<HeroJourneyRender | null>(null);
+  const [sceneIndex, setSceneIndex] = useState(0);
+  const [choiceId, setChoiceId] = useState<string | undefined>(undefined);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [immersive, setImmersive] = useState(false);
+  const [questionsChecked, setQuestionsChecked] = useState<Record<number, boolean>>({});
+  const [saved, setSaved] = useState(false);
+  const startedAtRef = useRef<string>("");
+
+  // Scenes aligned to the fixed spine order, with a graceful fallback if the
+  // model drops or reorders a beat.
+  const scenes: HeroSceneRender[] = useMemo(() => {
+    if (!activeStory || !render) return [];
+    return activeStory.beats.map((b) => {
+      const s = render.scenes.find((rs) => rs.beatId === b.id);
+      return s ?? { beatId: b.id, title: b.title, narration: b.spine, imagePrompt: "" };
+    });
+  }, [activeStory, render]);
+
+  const beat = activeStory?.beats[sceneIndex];
+  const isDecision = beat?.id === "decision";
+  const isConsequence = beat?.id === "consequence";
+  const isReflection = beat?.id === "reflection";
+  const chosen = render?.choices.find((c) => c.id === choiceId);
+
+  // On the consequence beat, show the chosen choice's tailored outcome text.
+  const displayScene: HeroSceneRender | undefined = scenes[sceneIndex]
+    ? isConsequence && chosen
+      ? { ...scenes[sceneIndex], narration: chosen.consequence }
+      : scenes[sceneIndex]
+    : undefined;
+
+  const visibleStories =
+    packFilter === "all" ? HERO_STORIES : storiesInPack(packFilter);
+
+  const startJourney = async (story: HeroStorySpec) => {
+    setLoadingId(story.id);
+    try {
+      const r = await api.generateHeroJourney({
+        storyId: story.id,
+        childName: childProfile.name,
+        age: childProfile.age,
+        language: aiLang,
+      });
+      startedAtRef.current = new Date().toISOString();
+      setActiveStory(story);
+      setRender(r);
+      setSceneIndex(0);
+      setChoiceId(undefined);
+      setQuestionsChecked({});
+      setSaved(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to start the journey.";
+      toast(msg, "error");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const chooseOption = (id: string) => {
+    setChoiceId(id);
+    confetti({ particleCount: 70, spread: 70, origin: { y: 0.7 } });
+    setSceneIndex((i) => Math.min(scenes.length - 1, i + 1));
+  };
+
+  const finishJourney = async () => {
+    if (!activeStory || !render) return;
+    const metricsEarned = applyChoice(activeStory, choiceId);
+    const run: HeroJourneyRun = {
+      id: `run-${Date.now()}`,
+      storyId: activeStory.id,
+      title: render.title || activeStory.title,
+      language: aiLang,
+      startedAt: startedAtRef.current || new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      choiceId,
+      metricsEarned,
+      render,
+    };
+    await runsCol.upsert(run);
+    setSaved(true);
+    confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
+    toast("Journey complete — development saved", "success");
+  };
+
+  const replay = (run: HeroJourneyRun) => {
+    const story = getStorySpec(run.storyId);
+    if (!story) return;
+    startedAtRef.current = run.startedAt;
+    setActiveStory(story);
+    setRender(run.render);
+    setSceneIndex(0);
+    setChoiceId(run.choiceId);
+    setQuestionsChecked({});
+    setSaved(true);
+  };
+
+  const exitJourney = () => {
+    setActiveStory(null);
+    setRender(null);
+    setImmersive(false);
+  };
+
+  // ── Shared player pieces ───────────────────────────────────────────────────
+  const renderChoices = () =>
+    isDecision &&
+    !choiceId && (
+      <div className="space-y-2 w-full max-w-xl mx-auto">
+        <p className="text-[11px] uppercase tracking-widest text-[#f4d991] font-bold text-center">
+          What do you do, {childProfile.name}?
+        </p>
+        {render?.choices.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => chooseOption(c.id)}
+            className="w-full text-left p-3.5 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-[#d7aa55]/50 hover:bg-[#d7aa55]/10 transition flex items-center gap-3 group"
+          >
+            <span className="w-7 h-7 rounded-full bg-[#d7aa55]/20 text-[#f4d991] font-extrabold flex items-center justify-center flex-shrink-0 uppercase">
+              {c.id}
+            </span>
+            <span dir="auto" className="text-sm text-gray-100 font-medium group-hover:text-white">
+              {c.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+
+  const canAdvance = !isDecision || !!choiceId;
+  const renderNav = () => (
+    <div className="flex items-center justify-between w-full max-w-xl mx-auto pt-2">
+      <button
+        onClick={() => setSceneIndex((i) => Math.max(0, i - 1))}
+        disabled={sceneIndex === 0}
+        className="text-[#a8a093] disabled:opacity-20 hover:text-white flex items-center gap-1 text-sm"
+      >
+        <ChevronLeft className="w-4 h-4" /> Back
+      </button>
+      <span className="text-[10px] text-[#a8a093] uppercase tracking-wider">
+        {activeStory && `${sceneIndex + 1} / ${activeStory.beats.length}`}
+      </span>
+      {sceneIndex < scenes.length - 1 ? (
+        <button
+          onClick={() => canAdvance && setSceneIndex((i) => Math.min(scenes.length - 1, i + 1))}
+          disabled={!canAdvance}
+          className="text-[#f4d991] disabled:opacity-20 hover:text-white flex items-center gap-1 text-sm font-bold"
+        >
+          Next <ChevronRight className="w-4 h-4" />
+        </button>
+      ) : (
+        <span className="text-[10px] text-emerald-300 uppercase tracking-wider font-bold">The End</span>
+      )}
+    </div>
+  );
+
+  // ── Catalog view ───────────────────────────────────────────────────────────
+  if (!activeStory || !render) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
+            <Mountain className="w-7 h-7 text-[#d7aa55]" /> Hero Journeys
+          </h2>
+          <p className="text-sm text-[#a8a093] mt-1">
+            {childProfile.name} becomes the hero of timeless stories that build courage, responsibility,
+            resilience, empathy, and wisdom.
+          </p>
+        </div>
+
+        {/* Development metrics */}
+        <div className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5 text-[#d7aa55]" /> {childProfile.name}'s development
+            </span>
+            <span className="text-[11px] text-[#a8a093]">{runs.length} journeys completed</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+            {METRIC_IDS.map((m) => (
+              <div key={m} className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-[#a8a093] font-bold">{METRIC_LABELS[m]}</span>
+                  <span className="text-white font-extrabold">{totalMetrics[m]}</span>
+                </div>
+                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${(totalMetrics[m] / metricMax) * 100}%`, background: METRIC_COLORS[m] }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Pack filter */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setPackFilter("all")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition ${
+              packFilter === "all"
+                ? "bg-white/10 text-white border-white/20"
+                : "text-[#a8a093] border-white/10 hover:text-white"
+            }`}
+          >
+            All packs
+          </button>
+          {PACKS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPackFilter(p.id)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition ${
+                packFilter === p.id
+                  ? "text-white border-white/20"
+                  : "text-[#a8a093] border-white/10 hover:text-white"
+              }`}
+              style={packFilter === p.id ? { background: `${PACK_COLORS[p.id]}22` } : undefined}
+            >
+              {p.title}
+            </button>
+          ))}
+        </div>
+
+        {/* Story cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {visibleStories.map((story) => {
+            const color = PACK_COLORS[story.pack];
+            const isLoading = loadingId === story.id;
+            return (
+              <div
+                key={story.id}
+                className="bg-[#141821] border border-white/10 rounded-2xl p-5 flex flex-col gap-3 hover:border-white/20 transition"
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                    style={{ background: `${color}22`, color }}
+                  >
+                    {story.pack}
+                  </span>
+                  {story.origin === "original" && (
+                    <span className="text-[10px] text-[#a8a093] font-bold uppercase tracking-wider">Original</span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white leading-tight">
+                    {aiLang === "he" ? story.titleHe : story.title}
+                  </h3>
+                  <p className="text-xs text-[#a8a093] mt-1">{story.theme}</p>
+                </div>
+                <p className="text-[11px] text-[#a8a093]/80 leading-relaxed flex-1">{story.learningObjective}</p>
+                <button
+                  onClick={() => startJourney(story)}
+                  disabled={!!loadingId}
+                  className="mt-1 w-full py-2.5 bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 disabled:text-[#a8a093] text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
+                  {isLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Weaving your journey…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" /> Start journey
+                    </>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Library */}
+        <div className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-4">
+          <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
+            <Library className="w-3.5 h-3.5 text-[#d7aa55]" /> Journey library ({runs.length})
+          </span>
+          {!runsCol.loaded ? (
+            <p className="text-xs text-[#a8a093]">Loading…</p>
+          ) : runs.length === 0 ? (
+            <EmptyState
+              headline="No journeys yet"
+              body="Pick a story above and start your first hero journey. Completed journeys and the development they build are saved here."
+            />
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {runs.map((run) => (
+                <button
+                  key={run.id}
+                  onClick={() => replay(run)}
+                  className="text-left bg-white/[0.02] border border-white/10 rounded-2xl p-3 hover:border-[#d7aa55]/40 transition group space-y-1"
+                >
+                  <span className="text-xs font-bold text-white block leading-tight line-clamp-2 group-hover:text-[#f4d991]">
+                    {run.title}
+                  </span>
+                  <span className="text-[10px] text-[#a8a093]">
+                    {run.completedAt ? new Date(run.completedAt).toLocaleDateString() : "In progress"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // ── Player view ────────────────────────────────────────────────────────────
+  const playerBody = (immersiveMode: boolean) => (
+    <div className="space-y-6">
+      {displayScene && (
+        <HeroScenePlayer
+          scene={displayScene}
+          seed={`${activeStory.id}-${displayScene.beatId}-${childProfile.name}`}
+          beatNumber={sceneIndex + 1}
+          beatTotal={activeStory.beats.length}
+          photoUrl={photoUrl}
+          immersive={immersiveMode}
+        />
+      )}
+
+      {renderChoices()}
+
+      {/* Reflection / completion */}
+      {isReflection && (
+        <div className="w-full max-w-xl mx-auto space-y-4">
+          <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4 space-y-2">
+            <p className="text-[11px] uppercase tracking-widest text-emerald-300 font-bold">Today we practiced</p>
+            <div className="flex flex-wrap gap-2">
+              {render.reflection.practiced.map((p, i) => (
+                <span
+                  key={i}
+                  className="text-xs font-bold text-emerald-200 bg-emerald-500/15 px-2.5 py-1 rounded-lg flex items-center gap-1"
+                >
+                  <Check className="w-3 h-3" /> {p}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-widest text-[#f4d991] font-bold">Talk about it together</p>
+            {render.reflection.questions.map((q, i) => (
+              <button
+                key={i}
+                onClick={() => setQuestionsChecked((s) => ({ ...s, [i]: !s[i] }))}
+                className={`w-full text-left p-2.5 rounded-xl border transition flex items-start gap-2 ${
+                  questionsChecked[i]
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
+                    : "bg-white/[0.03] border-white/10 text-gray-200 hover:border-white/20"
+                }`}
+              >
+                <span
+                  className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${
+                    questionsChecked[i] ? "bg-emerald-500/30" : "bg-white/10"
+                  }`}
+                >
+                  {questionsChecked[i] && <Check className="w-3 h-3" />}
+                </span>
+                <span dir="auto" className="text-xs">
+                  {q}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {!saved ? (
+            <button
+              onClick={finishJourney}
+              className="w-full py-3 bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
+            >
+              <Trophy className="w-4 h-4" /> Finish & save {childProfile.name}'s development
+            </button>
+          ) : (
+            <div className="text-center text-emerald-300 text-sm font-bold flex items-center justify-center gap-2">
+              <Check className="w-4 h-4" /> Saved to {childProfile.name}'s development
+            </div>
+          )}
+        </div>
+      )}
+
+      {!immersiveMode && renderNav()}
+    </div>
+  );
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <div className="flex items-center justify-between">
+        <button onClick={exitJourney} className="text-[#a8a093] hover:text-white flex items-center gap-1.5 text-sm font-bold">
+          <ArrowLeft className="w-4 h-4" /> All journeys
+        </button>
+        <span className="text-sm font-extrabold text-white">{render.title}</span>
+        <button
+          onClick={() => setImmersive(true)}
+          className="text-[#a8a093] hover:text-white flex items-center gap-1.5 text-sm font-bold"
+        >
+          <Maximize2 className="w-4 h-4" /> <span className="hidden sm:inline">Immersive</span>
+        </button>
+      </div>
+
+      <div className="bg-gradient-to-br from-[#12141c] to-[#04060c] border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl">
+        {playerBody(false)}
+      </div>
+
+      {/* Immersive fullscreen overlay */}
+      {immersive && (
+        <div className="fixed inset-0 z-[60] bg-[#06070a] flex flex-col">
+          <div className="flex items-center justify-between px-6 py-4">
+            <span className="text-xs font-bold tracking-wider uppercase text-[#a8a093]">{render.title}</span>
+            <button onClick={() => setImmersive(false)} aria-label="Exit immersive" className="text-[#a8a093] hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto flex items-center justify-center px-6 py-8">
+            <div className="max-w-3xl w-full">{playerBody(true)}</div>
+          </div>
+          <div className="px-6 py-5">{renderNav()}</div>
+        </div>
+      )}
+    </motion.div>
+  );
+}

@@ -7,6 +7,7 @@ import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../
 import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards } from "../knowledge/wiki.js";
+import { getStorySpec } from "../lib/heroJourneys.js";
 import { Type } from "@google/genai";
 
 type ApiDeps = {
@@ -318,6 +319,124 @@ Return JSON with title, pages, illustrationPrompt, discussionQuestions, summary.
     } catch (error: any) {
       console.error("Arbor Story Error:", error);
       res.status(500).json({ error: "Failed to generate Arbor supportive story", details: error.message });
+    }
+  });
+
+  // Hero Journey: personalize a FIXED, vetted story spine to the child. The plot
+  // comes from the catalog (lib/heroJourneys) — the model only writes narration.
+  router.post("/generate-hero-journey", async (req, res) => {
+    const { storyId, childName, age, language } = req.body;
+    const story = getStorySpec(storyId);
+    if (!story) {
+      res.status(404).json({ error: "Unknown hero journey", details: `No story with id "${storyId}".` });
+      return;
+    }
+
+    const escalationMatch = screenForImmediateEscalation({ topic: story.theme });
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `This theme may require professional assessment before Arbor generates child-facing narrative. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category
+      });
+      return;
+    }
+
+    const languageDirective =
+      language === "he"
+        ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys and the beatId values in English."
+        : "";
+
+    const heroName = (childName && String(childName).trim()) || "the hero";
+    const decision = story.beats.find((b) => b.id === "decision");
+    const choiceCount = decision?.choices?.length ?? 3;
+    const spineText = story.beats
+      .map((b, i) => `${i + 1}. [${b.id}] ${b.title}: ${b.spine}`)
+      .join("\n");
+    const choicesText = (decision?.choices ?? [])
+      .map((c) => `- ${c.id}: "${c.label}" (cue: ${c.outcomeHint})`)
+      .join("\n");
+
+    try {
+      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
+You are Arbor's gentle children's storyteller. Turn a FIXED story spine into a warm, cinematic story in which the CHILD is the hero.
+
+Hero (the child): ${heroName}, age ${age ?? 5}.
+Story: "${story.title}" — theme: ${story.theme}. Learning objective: ${story.learningObjective}.
+
+RULES:
+- Follow the spine EXACTLY, beat by beat, in order. Do not add, remove, reorder, or change the plot.
+- Make ${heroName} the hero, by name. Warm, present, vivid but simple words for ages 4-8.
+- 2 to 4 short sentences per beat. Gentle and non-graphic: no real violence, blood, death, or frightening detail. Conflict stays emotional/symbolic and always resolves kindly.
+- For the 'decision' beat narration, end by inviting the child to choose — do NOT say which option is best.
+- Personalize each of the ${choiceCount} choices: rewrite "label" as a short first-person action, and write a 1-2 sentence "consequence" expanding its cue. Keep every consequence kind — no choice is harshly punished.
+- Give a one-line "imagePrompt" per beat for an illustrator (storybook style, no text in the image).
+- Keep the reflection's practiced[] and questions[] close to those provided, lightly personalized to ${heroName}.
+
+SPINE (8 beats — return one scene per beat, same order, with matching beatId):
+${spineText}
+
+DECISION CHOICES (keep these exact ids):
+${choicesText}
+
+Reflection — practiced themes: ${story.parentReflection.practiced.join(", ")}
+Reflection — parent questions:
+${story.parentReflection.questions.map((q) => "- " + q).join("\n")}
+${languageDirective}`;
+
+      const render = (await modelProvider.generateJson({
+        route: "creative_low_risk",
+        prompt,
+        temperature: 0.7,
+        schema: {
+          type: Type.OBJECT,
+          required: ["scenes", "choices", "reflection"],
+          properties: {
+            scenes: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ["beatId", "title", "narration", "imagePrompt"],
+                properties: {
+                  beatId: { type: Type.STRING },
+                  title: { type: Type.STRING },
+                  narration: { type: Type.STRING },
+                  imagePrompt: { type: Type.STRING }
+                }
+              }
+            },
+            choices: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ["id", "label", "consequence"],
+                properties: {
+                  id: { type: Type.STRING },
+                  label: { type: Type.STRING },
+                  consequence: { type: Type.STRING }
+                }
+              }
+            },
+            reflection: {
+              type: Type.OBJECT,
+              required: ["practiced", "questions"],
+              properties: {
+                practiced: { type: Type.ARRAY, items: { type: Type.STRING } },
+                questions: { type: Type.ARRAY, items: { type: Type.STRING } }
+              }
+            }
+          }
+        }
+      })) as Record<string, unknown>;
+
+      res.json({
+        storyId: story.id,
+        title: language === "he" ? story.titleHe : story.title,
+        ...render
+      });
+    } catch (error: any) {
+      console.error("Arbor Hero Journey Error:", error);
+      res.status(500).json({ error: "Failed to generate Arbor hero journey", details: error.message });
     }
   });
 

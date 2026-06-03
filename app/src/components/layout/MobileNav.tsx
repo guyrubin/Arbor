@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   BarChart2,
   Sliders,
-  BookOpen,
+  Mountain,
   Compass,
   Languages,
   FileText,
@@ -29,7 +29,7 @@ const PRIMARY: Item[] = [
 const MORE: Item[] = [
   { tab: "weekly", label: "Weekly Report", icon: <BarChart2 className="w-5 h-5" /> },
   { tab: "plans", label: "Action Plans", icon: <Sliders className="w-5 h-5" /> },
-  { tab: "stories", label: "Bedtime Stories", icon: <BookOpen className="w-5 h-5" /> },
+  { tab: "stories", label: "Hero Journeys", icon: <Mountain className="w-5 h-5" /> },
   { tab: "scholar", label: "Scholar Academy", icon: <Compass className="w-5 h-5" /> },
   { tab: "language", label: "Language Lab", icon: <Languages className="w-5 h-5" /> },
   { tab: "handoff", label: "School Handoff", icon: <FileText className="w-5 h-5" /> },

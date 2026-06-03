@@ -1,4 +1,4 @@
-import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone } from "../types";
+import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender } from "../types";
 
 /**
  * Typed fetch wrappers for the Arbor API. An auth-token provider can be
@@ -65,6 +65,8 @@ export const api = {
     post<ActionPlan>("/api/generate-plan", payload),
   generateStory: (payload: { childName: string; age: number; topic: string; moral: string }) =>
     post<BedtimeStory>("/api/generate-story", payload),
+  generateHeroJourney: (payload: { storyId: string; childName: string; age: number; language: "en" | "he" }) =>
+    post<HeroJourneyRender>("/api/generate-hero-journey", payload),
   generateBrief: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; audience: string }) =>
     post<SchoolBrief>("/api/generate-handoff", payload),
 };

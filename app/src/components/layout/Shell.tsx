@@ -16,7 +16,7 @@ const CoachTab = lazy(() => import("../tabs/CoachTab"));
 const BehaviorsTab = lazy(() => import("../tabs/BehaviorsTab"));
 const MilestonesTab = lazy(() => import("../tabs/MilestonesTab"));
 const PlansTab = lazy(() => import("../tabs/PlansTab"));
-const StoriesTab = lazy(() => import("../tabs/StoriesTab"));
+const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
 const WeeklyTab = lazy(() => import("../tabs/WeeklyTab"));
 const ScholarTab = lazy(() => import("../tabs/ScholarTab"));
 const LanguageLabTab = lazy(() => import("../tabs/LanguageLabTab"));
@@ -43,7 +43,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   behaviors: BehaviorsTab,
   milestones: MilestonesTab,
   plans: PlansTab,
-  stories: StoriesTab,
+  stories: HeroJourneyTab,
   weekly: WeeklyTab,
   scholar: ScholarTab,
   language: LanguageLabTab,

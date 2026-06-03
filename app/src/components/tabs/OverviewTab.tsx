@@ -25,8 +25,6 @@ export default function OverviewTab() {
     totalMilestones,
     behaviorLogs,
     chatMessages,
-    currentStory,
-    setActiveStoryPage,
     childProfile,
   } = useArbor();
 
@@ -260,23 +258,20 @@ export default function OverviewTab() {
       </div>
       <RemindersCard />
 
-      {/* Bedtime story quick card */}
+      {/* Hero Journey quick card */}
       <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-[#d7aa55]/10 rounded-2xl flex items-center justify-center text-2xl">📚</div>
+          <div className="w-14 h-14 bg-[#d7aa55]/10 rounded-2xl flex items-center justify-center text-2xl">🏔️</div>
           <div>
-            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">Tonight&apos;s story</span>
-            <h3 className="text-lg font-extrabold text-white mt-0.5">{currentStory.title}</h3>
+            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider block">Tonight&apos;s hero journey</span>
+            <h3 className="text-lg font-extrabold text-white mt-0.5">Become the hero of a story</h3>
           </div>
         </div>
         <button
-          onClick={() => {
-            setActiveStoryPage(0);
-            setActiveTab("stories");
-          }}
+          onClick={() => setActiveTab("stories")}
           className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs px-5 py-3 rounded-2xl transition"
         >
-          Open reading book
+          Choose a journey
         </button>
       </div>
 
