@@ -21,6 +21,7 @@ import TrendsChart from "../overview/TrendsChart";
 import GoalsCard from "../overview/GoalsCard";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import { PASTEL, PastelKey, Chip, IconBadge, cardCls } from "../ui/kit";
+import { useToast } from "../../context/ToastContext";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -37,7 +38,9 @@ export default function OverviewTab() {
     behaviorLogs,
     chatMessages,
     childProfile,
+    setPlanChallengeTopic,
   } = useArbor();
+  const { toast } = useToast();
 
   const [quickLog, setQuickLog] = useState(false);
   const firstName = (childProfile.name || "your child").split(" ")[0];
@@ -119,11 +122,11 @@ export default function OverviewTab() {
   ];
 
   // Data-derived insights.
-  const insights: { tone: PastelKey; icon: React.ReactNode; title: string; desc: string }[] = [];
+  const insights: { tone: PastelKey; icon: React.ReactNode; title: string; desc: string; plan?: string }[] = [];
   if (trend === "down") insights.push({ tone: "mint", icon: <TrendingDown className="w-4 h-4" />, title: "A calmer week", desc: `${firstName}'s behavior intensity is easing versus last week.` });
-  else if (trend === "up") insights.push({ tone: "coral", icon: <TrendingUp className="w-4 h-4" />, title: "Intensity is rising", desc: `Worth a gentle check-in. Tap the coach for a co-regulation script.` });
+  else if (trend === "up") insights.push({ tone: "coral", icon: <TrendingUp className="w-4 h-4" />, title: "Intensity is rising", desc: `Worth a gentle check-in. A reset plan can help.`, plan: `Rising behavior intensity for ${firstName} — a calm-down and co-regulation reset plan.` });
   else insights.push({ tone: "sky", icon: <Activity className="w-4 h-4" />, title: "Holding steady", desc: `${firstName}'s week looks consistent with the last one.` });
-  if (topTrigger) insights.push({ tone: "yellow", icon: <Target className="w-4 h-4" />, title: `Watch: ${topTrigger}`, desc: "Your most-logged moment this period. A focus plan can help." });
+  if (topTrigger) insights.push({ tone: "yellow", icon: <Target className="w-4 h-4" />, title: `Watch: ${topTrigger}`, desc: "Your most-logged moment this period. A focus plan can help.", plan: `${topTrigger} for ${firstName} — a focused plan to reduce frequency and support recovery.` });
   insights.push({ tone: "lav", icon: <CheckCircle2 className="w-4 h-4" />, title: `${milestonesPercent}% milestone readiness`, desc: `${checkedMilestones} of ${totalMilestones} on track for age ${childProfile.age}.` });
 
   return (
@@ -314,6 +317,15 @@ export default function OverviewTab() {
                 <div className="min-w-0">
                   <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{it.title}</h3>
                   <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{it.desc}</p>
+                  {it.plan && (
+                    <button
+                      onClick={() => { setPlanChallengeTopic(it.plan!); setActiveTab("plans"); toast("Seeded a Growth Plan — tap Generate", "info"); }}
+                      className="inline-flex items-center gap-1 text-xs font-bold mt-1.5"
+                      style={{ color: PASTEL[it.tone].ink }}
+                    >
+                      Create a plan <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
