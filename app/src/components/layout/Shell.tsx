@@ -7,6 +7,7 @@ import Sidebar from "./Sidebar";
 import AiRail from "./AiRail";
 import MobileNav from "./MobileNav";
 import { ErrorBoundary } from "../ErrorBoundary";
+import { ArborMark } from "../ui/ArborMark";
 import { TabSkeleton } from "../ui/Skeleton";
 import SearchModal from "../search/SearchModal";
 
@@ -86,6 +87,12 @@ export default function Shell() {
         <Sidebar />
 
         <main className="px-5 py-6 pb-24 md:px-6 md:py-8 md:pb-10 xl:px-12 xl:py-10 overflow-y-auto max-h-screen">
+          {/* Mobile brand header (sidebar is hidden below md, so the logo lives here) */}
+          <div className="flex md:hidden items-center gap-2.5 mb-5">
+            <ArborMark size={34} />
+            <span className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</span>
+          </div>
+
           {/* Top workspace accessories header row */}
           <div className="flex justify-between items-center mb-6 gap-4">
             <span className="text-xs text-[#a8a093] font-medium flex items-center gap-1.5">

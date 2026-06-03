@@ -3,29 +3,12 @@ import { motion } from "motion/react";
 import { RefreshCw } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
+import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 
 const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
 function ArborMark() {
-  return (
-    <svg width="56" height="56" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="ob-teal" x1="54" y1="6" x2="28" y2="84" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#18F0D2" /><stop offset="50%" stopColor="#38C8F0" /><stop offset="100%" stopColor="#68B4FF" />
-        </linearGradient>
-        <linearGradient id="ob-purple" x1="12" y1="90" x2="46" y2="42" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#CCA8FF" /><stop offset="100%" stopColor="#A07AF8" />
-        </linearGradient>
-        <radialGradient id="ob-orange" cx="36%" cy="28%" r="62%">
-          <stop offset="0%" stopColor="#FFC07A" /><stop offset="100%" stopColor="#FF5822" />
-        </radialGradient>
-      </defs>
-      <path d="M40 88 C40 50 52 22 65 16 C78 22 90 50 90 88 L76 88 C76 56 70 32 65 32 C60 32 54 56 54 88Z" fill="#1B2898" />
-      <path d="M14 88 C12 72 16 54 28 42 C34 36 42 34 46 40 C44 52 40 66 38 76 C36 82 28 88 20 88Z" fill="url(#ob-purple)" />
-      <path d="M52 6 C62 14 66 32 62 50 C60 62 54 74 44 80 C36 84 28 80 22 72 C18 64 18 50 22 38 C28 24 38 8 52 6Z" fill="url(#ob-teal)" />
-      <circle cx="78" cy="15" r="12" fill="url(#ob-orange)" />
-    </svg>
-  );
+  return <ArborMarkIcon size={56} />;
 }
 
 /** Shown to a new authenticated account with no children — creates the first child. */

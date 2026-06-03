@@ -50,15 +50,15 @@ export default function TrendsChart({ logs, milestonesPercent }: { logs: Behavio
         <div className="h-48 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="label" stroke="#a8a093" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 5]} stroke="#a8a093" fontSize={11} tickLine={false} axisLine={false} />
+              <CartesianGrid stroke="rgba(41,51,63,0.06)" vertical={false} />
+              <XAxis dataKey="label" stroke="#69747f" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis domain={[0, 5]} stroke="#69747f" fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip
-                contentStyle={{ background: "#0c0e14", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, fontSize: 12 }}
-                labelStyle={{ color: "#f4d991" }}
+                contentStyle={{ background: "#ffffff", border: "1px solid rgba(41,51,63,0.12)", borderRadius: 12, fontSize: 12, boxShadow: "0 8px 24px rgba(41,51,63,0.10)" }}
+                labelStyle={{ color: "#2a9c66", fontWeight: 700 }}
                 formatter={(v: any, _n: any, item: any) => [`avg ${v}/5 · ${item?.payload?.count || 0} events`, "Intensity"]}
               />
-              <Line type="monotone" dataKey="avg" stroke="#d7aa55" strokeWidth={2.5} dot={{ r: 3, fill: "#d7aa55" }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="avg" stroke="#34b277" strokeWidth={2.5} dot={{ r: 3, fill: "#34b277" }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

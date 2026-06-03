@@ -1,37 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 @import "tailwindcss";
 
-/* ─── Design Tokens ──────────────────────────────────────────────────────── */
+/* ─── Design Tokens — "Soft Daylight" ────────────────────────────────────────
+   A friendly, image-rich child-development dashboard: a faint mint canvas, pure
+   white rounded cards, GREEN as the single primary (logo, CTA, active nav,
+   gauges), and a pastel set for category icon chips. The component library is
+   authored in dark Tailwind classes; the override layer below maps them onto
+   this light, colorful system. (Token names are preserved for compatibility;
+   values are repurposed — `--arbor-clay` is now the primary green.) */
 :root {
-  --arbor-paper:          #e9e2d0;
-  --arbor-paper-elevated: #f2ece0;
-  --arbor-paper-deep:     #dbd3c0;
-  --arbor-ink:            #14160f;
-  --arbor-muted:          #6a6455;
-  --arbor-rule:           rgba(20, 22, 15, 0.09);
-  --arbor-rule-strong:    rgba(20, 22, 15, 0.15);
-  --arbor-clay:           #e2562d;
-  --arbor-clay-dim:       rgba(226, 86, 45, 0.10);
-  --arbor-blue:           #1c3d6b;
-  --arbor-sage:           #5d7a55;
-  --arbor-ochre:          #c89637;
+  /* Surfaces */
+  --arbor-paper:          #eef5f0;   /* app canvas, faint mint */
+  --arbor-paper-elevated: #ffffff;   /* cards + sidebar */
+  --arbor-paper-deep:     #f4f8f5;   /* subtle wells / recessed */
+  --arbor-ink:            #29333f;   /* primary text, soft slate-black */
+  --arbor-muted:          #69747f;   /* secondary text */
+  --arbor-rule:           rgba(41, 51, 63, 0.08);
+  --arbor-rule-strong:    rgba(41, 51, 63, 0.14);
 
-  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
-  --font-sans:    'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Primary — friendly green (repurposes the clay token name) */
+  --arbor-clay:           #34b277;
+  --arbor-clay-deep:      #2a9c66;
+  --arbor-clay-dim:       rgba(52, 178, 119, 0.12);
+  --arbor-green-soft:     #e4f4ec;   /* mint pill: active nav, soft chips */
+  --arbor-sage:           #34b277;
 
-  --shadow-xs:   0 1px 2px rgba(20,22,15,0.06), 0 0 0 1px rgba(20,22,15,0.05);
-  --shadow-sm:   0 2px 8px rgba(20,22,15,0.08), 0 0 0 1px rgba(20,22,15,0.06);
-  --shadow-md:   0 4px 20px rgba(20,22,15,0.11), 0 1px 4px rgba(20,22,15,0.06);
-  --shadow-clay: 0 4px 16px rgba(226,86,45,0.22), 0 1px 4px rgba(226,86,45,0.12);
+  /* Pastel functional accents — soft tint bg + saturated icon/fg */
+  --arbor-peach:      #ef8a52;  --arbor-peach-soft:  #fdeada;
+  --arbor-lav:        #8a7be2;  --arbor-lav-soft:    #ece9fb;
+  --arbor-yellow:     #d99f2e;  --arbor-yellow-soft: #fbf1d4;
+  --arbor-pink:       #e3789b;  --arbor-pink-soft:   #fce2ec;
+  --arbor-sky:        #4f9bd6;  --arbor-sky-soft:    #e5f0fb;
+  --arbor-blue:       #4f9bd6;
+  --arbor-ochre:      #d99f2e;
+
+  --font-display: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+  --font-sans:    'Nunito', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* Soft, friendly shadows (low, slightly green-neutral) */
+  --shadow-xs:   0 1px 2px rgba(41,51,63,0.05);
+  --shadow-sm:   0 2px 8px rgba(41,51,63,0.05), 0 1px 2px rgba(41,51,63,0.04);
+  --shadow-md:   0 8px 24px rgba(41,51,63,0.07), 0 2px 6px rgba(41,51,63,0.05);
+  --shadow-green:0 8px 20px rgba(52,178,119,0.28), 0 2px 6px rgba(52,178,119,0.18);
 }
 
-/* ─── Semantic surfaces (token-based; preferred for new/refactored UI) ───────
-   The app renders on the warm parchment token system above. Historically many
-   components author dark Tailwind color classes that a compatibility layer
-   (the `!important` overrides further down) remaps to these tokens. New and
-   refactored components should use these semantic classes / CSS variables
-   directly instead of hard-coded hex, so the override layer can shrink over
-   time. (Tracked as design item D2 in docs/arbor-enhancements-v2.md.) */
+/* ─── Semantic surfaces (token-based; preferred for new/refactored UI) ─────── */
 .arbor-surface       { background: var(--arbor-paper-elevated); border: 1px solid var(--arbor-rule); }
 .arbor-surface-deep  { background: var(--arbor-paper-deep); border: 1px solid var(--arbor-rule); }
 .arbor-hairline      { border-color: var(--arbor-rule) !important; }
@@ -51,61 +64,46 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* ─── App Shell ──────────────────────────────────────────────────────────── */
+/* ─── App Shell — clean mint canvas, no grid/grain ───────────────────────── */
 .arbor-app {
   font-family: var(--font-sans);
-  background:
-    linear-gradient(var(--arbor-rule) 1px, transparent 1px),
-    linear-gradient(90deg, var(--arbor-rule) 1px, transparent 1px),
-    var(--arbor-paper);
-  background-size: 40px 40px;
+  background: var(--arbor-paper);
   color: var(--arbor-ink);
 }
 
-/* Subtle grain/paper texture overlay */
-.arbor-app::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  mix-blend-mode: multiply;
-  opacity: 0.055;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
-}
-
-/* ─── Typography ─────────────────────────────────────────────────────────── */
+/* ─── Typography — Baloo 2 display, Nunito body ──────────────────────────── */
 .arbor-app h1,
 .arbor-app h2,
 .arbor-app h3 {
   font-family: var(--font-display) !important;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
-
 .arbor-app h4,
 .arbor-app h5,
 .arbor-app h6 {
   font-family: var(--font-sans) !important;
+  font-weight: 700;
 }
-
+.arbor-app p { text-wrap: pretty; }
 .arbor-app button,
 .arbor-app input,
 .arbor-app textarea,
 .arbor-app select {
   font-family: var(--font-sans);
+  font-weight: 600;
   letter-spacing: 0;
 }
 
-/* ─── Border Radius — Architectural, not bubbly ──────────────────────────── */
-.arbor-app .rounded-xl,
-.arbor-app .rounded-2xl,
+/* ─── Border Radius — friendly + rounded ─────────────────────────────────── */
+.arbor-app .rounded-lg   { border-radius: 12px !important; }
+.arbor-app .rounded-xl   { border-radius: 14px !important; }
+.arbor-app .rounded-2xl  { border-radius: 18px !important; }
 .arbor-app .rounded-3xl,
-.arbor-app .rounded-\[36px\] {
-  border-radius: 8px !important;
-}
+.arbor-app .rounded-\[36px\] { border-radius: 22px !important; }
 
-/* ─── Background Color Remapping ─────────────────────────────────────────── */
+/* ─── Card surfaces: dark component bg classes → clean white ─────────────── */
 .arbor-app [class*="bg-[#08090c]"],
 .arbor-app [class*="bg-[#141821]"],
 .arbor-app [class*="bg-[#12141c]"],
@@ -114,22 +112,7 @@ body {
   background-image: none !important;
 }
 
-/* Sidebar: distinctly deeper tone than main content */
-.arbor-app aside {
-  background-color: var(--arbor-paper-deep) !important;
-}
-
-/* Left sidebar specifically */
-.arbor-app aside:first-of-type {
-  border-right: 1px solid var(--arbor-rule-strong) !important;
-}
-
-/* Right AI rail */
-.arbor-app aside:last-of-type {
-  border-left: 1px solid var(--arbor-rule-strong) !important;
-}
-
-/* ─── Text Color Remapping ───────────────────────────────────────────────── */
+/* ─── Text colour remapping ──────────────────────────────────────────────── */
 .arbor-app [class*="text-[#f7f1e7]"],
 .arbor-app .text-white,
 .arbor-app .text-gray-100,
@@ -138,7 +121,6 @@ body {
 .arbor-app .text-gray-350 {
   color: var(--arbor-ink) !important;
 }
-
 .arbor-app [class*="text-[#a8a093]"],
 .arbor-app .text-gray-400,
 .arbor-app .text-gray-500,
@@ -146,7 +128,7 @@ body {
   color: var(--arbor-muted) !important;
 }
 
-/* Clay accent (was amber/ochre in dark mode) */
+/* ─── Primary GREEN: solid amber/clay accents become the brand green ─────── */
 .arbor-app [class*="text-[#f4d991]"],
 .arbor-app [class*="text-[#d7aa55]"],
 .arbor-app .text-amber-200,
@@ -154,204 +136,214 @@ body {
 .arbor-app .text-amber-400 {
   color: var(--arbor-clay) !important;
 }
-
-/* ─── Background Accent Remapping ────────────────────────────────────────── */
 .arbor-app [class*="bg-[#d7aa55]"],
 .arbor-app [class*="bg-[#f4d991]"],
 .arbor-app .bg-amber-500,
 .arbor-app .bg-yellow-500 {
   background-color: var(--arbor-clay) !important;
+  background-image: linear-gradient(135deg, #3cc081 0%, var(--arbor-clay) 60%, var(--arbor-clay-deep) 100%) !important;
   color: #fff !important;
 }
 
+/* ─── Pastel functional accents (soft tints for category chips) ──────────── */
+/* Primary-green soft tints */
 .arbor-app [class*="bg-[#d7aa55]/10"],
 .arbor-app [class*="bg-[#d7aa55]/15"],
 .arbor-app [class*="bg-[#d7aa55]/5"],
 .arbor-app [class*="bg-[#f4d991]/10"],
 .arbor-app [class*="bg-amber-500/10"],
-.arbor-app [class*="bg-amber-500/15"] {
-  background-color: var(--arbor-clay-dim) !important;
+.arbor-app [class*="bg-amber-500/15"],
+.arbor-app [class*="bg-amber-400/10"] {
+  background-color: var(--arbor-green-soft) !important;
 }
+/* Sky */
+.arbor-app .bg-blue-500 { background-color: var(--arbor-sky) !important; }
+.arbor-app [class*="bg-blue-500/"],
+.arbor-app [class*="bg-blue-400/"],
+.arbor-app [class*="bg-sky-500/"] { background-color: var(--arbor-sky-soft) !important; }
+.arbor-app [class*="text-blue-"],
+.arbor-app [class*="text-sky-"] { color: var(--arbor-sky) !important; }
+.arbor-app [class*="border-blue-"] { border-color: rgba(79,155,214,0.22) !important; }
+/* Lavender */
+.arbor-app [class*="bg-purple-500/"],
+.arbor-app [class*="bg-violet-500/"],
+.arbor-app [class*="bg-indigo-500/"] { background-color: var(--arbor-lav-soft) !important; }
+.arbor-app [class*="text-purple-"],
+.arbor-app [class*="text-violet-"],
+.arbor-app [class*="text-indigo-"] { color: var(--arbor-lav) !important; }
+/* Pink */
+.arbor-app [class*="bg-pink-500/"],
+.arbor-app [class*="bg-rose-500/"] { background-color: var(--arbor-pink-soft) !important; }
+.arbor-app [class*="text-pink-"],
+.arbor-app [class*="text-rose-"] { color: var(--arbor-pink) !important; }
+/* Peach (warm highlight, e.g. "worth tracking" pills) */
+.arbor-app [class*="bg-orange-500/"],
+.arbor-app [class*="bg-orange-400/"] { background-color: var(--arbor-peach-soft) !important; }
+.arbor-app [class*="text-orange-"] { color: var(--arbor-peach) !important; }
 
-.arbor-app .bg-blue-500 {
-  background-color: var(--arbor-blue) !important;
-}
-
-.arbor-app [class*="text-blue-"] {
-  color: var(--arbor-blue) !important;
-}
-
-.arbor-app [class*="border-blue-"] {
-  border-color: rgba(28, 61, 107, 0.20) !important;
-}
-
-/* ─── Border Remapping ───────────────────────────────────────────────────── */
+/* ─── Borders ────────────────────────────────────────────────────────────── */
 .arbor-app [class*="border-white/10"],
 .arbor-app [class*="border-white/15"],
 .arbor-app [class*="border-white/20"] {
   border-color: var(--arbor-rule-strong) !important;
 }
-
 .arbor-app [class*="border-white/5"],
 .arbor-app [class*="border-white/\[0"] {
   border-color: var(--arbor-rule) !important;
 }
-
 .arbor-app [class*="border-[#d7aa55]"],
 .arbor-app [class*="border-[#d7aa55]/"] {
-  border-color: rgba(226, 86, 45, 0.25) !important;
+  border-color: rgba(52,178,119,0.30) !important;
 }
 
-/* ─── Shadows: Restored with paper depth ─────────────────────────────────── */
-.arbor-app [class*="shadow-"] {
-  box-shadow: var(--shadow-sm) !important;
+/* ─── Shadows: soft daylight ─────────────────────────────────────────────── */
+.arbor-app [class*="shadow-"]    { box-shadow: var(--shadow-sm) !important; }
+.arbor-app [class*="shadow-lg"]  { box-shadow: var(--shadow-sm) !important; }
+.arbor-app [class*="shadow-xl"]  { box-shadow: var(--shadow-md) !important; }
+.arbor-app [class*="shadow-2xl"] { box-shadow: var(--shadow-md) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBAR + AI RAIL — light surfaces that read as part of the page
+   ═══════════════════════════════════════════════════════════════════════════ */
+.arbor-app aside {
+  background-color: var(--arbor-paper-elevated) !important;
+  background-image: none !important;
+  color: var(--arbor-ink);
+  backdrop-filter: none !important;
+}
+.arbor-app aside:first-of-type { border-right: 1px solid var(--arbor-rule) !important; }
+.arbor-app aside:last-of-type  { border-left: 1px solid var(--arbor-rule) !important; }
+
+/* Nested panels inside the rails: faint mint wells */
+.arbor-app aside [class*="bg-[#08090c]"],
+.arbor-app aside [class*="bg-[#141821]"],
+.arbor-app aside [class*="bg-[#12141c]"],
+.arbor-app aside [class*="bg-[#04060c]"] {
+  background-color: var(--arbor-paper-deep) !important;
 }
 
-.arbor-app [class*="shadow-xl"] {
-  box-shadow: var(--shadow-md) !important;
-}
-
-.arbor-app [class*="shadow-2xl"] {
-  box-shadow: var(--shadow-md) !important;
-}
-
-.arbor-app [class*="shadow-lg"] {
-  box-shadow: var(--shadow-sm) !important;
-}
-
-/* ─── Nav: Active + Hover States ─────────────────────────────────────────── */
+/* ─── Nav as soft mint pills ─────────────────────────────────────────────── */
 .arbor-app nav button {
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
 }
-
-.arbor-app nav button[class*="bg-white/5"] {
-  background-color: rgba(20, 22, 15, 0.07) !important;
-  border-color: var(--arbor-rule-strong) !important;
+/* Active item: the only one carrying the static `bg-white/5` token (inactive
+   buttons carry `hover:bg-white/5`), so `~=` targets only the active one. */
+.arbor-app nav button[class~="bg-white/5"] {
+  background-color: var(--arbor-green-soft) !important;
+  color: var(--arbor-clay-deep) !important;
+  border-color: transparent !important;
+  font-weight: 700;
 }
-
-.arbor-app nav button:not([class*="bg-white/5"]):hover {
-  background-color: rgba(20, 22, 15, 0.04) !important;
-}
-
-/* ─── Buttons ─────────────────────────────────────────────────────────────── */
-/* Clay primary CTA */
-.arbor-app button[class*="bg-[#d7aa55]"]:hover,
-.arbor-app button[class*="bg-amber-500"]:hover {
-  background-color: #c9471f !important;
-  box-shadow: var(--shadow-clay) !important;
-  transform: translateY(-1px);
-}
-
-.arbor-app button[class*="bg-[#d7aa55]"],
-.arbor-app button[class*="bg-amber-500"] {
-  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: var(--shadow-xs) !important;
-}
-
-/* Ghost buttons */
-.arbor-app button[class*="bg-white/5"] {
-  background-color: rgba(20, 22, 15, 0.04) !important;
-}
-
-.arbor-app button[class*="bg-white/5"]:hover {
-  background-color: rgba(20, 22, 15, 0.08) !important;
-}
-
-/* ─── Form Controls ───────────────────────────────────────────────────────── */
-.arbor-app input,
-.arbor-app textarea,
-.arbor-app select {
-  background-color: rgba(20, 22, 15, 0.04) !important;
-  border-color: var(--arbor-rule-strong) !important;
+.arbor-app nav button[class*="text-[#a8a093]"]:hover {
+  background-color: var(--arbor-paper-deep) !important;
   color: var(--arbor-ink) !important;
 }
 
+/* ─── Buttons — green primary CTA ────────────────────────────────────────── */
+.arbor-app button[class*="bg-[#d7aa55]"],
+.arbor-app button[class*="bg-amber-500"] {
+  transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-xs) !important;
+}
+.arbor-app button[class*="bg-[#d7aa55]"]:hover,
+.arbor-app button[class*="bg-amber-500"]:hover {
+  filter: brightness(1.04);
+  box-shadow: var(--shadow-green) !important;
+  transform: translateY(-1px);
+}
+
+/* Ghost / secondary buttons */
+.arbor-app button[class*="bg-white/5"]:not([class~="bg-white/5"]) {
+  background-color: var(--arbor-paper-deep) !important;
+}
+.arbor-app button[class*="bg-white/5"]:hover {
+  background-color: var(--arbor-green-soft) !important;
+}
+
+/* ─── Form Controls ──────────────────────────────────────────────────────── */
+.arbor-app input,
+.arbor-app textarea,
+.arbor-app select {
+  background-color: var(--arbor-paper-deep) !important;
+  border-color: var(--arbor-rule-strong) !important;
+  color: var(--arbor-ink) !important;
+  border-radius: 12px;
+}
 .arbor-app input:focus,
 .arbor-app textarea:focus,
 .arbor-app select:focus {
   outline: none !important;
   border-color: var(--arbor-clay) !important;
-  box-shadow: 0 0 0 3px rgba(226, 86, 45, 0.10) !important;
+  box-shadow: 0 0 0 3px rgba(52, 178, 119, 0.16) !important;
 }
-
 .arbor-app input::placeholder,
 .arbor-app textarea::placeholder {
   color: var(--arbor-muted) !important;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 /* ─── Scrollbars ──────────────────────────────────────────────────────────── */
-.arbor-app ::-webkit-scrollbar          { width: 3px; height: 3px; }
-.arbor-app ::-webkit-scrollbar-track   { background: transparent; }
-.arbor-app ::-webkit-scrollbar-thumb   { background: var(--arbor-rule-strong); border-radius: 99px; }
+.arbor-app ::-webkit-scrollbar          { width: 8px; height: 8px; }
+.arbor-app ::-webkit-scrollbar-track    { background: transparent; }
+.arbor-app ::-webkit-scrollbar-thumb    { background: var(--arbor-rule-strong); border-radius: 99px; }
 .arbor-app ::-webkit-scrollbar-thumb:hover { background: var(--arbor-muted); }
 
-/* ─── Status Colors ───────────────────────────────────────────────────────── */
-.arbor-app [class*="text-green-400"] { color: var(--arbor-sage) !important; }
-.arbor-app [class*="bg-green-500"]   { background-color: var(--arbor-sage) !important; }
-.arbor-app [class*="bg-green-500/"]  { background-color: rgba(93,122,85,0.15) !important; }
+/* ─── Status Colours ─────────────────────────────────────────────────────── */
+.arbor-app [class*="text-green-400"],
+.arbor-app [class*="text-green-500"] { color: var(--arbor-clay) !important; }
+.arbor-app [class*="bg-green-500"]:not([class*="/"]) { background-color: var(--arbor-clay) !important; }
+.arbor-app [class*="bg-green-500/"]  { background-color: var(--arbor-green-soft) !important; }
+.arbor-app [class*="text-red-"]      { color: #e1607a !important; }
+.arbor-app [class*="bg-red-500/"]    { background-color: var(--arbor-pink-soft) !important; }
 
 /* ─── Stagger Entry Animations ────────────────────────────────────────────── */
 @keyframes arbor-fade-up {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-.arbor-app main > div > *:nth-child(1) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay:   0ms; }
-.arbor-app main > div > *:nth-child(2) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay:  70ms; }
-.arbor-app main > div > *:nth-child(3) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 140ms; }
-.arbor-app main > div > *:nth-child(4) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 210ms; }
-.arbor-app main > div > *:nth-child(5) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 280ms; }
-.arbor-app main > div > *:nth-child(6) { animation: arbor-fade-up 0.38s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 350ms; }
+.arbor-app main > div > *:nth-child(1) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay:   0ms; }
+.arbor-app main > div > *:nth-child(2) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay:  70ms; }
+.arbor-app main > div > *:nth-child(3) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 140ms; }
+.arbor-app main > div > *:nth-child(4) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 210ms; }
+.arbor-app main > div > *:nth-child(5) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 280ms; }
+.arbor-app main > div > *:nth-child(6) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 350ms; }
 
 /* ─── AI Rail Engine Cards ────────────────────────────────────────────────── */
 .arbor-app aside button[class*="rounded-xl"] {
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
 }
-
 .arbor-app aside button[class*="rounded-xl"]:hover {
   transform: translateX(2px);
 }
 
 /* ─── Progress / Range ────────────────────────────────────────────────────── */
-.arbor-app input[type="range"] {
-  accent-color: var(--arbor-clay);
-}
-
-.arbor-app input[type="checkbox"] {
-  accent-color: var(--arbor-clay);
-}
-
-/* Progress bars (inline width style) */
-.arbor-app [class*="bg-[#d7aa55]"][style*="width"] {
-  background-color: var(--arbor-clay) !important;
-}
+.arbor-app input[type="range"]    { accent-color: var(--arbor-clay); }
+.arbor-app input[type="checkbox"] { accent-color: var(--arbor-clay); }
+.arbor-app [class*="bg-[#d7aa55]"][style*="width"] { background-color: var(--arbor-clay) !important; background-image: none !important; }
 
 /* ─── Pulse animation override ────────────────────────────────────────────── */
 .arbor-app .animate-pulse:not(button):not(span[class*="bg-purple"]) {
   animation: pulse 2.5s cubic-bezier(0.4,0,0.6,1) infinite;
 }
 
-/* ─── Typography scale (ARBOR_NEXT §5.3) ──────────────────────────────────── */
-.arbor-display-xl { font: 700 2.5rem/1.1 var(--font-display); }
-.arbor-display-lg { font: 700 1.75rem/1.2 var(--font-display); }
+/* ─── Typography scale (display utilities) ───────────────────────────────── */
+.arbor-display-xl { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 3.4vw, 2.85rem); line-height: 1.08; letter-spacing: -0.015em; }
+.arbor-display-lg { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.5rem, 2.4vw, 1.95rem); line-height: 1.15; letter-spacing: -0.01em; }
 .arbor-label {
-  font: 600 0.6875rem/1 var(--font-sans);
-  letter-spacing: 0.1em;
+  font: 700 0.6875rem/1 var(--font-sans);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .arbor-muted-text { color: var(--arbor-muted); font-size: 0.875rem; }
 
 /* ─── Skeleton shimmer ────────────────────────────────────────────────────── */
 .arbor-skeleton {
-  background: rgba(20, 22, 15, 0.06);
+  background: rgba(41, 51, 63, 0.07);
   border-radius: 0.75rem;
 }
 .arbor-app .arbor-skeleton { animation: pulse 1.6s cubic-bezier(0.4,0,0.6,1) infinite; }
 
 /* ─── Accessibility: keyboard focus ring ──────────────────────────────────── */
-/* Restores a visible focus indicator for keyboard users even where component
-   styles set focus:outline-none. Mouse clicks don't trigger :focus-visible. */
 .arbor-app a:focus-visible,
 .arbor-app button:focus-visible,
 .arbor-app input:focus-visible,
@@ -360,7 +352,7 @@ body {
 .arbor-app [tabindex]:focus-visible {
   outline: 2px solid var(--arbor-clay);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 @media (prefers-reduced-motion: reduce) {
   .arbor-app *, .arbor-app *::before, .arbor-app *::after {
