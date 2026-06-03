@@ -1,7 +1,7 @@
 /* Arbor service worker: app-shell cache for installability + offline load.
    API and cross-origin requests are never cached (Firestore handles offline
    data via its own IndexedDB cache). */
-const CACHE = "arbor-shell-v1";
+const CACHE = "arbor-shell-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

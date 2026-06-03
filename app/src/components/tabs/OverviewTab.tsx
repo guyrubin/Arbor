@@ -20,46 +20,12 @@ import RemindersCard from "../overview/RemindersCard";
 import TrendsChart from "../overview/TrendsChart";
 import GoalsCard from "../overview/GoalsCard";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
+import { PASTEL, PastelKey, Chip, IconBadge, cardCls } from "../ui/kit";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/* Pastel functional palette — soft tint + readable accent, one per category. */
-const PASTEL = {
-  mint:   { soft: "#e4f4ec", ink: "#1f8a5a" },
-  peach:  { soft: "#fdeada", ink: "#cf6f37" },
-  lav:    { soft: "#ece9fb", ink: "#6354c4" },
-  yellow: { soft: "#fbf1d4", ink: "#a9780f" },
-  pink:   { soft: "#fce2ec", ink: "#bd4f74" },
-  sky:    { soft: "#e5f0fb", ink: "#2f7bbf" },
-} as const;
-type PastelKey = keyof typeof PASTEL;
-
-const card = "bg-white rounded-[22px] border border-[rgba(41,51,63,0.06)] shadow-[0_2px_10px_rgba(41,51,63,0.05)]";
-
-function Chip({ tone, icon, children }: { tone: PastelKey; icon: React.ReactNode; children: React.ReactNode }) {
-  const p = PASTEL[tone];
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
-      style={{ background: p.soft, color: p.ink }}
-    >
-      {icon}
-      {children}
-    </span>
-  );
-}
-
-function IconBadge({ tone, children, size = 44 }: { tone: PastelKey; children: React.ReactNode; size?: number }) {
-  const p = PASTEL[tone];
-  return (
-    <span
-      className="inline-flex items-center justify-center rounded-2xl flex-shrink-0"
-      style={{ background: p.soft, color: p.ink, width: size, height: size }}
-    >
-      {children}
-    </span>
-  );
-}
+// Single token source lives in ui/kit. `card` kept as a local alias for brevity.
+const card = cardCls;
 
 export default function OverviewTab() {
   const {
@@ -147,7 +113,7 @@ export default function OverviewTab() {
   // Recommended-this-week tiles, tied to the child where possible.
   const recommendations: { tone: PastelKey; icon: React.ReactNode; title: string; desc: string; tab: any }[] = [
     { tone: "mint",   icon: <Heart className="w-5 h-5" />,    title: "Connect through play", desc: "10 minutes of child-led play to refill the tank.", tab: "plans" },
-    { tone: "peach",  icon: <Smile className="w-5 h-5" />,    title: "Name the feeling",     desc: `Practice co-regulation for ${firstName}'s big moments.`, tab: "coach" },
+    { tone: "coral",  icon: <Smile className="w-5 h-5" />,    title: "Name the feeling",     desc: `Practice co-regulation for ${firstName}'s big moments.`, tab: "coach" },
     { tone: "lav",    icon: <BookOpen className="w-5 h-5" />, title: "Tonight's hero story", desc: "A short story that builds courage and resilience.", tab: "stories" },
     { tone: "sky",    icon: <Moon className="w-5 h-5" />,     title: "Wind-down routine",    desc: "A calmer path into sleep and smoother mornings.", tab: "behaviors" },
   ];
@@ -155,7 +121,7 @@ export default function OverviewTab() {
   // Data-derived insights.
   const insights: { tone: PastelKey; icon: React.ReactNode; title: string; desc: string }[] = [];
   if (trend === "down") insights.push({ tone: "mint", icon: <TrendingDown className="w-4 h-4" />, title: "A calmer week", desc: `${firstName}'s behavior intensity is easing versus last week.` });
-  else if (trend === "up") insights.push({ tone: "peach", icon: <TrendingUp className="w-4 h-4" />, title: "Intensity is rising", desc: `Worth a gentle check-in. Tap the coach for a co-regulation script.` });
+  else if (trend === "up") insights.push({ tone: "coral", icon: <TrendingUp className="w-4 h-4" />, title: "Intensity is rising", desc: `Worth a gentle check-in. Tap the coach for a co-regulation script.` });
   else insights.push({ tone: "sky", icon: <Activity className="w-4 h-4" />, title: "Holding steady", desc: `${firstName}'s week looks consistent with the last one.` });
   if (topTrigger) insights.push({ tone: "yellow", icon: <Target className="w-4 h-4" />, title: `Watch: ${topTrigger}`, desc: "Your most-logged moment this period. A focus plan can help." });
   insights.push({ tone: "lav", icon: <CheckCircle2 className="w-4 h-4" />, title: `${milestonesPercent}% milestone readiness`, desc: `${checkedMilestones} of ${totalMilestones} on track for age ${childProfile.age}.` });
@@ -198,7 +164,7 @@ export default function OverviewTab() {
               </p>
               {watching && (
                 <div className="mt-3">
-                  <Chip tone="peach" icon={<ShieldCheck className="w-3.5 h-3.5" />}>Watching: {watching}</Chip>
+                  <Chip tone="coral" icon={<ShieldCheck className="w-3.5 h-3.5" />}>Watching: {watching}</Chip>
                 </div>
               )}
             </div>
@@ -242,7 +208,7 @@ export default function OverviewTab() {
         </div>
 
         <div className={`${card} p-5 flex items-center gap-4`}>
-          <IconBadge tone="peach"><Activity className="w-5 h-5" /></IconBadge>
+          <IconBadge tone="coral"><Activity className="w-5 h-5" /></IconBadge>
           <div className="min-w-0">
             <div className="text-2xl font-extrabold flex items-center gap-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               <AnimatedNumber value={weekAvg} decimals={1} /><span className="text-base" style={{ color: "var(--arbor-muted)" }}>/5</span>
@@ -284,7 +250,7 @@ export default function OverviewTab() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {[
             { tab: "profile" as const, tone: "sky" as const, icon: <Brain className="w-5 h-5" />, title: "Understand", section: "Child Intelligence", copy: `Understand ${firstName}'s patterns, milestones, and progress.` },
-            { tab: "coach" as const, tone: "peach" as const, icon: <Sparkles className="w-5 h-5" />, title: "Guide", section: "Ask Arbor", copy: "Get calm guidance and exact scripts." },
+            { tab: "coach" as const, tone: "coral" as const, icon: <Sparkles className="w-5 h-5" />, title: "Guide", section: "Ask Arbor", copy: "Get calm guidance and exact scripts." },
             { tab: "plans" as const, tone: "mint" as const, icon: <Sprout className="w-5 h-5" />, title: "Grow", section: "Growth Plans", copy: "Build routines, responsibility, and resilience." },
             { tab: "find-pro" as const, tone: "lav" as const, icon: <HeartHandshake className="w-5 h-5" />, title: "Connect", section: "Care Network", copy: "Find trusted professionals and coordinate support." },
             { tab: "stories" as const, tone: "yellow" as const, icon: <GraduationCap className="w-5 h-5" />, title: "Learn", section: "Arbor Academy", copy: "Stories and lessons for long-term formation." },

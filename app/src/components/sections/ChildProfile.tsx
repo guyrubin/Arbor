@@ -9,11 +9,13 @@ export default function ChildProfile() {
   const { childProfile, milestonesPercent, setActiveTab } = useArbor();
   const first = childProfile.name.split(" ")[0];
 
+  // Derive the current developmental focus from the child's real profile.
+  const challengeText = childProfile.challenges.join(" ");
   const focus = [
-    { label: "Language Transition", tone: "sky" as const },
-    { label: "Emotional Regulation", tone: "coral" as const },
-    { label: "School Readiness", tone: "mint" as const },
-  ];
+    childProfile.languages.length > 1 && { label: "Language Transition", tone: "sky" as const },
+    /anx|regulat|meltdown|emotion|sensory/i.test(challengeText) && { label: "Emotional Regulation", tone: "coral" as const },
+    /school|kindergarten|class/i.test(childProfile.schoolContext) && { label: "School Readiness", tone: "mint" as const },
+  ].filter(Boolean) as { label: string; tone: "sky" | "coral" | "mint" }[];
 
   const links = [
     { tab: "milestones" as const, tone: "mint" as const, icon: <CheckCircle2 className="w-5 h-5" />, title: "Development Milestones", desc: `${milestonesPercent}% on track for age ${childProfile.age}.` },

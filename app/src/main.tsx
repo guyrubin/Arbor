@@ -18,9 +18,22 @@ window.addEventListener('unhandledrejection', (e) => {
   track('unhandled_rejection', { reason: String((e as PromiseRejectionEvent).reason || '').slice(0, 300) });
 });
 
-// Register the PWA service worker (production only).
+// Register the PWA service worker (production only). When a new worker takes
+// control (i.e. a fresh deploy activated), reload once so users never get
+// stranded on a stale shell. The `hadController` guard avoids a reload on the
+// very first install, where there was no prior version controlling the page.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing || !hadController) return;
+    refreshing = true;
+    window.location.reload();
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      // Proactively check for a new SW on each load.
+      reg.update?.();
+    }).catch(() => {});
   });
 }
