@@ -166,3 +166,54 @@ DS-4/5/6/7/8 · TS-4 · PLAT-4 (B2B/B2G) · PLAT-5 notifications · PLAT-6 analy
 Non-diagnostic always; no unsupervised child-facing AI; parent-approved memory
 only; Soft Daylight premium-calm aesthetic (not childish, not clinical); curated
 "Find a Professional" (never a gig directory); privacy and escalation first.
+
+---
+
+## 7. Implementation status (2026-06-03)
+
+Shipped end-to-end this session (typechecked, built, deployed to arborprd-westeu):
+
+| ID | Item | Notes |
+|---|---|---|
+| DS-1 | Single token source | OverviewTab folded into `ui/kit` (`coral`); killed the `peach/coral` fork that crashed Home. |
+| CAP-1 | Child Memory → real backend | Wired to `/api/memory` (approve/forget/pending), honest empty state. |
+| CAP-11 | Personalized developmental focus | Derived from the child's languages/challenges/school context. |
+| PLAT-3 | Service-worker versioning | Cache bump + controllerchange auto-reload + no-cache headers for shell/sw.js. |
+| CAP-6 | Reports actually export | `lib/reportExport.ts` — 8 report types generated from real data, print-to-PDF. |
+| CAP-10 | Appointments interactive | Add/remove appointments + question prep list. |
+| IA-4 | Context bar | Header shows the current developmental focus. |
+| DS-3 | a11y pass (surfaces) | tablist/aria-selected sub-nav, aria-current sidebar, aria-pressed toggles, report aria-labels. |
+| TS-2 | Trusted Sharing real | New-share flow, working data export, guarded delete, live audit + revoke. |
+| CAP-12 | Family Charter | Real localStorage-persisted values editor. |
+| IA-2 | Ask Arbor fast-start | Scenario chips (Morning refusal, iPad dispute, …) + "Ask Arbor" rename. |
+| CAP-4 | Pattern→plan loop | Home insights seed a Growth Plan and jump to Plans. |
+| IA-3 | Command palette | Cmd-K jumps to any section + searches data. |
+| CAP-5 | Growth Plan templates | Added Responsibility Ladder, School Adaptation, Behavior Reset starters. |
+| CAP-7 | Handoff coverage | Teacher/Therapist/Pediatrician now generate via Reports (+ existing HandoffTab). |
+| PLAT-1 | IA structure guard | `navigation.test.ts` (six sections, no duplicate tabs, Safety embedded). |
+| IA-1 | URL hash routing | `#/<tab>` deep links + working browser back/forward, no new deps. |
+
+### Remaining — require dedicated backend / infrastructure (next iterations)
+
+These are intentionally **not** rushed into the live app; each needs server work,
+new data models, external services, or a large refactor done deliberately.
+
+| ID | Item | Why it's a separate iteration |
+|---|---|---|
+| CAP-2 | Memory Proposal Engine | Server: auto-propose memory from logs/sessions. |
+| CAP-3 | 9-part structured response | Server-side prompt restructuring (prompts are server-owned). |
+| TS-1 | Dynamic risk per answer | Server risk classifier (`src/safety/escalation.ts`); a client heuristic would risk false safety signals — deliberately avoided. |
+| CAP-8 | Care Network backend | Professional data model, verification, search/match API. |
+| CAP-9 | Sharing + recipient portal | Tokenized, permissioned recipient access; needs backend + a public route. |
+| CAP-13 | Co-parent alignment | Multi-caregiver accounts, roles, permissions (auth work). |
+| DS-2 | Retire the `!important` layer | Large, careful migration of legacy tabs to semantic tokens. |
+| DS-8 | Full RTL + Dutch | App-level i18n/layout, not just AI content. |
+| PLAT-4 | Professional / org backend | B2B/B2G dashboards. |
+| PLAT-5 | Notifications (FCM + digest) | VAPID, SW push handler, scheduled server send. |
+| PLAT-6 | Analytics funnels | Extend the existing `track()` util into activation funnels. |
+
+### Deferred polish (feasible, lower priority)
+
+IA-5 (mobile-nav refinement), IA-6 (onboarding depth), DS-4 (data-viz tokens),
+DS-5 (mascot moods), DS-6 (motion system), DS-7 (kit docs), TS-3/TS-4
+(escalation directory + cross-app audit).
