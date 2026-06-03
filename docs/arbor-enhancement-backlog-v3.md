@@ -192,6 +192,12 @@ Shipped end-to-end this session (typechecked, built, deployed to arborprd-westeu
 | CAP-7 | Handoff coverage | Teacher/Therapist/Pediatrician now generate via Reports (+ existing HandoffTab). |
 | PLAT-1 | IA structure guard | `navigation.test.ts` (six sections, no duplicate tabs, Safety embedded). |
 | IA-1 | URL hash routing | `#/<tab>` deep links + working browser back/forward, no new deps. |
+| PLAT-6 | Activation analytics | `track('view_tab')` on every navigation via the routing wrapper. |
+| CAP-3 | 9-part structured response | **Already in the backend** (`contracts/coach.ts` returns hypotheses/today/script/avoid/observe/escalate + renders the 9 sections). Confirmed. |
+| CAP-2 | Memory proposals | **Already in the backend** (coach returns `memoryProposals` → the pending review queue). Confirmed. |
+| TS-1 | Dynamic risk surfaced | The model already computes `riskLevel`; surfaced it as a TrustSafetyBar under each Ask Arbor answer. |
+| TS-3 | Escalation | "Talk to a professional" action appears on the safety bar when risk is elevated. |
+| CAP-8 | Professionals API | `/api/professionals` (curated, verified, filterable) + `services/professionals.ts`; client fetches with offline fallback. **Goes live on the next Cloud Run API deploy** (Hosting deploys don't touch the API). |
 
 ### Remaining — require dedicated backend / infrastructure (next iterations)
 
@@ -200,17 +206,18 @@ new data models, external services, or a large refactor done deliberately.
 
 | ID | Item | Why it's a separate iteration |
 |---|---|---|
-| CAP-2 | Memory Proposal Engine | Server: auto-propose memory from logs/sessions. |
-| CAP-3 | 9-part structured response | Server-side prompt restructuring (prompts are server-owned). |
-| TS-1 | Dynamic risk per answer | Server risk classifier (`src/safety/escalation.ts`); a client heuristic would risk false safety signals — deliberately avoided. |
-| CAP-8 | Care Network backend | Professional data model, verification, search/match API. |
-| CAP-9 | Sharing + recipient portal | Tokenized, permissioned recipient access; needs backend + a public route. |
+| CAP-9 | Sharing + recipient portal | Tokenized, permissioned recipient access; needs a server share store + a public route. Security-sensitive (child data) — must not be half-built. |
 | CAP-13 | Co-parent alignment | Multi-caregiver accounts, roles, permissions (auth work). |
 | DS-2 | Retire the `!important` layer | Large, careful migration of legacy tabs to semantic tokens. |
-| DS-8 | Full RTL + Dutch | App-level i18n/layout, not just AI content. |
+| DS-8 | Full RTL + Dutch | App-level layout mirroring + i18n, not just AI content. Half-done RTL looks broken, so it needs a proper pass. |
 | PLAT-4 | Professional / org backend | B2B/B2G dashboards. |
-| PLAT-5 | Notifications (FCM + digest) | VAPID, SW push handler, scheduled server send. |
-| PLAT-6 | Analytics funnels | Extend the existing `track()` util into activation funnels. |
+| PLAT-5 | Notifications (FCM + digest) | VAPID keys, SW push handler, scheduled server send (external setup). |
+
+**Server-feature deploy note:** CAP-8 (and any future API work) runs on the
+**Cloud Run `arbor-api`** service, which is deployed separately from Firebase
+Hosting. Manual Hosting deploys ship the client only; the API updates via the
+push-triggered GitHub Action (`arbor-deploy.yml`) or `gcloud builds submit
+--config cloudbuild.prod.yaml`. Clients fall back gracefully until then.
 
 ### Deferred polish (feasible, lower priority)
 
