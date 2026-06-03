@@ -62,6 +62,21 @@ export type ActiveTab =
   | "masterclasses"  // Arbor Academy › Parent Masterclasses
   | "family";        // Arbor Academy › Family Formation
 
+// IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
+// working browser back/forward button.
+const VALID_TABS = new Set<string>([
+  "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
+  "profile", "memory", "strengths", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family",
+]);
+function tabFromHash(): ActiveTab | null {
+  try {
+    const h = window.location.hash.replace(/^#\/?/, "").trim();
+    return VALID_TABS.has(h) ? (h as ActiveTab) : null;
+  } catch {
+    return null;
+  }
+}
+
 export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string };
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[] };
 export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
@@ -93,8 +108,13 @@ function useArborState() {
   const { activeChild, updateChild } = useProfile();
   const childProfile: ChildProfile = activeChild;
 
-  // Navigation State (persisted preferences)
-  const [activeTab, setActiveTab] = useState<ActiveTab>(() => (readLS("arbor.activeTab") as ActiveTab) || "overview");
+  // Navigation State (persisted preferences). Initial tab: URL hash wins (deep
+  // link), then last-used (localStorage), then Home.
+  const [activeTab, setActiveTabState] = useState<ActiveTab>(() => tabFromHash() || (readLS("arbor.activeTab") as ActiveTab) || "overview");
+  const setActiveTab = (t: ActiveTab) => {
+    setActiveTabState(t);
+    try { if (window.location.hash.replace(/^#\/?/, "") !== t) window.location.hash = `/${t}`; } catch { /* noop */ }
+  };
   const [showAiRail, setShowAiRail] = useState<boolean>(() => readLS("arbor.aiRail") !== "false");
 
   // App Core States — persisted per child (Firestore when authed, localStorage in sandbox)
@@ -342,6 +362,18 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     void conversationsCol.remove(id);
     if (id === activeConversationId) newConversation();
   };
+
+  // IA-1: keep the URL hash in sync with the active view, and respond to
+  // back/forward by reading the hash.
+  useEffect(() => {
+    const onHash = () => { const t = tabFromHash(); if (t) setActiveTabState(t); };
+    if (typeof window !== "undefined") {
+      if (!window.location.hash) { try { window.history.replaceState(null, "", `#/${activeTab}`); } catch { /* noop */ } }
+      window.addEventListener("hashchange", onHash);
+    }
+    return () => { if (typeof window !== "undefined") window.removeEventListener("hashchange", onHash); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Persist UI preferences.
   useEffect(() => writeLS("arbor.activeTab", activeTab), [activeTab]);
