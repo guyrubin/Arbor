@@ -7,6 +7,16 @@ import { useLanguage } from "../../context/LanguageContext";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
+import { TrustSafetyBar } from "../ui/kit";
+
+/** Extract the model's real risk level from the structured answer (TS-1). */
+function parseRisk(text: string): "Low" | "Moderate" | "High" {
+  const m = text.match(/risk level:\s*\*{0,2}\s*(low|moderate|high|elevated|severe)/i);
+  const v = (m?.[1] || "").toLowerCase();
+  if (v === "high" || v === "severe") return "High";
+  if (v === "moderate" || v === "elevated") return "Moderate";
+  return "Low";
+}
 
 const FOLLOW_UPS = [
   "What should I avoid saying in that moment?",
@@ -306,6 +316,15 @@ export default function CoachTab() {
           </div>
         </div>
       </div>
+
+      {/* Trust & Safety — surfaces the model's real risk + escalation (TS-1/TS-3) */}
+      {lastMessage?.sender === "ai" && chatMessages.length > 1 && (
+        <TrustSafetyBar
+          risk={parseRisk(lastMessage.text)}
+          note="Arbor's read of this answer"
+          onEscalate={() => setActiveTab("find-pro")}
+        />
+      )}
 
       {/* Parent-approved memory review */}
       <div className="border border-white/10 rounded-2xl bg-[#141821] p-5 space-y-4">

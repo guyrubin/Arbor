@@ -8,6 +8,7 @@ import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safet
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards } from "../knowledge/wiki.js";
 import { getStorySpec } from "../lib/heroJourneys.js";
+import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type } from "@google/genai";
 
 type ApiDeps = {
@@ -74,6 +75,17 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, framework 
       console.error("Memory Update Error:", error);
       res.status(500).json({ error: "Failed to update Arbor memory review item", details: error.message });
     }
+  });
+
+  // Care Network › Find a Professional (CAP-8). Curated, Arbor-verified, filterable.
+  router.get("/professionals", (req, res) => {
+    const professionals = filterProfessionals(ARBOR_PROFESSIONALS, {
+      specialty: req.query.specialty ? String(req.query.specialty) : undefined,
+      language: req.query.language ? String(req.query.language) : undefined,
+      mode: req.query.mode ? String(req.query.mode) : undefined,
+      q: req.query.q ? String(req.query.q) : undefined,
+    });
+    res.json({ professionals });
   });
 
   router.post("/onboarding/family-child", async (req, res) => {

@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Search, ShieldCheck, Globe, MapPin, Languages as LangIcon, Star, Send, FileText } from "lucide-react";
 import { PageHeader, cardCls, Chip, PASTEL } from "../ui/kit";
+import type { Professional } from "../../services/professionals";
+import { authHeaders } from "../../lib/api";
 
 const SPECIALTIES = [
   "Child Psychologist", "Speech Therapist", "Occupational Therapist", "Parenting Coach",
@@ -11,21 +13,33 @@ const SPECIALTIES = [
 
 const FILTERS = ["Verified by Arbor", "Online", "In-person", "Hebrew", "English", "Ages 3–6", "Insurance accepted"];
 
-type Pro = {
-  name: string; role: string; creds: string; langs: string; city: string; mode: string;
-  ages: string; approach: string; handles: string; price: string; rating: number; verified: boolean; tone: any;
-};
-
-const PROS: Pro[] = [
-  { name: "Dr. Maya Levi", role: "Child Psychologist", creds: "PhD, Clinical Psychology", langs: "Hebrew · English", city: "Tel Aviv · Online", mode: "Online & in-person", ages: "3–10", approach: "Warm, attachment-informed, practical", handles: "Transition anxiety, emotional regulation", price: "₪₪₪", rating: 4.9, verified: true, tone: "sky" },
-  { name: "Noa Ben-David", role: "Speech & Language Therapist", creds: "MA, CCC-SLP", langs: "Hebrew · English · Arabic", city: "Remote", mode: "Online", ages: "2–8", approach: "Play-based, bilingual focus", handles: "Bilingual transition, expressive language", price: "₪₪", rating: 4.8, verified: true, tone: "mint" },
-  { name: "Dr. Amir Cohen", role: "Pediatrician", creds: "MD, Developmental-Behavioral", langs: "Hebrew · English", city: "Herzliya", mode: "In-person", ages: "0–12", approach: "Evidence-first, calm, parent-partnering", handles: "Developmental screening, sleep, milestones", price: "₪₪₪", rating: 5.0, verified: true, tone: "coral" },
+// Fallback shown if the API is unavailable (keeps the directory functional offline).
+const FALLBACK: Professional[] = [
+  { id: "p1", name: "Dr. Maya Levi", role: "Child Psychologist", creds: "PhD, Clinical Psychology", langs: "Hebrew · English", city: "Tel Aviv · Online", mode: "Online & in-person", ages: "3–10", approach: "Warm, attachment-informed, practical", handles: "Transition anxiety, emotional regulation", price: "₪₪₪", rating: 4.9, verified: true, tone: "sky" },
+  { id: "p2", name: "Noa Ben-David", role: "Speech & Language Therapist", creds: "MA, CCC-SLP", langs: "Hebrew · English · Arabic", city: "Remote", mode: "Online", ages: "2–8", approach: "Play-based, bilingual focus", handles: "Bilingual transition, expressive language", price: "₪₪", rating: 4.8, verified: true, tone: "mint" },
+  { id: "p3", name: "Dr. Amir Cohen", role: "Pediatrician", creds: "MD, Developmental-Behavioral", langs: "Hebrew · English", city: "Herzliya", mode: "In-person", ages: "0–12", approach: "Evidence-first, calm, parent-partnering", handles: "Developmental screening, sleep, milestones", price: "₪₪₪", rating: 5.0, verified: true, tone: "coral" },
 ];
 
-/** Care Network › Find a Professional (curated, verified directory — never "marketplace" in parent UI). */
+/** Care Network › Find a Professional (curated, verified directory — fetched from
+ *  the Arbor professionals API, never "marketplace" in parent UI). */
 export default function FindProfessional() {
   const [active, setActive] = useState<string[]>(["Verified by Arbor"]);
   const toggle = (f: string) => setActive((p) => (p.includes(f) ? p.filter((x) => x !== f) : [...p, f]));
+  const [pros, setPros] = useState<Professional[]>(FALLBACK);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/professionals", { headers: await authHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          if (alive && Array.isArray(data.professionals) && data.professionals.length) setPros(data.professionals);
+        }
+      } catch { /* keep fallback */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
@@ -55,7 +69,7 @@ export default function FindProfessional() {
 
       {/* Curated results */}
       <div className="grid lg:grid-cols-2 gap-5">
-        {PROS.map((p) => (
+        {pros.map((p) => (
           <div key={p.name} className={`${cardCls} p-5`}>
             <div className="flex items-start gap-4">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-extrabold flex-shrink-0" style={{ background: PASTEL[p.tone as keyof typeof PASTEL].soft, color: PASTEL[p.tone as keyof typeof PASTEL].ink, fontFamily: "var(--font-display)" }}>

@@ -64,15 +64,23 @@ export function SectionCard({ title, icon, tone = "mint", children, action }: { 
   );
 }
 
-/** Trust & Safety strip — embedded across guidance, reports, sharing, handoffs. */
-export function TrustSafetyBar({ risk = "Low", note }: { risk?: "Low" | "Moderate" | "High"; note?: string }) {
+/** Trust & Safety strip — embedded across guidance, reports, sharing, handoffs.
+ *  `risk` reflects the model's real computed risk level; when it's elevated and
+ *  `onEscalate` is provided, a "Talk to a professional" action is surfaced. */
+export function TrustSafetyBar({ risk = "Low", note, onEscalate }: { risk?: "Low" | "Moderate" | "High"; note?: string; onEscalate?: () => void }) {
   const tone: PastelKey = risk === "High" ? "pink" : risk === "Moderate" ? "yellow" : "mint";
+  const elevated = risk !== "Low";
   return (
     <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]" style={{ background: PASTEL[tone].soft, color: "var(--arbor-ink)" }}>
       <span className="font-extrabold" style={{ color: PASTEL[tone].ink }}>Risk: {risk}</span>
       <span style={{ color: "var(--arbor-muted)" }}>Non-diagnostic guidance</span>
       <span style={{ color: "var(--arbor-muted)" }}>Escalation available</span>
       {note && <span style={{ color: "var(--arbor-muted)" }}>· {note}</span>}
+      {elevated && onEscalate && (
+        <button onClick={onEscalate} className="ml-auto inline-flex items-center gap-1 font-extrabold rounded-full px-3 py-1" style={{ background: PASTEL[tone].ink, color: "#fff" }}>
+          Talk to a professional →
+        </button>
+      )}
     </div>
   );
 }
