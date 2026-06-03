@@ -38,6 +38,7 @@ const writeLS = (key: string, value: string) => {
 };
 
 export type ActiveTab =
+  // existing leaf views (preserved)
   | "overview"
   | "coach"
   | "behaviors"
@@ -48,7 +49,18 @@ export type ActiveTab =
   | "scholar"
   | "language"
   | "handoff"
-  | "safety";
+  | "safety"
+  // new capability views (IA refactor)
+  | "profile"        // Child Intelligence › Development Profile
+  | "memory"         // Child Intelligence › Child Memory
+  | "strengths"      // Child Intelligence › Strengths & Challenges
+  | "find-pro"       // Care Network › Find a Professional
+  | "care-team"      // Care Network › My Care Team
+  | "appointments"   // Care Network › Appointments
+  | "sharing"        // Care Network › Trusted Sharing
+  | "reports"        // Care Network › Reports
+  | "masterclasses"  // Arbor Academy › Parent Masterclasses
+  | "family";        // Arbor Academy › Family Formation
 
 export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string };
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[] };

@@ -129,7 +129,7 @@ export default function WeeklyTab() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-            <BarChart2 className="w-7 h-7 text-[#d7aa55]" /> Weekly Report
+            <BarChart2 className="w-7 h-7 text-[#d7aa55]" /> Weekly Insight
           </h2>
           <p className="text-sm text-[#a8a093] mt-1">{selected ? `${selected.weekLabel} · ${selected.id}` : `${currentLabel} · ${currentId}`}</p>
         </div>
@@ -218,7 +218,7 @@ export default function WeeklyTab() {
                 <span className="text-[10px] text-[#a8a093] uppercase font-bold ml-2">{selected.spotlight.concept}</span>
               </div>
               <p className="text-xs text-[#a8a093] leading-relaxed">{selected.spotlight.value}</p>
-              <button onClick={() => setActiveTab("scholar")} className="text-[11px] text-[#f4d991] hover:underline">Explore Scholar Academy ➔</button>
+              <button onClick={() => setActiveTab("scholar")} className="text-[11px] text-[#f4d991] hover:underline">Explore Scholar Frameworks ➔</button>
             </div>
           </div>
 

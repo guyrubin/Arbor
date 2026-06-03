@@ -23,7 +23,7 @@ export default function PlansTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight">Personalized Action Plans</h2>
+        <h2 className="text-3xl font-extrabold tracking-tight">Active Growth Plans</h2>
         <p className="text-sm text-[#a8a093] mt-1">Track multi-stage developmental plans as a board — drag steps from Not Started to Completed.</p>
       </div>
 

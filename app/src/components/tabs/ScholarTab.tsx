@@ -10,7 +10,7 @@ export default function ScholarTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight">Scholar Academy</h2>
+        <h2 className="text-3xl font-extrabold tracking-tight">Scholar Frameworks</h2>
         <p className="text-sm text-[#a8a093] mt-1">Multi-theory developmental system. Select a scholar detail frame to load example prompts instantly into the AI Coach.</p>
       </div>
 

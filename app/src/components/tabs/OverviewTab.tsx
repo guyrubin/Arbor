@@ -5,6 +5,7 @@ import {
   TrendingUp, TrendingDown, Minus, MessageSquare, Plus, Sparkles, RefreshCw,
   Sun, Sunrise, Moon, ArrowRight, Heart, BookOpen, Smile, Target,
   ShieldCheck, Phone, Activity, CheckCircle2, ChevronRight,
+  Brain, Sprout, HeartHandshake, GraduationCap,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { AnimatedNumber } from "../ui/AnimatedNumber";
@@ -270,6 +271,34 @@ export default function OverviewTab() {
             <p className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>Active plans</p>
           </div>
         </button>
+      </section>
+
+      {/* ─── THE ARBOR WAY (strategic capability model) ────────────────── */}
+      <section>
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>The Arbor way</h2>
+            <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>Understand {firstName}, guide yourself, build growth, coordinate care, and form your family over time.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {[
+            { tab: "profile" as const, tone: "sky" as const, icon: <Brain className="w-5 h-5" />, title: "Understand", section: "Child Intelligence", copy: `Understand ${firstName}'s patterns, milestones, and progress.` },
+            { tab: "coach" as const, tone: "peach" as const, icon: <Sparkles className="w-5 h-5" />, title: "Guide", section: "Ask Arbor", copy: "Get calm guidance and exact scripts." },
+            { tab: "plans" as const, tone: "mint" as const, icon: <Sprout className="w-5 h-5" />, title: "Grow", section: "Growth Plans", copy: "Build routines, responsibility, and resilience." },
+            { tab: "find-pro" as const, tone: "lav" as const, icon: <HeartHandshake className="w-5 h-5" />, title: "Connect", section: "Care Network", copy: "Find trusted professionals and coordinate support." },
+            { tab: "stories" as const, tone: "yellow" as const, icon: <GraduationCap className="w-5 h-5" />, title: "Learn", section: "Arbor Academy", copy: "Stories and lessons for long-term formation." },
+          ].map((c) => (
+            <button key={c.title} onClick={() => setActiveTab(c.tab)} className={`${card} p-4 text-left flex flex-col gap-2.5 transition hover:-translate-y-0.5`}>
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl" style={{ background: PASTEL[c.tone].soft, color: PASTEL[c.tone].ink }}>{c.icon}</span>
+              <div>
+                <h3 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{c.title}</h3>
+                <p className="text-[11px] font-bold" style={{ color: PASTEL[c.tone].ink }}>{c.section}</p>
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.copy}</p>
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* ─── RECOMMENDED THIS WEEK ─────────────────────────────────────── */}

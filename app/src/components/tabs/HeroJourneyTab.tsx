@@ -234,7 +234,7 @@ export default function HeroJourneyTab() {
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-            <Mountain className="w-7 h-7 text-[#d7aa55]" /> Hero Journeys
+            <Mountain className="w-7 h-7 text-[#d7aa55]" /> Story Journeys
           </h2>
           <p className="text-sm text-[#a8a093] mt-1">
             {childProfile.name} becomes the hero of timeless stories that build courage, responsibility,

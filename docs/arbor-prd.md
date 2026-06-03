@@ -1,6 +1,6 @@
 # Arbor — Parenting AI Platform PRD
 
-**Version:** 1.1 (2026-05-31 — added Capability Backlog v1.1; see end of document)
+**Version:** 1.2 (2026-06-03 — Information Architecture v2: six-capability model; see "Information Architecture v2" below)
 **Product type:** AI-powered child-development, parenting, co-therapy, and school-support platform
 **Age range:** Birth to 12
 **Markets:** Israel, Netherlands, Belgium, later broader EU
@@ -12,6 +12,157 @@ Arbor is not a parenting chatbot. Arbor is a longitudinal child-development inte
 The platform combines AI parenting guidance, child memory, developmental milestone tracking, behavior analytics, personalized intervention plans, language-transition support, autism/ADHD observation support, medical safety guardrails, personalized story generation, professional co-therapy workflows, school collaboration, and B2B/B2G dashboards.
 
 The moat is not the AI model. The moat is longitudinal child memory plus expert-reviewed developmental knowledge plus structured parent workflows plus professional collaboration.
+
+---
+
+## Information Architecture v2 (Six-Capability Model)
+
+> Added 2026-06-03. This supersedes the flat, ten-module sidebar. It is a **strategic
+> architecture refactor, not a redesign** — every prior capability is preserved and
+> re-homed, nothing is deleted. The visual language (the live "Soft Daylight"
+> system: warm, calm, premium; green = trust/growth, coral = AI/action; rounded
+> cards, editorial Baloo headings) is preserved.
+
+### The problem it solves
+
+The previous sidebar exposed ten feature modules at equal weight (Overview, Parent
+Coach, Behavior Tracker, Milestones, Action Plans, Bedtime Stories, Weekly Report,
+Scholar Academy, School Handoff, Safety). Equal weighting made a serious platform
+feel scattered and hid its maturity. v2 groups capabilities into **six strategic
+sections** that tell one story.
+
+### The strategic story (and the capability model shown on Home)
+
+Arbor **understands** the child, **guides** the parent, **builds** growth,
+**coordinates** care, and **forms** the family over time.
+
+| Verb | Section | Promise |
+|---|---|---|
+| Understand | **Child Intelligence** | "Understand Dylan's patterns, milestones, and progress." |
+| Guide | **Ask Arbor** | "Get calm guidance and exact scripts." |
+| Grow | **Growth Plans** | "Build routines, responsibility, and resilience." |
+| Connect | **Care Network** | "Find trusted professionals and coordinate support." |
+| Learn | **Arbor Academy** | "Stories and lessons for long-term formation." |
+
+Home is the daily command center — the sixth section — answering *"What matters for
+Dylan today?"* and surfacing this capability model as the navigational backbone.
+
+### Top-level navigation (exactly six items)
+
+1. **Home** — daily command center; child card, today's insight, active plan, recent
+   pattern, next milestone, weekly snapshot, the capability model, primary CTA *Ask
+   Arbor*.
+2. **Ask Arbor** — AI guidance layer. Structured response: *what may be happening →
+   why → what to do today → exact parent script → what not to do → what to observe →
+   when to escalate → save to child memory? → create handoff summary?* Fast-start
+   scenarios (Morning Refusal, iPad Dispute, Sibling Clash). Trust & Safety embedded
+   in every answer.
+3. **Child Intelligence** — child-development memory & insight. Sub-nav: Development
+   Profile · Development Milestones · Behavior Patterns · Language & Communication ·
+   Strengths & Challenges · Weekly Insight · Child Memory. (Milestone % lives here,
+   not in the sidebar.)
+4. **Growth Plans** — turns guidance into progress. Active Growth Plans, Routines,
+   Responsibility Ladder, Sleep / Screen-Time / School Adaptation / Behavior Reset
+   plans, Progress Review, Follow-Up Logs. (Active-plan count lives here.)
+5. **Care Network** — professional marketplace + handoff + coordination. Sub-nav:
+   Find a Professional · My Care Team · School & Care Handoff · Reports ·
+   Appointments · Trusted Sharing. Curated and Arbor-verified — never "marketplace"
+   in parent UI.
+6. **Arbor Academy** — parent education & child formation. Sub-nav: Story Journeys ·
+   Parent Masterclasses · Scholar Frameworks · Family Formation.
+
+**Safety & Guardrails is intentionally not a top-level item.** It becomes the *Trust
+& Safety layer* embedded across Ask Arbor responses, reports, sharing, and handoffs
+(risk level, no-diagnosis boundary, escalation guidance, what-to-observe).
+
+### Current-to-new mapping (no capability lost)
+
+| Old module | New home |
+|---|---|
+| Overview Dashboard | Home |
+| Parent Coach | Ask Arbor |
+| Behavior & Emotion Tracker | Child Intelligence › **Behavior Patterns** |
+| Milestones Tracker | Child Intelligence › **Development Milestones** |
+| Action Plans | Growth Plans › **Active Growth Plans** |
+| AI Bedtime Stories / Hero Journeys | Arbor Academy › **Story Journeys** |
+| Weekly Report | Home › Weekly Snapshot + Child Intelligence › **Weekly Insight** (PDF export keeps the word "Report") |
+| Scholar Academy | Arbor Academy › **Scholar Frameworks** |
+| Language Lab | Child Intelligence › Language & Communication (+ Care Network handoff note) |
+| School Handoff Hub | Care Network › **School & Care Handoff** |
+| Safety & Guardrails | Embedded Trust & Safety layer (removed from sidebar) |
+
+### Naming system (parent-friendly surface, professional depth underneath)
+
+Insight > Report · Patterns > Tracker · Growth > Action · Care Network > Connect ·
+Ask Arbor > Parent Coach · Story Journeys > Hero Journeys / Bedtime Stories · Scholar
+Frameworks > Scholar Academy · Trust & Safety Layer > Safety & Guardrails · "Find a
+Professional" never "Marketplace" · no technical AI-engine names in normal parent
+navigation.
+
+### AI Engines panel — two modes
+
+The right-side capability panel is repositioned as an internal/professional/demo
+surface, not primary parent navigation.
+
+- **Parent mode (default):** subtle trust indicators only — *developmental fit
+  checked · safety guidance applied · child memory considered · next step generated.*
+- **Professional / demo mode:** the full panel, renamed and expanded to eight
+  engines: Parent Guidance Engine · Case Summary Engine · Pattern Intelligence Engine
+  · Risk & Safety Classifier · Story Formation Engine · **Handoff Generator** ·
+  **Memory Proposal Engine** · **Care Matching Engine**.
+
+### Elevations beyond the source brief
+
+1. **Cross-capability loop made explicit:** Child Intelligence *detects* → Ask Arbor
+   *recommends* → Growth Plans *operationalizes* → Follow-Up Logs *feed back* into
+   Child Intelligence. Every section links to the next logical action.
+2. **Child Memory positioned as the moat surface:** parent-approved only, editable,
+   deletable, source-linked, time-stamped, and time-boxed when sensitive — with a
+   visible pending-review queue.
+3. **Trust & Safety as a reusable UI primitive** (`TrustSafetyBar`) embedded on
+   guidance, memory, sharing, and reports rather than a destination.
+4. **Care Network framed as curated, verified, premium** (Verified-by-Arbor),
+   deliberately not a gig-style directory.
+5. **Section sub-navigation** keeps six clean primary items while exposing depth on
+   demand — maturity without clutter.
+
+### No-regression requirements
+
+PDF export, AI log analysis, quick-fill scenarios, Scholar cards, the AI Engines
+panel, School Handoff, and Safety logic are all preserved. The app must not flatten
+into generic SaaS, become childish, or look clinical-cold.
+
+### Acceptance criteria
+
+1. Sidebar has exactly six primary items. ✓
+2. No existing feature is lost; all legacy views remain reachable. ✓
+3. Behavior logging lives under Child Intelligence › Behavior Patterns. ✓
+4. Milestones live under Child Intelligence › Development Milestones. ✓
+5. Weekly Report → Weekly Insight, still exportable as PDF. ✓
+6. Action Plans → Growth Plans. ✓
+7. Bedtime Stories / Hero Journeys → Story Journeys. ✓
+8. Scholar Academy → Scholar Frameworks inside Arbor Academy. ✓
+9. School Handoff → School & Care Handoff inside Care Network. ✓
+10. Care Network includes Find a Professional, My Care Team, School & Care Handoff,
+    Reports, Appointments, Trusted Sharing. ✓
+11. Safety removed from sidebar but embedded throughout. ✓
+12. AI Engines preserved for professional/demo mode and expanded with Handoff,
+    Memory, and Care Matching engines. ✓
+13. Visual language remains mature, warm, premium. ✓
+14. The product feels more strategic, not thinner. ✓
+15. The end-state story is obvious on Home. ✓
+
+### Implementation status (2026-06-03)
+
+Shipped in the app: six-section sidebar + mobile nav (`lib/navigation.ts`), section
+sub-navigation in `Shell`, capability model on Home, renamed views, new capability
+pages (`components/sections/*`: Development Profile, Child Memory, Strengths,
+Find a Professional, My Care Team, Appointments, Trusted Sharing, Reports,
+Masterclasses, Family Formation), AI Engines parent/professional modes, and the
+embedded `TrustSafetyBar`. New pages with no backend yet (Care Network directory,
+sharing, appointments, masterclasses, family formation) are scaffolded with real
+structure and sample data; wiring them to live data is tracked in the Capability
+Backlog.
 
 ---
 

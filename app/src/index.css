@@ -282,6 +282,10 @@ body {
   opacity: 0.75;
 }
 
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* ─── Scrollbars ──────────────────────────────────────────────────────────── */
 .arbor-app ::-webkit-scrollbar          { width: 8px; height: 8px; }
 .arbor-app ::-webkit-scrollbar-track    { background: transparent; }
