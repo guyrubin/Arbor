@@ -40,6 +40,9 @@ export default function PlansTab() {
             "Bedtime resistance and stalling",
             "Refusing new or non-preferred foods",
             "Separation anxiety at drop-off",
+            "Build a responsibility ladder of age-appropriate chores and ownership",
+            "School adaptation plan for a smooth transition into kindergarten",
+            "Behavior reset plan to re-establish calm routines after a hard week",
           ].map((tpl) => (
             <button
               key={tpl}
