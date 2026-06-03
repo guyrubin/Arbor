@@ -51,7 +51,7 @@ export default function AiRail() {
       {/* Mode toggle */}
       <div className="flex p-1 rounded-2xl" style={{ background: "var(--arbor-paper-deep)" }}>
         {[{ k: false, l: "Parent" }, { k: true, l: "Professional" }].map((m) => (
-          <button key={m.l} onClick={() => setPro(m.k)} className="flex-1 py-2 rounded-xl text-xs font-bold transition"
+          <button key={m.l} onClick={() => setPro(m.k)} aria-pressed={pro === m.k} className="flex-1 py-2 rounded-xl text-xs font-bold transition"
             style={pro === m.k ? { background: "#fff", color: "#1f8a5a", boxShadow: "0 1px 2px rgba(41,51,63,0.06)" } : { color: "var(--arbor-muted)" }}>
             {m.l}
           </button>

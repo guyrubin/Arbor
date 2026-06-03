@@ -66,6 +66,9 @@ export default function Shell() {
   const { user, signOut, firebaseEnabled } = useAuth();
   const ActiveTabComponent = tabRegistry[activeTab];
   const section = sectionForTab(activeTab);
+  const focusLabel = childProfile.languages.length > 1
+    ? "Language transition"
+    : (childProfile.challenges?.[0]?.replace(/\s*\(.*\)/, "").trim() || "");
 
   const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
@@ -99,9 +102,10 @@ export default function Shell() {
 
           {/* Top workspace accessories header row */}
           <div className="flex justify-between items-center mb-5 gap-4">
-            <span className="text-xs font-medium flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#34b277" }} />
-              Caring for <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · Age {childProfile.age}</strong>
+            <span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
+              <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "#34b277" }} />
+              <span className="truncate">Caring for <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · Age {childProfile.age}</strong>
+              {focusLabel && <span className="hidden sm:inline"> · Focus: <strong style={{ color: "#1f8a5a" }}>{focusLabel}</strong></span>}</span>
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -138,13 +142,15 @@ export default function Shell() {
 
           {/* Secondary sub-navigation for multi-capability sections */}
           {section.items.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto mb-6 -mx-1 px-1 pb-1 no-scrollbar">
+            <div role="tablist" aria-label={`${section.label} sections`} className="flex gap-2 overflow-x-auto mb-6 -mx-1 px-1 pb-1 no-scrollbar">
               {section.items.map((it) => {
                 const on = it.tab === activeTab;
                 const Icon = it.icon;
                 return (
                   <button
                     key={it.tab}
+                    role="tab"
+                    aria-selected={on}
                     onClick={() => setActiveTab(it.tab)}
                     className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
                     style={on ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}

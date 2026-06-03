@@ -38,6 +38,7 @@ export default function Sidebar() {
             <button
               key={sec.id}
               onClick={() => setActiveTab(primaryTabOf(sec))}
+              aria-current={active ? "page" : undefined}
               className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-2xl text-left text-sm transition"
               style={active
                 ? { background: "#e4f4ec", color: "#1f8a5a", fontWeight: 800 }

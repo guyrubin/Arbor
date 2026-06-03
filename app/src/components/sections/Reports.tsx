@@ -3,25 +3,38 @@ import { motion } from "motion/react";
 import { FileBarChart, Download, FileText } from "lucide-react";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
+import { buildReport, openPrintableReport, ReportType } from "../../lib/reportExport";
 
-const REPORTS: { title: string; desc: string; tone: PastelKey }[] = [
-  { title: "Weekly Insight PDF", desc: "This week's summary for your records or to share.", tone: "mint" },
-  { title: "Teacher Handoff PDF", desc: "Classroom-ready context, what helps and what escalates.", tone: "sky" },
-  { title: "Therapist Summary PDF", desc: "Concern, timeline, patterns and tried interventions.", tone: "lav" },
-  { title: "Pediatrician Summary PDF", desc: "Duration, frequency, milestones — no-diagnosis framing.", tone: "coral" },
-  { title: "Development Snapshot PDF", desc: "A point-in-time picture of Dylan's development.", tone: "yellow" },
-  { title: "Behavior Pattern Report PDF", desc: "Triggers, intensity and recovery over time.", tone: "pink" },
-  { title: "Language Transition Note PDF", desc: "Home/school languages, comfort and useful phrases.", tone: "sky" },
-  { title: "Growth Plan Progress PDF", desc: "Plan steps completed and what's next.", tone: "mint" },
+const REPORTS: { title: string; desc: string; tone: PastelKey; type: ReportType }[] = [
+  { title: "Weekly Insight", desc: "This week's summary for your records or to share.", tone: "mint", type: "weekly" },
+  { title: "Teacher Handoff", desc: "Classroom-ready context, what helps and what escalates.", tone: "sky", type: "teacher" },
+  { title: "Therapist Summary", desc: "Concern, timeline, patterns and tried interventions.", tone: "lav", type: "therapist" },
+  { title: "Pediatrician Summary", desc: "Duration, frequency, milestones — no-diagnosis framing.", tone: "coral", type: "pediatrician" },
+  { title: "Development Snapshot", desc: "A point-in-time picture of your child's development.", tone: "yellow", type: "snapshot" },
+  { title: "Behavior Pattern Report", desc: "Triggers, intensity and recovery over time.", tone: "pink", type: "behavior" },
+  { title: "Language Transition Note", desc: "Home/school languages, comfort and useful phrases.", tone: "sky", type: "language" },
+  { title: "Growth Plan Progress", desc: "Plan steps completed and what's next.", tone: "mint", type: "growth" },
 ];
 
-/** Care Network › Reports — exportable artifacts only. "Report" lives here; the
- *  parent-facing analytics live as "Weekly Insight" under Child Intelligence. */
+/** Care Network › Reports — exportable artifacts generated from real child data. */
 export default function Reports() {
-  const { childProfile } = useArbor();
+  const { childProfile, behaviorLogs, actionPlans, milestonesPercent, checkedMilestones, totalMilestones } = useArbor();
+
+  const exportReport = (type: ReportType) => {
+    const doc = buildReport(type, {
+      child: childProfile,
+      logs: behaviorLogs,
+      plans: actionPlans,
+      milestonesPercent,
+      checkedMilestones,
+      totalMilestones,
+    });
+    openPrintableReport(doc, childProfile.name);
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader eyebrow="Care Network" title="Reports" subtitle={`Export ${childProfile.name.split(" ")[0]}'s information as a clean, shareable PDF for teachers, therapists and doctors.`} />
+      <PageHeader eyebrow="Care Network" title="Reports" subtitle={`Generate a clean, shareable PDF of ${childProfile.name.split(" ")[0]}'s information for teachers, therapists and doctors — built from your real data.`} />
       <SectionCard title="Exportable reports" icon={<FileBarChart className="w-5 h-5" />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-3">
           {REPORTS.map((r) => (
@@ -31,13 +44,19 @@ export default function Reports() {
                 <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{r.title}</h3>
                 <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{r.desc}</p>
               </div>
-              <button className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold rounded-lg px-2.5 py-1.5" style={{ background: "var(--arbor-paper-deep)", color: "#1f8a5a" }}>
+              <button
+                onClick={() => exportReport(r.type)}
+                className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold rounded-lg px-2.5 py-1.5 transition hover:brightness-95"
+                style={{ background: "var(--arbor-paper-deep)", color: "#1f8a5a" }}
+                aria-label={`Export ${r.title} as PDF`}
+              >
                 <Download className="w-3.5 h-3.5" /> PDF
               </button>
             </div>
           ))}
         </div>
       </SectionCard>
+      <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>Reports open in a new tab — use your browser's “Save as PDF”. Every report carries Arbor's non-diagnostic framing.</p>
     </motion.div>
   );
 }
