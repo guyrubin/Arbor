@@ -14,6 +14,15 @@ const FOLLOW_UPS = [
   "Give me a 1-minute calming routine to try.",
 ];
 
+// IA-2: fast-start scenarios — the most common hard moments, one tap away.
+const SCENARIOS: { emoji: string; label: string; prompt: string }[] = [
+  { emoji: "🌅", label: "Morning refusal", prompt: "My child refuses to get dressed and leave the house in the morning. What may be happening and what do I do today?" },
+  { emoji: "📱", label: "iPad dispute", prompt: "Turning off the iPad ends in a meltdown. Give me what may be happening, an exact script, and what to avoid." },
+  { emoji: "🧒", label: "Sibling clash", prompt: "My children keep fighting over toys. Help me understand it and give me a calm script to use in the moment." },
+  { emoji: "🌙", label: "Bedtime battle", prompt: "Bedtime takes over an hour with lots of resistance. What's a calm wind-down plan and script?" },
+  { emoji: "🏫", label: "School dropoff", prompt: "My child cries and clings at school dropoff. What may be happening and exactly what do I say?" },
+];
+
 export default function CoachTab() {
   const {
     selectedLens,
@@ -56,8 +65,8 @@ export default function CoachTab() {
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-extrabold tracking-tight">Parent Development Coach</h2>
-            <p className="text-sm text-[#a8a093] mt-1">Customize AI reasoning using developmental frameworks, age bands, and non-diagnostic parent support boundaries.</p>
+            <h2 className="text-3xl font-extrabold tracking-tight">Ask Arbor</h2>
+            <p className="text-sm text-[#a8a093] mt-1">Calm guidance and exact words for hard parenting moments — age-aware, non-diagnostic, with escalation guidance built in.</p>
           </div>
           <div className="flex items-center gap-1 bg-white/[0.03] border border-white/10 rounded-xl p-1 flex-shrink-0" title="Language for AI responses">
             <button
@@ -107,6 +116,26 @@ export default function CoachTab() {
           </div>
         </div>
       </div>
+
+      {/* Fast-start scenarios (IA-2) — shown on a fresh conversation */}
+      {chatMessages.length <= 1 && (
+        <div className="rounded-2xl p-4" style={{ background: "#fdeada" }}>
+          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "#cf6f37" }}>Fast start — pick a moment</span>
+          <div className="flex flex-wrap gap-2 mt-2.5">
+            {SCENARIOS.map((s) => (
+              <button
+                key={s.label}
+                onClick={() => handleChatSend(s.prompt)}
+                disabled={isChatLoading}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold bg-white transition hover:-translate-y-0.5 disabled:opacity-60"
+                style={{ color: "#29333f", border: "1px solid rgba(207,111,55,0.28)" }}
+              >
+                <span aria-hidden>{s.emoji}</span> {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Conversation threads */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
