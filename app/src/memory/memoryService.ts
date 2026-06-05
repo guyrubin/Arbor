@@ -38,10 +38,36 @@ export const foldMemoryEvents = (events: MemoryLedgerEvent[], childId?: string):
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 };
 
+// SAFE-3 / G10: enforce memory time-boxing. The model-generated `retention`
+// string is parsed to a TTL; approved memory past its retention is treated as
+// expired and is NOT fed back to the AI. Unparseable/permanent retention never
+// expires (conservative — we don't silently drop memory we can't interpret).
+const DAY_MS = 86_400_000;
+export const retentionToMs = (retention?: string): number => {
+  if (!retention) return Infinity;
+  const r = retention.toLowerCase();
+  if (/permanent|indefinite|ongoing|long[-\s]?term/.test(r)) return Infinity;
+  const m = r.match(/(\d+)\s*(day|week|month|year)/);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    const unit = m[2];
+    const per = unit === "day" ? DAY_MS : unit === "week" ? 7 * DAY_MS : unit === "month" ? 30 * DAY_MS : 365 * DAY_MS;
+    return n * per;
+  }
+  if (/session|today|24\s*h/.test(r)) return DAY_MS;
+  return Infinity;
+};
+
+export const isMemoryExpired = (item: { retention?: string; createdAt: string }, now: number = Date.now()): boolean => {
+  const ms = retentionToMs(item.retention);
+  if (!isFinite(ms)) return false;
+  return now - new Date(item.createdAt).getTime() > ms;
+};
+
 export const getApprovedMemoryContext = async (store: MemoryStore, childId: string) => {
   const events = await store.listEvents(childId);
   return foldMemoryEvents(events, childId)
-    .filter((item) => item.status === "approved")
+    .filter((item) => item.status === "approved" && !isMemoryExpired(item))
     .map((item) => `- ${item.fact} (${item.source}; retention: ${item.retention})`)
     .join("\n");
 };
