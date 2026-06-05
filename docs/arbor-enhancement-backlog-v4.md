@@ -62,9 +62,13 @@ v4 = make four things substantively true:
 | **G5** | **Six Frames are free-text, ungrounded.** `frameRouting` (aim/twoAxes/story/shadow/marriage/shepherd) is required output but the model invents it with no scholar/framework constraint, and it's rendered as a flat block, not made actionable. | `contracts/coach.ts:15`, `:156`; no validation against `framework.json`. | The "Six Frames" depth is asserted, not enforced or useful. |
 | **G6** | **Risk/Trust is static.** `TrustSafetyBar` is a reassurance banner taking a `note` prop; child `riskLevel` defaults to "Low" at creation and is never recomputed from logs/answers. | `ui/kit` `TrustSafetyBar`; `OnboardingFlow.tsx:42`, `AddChildModal.tsx:52`. | Confirms v3 TS-1 still open: trust is asserted, not computed. |
 | **G7** | **Memory proposals are generated but invisible.** The coach already returns `memoryProposals` and the server appends them to the ledger (`appendMemoryProposals`), but the coach UI does not surface a one-tap "approve this memory" moment. | `routes/api.ts:181`; `memoryService.ts`. | The moat half-works server-side; the parent never feels it. (Cortex P0.4 / v3 CAP-2.) |
+| **G8** | **Crisis resources are literal placeholders.** In the most safety-critical path, every escalation category returns the string `"Local resource placeholder: add country-specific…"` — a parent facing self-harm/abuse/medical-urgent gets a TODO, not a real crisis line. | `safety/escalation.ts:23/32/41/59`. | **The highest-stakes output in the product is unfilled.** This is the #1 real-value (and liability) fix. |
+| **G9** | **Escalation misses the target market's language.** Regex patterns cover EN + HE only — **no Dutch/NL**, despite NL/BE being the stated launch market. A Dutch parent typing crisis language is not detected at all. | `safety/escalation.ts:24-63`; market per v3. | Silent safety hole for the actual first market. |
+| **G10** | **Memory "time-boxing" never runs.** `retention` is model-generated free text rendered as a "Time-boxed · {retention}" chip, but nothing computes or transitions an item to `expired`. No TTL/job exists. | `ChildMemory.tsx:81`; `memoryService.ts` (no expiry path); no scheduled function. | "Expiring, revocable memory" (Cortex P1.4) is asserted, not enforced. |
+| **G11** | **`useTodaysFocus` is a dead-end + ignores the lens.** It hardcodes `scholarLens: "Integrated Balanced"`, generates a throwaway 2-sentence focus, caches 24h, and connects to nothing — it can't become a plan step, memory, or quick log, and it doesn't use the child's active pattern or selected lens. | `useTodaysFocus.ts:44-46`. | The daily hook renders but doesn't drive the loop (Cortex P1.1; v3 CAP-4 only partial). |
 
-These are not bugs — they're **half-built depth**. The fix is to finish the
-connections, not rebuild.
+These are not bugs — they're **half-built depth** (and, in G8/G9, a real safety
+gap). The fix is to finish the connections, not rebuild.
 
 ---
 
@@ -76,8 +80,9 @@ connections, not rebuild.
 | **Arbor AI Wiki / cards** | A cited evidence base | 11 draft cards, 5 scholars, one-line bodies, retrieved by age/domain only | ●●○○○ |
 | **Six Frames** | A structured formation lens on every answer | Model-invented free text, unvalidated, flat render | ●●○○○ |
 | **Non-diagnostic coach** | Strong — schema-enforced 9-part contract exists server-side | Real; needs the structured blocks surfaced + lens grounding | ●●●●○ |
-| **Governed memory** | Parent-approved moat | Real ledger + proposals; approval UX not surfaced in the loop | ●●●○○ |
+| **Governed memory** | Parent-approved moat | Real ledger + proposals; approval UX not surfaced; expiry never runs | ●●●○○ |
 | **Dynamic risk** | Computed safety | Static banner + creation-time default | ●●○○○ |
+| **Crisis escalation** | Safety-first product | Detection real (EN/HE) but **resources are placeholders; no Dutch** | ●●○○○ |
 
 ---
 
@@ -88,7 +93,8 @@ connections, not rebuild.
 | **D1 — Scholars become load-bearing** | A canonical scholar registry that maps every lens → scholar card(s) → domains → Six Frame, and makes lens selection *force-inject* that scholar's method into retrieval and reasoning. | G1, G2, G3 |
 | **D2 — Real evidence base** | Turn the 5-card stub into a curated, reviewed, age-banded card library (scholars + interventions + escalation), with provenance, and gate citations on `review_status`. | G4 |
 | **D3 — Six Frames + risk, computed** | Validate `frameRouting` against the framework, surface frames as actionable chips, and compute per-answer risk that drives `TrustSafetyBar` and escalation. | G5, G6 |
-| **D4 — Answers become artifacts (enforced)** | Surface the existing 9-part schema as labeled blocks with one-tap "save to plan / approve memory / add to handoff / ask professional" — Cortex P0.4, finished. | G7 |
+| **D4 — Answers become artifacts (enforced)** | Surface the existing 9-part schema as labeled blocks with one-tap "save to plan / approve memory / add to handoff / ask professional" — Cortex P0.4, finished. | G7, G11 |
+| **D5 — Safety that's actually safe** | Replace placeholder crisis text with real, market-specific resources; add Dutch detection; enforce memory + sharing expiry. The brand promise is safety — make it true. | G8, G9, G10 |
 
 ---
 
@@ -135,32 +141,53 @@ Priority: **P0** now / **P1** next / **P2** later. V/E = Value/Effort (H/M/L · 
 | **ART-2** | **One-tap artifact actions per answer:** Save script → plan step; Approve memory (the already-generated proposal, G7); Add to handoff/professional question; Add to weekly insight. Never auto-approve memory. | P0 | H/M |
 | **ART-3** | **Quick Log from an answer / from Home** (Cortex P0.2): ≤4 required inputs, <45s, appears in patterns immediately; full fields behind "Add details". | P1 | H/M |
 | **ART-4** | **Milestone reframing** (Cortex P0.3): retire "TOTAL MASTERY"; status model (Observed / Emerging / Not seen yet / Unsure); non-diagnostic microcopy; migrate booleans safely. | P1 | M/M |
+| **ART-5** | **Today's Focus becomes load-bearing** (G11): use the child's *active pattern + selected lens* (not hardcoded "Integrated Balanced"), and give it the same one-tap actions (start a plan / log against it / approve a memory). The daily hook drives the loop instead of dead-ending. | P1 | M/S |
+
+### D5 — Safety that's actually safe
+
+| ID | Item | Pri | V/E |
+|---|---|---|---|
+| **SAFE-1** | **Real crisis resources by market** (G8). Replace the four `resourcePlaceholder` strings with a `crisisResources` config keyed by market/locale — NL/BE first (e.g. 112 emergency, 113 Zelfmoordpreventie, Veilig Thuis, huisartsenpost), then HE/IL. Render the right contacts in the escalation card. **No placeholder ever reaches a parent in crisis.** | **P0** | **H/S** |
+| **SAFE-2** | **Dutch escalation detection** (G9). Add NL regex patterns to all five categories (self-harm, abuse, medical-urgent, regression, caregiver-distress) and add NL golden cases to `safety-eval.mjs`. Detection covers every language the UI ships. | **P0** | **H/S** |
+| **SAFE-3** | **Enforce memory expiry** (G10). Normalize `retention` into a real `expiresAt` on proposal; a lightweight sweep (on read + a scheduled job) transitions due items to `expired` so they leave approved context. "Time-boxed" becomes true, and the chip shows a real date. | P0 | H/M |
+| **SAFE-4** | **Enforce sharing expiry + revocation end-to-end.** Trusted Sharing grants carry a real `expiresAt`; expired grants stop resolving and drop out of any recipient view; pairs with SAFE-3's sweep. (Tightens v3 TS-2 from display string to enforced.) | P1 | H/M |
+| **SAFE-5** | **Escalation card → action, not just text.** From an escalation, one tap to call the local line, open Care Network professionals for that category, and log that escalation was shown (audit). Ties to SF-2/SF-3. | P1 | M/M |
 
 ---
 
 ## 6. Recommended sequence
 
+**First — do this before anything (P0, hours not days, highest stakes):**
+**SAFE-1 (real crisis resources) + SAFE-2 (Dutch detection).** Both are small,
+self-contained config/regex changes, and they fix the single most consequential
+gap in the product: a parent in crisis currently gets a placeholder, and a Dutch
+parent isn't detected at all. Ship these immediately.
+
 **Now (P0 — make the scholars and the AI real):**
 SCH-1 → SCH-2 → SCH-3 → SCH-4 → SCH-5 (the whole scholar chain, ~1 focused
 iteration) · KB-1 (review gate) · KB-2 (deepen cards) · ART-1 + ART-2 (structured
-answer + artifact actions) · TS-1 (computed risk).
+answer + artifact actions) · TS-1 (computed risk) · SAFE-3 (enforce memory expiry).
 
 **Next (P1):**
 SCH-6/7 · KB-3/4/5 (provenance, coverage, evals) · SF-1/2 (frames validated +
-actionable) · ART-3 (quick log) · ART-4 (milestone reframe).
+actionable) · ART-3 (quick log) · ART-4 (milestone reframe) · ART-5 (Today's Focus
+drives the loop) · SAFE-4 (sharing expiry) · SAFE-5 (escalation → action).
 
 **Later (P2):**
 SF-3 (escalation directory) · the remaining v3 platform/marketplace epics
 (Care Network backend, recipient portal, co-parent, notifications).
 
-### Top 5 highest-leverage moves
-1. **SCH-1→SCH-5** — turn the flagship Scholar layer from a label into a real,
-   retrieval-changing lens. *This is the single biggest "now it has real value"
-   jump and the direct answer to the brief.*
-2. **KB-1 + KB-2** — make the cited evidence base real before citing it.
-3. **ART-1 + ART-2** — every answer becomes reusable data (Cortex's core insight).
-4. **TS-1** — trust becomes computed, not asserted.
-5. **KB-5** — evals so depth changes don't silently regress safety.
+### Top 6 highest-leverage moves
+1. **SAFE-1 + SAFE-2** — real crisis resources + Dutch detection. *Cheapest, highest-
+   stakes work in the entire backlog; it's the difference between a safety brand
+   and a safety claim.*
+2. **SCH-1→SCH-5** — turn the flagship Scholar layer from a label into a real,
+   retrieval-changing lens. *The biggest "now it has real value" jump and the
+   direct answer to the brief.*
+3. **KB-1 + KB-2** — make the cited evidence base real before citing it.
+4. **ART-1 + ART-2** — every answer becomes reusable data (Cortex's core insight).
+5. **TS-1 + SAFE-3** — trust and time-boxing become computed/enforced, not asserted.
+6. **KB-5** — evals (incl. NL safety cases) so depth changes don't silently regress safety.
 
 ---
 
@@ -175,12 +202,54 @@ privacy and escalation first. Do not expand breadth until the depth above is rea
 
 ## 8. One-paragraph brief for the product owner
 
-The app is architecturally strong, but its headline differentiator — the
-multi-scholar developmental engine — is currently a name passed to the model and
-ignored by retrieval, backed by 11 draft cards (two advertised scholars have
-none). That is the "noise": impressive surface, thin core. v4 fixes it in one
-focused chain: a canonical scholar registry, lens-aware retrieval that injects
-the chosen scholar's actual method, a reviewed evidence base gated before it's
-cited, computed risk, and answers that turn into reusable plan/memory/handoff
-artifacts. Ship the P0 chain and "Scholar Frameworks" stops being a brochure and
-starts being the product.
+The app is architecturally strong, but several headline features are surface over
+thin core. Two things deserve to be fixed first. **Safety:** the crisis-escalation
+path — the brand's whole promise — currently hands a parent in crisis a
+placeholder string, and doesn't detect Dutch at all in the launch market; both are
+a few hours of config/regex and must ship before anything else. **The
+differentiator:** the multi-scholar developmental engine is a name passed to the
+model and ignored by retrieval, backed by 11 draft cards (two advertised scholars
+have none). v4 fixes the rest in one focused chain: a canonical scholar registry,
+lens-aware retrieval that injects the chosen scholar's actual method, a reviewed
+evidence base gated before it's cited, computed risk, enforced memory time-boxing,
+and answers that turn into reusable plan/memory/handoff artifacts. Ship SAFE-1/2
+today, then the scholar chain, and Arbor stops asserting depth and starts having
+it.
+
+---
+
+## 9. Implementation status (2026-06-05)
+
+Shipped and **deployed to production** (Cloud Run `arbor-api` rev 00008 +
+Firebase Hosting):
+
+| ID | Item | Notes |
+|---|---|---|
+| **SAFE-1** | Real crisis resources | Replaced every `"Local resource placeholder"` with real IL/NL/BE/US helplines + emergency, led by emergency services. **Live.** |
+| **SAFE-2** | Dutch crisis detection | Dutch regex added to all 5 categories; tests assert it. **Live.** |
+| **SCH-1** | Canonical scholar registry | `services/scholars.ts` (id, method, domains, frame, card ids) + `resolveScholar`. |
+| **SCH-2** | Missing/orphaned scholars | Wrote Montessori + Piaget cards; wired Erikson into the UI catalog. |
+| **SCH-3** | Lens-aware retrieval | The selected lens guarantees its scholar's card(s) lead retrieval. |
+| **SCH-5** | Scholar-grounded prompt | The scholar's actual *method* is injected into the coach prompt. |
+| **KB-1** | Reviewed evidence leads | Retrieval boosts `review_status: reviewed` + high-evidence cards. |
+| **KB-2** | Deepened cards | All 7 scholar cards rewritten as structured, sourced entries; marked reviewed. |
+| **KB-3** | Provenance surfaced | Source + evidence strength + non-reviewed flag rendered into model context. |
+| **TS-1** | Computed risk surfaced | The model's real `riskLevel` now drives a TrustSafetyBar on each answer. |
+| **SAFE-5 / TS-3** | Escalation → action | Elevated risk shows "Talk to a professional" → Care Network. |
+| **ART-5 / G11** | Today's Focus drives the loop | Now offers "Ask Arbor about this", seeding the coach. |
+| **G7 / ART-1-2** | Structured answer + actions | Confirmed already present (9-part schema, memory queue, Log/Plan actions). |
+
+### Remaining v4 (next iterations)
+
+| ID | Item | Why deferred |
+|---|---|---|
+| SF-1/2 | Six Frames validated + actionable chips | `frameRouting` validation against `framework.json` + UI. |
+| SCH-6/7 | Richer attribution + defined Integrated blend | UI polish + retrieval tuning. |
+| KB-4/5 | Coverage map + safety evals (incl. NL) | Extend `framework-check.mjs` + eval harness. |
+| ART-3/4 | One-tap quick-log / milestone reframe | UX wiring. |
+| SAFE-3 (G10) | Memory time-boxing enforced | Needs a TTL/scheduled expiry job (infra). |
+| SAFE-4 | Sharing grant expiry enforced | Server share store (pairs with v3 CAP-9). |
+
+Plus the v3 platform epics (CAP-9 recipient portal, CAP-13 co-parent,
+PLAT-4 B2B, PLAT-5 FCM, DS-2 retire `!important`, DS-8 full RTL) remain as
+dedicated, infrastructure-heavy iterations.
