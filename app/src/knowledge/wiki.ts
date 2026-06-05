@@ -136,5 +136,14 @@ export const filterKnowledgeCards = (cards: KnowledgeCard[], filters: {
 export const retrieveKnowledgeCards = async (filters: Parameters<typeof filterKnowledgeCards>[1]) =>
   filterKnowledgeCards(await loadKnowledgeCards(), filters);
 
+/** Load specific cards by id, preserving order (v4 SCH-3 lens-aware retrieval). */
+export const loadCardsByIds = async (ids: string[]): Promise<KnowledgeCard[]> => {
+  if (!ids.length) return [];
+  const all = await loadKnowledgeCards();
+  return ids
+    .map((id) => all.find((card) => card.id === id))
+    .filter((card): card is KnowledgeCard => Boolean(card));
+};
+
 export const renderKnowledgeContext = (cards: KnowledgeCard[]) =>
   cards.map((card) => `- ${card.id} (${card.type}): ${card.title}\n${card.body.slice(0, 900)}`).join("\n\n");

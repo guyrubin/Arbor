@@ -6,7 +6,8 @@ import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
-import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards } from "../knowledge/wiki.js";
+import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
+import { resolveScholar } from "../services/scholars.js";
 import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type } from "@google/genai";
@@ -139,12 +140,20 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, framework 
       const childId = toChildId(childProfile);
       const familyId = toFamilyId(childProfile);
       const approvedMemory = await getApprovedMemoryContext(memoryStore, childId);
-      const knowledgeCards = await retrieveKnowledgeCards({
+      // SCH-3: the selected lens is now load-bearing — its scholar's card(s) are
+      // guaranteed into the context and lead, alongside age/domain matches.
+      const scholar = resolveScholar(scholarLens);
+      const retrievedCards = await retrieveKnowledgeCards({
         ageBand: childProfile?.ageBand,
         domains: Array.isArray(childProfile?.domains) ? childProfile.domains : undefined,
         allowedUse: "coach_context",
         limit: 4
       });
+      const scholarCards = await loadCardsByIds(scholar.cardIds);
+      const seenCardIds = new Set<string>();
+      const knowledgeCards = [...scholarCards, ...retrievedCards]
+        .filter((card) => (seenCardIds.has(card.id) ? false : (seenCardIds.add(card.id), true)))
+        .slice(0, 5);
 
       const prompt = `
 ${NON_DIAGNOSTIC_CONTRACT}
@@ -160,7 +169,9 @@ You are the Arbor Parent Coach, a developmental parenting support assistant.
 Current Child Profile Context:
 ${childProfile ? JSON.stringify(childProfile, null, 2) : "None provided"}
 
-Active Scholar Lens/Concept: ${scholarLens || "Integrated Balanced"}
+ACTIVE SCHOLAR LENS — apply this method, do not just name it:
+${scholar.name} — ${scholar.concept}. ${scholar.method}
+Ground "What To Do Today" and the parent script in this lens, and prefer Six Frame "${scholar.defaultFrame}" unless safety dictates otherwise.
 Parent question:
 ${message}
 

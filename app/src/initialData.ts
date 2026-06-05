@@ -207,5 +207,15 @@ export const scholarsInfo = [
     value: "Keeps expectations grounded in biological reality. Reminds parents that a 5-year-old operates in the intuitive Preoperational stage (egocentric, magical thinking, struggles with abstract rules).",
     examplePrompt: "Explain Dylan's transition refusal through Piaget's Preoperational cognitive framework. What can we realistically expect?",
     slug: "piaget"
+  },
+  {
+    name: "Erik Erikson",
+    initial: "E",
+    concept: "Developmental Arc",
+    color: "from-rose-500/10 to-transparent",
+    theory: "Psychosocial Stages (Autonomy, Initiative)",
+    value: "Frames the moment within the child's current psychosocial task — autonomy vs. shame in toddlers, initiative vs. guilt in preschoolers — and supports its healthy resolution with encouragement and age-appropriate independence.",
+    examplePrompt: "Frame Dylan's bids for independence through Erikson's Initiative vs. Guilt stage and how to support it.",
+    slug: "erikson"
   }
 ];
