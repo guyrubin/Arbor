@@ -11,6 +11,9 @@ export type KnowledgeCard = {
   allowed_uses: string[];
   title: string;
   body: string;
+  review_status?: string;     // draft | reviewed
+  source?: string;            // public provenance (CDC / AAP / Harvard CDC / scholar)
+  evidence_strength?: string; // low | medium | high
 };
 
 export type KnowledgeLoadResult = {
@@ -89,7 +92,10 @@ export const loadKnowledgeCardsWithMetadata = async (): Promise<KnowledgeLoadRes
       risk_level: meta.risk_level,
       allowed_uses: meta.allowed_uses || [],
       title: body.match(/^#\s+(.+)$/m)?.[1] || meta.id,
-      body: body.trim()
+      body: body.trim(),
+      review_status: meta.review_status,
+      source: meta.source,
+      evidence_strength: meta.evidence_strength
     });
   }
 
@@ -124,6 +130,8 @@ export const filterKnowledgeCards = (cards: KnowledgeCard[], filters: {
     if (filters.ageBand && card.age_bands.includes(filters.ageBand)) score += 2;
     if (filters.domains?.some((domain) => card.domains.includes(domain))) score += 2;
     if (filters.riskLevel && card.risk_level === filters.riskLevel) score += 1;
+    if (card.review_status === "reviewed") score += 2; // KB-1: reviewed evidence leads
+    if (card.evidence_strength === "high") score += 1;
     return { card, score };
   });
   return scored
@@ -146,4 +154,12 @@ export const loadCardsByIds = async (ids: string[]): Promise<KnowledgeCard[]> =>
 };
 
 export const renderKnowledgeContext = (cards: KnowledgeCard[]) =>
-  cards.map((card) => `- ${card.id} (${card.type}): ${card.title}\n${card.body.slice(0, 900)}`).join("\n\n");
+  cards
+    .map((card) => {
+      const status = card.review_status && card.review_status !== "reviewed" ? ` [${card.review_status}]` : "";
+      const prov = card.source
+        ? `\nSource: ${card.source}${card.evidence_strength ? ` (evidence: ${card.evidence_strength})` : ""}`
+        : "";
+      return `- ${card.id} (${card.type})${status}: ${card.title}\n${card.body.slice(0, 900)}${prov}`;
+    })
+    .join("\n\n");
