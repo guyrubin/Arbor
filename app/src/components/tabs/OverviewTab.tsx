@@ -39,6 +39,7 @@ export default function OverviewTab() {
     chatMessages,
     childProfile,
     setPlanChallengeTopic,
+    setChatInput,
   } = useArbor();
   const { toast } = useToast();
 
@@ -344,7 +345,16 @@ export default function OverviewTab() {
             {focusLoading && !focus ? (
               <div className="space-y-2 mt-2"><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-2/3" /></div>
             ) : focus ? (
-              <p className="text-sm leading-relaxed mt-2" style={{ color: "var(--arbor-ink)" }}>{focus.text}</p>
+              <>
+                <p className="text-sm leading-relaxed mt-2" style={{ color: "var(--arbor-ink)" }}>{focus.text}</p>
+                <button
+                  onClick={() => { setChatInput(`About today's focus: ${focus.text} What is one concrete step for ${firstName} today?`); setActiveTab("coach"); }}
+                  className="inline-flex items-center gap-1 text-xs font-extrabold mt-2"
+                  style={{ color: "#1f8a5a" }}
+                >
+                  Ask Arbor about this <ArrowRight className="w-3 h-3" />
+                </button>
+              </>
             ) : (
               <p className="text-sm mt-2" style={{ color: "var(--arbor-muted)" }}>
                 {recentCount > 0 ? "Generating today's focus…" : `Log a moment to unlock focus guidance for ${firstName}.`}
