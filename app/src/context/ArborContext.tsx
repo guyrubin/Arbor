@@ -54,6 +54,7 @@ export type ActiveTab =
   | "profile"        // Child Intelligence › Development Profile
   | "memory"         // Child Intelligence › Child Memory
   | "strengths"      // Child Intelligence › Strengths & Challenges
+  | "timeline"       // Child Intelligence › Story (unified signal timeline)
   | "find-pro"       // Care Network › Find a Professional
   | "care-team"      // Care Network › My Care Team
   | "appointments"   // Care Network › Appointments
@@ -66,7 +67,7 @@ export type ActiveTab =
 // working browser back/forward button.
 const VALID_TABS = new Set<string>([
   "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
-  "profile", "memory", "strengths", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family",
+  "profile", "memory", "strengths", "timeline", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family",
 ]);
 function tabFromHash(): ActiveTab | null {
   try {

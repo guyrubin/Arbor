@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { Check, Sparkles, RefreshCw, Brain, AlertTriangle, Plus, ExternalLink, PartyPopper, BookOpen, Trash2, Pencil } from "lucide-react";
+import { Check, Sparkles, RefreshCw, Brain, Eye, Plus, ExternalLink, PartyPopper, BookOpen, Trash2, Pencil } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { ProgressRing } from "../ui/ProgressRing";
@@ -107,12 +107,13 @@ export default function MilestonesTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Developmental Milestones Checklist</h2>
-          <p className="text-sm text-[#a8a093] mt-1">Track milestones by developmental domain. Celebrate each win.</p>
+          <h2 className="text-3xl font-extrabold tracking-tight">Development Snapshot</h2>
+          <p className="text-sm text-[#a8a093] mt-1">Notice what you&apos;ve seen so far across developmental domains. This is a parent observation tracker — not a diagnostic score, and children develop at their own pace.</p>
         </div>
         <div className="bg-[#141821] border border-white/10 p-4 rounded-2xl text-center">
-          <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">Total Mastery</span>
-          <div className="text-2xl font-black text-[#f4d991]">{checkedMilestones} / {totalMilestones}</div>
+          <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">Observed so far</span>
+          <div className="text-2xl font-black text-[#f4d991]">{checkedMilestones} <span className="text-[#a8a093] text-lg font-bold">of</span> {totalMilestones}</div>
+          <span className="text-[9px] text-[#a8a093] block mt-0.5">A snapshot, not a score</span>
         </div>
       </div>
 
@@ -161,9 +162,10 @@ export default function MilestonesTab() {
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input type="checkbox" checked={item.checked} onChange={() => onToggle(item.id, item.checked)} className="mt-1 accent-[#d7aa55]" />
                       <div className="space-y-0.5 flex-1">
-                        <span className={`font-bold block ${item.checked ? "line-through text-gray-500" : "text-white"}`}>{item.title}</span>
+                        <span className={`font-bold block ${item.checked ? "text-[#9cc79c]" : "text-white"}`}>{item.title}</span>
                         <span className="text-[10px] block leading-relaxed text-[#a8a093]">{item.description}</span>
                         <div className="flex items-center gap-2 flex-wrap pt-1">
+                          {item.checked && <span className="text-[9px] font-black uppercase tracking-wide text-[#6f9e6f] bg-[#6f9e6f]/12 px-1.5 py-0.5 rounded">Observed</span>}
                           {item.ageGroup && <span className="text-[9px] font-bold text-[#a8a093] bg-white/5 px-1.5 py-0.5 rounded">Age: {item.ageGroup}</span>}
                           {item.custom && <span className="text-[9px] font-bold text-[#f4d991] bg-[#d7aa55]/10 px-1.5 py-0.5 rounded">Custom</span>}
                           {item.custom && (
@@ -262,7 +264,7 @@ export default function MilestonesTab() {
             <h4 className="text-base font-extrabold text-[#f7f1e7] flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-[#d7aa55]" /> Vygotskian AI Scaffolding Analyzer
             </h4>
-            <p className="text-xs text-[#a8a093] mt-0.5">Maps active gaps dynamically based on the child&apos;s checked/unchecked milestones list.</p>
+            <p className="text-xs text-[#a8a093] mt-0.5">Maps supportive next steps from what you&apos;ve observed and not yet observed — a next-best-challenge view, never a deficit list.</p>
           </div>
           <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 text-black text-xs font-black px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ml-auto sm:ml-0">
             {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin text-black" /> Analyzing Gaps...</>) : (<><Brain className="w-3.5 h-3.5 text-black" /> Run AI Gap Review</>)}
@@ -285,12 +287,12 @@ export default function MilestonesTab() {
         )}
       </div>
 
-      <div className="p-5 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-4 text-xs text-[#f4d991]">
-        <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-400 mt-0.5" />
+      <div className="p-5 bg-[#d7aa55]/8 border border-[#d7aa55]/20 rounded-2xl flex items-start gap-4 text-xs">
+        <Eye className="w-5 h-5 flex-shrink-0 text-[#d7aa55] mt-0.5" />
         <div className="space-y-1 leading-relaxed">
-          <strong className="text-white text-sm block">System Watch/Wait delay checklist check:</strong>
+          <strong className="text-white text-sm block">Gentle watch points</strong>
           <p className="text-[#a8a093]">
-            Two key social and language-switching delay thresholds remain unchecked for target age (5-6). If verbal comfort code-switching between Hebrew and English is not acquired within 3 months, consider running the visual dropoff routing, or hand school notes for evaluation.
+            A few areas are still in the &ldquo;not seen yet&rdquo; column for this age — including comfort code-switching between {childProfile.languages.join(" and ") || "home and school languages"}. That&apos;s common and rarely a concern on its own. Keep noticing, keep playing, and revisit in a few weeks. If something feels persistent, or you&apos;d simply like reassurance, you can ask Arbor or share a development snapshot with your pediatrician or teacher.
           </p>
         </div>
       </div>
