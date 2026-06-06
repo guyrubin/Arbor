@@ -8,6 +8,7 @@ import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safet
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 import { resolveScholar } from "../services/scholars.js";
+import { selectCouncil, runScholarTakes, renderCouncilForSynthesis } from "../services/council.js";
 import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type } from "@google/genai";
@@ -224,6 +225,93 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       } else {
         res.status(500).json(payload);
       }
+    }
+  });
+
+  // SAGE-2 (v6): multi-agent scholar council. The orchestrator selects the most
+  // relevant scholar agents, runs each as its own lensed model call (in parallel),
+  // then synthesizes the takes into one coherent, non-diagnostic answer.
+  router.post("/council", async (req, res) => {
+    const { message, childProfile, scholarLens, language } = req.body;
+    if (!message || typeof message !== "string") {
+      res.status(400).json({ error: "A message is required" });
+      return;
+    }
+    const escalationMatch = screenForImmediateEscalation({ message });
+    if (escalationMatch) {
+      res.json({ text: renderEscalationMarkdown(escalationMatch), riskLevel: "urgent", escalationCategory: escalationMatch.category, council: [] });
+      return;
+    }
+    const languageDirective =
+      language === "he"
+        ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
+        : "";
+    try {
+      const childId = toChildId(childProfile);
+      const familyId = toFamilyId(childProfile);
+      const approvedMemory = await getApprovedMemoryContext(memoryStore, childId);
+      const lead = resolveScholar(scholarLens);
+      const childDomains = Array.isArray(childProfile?.domains) ? childProfile.domains : [];
+      const council = selectCouncil(lead, childDomains, 3);
+
+      // 1) Each scholar agent deliberates in parallel.
+      const takes = await runScholarTakes(modelProvider, council, { message, childProfile, language });
+
+      // 2) Ground the synthesis in the council's cards + approved memory.
+      const scholarCards = await loadCardsByIds(council.flatMap((s) => s.cardIds));
+      const retrievedCards = await retrieveKnowledgeCards({
+        ageBand: childProfile?.ageBand,
+        domains: childDomains.length ? childDomains : undefined,
+        allowedUse: "coach_context",
+        limit: 4
+      });
+      const seen = new Set<string>();
+      const knowledgeCards = [...scholarCards, ...retrievedCards]
+        .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)))
+        .slice(0, 6);
+
+      const prompt = `
+${NON_DIAGNOSTIC_CONTRACT}
+${developmentalFramework}
+
+ARBOR APPROVED CHILD MEMORY:
+${approvedMemory || "No parent-approved child memory available."}
+
+ARBOR AI WIKI SOURCE CARDS:
+${renderKnowledgeContext(knowledgeCards) || "No matching cards; keep uncertainty explicit."}
+
+You are the Arbor Parent Coach synthesizing a SCHOLAR COUNCIL into one answer.
+Child Profile:
+${childProfile ? JSON.stringify(childProfile, null, 2) : "None provided"}
+
+${renderCouncilForSynthesis(takes)}
+
+Integrate the council's distinct lenses into one coherent, non-diagnostic answer — lead with connection, then capability, then context. Do not contradict the lenses.
+Parent question:
+${message}
+
+Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed.${languageDirective}
+`;
+
+      const raw = await modelProvider.generateJson({
+        route: "coach_high_stakes",
+        prompt,
+        schema: coachResponseSchema,
+        temperature: 0.4
+      });
+      const structured = coachResponseZodSchema.parse(raw);
+      if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
+        structured.sourceCardsUsed = knowledgeCards.map((c) => c.id);
+      }
+      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, structured.memoryProposals, {
+        familyId,
+        prompt: message,
+        frameRouting: structured.frameRouting
+      });
+      res.json({ text: renderCoachResponse(structured), contract: structured, council: takes, memoryReviewItems });
+    } catch (error: any) {
+      console.error("Arbor Council Error:", error);
+      res.status(500).json({ error: "Failed to convene the scholar council", details: error.message });
     }
   });
 

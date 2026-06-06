@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import {
   Lightbulb, ListChecks, MessageSquareQuote, Ban, Eye, AlertTriangle,
-  Volume2, Square, Copy, ListPlus, ClipboardList, Send, Compass, Check,
+  Volume2, Square, Copy, ListPlus, ClipboardList, Send, Compass, Check, Users,
 } from "lucide-react";
-import type { CoachContract } from "../../types";
+import type { CoachContract, CouncilTake } from "../../types";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 
 /**
@@ -44,9 +44,10 @@ function Panel({ icon, title, tint, children, action }: {
   );
 }
 
-export default function CoachAnswerCards({ contract, lens, onSaveToPlan, onCreateLog, onAddToHandoff }: {
+export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan, onCreateLog, onAddToHandoff }: {
   contract: CoachContract;
   lens?: string;
+  council?: CouncilTake[];
   onSaveToPlan: (topic: string) => void;
   onCreateLog: () => void;
   onAddToHandoff: (note: string) => void;
@@ -86,6 +87,22 @@ export default function CoachAnswerCards({ contract, lens, onSaveToPlan, onCreat
         ))}
         <span className="text-[10px] font-black px-2 py-0.5 rounded-full ml-auto" style={{ color: risk.fg, background: risk.bg }}>Risk: {risk.label}</span>
       </div>
+
+      {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
+      {council && council.length > 0 && (
+        <Panel icon={<Users className="w-3 h-3" />} title={`The council weighed in · ${council.length} voices`} tint="#7aa7d0">
+          <ul className="space-y-2">
+            {council.map((c) => (
+              <li key={c.scholarId} className="text-[12.5px] leading-snug">
+                <span className="font-bold text-white">{c.name}</span>
+                <span className="text-[10px] font-bold text-[#a8a093]"> · {c.concept}</span>
+                {c.takeaway && <span className="block text-[#a8a093] mt-0.5">{c.takeaway}</span>}
+                {c.suggestion && <span className="block text-[#cdd6df] mt-0.5">→ {c.suggestion}</span>}
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       {/* What may be happening */}
       {contract.nonDiagnosticHypotheses?.length > 0 && (

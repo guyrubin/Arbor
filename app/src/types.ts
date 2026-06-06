@@ -42,6 +42,14 @@ export interface MemoryReviewItem {
   latestEventId: string;
 }
 
+export interface CouncilTake {
+  scholarId: string;
+  name: string;
+  concept: string;
+  takeaway: string;
+  suggestion: string;
+}
+
 export interface CoachContract {
   riskLevel: string;
   ageBand: string;

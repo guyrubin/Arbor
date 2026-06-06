@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, Plus, MessageSquare, Camera, FileText, Mic, Square } from "lucide-react";
+import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, Plus, MessageSquare, Camera, FileText, Mic, Square, Users } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -58,6 +58,7 @@ export default function CoachTab() {
     chatInput,
     setChatInput,
     handleChatSend,
+    handleCouncilSend,
     chatBottomRef,
     memoryReviewItems,
     pendingMemoryItems,
@@ -290,6 +291,7 @@ export default function CoachTab() {
                     <CoachAnswerCards
                       contract={msg.contract}
                       lens={msg.lens}
+                      council={msg.council}
                       onSaveToPlan={(topic) => {
                         setPlanChallengeTopic((topic || msg.text).replace(/[#*]/g, "").slice(0, 140));
                         setActiveTab("plans");
@@ -447,7 +449,15 @@ export default function CoachTab() {
               disabled={isChatLoading}
               className="bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 disabled:text-[#a8a093] text-black font-extrabold text-sm px-5 py-3 rounded-xl transition flex items-center gap-2"
             >
-              Send Inquiry
+              Send
+            </button>
+            <button
+              onClick={() => handleCouncilSend()}
+              disabled={isChatLoading}
+              title="Convene 3 scholars — each weighs in, then Arbor synthesizes"
+              className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-[#f4d991] border border-[#d7aa55]/30 font-extrabold text-sm px-4 py-3 rounded-xl transition flex items-center gap-2"
+            >
+              <Users className="w-4 h-4" /> Council
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-400">

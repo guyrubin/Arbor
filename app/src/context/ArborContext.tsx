@@ -11,6 +11,7 @@ import {
   BehaviorContext,
   DevelopmentalDomainId,
   CoachContract,
+  CouncilTake,
 } from "../types";
 import {
   sampleBehaviorLogs,
@@ -79,8 +80,8 @@ function tabFromHash(): ActiveTab | null {
   }
 }
 
-export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract };
-export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract };
+export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract; council?: CouncilTake[] };
+export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
 
 export const WELCOME_MESSAGE: ChatMessage = {
@@ -569,6 +570,44 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     }
   };
 
+  // SAGE-2: convene the multi-agent scholar council (non-streaming orchestration).
+  const handleCouncilSend = async (customPrompt?: string) => {
+    const promptValue = customPrompt || chatInput;
+    if (!promptValue.trim() || isChatLoading) return;
+
+    if (!customPrompt) setChatInput("");
+    setApiError(null);
+    setChatStreamStatus("Convening the scholar council…");
+    if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
+
+    setChatMessages((prev) => [...prev, { sender: "user" as const, text: promptValue, lens: selectedLens }]);
+    setIsChatLoading(true);
+    try {
+      const data = await api.council({
+        message: promptValue,
+        childProfile,
+        scholarLens: selectedLens || "Integrated Balanced",
+        language: getAiLanguage(),
+      });
+      if (data.memoryReviewItems) setMemoryReviewItems(data.memoryReviewItems);
+      setChatMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: data.text, lens: selectedLens, contract: data.contract, council: data.council },
+      ]);
+      track("coach_council", { lens: selectedLens, voices: data.council?.length || 0 });
+    } catch (err: any) {
+      console.error(err);
+      setApiError(err.message || "The scholar council could not be reached.");
+      setChatMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: `### Council unavailable\n${err.message}` },
+      ]);
+    } finally {
+      setIsChatLoading(false);
+      setChatStreamStatus(null);
+    }
+  };
+
   // Add a Custom Behavior Log
   const resetLogForm = () => {
     setNewLogTrigger("");
@@ -857,6 +896,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     handleMemoryDecision,
     handleCancelChat,
     handleChatSend,
+    handleCouncilSend,
     handleAddLog,
     handleAnalyzeBehaviors,
     handleGenerateActionPlan,
