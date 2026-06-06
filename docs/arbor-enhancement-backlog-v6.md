@@ -354,3 +354,22 @@ The core v6 thesis — *capture in the moment, the AI drafts the log, the answer
 a living attributed workspace, and every feature feeds the next via one timeline*
 — is now live. The remaining items are the multimodal + realtime + multi-account
 programs, each a deliberate iteration with its own infra.
+
+---
+
+## 11. Multimodal shipped (2026-06-06, rev 00011)
+
+**Arbor can now see, read, and talk** — deployed to production (Cloud Run
+`arbor-api` rev 00011 + Hosting, commit `8539c93`):
+
+| ID | Item | Notes |
+|---|---|---|
+| **VIS-1** | Multimodal prompt parts | Model router accepts inline image parts on @google/genai + Vertex Gemini. **Verified live** against `gemini-2.5-flash` (the model saw a generated image and named its colour — `scripts/vision-smoke.mts`). |
+| **VIS-2** | Camera coaching | "Show Arbor a photo" → the model sees the moment/room/drawing → non-diagnostic observations, possible meanings, try-today, avoid. `POST /api/vision` (observe). |
+| **DOC-1** | Document intelligence | "Scan a document" → OCR a school report/form → documentType, summary, key points, suggested memory, questions for the professional, handoff note. `POST /api/vision` (document). |
+| **Image safety gate** | — | Image-only MIME, 6 MB cap, accompanying text safety-screened, and a model `offTopic` refusal for anything outside child care. |
+| **RT-1/2** | Realtime voice coach | Hands-free loop in the coach: listen (SpeechRecognition) → ask → speak the parent script + today step (SpeechSynthesis) → listen again, with Listening/Thinking/Speaking status and one-tap stop. |
+
+Capture is on-device-downscaled (`lib/image.ts`) before upload, and every vision
+result feeds the loop (discuss in Arbor / log the moment / use in a handoff). The
+Coach is now the multimodal hub: **Photo · Document · Talk**.
