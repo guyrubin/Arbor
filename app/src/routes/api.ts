@@ -291,6 +291,104 @@ Return only JSON matching the schema.`;
     }
   });
 
+  // VIS-2 + DOC-1 (v6): Arbor can SEE. The parent shows a photo (a moment, the
+  // room, a drawing) or a document (school report, daycare form) and the model
+  // reasons over the image — non-diagnostic, safety-gated.
+  const parseDataUrl = (dataUrl: unknown) => {
+    if (typeof dataUrl !== "string") return null;
+    const m = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl);
+    if (!m) return null;
+    return { mimeType: m[1], data: m[2] };
+  };
+
+  router.post("/vision", async (req, res) => {
+    const { image, mode = "observe", note, childProfile } = req.body;
+    const parsed = parseDataUrl(image?.dataUrl ?? image);
+    if (!parsed) {
+      res.status(400).json({ error: "A base64 image data URL is required" });
+      return;
+    }
+    // Image safety gate: cap payload size; only image MIME types.
+    if (!parsed.mimeType.startsWith("image/")) {
+      res.status(400).json({ error: "Only image uploads are supported" });
+      return;
+    }
+    const approxBytes = Math.floor((parsed.data.length * 3) / 4);
+    if (approxBytes > 6 * 1024 * 1024) {
+      res.status(413).json({ error: "Image too large — please use a smaller photo" });
+      return;
+    }
+    // Safety-screen any accompanying text.
+    const escalationMatch = screenForImmediateEscalation({ note: typeof note === "string" ? note : "" });
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `This may need professional or urgent attention before Arbor reviews an image. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category
+      });
+      return;
+    }
+
+    const isDoc = mode === "document";
+    const guard = `IMAGE SAFETY GATE: Only analyze images relevant to a young child's development, wellbeing, environment, learning, artwork, or a child-related document. If the image is unrelated, a person other than in an ordinary family context, explicit, graphic, or otherwise outside parenting support, set "offTopic" to true and leave the other fields brief and empty. Never identify or judge people. Observations only — never a diagnosis.`;
+
+    const prompt = isDoc
+      ? `${NON_DIAGNOSTIC_CONTRACT}
+${guard}
+You can SEE the attached document photo. Read it (OCR) and extract what matters for this child's care.
+Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+Parent note: "${typeof note === "string" ? note : ""}"
+Return JSON: offTopic, documentType, summary, keyPoints[], suggestedMemory[] (durable facts the parent could approve), questionsForProfessional[], handoffNote.`
+      : `${NON_DIAGNOSTIC_CONTRACT}
+${developmentalFramework}
+${guard}
+You can SEE the attached photo. Describe only what is observable and relevant, then give gentle, non-diagnostic next steps.
+Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+Parent note: "${typeof note === "string" ? note : ""}"
+Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avoid[], nonDiagnosticNote.`;
+
+    const schema = isDoc
+      ? {
+          type: Type.OBJECT,
+          required: ["offTopic", "documentType", "summary", "keyPoints", "suggestedMemory", "questionsForProfessional", "handoffNote"],
+          properties: {
+            offTopic: { type: Type.BOOLEAN },
+            documentType: { type: Type.STRING },
+            summary: { type: Type.STRING },
+            keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+            suggestedMemory: { type: Type.ARRAY, items: { type: Type.STRING } },
+            questionsForProfessional: { type: Type.ARRAY, items: { type: Type.STRING } },
+            handoffNote: { type: Type.STRING }
+          }
+        }
+      : {
+          type: Type.OBJECT,
+          required: ["offTopic", "observations", "possibleMeanings", "tryToday", "avoid", "nonDiagnosticNote"],
+          properties: {
+            offTopic: { type: Type.BOOLEAN },
+            observations: { type: Type.ARRAY, items: { type: Type.STRING } },
+            possibleMeanings: { type: Type.ARRAY, items: { type: Type.STRING } },
+            tryToday: { type: Type.ARRAY, items: { type: Type.STRING } },
+            avoid: { type: Type.ARRAY, items: { type: Type.STRING } },
+            nonDiagnosticNote: { type: Type.STRING }
+          }
+        };
+
+    try {
+      const result = await modelProvider.generateJson({
+        route: "analysis_structured",
+        prompt,
+        temperature: 0.3,
+        schema,
+        images: [{ data: parsed.data, mimeType: parsed.mimeType }]
+      });
+      res.json({ mode, ...(result as Record<string, unknown>) });
+    } catch (error: any) {
+      console.error("Arbor Vision Error:", error);
+      res.status(500).json({ error: "Failed to analyze the image", details: error.message });
+    }
+  });
+
   router.post("/generate-plan", async (req, res) => {
     const { challengeTopic, childProfile } = req.body;
     const escalationMatch = screenForImmediateEscalation({ challengeTopic });

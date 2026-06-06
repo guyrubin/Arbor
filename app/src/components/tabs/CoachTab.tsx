@@ -1,6 +1,6 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, Plus, MessageSquare } from "lucide-react";
+import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, Plus, MessageSquare, Camera, FileText, Mic, Square } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -9,8 +9,12 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
 import { TrustSafetyBar } from "../ui/kit";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
+import ArborVision from "../coach/ArborVision";
 import { api } from "../../lib/api";
 import type { BehaviorContext } from "../../types";
+import type { ChatMessage } from "../../context/ArborContext";
+import { startDictation, speechSupported } from "../../lib/speech";
+import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 
 type Risk = "Low" | "Moderate" | "High";
 
@@ -85,6 +89,70 @@ export default function CoachTab() {
 
   const lastMessage = chatMessages[chatMessages.length - 1];
   const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && chatMessages.length > 1;
+
+  // Arbor Vision (photo / document capture)
+  const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
+
+  // Realtime voice coach: a hands-free loop — listen (STT) → ask → speak (TTS) → listen again.
+  const [voicePhase, setVoicePhase] = useState<"off" | "listening" | "thinking" | "speaking">("off");
+  const voiceOnRef = useRef(false);
+  const stopDictationRef = useRef<null | (() => void)>(null);
+  const speakNextRef = useRef(false);
+
+  const speakable = (m: ChatMessage) => {
+    if (m.contract) {
+      return [m.contract.parentScript, m.contract.todayPlan?.[0]].filter(Boolean).join(". ");
+    }
+    return (m.text || "").replace(/[#*>_`[\]()-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 420);
+  };
+
+  const startListening = () => {
+    if (!speechSupported()) { toast("Voice input isn't supported in this browser", "info"); voiceOnRef.current = false; setVoicePhase("off"); return; }
+    setVoicePhase("listening");
+    stopDictationRef.current = startDictation(
+      {
+        onResult: (text) => {
+          if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
+          setVoicePhase("thinking");
+          speakNextRef.current = true;
+          void handleChatSend(text);
+        },
+        onError: () => { if (voiceOnRef.current) setVoicePhase("listening"); },
+      },
+      aiLang === "he" ? "he-IL" : "en-US",
+    );
+  };
+
+  const stopVoice = () => {
+    voiceOnRef.current = false;
+    speakNextRef.current = false;
+    stopDictationRef.current?.();
+    stopSpeaking();
+    setVoicePhase("off");
+  };
+
+  const toggleVoice = () => {
+    if (voiceOnRef.current || voicePhase !== "off") { stopVoice(); return; }
+    voiceOnRef.current = true;
+    startListening();
+  };
+
+  // Speak the answer once it arrives, then resume listening if still hands-free.
+  useEffect(() => {
+    if (!speakNextRef.current || isChatLoading) return;
+    const last = chatMessages[chatMessages.length - 1];
+    if (last?.sender !== "ai") return;
+    speakNextRef.current = false;
+    if (!ttsSupported()) { if (voiceOnRef.current) startListening(); return; }
+    setVoicePhase("speaking");
+    speak(speakable(last), () => { if (voiceOnRef.current) startListening(); else setVoicePhase("off"); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatMessages, isChatLoading]);
+
+  // Stop any audio/recognition on unmount.
+  useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); }, []);
+
+  const voiceLabel = voicePhase === "listening" ? "Listening…" : voicePhase === "thinking" ? "Thinking…" : voicePhase === "speaking" ? "Speaking…" : "Talk";
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
@@ -334,6 +402,36 @@ export default function CoachTab() {
         </div>
 
         <div className="p-4 border-t border-white/5 bg-white/[0.01] space-y-2">
+          {/* Multimodal capture: show Arbor a photo or document, or talk hands-free */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setVisionMode("observe")}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-white/5 hover:bg-white/10 text-[#a8a093] hover:text-white border border-white/10 px-2.5 py-1.5 rounded-lg transition"
+            >
+              <Camera className="w-3.5 h-3.5" /> Photo
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisionMode("document")}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-white/5 hover:bg-white/10 text-[#a8a093] hover:text-white border border-white/10 px-2.5 py-1.5 rounded-lg transition"
+            >
+              <FileText className="w-3.5 h-3.5" /> Document
+            </button>
+            <button
+              type="button"
+              onClick={toggleVoice}
+              aria-pressed={voicePhase !== "off"}
+              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition ${
+                voicePhase !== "off"
+                  ? "bg-[#d7aa55]/15 text-[#f4d991] border-[#d7aa55]/40"
+                  : "bg-white/5 hover:bg-white/10 text-[#a8a093] hover:text-white border-white/10"
+              }`}
+            >
+              {voicePhase === "off" ? <Mic className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />} {voiceLabel}
+              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full bg-[#f4d991] animate-pulse" />}
+            </button>
+          </div>
           <div className="flex gap-2">
             <input
               type="text"
@@ -454,6 +552,16 @@ export default function CoachTab() {
           </div>
         )}
       </div>
+
+      <ArborVision
+        open={!!visionMode}
+        mode={visionMode || "observe"}
+        onClose={() => setVisionMode(null)}
+        childProfile={childProfile}
+        onSeedCoach={(prompt) => { setChatInput(prompt); }}
+        onGoHandoff={() => { setActiveTab("handoff"); toast("Note copied — paste it into the handoff", "info"); }}
+        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); setActiveTab("behaviors"); toast("Captured from the photo — review and save", "info"); }}
+      />
     </motion.div>
   );
 }

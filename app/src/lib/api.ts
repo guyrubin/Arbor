@@ -71,4 +71,16 @@ export const api = {
     post<SchoolBrief>("/api/generate-handoff", payload),
   extractLog: (payload: { message: string; childProfile: ChildProfile }) =>
     post<{ behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string }>("/api/extract-log", payload),
+  vision: (payload: { image: { dataUrl: string }; mode: "observe" | "document"; note?: string; childProfile: ChildProfile }) =>
+    post<VisionResult>("/api/vision", payload),
 };
+
+export type VisionObserve = {
+  mode: "observe"; offTopic: boolean; observations: string[]; possibleMeanings: string[];
+  tryToday: string[]; avoid: string[]; nonDiagnosticNote: string;
+};
+export type VisionDocument = {
+  mode: "document"; offTopic: boolean; documentType: string; summary: string; keyPoints: string[];
+  suggestedMemory: string[]; questionsForProfessional: string[]; handoffNote: string;
+};
+export type VisionResult = VisionObserve | VisionDocument;

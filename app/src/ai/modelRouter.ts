@@ -8,12 +8,32 @@ export type ModelRoute =
   | "analysis_structured"
   | "handoff_structured";
 
+/** An inline image part (base64 data without the `data:` prefix). VIS-1. */
+export type ImagePart = { data: string; mimeType: string };
+
 export type GenerateJsonOptions = {
   route: ModelRoute;
   prompt: string;
   schema?: Schema | Record<string, unknown>;
   temperature?: number;
+  /** Optional images for multimodal (vision / document) requests. */
+  images?: ImagePart[];
 };
+
+/** Build a `contents` value for @google/genai: a bare string, or text + images. */
+export const buildGenAiContents = (prompt: string, images?: ImagePart[]) => {
+  if (!images?.length) return prompt;
+  return [
+    { text: prompt },
+    ...images.map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } })),
+  ];
+};
+
+/** Build a Vertex `parts` array: text followed by any inline images. */
+export const buildVertexParts = (prompt: string, images?: ImagePart[]) => [
+  { text: prompt },
+  ...(images || []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } })),
+];
 
 export type ProviderId = "gemini_dev" | "vertex_gemini" | "vertex_claude";
 
@@ -79,7 +99,7 @@ export class GeminiDevProvider implements ModelProvider {
     this.assertApiKey();
     const response = await this.ai.models.generateContent({
       model: modelForRoute(this.config, options.route),
-      contents: options.prompt,
+      contents: buildGenAiContents(options.prompt, options.images) as any,
       config: {
         responseMimeType: "application/json",
         responseSchema: options.schema as Schema,
@@ -121,7 +141,7 @@ export class VertexGeminiProvider {
   async generateJson(options: GenerateJsonOptions) {
     const model = await this.getModel(options.route);
     const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: options.prompt }] }],
+      contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: options.schema,
