@@ -317,3 +317,40 @@ almost entirely from capability Arbor already owns.
 [Maple](https://www.trymaple.ai/) ·
 [Ambient-AI & burnout (medRxiv)](https://www.medrxiv.org/content/10.1101/2024.07.18.24310656.full.pdf) ·
 [Proactive + personalized assistants (ProPerSim, arXiv)](https://arxiv.org/pdf/2509.21730)
+
+---
+
+## 10. Implementation status (2026-06-06)
+
+**Shipped to production** (Cloud Run `arbor-api` **rev 00010** + Firebase Hosting
+`arborprd-westeu`, commits `8292d9c`/`fea697f`; site 200, `/api/*` 401 without a
+token, auth gate enforced):
+
+| ID | Item | Notes |
+|---|---|---|
+| **ECO-1/2** | Signal timeline ("Story") | One read-model folding logs + milestones + plans + memory + coach into a typed stream. **Live.** |
+| **VZ-1** | Visual growth timeline | Soft-Daylight day-grouped rail + momentum strip. **Live.** |
+| **ORC-3** | Proactive next-best-step | Client-derived nudge on Story/Home that routes into the coach. **Live.** |
+| **UX-3 / GUI-1·2·3** | Generative answer cards | Ask Arbor renders the structured contract as an attributed, actionable card stack (hypotheses, "Try today" checklist, "Say this" + TTS, Avoid/Watch/Escalate). **Live.** |
+| **SF-2** | Six-Frame chips | Frame routing rendered as labelled chips on each answer. **Live.** |
+| **SCH-6** | Scholar attribution | Answers show the active lens + domains. **Live.** |
+| **ECO-3** | Structured hand-offs | Card actions carry real data into Plans / Behaviors / Handoff (no prose-dumping). **Live.** |
+| **LOG-1** | Ambient AI logging | `POST /api/extract-log` drafts a structured behavior log from a free-text/voice description; one-tap confirm. Safety-screened, graceful fallback. **Live.** |
+| **TS-1** | Computed risk | TrustSafetyBar reads `contract.riskLevel` directly. **Live.** |
+
+**Remaining (major future programs, infra-heavy):**
+
+| ID | Item | Why it's a dedicated program |
+|---|---|---|
+| UX-1 / VIS-2 | Multimodal vision (camera → model sees it) | Vertex image-part wiring + image safety gate + live-model verification. |
+| RT-1 | Realtime voice coach | Gemini Live streaming session + audio UX. |
+| UX-5 / DOC-1 | Document intelligence (school report → data) | OCR pipeline + structured extraction + review. |
+| SAGE-2 | Full multi-agent scholar council | Server orchestration of N scholar calls + synthesis (today: single grounded call + attribution). |
+| ORC-1/2/4/5 | Formal orchestrator + weekly retro + transparency | Server agent graph over the timeline. |
+| TRB-3 / CAP-13 | Co-parent shared timeline | Multi-caregiver accounts, roles, permissions (auth infra). |
+| SAFE-4 | Sharing-grant expiry enforced | Server share store (pairs with v3 CAP-9). |
+
+The core v6 thesis — *capture in the moment, the AI drafts the log, the answer is
+a living attributed workspace, and every feature feeds the next via one timeline*
+— is now live. The remaining items are the multimodal + realtime + multi-account
+programs, each a deliberate iteration with its own infra.
