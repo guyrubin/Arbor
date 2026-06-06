@@ -10,6 +10,7 @@ import {
   MemoryReviewItem,
   BehaviorContext,
   DevelopmentalDomainId,
+  CoachContract,
 } from "../types";
 import {
   sampleBehaviorLogs,
@@ -78,8 +79,8 @@ function tabFromHash(): ActiveTab | null {
   }
 }
 
-export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string };
-export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[] };
+export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract };
+export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract };
 export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
 
 export const WELCOME_MESSAGE: ChatMessage = {
@@ -542,7 +543,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       if (data.memoryReviewItems) {
         setMemoryReviewItems(data.memoryReviewItems);
       }
-      setChatMessages((prev) => [...prev, { sender: "ai", text: data.text, lens: selectedLens }]);
+      setChatMessages((prev) => [...prev, { sender: "ai", text: data.text, lens: selectedLens, contract: data.contract }]);
       track("coach_message", { lens: selectedLens });
     } catch (err: any) {
       console.error(err);

@@ -227,6 +227,70 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
     }
   });
 
+  // LOG-1 (v6): ambient logging — the AI drafts a structured behavior log from a
+  // free-text or voice description so the parent confirms instead of filling a
+  // form. Non-diagnostic; safety-screened; the client falls back gracefully if
+  // extraction is unavailable.
+  router.post("/extract-log", async (req, res) => {
+    const { message, childProfile } = req.body;
+    if (!message || typeof message !== "string") {
+      res.status(400).json({ error: "A description (message) is required" });
+      return;
+    }
+
+    const escalationMatch = screenForImmediateEscalation({ message });
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `This description may need professional or urgent attention before Arbor drafts a log. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category
+      });
+      return;
+    }
+
+    try {
+      const prompt = `
+${NON_DIAGNOSTIC_CONTRACT}
+You are Arbor's logging assistant. Read the parent's description of a moment with their child and extract ONE structured behavior log. Observations only — never a diagnosis.
+
+Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+Parent description: "${message}"
+
+Rules:
+- behaviorType: a short 2-4 word label for the moment (e.g. "Morning refusal", "Screen shutoff meltdown", "Sibling conflict").
+- intensity: integer 1 (mild) to 5 (severe), inferred from the description.
+- durationMinutes: best-guess integer (use 10 if unclear).
+- context: one of exactly Home, School, Transit, Public.
+- trigger: the immediate antecedent in a few words ("" if unknown).
+- response: what the parent did, if mentioned ("" if unknown).
+- notes: one short neutral sentence capturing anything else useful ("" if none).
+Return only JSON matching the schema.`;
+
+      const draft = await modelProvider.generateJson({
+        route: "analysis_structured",
+        prompt,
+        temperature: 0.2,
+        schema: {
+          type: Type.OBJECT,
+          required: ["behaviorType", "intensity", "durationMinutes", "context", "trigger", "response", "notes"],
+          properties: {
+            behaviorType: { type: Type.STRING },
+            intensity: { type: Type.NUMBER },
+            durationMinutes: { type: Type.NUMBER },
+            context: { type: Type.STRING, enum: ["Home", "School", "Transit", "Public"] },
+            trigger: { type: Type.STRING },
+            response: { type: Type.STRING },
+            notes: { type: Type.STRING }
+          }
+        }
+      });
+      res.json(draft);
+    } catch (error: any) {
+      console.error("Arbor Log Extraction Error:", error);
+      res.status(500).json({ error: "Failed to draft a log", details: error.message });
+    }
+  });
+
   router.post("/generate-plan", async (req, res) => {
     const { challengeTopic, childProfile } = req.body;
     const escalationMatch = screenForImmediateEscalation({ challengeTopic });

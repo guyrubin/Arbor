@@ -8,14 +8,24 @@ import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
 import { TrustSafetyBar } from "../ui/kit";
+import CoachAnswerCards from "../coach/CoachAnswerCards";
+import { api } from "../../lib/api";
+import type { BehaviorContext } from "../../types";
 
-/** Extract the model's real risk level from the structured answer (TS-1). */
-function parseRisk(text: string): "Low" | "Moderate" | "High" {
-  const m = text.match(/risk level:\s*\*{0,2}\s*(low|moderate|high|elevated|severe)/i);
-  const v = (m?.[1] || "").toLowerCase();
-  if (v === "high" || v === "severe") return "High";
+type Risk = "Low" | "Moderate" | "High";
+
+/** Map a structured riskLevel string straight to the trust bar (TS-1). */
+function riskFromLevel(level?: string): Risk {
+  const v = (level || "").toLowerCase();
+  if (v === "high" || v === "severe" || v === "urgent") return "High";
   if (v === "moderate" || v === "elevated") return "Moderate";
   return "Low";
+}
+
+/** Fallback for text-only messages: extract the risk level from the prose. */
+function parseRisk(text: string): Risk {
+  const m = text.match(/risk level:\s*\*{0,2}\s*(low|moderate|high|elevated|severe)/i);
+  return riskFromLevel(m?.[1]);
 }
 
 const FOLLOW_UPS = [
@@ -53,6 +63,13 @@ export default function CoachTab() {
     setActiveTab,
     setPlanChallengeTopic,
     setNewLogNotes,
+    setNewLogType,
+    setNewLogIntensity,
+    setNewLogDuration,
+    setNewLogContext,
+    setNewLogTrigger,
+    setNewLogResponse,
+    childProfile,
     conversations,
     activeConversationId,
     newConversation,
@@ -195,24 +212,62 @@ export default function CoachTab() {
                   ? "bg-blue-950/30 border border-blue-500/15 text-white"
                   : "bg-white/[0.02] border border-white/5 text-gray-100"
               }`}>
-                {msg.sender === "ai" && msg.lens && msg.lens !== "Integrated Balanced" && (
+                {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
                   <span className="text-[10px] font-bold bg-[#d7aa55]/10 text-[#f4d991] px-2 py-0.5 rounded-full mb-3 inline-block">
                     Aligned with {msg.lens}
                   </span>
                 )}
                 {msg.sender === "ai" ? (
-                  <TypewriterMarkdown
-                    text={msg.text}
-                    enabled={idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
-                    onDone={() => {
-                      revealedRef.current = idx;
-                    }}
-                  />
+                  msg.contract ? (
+                    <CoachAnswerCards
+                      contract={msg.contract}
+                      lens={msg.lens}
+                      onSaveToPlan={(topic) => {
+                        setPlanChallengeTopic((topic || msg.text).replace(/[#*]/g, "").slice(0, 140));
+                        setActiveTab("plans");
+                        toast("Seeded the plan generator — tap Generate", "info");
+                      }}
+                      onCreateLog={async () => {
+                        const prior = chatMessages[idx - 1];
+                        const source = prior?.sender === "user" ? prior.text : msg.text;
+                        toast("Drafting a log from this moment…", "info");
+                        try {
+                          const d = await api.extractLog({ message: source, childProfile });
+                          if (d.behaviorType) setNewLogType(d.behaviorType);
+                          if (d.intensity) setNewLogIntensity(Math.min(5, Math.max(1, Math.round(d.intensity))));
+                          if (d.durationMinutes) setNewLogDuration(Math.max(0, Math.round(d.durationMinutes)));
+                          const ctx = (["Home", "School", "Transit", "Public"].includes(d.context) ? d.context : "Home") as BehaviorContext;
+                          setNewLogContext(ctx);
+                          if (d.trigger) setNewLogTrigger(d.trigger);
+                          if (d.response) setNewLogResponse(d.response);
+                          setNewLogNotes(d.notes || "");
+                          setActiveTab("behaviors");
+                          toast("Arbor drafted a log — review and save", "success");
+                        } catch {
+                          setNewLogNotes(msg.contract!.nonDiagnosticHypotheses?.[0]?.rationale?.slice(0, 300) || source.slice(0, 300));
+                          setActiveTab("behaviors");
+                          toast("Capture the moment — a note is pre-filled", "info");
+                        }
+                      }}
+                      onAddToHandoff={() => {
+                        setActiveTab("handoff");
+                        toast("Teacher note copied — paste it into the handoff", "info");
+                      }}
+                    />
+                  ) : (
+                    <TypewriterMarkdown
+                      text={msg.text}
+                      enabled={idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
+                      onDone={() => {
+                        revealedRef.current = idx;
+                      }}
+                    />
+                  )
                 ) : (
                   <MarkdownBlock text={msg.text} />
                 )}
 
-                {msg.sender === "ai" && (
+                {msg.sender === "ai" && !msg.contract && (
                   <div className="flex items-center gap-3 mt-3 pt-2 border-t border-white/5 opacity-0 group-hover:opacity-100 transition">
                     <button onClick={() => navigator.clipboard?.writeText(msg.text)} className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1">
                       <Copy className="w-3 h-3" /> Copy
@@ -320,7 +375,7 @@ export default function CoachTab() {
       {/* Trust & Safety — surfaces the model's real risk + escalation (TS-1/TS-3) */}
       {lastMessage?.sender === "ai" && chatMessages.length > 1 && (
         <TrustSafetyBar
-          risk={parseRisk(lastMessage.text)}
+          risk={lastMessage.contract ? riskFromLevel(lastMessage.contract.riskLevel) : parseRisk(lastMessage.text)}
           note="Arbor's read of this answer"
           onEscalate={() => setActiveTab("find-pro")}
         />

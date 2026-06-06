@@ -69,4 +69,6 @@ export const api = {
     post<HeroJourneyRender>("/api/generate-hero-journey", payload),
   generateBrief: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; audience: string }) =>
     post<SchoolBrief>("/api/generate-handoff", payload),
+  extractLog: (payload: { message: string; childProfile: ChildProfile }) =>
+    post<{ behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string }>("/api/extract-log", payload),
 };
