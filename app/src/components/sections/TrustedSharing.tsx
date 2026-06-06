@@ -1,46 +1,83 @@
-import React, { useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
-import { Share2, ShieldCheck, Clock, X, Download, Trash2, History, Plus } from "lucide-react";
+import { Share2, ShieldCheck, Clock, X, Download, Trash2, History, Plus, Users, Inbox, RefreshCw } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { downloadJson } from "../../lib/childData";
+import { api } from "../../lib/api";
+import type { ShareGrant, ShareRole } from "../../types";
 import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar } from "../ui/kit";
 
-type Share = { id: string; recipient: string; role: string; fields: string; expires: string };
-
-const FIELD_OPTIONS = ["Weekly Insight", "Behavior patterns", "Milestones", "Teacher Handoff", "Therapist Summary"];
+const SCOPE_OPTIONS = ["Story timeline", "Weekly Insight", "Behavior patterns", "Milestones", "Teacher Handoff", "Therapist Summary"];
 const DURATIONS = ["30 days", "60 days", "End of term", "Until revoked"];
+const ROLES: { id: ShareRole; label: string }[] = [
+  { id: "co_parent", label: "Co-parent" },
+  { id: "viewer", label: "Viewer" },
+  { id: "professional", label: "Professional" },
+];
+const roleLabel = (r: ShareRole) => ROLES.find((x) => x.id === r)?.label || "Viewer";
+const expiryLabel = (g: ShareGrant) =>
+  g.expiresAt ? `Expires ${new Date(g.expiresAt).toLocaleDateString()}` : "Until revoked";
 
-/** Care Network › Trusted Sharing — parents control what is shared, with whom,
- *  for how long. New-share flow, working export, guarded delete, audit trail. */
+/** Care Network › Trusted Sharing — real, server-enforced sharing: scoped,
+ *  time-boxed, revocable grants (incl. co-parents), plus what's shared with you. */
 export default function TrustedSharing() {
   const { childProfile, behaviorLogs, actionPlans } = useArbor();
   const first = childProfile.name.split(" ")[0];
-  const [shares, setShares] = useState<Share[]>([
-    { id: "s1", recipient: "Dr. Maya Levi", role: "Child Psychologist", fields: "Patterns, Therapist Summary", expires: "Expires in 60 days" },
-    { id: "s2", recipient: "Ms. Tal (Preschool)", role: "Lead Teacher", fields: "Teacher Handoff only", expires: "Expires end of term" },
-  ]);
-  const [audit, setAudit] = useState<string[]>([
-    "Teacher Handoff shared with Ms. Tal — 5 days ago",
-    "Therapist Summary shared with Dr. Maya Levi — 2 weeks ago",
-    "Access to 'sleep logs' revoked — 3 weeks ago",
-  ]);
+
+  const [shares, setShares] = useState<ShareGrant[]>([]);
+  const [inbound, setInbound] = useState<ShareGrant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [audit, setAudit] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ recipient: "", role: "", fields: [FIELD_OPTIONS[0]] as string[], duration: DURATIONS[0] });
+  const [draft, setDraft] = useState({ recipientEmail: "", role: "co_parent" as ShareRole, scopes: [SCOPE_OPTIONS[0]] as string[], duration: DURATIONS[0] });
 
-  const setFields = (f: string) => setDraft((d) => ({ ...d, fields: d.fields.includes(f) ? d.fields.filter((x) => x !== f) : [...d.fields, f] }));
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [mine, toMe] = await Promise.all([
+        api.listShares(childProfile.id).catch(() => ({ shares: [] })),
+        api.sharedWithMe().catch(() => ({ shares: [] })),
+      ]);
+      setShares(mine.shares || []);
+      setInbound(toMe.shares || []);
+    } finally {
+      setLoading(false);
+    }
+  }, [childProfile.id]);
 
-  const createShare = () => {
-    if (!draft.recipient.trim() || draft.fields.length === 0) return;
-    setShares((p) => [...p, { id: `s${Date.now()}`, recipient: draft.recipient, role: draft.role || "Recipient", fields: draft.fields.join(", "), expires: draft.duration === "Until revoked" ? "Until revoked" : `Expires · ${draft.duration}` }]);
-    setAudit((a) => [`${draft.fields.join(", ")} shared with ${draft.recipient} — just now`, ...a]);
-    setDraft({ recipient: "", role: "", fields: [FIELD_OPTIONS[0]], duration: DURATIONS[0] });
-    setAdding(false);
+  useEffect(() => { void load(); }, [load]);
+
+  const setScope = (f: string) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
+
+  const createShare = async () => {
+    const email = draft.recipientEmail.trim();
+    if (!email || draft.scopes.length === 0) return;
+    setBusy("create");
+    try {
+      await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: draft.role, scopes: draft.scopes, duration: draft.duration });
+      setAudit((a) => [`Shared ${draft.scopes.join(", ")} with ${email} (${roleLabel(draft.role)}) — just now`, ...a]);
+      setDraft({ recipientEmail: "", role: "co_parent", scopes: [SCOPE_OPTIONS[0]], duration: DURATIONS[0] });
+      setAdding(false);
+      await load();
+    } catch (e: any) {
+      setAudit((a) => [`Could not create share: ${e.message}`, ...a]);
+    } finally {
+      setBusy(null);
+    }
   };
 
-  const revoke = (id: string) => {
-    const s = shares.find((x) => x.id === id);
-    setShares((p) => p.filter((x) => x.id !== id));
-    if (s) setAudit((a) => [`Access revoked for ${s.recipient} — just now`, ...a]);
+  const revoke = async (g: ShareGrant) => {
+    setBusy(g.id);
+    try {
+      await api.revokeShare(g.id);
+      setAudit((a) => [`Access revoked for ${g.recipientEmail} — just now`, ...a]);
+      await load();
+    } catch (e: any) {
+      setAudit((a) => [`Could not revoke: ${e.message}`, ...a]);
+    } finally {
+      setBusy(null);
+    }
   };
 
   const exportData = () => {
@@ -55,7 +92,7 @@ export default function TrustedSharing() {
   };
 
   const deleteData = () => {
-    const ok = window.confirm(`Permanently delete all of ${first}'s data?\n\nThis cannot be undone. (For your safety this requires account verification and is processed server-side; nothing is wiped until that confirms.)`);
+    const ok = window.confirm(`Permanently delete all of ${first}'s data?\n\nThis cannot be undone. (For your safety this requires account verification and is processed server-side.)`);
     if (ok) alert("Deletion request recorded. To protect your child's data, permanent deletion is verified and processed server-side.");
   };
 
@@ -64,7 +101,7 @@ export default function TrustedSharing() {
       <PageHeader
         eyebrow="Care Network"
         title="Trusted sharing"
-        subtitle={`You decide what about ${first} is shared, with whom, and for how long. Approve before sharing, revoke anytime.`}
+        subtitle={`You decide what about ${first} is shared, with whom, and for how long. Every grant is time-boxed and revoked instantly — the server stops sharing the moment it expires.`}
         action={
           <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}>
             <Plus className="w-4 h-4" /> New share
@@ -72,7 +109,7 @@ export default function TrustedSharing() {
         }
       />
 
-      <TrustSafetyBar note="Every share is parent-approved, time-boxed and fully revocable." />
+      <TrustSafetyBar note="Every share is parent-approved, time-boxed and fully revocable — enforced on the server." />
 
       {adding && (
         <div className={`${cardCls} p-5 space-y-3`}>
@@ -80,16 +117,21 @@ export default function TrustedSharing() {
             <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Share {first}'s context</h3>
             <button onClick={() => setAdding(false)} aria-label="Cancel"><X className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
-          <div className="grid sm:grid-cols-2 gap-2">
-            <input value={draft.recipient} onChange={(e) => setDraft({ ...draft, recipient: e.target.value })} placeholder="Recipient name" className="rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-            <input value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })} placeholder="Role (e.g. Teacher)" className="rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+          <input value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder="Recipient email (they sign in with this to see what you share)" type="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+          <div>
+            <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>Their role</p>
+            <div className="flex flex-wrap gap-1.5">
+              {ROLES.map((r) => (
+                <button key={r.id} onClick={() => setDraft({ ...draft, role: r.id })} aria-pressed={draft.role === r.id} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.role === r.id ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{r.label}</button>
+              ))}
+            </div>
           </div>
           <div>
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>What to share</p>
             <div className="flex flex-wrap gap-1.5">
-              {FIELD_OPTIONS.map((f) => {
-                const on = draft.fields.includes(f);
-                return <button key={f} onClick={() => setFields(f)} aria-pressed={on} className="rounded-full px-3 py-1 text-xs font-bold" style={on ? { background: "#34b277", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{f}</button>;
+              {SCOPE_OPTIONS.map((f) => {
+                const on = draft.scopes.includes(f);
+                return <button key={f} onClick={() => setScope(f)} aria-pressed={on} className="rounded-full px-3 py-1 text-xs font-bold" style={on ? { background: "#34b277", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{f}</button>;
               })}
             </div>
           </div>
@@ -101,32 +143,59 @@ export default function TrustedSharing() {
               ))}
             </div>
           </div>
-          <button onClick={createShare} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5" style={{ background: "#34b277" }}>Approve & share</button>
+          <button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "#34b277" }}>
+            {busy === "create" ? <><RefreshCw className="w-4 h-4 animate-spin" /> Sharing…</> : "Approve & share"}
+          </button>
         </div>
       )}
 
       <SectionCard title="Active shares" icon={<Share2 className="w-5 h-5" />} tone="mint">
         <div className="space-y-3">
-          {shares.map((s) => (
+          {loading ? (
+            <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><RefreshCw className="w-4 h-4 animate-spin" /> Loading shares…</p>
+          ) : shares.length === 0 ? (
+            <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>Nothing is shared right now. Add a co-parent or a teacher to get started.</p>
+          ) : shares.map((s) => (
             <div key={s.id} className={`${cardCls} p-4`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{s.recipient}</h3>
-                  <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{s.role}</p>
+                  <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{s.recipientEmail}</h3>
+                  <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{roleLabel(s.role)}</p>
                 </div>
-                <button onClick={() => revoke(s.id)} className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "#bd4f74" }}>
-                  <X className="w-3.5 h-3.5" /> Revoke access
+                <button onClick={() => revoke(s)} disabled={busy === s.id} className="inline-flex items-center gap-1 text-xs font-bold disabled:opacity-50" style={{ color: "#bd4f74" }}>
+                  {busy === s.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />} Revoke access
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-3">
-                <Chip tone="sky" icon={<ShieldCheck className="w-3.5 h-3.5" />}>{s.fields}</Chip>
-                <Chip tone="yellow" icon={<Clock className="w-3.5 h-3.5" />}>{s.expires}</Chip>
+                {s.role === "co_parent" && <Chip tone="mint" icon={<Users className="w-3.5 h-3.5" />}>Co-parent</Chip>}
+                <Chip tone="sky" icon={<ShieldCheck className="w-3.5 h-3.5" />}>{s.scopes.join(", ")}</Chip>
+                <Chip tone="yellow" icon={<Clock className="w-3.5 h-3.5" />}>{expiryLabel(s)}</Chip>
               </div>
             </div>
           ))}
-          {shares.length === 0 && <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>Nothing is shared right now.</p>}
         </div>
       </SectionCard>
+
+      {inbound.length > 0 && (
+        <SectionCard title="Shared with you" icon={<Inbox className="w-5 h-5" />} tone="lav">
+          <div className="space-y-3">
+            {inbound.map((s) => (
+              <div key={s.id} className={`${cardCls} p-4`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{s.childName || "A child"}</h3>
+                    <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>from {s.ownerEmail || "a parent"} · you are {roleLabel(s.role)}</p>
+                  </div>
+                  <Chip tone="yellow" icon={<Clock className="w-3.5 h-3.5" />}>{expiryLabel(s)}</Chip>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <Chip tone="sky" icon={<ShieldCheck className="w-3.5 h-3.5" />}>{s.scopes.join(", ")}</Chip>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-4">
         <SectionCard title="Your data" icon={<Download className="w-5 h-5" />} tone="lav">
@@ -135,8 +204,9 @@ export default function TrustedSharing() {
             <button onClick={deleteData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "#fce2ec", color: "#bd4f74" }}><Trash2 className="w-4 h-4" /> Delete child data</button>
           </div>
         </SectionCard>
-        <SectionCard title="Audit trail" icon={<History className="w-5 h-5" />} tone="sky">
+        <SectionCard title="This session" icon={<History className="w-5 h-5" />} tone="sky">
           <ul className="space-y-2.5 text-xs max-h-44 overflow-y-auto" style={{ color: "var(--arbor-muted)" }}>
+            {audit.length === 0 && <li>Share and revoke actions you take will appear here.</li>}
             {audit.map((a, i) => <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "#69747f" }} />{a}</li>)}
           </ul>
         </SectionCard>

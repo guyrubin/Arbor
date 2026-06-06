@@ -42,6 +42,21 @@ export interface MemoryReviewItem {
   latestEventId: string;
 }
 
+export type ShareRole = 'co_parent' | 'viewer' | 'professional';
+export interface ShareGrant {
+  id: string;
+  ownerUid: string;
+  ownerEmail: string | null;
+  childId: string;
+  childName: string | null;
+  recipientEmail: string;
+  role: ShareRole;
+  scopes: string[];
+  createdAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+}
+
 export interface CouncilTake {
   scholarId: string;
   name: string;

@@ -6,6 +6,7 @@ import type { ArborConfig } from "../config/env.js";
 import { createModelProvider } from "../ai/modelRouter.js";
 import { LocalMemoryStore } from "../memory/localMemoryStore.js";
 import { FirestoreMemoryStore } from "../memory/firestoreMemoryStore.js";
+import { LocalShareStore, FirestoreShareStore } from "../sharing/shares.js";
 import { loadFramework } from "../services/framework.js";
 import { createApiRouter } from "../routes/api.js";
 import { createAuthMiddleware } from "./authMiddleware.js";
@@ -18,6 +19,9 @@ export const createApp = (config: ArborConfig) => {
   const memoryStore = config.memoryAdapter === "firestore"
     ? new FirestoreMemoryStore(config)
     : new LocalMemoryStore();
+  const shareStore = config.memoryAdapter === "firestore"
+    ? new FirestoreShareStore(config)
+    : new LocalShareStore();
 
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cors({
@@ -39,6 +43,8 @@ export const createApp = (config: ArborConfig) => {
       details: "Too many Arbor requests from this IP. Please wait a minute and try again."
     }
   }));
+  // Vision/document images need a larger body than the default API limit.
+  app.use("/api/vision", express.json({ limit: "12mb" }));
   app.use(express.json({ limit: "250kb" }));
   app.use("/api", createAuthMiddleware(config));
   // Per-user hourly cap on the AI-generating endpoints (cost guardrail).
@@ -46,7 +52,7 @@ export const createApp = (config: ArborConfig) => {
     ["/api/chat", "/api/generate-plan", "/api/generate-story", "/api/analyze-behavior", "/api/generate-handoff"],
     aiQuota
   );
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, framework }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, framework }));
 
   return app;
 };

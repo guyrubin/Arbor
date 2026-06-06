@@ -9,6 +9,7 @@ import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toCh
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 import { resolveScholar } from "../services/scholars.js";
 import { selectCouncil, runScholarTakes, renderCouncilForSynthesis } from "../services/council.js";
+import { buildGrant, type ShareStore } from "../sharing/shares.js";
 import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type } from "@google/genai";
@@ -17,8 +18,15 @@ type ApiDeps = {
   config: ArborConfig;
   modelProvider: ModelProvider;
   memoryStore: MemoryStore;
+  shareStore: ShareStore;
   framework: FrameworkDefinition;
 };
+
+/** The authenticated actor (or a sandbox identity when auth is not enforced). */
+const actorOf = (req: express.Request) => ({
+  uid: (req as any).user?.uid || "local-sandbox",
+  email: ((req as any).user?.email as string | null) || null,
+});
 
 const wantsSse = (req: express.Request) => req.headers.accept?.includes("text/event-stream") ?? false;
 
@@ -41,7 +49,7 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, framework }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, framework }: ApiDeps) => {
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
@@ -88,6 +96,63 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, framework 
       q: req.query.q ? String(req.query.q) : undefined,
     });
     res.json({ professionals });
+  });
+
+  // TRB-3 + SAFE-4 (v6): co-parent / trusted sharing with server-enforced expiry.
+  router.post("/shares", async (req, res) => {
+    const { uid, email } = actorOf(req);
+    const { childId, childName, recipientEmail, role, scopes, duration } = req.body;
+    if (!childId || !recipientEmail) {
+      res.status(400).json({ error: "childId and recipientEmail are required" });
+      return;
+    }
+    try {
+      const grant = await shareStore.create(
+        buildGrant({ ownerUid: uid, ownerEmail: email, childId, childName, recipientEmail, role, scopes, duration }),
+      );
+      res.json(grant);
+    } catch (error: any) {
+      console.error("Arbor Share Create Error:", error);
+      res.status(500).json({ error: "Failed to create share", details: error.message });
+    }
+  });
+
+  router.get("/shares", async (req, res) => {
+    const { uid } = actorOf(req);
+    try {
+      const childId = req.query.childId ? String(req.query.childId) : undefined;
+      res.json({ shares: await shareStore.listByOwner(uid, childId) });
+    } catch (error: any) {
+      console.error("Arbor Share List Error:", error);
+      res.status(500).json({ error: "Failed to list shares", details: error.message });
+    }
+  });
+
+  router.delete("/shares/:id", async (req, res) => {
+    const { uid } = actorOf(req);
+    try {
+      const revoked = await shareStore.revoke(req.params.id, uid);
+      if (!revoked) {
+        res.status(404).json({ error: "Share not found or not yours to revoke" });
+        return;
+      }
+      res.json(revoked);
+    } catch (error: any) {
+      console.error("Arbor Share Revoke Error:", error);
+      res.status(500).json({ error: "Failed to revoke share", details: error.message });
+    }
+  });
+
+  // The co-parent / recipient side: grants shared *with* the signed-in adult.
+  router.get("/shared-with-me", async (req, res) => {
+    const { email } = actorOf(req);
+    if (!email) { res.json({ shares: [] }); return; }
+    try {
+      res.json({ shares: await shareStore.listByRecipient(email) });
+    } catch (error: any) {
+      console.error("Arbor Shared-With-Me Error:", error);
+      res.status(500).json({ error: "Failed to list shares", details: error.message });
+    }
   });
 
   router.post("/onboarding/family-child", async (req, res) => {

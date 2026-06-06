@@ -1,4 +1,4 @@
-import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem } from "../types";
+import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole } from "../types";
 
 /**
  * Typed fetch wrappers for the Arbor API. An auth-token provider can be
@@ -43,8 +43,12 @@ export async function authHeaders(extra: Record<string, string> = {}): Promise<R
   return headers;
 }
 
-async function post<T>(url: string, body: unknown): Promise<T> {
-  const res = await fetch(url, { method: "POST", headers: await authHeaders(), body: JSON.stringify(body) });
+async function request<T>(url: string, method: string, body?: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    headers: await authHeaders(),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
   if (!res.ok) {
     let detail = "Request failed";
     try {
@@ -57,6 +61,9 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   }
   return (await res.json()) as T;
 }
+const post = <T>(url: string, body: unknown) => request<T>(url, "POST", body);
+const get = <T>(url: string) => request<T>(url, "GET");
+const del = <T>(url: string) => request<T>(url, "DELETE");
 
 export const api = {
   analyzeBehavior: (payload: { logs: BehaviorLog[]; childProfile: ChildProfile }) =>
@@ -75,6 +82,13 @@ export const api = {
     post<VisionResult>("/api/vision", payload),
   council: (payload: { message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" }) =>
     post<{ text: string; contract?: CoachContract; council?: CouncilTake[]; memoryReviewItems?: MemoryReviewItem[] }>("/api/council", payload),
+  // Co-parent / trusted sharing (server-enforced expiry).
+  createShare: (payload: { childId: string; childName?: string; recipientEmail: string; role?: ShareRole; scopes?: string[]; duration?: string }) =>
+    post<ShareGrant>("/api/shares", payload),
+  listShares: (childId?: string) =>
+    get<{ shares: ShareGrant[] }>(`/api/shares${childId ? `?childId=${encodeURIComponent(childId)}` : ""}`),
+  revokeShare: (id: string) => del<ShareGrant>(`/api/shares/${encodeURIComponent(id)}`),
+  sharedWithMe: () => get<{ shares: ShareGrant[] }>("/api/shared-with-me"),
 };
 
 export type VisionObserve = {
