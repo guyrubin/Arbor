@@ -218,10 +218,11 @@ it.
 
 ---
 
-## 9. Implementation status (2026-06-05)
+## 9. Implementation status (2026-06-06)
 
-Shipped and **deployed to production** (Cloud Run `arbor-api` rev 00008 +
-Firebase Hosting):
+Shipped and **deployed to production** (Cloud Run `arbor-api` **rev 00009** +
+Firebase Hosting `arborprd-westeu`, commit `8292d9c`; site 200, `/api` correctly
+401 without a token, auth gate enforced):
 
 | ID | Item | Notes |
 |---|---|---|
@@ -237,18 +238,22 @@ Firebase Hosting):
 | **TS-1** | Computed risk surfaced | The model's real `riskLevel` now drives a TrustSafetyBar on each answer. |
 | **SAFE-5 / TS-3** | Escalation → action | Elevated risk shows "Talk to a professional" → Care Network. |
 | **ART-5 / G11** | Today's Focus drives the loop | Now offers "Ask Arbor about this", seeding the coach. |
-| **G7 / ART-1-2** | Structured answer + actions | Confirmed already present (9-part schema, memory queue, Log/Plan actions). |
+| **G7 / ART-1-2** | Structured answer + actions | 9-part schema, memory queue, Log/Plan actions. |
+| **ART-3** | One-tap Quick Log | `QuickLogModal` wired from Home "Log a moment" (≤4 fields). |
+| **ART-4** | Milestone reframe | "Total Mastery" → "Development Snapshot / Observed so far (a snapshot, not a score)"; non-diagnostic microcopy; "Observed" badge (no strike-through); alarmist red box → calm "Gentle watch points". **Live.** |
+| **SAFE-3 (G10)** | Memory time-boxing enforced | `retention` → `expiresAt`; due items transition to `expired` and leave approved context. Shipped server-side (rev 00009). |
+| **KB-4** | Scholar coverage map | `framework-check.mjs` reports domain × age × scholar gaps. |
+| **VZ-1 / ECO-1-2 (v6)** | Signal Timeline ("Story") | New unified developmental stream folding logs + milestones + plans + memory + coach into one chronological view with momentum + a proactive next-step that routes into the coach. 7 unit tests. **Live.** |
 
-### Remaining v4 (next iterations)
+### Remaining (next iterations)
 
 | ID | Item | Why deferred |
 |---|---|---|
 | SF-1/2 | Six Frames validated + actionable chips | `frameRouting` validation against `framework.json` + UI. |
-| SCH-6/7 | Richer attribution + defined Integrated blend | UI polish + retrieval tuning. |
-| KB-4/5 | Coverage map + safety evals (incl. NL) | Extend `framework-check.mjs` + eval harness. |
-| ART-3/4 | One-tap quick-log / milestone reframe | UX wiring. |
-| SAFE-3 (G10) | Memory time-boxing enforced | Needs a TTL/scheduled expiry job (infra). |
+| SCH-6/7 | Richer attribution + defined Integrated blend | UI polish + retrieval tuning (basic lens attribution already shown on answers). |
+| KB-5 | Safety evals (incl. NL) | Golden Q→domain/scholar/escalation eval harness. |
 | SAFE-4 | Sharing grant expiry enforced | Server share store (pairs with v3 CAP-9). |
+| v5/v6 | Multimodal capture + agentic ecosystem | Vision/voice prompt parts, ambient Logger agent, scholar council — the next major program. |
 
 Plus the v3 platform epics (CAP-9 recipient portal, CAP-13 co-parent,
 PLAT-4 B2B, PLAT-5 FCM, DS-2 retire `!important`, DS-8 full RTL) remain as
