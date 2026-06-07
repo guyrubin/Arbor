@@ -107,10 +107,14 @@ Target per PRD: parents of 0–12, IL/NL/BE→EU, plus B2B (schools, therapists,
 - ✅ **Hid placeholder "My Care Team"** from nav until Wave 2 rebuilds it from real grant data.
 - Result: Child Intelligence 8→6, Care Network 6→5, Academy 4→3. `sectionForTab()` fallback keeps sidebar highlighting correct for demoted views.
 
-### Wave 2 — Make the moat real (retention)
-- **Promote Child Memory + Trusted Sharing** — these are the genuine differentiators and are buried. Surface memory proposals on Overview; make sharing a first-run nudge.
-- **Care Network: from mockup to transactional.** Replace hardcoded Care Team with real grants; wire "Request consultation" to a real intro/booking flow (even email-based v1). If you can't staff a directory, cut Find-a-Pro to "invite your professional" + Trusted Sharing.
-- **Masterclasses:** either commission ~8 real short lessons or remove the section until content exists. No fake catalog.
+### Wave 2 — Make the moat real (retention) — 🟡 PARTIAL 2026-06-07 (branch `feat/arbor-wave0-theme-unify`)
+
+Client-achievable slice shipped; backend/business-dependent items deferred. `tsc` + `vite build` clean.
+
+- ✅ **Promoted Child Memory + Trusted Sharing** — Home command center now carries a "What Arbor remembers" card (pending-approval queue / approved-fact count → Memory) and a "Trusted sharing" card (→ Sharing). Both were invisible from Home before.
+- ✅ **My Care Team rebuilt from real data** — derives from server-enforced share grants (`api.listShares` + `sharedWithMe`): role, scopes, expiry, inbound shares, guided empty state. No more hardcoded people. Re-added as a primary Care Network item.
+- ⏳ **Deferred — real professional intro/booking transaction.** "Request consultation" still routes to Appointments (honest, no dead click); a true intro/booking flow needs a backend + a decision on whether Arbor staffs a directory or pivots to "invite your own professional." Pricing/financials live in `[[arbor-business-model-pricing]]`.
+- ⏳ **Deferred — Masterclasses content.** Kept honest as "Coming soon" (no fake catalog); needs ~8 real lessons commissioned before the section earns a working CTA.
 
 ### Wave 3 — Build to market demand (growth)
 
