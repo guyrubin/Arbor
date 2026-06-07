@@ -95,13 +95,17 @@ Target per PRD: parents of 0–12, IL/NL/BE→EU, plus B2B (schools, therapists,
 - ✅ **Killed hardcoded "Dylan"** → active child's name everywhere (AiRail, ChildProfile, FindProfessional, CoachTab, HandoffTab); neutralized placeholder examples to "e.g. Maya".
 - ✅ **Honest/working CTAs** — Masterclasses + Family Formation no-op cards now show "Coming soon"; Find-a-Pro search + filters actually filter and its card buttons navigate (Appointments / Reports).
 
-### Wave 1 — Collapse the redundancy (the IA gets *legible*)
-- **Merge Handoff → Reports.** One "Reports & Handoffs" home; audience selector lives there. Re-skin in the process.
-- **Demote Weekly Insight:** make it a Reports type + the Story timeline's weekly view, not a standalone dark tab. Or keep one re-skinned home and remove the others.
-- **Demote Scholar Frameworks** into a Coach-side "lens" drawer (it only ever feeds the coach anyway). Frees an Academy slot.
-- **Fold Strengths + Development Profile** into a single Child Intelligence overview (don't make two thin pages).
-- **Give Safety a home:** add it under Care Network (or a persistent footer/Trust strip), not orphaned.
-- Result: Child Intelligence 8→~5; Care Network 6→~4; Academy 4→~2. The platform reads as deliberate, not scattered.
+### Wave 1 — Collapse the redundancy (the IA gets *legible*) — ✅ DONE 2026-06-07 (branch `feat/arbor-wave0-theme-unify`)
+
+> 22 nav leaves → **17**. No capability deleted — demoted views stay valid routes (deep-linkable, reachable in-app and via ⌘K search), just no longer equal-weight primary items. `tsc` + `vite build` clean.
+
+- ✅ **Merged Handoff → "Reports & Handoffs"** — Reports hosts an "Open handoff builder" card; Handoff keeps a back-link.
+- ✅ **Demoted Weekly Insight** — off Child Intelligence nav; surfaced via a "Weekly insight" button on the Story timeline (+ back-link).
+- ✅ **Demoted Scholar Frameworks** — off Academy nav (the lens picker already lives in Ask Arbor); back-link added.
+- ✅ **Folded Strengths into Development Profile** — Profile renders strengths & "where to support" inline.
+- ✅ **Gave Safety a home** under Care Network (was orphaned).
+- ✅ **Hid placeholder "My Care Team"** from nav until Wave 2 rebuilds it from real grant data.
+- Result: Child Intelligence 8→6, Care Network 6→5, Academy 4→3. `sectionForTab()` fallback keeps sidebar highlighting correct for demoted views.
 
 ### Wave 2 — Make the moat real (retention)
 - **Promote Child Memory + Trusted Sharing** — these are the genuine differentiators and are buried. Surface memory proposals on Overview; make sharing a first-run nudge.
