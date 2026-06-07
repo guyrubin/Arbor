@@ -65,6 +65,48 @@ const post = <T>(url: string, body: unknown) => request<T>(url, "POST", body);
 const get = <T>(url: string) => request<T>(url, "GET");
 const del = <T>(url: string) => request<T>(url, "DELETE");
 
+/**
+ * Realtime streaming voice coach (RT-2). POSTs to /api/voice and invokes onDelta
+ * with each plain-text token as it streams, so the caller can speak sentences the
+ * moment they arrive. Resolves when the stream completes.
+ */
+export async function streamVoice(
+  payload: { message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" },
+  onDelta: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await fetch("/api/voice", {
+    method: "POST",
+    headers: await authHeaders({ Accept: "text/event-stream" }),
+    body: JSON.stringify(payload),
+    signal,
+  });
+  if (!res.ok || !res.body) throw new Error("Voice stream failed to start");
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf("\n\n")) !== -1) {
+      const block = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      let event = "message";
+      const dataLines: string[] = [];
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+      }
+      if (!dataLines.length) continue;
+      const data = JSON.parse(dataLines.join("\n"));
+      if (event === "delta" && data.text) onDelta(data.text);
+      else if (event === "error") throw new Error(data.details || data.error || "Voice stream error");
+    }
+  }
+}
+
 export const api = {
   analyzeBehavior: (payload: { logs: BehaviorLog[]; childProfile: ChildProfile }) =>
     post<BehaviorAnalysis>("/api/analyze-behavior", payload),

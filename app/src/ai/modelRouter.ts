@@ -43,9 +43,13 @@ export type RouteDecision = {
   model: string;
 };
 
+export type StreamTextOptions = { route: ModelRoute; prompt: string; temperature?: number };
+
 export type ModelProvider = {
   generateJson(options: GenerateJsonOptions): Promise<unknown>;
   generateJsonStream(options: GenerateJsonOptions): AsyncIterable<string>;
+  /** Plain-text token stream — used by the realtime streaming voice coach. */
+  streamText(options: StreamTextOptions): AsyncIterable<string>;
   routeDecision(route: ModelRoute): RouteDecision;
 };
 
@@ -126,6 +130,18 @@ export class GeminiDevProvider implements ModelProvider {
     }
   }
 
+  async *streamText(options: StreamTextOptions) {
+    this.assertApiKey();
+    const responseStream = await this.ai.models.generateContentStream({
+      model: modelForRoute(this.config, options.route),
+      contents: options.prompt,
+      config: { temperature: options.temperature ?? 0.5 }
+    });
+    for await (const chunk of responseStream) {
+      if (chunk.text) yield chunk.text;
+    }
+  }
+
   private assertApiKey() {
     if (!this.config.geminiApiKey) {
       throw new Error("GEMINI_API_KEY is not configured for local Arbor development.");
@@ -169,6 +185,18 @@ export class VertexGeminiProvider {
     }
   }
 
+  async *streamText(options: StreamTextOptions) {
+    const model = await this.getModel(options.route);
+    const result = await model.generateContentStream({
+      contents: [{ role: "user", parts: [{ text: options.prompt }] }],
+      generationConfig: { temperature: options.temperature ?? 0.5 }
+    });
+    for await (const item of result.stream) {
+      const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
+      if (text) yield text;
+    }
+  }
+
   private async getModel(route: ModelRoute) {
     if (!this.vertexPromise) {
       this.vertexPromise = import("@google-cloud/vertexai").then(({ VertexAI }) => new VertexAI({
@@ -196,6 +224,11 @@ export class VertexModelProvider implements ModelProvider {
 
   generateJson(options: GenerateJsonOptions) {
     return this.providerFor(options.route).generateJson(options);
+  }
+
+  streamText(options: StreamTextOptions) {
+    // Plain-text voice streaming always uses the Gemini provider.
+    return this.gemini.streamText(options);
   }
 
   generateJsonStream(options: GenerateJsonOptions) {

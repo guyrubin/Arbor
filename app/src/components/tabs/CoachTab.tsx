@@ -10,7 +10,7 @@ import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
 import { TrustSafetyBar } from "../ui/kit";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import ArborVision from "../coach/ArborVision";
-import { api } from "../../lib/api";
+import { api, streamVoice, getAiLanguage } from "../../lib/api";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
@@ -102,7 +102,12 @@ export default function CoachTab() {
   const liveCtlRef = useRef<null | { stop: () => void }>(null);
   const voiceOnRef = useRef(false);
   const stopDictationRef = useRef<null | (() => void)>(null);
-  const speakNextRef = useRef(false);
+  // Streaming-voice TTS queue (speak each sentence as it streams in).
+  const ttsQueueRef = useRef<string[]>([]);
+  const ttsSpeakingRef = useRef(false);
+  const voiceBufRef = useRef("");
+  const streamDoneRef = useRef(false);
+  const voiceAbortRef = useRef<AbortController | null>(null);
 
   // Probe Gemini Live availability once.
   useEffect(() => {
@@ -111,11 +116,56 @@ export default function CoachTab() {
     return () => { cancelled = true; };
   }, []);
 
-  const speakable = (m: ChatMessage) => {
-    if (m.contract) {
-      return [m.contract.parentScript, m.contract.todayPlan?.[0]].filter(Boolean).join(". ");
+  // Speak queued sentences one at a time; when drained after a turn, resume listening.
+  const pumpTts = () => {
+    if (ttsSpeakingRef.current) return;
+    const next = ttsQueueRef.current.shift();
+    if (!next) {
+      if (streamDoneRef.current) {
+        streamDoneRef.current = false;
+        if (voiceOnRef.current) startListening(); else setVoicePhase("off");
+      }
+      return;
     }
-    return (m.text || "").replace(/[#*>_`[\]()-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 420);
+    ttsSpeakingRef.current = true;
+    setVoicePhase("speaking");
+    if (ttsSupported()) {
+      speak(next, () => { ttsSpeakingRef.current = false; pumpTts(); });
+    } else {
+      ttsSpeakingRef.current = false;
+      pumpTts();
+    }
+  };
+  const enqueueSpeak = (s: string) => { if (s.trim()) { ttsQueueRef.current.push(s.trim()); pumpTts(); } };
+
+  // A streaming voice turn: stream the answer token-by-token and speak each
+  // sentence the moment it completes (real-time, not wait-then-speak).
+  const streamVoiceTurn = async (text: string) => {
+    setVoicePhase("thinking");
+    voiceBufRef.current = "";
+    streamDoneRef.current = false;
+    const controller = new AbortController();
+    voiceAbortRef.current = controller;
+    try {
+      await streamVoice(
+        { message: text, childProfile, scholarLens: selectedLens, language: getAiLanguage() },
+        (delta) => {
+          voiceBufRef.current += delta;
+          const parts = voiceBufRef.current.split(/(?<=[.!?])\s+/);
+          while (parts.length > 1) enqueueSpeak(parts.shift() as string);
+          voiceBufRef.current = parts[0] || "";
+        },
+        controller.signal,
+      );
+      if (voiceBufRef.current.trim()) enqueueSpeak(voiceBufRef.current);
+      voiceBufRef.current = "";
+      streamDoneRef.current = true;
+      pumpTts();
+    } catch {
+      if (voiceOnRef.current) startListening(); else setVoicePhase("off");
+    } finally {
+      voiceAbortRef.current = null;
+    }
   };
 
   const startListening = () => {
@@ -125,9 +175,7 @@ export default function CoachTab() {
       {
         onResult: (text) => {
           if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
-          setVoicePhase("thinking");
-          speakNextRef.current = true;
-          void handleChatSend(text);
+          void streamVoiceTurn(text);
         },
         onError: () => { if (voiceOnRef.current) setVoicePhase("listening"); },
       },
@@ -137,7 +185,10 @@ export default function CoachTab() {
 
   const stopVoice = () => {
     voiceOnRef.current = false;
-    speakNextRef.current = false;
+    streamDoneRef.current = false;
+    ttsQueueRef.current = [];
+    ttsSpeakingRef.current = false;
+    voiceAbortRef.current?.abort();
     stopDictationRef.current?.();
     stopSpeaking();
     liveCtlRef.current?.stop();
@@ -175,20 +226,8 @@ export default function CoachTab() {
     startBrowserVoice();
   };
 
-  // Speak the answer once it arrives, then resume listening if still hands-free.
-  useEffect(() => {
-    if (!speakNextRef.current || isChatLoading) return;
-    const last = chatMessages[chatMessages.length - 1];
-    if (last?.sender !== "ai") return;
-    speakNextRef.current = false;
-    if (!ttsSupported()) { if (voiceOnRef.current) startListening(); return; }
-    setVoicePhase("speaking");
-    speak(speakable(last), () => { if (voiceOnRef.current) startListening(); else setVoicePhase("off"); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatMessages, isChatLoading]);
-
   // Stop any audio/recognition on unmount.
-  useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); liveCtlRef.current?.stop(); }, []);
+  useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
 
   const voiceLabel = voicePhase === "listening" ? "Listening…" : voicePhase === "thinking" ? "Thinking…" : voicePhase === "speaking" ? "Speaking…" : liveAvail ? "Talk (HD)" : "Talk";
 

@@ -380,6 +380,53 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
     }
   });
 
+  // RT-2 (v6): realtime STREAMING voice coach. Streams plain spoken-friendly text
+  // token-by-token over SSE so the client can speak each sentence the moment it
+  // arrives (sentence-streamed TTS) — a true low-latency voice loop on Gemini
+  // streaming (which is entitled here), independent of the Live bidi API.
+  router.post("/voice", async (req, res) => {
+    const { message, childProfile, scholarLens, language } = req.body;
+    if (!message || typeof message !== "string") {
+      res.status(400).json({ error: "A message is required" });
+      return;
+    }
+    const escalationMatch = screenForImmediateEscalation({ message });
+    beginSse(res);
+    if (escalationMatch) {
+      writeSse(res, "delta", { text: "I want to make sure you get the right help. This may need a real person right now — please reach out to a professional or local support line. " });
+      writeSse(res, "done", { escalation: escalationMatch.category });
+      res.end();
+      return;
+    }
+
+    const abortController = new AbortController();
+    req.on("close", () => abortController.abort());
+    try {
+      const scholar = resolveScholar(scholarLens);
+      const languageDirective = language === "he" ? " Reply in warm, natural spoken Hebrew." : "";
+      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
+You are Arbor, a warm, calm parenting coach speaking OUT LOUD to a parent. Apply this lens: ${scholar.name} — ${scholar.method}
+Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+The parent just said: "${message}"
+Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
+
+      let any = false;
+      for await (const chunk of modelProvider.streamText({ route: "analysis_structured", prompt, temperature: 0.6 })) {
+        if (abortController.signal.aborted) { res.end(); return; }
+        if (chunk) { any = true; writeSse(res, "delta", { text: chunk }); }
+      }
+      if (!any) writeSse(res, "delta", { text: "Let's take this one step at a time — tell me a little more about what's happening." });
+      writeSse(res, "done", {});
+      res.end();
+    } catch (error: any) {
+      if (abortController.signal.aborted) return;
+      console.error("Arbor Voice Stream Error:", error);
+      if (!res.headersSent) beginSse(res);
+      writeSse(res, "error", { error: "Voice stream failed", details: error.message });
+      res.end();
+    }
+  });
+
   // RT-1 (v6): Gemini Live streaming. Mint a short-lived ephemeral token so the
   // browser can open a Live (bidiGenerateContent) audio session DIRECTLY without
   // ever seeing the server key. Reports availability so the client can fall back
