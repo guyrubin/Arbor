@@ -5,7 +5,7 @@ import {
   TrendingUp, TrendingDown, Minus, MessageSquare, Plus, Sparkles, RefreshCw,
   Sun, Sunrise, Moon, ArrowRight, Heart, BookOpen, Smile, Target,
   ShieldCheck, Phone, Activity, CheckCircle2, ChevronRight,
-  Brain, Sprout, HeartHandshake, GraduationCap,
+  Brain, Sprout, HeartHandshake, GraduationCap, BookMarked, Share2,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { AnimatedNumber } from "../ui/AnimatedNumber";
@@ -40,6 +40,8 @@ export default function OverviewTab() {
     childProfile,
     setPlanChallengeTopic,
     setChatInput,
+    pendingMemoryItems,
+    approvedMemoryItems,
   } = useArbor();
   const { toast } = useToast();
 
@@ -395,6 +397,52 @@ export default function OverviewTab() {
             </div>
           )}
         </div>
+      </section>
+
+      {/* ─── MEMORY + SHARING (the moat, surfaced) ─────────────────────── */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Child memory */}
+        <button onClick={() => setActiveTab("memory")} className={`${card} p-6 text-left transition hover:-translate-y-0.5`}>
+          <div className="flex items-center gap-3 mb-3">
+            <IconBadge tone="lav"><BookMarked className="w-5 h-5" /></IconBadge>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>What Arbor remembers</h3>
+              <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>Parent-approved facts that personalize every answer.</p>
+            </div>
+          </div>
+          {pendingMemoryItems.length > 0 ? (
+            <div className="rounded-2xl p-3.5 flex items-center justify-between gap-3" style={{ background: "#fbf1d4" }}>
+              <span className="text-sm font-bold" style={{ color: "#a9780f" }}>
+                {pendingMemoryItems.length} fact{pendingMemoryItems.length === 1 ? "" : "s"} waiting for your approval
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs font-extrabold" style={{ color: "#a9780f" }}>Review <ArrowRight className="w-3.5 h-3.5" /></span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>
+                <strong style={{ color: "var(--arbor-ink)" }}>{approvedMemoryItems.length}</strong> approved {approvedMemoryItems.length === 1 ? "fact" : "facts"} in {firstName}'s memory.
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs font-extrabold" style={{ color: "#6354c4" }}>Manage <ArrowRight className="w-3.5 h-3.5" /></span>
+            </div>
+          )}
+        </button>
+
+        {/* Trusted sharing */}
+        <button onClick={() => setActiveTab("sharing")} className={`${card} p-6 text-left transition hover:-translate-y-0.5`}>
+          <div className="flex items-center gap-3 mb-3">
+            <IconBadge tone="mint"><Share2 className="w-5 h-5" /></IconBadge>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Trusted sharing</h3>
+              <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>Decide what's shared, with whom, and for how long.</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "#1f8a5a" }}>
+              <ShieldCheck className="w-3.5 h-3.5" /> Time-boxed &amp; revocable — enforced on the server
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs font-extrabold" style={{ color: "#1f8a5a" }}>Share <ArrowRight className="w-3.5 h-3.5" /></span>
+          </div>
+        </button>
       </section>
 
       {/* ─── ASK ARBOR (mascot) ────────────────────────────────────────── */}

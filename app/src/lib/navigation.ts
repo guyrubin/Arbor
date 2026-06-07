@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Home, Sparkles, Brain, Sprout, HeartHandshake, GraduationCap,
   LayoutDashboard, UserCircle, CheckCircle2, Activity, Languages,
-  BookMarked, Search, FileBarChart, Calendar,
+  BookMarked, Search, Users, FileBarChart, Calendar,
   Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
@@ -28,8 +28,8 @@ export type NavSection = {
  *   - "scholar" lives as the lens picker inside Ask Arbor.
  *   - "weekly" surfaces from the Story timeline.
  *   - "handoff" merged under "Reports & Handoffs".
- *   - "care-team" (placeholder data) hidden until Wave 2 rebuilds it from real grants.
- * Safety now has a real home under Care Network (was orphaned).
+ * Safety now has a real home under Care Network (was orphaned). "My Care Team"
+ * was rebuilt from real share grants in Wave 2 and is a primary item again.
  */
 export const SECTIONS: NavSection[] = [
   {
@@ -70,6 +70,7 @@ export const SECTIONS: NavSection[] = [
     label: "Care Network",
     icon: HeartHandshake,
     items: [
+      { tab: "care-team", label: "My Care Team", icon: Users },
       { tab: "find-pro", label: "Find a Professional", icon: Search },
       { tab: "reports", label: "Reports & Handoffs", icon: FileBarChart },
       { tab: "sharing", label: "Trusted Sharing", icon: Share2 },
@@ -100,7 +101,6 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   weekly: "intelligence",
   scholar: "ask",
   handoff: "care",
-  "care-team": "care",
 };
 
 export function sectionForTab(tab: ActiveTab): NavSection {
