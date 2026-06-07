@@ -15,12 +15,12 @@ import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
  */
 
 const RISK_TONE: Record<string, { fg: string; bg: string; label: string }> = {
-  low: { fg: "#6f9e6f", bg: "rgba(111,158,111,0.12)", label: "Low" },
-  moderate: { fg: "#d7aa55", bg: "rgba(215,170,85,0.12)", label: "Moderate" },
-  elevated: { fg: "#d7aa55", bg: "rgba(215,170,85,0.12)", label: "Elevated" },
-  high: { fg: "#e2562d", bg: "rgba(226,86,45,0.14)", label: "High" },
-  severe: { fg: "#e2562d", bg: "rgba(226,86,45,0.14)", label: "Severe" },
-  urgent: { fg: "#e2562d", bg: "rgba(226,86,45,0.14)", label: "Urgent" },
+  low: { fg: "#1f8a5a", bg: "#e4f4ec", label: "Low" },
+  moderate: { fg: "#a9780f", bg: "#fbf1d4", label: "Moderate" },
+  elevated: { fg: "#a9780f", bg: "#fbf1d4", label: "Elevated" },
+  high: { fg: "#bd4f74", bg: "#fce2ec", label: "High" },
+  severe: { fg: "#bd4f74", bg: "#fce2ec", label: "Severe" },
+  urgent: { fg: "#bd4f74", bg: "#fce2ec", label: "Urgent" },
 };
 
 const FRAME_LABELS: Record<string, string> = {
@@ -32,9 +32,9 @@ function Panel({ icon, title, tint, children, action }: {
   icon: React.ReactNode; title: string; tint: string; children: React.ReactNode; action?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3.5">
+    <div className="rounded-xl p-3.5 bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider" style={{ color: tint }}>
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tint }}>
           {icon} {title}
         </span>
         {action}
@@ -79,25 +79,25 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
       {/* Meta header: attribution + age + domains + risk */}
       <div className="flex flex-wrap items-center gap-1.5">
         {showLens && (
-          <span className="text-[10px] font-bold bg-[#d7aa55]/12 text-[#f4d991] px-2 py-0.5 rounded-full">Aligned with {lens}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>Aligned with {lens}</span>
         )}
-        {contract.ageBand && <span className="text-[10px] font-bold bg-white/5 text-[#a8a093] px-2 py-0.5 rounded-full">{contract.ageBand}</span>}
+        {contract.ageBand && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{contract.ageBand}</span>}
         {contract.domains?.slice(0, 3).map((d) => (
-          <span key={d} className="text-[10px] font-bold bg-white/5 text-[#a8a093] px-2 py-0.5 rounded-full">{d.replace(/_/g, " ")}</span>
+          <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{d.replace(/_/g, " ")}</span>
         ))}
-        <span className="text-[10px] font-black px-2 py-0.5 rounded-full ml-auto" style={{ color: risk.fg, background: risk.bg }}>Risk: {risk.label}</span>
+        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full ml-auto" style={{ color: risk.fg, background: risk.bg }}>Risk: {risk.label}</span>
       </div>
 
       {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
       {council && council.length > 0 && (
-        <Panel icon={<Users className="w-3 h-3" />} title={`The council weighed in · ${council.length} voices`} tint="#7aa7d0">
+        <Panel icon={<Users className="w-3 h-3" />} title={`The council weighed in · ${council.length} voices`} tint="#2f7bbf">
           <ul className="space-y-2">
             {council.map((c) => (
               <li key={c.scholarId} className="text-[12.5px] leading-snug">
-                <span className="font-bold text-white">{c.name}</span>
-                <span className="text-[10px] font-bold text-[#a8a093]"> · {c.concept}</span>
-                {c.takeaway && <span className="block text-[#a8a093] mt-0.5">{c.takeaway}</span>}
-                {c.suggestion && <span className="block text-[#cdd6df] mt-0.5">→ {c.suggestion}</span>}
+                <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{c.name}</span>
+                <span className="text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}> · {c.concept}</span>
+                {c.takeaway && <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{c.takeaway}</span>}
+                {c.suggestion && <span className="block mt-0.5" style={{ color: "var(--arbor-ink)" }}>→ {c.suggestion}</span>}
               </li>
             ))}
           </ul>
@@ -106,13 +106,13 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
 
       {/* What may be happening */}
       {contract.nonDiagnosticHypotheses?.length > 0 && (
-        <Panel icon={<Lightbulb className="w-3 h-3" />} title="What may be happening" tint="#f4d991">
+        <Panel icon={<Lightbulb className="w-3 h-3" />} title="What may be happening" tint="#a9780f">
           <ul className="space-y-1.5">
             {contract.nonDiagnosticHypotheses.map((h, i) => (
-              <li key={i} className="text-[12.5px] leading-snug text-gray-200">
-                <span className="font-bold text-white">{h.label}</span>
-                {h.confidence && <span className="ml-1.5 text-[10px] font-bold text-[#a8a093]">({h.confidence})</span>}
-                {h.rationale && <span className="block text-[#a8a093] mt-0.5">{h.rationale}</span>}
+              <li key={i} className="text-[12.5px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
+                <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{h.label}</span>
+                {h.confidence && <span className="ml-1.5 text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}>({h.confidence})</span>}
+                {h.rationale && <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{h.rationale}</span>}
               </li>
             ))}
           </ul>
@@ -122,10 +122,10 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
       {/* Today's plan — interactive checklist */}
       {contract.todayPlan?.length > 0 && (
         <Panel
-          icon={<ListChecks className="w-3 h-3" />} title="Try today" tint="#6f9e6f"
+          icon={<ListChecks className="w-3 h-3" />} title="Try today" tint="#1f8a5a"
           action={
             <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan[0])}
-              className="text-[10px] font-bold text-[#a8a093] hover:text-white inline-flex items-center gap-1">
+              className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
               <ListPlus className="w-3 h-3" /> Save as plan
             </button>
           }
@@ -134,10 +134,10 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
             {contract.todayPlan.map((step, i) => (
               <li key={i}>
                 <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-start gap-2 text-left w-full group">
-                  <span className={`mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center flex-shrink-0 transition ${done[i] ? "bg-[#6f9e6f] border-[#6f9e6f]" : "border-white/20 group-hover:border-white/40"}`}>
-                    {done[i] && <Check className="w-3 h-3 text-black" />}
+                  <span className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition" style={done[i] ? { background: "#34b277", border: "1px solid #34b277" } : { border: "1px solid var(--arbor-rule-strong)" }}>
+                    {done[i] && <Check className="w-3 h-3 text-white" />}
                   </span>
-                  <span className={`text-[12.5px] leading-snug ${done[i] ? "text-gray-500 line-through" : "text-gray-200"}`}>{step}</span>
+                  <span className="text-[12.5px] leading-snug" style={done[i] ? { color: "var(--arbor-muted)", textDecoration: "line-through" } : { color: "var(--arbor-ink)" }}>{step}</span>
                 </button>
               </li>
             ))}
@@ -148,36 +148,36 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
       {/* Parent script — say aloud */}
       {contract.parentScript && (
         <Panel
-          icon={<MessageSquareQuote className="w-3 h-3" />} title="Say this" tint="#7aa7d0"
+          icon={<MessageSquareQuote className="w-3 h-3" />} title="Say this" tint="#2f7bbf"
           action={
             <div className="flex items-center gap-2">
               {ttsSupported() && (
-                <button onClick={sayScript} className="text-[10px] font-bold text-[#a8a093] hover:text-white inline-flex items-center gap-1">
+                <button onClick={sayScript} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
                   {speaking ? <><Square className="w-3 h-3" /> Stop</> : <><Volume2 className="w-3 h-3" /> Say it aloud</>}
                 </button>
               )}
-              <button onClick={() => copy(contract.parentScript, "script")} className="text-[10px] font-bold text-[#a8a093] hover:text-white inline-flex items-center gap-1">
+              <button onClick={() => copy(contract.parentScript, "script")} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
                 {copied === "script" ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
               </button>
             </div>
           }
         >
-          <p className="text-[13px] leading-relaxed text-white italic">&ldquo;{contract.parentScript}&rdquo;</p>
+          <p className="text-[13px] leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>&ldquo;{contract.parentScript}&rdquo;</p>
         </Panel>
       )}
 
       {/* Avoid / Observe */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {contract.avoid?.length > 0 && (
-          <Panel icon={<Ban className="w-3 h-3" />} title="Avoid" tint="#cf8a6f">
-            <ul className="space-y-1 text-[12px] text-[#a8a093] leading-snug list-disc pl-4">
+          <Panel icon={<Ban className="w-3 h-3" />} title="Avoid" tint="#cf6f37">
+            <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.avoid.map((a, i) => <li key={i}>{a}</li>)}
             </ul>
           </Panel>
         )}
         {contract.observe?.length > 0 && (
-          <Panel icon={<Eye className="w-3 h-3" />} title="Watch for" tint="#a89bd6">
-            <ul className="space-y-1 text-[12px] text-[#a8a093] leading-snug list-disc pl-4">
+          <Panel icon={<Eye className="w-3 h-3" />} title="Watch for" tint="#6354c4">
+            <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.observe.map((o, i) => <li key={i}>{o}</li>)}
             </ul>
           </Panel>
@@ -186,8 +186,8 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
 
       {/* Escalate */}
       {contract.escalateIf?.length > 0 && (
-        <Panel icon={<AlertTriangle className="w-3 h-3" />} title="Reach out for help if" tint="#e2562d">
-          <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "#e9a48f" }}>
+        <Panel icon={<AlertTriangle className="w-3 h-3" />} title="Reach out for help if" tint="#bd4f74">
+          <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "#bd4f74" }}>
             {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
         </Panel>
@@ -195,12 +195,12 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
 
       {/* Six-frame routing chips (SF-2) */}
       {frames.length > 0 && (
-        <Panel icon={<Compass className="w-3 h-3" />} title="Developmental frame" tint="#d7aa55">
+        <Panel icon={<Compass className="w-3 h-3" />} title="Developmental frame" tint="#a9780f">
           <div className="flex flex-wrap gap-1.5">
             {frames.map(([k, v]) => (
-              <span key={k} className="text-[10.5px] leading-tight bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1">
-                <span className="font-black text-[#f4d991]">{FRAME_LABELS[k] || k}:</span>{" "}
-                <span className="text-[#a8a093]">{String(v)}</span>
+              <span key={k} className="text-[10.5px] leading-tight rounded-lg px-2 py-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                <span className="font-extrabold" style={{ color: "#a9780f" }}>{FRAME_LABELS[k] || k}:</span>{" "}
+                <span style={{ color: "var(--arbor-muted)" }}>{String(v)}</span>
               </span>
             ))}
           </div>
@@ -210,16 +210,16 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
       {/* Structured actions — the answer feeds the rest of the app (ECO-3) */}
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || "")}
-          className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-[#d7aa55]/10 hover:bg-[#d7aa55]/20 text-[#f4d991] border border-[#d7aa55]/25 px-2.5 py-1.5 rounded-lg transition">
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
           <ListPlus className="w-3.5 h-3.5" /> Save to plan
         </button>
         <button onClick={onCreateLog}
-          className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-white/5 hover:bg-white/10 text-[#a8a093] hover:text-white border border-white/10 px-2.5 py-1.5 rounded-lg transition">
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
           <ClipboardList className="w-3.5 h-3.5" /> Log a moment
         </button>
         {contract.handoffNotes?.teacher && (
           <button onClick={() => { onAddToHandoff(contract.handoffNotes.teacher); copy(contract.handoffNotes.teacher, "handoff"); }}
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-white/5 hover:bg-white/10 text-[#a8a093] hover:text-white border border-white/10 px-2.5 py-1.5 rounded-lg transition">
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
             {copied === "handoff" ? <><Check className="w-3.5 h-3.5" /> Copied note</> : <><Send className="w-3.5 h-3.5" /> Teacher note</>}
           </button>
         )}
