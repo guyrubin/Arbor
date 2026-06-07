@@ -94,11 +94,22 @@ export default function CoachTab() {
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
 
-  // Realtime voice coach: a hands-free loop — listen (STT) → ask → speak (TTS) → listen again.
+  // Realtime voice coach: prefers Gemini Live (true bidirectional audio) when the
+  // server reports it's available, and falls back to a hands-free browser loop —
+  // listen (STT) → ask → speak (TTS) → listen again.
   const [voicePhase, setVoicePhase] = useState<"off" | "listening" | "thinking" | "speaking">("off");
+  const [liveAvail, setLiveAvail] = useState(false);
+  const liveCtlRef = useRef<null | { stop: () => void }>(null);
   const voiceOnRef = useRef(false);
   const stopDictationRef = useRef<null | (() => void)>(null);
   const speakNextRef = useRef(false);
+
+  // Probe Gemini Live availability once.
+  useEffect(() => {
+    let cancelled = false;
+    api.liveToken().then((r) => { if (!cancelled && r.available) setLiveAvail(true); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const speakable = (m: ChatMessage) => {
     if (m.contract) {
@@ -129,13 +140,39 @@ export default function CoachTab() {
     speakNextRef.current = false;
     stopDictationRef.current?.();
     stopSpeaking();
+    liveCtlRef.current?.stop();
+    liveCtlRef.current = null;
     setVoicePhase("off");
   };
 
-  const toggleVoice = () => {
-    if (voiceOnRef.current || voicePhase !== "off") { stopVoice(); return; }
-    voiceOnRef.current = true;
-    startListening();
+  const startBrowserVoice = () => { voiceOnRef.current = true; startListening(); };
+
+  const toggleVoice = async () => {
+    if (voiceOnRef.current || voicePhase !== "off" || liveCtlRef.current) { stopVoice(); return; }
+
+    // Prefer true Gemini Live when the server says it's provisioned.
+    if (liveAvail) {
+      try {
+        const fresh = await api.liveToken();
+        if (fresh.available && fresh.token && fresh.model) {
+          const { startGeminiLive } = await import("../../lib/geminiLiveClient");
+          setVoicePhase("thinking");
+          liveCtlRef.current = await startGeminiLive(
+            fresh.token,
+            fresh.model,
+            "You are Arbor, a warm, calm, non-diagnostic parenting coach. Keep spoken replies short, kind, and practical. Never diagnose; suggest professional help for safety concerns.",
+            {
+              onPhase: (p) => setVoicePhase(p === "closed" ? "off" : p === "connecting" ? "thinking" : p),
+              onError: () => { liveCtlRef.current = null; toast("Switched to standard voice", "info"); startBrowserVoice(); },
+            },
+          );
+          return;
+        }
+      } catch {
+        liveCtlRef.current = null; // fall through to the browser loop
+      }
+    }
+    startBrowserVoice();
   };
 
   // Speak the answer once it arrives, then resume listening if still hands-free.
@@ -151,9 +188,9 @@ export default function CoachTab() {
   }, [chatMessages, isChatLoading]);
 
   // Stop any audio/recognition on unmount.
-  useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); }, []);
+  useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); liveCtlRef.current?.stop(); }, []);
 
-  const voiceLabel = voicePhase === "listening" ? "Listening…" : voicePhase === "thinking" ? "Thinking…" : voicePhase === "speaking" ? "Speaking…" : "Talk";
+  const voiceLabel = voicePhase === "listening" ? "Listening…" : voicePhase === "thinking" ? "Thinking…" : voicePhase === "speaking" ? "Speaking…" : liveAvail ? "Talk (HD)" : "Talk";
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">

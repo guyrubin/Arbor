@@ -89,6 +89,8 @@ export const api = {
     get<{ shares: ShareGrant[] }>(`/api/shares${childId ? `?childId=${encodeURIComponent(childId)}` : ""}`),
   revokeShare: (id: string) => del<ShareGrant>(`/api/shares/${encodeURIComponent(id)}`),
   sharedWithMe: () => get<{ shares: ShareGrant[] }>("/api/shared-with-me"),
+  // Gemini Live: mint an ephemeral token for a direct browser Live session.
+  liveToken: () => post<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string }>("/api/live/token", {}),
 };
 
 export type VisionObserve = {

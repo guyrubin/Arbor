@@ -380,6 +380,36 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
     }
   });
 
+  // RT-1 (v6): Gemini Live streaming. Mint a short-lived ephemeral token so the
+  // browser can open a Live (bidiGenerateContent) audio session DIRECTLY without
+  // ever seeing the server key. Reports availability so the client can fall back
+  // to the browser voice loop when Live isn't configured/provisioned.
+  router.post("/live/token", async (_req, res) => {
+    const apiKey = config.geminiApiKey;
+    if (!apiKey) {
+      res.json({ available: false, reason: "Gemini Live is not configured on this server." });
+      return;
+    }
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey });
+      const model = process.env.LIVE_MODEL || "gemini-2.0-flash-live-001";
+      const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+      const token = await ai.authTokens.create({
+        config: {
+          uses: 1,
+          expireTime,
+          liveConnectConstraints: { model },
+          httpOptions: { apiVersion: "v1alpha" }
+        }
+      });
+      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime });
+    } catch (error: any) {
+      console.error("Arbor Live Token Error:", error);
+      res.json({ available: false, reason: error.message });
+    }
+  });
+
   // LOG-1 (v6): ambient logging — the AI drafts a structured behavior log from a
   // free-text or voice description so the parent confirms instead of filling a
   // form. Non-diagnostic; safety-screened; the client falls back gracefully if
