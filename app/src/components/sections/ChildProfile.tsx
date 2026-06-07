@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { UserCircle, CheckCircle2, Activity, Languages, Gem, ArrowRight, Sparkles } from "lucide-react";
+import { UserCircle, CheckCircle2, Activity, Languages, Gem, Sprout, ArrowRight, Sparkles } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { PageHeader, SectionCard, Chip, IconBadge, cardCls, PASTEL } from "../ui/kit";
 
@@ -21,7 +21,6 @@ export default function ChildProfile() {
     { tab: "milestones" as const, tone: "mint" as const, icon: <CheckCircle2 className="w-5 h-5" />, title: "Development Milestones", desc: `${milestonesPercent}% on track for age ${childProfile.age}.` },
     { tab: "behaviors" as const, tone: "coral" as const, icon: <Activity className="w-5 h-5" />, title: "Behavior Patterns", desc: "Log moments and see what helps over time." },
     { tab: "language" as const, tone: "sky" as const, icon: <Languages className="w-5 h-5" />, title: "Language & Communication", desc: "Track the bilingual transition with confidence." },
-    { tab: "strengths" as const, tone: "lav" as const, icon: <Gem className="w-5 h-5" />, title: "Strengths & Challenges", desc: `What lights ${first} up, and where to support.` },
   ];
 
   return (
@@ -50,6 +49,34 @@ export default function ChildProfile() {
           </div>
         </div>
       </SectionCard>
+
+      {/* Strengths & where to support (folded in from the old Strengths tab) */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <SectionCard title="Strengths" icon={<Gem className="w-5 h-5" />} tone="mint">
+          <ul className="space-y-3">
+            {childProfile.strengths.map((s) => (
+              <li key={s} className="flex items-start gap-3">
+                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#34b277" }} />
+                <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{s}</span>
+              </li>
+            ))}
+            {childProfile.strengths.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>Add strengths in the profile editor.</li>}
+          </ul>
+        </SectionCard>
+        <SectionCard title="Where to support" icon={<Sprout className="w-5 h-5" />} tone="coral">
+          <ul className="space-y-3">
+            {childProfile.challenges.map((c) => (
+              <li key={c} className={`${cardCls} p-3.5 flex items-start justify-between gap-3`}>
+                <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{c}</span>
+                <button onClick={() => setActiveTab("plans")} className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold" style={{ color: "#cf6f37" }}>
+                  Build a plan <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </li>
+            ))}
+            {childProfile.challenges.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>Add challenges in the profile editor.</li>}
+          </ul>
+        </SectionCard>
+      </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         {links.map((l) => (

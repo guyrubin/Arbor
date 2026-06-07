@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { BarChart2, RefreshCw, Sparkles, Trophy, ClipboardList, GraduationCap, Send, History } from "lucide-react";
+import { RefreshCw, Sparkles, Trophy, ClipboardList, GraduationCap, Send, History, ArrowLeft } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Skeleton } from "../ui/Skeleton";
@@ -128,6 +128,9 @@ export default function WeeklyTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
+      <button onClick={() => setActiveTab("timeline")} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
+        <ArrowLeft className="w-4 h-4" /> {first}'s Story
+      </button>
       <PageHeader
         eyebrow="Child Intelligence"
         title="Weekly Insight"

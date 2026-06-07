@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { FileBarChart, Download, FileText } from "lucide-react";
+import { FileBarChart, Download, FileText, School, ArrowRight } from "lucide-react";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { buildReport, openPrintableReport, ReportType } from "../../lib/reportExport";
@@ -18,7 +18,7 @@ const REPORTS: { title: string; desc: string; tone: PastelKey; type: ReportType 
 
 /** Care Network › Reports — exportable artifacts generated from real child data. */
 export default function Reports() {
-  const { childProfile, behaviorLogs, actionPlans, milestonesPercent, checkedMilestones, totalMilestones } = useArbor();
+  const { childProfile, behaviorLogs, actionPlans, milestonesPercent, checkedMilestones, totalMilestones, setActiveTab } = useArbor();
 
   const exportReport = (type: ReportType) => {
     const doc = buildReport(type, {
@@ -34,7 +34,24 @@ export default function Reports() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader eyebrow="Care Network" title="Reports" subtitle={`Generate a clean, shareable PDF of ${childProfile.name.split(" ")[0]}'s information for teachers, therapists and doctors — built from your real data.`} />
+      <PageHeader eyebrow="Care Network" title="Reports & Handoffs" subtitle={`Generate a clean, shareable PDF of ${childProfile.name.split(" ")[0]}'s information for teachers, therapists and doctors — built from your real data.`} />
+
+      {/* AI handoff brief — merged here from the former standalone Handoff tab */}
+      <SectionCard title="School & Care Handoff" icon={<School className="w-5 h-5" />} tone="sky">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>
+            Have Arbor write a tailored brief for a specific reader — teacher, therapist or pediatrician — from {childProfile.name.split(" ")[0]}'s milestones and logs.
+          </p>
+          <button
+            onClick={() => setActiveTab("handoff")}
+            className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 flex-shrink-0"
+            style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}
+          >
+            Open handoff builder <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </SectionCard>
+
       <SectionCard title="Exportable reports" icon={<FileBarChart className="w-5 h-5" />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-3">
           {REPORTS.map((r) => (

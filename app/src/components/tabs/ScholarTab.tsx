@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { ExternalLink, Sparkles } from "lucide-react";
+import { ExternalLink, Sparkles, ArrowLeft } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { scholarsInfo } from "../../initialData";
 import { PageHeader, cardCls, PASTEL, PastelKey } from "../ui/kit";
@@ -13,8 +13,11 @@ export default function ScholarTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
+      <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
+        <ArrowLeft className="w-4 h-4" /> Ask Arbor
+      </button>
       <PageHeader
-        eyebrow="Arbor Academy"
+        eyebrow="Ask Arbor"
         title="Scholar Frameworks"
         subtitle="A multi-theory developmental system. Pick a scholar to load a focused lens and example prompt straight into Ask Arbor."
       />

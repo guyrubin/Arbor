@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import {
   Activity, CheckCircle2, Sprout, BookMarked, MessageSquare,
-  ArrowUpRight, ArrowDownRight, Minus, Sparkles, Camera, TrendingDown, TrendingUp,
+  ArrowUpRight, ArrowDownRight, Minus, Sparkles, Camera, TrendingDown, TrendingUp, BarChart2,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import {
@@ -127,13 +127,22 @@ export default function StoryTimelineTab() {
         title={`${firstName}'s Story`}
         subtitle="Every moment, milestone, plan and insight — one living timeline. Each entry feeds the next step Arbor suggests."
         action={
-          <button
-            onClick={() => setActiveTab("behaviors")}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold transition hover:-translate-y-0.5"
-            style={{ background: PASTEL.coral.ink, color: "#fff" }}
-          >
-            <Camera className="w-4 h-4" /> Capture a moment
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab("weekly")}
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
+              style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}
+            >
+              <BarChart2 className="w-4 h-4" /> Weekly insight
+            </button>
+            <button
+              onClick={() => setActiveTab("behaviors")}
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold transition hover:-translate-y-0.5"
+              style={{ background: PASTEL.coral.ink, color: "#fff" }}
+            >
+              <Camera className="w-4 h-4" /> Capture a moment
+            </button>
+          </div>
         }
       />
 

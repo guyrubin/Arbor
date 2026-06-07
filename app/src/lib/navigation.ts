@@ -1,9 +1,9 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home, Sparkles, Brain, Sprout, HeartHandshake, GraduationCap,
-  LayoutDashboard, UserCircle, CheckCircle2, Activity, Languages, Gem,
-  BarChart2, BookMarked, Search, Users, FileText, FileBarChart, Calendar,
-  Share2, BookOpen, Compass, Heart, Sliders, Waypoints,
+  LayoutDashboard, UserCircle, CheckCircle2, Activity, Languages,
+  BookMarked, Search, FileBarChart, Calendar,
+  Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -18,10 +18,18 @@ export type NavSection = {
 };
 
 /**
- * The six-section Arbor information architecture. Every existing capability is
- * preserved and mapped into a section; nothing is deleted. Safety & Guardrails
- * is intentionally absent as a primary item — it is embedded as the Trust &
- * Safety layer across guidance, reports, sharing and handoffs.
+ * The six-section Arbor information architecture (IA v2 + Wave-1 consolidation).
+ *
+ * Wave 1 collapsed visible redundancy so the IA reads as deliberate, not
+ * scattered: 22 nav leaves → 17. No capability was deleted — the routes below
+ * are still valid tabs (deep-linkable, reachable programmatically), they are
+ * just no longer surfaced as equal-weight primary items:
+ *   - "strengths" folded into Development Profile.
+ *   - "scholar" lives as the lens picker inside Ask Arbor.
+ *   - "weekly" surfaces from the Story timeline.
+ *   - "handoff" merged under "Reports & Handoffs".
+ *   - "care-team" (placeholder data) hidden until Wave 2 rebuilds it from real grants.
+ * Safety now has a real home under Care Network (was orphaned).
  */
 export const SECTIONS: NavSection[] = [
   {
@@ -47,8 +55,6 @@ export const SECTIONS: NavSection[] = [
       { tab: "milestones", label: "Development Milestones", icon: CheckCircle2 },
       { tab: "behaviors", label: "Behavior Patterns", icon: Activity },
       { tab: "language", label: "Language & Communication", icon: Languages },
-      { tab: "strengths", label: "Strengths & Challenges", icon: Gem },
-      { tab: "weekly", label: "Weekly Insight", icon: BarChart2 },
       { tab: "memory", label: "Child Memory", icon: BookMarked },
     ],
   },
@@ -65,11 +71,10 @@ export const SECTIONS: NavSection[] = [
     icon: HeartHandshake,
     items: [
       { tab: "find-pro", label: "Find a Professional", icon: Search },
-      { tab: "care-team", label: "My Care Team", icon: Users },
-      { tab: "handoff", label: "School & Care Handoff", icon: FileText },
-      { tab: "reports", label: "Reports", icon: FileBarChart },
-      { tab: "appointments", label: "Appointments", icon: Calendar },
+      { tab: "reports", label: "Reports & Handoffs", icon: FileBarChart },
       { tab: "sharing", label: "Trusted Sharing", icon: Share2 },
+      { tab: "appointments", label: "Appointments", icon: Calendar },
+      { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
     ],
   },
   {
@@ -79,15 +84,30 @@ export const SECTIONS: NavSection[] = [
     items: [
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
       { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
-      { tab: "scholar", label: "Scholar Frameworks", icon: Compass },
       { tab: "family", label: "Family Formation", icon: Heart },
     ],
   },
 ];
 
-/** Map any leaf tab (including "safety") to its owning section. */
+/**
+ * Map any leaf tab to its owning section — including tabs that are no longer
+ * surfaced as primary items (strengths→profile, scholar→ask, weekly→story,
+ * handoff→reports, care-team→find-pro) so the sidebar still highlights the right
+ * section when one of those views is opened by deep link or in-app navigation.
+ */
+const TAB_SECTION_FALLBACK: Record<string, string> = {
+  strengths: "intelligence",
+  weekly: "intelligence",
+  scholar: "ask",
+  handoff: "care",
+  "care-team": "care",
+};
+
 export function sectionForTab(tab: ActiveTab): NavSection {
-  return SECTIONS.find((s) => s.items.some((i) => i.tab === tab)) ?? SECTIONS[0];
+  const direct = SECTIONS.find((s) => s.items.some((i) => i.tab === tab));
+  if (direct) return direct;
+  const fallbackId = TAB_SECTION_FALLBACK[tab];
+  return SECTIONS.find((s) => s.id === fallbackId) ?? SECTIONS[0];
 }
 
 export function primaryTabOf(section: NavSection): ActiveTab {

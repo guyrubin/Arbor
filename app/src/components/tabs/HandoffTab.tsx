@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "motion/react";
-import { Sparkles, School, Printer, Save, FolderOpen, RefreshCw } from "lucide-react";
+import { Sparkles, School, Printer, Save, FolderOpen, RefreshCw, ArrowLeft } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
@@ -16,7 +16,7 @@ const AUDIENCES: { id: "teacher" | "clinician" | "pediatrician"; label: string; 
 ];
 
 export default function HandoffTab() {
-  const { handleGenerateBrief, isGeneratingBrief, handoffAudience, setHandoffAudience, schoolBrief, setSchoolBrief, childProfile } = useArbor();
+  const { handleGenerateBrief, isGeneratingBrief, handoffAudience, setHandoffAudience, schoolBrief, setSchoolBrief, childProfile, setActiveTab } = useArbor();
   const { toast } = useToast();
   const briefsCol = useChildCollection<SavedBrief>(childProfile.id, "briefs");
   const first = childProfile.name.split(" ")[0];
@@ -33,6 +33,9 @@ export default function HandoffTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
+      <button onClick={() => setActiveTab("reports")} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
+        <ArrowLeft className="w-4 h-4" /> Reports & Handoffs
+      </button>
       <PageHeader
         eyebrow="Care Network"
         title="School & Care Handoff"

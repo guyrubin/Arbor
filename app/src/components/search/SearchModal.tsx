@@ -1,8 +1,16 @@
 import React, { useMemo, useState } from "react";
 import { Modal } from "../ui/Modal";
-import { Clock, Brain, CheckCircle2, Sliders, Search, CornerDownLeft } from "lucide-react";
-import { useArbor } from "../../context/ArborContext";
+import { Clock, Brain, CheckCircle2, Sliders, Search, CornerDownLeft, BarChart2, FileText, Compass } from "lucide-react";
+import { useArbor, type ActiveTab } from "../../context/ArborContext";
 import { SECTIONS } from "../../lib/navigation";
+
+// Views consolidated out of the primary nav in Wave 1 but still reachable —
+// kept searchable so nothing becomes undiscoverable.
+const EXTRA_COMMANDS: { tab: ActiveTab; label: string; sub: string; icon: React.ReactNode }[] = [
+  { tab: "weekly", label: "Weekly Insight", sub: "Child Intelligence · Story", icon: <BarChart2 className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> },
+  { tab: "handoff", label: "School & Care Handoff", sub: "Care Network · Reports & Handoffs", icon: <FileText className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> },
+  { tab: "scholar", label: "Scholar Frameworks", sub: "Ask Arbor", icon: <Compass className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> },
+];
 
 type Result = { kind: string; icon: React.ReactNode; label: string; sub: string; go: () => void };
 
@@ -30,6 +38,12 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     return out;
   }, [setActiveTab]);
 
+  // Consolidated views — only surfaced when the user actively searches for them.
+  const extraCommands = useMemo<Result[]>(
+    () => EXTRA_COMMANDS.map((c) => ({ kind: "Go", icon: c.icon, label: c.label, sub: c.sub, go: () => setActiveTab(c.tab) })),
+    [setActiveTab]
+  );
+
   const dataResults = useMemo<Result[]>(() => {
     const term = q.trim().toLowerCase();
     if (!term) return [];
@@ -55,7 +69,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
 
   const term = q.trim().toLowerCase();
   const filteredCommands = term
-    ? commands.filter((c) => `${c.label} ${c.sub}`.toLowerCase().includes(term))
+    ? [...commands, ...extraCommands].filter((c) => `${c.label} ${c.sub}`.toLowerCase().includes(term))
     : commands;
   const shown: Result[] = term ? [...filteredCommands.slice(0, 6), ...dataResults] : filteredCommands;
 
