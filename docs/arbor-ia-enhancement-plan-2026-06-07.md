@@ -87,11 +87,13 @@ Target per PRD: parents of 0–12, IL/NL/BE→EU, plus B2B (schools, therapists,
 
 ## 5. Enhancement plan (phased)
 
-### Wave 0 — Stop looking broken (days, not weeks)
-- **Unify the theme.** Re-skin Language Lab, Weekly, Scholar, Handoff, Safety, OnboardingFlow, AddChildModal to the `ui/kit` Soft-Daylight tokens. Highest visual ROI in the whole backlog.
-- **Kill hardcoded "Dylan"** → use `childProfile.name` everywhere (5 sites).
-- **Disable or wire dead buttons.** Either implement or replace with honest `ComingSoon` chips (Masterclasses, Find-a-Pro actions, Family Formation cards, Care Team actions).
-- **Make Find-a-Pro search/filters actually filter** the list (client-side is fine for v1).
+### Wave 0 — Stop looking broken (days, not weeks) — ✅ DONE 2026-06-07 (branch `feat/arbor-wave0-theme-unify`)
+
+> **Scope was larger than first estimated.** The initial analysis flagged 5 dark views; a full sweep found the dark theme across **~25 files** — including the core CoachTab, all four primary tabs (Behaviors, Milestones, Plans, Stories catalog), the always-visible sidebar ProfileSwitcher, every Home card, shared UI primitives, the coach answer/vision cards, and the auth/profile screens. All re-skinned to the `ui/kit` Soft-Daylight tokens. The only surface intentionally left dark is the cinematic Story-Journey reading stage. Shipped in 6 commits (Wave 0a–0f); `tsc --noEmit` and `vite build` both clean.
+
+- ✅ **Unified the theme** app-wide (Coach, Weekly, Scholar, Language, Handoff, Safety, Behaviors, Milestones, Plans, Stories catalog, sidebar, Home cards, Modal/Button/Badge/EmptyState/MarkdownBlock, CoachAnswerCards, ArborVision, ProfileEditDrawer, AddChildModal, OnboardingFlow, LoginScreen, ErrorBoundary).
+- ✅ **Killed hardcoded "Dylan"** → active child's name everywhere (AiRail, ChildProfile, FindProfessional, CoachTab, HandoffTab); neutralized placeholder examples to "e.g. Maya".
+- ✅ **Honest/working CTAs** — Masterclasses + Family Formation no-op cards now show "Coming soon"; Find-a-Pro search + filters actually filter and its card buttons navigate (Appointments / Reports).
 
 ### Wave 1 — Collapse the redundancy (the IA gets *legible*)
 - **Merge Handoff → Reports.** One "Reports & Handoffs" home; audience selector lives there. Re-skin in the process.
