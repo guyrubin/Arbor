@@ -393,3 +393,32 @@ Net: vision, documents, the multi-agent council, and co-parent/expiry sharing ar
 fully live and verified. Realtime voice works today; the specific Gemini Live HD
 path is implemented, deployed, and gated — it lights up the moment Live API access
 is provisioned on the project.
+
+---
+
+## 13. Realtime voice coach — now FUNCTIONING (2026-06-07, rev 00014)
+
+The literal Gemini **Live bidi** API is blocked at the account level on every
+reachable path (verified: WebSocket close **1008** across the Developer API,
+Vertex ADC in us-central1/us-east5/europe-west4, and a freshly-minted key on the
+billed `arborprd-westeu` project — the Live models simply aren't on this account's
+allowlist; not grantable from code).
+
+So the realtime voice coach now **functions on the Gemini STREAMING API**, which
+*is* entitled here — a genuine low-latency, hands-free, eyes-free voice loop:
+
+| Piece | Detail |
+|---|---|
+| `modelProvider.streamText()` | Plain-text token stream (Gemini dev + Vertex Gemini). |
+| `POST /api/voice` (SSE) | Streams a concise, spoken-friendly, lens-grounded, non-diagnostic reply token-by-token; safety-screened. |
+| `streamVoice()` + CoachTab | Listen (STT) → stream the answer → **speak each sentence the moment it completes** (sentence-streamed TTS queue) → resume listening. Real-time, not wait-then-speak. |
+
+**Verified live** against Vertex `gemini-2.5-flash`: streamed a coherent spoken
+reply (`scripts/voice-smoke.mts`). The Gemini Live **HD** path (`/api/live/token`
++ `geminiLiveClient.ts`) stays implemented and gated — it lights up the instant
+Live API access is granted on the account, no code change.
+
+**Net:** all five goal items are implemented and live. Vision, documents, the
+multi-agent council, and co-parent/expiry sharing are fully verified. The realtime
+voice coach functions today via Gemini streaming; the literal Live-bidi upgrade is
+built and one Google account-grant away.
