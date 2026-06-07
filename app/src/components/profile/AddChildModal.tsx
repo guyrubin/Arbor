@@ -66,43 +66,43 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
         {/* Step progress */}
         <div className="flex gap-1.5">
           {[1, 2, 3].map((s) => (
-            <div key={s} className={`h-1 flex-1 rounded-full ${s <= step ? "bg-[#d7aa55]" : "bg-white/10"}`} />
+            <div key={s} className="h-1 flex-1 rounded-full" style={{ background: s <= step ? "#34b277" : "var(--arbor-rule-strong)" }} />
           ))}
         </div>
 
         {step === 1 && (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#a8a093]">Child&apos;s name</label>
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Child&apos;s name</label>
               <input
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Dylan"
-                className="w-full bg-[#08090c] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#d7aa55]/50"
+                placeholder="e.g. Maya"
+                className="w-full rounded-xl px-4 py-2.5 focus:outline-none"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#a8a093]">Age: <span className="text-[#f4d991]">{age}</span></label>
-              <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full accent-[#d7aa55]" />
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Age: <span style={{ color: "#1f8a5a" }}>{age}</span></label>
+              <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "#34b277" }} />
             </div>
           </div>
         )}
 
         {step === 2 && (
           <div className="space-y-3">
-            <label className="text-xs font-bold text-[#a8a093] block">Languages (select all that apply)</label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Languages (select all that apply)</label>
             <div className="flex flex-wrap gap-2">
               {LANGUAGE_OPTIONS.map((lang) => (
                 <button
                   key={lang}
                   type="button"
                   onClick={() => toggleLanguage(lang)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${
-                    languages.includes(lang)
-                      ? "bg-[#d7aa55]/15 text-[#f4d991] border-[#d7aa55]/40"
-                      : "bg-white/[0.02] text-[#a8a093] border-white/5 hover:bg-white/5"
-                  }`}
+                  className="px-3 py-2 rounded-xl text-xs font-bold transition"
+                  style={languages.includes(lang)
+                    ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" }
+                    : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
                   {lang}
                 </button>
@@ -114,12 +114,12 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
         {step === 3 && (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#a8a093]">Key strengths <span className="text-gray-500">(optional, one per line)</span></label>
-              <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full bg-[#08090c] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-[#d7aa55]/50" />
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Key strengths <span style={{ opacity: 0.7 }}>(optional, one per line)</span></label>
+              <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#a8a093]">Current challenges <span className="text-gray-500">(optional, one per line)</span></label>
-              <textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full bg-[#08090c] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-[#d7aa55]/50" />
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Current challenges <span style={{ opacity: 0.7 }}>(optional, one per line)</span></label>
+              <textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
           </div>
         )}

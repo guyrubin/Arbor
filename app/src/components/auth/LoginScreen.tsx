@@ -59,18 +59,19 @@ export default function LoginScreen() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-md bg-[#141821] border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl space-y-7 relative z-10"
+        className="w-full max-w-md bg-white rounded-3xl p-8 md:p-10 space-y-7 relative z-10"
+        style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 60px rgba(41,51,63,0.12)" }}
       >
         <div className="flex flex-col items-center text-center space-y-3">
           <ArborMark />
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-white">Arbor</h1>
-            <p className="text-sm text-[#a8a093] mt-1">Your child&apos;s development, thoughtfully guided.</p>
+            <h1 className="text-3xl font-black tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</h1>
+            <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>Your child&apos;s development, thoughtfully guided.</p>
           </div>
         </div>
 
         {error && (
-          <div className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5">
+          <div className="text-xs rounded-xl px-4 py-2.5" style={{ background: "#fce2ec", color: "#bd4f74" }}>
             {error}
           </div>
         )}
@@ -78,7 +79,8 @@ export default function LoginScreen() {
         <button
           onClick={handleGoogle}
           disabled={busy !== null}
-          className="w-full bg-[#e2562d] hover:bg-[#cf4d27] disabled:opacity-60 text-white font-extrabold text-sm px-5 py-3.5 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg shadow-[#e2562d]/15"
+          className="w-full text-white font-extrabold text-sm px-5 py-3.5 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-60"
+          style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}
         >
           {busy === "google" ? (
             <RefreshCw className="w-4 h-4 animate-spin" />
@@ -93,63 +95,68 @@ export default function LoginScreen() {
           Continue with Google
         </button>
 
-        <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-[#a8a093]">
-          <span className="flex-1 h-px bg-white/10" />
+        <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest" style={{ color: "var(--arbor-muted)" }}>
+          <span className="flex-1 h-px" style={{ background: "var(--arbor-rule)" }} />
           or
-          <span className="flex-1 h-px bg-white/10" />
+          <span className="flex-1 h-px" style={{ background: "var(--arbor-rule)" }} />
         </div>
 
         {!showEmail ? (
           <button
             onClick={() => setShowEmail(true)}
-            className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-sm px-5 py-3 rounded-2xl transition flex items-center justify-center gap-2"
+            className="w-full font-bold text-sm px-5 py-3 rounded-2xl transition flex items-center justify-center gap-2 bg-white"
+            style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
           >
-            <Mail className="w-4 h-4 text-[#d7aa55]" /> Continue with email
+            <Mail className="w-4 h-4" style={{ color: "#1f8a5a" }} /> Continue with email
           </button>
         ) : (
           <form onSubmit={handleEmail} className="space-y-3">
             <div className="relative">
-              <Mail className="w-4 h-4 text-[#a8a093] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full bg-[#08090c] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-[#d7aa55]/50 transition"
+                className="w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none transition"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 text-[#a8a093] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full bg-[#08090c] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-[#d7aa55]/50 transition"
+                className="w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none transition"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
             </div>
             <button
               type="submit"
               disabled={busy !== null}
-              className="w-full bg-[#d7aa55] hover:bg-[#c39947] disabled:opacity-60 text-black font-extrabold text-sm px-5 py-3 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full text-white font-extrabold text-sm px-5 py-3 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
             >
               {busy === "email" ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
               Sign in
             </button>
             <div className="flex items-center justify-between">
-              <button type="button" onClick={handleReset} className="text-[11px] text-[#a8a093] hover:text-[#f4d991] transition">
+              <button type="button" onClick={handleReset} className="text-[11px] transition" style={{ color: "var(--arbor-muted)" }}>
                 Forgot password?
               </button>
-              {resetMsg && <span className="text-[10px] text-[#f4d991]">{resetMsg}</span>}
+              {resetMsg && <span className="text-[10px]" style={{ color: "#1f8a5a" }}>{resetMsg}</span>}
             </div>
           </form>
         )}
 
-        <p className="text-center text-[11px] text-[#a8a093]">
+        <p className="text-center text-[11px]" style={{ color: "var(--arbor-muted)" }}>
           Invite-only for now.{" "}
           <a
             href="mailto:hello@arbor.app?subject=Arbor%20access%20request"
-            className="text-[#f4d991] font-bold hover:underline"
+            className="font-bold hover:underline"
+            style={{ color: "#1f8a5a" }}
           >
             Request access
           </a>

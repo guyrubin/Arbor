@@ -80,12 +80,14 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     }
   };
 
+  const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" };
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+        <motion.div className="fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(41,51,63,0.4)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
           <motion.div
-            className="w-full max-w-md h-full bg-[#0c0e14] border-l border-white/10 p-6 overflow-y-auto"
+            className="w-full max-w-md h-full bg-white p-6 overflow-y-auto"
+            style={{ borderLeft: "1px solid var(--arbor-rule)" }}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -93,54 +95,53 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-extrabold text-white tracking-tight">Edit profile</h3>
-              <button onClick={onClose} className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-[#a8a093] hover:text-white transition" aria-label="Close">
+              <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Edit profile</h3>
+              <button onClick={onClose} className="p-1.5 rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-4 text-sm">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#a8a093]">Name</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-[#08090c] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#d7aa55]/50" />
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Name</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#a8a093]">Age: <span className="text-[#f4d991]">{age}</span></label>
-                <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full accent-[#d7aa55]" />
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Age: <span style={{ color: "#1f8a5a" }}>{age}</span></label>
+                <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "#34b277" }} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#a8a093]">School context</label>
-                <input value={schoolContext} onChange={(e) => setSchoolContext(e.target.value)} className="w-full bg-[#08090c] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-[#d7aa55]/50" />
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>School context</label>
+                <input value={schoolContext} onChange={(e) => setSchoolContext(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#a8a093]">Languages <span className="text-gray-500">(comma separated)</span></label>
-                <input value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full bg-[#08090c] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-[#d7aa55]/50" />
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Languages <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(comma separated)</span></label>
+                <input value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#a8a093]">Strengths <span className="text-gray-500">(one per line)</span></label>
-                <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full bg-[#08090c] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-[#d7aa55]/50" />
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Strengths <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(one per line)</span></label>
+                <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#a8a093]">Challenges <span className="text-gray-500">(one per line)</span></label>
-                <textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full bg-[#08090c] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-[#d7aa55]/50" />
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Challenges <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(one per line)</span></label>
+                <textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#a8a093]">Risk level</label>
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Risk level</label>
                 <div className="flex gap-2">
                   {RISK_LEVELS.map((lvl) => (
                     <button
                       key={lvl}
                       type="button"
                       onClick={() => setRiskLevel(lvl)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${
-                        riskLevel === lvl ? "bg-[#d7aa55]/15 text-[#f4d991] border-[#d7aa55]/40" : "bg-white/[0.02] text-[#a8a093] border-white/5 hover:bg-white/5"
-                      }`}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold transition"
+                      style={riskLevel === lvl ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                     >
                       {lvl}
                     </button>
@@ -151,18 +152,19 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               <button
                 onClick={save}
                 disabled={saving}
-                className="w-full mt-2 py-3 bg-[#d7aa55] hover:bg-[#c39947] disabled:opacity-60 text-black font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
+                className="w-full mt-2 py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
               >
                 {saving ? "Saving…" : "Save changes"}
               </button>
 
               {/* Data & privacy (GDPR) */}
-              <div className="pt-4 mt-2 border-t border-white/5 space-y-2">
-                <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">Data & privacy</span>
-                <button onClick={handleExport} disabled={busy} className="w-full py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60">
-                  <Download className="w-3.5 h-3.5 text-[#d7aa55]" /> Export {activeChild.name}&apos;s data (JSON)
+              <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Data & privacy</span>
+                <button onClick={handleExport} disabled={busy} className="w-full py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
+                  <Download className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> Export {activeChild.name}&apos;s data (JSON)
                 </button>
-                <button onClick={handleDelete} disabled={busy} className="w-full py-2.5 bg-[#e2562d]/10 border border-[#e2562d]/30 hover:bg-[#e2562d]/20 text-[#ffb59c] font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60">
+                <button onClick={handleDelete} disabled={busy} className="w-full py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "#fce2ec", color: "#bd4f74" }}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete this child & all data
                 </button>
               </div>
