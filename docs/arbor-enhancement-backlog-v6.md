@@ -373,3 +373,23 @@ programs, each a deliberate iteration with its own infra.
 Capture is on-device-downscaled (`lib/image.ts`) before upload, and every vision
 result feeds the loop (discuss in Arbor / log the moment / use in a handoff). The
 Coach is now the multimodal hub: **Photo · Document · Talk**.
+
+---
+
+## 12. Agentic + multimodal program shipped (2026-06-07)
+
+Deployed to production across Cloud Run rev 00011–00013 + Hosting (auth-gated):
+
+| Goal item | Status | Evidence |
+|---|---|---|
+| **Multimodal vision** (camera → model sees photo) | ✅ Live | `POST /api/vision` (observe); image parts verified against live `gemini-2.5-flash` (`vision-smoke.mts`); image safety gate (MIME, 6MB, offTopic, text screen). |
+| **Document intelligence** (report → OCR → data) | ✅ Live | `/api/vision` (document) → documentType/summary/keyPoints/suggestedMemory/questions/handoff; **fixed** the 250kb body limit that blocked document photos (now 12mb for `/api/vision`). |
+| **Full multi-agent scholar council** | ✅ Live | `POST /api/council` selects N scholar agents → parallel lensed calls → synthesis; **verified live** that Bowlby/Vygotsky/Winnicott each return distinct lens-true takes (`council-smoke.mts`). UI shows "the council weighed in · N voices". |
+| **Co-parent sharing + server-enforced expiry** | ✅ Live | `shares` store (Firestore/local); `POST/GET/DELETE /api/shares` + `GET /api/shared-with-me`; expiry enforced on every read (8 unit tests); TrustedSharing UI: invite co-parent/viewer/professional by email, scopes + duration, instant revoke, inbound view. |
+| **Realtime voice coach** | ✅ Live (working) | Hands-free browser loop (STT → streaming `/chat` → TTS) shipped and functional. |
+| **— Gemini Live streaming (HD voice)** | ⚙️ Implemented + deployed, gated | `POST /api/live/token` (ephemeral token) + `lib/geminiLiveClient.ts` (browser PCM in/out, dynamically imported, 310KB chunk loaded only when available); CoachTab prefers Live, falls back to the working loop. **Blocked by API access**: the available key returns close code **1008 — "not supported for bidiGenerateContent"**; enabling Gemini Live on the project/key activates HD voice with no further code change. |
+
+Net: vision, documents, the multi-agent council, and co-parent/expiry sharing are
+fully live and verified. Realtime voice works today; the specific Gemini Live HD
+path is implemented, deployed, and gated — it lights up the moment Live API access
+is provisioned on the project.
