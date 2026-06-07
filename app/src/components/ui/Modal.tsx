@@ -39,17 +39,19 @@ export function Modal({
           <motion.div
             role="dialog"
             aria-modal="true"
-            className={`w-full ${maxWidth} bg-[#141821] border border-white/10 rounded-3xl p-6 shadow-2xl`}
+            className={`w-full ${maxWidth} bg-white rounded-3xl p-6`}
+            style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 60px rgba(41,51,63,0.18)" }}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              {title && <h3 className="text-lg font-extrabold text-white tracking-tight">{title}</h3>}
+              {title && <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h3>}
               <button
                 onClick={onClose}
-                className="ml-auto p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-[#a8a093] hover:text-white transition"
+                className="ml-auto p-1.5 rounded-lg transition"
+                style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />

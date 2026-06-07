@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { cardCls } from "../ui/kit";
 
 type Prefs = { dailyLog: boolean; dailyTime: string; monthlySafety: boolean; lastDaily?: string };
 
@@ -87,26 +88,28 @@ export default function RemindersCard() {
   const anyOn = prefs.dailyLog || prefs.monthlySafety;
 
   return (
-    <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-4">
+    <div className={`${cardCls} p-6 space-y-4`}>
       <div className="flex items-center gap-2">
-        {anyOn ? <Bell className="w-4 h-4 text-[#d7aa55]" /> : <BellOff className="w-4 h-4 text-[#a8a093]" />}
-        <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider">Reminders</span>
+        {anyOn ? <Bell className="w-4 h-4" style={{ color: "#1f8a5a" }} /> : <BellOff className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} />}
+        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Reminders</span>
       </div>
 
       <label className="flex items-center justify-between gap-3 text-sm">
-        <span className="text-gray-200">Daily log reminder</span>
+        <span style={{ color: "var(--arbor-ink)" }}>Daily log reminder</span>
         <div className="flex items-center gap-2">
           {prefs.dailyLog && (
             <input
               type="time"
               value={prefs.dailyTime}
               onChange={(e) => save({ ...prefs, dailyTime: e.target.value })}
-              className="bg-[#08090c] border border-white/10 rounded-lg px-2 py-1 text-xs text-white"
+              className="rounded-lg px-2 py-1 text-xs"
+              style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
             />
           )}
           <button
             onClick={() => void enable({ dailyLog: !prefs.dailyLog })}
-            className={`w-10 h-5 rounded-full transition relative ${prefs.dailyLog ? "bg-[#d7aa55]" : "bg-white/15"}`}
+            className="w-10 h-5 rounded-full transition relative"
+            style={{ background: prefs.dailyLog ? "#34b277" : "var(--arbor-rule-strong)" }}
           >
             <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.dailyLog ? "left-5" : "left-0.5"}`} />
           </button>
@@ -114,16 +117,17 @@ export default function RemindersCard() {
       </label>
 
       <label className="flex items-center justify-between gap-3 text-sm">
-        <span className="text-gray-200">Monthly safety review</span>
+        <span style={{ color: "var(--arbor-ink)" }}>Monthly safety review</span>
         <button
           onClick={() => void enable({ monthlySafety: !prefs.monthlySafety })}
-          className={`w-10 h-5 rounded-full transition relative ${prefs.monthlySafety ? "bg-[#d7aa55]" : "bg-white/15"}`}
+          className="w-10 h-5 rounded-full transition relative"
+          style={{ background: prefs.monthlySafety ? "#34b277" : "var(--arbor-rule-strong)" }}
         >
           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.monthlySafety ? "left-5" : "left-0.5"}`} />
         </button>
       </label>
 
-      <p className="text-[10px] text-[#a8a093] leading-relaxed">
+      <p className="text-[10px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
         Reminders notify you while Arbor is open. {behaviorLogs.length === 0 && "Start logging to make daily nudges meaningful."}
       </p>
     </div>

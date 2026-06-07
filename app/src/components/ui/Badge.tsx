@@ -3,11 +3,11 @@ import React from "react";
 type Tone = "amber" | "blue" | "green" | "red" | "neutral";
 
 const tones: Record<Tone, string> = {
-  amber: "bg-[#d7aa55]/15 text-[#f4d991] border-[#d7aa55]/20",
-  blue: "bg-blue-500/15 text-blue-400 border-blue-500/20",
-  green: "bg-green-500/15 text-green-400 border-green-500/20",
-  red: "bg-red-500/10 text-red-500 border-red-500/20",
-  neutral: "bg-white/5 text-[#a8a093] border-white/10",
+  amber: "bg-[#fbf1d4] text-[#a9780f] border-[#fbf1d4]",
+  blue: "bg-[#e5f0fb] text-[#2f7bbf] border-[#e5f0fb]",
+  green: "bg-[#e4f4ec] text-[#1f8a5a] border-[#e4f4ec]",
+  red: "bg-[#fce2ec] text-[#bd4f74] border-[#fce2ec]",
+  neutral: "bg-[#f4f8f5] text-[#69747f] border-[rgba(41,51,63,0.08)]",
 };
 
 export function Badge({

@@ -13,21 +13,22 @@ export default function ProfileSwitcher() {
 
   return (
     <div className="relative">
-      <div className="bg-[#141821] border border-white/5 rounded-2xl p-3 flex items-center justify-between gap-2">
+      <div className="rounded-2xl p-3 flex items-center justify-between gap-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
         <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 flex-1 text-left group">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-[#f4d991] bg-[#d7aa55]/10 ring-2 ring-[#d7aa55]/40">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold" style={{ color: "#1f8a5a", background: "#e4f4ec", boxShadow: "0 0 0 2px rgba(52,178,119,0.30)" }}>
             {activeChild.name.slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <h4 className="text-sm font-bold text-white leading-tight truncate">{activeChild.name}</h4>
-            <p className="text-[11px] text-[#a8a093]">Age {activeChild.age}</p>
+            <h4 className="text-sm font-bold leading-tight truncate" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
+            <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>Age {activeChild.age}</p>
           </div>
-          <ChevronDown className={`w-4 h-4 text-[#a8a093] transition-transform ${open ? "rotate-180" : ""}`} />
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
         </button>
         <button
           onClick={() => setShowEdit(true)}
           title="Edit profile"
-          className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-[#a8a093] hover:text-[#f4d991] transition"
+          className="p-1.5 rounded-lg transition"
+          style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
         >
           <Pencil className="w-3.5 h-3.5" />
         </button>
@@ -41,7 +42,8 @@ export default function ProfileSwitcher() {
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              className="absolute left-0 right-0 top-full mt-2 z-20 bg-[#0c0e14] border border-white/10 rounded-2xl p-1.5 shadow-2xl"
+              className="absolute left-0 right-0 top-full mt-2 z-20 rounded-2xl p-1.5 bg-white"
+              style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 12px 32px rgba(41,51,63,0.12)" }}
             >
               {profiles.map((p) => (
                 <button
@@ -50,18 +52,17 @@ export default function ProfileSwitcher() {
                     setActiveChild(p.id);
                     setOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition ${
-                    p.id === activeChild.id ? "bg-white/5" : "hover:bg-white/5"
-                  }`}
+                  className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition"
+                  style={{ background: p.id === activeChild.id ? "var(--arbor-paper-deep)" : "transparent" }}
                 >
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-[#f4d991] bg-[#d7aa55]/10">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold" style={{ color: "#1f8a5a", background: "#e4f4ec" }}>
                     {p.name.slice(0, 1).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm text-white font-bold truncate block">{p.name}</span>
-                    <span className="text-[10px] text-[#a8a093]">Age {p.age}</span>
+                    <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{p.name}</span>
+                    <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>Age {p.age}</span>
                   </div>
-                  {p.id === activeChild.id && <Check className="w-4 h-4 text-[#d7aa55]" />}
+                  {p.id === activeChild.id && <Check className="w-4 h-4" style={{ color: "#34b277" }} />}
                 </button>
               ))}
               <button
@@ -69,9 +70,10 @@ export default function ProfileSwitcher() {
                   setOpen(false);
                   setShowAdd(true);
                 }}
-                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left text-[#f4d991] hover:bg-[#d7aa55]/10 transition mt-1 border-t border-white/5"
+                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition mt-1"
+                style={{ color: "#1f8a5a", borderTop: "1px solid var(--arbor-rule)" }}
               >
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#d7aa55]/10">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#e4f4ec" }}>
                   <Plus className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-bold">Add child</span>

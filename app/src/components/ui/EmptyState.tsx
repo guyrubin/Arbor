@@ -16,9 +16,9 @@ export function EmptyState({
 }) {
   return (
     <div className={`flex flex-col items-center justify-center text-center gap-3 py-12 px-6 ${className}`}>
-      {icon && <div className="text-[#d7aa55]/70">{icon}</div>}
-      <h3 className="text-xl font-extrabold tracking-tight text-[#f7f1e7]">{headline}</h3>
-      {body && <p className="text-xs text-[#a8a093] max-w-sm leading-relaxed">{body}</p>}
+      {icon && <div style={{ color: "#1f8a5a" }}>{icon}</div>}
+      <h3 className="text-xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{headline}</h3>
+      {body && <p className="text-xs max-w-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{body}</p>}
       {action && <div className="pt-1">{action}</div>}
     </div>
   );

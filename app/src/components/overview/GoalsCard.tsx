@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Target, Plus, Check, Trash2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
+import { cardCls } from "../ui/kit";
 
 type Goal = { id: string; title: string; achieved: boolean; createdAt: string };
 
@@ -25,31 +26,32 @@ export default function GoalsCard() {
   const achievedCount = goals.filter((g) => g.achieved).length;
 
   return (
-    <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-4">
+    <div className={`${cardCls} p-6 space-y-4`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
-          <Target className="w-3.5 h-3.5 text-[#d7aa55]" /> Focus goals
+        <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+          <Target className="w-3.5 h-3.5" /> Focus goals
         </span>
-        {goals.length > 0 && <span className="text-[11px] text-[#a8a093]">{achievedCount}/{goals.length} achieved</span>}
+        {goals.length > 0 && <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{achievedCount}/{goals.length} achieved</span>}
       </div>
 
       <div className="space-y-2">
         {goals.map((g) => (
-          <div key={g.id} className="flex items-center gap-3 bg-white/[0.02] border border-white/5 rounded-xl px-3 py-2">
+          <div key={g.id} className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             <button
               onClick={() => void goalsCol.upsert({ ...g, achieved: !g.achieved })}
               aria-label={g.achieved ? "Mark not achieved" : "Mark achieved"}
-              className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 border transition ${g.achieved ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400" : "border-white/15 text-transparent hover:border-[#d7aa55]/40"}`}
+              className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition"
+              style={g.achieved ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" } : { border: "1px solid var(--arbor-rule-strong)", color: "transparent" }}
             >
               <Check className="w-3.5 h-3.5" />
             </button>
-            <span className={`flex-1 text-sm ${g.achieved ? "line-through text-[#a8a093]" : "text-gray-200"}`}>{g.title}</span>
-            <button onClick={() => void goalsCol.remove(g.id)} aria-label="Delete goal" className="text-[#a8a093] hover:text-red-400 transition">
+            <span className="flex-1 text-sm" style={{ color: g.achieved ? "var(--arbor-muted)" : "var(--arbor-ink)", textDecoration: g.achieved ? "line-through" : "none" }}>{g.title}</span>
+            <button onClick={() => void goalsCol.remove(g.id)} aria-label="Delete goal" className="transition" style={{ color: "var(--arbor-muted)" }}>
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         ))}
-        {goals.length === 0 && <p className="text-xs text-[#a8a093]">Set a focus, like “calm morning departures,” and track it to achieved.</p>}
+        {goals.length === 0 && <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>Set a focus, like “calm morning departures,” and track it to achieved.</p>}
       </div>
 
       <form onSubmit={add} className="flex gap-2">
@@ -57,9 +59,10 @@ export default function GoalsCard() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add a focus goal…"
-          className="flex-1 bg-[#08090c] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#d7aa55]/50"
+          className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none"
+          style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
         />
-        <button type="submit" className="bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold px-3 rounded-xl flex items-center"><Plus className="w-4 h-4" /></button>
+        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "#34b277" }}><Plus className="w-4 h-4" /></button>
       </form>
     </div>
   );

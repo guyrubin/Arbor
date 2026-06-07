@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { TrendingUp } from "lucide-react";
 import { BehaviorLog } from "../../types";
+import { cardCls } from "../ui/kit";
 
 /** Multi-month behavior-intensity trend (last 6 months). */
 export default function TrendsChart({ logs, milestonesPercent }: { logs: BehaviorLog[]; milestonesPercent: number }) {
@@ -33,17 +34,17 @@ export default function TrendsChart({ logs, milestonesPercent }: { logs: Behavio
   const hasData = data.some((d) => d.count > 0);
 
   return (
-    <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-4">
+    <div className={`${cardCls} p-6 space-y-4`}>
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-[#d7aa55]" /> Trend over time
+          <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+            <TrendingUp className="w-3.5 h-3.5" /> Trend over time
           </span>
-          <h3 className="text-lg font-bold text-white mt-1">Behavior intensity · last 6 months</h3>
+          <h3 className="text-lg font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Behavior intensity · last 6 months</h3>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-black text-[#f4d991]">{milestonesPercent}%</div>
-          <span className="text-[10px] text-[#a8a093] uppercase tracking-wide">milestone readiness</span>
+          <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "#1f8a5a" }}>{milestonesPercent}%</div>
+          <span className="text-[10px] uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>milestone readiness</span>
         </div>
       </div>
       {hasData ? (
@@ -63,7 +64,7 @@ export default function TrendsChart({ logs, milestonesPercent }: { logs: Behavio
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="h-32 flex items-center justify-center text-center text-xs text-[#a8a093] border border-dashed border-white/10 rounded-2xl">
+        <div className="h-32 flex items-center justify-center text-center text-xs rounded-2xl" style={{ color: "var(--arbor-muted)", border: "1px dashed var(--arbor-rule-strong)" }}>
           A few weeks of logs will reveal your longer-term trend here.
         </div>
       )}
