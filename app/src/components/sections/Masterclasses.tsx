@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "motion/react";
-import { GraduationCap, Clock, PlayCircle } from "lucide-react";
-import { PageHeader, cardCls, IconBadge, PASTEL, PastelKey } from "../ui/kit";
+import { GraduationCap, Clock } from "lucide-react";
+import { PageHeader, cardCls, IconBadge, ComingSoon, PastelKey } from "../ui/kit";
 
 const CLASSES: { title: string; mins: number; tone: PastelKey }[] = [
   { title: "Holding the Line Without Anger", mins: 12, tone: "coral" },
@@ -18,10 +18,10 @@ const CLASSES: { title: string; mins: number; tone: PastelKey }[] = [
 export default function Masterclasses() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader eyebrow="Arbor Academy" title="Parent masterclasses" subtitle="Short, premium lessons that turn hard moments into confident parenting — watch one in a coffee break." />
+      <PageHeader eyebrow="Arbor Academy" title="Parent masterclasses" subtitle="Short, premium lessons that turn hard moments into confident parenting. Our first lessons are in production — here's what's coming." />
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {CLASSES.map((c) => (
-          <button key={c.title} className={`${cardCls} p-5 text-left flex flex-col gap-3 transition hover:-translate-y-0.5`}>
+          <div key={c.title} className={`${cardCls} p-5 flex flex-col gap-3`}>
             <div className="flex items-center justify-between">
               <IconBadge tone={c.tone}><GraduationCap className="w-5 h-5" /></IconBadge>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
@@ -29,10 +29,8 @@ export default function Masterclasses() {
               </span>
             </div>
             <h3 className="text-[15px] font-extrabold leading-snug" style={{ color: "var(--arbor-ink)" }}>{c.title}</h3>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold mt-auto" style={{ color: PASTEL[c.tone].ink }}>
-              <PlayCircle className="w-4 h-4" /> Start lesson
-            </span>
-          </button>
+            <span className="mt-auto"><ComingSoon label="Coming soon" /></span>
+          </div>
         ))}
       </div>
     </motion.div>

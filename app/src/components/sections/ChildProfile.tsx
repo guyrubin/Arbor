@@ -21,7 +21,7 @@ export default function ChildProfile() {
     { tab: "milestones" as const, tone: "mint" as const, icon: <CheckCircle2 className="w-5 h-5" />, title: "Development Milestones", desc: `${milestonesPercent}% on track for age ${childProfile.age}.` },
     { tab: "behaviors" as const, tone: "coral" as const, icon: <Activity className="w-5 h-5" />, title: "Behavior Patterns", desc: "Log moments and see what helps over time." },
     { tab: "language" as const, tone: "sky" as const, icon: <Languages className="w-5 h-5" />, title: "Language & Communication", desc: "Track the bilingual transition with confidence." },
-    { tab: "strengths" as const, tone: "lav" as const, icon: <Gem className="w-5 h-5" />, title: "Strengths & Challenges", desc: "What lights Dylan up, and where to support." },
+    { tab: "strengths" as const, tone: "lav" as const, icon: <Gem className="w-5 h-5" />, title: "Strengths & Challenges", desc: `What lights ${first} up, and where to support.` },
   ];
 
   return (

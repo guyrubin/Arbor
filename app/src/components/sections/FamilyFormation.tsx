@@ -55,15 +55,15 @@ export default function FamilyFormation() {
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {ITEMS.map((it) => (
-          <button key={it.title} className={`${cardCls} p-5 text-left flex items-start gap-4 transition hover:-translate-y-0.5`}>
+          <div key={it.title} className={`${cardCls} p-5 flex items-start gap-4`}>
             <IconBadge tone={it.tone}>{it.icon}</IconBadge>
             <div className="min-w-0">
               <h3 className="text-[15px] font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
-                {it.title} {it.soon && <ComingSoon label="Coming soon" />}
+                {it.title} <ComingSoon label="Coming soon" />
               </h3>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{it.desc}</p>
             </div>
-          </button>
+          </div>
         ))}
       </div>
     </motion.div>

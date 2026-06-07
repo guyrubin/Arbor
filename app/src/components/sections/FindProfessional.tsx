@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { Search, ShieldCheck, Globe, MapPin, Languages as LangIcon, Star, Send, FileText } from "lucide-react";
 import { PageHeader, cardCls, Chip, PASTEL } from "../ui/kit";
 import type { Professional } from "../../services/professionals";
 import { authHeaders } from "../../lib/api";
+import { useArbor } from "../../context/ArborContext";
 
 const SPECIALTIES = [
   "Child Psychologist", "Speech Therapist", "Occupational Therapist", "Parenting Coach",
@@ -20,12 +21,36 @@ const FALLBACK: Professional[] = [
   { id: "p3", name: "Dr. Amir Cohen", role: "Pediatrician", creds: "MD, Developmental-Behavioral", langs: "Hebrew · English", city: "Herzliya", mode: "In-person", ages: "0–12", approach: "Evidence-first, calm, parent-partnering", handles: "Developmental screening, sleep, milestones", price: "₪₪₪", rating: 5.0, verified: true, tone: "coral" },
 ];
 
+/** True if the professional's "min–max" age string overlaps [lo, hi]. */
+function agesOverlap(ages: string, lo: number, hi: number): boolean {
+  const m = ages.match(/(\d+)\s*[–-]\s*(\d+)/);
+  if (!m) return true;
+  const [min, max] = [Number(m[1]), Number(m[2])];
+  return min <= hi && max >= lo;
+}
+
+function matchesFilter(p: Professional, f: string): boolean {
+  switch (f) {
+    case "Verified by Arbor": return !!p.verified;
+    case "Online": return /online|remote/i.test(`${p.mode} ${p.city}`);
+    case "In-person": return /in.?person/i.test(p.mode);
+    case "Hebrew": return /hebrew/i.test(p.langs);
+    case "English": return /english/i.test(p.langs);
+    case "Ages 3–6": return agesOverlap(p.ages, 3, 6);
+    case "Insurance accepted": return (p as { insurance?: boolean }).insurance !== false;
+    default: return true;
+  }
+}
+
 /** Care Network › Find a Professional (curated, verified directory — fetched from
  *  the Arbor professionals API, never "marketplace" in parent UI). */
 export default function FindProfessional() {
+  const { childProfile, setActiveTab } = useArbor();
+  const first = childProfile.name.split(" ")[0];
   const [active, setActive] = useState<string[]>(["Verified by Arbor"]);
   const toggle = (f: string) => setActive((p) => (p.includes(f) ? p.filter((x) => x !== f) : [...p, f]));
   const [pros, setPros] = useState<Professional[]>(FALLBACK);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -41,15 +66,30 @@ export default function FindProfessional() {
     return () => { alive = false; };
   }, []);
 
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return pros.filter((p) => {
+      if (!active.every((f) => matchesFilter(p, f))) return false;
+      if (!q) return true;
+      return `${p.name} ${p.role} ${p.handles} ${p.approach}`.toLowerCase().includes(q);
+    });
+  }, [pros, active, query]);
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader eyebrow="Care Network" title="Find a professional" subtitle="A curated, Arbor-verified network of child-development specialists — coordinated around Dylan, with your context ready to share." />
+      <PageHeader eyebrow="Care Network" title="Find a professional" subtitle={`A curated, Arbor-verified network of child-development specialists — coordinated around ${first}, with your context ready to share.`} />
 
       {/* Search + filters */}
       <div className={`${cardCls} p-5 space-y-4`}>
         <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)" }}>
           <Search className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} />
-          <input placeholder="Search by specialty, concern, or name" className="flex-1 bg-transparent outline-none text-sm" style={{ color: "var(--arbor-ink)" }} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by specialty, concern, or name"
+            className="flex-1 bg-transparent outline-none text-sm"
+            style={{ color: "var(--arbor-ink)" }}
+          />
         </div>
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((f) => {
@@ -63,49 +103,68 @@ export default function FindProfessional() {
           })}
         </div>
         <div className="flex flex-wrap gap-1.5 pt-1">
-          {SPECIALTIES.map((s, i) => <Chip key={s} tone={(["mint","sky","lav","coral","yellow","pink"] as const)[i % 6]}>{s}</Chip>)}
+          {SPECIALTIES.map((s, i) => (
+            <button key={s} onClick={() => setQuery(s)} className="cursor-pointer">
+              <Chip tone={(["mint","sky","lav","coral","yellow","pink"] as const)[i % 6]}>{s}</Chip>
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Curated results */}
-      <div className="grid lg:grid-cols-2 gap-5">
-        {pros.map((p) => (
-          <div key={p.name} className={`${cardCls} p-5`}>
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-extrabold flex-shrink-0" style={{ background: PASTEL[p.tone as keyof typeof PASTEL].soft, color: PASTEL[p.tone as keyof typeof PASTEL].ink, fontFamily: "var(--font-display)" }}>
-                {p.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{p.name}</h3>
-                  {p.verified && <Chip tone="mint" icon={<ShieldCheck className="w-3.5 h-3.5" />}>Verified by Arbor</Chip>}
+      {results.length === 0 ? (
+        <div className={`${cardCls} p-10 text-center`}>
+          <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>No professionals match those filters.</p>
+          <button onClick={() => { setActive([]); setQuery(""); }} className="text-xs font-bold mt-2" style={{ color: "#1f8a5a" }}>Clear filters</button>
+        </div>
+      ) : (
+        <div className="grid lg:grid-cols-2 gap-5">
+          {results.map((p) => (
+            <div key={p.name} className={`${cardCls} p-5`}>
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-extrabold flex-shrink-0" style={{ background: PASTEL[p.tone as keyof typeof PASTEL].soft, color: PASTEL[p.tone as keyof typeof PASTEL].ink, fontFamily: "var(--font-display)" }}>
+                  {p.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
                 </div>
-                <p className="text-sm font-semibold" style={{ color: "#1f8a5a" }}>{p.role}</p>
-                <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{p.creds}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{p.name}</h3>
+                    {p.verified && <Chip tone="mint" icon={<ShieldCheck className="w-3.5 h-3.5" />}>Verified by Arbor</Chip>}
+                  </div>
+                  <p className="text-sm font-semibold" style={{ color: "#1f8a5a" }}>{p.role}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{p.creds}</p>
+                </div>
+                <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "#a9780f" }}><Star className="w-3.5 h-3.5 fill-current" /> {p.rating}</span>
               </div>
-              <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "#a9780f" }}><Star className="w-3.5 h-3.5 fill-current" /> {p.rating}</span>
-            </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
-              <span className="inline-flex items-center gap-1.5"><LangIcon className="w-3.5 h-3.5" /> {p.langs}</span>
-              <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {p.city}</span>
-              <span className="inline-flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> {p.mode}</span>
-              <span>Ages {p.ages} · {p.price}</span>
-            </div>
-            <p className="text-xs mt-3 leading-relaxed" style={{ color: "var(--arbor-ink)" }}><b>Handles:</b> {p.handles}</p>
-            <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{p.approach}</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
+                <span className="inline-flex items-center gap-1.5"><LangIcon className="w-3.5 h-3.5" /> {p.langs}</span>
+                <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {p.city}</span>
+                <span className="inline-flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> {p.mode}</span>
+                <span>Ages {p.ages} · {p.price}</span>
+              </div>
+              <p className="text-xs mt-3 leading-relaxed" style={{ color: "var(--arbor-ink)" }}><b>Handles:</b> {p.handles}</p>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{p.approach}</p>
 
-            <div className="flex gap-2 mt-4">
-              <button className="flex-1 inline-flex items-center justify-center gap-1.5 text-white font-bold text-xs rounded-xl py-2.5" style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}>
-                <Send className="w-3.5 h-3.5" /> Request consultation
-              </button>
-              <button className="inline-flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl px-3 py-2.5 bg-white" style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}>
-                <FileText className="w-3.5 h-3.5" /> Share Arbor summary
-              </button>
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => setActiveTab("appointments")}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 text-white font-bold text-xs rounded-xl py-2.5"
+                  style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}
+                >
+                  <Send className="w-3.5 h-3.5" /> Request consultation
+                </button>
+                <button
+                  onClick={() => setActiveTab("reports")}
+                  className="inline-flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl px-3 py-2.5 bg-white"
+                  style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}
+                >
+                  <FileText className="w-3.5 h-3.5" /> Share Arbor summary
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>Every professional is reviewed and verified by Arbor. Curated, not crowdsourced.</p>
     </motion.div>
   );

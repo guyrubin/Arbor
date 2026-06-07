@@ -16,7 +16,7 @@ const ENGINES: Engine[] = [
   { n: "05", title: "Story Formation Engine", tab: "stories", icon: <BookOpen className="w-4 h-4" />, tone: "yellow", status: "Standby", description: "Crafts personalized stories that build courage, responsibility and resilience." },
   { n: "06", title: "Handoff Generator", tab: "handoff", icon: <FileBarChart className="w-4 h-4" />, tone: "sky", status: "Synced", description: "Builds teacher, therapist and pediatrician handoffs from approved child memory." },
   { n: "07", title: "Memory Proposal Engine", tab: "memory", icon: <BookMarked className="w-4 h-4" />, tone: "lav", status: "Reviewing", description: "Proposes new child-memory facts for your approval — never saved without you." },
-  { n: "08", title: "Care Matching Engine", tab: "find-pro", icon: <HeartHandshake className="w-4 h-4" />, tone: "pink", status: "Connected", description: "Matches Dylan's needs to verified professionals in the Care Network." },
+  { n: "08", title: "Care Matching Engine", tab: "find-pro", icon: <HeartHandshake className="w-4 h-4" />, tone: "pink", status: "Connected", description: "Matches your child's needs to verified professionals in the Care Network." },
 ];
 
 const TRUST = [

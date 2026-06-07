@@ -7,7 +7,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
-import { TrustSafetyBar } from "../ui/kit";
+import { TrustSafetyBar, cardCls } from "../ui/kit";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import ArborVision from "../coach/ArborVision";
 import { api, streamVoice, getAiLanguage } from "../../lib/api";
@@ -237,19 +237,22 @@ export default function CoachTab() {
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-extrabold tracking-tight">Ask Arbor</h2>
-            <p className="text-sm text-[#a8a093] mt-1">Calm guidance and exact words for hard parenting moments — age-aware, non-diagnostic, with escalation guidance built in.</p>
+            <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Ask Arbor</span>
+            <h2 className="text-2xl md:text-[2rem] font-extrabold leading-[1.12] mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Ask Arbor</h2>
+            <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>Calm guidance and exact words for hard parenting moments — age-aware, non-diagnostic, with escalation guidance built in.</p>
           </div>
-          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/10 rounded-xl p-1 flex-shrink-0" title="Language for AI responses">
+          <div className="flex items-center gap-1 rounded-xl p-1 flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} title="Language for AI responses">
             <button
               onClick={() => setAiLang("en")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${aiLang === "en" ? "bg-[#d7aa55] text-black" : "text-[#a8a093] hover:text-white"}`}
+              className="px-2.5 py-1 rounded-lg text-xs font-bold transition"
+              style={aiLang === "en" ? { background: "#34b277", color: "#fff" } : { color: "var(--arbor-muted)" }}
             >
               EN
             </button>
             <button
               onClick={() => setAiLang("he")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${aiLang === "he" ? "bg-[#d7aa55] text-black" : "text-[#a8a093] hover:text-white"}`}
+              className="px-2.5 py-1 rounded-lg text-xs font-bold transition"
+              style={aiLang === "he" ? { background: "#34b277", color: "#fff" } : { color: "var(--arbor-muted)" }}
             >
               עב
             </button>
@@ -257,34 +260,35 @@ export default function CoachTab() {
         </div>
 
         <div className="space-y-2">
-          <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">Active Scholar Lens</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "#1f8a5a" }}>Active Scholar Lens</span>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedLens("Integrated Balanced")}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${
-                selectedLens === "Integrated Balanced"
-                  ? "bg-amber-500/10 text-[#f4d991] border-amber-500/30"
-                  : "bg-white/[0.02] text-[#a8a093] border-white/5 hover:bg-white/5"
-              }`}
+              className="px-3 py-2 rounded-xl text-xs font-bold transition"
+              style={selectedLens === "Integrated Balanced"
+                ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }
+                : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
               🌟 Integrated Balanced
             </button>
-            {scholarsInfo.map((s, idx) => (
-              <button
-                key={idx}
-                onClick={() => setSelectedLens(s.name)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-2 ${
-                  selectedLens === s.name
-                    ? "bg-[#d7aa55]/15 text-[#f4d991] border-[#d7aa55]/40 shadow-lg shadow-[#d7aa55]/5"
-                    : "bg-white/[0.02] text-[#a8a093] border-white/5 hover:bg-white/5"
-                }`}
-              >
-                <span className="w-4 h-4 bg-white/5 text-[9px] font-black rounded flex items-center justify-center text-[#f4d991]">
-                  {s.initial}
-                </span>
-                {s.name} ({s.concept})
-              </button>
-            ))}
+            {scholarsInfo.map((s, idx) => {
+              const on = selectedLens === s.name;
+              return (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedLens(s.name)}
+                  className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
+                  style={on
+                    ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }
+                    : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                >
+                  <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? "#fff" : "var(--arbor-paper-deep)", color: "#1f8a5a" }}>
+                    {s.initial}
+                  </span>
+                  {s.name} ({s.concept})
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -310,36 +314,39 @@ export default function CoachTab() {
       )}
 
       {/* Conversation threads */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         <button
           onClick={newConversation}
-          className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full border border-[#d7aa55]/25 bg-[#d7aa55]/10 text-[#f4d991] hover:bg-[#d7aa55]/20 transition"
+          className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full transition"
+          style={{ background: "#e4f4ec", color: "#1f8a5a" }}
         >
           <Plus className="w-3.5 h-3.5" /> New
         </button>
-        {conversations.map((c) => (
-          <div
-            key={c.id}
-            className={`flex-shrink-0 flex items-center gap-1.5 rounded-full border pl-3 pr-1.5 py-1 transition ${
-              c.id === activeConversationId ? "bg-white/5 border-white/15" : "bg-white/[0.02] border-white/5 hover:bg-white/5"
-            }`}
-          >
-            <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold text-[#a8a093] hover:text-white max-w-[160px] truncate">
-              <MessageSquare className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{c.title}</span>
-            </button>
-            <button onClick={() => deleteConversation(c.id)} aria-label="Delete conversation" className="text-[#a8a093] hover:text-red-400 transition">
-              <Trash2 className="w-3 h-3" />
-            </button>
-          </div>
-        ))}
+        {conversations.map((c) => {
+          const on = c.id === activeConversationId;
+          return (
+            <div
+              key={c.id}
+              className="flex-shrink-0 flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1 transition"
+              style={on ? { background: "#e4f4ec", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
+            >
+              <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "#1f8a5a" : "var(--arbor-muted)" }}>
+                <MessageSquare className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{c.title}</span>
+              </button>
+              <button onClick={() => deleteConversation(c.id)} aria-label="Delete conversation" className="transition" style={{ color: "var(--arbor-muted)" }}>
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* Chat Viewport Area */}
-      <div className="border border-white/10 rounded-2xl bg-[#141821] flex flex-col h-[520px] overflow-hidden justify-between">
-        <div className="bg-white/[0.03] px-4 py-2 text-xs text-[#a8a093] border-b border-white/5 flex items-center justify-between">
-          <span>Conversation Frame: <strong>Active child context</strong></span>
-          <span className="text-[#f4d991] font-bold flex items-center gap-1.5">
-            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full bg-[#d7aa55] animate-pulse" />}
+      <div className={`${cardCls} flex flex-col h-[520px] overflow-hidden justify-between`}>
+        <div className="px-4 py-2 text-xs flex items-center justify-between" style={{ background: "var(--arbor-paper-deep)", borderBottom: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
+          <span>Conversation frame: <strong style={{ color: "var(--arbor-ink)" }}>Active child context</strong></span>
+          <span className="font-bold flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#34b277" }} />}
             Lens: {selectedLens}
           </span>
         </div>
@@ -347,18 +354,16 @@ export default function CoachTab() {
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           {chatMessages.map((msg, idx) => (
             <div key={idx} className={`flex gap-3 max-w-[85%] group ${msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"}`}>
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                msg.sender === "user" ? "bg-blue-500/20 text-blue-400" : "bg-[#d7aa55]/20 text-[#f4d991]"
-              }`}>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
+                style={msg.sender === "user" ? { background: "#e5f0fb", color: "#2f7bbf" } : { background: "#fdeada", color: "#cf6f37" }}>
                 {msg.sender === "user" ? "U" : "Ar"}
               </div>
-              <div className={`p-4 rounded-2xl text-sm ${
-                msg.sender === "user"
-                  ? "bg-blue-950/30 border border-blue-500/15 text-white"
-                  : "bg-white/[0.02] border border-white/5 text-gray-100"
-              }`}>
+              <div className="p-4 rounded-2xl text-sm"
+                style={msg.sender === "user"
+                  ? { background: "#e5f0fb", color: "var(--arbor-ink)" }
+                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
-                  <span className="text-[10px] font-bold bg-[#d7aa55]/10 text-[#f4d991] px-2 py-0.5 rounded-full mb-3 inline-block">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
                     Aligned with {msg.lens}
                   </span>
                 )}
@@ -414,8 +419,8 @@ export default function CoachTab() {
                 )}
 
                 {msg.sender === "ai" && !msg.contract && (
-                  <div className="flex items-center gap-3 mt-3 pt-2 border-t border-white/5 opacity-0 group-hover:opacity-100 transition">
-                    <button onClick={() => navigator.clipboard?.writeText(msg.text)} className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1">
+                  <div className="flex items-center gap-3 mt-3 pt-2 opacity-0 group-hover:opacity-100 transition" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                    <button onClick={() => navigator.clipboard?.writeText(msg.text)} className="text-[10px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
                       <Copy className="w-3 h-3" /> Copy
                     </button>
                     <button
@@ -424,7 +429,7 @@ export default function CoachTab() {
                         setActiveTab("behaviors");
                         toast("Pre-filled a log from this guidance — review and save", "info");
                       }}
-                      className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1"
+                      className="text-[10px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}
                     >
                       <ClipboardList className="w-3 h-3" /> Log this
                     </button>
@@ -434,7 +439,7 @@ export default function CoachTab() {
                         setActiveTab("plans");
                         toast("Seeded the plan generator — tap Generate", "info");
                       }}
-                      className="text-[10px] font-bold text-[#a8a093] hover:text-white flex items-center gap-1"
+                      className="text-[10px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}
                     >
                       <ListPlus className="w-3 h-3" /> Save to Action Plan
                     </button>
@@ -450,7 +455,8 @@ export default function CoachTab() {
                 <button
                   key={q}
                   onClick={() => handleChatSend(q)}
-                  className="text-[11px] text-[#f4d991] bg-[#d7aa55]/10 hover:bg-[#d7aa55]/20 border border-[#d7aa55]/25 px-3 py-1.5 rounded-full transition flex items-center gap-1.5"
+                  className="text-[11px] px-3 py-1.5 rounded-full transition flex items-center gap-1.5 font-bold"
+                  style={{ background: "#e4f4ec", color: "#1f8a5a" }}
                 >
                   {q} <ArrowRight className="w-3 h-3" />
                 </button>
@@ -460,15 +466,16 @@ export default function CoachTab() {
 
           {isChatLoading && (
             <div className="flex gap-3 max-w-[85%] mr-auto">
-              <div className="w-8 h-8 rounded-xl bg-[#d7aa55]/20 text-[#f4d991] flex items-center justify-center text-xs font-bold animate-spin">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold animate-spin" style={{ background: "#fdeada", color: "#cf6f37" }}>
                 <RefreshCw className="w-4 h-4" />
               </div>
-              <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 text-xs text-gray-400 flex items-center gap-3">
+              <div className="p-4 rounded-2xl text-xs flex items-center gap-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                 <span className="animate-pulse">{chatStreamStatus || "Arbor developmental model synthesizing guidance..."}</span>
                 <button
                   type="button"
                   onClick={handleCancelChat}
-                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-[#a8a093] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1"
+                  className="px-2 py-1 rounded-lg font-bold flex items-center gap-1"
+                  style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 >
                   <X className="w-3 h-3" /> Stop
                 </button>
@@ -479,20 +486,22 @@ export default function CoachTab() {
           <div ref={chatBottomRef} />
         </div>
 
-        <div className="p-4 border-t border-white/5 bg-white/[0.01] space-y-2">
+        <div className="p-4 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
           {/* Multimodal capture: show Arbor a photo or document, or talk hands-free */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={() => setVisionMode("observe")}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-white/5 hover:bg-white/10 text-[#a8a093] hover:text-white border border-white/10 px-2.5 py-1.5 rounded-lg transition"
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
+              style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
               <Camera className="w-3.5 h-3.5" /> Photo
             </button>
             <button
               type="button"
               onClick={() => setVisionMode("document")}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold bg-white/5 hover:bg-white/10 text-[#a8a093] hover:text-white border border-white/10 px-2.5 py-1.5 rounded-lg transition"
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
+              style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
               <FileText className="w-3.5 h-3.5" /> Document
             </button>
@@ -500,14 +509,13 @@ export default function CoachTab() {
               type="button"
               onClick={toggleVoice}
               aria-pressed={voicePhase !== "off"}
-              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition ${
-                voicePhase !== "off"
-                  ? "bg-[#d7aa55]/15 text-[#f4d991] border-[#d7aa55]/40"
-                  : "bg-white/5 hover:bg-white/10 text-[#a8a093] hover:text-white border-white/10"
-              }`}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
+              style={voicePhase !== "off"
+                ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }
+                : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
               {voicePhase === "off" ? <Mic className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />} {voiceLabel}
-              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full bg-[#f4d991] animate-pulse" />}
+              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#34b277" }} />}
             </button>
           </div>
           <div className="flex gap-2">
@@ -518,12 +526,14 @@ export default function CoachTab() {
               onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
               disabled={isChatLoading}
               placeholder="Discuss behavior logs, dropoff problems or trigger resets (e.g. tablet disputes)..."
-              className="flex-1 bg-[#08090c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#d7aa55]/50 transition"
+              className="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none transition"
+              style={{ background: "#fff", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
             />
             <button
               onClick={() => handleChatSend()}
               disabled={isChatLoading}
-              className="bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 disabled:text-[#a8a093] text-black font-extrabold text-sm px-5 py-3 rounded-xl transition flex items-center gap-2"
+              className="text-white font-extrabold text-sm px-5 py-3 rounded-xl transition flex items-center gap-2 disabled:opacity-60"
+              style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
             >
               Send
             </button>
@@ -531,24 +541,27 @@ export default function CoachTab() {
               onClick={() => handleCouncilSend()}
               disabled={isChatLoading}
               title="Convene 3 scholars — each weighs in, then Arbor synthesizes"
-              className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-[#f4d991] border border-[#d7aa55]/30 font-extrabold text-sm px-4 py-3 rounded-xl transition flex items-center gap-2"
+              className="font-extrabold text-sm px-4 py-3 rounded-xl transition flex items-center gap-2 disabled:opacity-50"
+              style={{ background: "#fff", border: "1px solid rgba(52,178,119,0.30)", color: "#1f8a5a" }}
             >
               <Users className="w-4 h-4" /> Council
             </button>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-400">
-            <span className="font-bold">Suggested Sandbox prompts:</span>
+          <div className="flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--arbor-muted)" }}>
+            <span className="font-bold">Suggested prompts:</span>
             <button
-              onClick={() => handleChatSend("Dylan screams and hides behind the couch during shoe departures.")}
+              onClick={() => handleChatSend(`${childProfile.name.split(" ")[0]} screams and hides behind the couch during shoe departures.`)}
               disabled={isChatLoading}
-              className="hover:text-white bg-white/5 px-2 py-0.5 rounded border border-white/5"
+              className="px-2 py-0.5 rounded transition"
+              style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
               Shoe departure tantrum
             </button>
             <button
               onClick={() => handleChatSend("Suggestions for switching Hebrew and English language routines.")}
               disabled={isChatLoading}
-              className="hover:text-white bg-white/5 px-2 py-0.5 rounded border border-white/5"
+              className="px-2 py-0.5 rounded transition"
+              style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
               Bilingual balance routine
             </button>
@@ -566,75 +579,78 @@ export default function CoachTab() {
       )}
 
       {/* Parent-approved memory review */}
-      <div className="border border-white/10 rounded-2xl bg-[#141821] p-5 space-y-4">
+      <div className={`${cardCls} p-5 space-y-4`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
-            <span className="text-[10px] font-black uppercase text-[#f4d991] tracking-widest block">Memory Review</span>
-            <h3 className="text-lg font-extrabold text-white mt-1">Parent approval queue</h3>
-            <p className="text-xs text-[#a8a093] mt-1">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "#1f8a5a" }}>Memory Review</span>
+            <h3 className="text-lg font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Parent approval queue</h3>
+            <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
               Arbor saves proposed observations as pending review. They become active child memory only after approval.
             </p>
           </div>
-          <div className="text-xs text-[#a8a093]">
-            <strong className="text-white">{pendingMemoryItems.length}</strong> pending · <strong className="text-white">{approvedMemoryItems.length}</strong> approved
+          <div className="text-xs" style={{ color: "var(--arbor-muted)" }}>
+            <strong style={{ color: "var(--arbor-ink)" }}>{pendingMemoryItems.length}</strong> pending · <strong style={{ color: "var(--arbor-ink)" }}>{approvedMemoryItems.length}</strong> approved
           </div>
         </div>
 
         {memoryReviewItems.length === 0 ? (
-          <div className="text-xs text-[#a8a093] border border-white/5 rounded-xl p-4 bg-white/[0.01]">
+          <div className="text-xs rounded-xl p-4" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>
             Ask the coach a question to generate reviewable observations. Nothing is active memory yet.
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {memoryReviewItems.slice(0, 6).map((item) => (
-              <div key={item.memoryId} className="border border-white/5 rounded-xl p-4 bg-white/[0.015] space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded ${
-                    item.status === "approved"
-                      ? "bg-green-500/10 text-green-500"
-                      : item.status === "rejected"
-                        ? "bg-red-500/10 text-red-500"
-                        : "bg-[#d7aa55]/10 text-[#f4d991]"
-                  }`}>
-                    {item.status}
-                  </span>
-                  <span className="text-[10px] text-[#a8a093]">{new Date(item.createdAt).toLocaleDateString()}</span>
-                </div>
-                <p className="text-sm text-gray-200 leading-relaxed">{item.fact}</p>
-                <div className="text-[10px] text-[#a8a093] space-y-1">
-                  <p><strong className="text-white">Source:</strong> {item.source}</p>
-                  <p><strong className="text-white">Retention:</strong> {item.retention}</p>
-                  {item.frameRouting?.aim && <p><strong className="text-white">Frame:</strong> {item.frameRouting.aim}</p>}
-                </div>
-                {item.status === "pending" && (
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => handleMemoryDecision(item.memoryId, "approved")}
-                      disabled={isMemoryUpdating === item.memoryId}
-                      className="flex-1 bg-[#d7aa55] text-black font-extrabold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Check className="w-3.5 h-3.5" /> Approve
-                    </button>
-                    <button
-                      onClick={() => handleMemoryDecision(item.memoryId, "rejected")}
-                      disabled={isMemoryUpdating === item.memoryId}
-                      className="flex-1 bg-white/5 border border-white/10 text-[#a8a093] font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Reject
-                    </button>
+            {memoryReviewItems.slice(0, 6).map((item) => {
+              const statusStyle =
+                item.status === "approved" ? { background: "#e4f4ec", color: "#1f8a5a" }
+                : item.status === "rejected" ? { background: "#fce2ec", color: "#bd4f74" }
+                : { background: "#fbf1d4", color: "#a9780f" };
+              return (
+                <div key={item.memoryId} className="rounded-xl p-4 space-y-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-1 rounded" style={statusStyle}>
+                      {item.status}
+                    </span>
+                    <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{new Date(item.createdAt).toLocaleDateString()}</span>
                   </div>
-                )}
-                {item.status === "approved" && (
-                  <button
-                    onClick={() => handleMemoryDecision(item.memoryId, "deleted")}
-                    disabled={isMemoryUpdating === item.memoryId}
-                    className="w-full bg-white/5 border border-white/10 text-[#a8a093] font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete from active memory
-                  </button>
-                )}
-              </div>
-            ))}
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{item.fact}</p>
+                  <div className="text-[10px] space-y-1" style={{ color: "var(--arbor-muted)" }}>
+                    <p><strong style={{ color: "var(--arbor-ink)" }}>Source:</strong> {item.source}</p>
+                    <p><strong style={{ color: "var(--arbor-ink)" }}>Retention:</strong> {item.retention}</p>
+                    {item.frameRouting?.aim && <p><strong style={{ color: "var(--arbor-ink)" }}>Frame:</strong> {item.frameRouting.aim}</p>}
+                  </div>
+                  {item.status === "pending" && (
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => handleMemoryDecision(item.memoryId, "approved")}
+                        disabled={isMemoryUpdating === item.memoryId}
+                        className="flex-1 text-white font-extrabold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        style={{ background: "#34b277" }}
+                      >
+                        <Check className="w-3.5 h-3.5" /> Approve
+                      </button>
+                      <button
+                        onClick={() => handleMemoryDecision(item.memoryId, "rejected")}
+                        disabled={isMemoryUpdating === item.memoryId}
+                        className="flex-1 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Reject
+                      </button>
+                    </div>
+                  )}
+                  {item.status === "approved" && (
+                    <button
+                      onClick={() => handleMemoryDecision(item.memoryId, "deleted")}
+                      disabled={isMemoryUpdating === item.memoryId}
+                      className="w-full font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete from active memory
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

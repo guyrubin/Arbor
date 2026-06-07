@@ -7,6 +7,7 @@ import { Skeleton } from "../ui/Skeleton";
 import { scholarsInfo } from "../../initialData";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { authHeaders, getAiLanguage } from "../../lib/api";
+import { PageHeader, SectionCard, cardCls, IconBadge } from "../ui/kit";
 
 const DAY = 86_400_000;
 
@@ -123,36 +124,43 @@ export default function WeeklyTab() {
   }, [reportsCol.loaded, reportsCol.items, snapshot.summary.count]);
 
   const selected = reports.find((r) => r.id === selectedId) || reports[0] || null;
+  const first = childProfile.name.split(" ")[0];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-            <BarChart2 className="w-7 h-7 text-[#d7aa55]" /> Weekly Insight
-          </h2>
-          <p className="text-sm text-[#a8a093] mt-1">{selected ? `${selected.weekLabel} · ${selected.id}` : `${currentLabel} · ${currentId}`}</p>
-        </div>
-        <button onClick={() => void generate()} disabled={generating} className="bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 text-black font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2">
-          {generating ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Generating…</>) : (<><Sparkles className="w-3.5 h-3.5" /> {reports.some((r) => r.id === currentId) ? "Regenerate this week" : "Generate this week"}</>)}
-        </button>
-      </div>
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
+      <PageHeader
+        eyebrow="Child Intelligence"
+        title="Weekly Insight"
+        subtitle={selected ? `${selected.weekLabel} · ${selected.id}` : `${currentLabel} · ${currentId}`}
+        action={
+          <button
+            onClick={() => void generate()}
+            disabled={generating}
+            className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
+          >
+            {generating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Generating…</>) : (<><Sparkles className="w-4 h-4" /> {reports.some((r) => r.id === currentId) ? "Regenerate this week" : "Generate this week"}</>)}
+          </button>
+        }
+      />
 
       {/* History strip */}
       {reports.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <History className="w-3.5 h-3.5 text-[#a8a093] flex-shrink-0" />
-          {reports.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => setSelectedId(r.id)}
-              className={`text-[11px] font-bold px-3 py-1.5 rounded-full border whitespace-nowrap transition ${
-                r.id === selected?.id ? "bg-[#d7aa55]/15 text-[#f4d991] border-[#d7aa55]/40" : "bg-white/[0.02] text-[#a8a093] border-white/5 hover:bg-white/5"
-              }`}
-            >
-              {r.id}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <History className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
+          {reports.map((r) => {
+            const on = r.id === selected?.id;
+            return (
+              <button
+                key={r.id}
+                onClick={() => setSelectedId(r.id)}
+                className="text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition flex-shrink-0"
+                style={on ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              >
+                {r.id}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -161,80 +169,78 @@ export default function WeeklyTab() {
           <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
         </div>
       ) : !selected ? (
-        <div className="bg-[#141821] border border-white/10 rounded-2xl p-8 text-center text-sm text-[#a8a093]">
+        <div className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
           No reports yet. Log a few moments this week, then generate your first report.
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[#141821] border border-white/10 rounded-2xl p-5">
-              <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">📊 Behavior events</span>
-              <div className="text-3xl font-black text-white mt-1">{selected.summary.count}</div>
-              <p className="text-[11px] text-[#a8a093] mt-1">avg intensity {selected.summary.avg.toFixed(1)}/5</p>
+            <div className={`${cardCls} p-5`}>
+              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Behavior events</span>
+              <div className="text-3xl font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{selected.summary.count}</div>
+              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>avg intensity {selected.summary.avg.toFixed(1)}/5</p>
             </div>
-            <div className="bg-[#141821] border border-white/10 rounded-2xl p-5">
-              <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">🎯 Top trigger</span>
-              <div className="text-sm font-bold text-white mt-2 leading-snug">{selected.summary.topTrigger}</div>
+            <div className={`${cardCls} p-5`}>
+              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Top trigger</span>
+              <div className="text-sm font-bold mt-2 leading-snug" style={{ color: "var(--arbor-ink)" }}>{selected.summary.topTrigger}</div>
             </div>
-            <div className="bg-[#141821] border border-white/10 rounded-2xl p-5">
-              <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">📋 Action steps</span>
-              <div className="text-3xl font-black text-white mt-1">{selected.planProgress.done}<span className="text-lg text-[#a8a093]">/{selected.planProgress.total}</span></div>
-              <p className="text-[11px] text-[#a8a093] mt-1">steps complete</p>
+            <div className={`${cardCls} p-5`}>
+              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Action steps</span>
+              <div className="text-3xl font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{selected.planProgress.done}<span className="text-lg" style={{ color: "var(--arbor-muted)" }}>/{selected.planProgress.total}</span></div>
+              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>steps complete</p>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#d7aa55]/8 to-transparent border border-[#d7aa55]/15 rounded-2xl p-6 space-y-3">
-            <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#d7aa55]" /> AI insight
+          <div className="rounded-[22px] p-6 space-y-3" style={{ background: "#e4f4ec" }}>
+            <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+              <Sparkles className="w-3.5 h-3.5" /> AI insight
             </span>
             <MarkdownBlock text={selected.insight} className="space-y-2 text-sm" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-[#141821] border border-white/10 rounded-2xl p-6 space-y-3">
-              <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
-                <Trophy className="w-3.5 h-3.5 text-[#d7aa55]" /> Milestone wins ({selected.milestoneWins.length})
-              </span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <SectionCard title={`Milestone wins (${selected.milestoneWins.length})`} icon={<Trophy className="w-5 h-5" />} tone="mint">
               {selected.milestoneWins.length ? (
-                <ul className="space-y-1.5 text-xs text-gray-200">
+                <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
                   {selected.milestoneWins.slice(0, 8).map((m, i) => (
-                    <li key={i} className="flex items-center gap-2"><span className="text-emerald-400">✓</span> {m}</li>
+                    <li key={i} className="flex items-center gap-2"><span style={{ color: "#1f8a5a" }}>✓</span> {m}</li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-[#a8a093]">No milestones checked in this report.</p>
+                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>No milestones checked in this report.</p>
               )}
-              <button onClick={() => setActiveTab("milestones")} className="text-[11px] text-[#f4d991] hover:underline flex items-center gap-1">
-                <ClipboardList className="w-3 h-3" /> Review milestones ➔
+              <button onClick={() => setActiveTab("milestones")} className="text-[11px] font-bold flex items-center gap-1 mt-3" style={{ color: "#1f8a5a" }}>
+                <ClipboardList className="w-3 h-3" /> Review milestones →
               </button>
-            </div>
+            </SectionCard>
 
-            <div className="bg-[#141821] border border-white/10 rounded-2xl p-6 space-y-3">
-              <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider flex items-center gap-1.5">
-                <GraduationCap className="w-3.5 h-3.5 text-[#d7aa55]" /> Scholar spotlight
-              </span>
-              <div>
-                <strong className="text-white text-sm">{selected.spotlight.name}</strong>
-                <span className="text-[10px] text-[#a8a093] uppercase font-bold ml-2">{selected.spotlight.concept}</span>
+            <SectionCard title="Scholar spotlight" icon={<GraduationCap className="w-5 h-5" />} tone="lav">
+              <div className="flex items-baseline gap-2">
+                <strong className="text-sm" style={{ color: "var(--arbor-ink)" }}>{selected.spotlight.name}</strong>
+                <span className="text-[10px] uppercase font-bold" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.concept}</span>
               </div>
-              <p className="text-xs text-[#a8a093] leading-relaxed">{selected.spotlight.value}</p>
-              <button onClick={() => setActiveTab("scholar")} className="text-[11px] text-[#f4d991] hover:underline">Explore Scholar Frameworks ➔</button>
-            </div>
+              <p className="text-xs leading-relaxed mt-2" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.value}</p>
+              <button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3" style={{ color: "#6354c4" }}>Explore Scholar Frameworks →</button>
+            </SectionCard>
           </div>
 
-          <div className="bg-[#141821] border border-white/10 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider">📬 Ready to share</span>
-              <p className="text-sm text-[#a8a093] mt-1">Compile a professional brief from this week for school or clinicians.</p>
+          <div className={`${cardCls} p-6 flex flex-col sm:flex-row items-center justify-between gap-4`}>
+            <div className="flex items-center gap-3">
+              <IconBadge tone="sky"><Send className="w-5 h-5" /></IconBadge>
+              <div>
+                <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Ready to share</h3>
+                <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>Compile a professional brief from this week for school or clinicians.</p>
+              </div>
             </div>
             <button
               onClick={() => {
                 handleGenerateBrief();
                 setActiveTab("handoff");
               }}
-              className="bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold text-xs px-5 py-3 rounded-2xl transition flex items-center gap-2 active:scale-[0.98]"
+              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
+              style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}
             >
-              <Send className="w-3.5 h-3.5" /> Generate school brief
+              <Send className="w-4 h-4" /> Generate school brief for {first}
             </button>
           </div>
         </>
