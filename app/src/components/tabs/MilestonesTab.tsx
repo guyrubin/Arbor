@@ -5,6 +5,7 @@ import { Check, Sparkles, RefreshCw, Brain, Eye, Plus, ExternalLink, PartyPopper
 import { useArbor } from "../../context/ArborContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { ProgressRing } from "../ui/ProgressRing";
+import { cardCls } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import framework from "../../framework.json";
@@ -107,13 +108,14 @@ export default function MilestonesTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Development Snapshot</h2>
-          <p className="text-sm text-[#a8a093] mt-1">Notice what you&apos;ve seen so far across developmental domains. This is a parent observation tracker — not a diagnostic score, and children develop at their own pace.</p>
+          <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Child Intelligence</span>
+          <h2 className="text-2xl md:text-[2rem] font-extrabold leading-[1.12] mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Development Snapshot</h2>
+          <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>Notice what you&apos;ve seen so far across developmental domains. This is a parent observation tracker — not a diagnostic score, and children develop at their own pace.</p>
         </div>
-        <div className="bg-[#141821] border border-white/10 p-4 rounded-2xl text-center">
-          <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093]">Observed so far</span>
-          <div className="text-2xl font-black text-[#f4d991]">{checkedMilestones} <span className="text-[#a8a093] text-lg font-bold">of</span> {totalMilestones}</div>
-          <span className="text-[9px] text-[#a8a093] block mt-0.5">A snapshot, not a score</span>
+        <div className={`${cardCls} p-4 text-center`}>
+          <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Observed so far</span>
+          <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "#1f8a5a" }}>{checkedMilestones} <span className="text-lg font-bold" style={{ color: "var(--arbor-muted)" }}>of</span> {totalMilestones}</div>
+          <span className="text-[9px] block mt-0.5" style={{ color: "var(--arbor-muted)" }}>A snapshot, not a score</span>
         </div>
       </div>
 
@@ -121,22 +123,25 @@ export default function MilestonesTab() {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveDomain("all")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${activeDomain === "all" ? "bg-[#d7aa55]/15 text-[#f4d991] border-[#d7aa55]/40" : "bg-white/[0.02] text-[#a8a093] border-white/5 hover:bg-white/5"}`}
+          className="px-4 py-2 rounded-xl text-xs font-bold transition"
+          style={activeDomain === "all" ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
         >
           All · {milestonesPercent}%
         </button>
         {domainOptions.map((dom) => {
           const s = domainStats[dom.id] || { total: 0, checked: 0 };
           const pct = s.total ? Math.round((s.checked / s.total) * 100) : 0;
+          const on = activeDomain === dom.id;
           return (
             <button
               key={dom.id}
               onClick={() => setActiveDomain(dom.id)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-2 ${activeDomain === dom.id ? "bg-[#d7aa55]/15 text-[#f4d991] border-[#d7aa55]/40" : "bg-white/[0.02] text-[#a8a093] border-white/5 hover:bg-white/5"}`}
+              className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
+              style={on ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
               <ProgressRing value={pct} size={22} stroke={3} />
               {dom.label.split(" ")[0]}
-              <span className="text-[10px] text-[#a8a093]">{s.checked}/{s.total}</span>
+              <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{s.checked}/{s.total}</span>
             </button>
           );
         })}
@@ -147,9 +152,9 @@ export default function MilestonesTab() {
         {visibleDomains.map((dom) => {
           const itemsInDom = milestones.filter((m) => m.domain === dom.id);
           return (
-            <div key={dom.id} className="bg-[#141821] border border-white/10 rounded-2xl p-5 space-y-3">
-              <h3 className="text-sm font-extrabold text-[#f4d991] flex items-center gap-2">
-                <span className="p-1.5 bg-[#d7aa55]/10 rounded-lg text-[#f4d991] flex items-center justify-center"><Check className="w-4 h-4" /></span>
+            <div key={dom.id} className={`${cardCls} p-5 space-y-3`}>
+              <h3 className="text-sm font-extrabold flex items-center gap-2" style={{ color: "#1f8a5a" }}>
+                <span className="p-1.5 rounded-lg flex items-center justify-center" style={{ background: "#e4f4ec", color: "#1f8a5a" }}><Check className="w-4 h-4" /></span>
                 {dom.label}
               </h3>
 
@@ -157,23 +162,25 @@ export default function MilestonesTab() {
                 {itemsInDom.map((item) => (
                   <div
                     key={item.id}
-                    className={`p-3 rounded-xl border transition ${item.checked ? "bg-white/[0.02] border-[#d7aa55]/30" : "bg-white/[0.005] border-white/5 hover:border-white/15"}`}
+                    className="p-3 rounded-xl transition"
+                    style={item.checked ? { background: "var(--arbor-paper-deep)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
                   >
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input type="checkbox" checked={item.checked} onChange={() => onToggle(item.id, item.checked)} className="mt-1 accent-[#d7aa55]" />
+                      <input type="checkbox" checked={item.checked} onChange={() => onToggle(item.id, item.checked)} className="mt-1" style={{ accentColor: "#34b277" }} />
                       <div className="space-y-0.5 flex-1">
-                        <span className={`font-bold block ${item.checked ? "text-[#9cc79c]" : "text-white"}`}>{item.title}</span>
-                        <span className="text-[10px] block leading-relaxed text-[#a8a093]">{item.description}</span>
+                        <span className="font-bold block" style={{ color: item.checked ? "#1f8a5a" : "var(--arbor-ink)" }}>{item.title}</span>
+                        <span className="text-[10px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.description}</span>
                         <div className="flex items-center gap-2 flex-wrap pt-1">
-                          {item.checked && <span className="text-[9px] font-black uppercase tracking-wide text-[#6f9e6f] bg-[#6f9e6f]/12 px-1.5 py-0.5 rounded">Observed</span>}
-                          {item.ageGroup && <span className="text-[9px] font-bold text-[#a8a093] bg-white/5 px-1.5 py-0.5 rounded">Age: {item.ageGroup}</span>}
-                          {item.custom && <span className="text-[9px] font-bold text-[#f4d991] bg-[#d7aa55]/10 px-1.5 py-0.5 rounded">Custom</span>}
+                          {item.checked && <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "#1f8a5a", background: "#e4f4ec" }}>Observed</span>}
+                          {item.ageGroup && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>Age: {item.ageGroup}</span>}
+                          {item.custom && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "#cf6f37", background: "#fdeada" }}>Custom</span>}
                           {item.custom && (
                             <button
                               type="button"
                               onClick={(e) => { e.preventDefault(); const t = window.prompt("Rename milestone", item.title); if (t) updateMilestoneTitle(item.id, t); }}
                               aria-label="Rename custom milestone"
-                              className="text-[9px] text-[#a8a093] hover:text-[#f4d991] transition"
+                              className="text-[9px] transition"
+                              style={{ color: "var(--arbor-muted)" }}
                             >
                               <Pencil className="w-2.5 h-2.5" />
                             </button>
@@ -183,13 +190,14 @@ export default function MilestonesTab() {
                               type="button"
                               onClick={(e) => { e.preventDefault(); if (window.confirm("Delete this custom milestone?")) deleteMilestone(item.id); }}
                               aria-label="Delete custom milestone"
-                              className="text-[9px] text-[#a8a093] hover:text-red-400 transition"
+                              className="text-[9px] transition"
+                              style={{ color: "var(--arbor-muted)" }}
                             >
                               <Trash2 className="w-2.5 h-2.5" />
                             </button>
                           )}
                           {item.references?.map((r, i) => (
-                            <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
+                            <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold flex items-center gap-0.5" style={{ color: "#2f7bbf" }}>
                               {r.label} <ExternalLink className="w-2.5 h-2.5" />
                             </a>
                           ))}
@@ -199,7 +207,8 @@ export default function MilestonesTab() {
                               target="_blank"
                               rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="text-[9px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
+                              className="text-[9px] font-bold flex items-center gap-0.5"
+                              style={{ color: "#2f7bbf" }}
                             >
                               {DOMAIN_REFERENCES[item.domain].label} <ExternalLink className="w-2.5 h-2.5" />
                             </a>
@@ -208,7 +217,8 @@ export default function MilestonesTab() {
                             type="button"
                             onClick={(e) => { e.preventDefault(); void explain(item); }}
                             disabled={explaining[item.id]}
-                            className="text-[9px] font-bold text-[#f4d991] hover:text-white bg-[#d7aa55]/10 hover:bg-[#d7aa55]/20 px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+                            style={{ color: "#1f8a5a", background: "#e4f4ec" }}
                           >
                             {explaining[item.id] ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <BookOpen className="w-2.5 h-2.5" />}
                             {explanations[item.id] ? "Hide" : "Explain"}
@@ -216,7 +226,7 @@ export default function MilestonesTab() {
                         </div>
                       </div>
                       {item.checked && (
-                        <button type="button" onClick={(e) => { e.preventDefault(); celebrate(); }} title="Celebrate" className="text-[#f4d991] hover:text-white transition">
+                        <button type="button" onClick={(e) => { e.preventDefault(); celebrate(); }} title="Celebrate" className="transition" style={{ color: "#cf6f37" }}>
                           <PartyPopper className="w-4 h-4" />
                         </button>
                       )}
@@ -224,7 +234,7 @@ export default function MilestonesTab() {
                     <AnimatePresence initial={false}>
                       {explanations[item.id] && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <div className="mt-2 p-3 bg-[#08090c]/40 border border-[#d7aa55]/15 rounded-xl text-[11px] leading-relaxed select-text">
+                          <div className="mt-2 p-3 rounded-xl text-[11px] leading-relaxed select-text" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                             <MarkdownBlock text={explanations[item.id]} className="space-y-1.5" />
                           </div>
                         </motion.div>
@@ -232,7 +242,7 @@ export default function MilestonesTab() {
                     </AnimatePresence>
                   </div>
                 ))}
-                {itemsInDom.length === 0 && <p className="text-[10px] text-[#a8a093] italic">No milestones in this domain yet.</p>}
+                {itemsInDom.length === 0 && <p className="text-[10px] italic" style={{ color: "var(--arbor-muted)" }}>No milestones in this domain yet.</p>}
               </div>
             </div>
           );
@@ -240,58 +250,58 @@ export default function MilestonesTab() {
       </div>
 
       {/* Add custom milestone */}
-      <div className="bg-[#141821] border border-white/10 rounded-2xl p-5">
+      <div className={`${cardCls} p-5`}>
         {!showAdd ? (
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-bold text-[#f4d991] hover:text-white transition">
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-bold transition" style={{ color: "#1f8a5a" }}>
             <Plus className="w-4 h-4" /> Add milestone
           </button>
         ) : (
           <form onSubmit={submitCustom} className="flex flex-col sm:flex-row gap-2 items-stretch">
-            <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New milestone…" className="flex-1 bg-[#08090c] border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#d7aa55]/50" />
-            <select value={newDomain} onChange={(e) => setNewDomain(e.target.value as DevelopmentalDomainId)} className="bg-[#08090c] border border-white/10 rounded-xl px-3 py-2 text-white text-xs">
+            <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New milestone…" className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+            <select value={newDomain} onChange={(e) => setNewDomain(e.target.value as DevelopmentalDomainId)} className="rounded-xl px-3 py-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
               {domainOptions.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
             </select>
-            <button type="submit" className="bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold text-xs px-4 py-2 rounded-xl transition">Add</button>
-            <button type="button" onClick={() => setShowAdd(false)} className="text-[#a8a093] hover:text-white text-xs px-2">Cancel</button>
+            <button type="submit" className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition" style={{ background: "#34b277" }}>Add</button>
+            <button type="button" onClick={() => setShowAdd(false)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>Cancel</button>
           </form>
         )}
       </div>
 
       {/* Interactive AI scaffolding gap analyzer */}
-      <div className="bg-gradient-to-br from-[#d7aa55]/5 to-transparent border border-[#d7aa55]/20 rounded-2xl p-6 space-y-4">
+      <div className="rounded-2xl p-6 space-y-4" style={{ background: "linear-gradient(120deg,#eef6f1,#ece9fb)", border: "1px solid var(--arbor-rule)" }}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h4 className="text-base font-extrabold text-[#f7f1e7] flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-[#d7aa55]" /> Vygotskian AI Scaffolding Analyzer
+            <h4 className="text-base font-extrabold flex items-center gap-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              <Sparkles className="w-4 h-4" style={{ color: "#1f8a5a" }} /> Vygotskian AI Scaffolding Analyzer
             </h4>
-            <p className="text-xs text-[#a8a093] mt-0.5">Maps supportive next steps from what you&apos;ve observed and not yet observed — a next-best-challenge view, never a deficit list.</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>Maps supportive next steps from what you&apos;ve observed and not yet observed — a next-best-challenge view, never a deficit list.</p>
           </div>
-          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 text-black text-xs font-black px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ml-auto sm:ml-0">
-            {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin text-black" /> Analyzing Gaps...</>) : (<><Brain className="w-3.5 h-3.5 text-black" /> Run AI Gap Review</>)}
+          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ml-auto sm:ml-0 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}>
+            {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Analyzing Gaps...</>) : (<><Brain className="w-3.5 h-3.5" /> Run AI Gap Review</>)}
           </button>
         </div>
 
         {milestoneAnalysisOfGaps ? (
-          <div className="p-4 bg-[#08090c]/40 border border-[#d7aa55]/15 rounded-xl text-xs leading-relaxed text-gray-300 space-y-3 shadow-inner select-text">
+          <div className="p-4 rounded-xl text-xs leading-relaxed space-y-3 select-text bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
             <MarkdownBlock text={milestoneAnalysisOfGaps} className="space-y-2" />
-            <div className="pt-2.5 border-t border-white/5 flex justify-end">
-              <button type="button" onClick={() => { setChatInput(`Regarding the scaffolding gap analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?`); setSelectedLens("Vygotsky's Scaffolding"); setActiveTab("coach"); }} className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition flex items-center gap-1">
+            <div className="pt-2.5 flex justify-end" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+              <button type="button" onClick={() => { setChatInput(`Regarding the scaffolding gap analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?`); setSelectedLens("Vygotsky's Scaffolding"); setActiveTab("coach"); }} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "#1f8a5a" }}>
                 Adjust Scaffolding in Coach Chat ➔
               </button>
             </div>
           </div>
         ) : (
-          <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl text-center text-xs text-gray-500">
+          <div className="p-4 rounded-xl text-center text-xs bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
             Click "Run AI Gap Review" above to map progress and formulate custom, co-active routine play exercises.
           </div>
         )}
       </div>
 
-      <div className="p-5 bg-[#d7aa55]/8 border border-[#d7aa55]/20 rounded-2xl flex items-start gap-4 text-xs">
-        <Eye className="w-5 h-5 flex-shrink-0 text-[#d7aa55] mt-0.5" />
+      <div className="p-5 rounded-2xl flex items-start gap-4 text-xs" style={{ background: "#fbf1d4" }}>
+        <Eye className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "#a9780f" }} />
         <div className="space-y-1 leading-relaxed">
-          <strong className="text-white text-sm block">Gentle watch points</strong>
-          <p className="text-[#a8a093]">
+          <strong className="text-sm block" style={{ color: "var(--arbor-ink)" }}>Gentle watch points</strong>
+          <p style={{ color: "var(--arbor-muted)" }}>
             A few areas are still in the &ldquo;not seen yet&rdquo; column for this age — including comfort code-switching between {childProfile.languages.join(" and ") || "home and school languages"}. That&apos;s common and rarely a concern on its own. Keep noticing, keep playing, and revisit in a few weeks. If something feels persistent, or you&apos;d simply like reassurance, you can ask Arbor or share a development snapshot with your pediatrician or teacher.
           </p>
         </div>

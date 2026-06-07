@@ -4,6 +4,7 @@ import { RefreshCw, Sparkles, MessageSquare, Sliders } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { Skeleton } from "../ui/Skeleton";
 import { EmptyState } from "../ui/EmptyState";
+import { PageHeader, cardCls } from "../ui/kit";
 import PlanKanban from "../plans/PlanKanban";
 import RoutinesCard from "../plans/RoutinesCard";
 
@@ -22,17 +23,18 @@ export default function PlansTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-extrabold tracking-tight">Active Growth Plans</h2>
-        <p className="text-sm text-[#a8a093] mt-1">Track multi-stage developmental plans as a board — drag steps from Not Started to Completed.</p>
-      </div>
+      <PageHeader
+        eyebrow="Growth Plans"
+        title="Active Growth Plans"
+        subtitle="Track multi-stage developmental plans as a board — drag steps from Not Started to Completed."
+      />
 
-      <div className="bg-[#141821] border border-white/10 rounded-2xl p-6 space-y-4">
-        <span className="text-xs font-bold text-[#f4d991] tracking-wider uppercase block">Weave Custom Child Action Blueprint</span>
+      <div className={`${cardCls} p-6 space-y-4`}>
+        <span className="text-xs font-extrabold tracking-wider uppercase block" style={{ color: "#1f8a5a" }}>Weave a custom child action blueprint</span>
 
         {/* Templates — start from a common challenge */}
         <div className="flex flex-wrap gap-1.5">
-          <span className="text-[10px] text-[#a8a093] font-bold self-center mr-1">Templates:</span>
+          <span className="text-[10px] font-bold self-center mr-1" style={{ color: "var(--arbor-muted)" }}>Templates:</span>
           {[
             "Morning departure refusal and tantrums when leaving for school",
             "Screen-time shut-off meltdowns at night",
@@ -48,7 +50,8 @@ export default function PlansTab() {
               key={tpl}
               type="button"
               onClick={() => setPlanChallengeTopic(tpl)}
-              className="bg-white/5 hover:bg-[#d7aa55]/15 hover:text-[#f4d991] text-[#a8a093] px-2.5 py-1 rounded-lg text-[10px] font-bold transition"
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition"
+              style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
             >
               {tpl.split(" ").slice(0, 3).join(" ")}…
             </button>
@@ -61,12 +64,14 @@ export default function PlansTab() {
             value={planChallengeTopic}
             onChange={(e) => setPlanChallengeTopic(e.target.value)}
             placeholder="Describe behavioral dispute (e.g., throwing cutlery during dinner)..."
-            className="flex-1 bg-[#08090c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none"
+            className="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none"
+            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />
           <button
             onClick={handleGenerateActionPlan}
             disabled={isPlanGenerating}
-            className="bg-[#d7aa55] hover:bg-[#c39947] disabled:bg-white/5 disabled:text-[#a8a093] text-black font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98]"
+            className="text-white font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
           >
             {isPlanGenerating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Structuring guidelines...</>) : (<><Sparkles className="w-4 h-4" /> Generate AI Blueprint</>)}
           </button>
@@ -91,18 +96,18 @@ export default function PlansTab() {
           <div key={plan.id} className="space-y-3">
             <PlanKanban plan={plan} />
 
-            <div className="bg-[#141821] border border-white/10 rounded-3xl p-6 space-y-5">
-              <div className="space-y-3 bg-[#08090c] p-4 border border-white/5 rounded-2xl">
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-amber-200" /> Attachment Co-Regulation Parent Scripts
+            <div className={`${cardCls} p-6 space-y-5`}>
+              <div className="space-y-3 p-4 rounded-2xl" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
+                  <MessageSquare className="w-3.5 h-3.5" style={{ color: "#cf6f37" }} /> Attachment co-regulation parent scripts
                 </h4>
                 <div className="space-y-3 text-xs">
                   {plan.scripts.map((sc, scIdx) => (
-                    <div key={scIdx} className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 bg-white/[0.01] p-3 rounded-xl border border-white/5">
-                      <div><strong className="text-[#f4d991] block">{sc.scenario}</strong></div>
-                      <div className="space-y-1.5 leading-relaxed text-[#a8a093]">
-                        <p>🗣️ <b className="text-white">What to Say:</b> “{sc.say}”</p>
-                        {sc.avoid && <p>❌ <b className="text-red-400">What to Avoid:</b> {sc.avoid}</p>}
+                    <div key={scIdx} className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 p-3 rounded-xl bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
+                      <div><strong className="block" style={{ color: "#1f8a5a" }}>{sc.scenario}</strong></div>
+                      <div className="space-y-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                        <p>🗣️ <b style={{ color: "var(--arbor-ink)" }}>What to Say:</b> “{sc.say}”</p>
+                        {sc.avoid && <p>❌ <b style={{ color: "#bd4f74" }}>What to Avoid:</b> {sc.avoid}</p>}
                       </div>
                     </div>
                   ))}
@@ -115,16 +120,17 @@ export default function PlansTab() {
                       setSelectedLens("Bowlby's Attachment Model");
                       setActiveTab("coach");
                     }}
-                    className="text-[10px] font-black uppercase tracking-wider text-[#f4d991] hover:text-white bg-[#d7aa55]/15 hover:bg-[#d7aa55]/25 border border-[#d7aa55]/25 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                    className="text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                    style={{ background: "#e4f4ec", color: "#1f8a5a" }}
                   >
-                    <Sparkles className="w-3 h-3 text-[#d7aa55]" /> Refine these scripts with AI Coach ➔
+                    <Sparkles className="w-3 h-3" /> Refine these scripts with AI Coach ➔
                   </button>
                 </div>
               </div>
 
               <div className="space-y-2 text-xs">
-                <span className="font-bold text-white block">Woven success completion flags:</span>
-                <ul className="list-disc pl-5 text-[#a8a093] space-y-1 leading-relaxed">
+                <span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>Woven success completion flags:</span>
+                <ul className="list-disc pl-5 space-y-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                   {plan.successIndicators.map((sc, scIdx) => <li key={scIdx}>{sc}</li>)}
                 </ul>
               </div>
