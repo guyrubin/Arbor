@@ -51,20 +51,20 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
       : "Keep logging to reveal stronger patterns.";
 
   const Tile = ({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) => (
-    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-1">
-      <span className="text-[10px] uppercase font-black tracking-wider text-[#a8a093] flex items-center gap-1.5">{icon} {label}</span>
-      <div className="text-sm font-bold text-white">{value}</div>
-      {sub && <div className="text-[10px] text-[#a8a093]">{sub}</div>}
+    <div className="rounded-xl p-3 space-y-1 bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
+      <span className="text-[10px] uppercase font-extrabold tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>{icon} {label}</span>
+      <div className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{value}</div>
+      {sub && <div className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{sub}</div>}
     </div>
   );
 
   return (
-    <div className="bg-gradient-to-br from-[#d7aa55]/5 to-transparent border border-[#d7aa55]/15 rounded-2xl p-5 space-y-3">
+    <div className="rounded-2xl p-5 space-y-3" style={{ background: "linear-gradient(120deg,#eef6f1,#ece9fb)", border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center gap-2">
-        <Activity className="w-4 h-4 text-[#d7aa55]" />
-        <span className="text-xs font-bold text-[#f4d991] uppercase tracking-wider">Pattern intelligence</span>
+        <Activity className="w-4 h-4" style={{ color: "#1f8a5a" }} />
+        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Pattern intelligence</span>
       </div>
-      <p className="text-sm text-gray-200">{headline}</p>
+      <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>{headline}</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {insights.context && (
           <Tile icon={<MapPin className="w-3 h-3" />} label="Toughest place" value={insights.context.label} sub={`avg ${insights.context.avg.toFixed(1)}/5 · ${insights.context.n}×`} />
