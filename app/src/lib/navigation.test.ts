@@ -35,8 +35,17 @@ describe("navigation IA", () => {
     for (const s of SECTIONS) expect(s.items.some((i) => i.tab === primaryTabOf(s))).toBe(true);
   });
 
-  it("Safety is not a primary navigation item (embedded as Trust & Safety)", () => {
-    const tabs = SECTIONS.flatMap((s) => s.items.map((i) => i.tab));
-    expect(tabs).not.toContain("safety");
+  it("Safety has a primary home under Care Network (Wave 1: no longer orphaned)", () => {
+    const care = SECTIONS.find((s) => s.id === "care");
+    expect(care?.items.some((i) => i.tab === "safety")).toBe(true);
+  });
+
+  it("consolidated tabs still resolve to a section via fallback (Wave 1 demotions)", () => {
+    // These views were removed from the primary nav but remain valid routes;
+    // sectionForTab must still map them so the sidebar highlights correctly.
+    expect(sectionForTab("strengths").id).toBe("intelligence");
+    expect(sectionForTab("weekly").id).toBe("intelligence");
+    expect(sectionForTab("scholar").id).toBe("ask");
+    expect(sectionForTab("handoff").id).toBe("care");
   });
 });
