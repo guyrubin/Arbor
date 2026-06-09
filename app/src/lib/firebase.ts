@@ -42,12 +42,23 @@ if (firebaseEnabled) {
   }
   // Offline-first: IndexedDB-backed cache so logs/milestones/plans read and write
   // offline and sync when the connection returns (multi-tab safe).
+  //
+  // ignoreUndefinedProperties is REQUIRED: our domain objects carry optional
+  // fields (a behavior log's notes/photoAttachment/resolutionNotes, etc.) that are
+  // `undefined` when empty. Without this, setDoc() THROWS on any undefined value
+  // and the whole write is rejected — which silently dropped saves in production
+  // (Firestore) even though localStorage/sandbox mode worked fine.
   try {
     db = initializeFirestore(app, {
+      ignoreUndefinedProperties: true,
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
     });
   } catch {
-    db = getFirestore(app);
+    try {
+      db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+    } catch {
+      db = getFirestore(app);
+    }
   }
 }
 
