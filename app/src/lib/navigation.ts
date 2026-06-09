@@ -3,7 +3,7 @@ import {
   Home, Sparkles, Brain, Sprout, HeartHandshake, GraduationCap,
   LayoutDashboard, UserCircle, CheckCircle2, Activity, Languages,
   BookMarked, Search, Users, FileBarChart, Calendar,
-  Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert,
+  Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert, ClipboardCheck,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -53,6 +53,7 @@ export const SECTIONS: NavSection[] = [
       { tab: "timeline", label: "Story", icon: Waypoints },
       { tab: "profile", label: "Development Profile", icon: UserCircle },
       { tab: "milestones", label: "Development Milestones", icon: CheckCircle2 },
+      { tab: "screening", label: "Development Check", icon: ClipboardCheck },
       { tab: "behaviors", label: "Behavior Patterns", icon: Activity },
       { tab: "language", label: "Language & Communication", icon: Languages },
       { tab: "memory", label: "Child Memory", icon: BookMarked },

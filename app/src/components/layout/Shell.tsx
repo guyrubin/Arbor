@@ -29,6 +29,7 @@ const SafetyTab = lazy(() => import("../tabs/SafetyTab"));
 const ChildProfile = lazy(() => import("../sections/ChildProfile"));
 const ChildMemory = lazy(() => import("../sections/ChildMemory"));
 const Strengths = lazy(() => import("../sections/Strengths"));
+const Screening = lazy(() => import("../sections/Screening"));
 const StoryTimelineTab = lazy(() => import("../tabs/StoryTimelineTab"));
 const FindProfessional = lazy(() => import("../sections/FindProfessional"));
 const CareTeam = lazy(() => import("../sections/CareTeam"));
@@ -53,6 +54,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   profile: ChildProfile,
   memory: ChildMemory,
   strengths: Strengths,
+  screening: Screening,
   timeline: StoryTimelineTab,
   "find-pro": FindProfessional,
   "care-team": CareTeam,
