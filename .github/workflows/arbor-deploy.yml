@@ -17,6 +17,9 @@ name: Arbor Deploy
 on:
   push:
     branches: [main]
+  # Manual trigger: once GCP_SA_KEY + project/Firebase secrets are set, deploy the
+  # current main from the Actions tab ("Run workflow") without needing a new commit.
+  workflow_dispatch:
 
 concurrency:
   group: arbor-deploy
