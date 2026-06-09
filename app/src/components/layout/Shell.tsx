@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Sparkles, AlertTriangle, LogOut, Search } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import { sectionForTab } from "../../lib/navigation";
 import Sidebar from "./Sidebar";
 import AiRail from "./AiRail";
@@ -68,6 +69,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
 export default function Shell() {
   const { activeTab, setActiveTab, showAiRail, setShowAiRail, showSandboxBanner, childProfile } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
+  const { toast } = useToast();
   const ActiveTabComponent = tabRegistry[activeTab];
   const section = sectionForTab(activeTab);
   const focusLabel = childProfile.languages.length > 1
@@ -176,7 +178,7 @@ export default function Shell() {
                 </span>
               </span>
               <button
-                onClick={() => alert("Create app/.env.local from app/.env.example and set GEMINI_API_KEY to enable live AI responses.")}
+                onClick={() => toast("Add GEMINI_API_KEY to app/.env.local (copy from app/.env.example) to enable live AI responses.", "info")}
                 className="text-white font-extrabold px-3 py-1.5 rounded-xl flex-shrink-0"
                 style={{ background: "#cf6f37" }}
               >

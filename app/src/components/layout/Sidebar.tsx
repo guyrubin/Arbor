@@ -1,15 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { Settings, LogOut } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import ProfileSwitcher from "../profile/ProfileSwitcher";
 import { ArborMark } from "../ui/ArborMark";
+import SettingsModal from "./SettingsModal";
 import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
 
 export default function Sidebar() {
   const { activeTab, setActiveTab, milestonesPercent, actionPlans } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const activeSectionId = sectionForTab(activeTab).id;
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <aside className="hidden md:flex flex-col gap-6 px-5 py-7 h-auto xl:h-screen xl:sticky xl:top-0 overflow-y-auto bg-white" style={{ borderRight: "1px solid var(--arbor-rule)" }}>
@@ -61,7 +63,7 @@ export default function Sidebar() {
 
       {/* Account / settings */}
       <div className="mt-auto pt-4 space-y-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-        <button className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition" style={{ color: "var(--arbor-muted)" }}
+        <button onClick={() => setShowSettings(true)} className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition" style={{ color: "var(--arbor-muted)" }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
           <Settings className="w-[18px] h-[18px]" /> Settings
@@ -78,6 +80,8 @@ export default function Sidebar() {
           </div>
         )}
       </div>
+
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
     </aside>
   );
 }

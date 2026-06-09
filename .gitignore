@@ -1,3 +1,6 @@
 
 # Firebase deploy cache
 .firebase/
+
+# Claude preview
+app/.claude/launch.json

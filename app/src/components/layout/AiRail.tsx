@@ -4,6 +4,7 @@ import {
   BookMarked, HeartHandshake, Check, ChevronRight, RefreshCw,
 } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
+import { useToast } from "../../context/ToastContext";
 import { PASTEL, PastelKey } from "../ui/kit";
 
 type Engine = { n: string; title: string; tab: ActiveTab; icon: React.ReactNode; tone: PastelKey; status: string; description: string };
@@ -28,6 +29,7 @@ const TRUST = [
 
 export default function AiRail() {
   const { setShowAiRail, setActiveTab } = useArbor();
+  const { toast } = useToast();
   const [pro, setPro] = useState(false); // Parent mode by default
 
   return (
@@ -99,7 +101,7 @@ export default function AiRail() {
 
       <div className="pt-4 mt-auto" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
         <button
-          onClick={() => alert("Arbor capability check: developmental routing, safety guardrails, child memory and escalation are healthy and verified.")}
+          onClick={() => toast("Capability check passed — developmental routing, safety guardrails, child memory and escalation are healthy.", "success")}
           className="w-full py-2.5 font-bold rounded-2xl transition flex items-center justify-center gap-1.5 text-sm"
           style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
         >

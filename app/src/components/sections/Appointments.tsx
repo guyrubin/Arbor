@@ -1,32 +1,33 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Calendar, Plus, HelpCircle, FileText, CheckCircle2, X, Trash2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip, ComingSoon } from "../ui/kit";
 
 type Appt = { id: string; who: string; role: string; when: string; mode: string };
+type PrepQuestion = { id: string; text: string };
 
-/** Care Network › Appointments (early implementation, client-side). */
+/** Care Network › Appointments — persisted per child (Firestore when authed,
+ *  localStorage in sandbox) so nothing is lost on refresh. */
 export default function Appointments() {
-  const { setActiveTab } = useArbor();
-  const [appts, setAppts] = useState<Appt[]>([
-    { id: "a0", who: "Dr. Maya Levi", role: "Child Psychologist", when: "Thu, 12 Jun · 16:00", mode: "Online" },
-  ]);
+  const { setActiveTab, childProfile } = useArbor();
+  const apptsCol = useChildCollection<Appt>(childProfile.id, "appointments");
+  const questionsCol = useChildCollection<PrepQuestion>(childProfile.id, "apptQuestions");
+  const appts = useMemo(() => [...apptsCol.items].sort((a, b) => (a.id < b.id ? -1 : 1)), [apptsCol.items]);
+  const questions = useMemo(() => [...questionsCol.items].sort((a, b) => (a.id < b.id ? -1 : 1)), [questionsCol.items]);
+
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ who: "", role: "", when: "" });
-  const [questions, setQuestions] = useState<string[]>([
-    "How can we support transitions at home and school consistently?",
-    "What signs would suggest we should seek further assessment?",
-  ]);
   const [q, setQ] = useState("");
 
   const addAppt = () => {
     if (!form.who.trim()) return;
-    setAppts((p) => [...p, { id: `a${Date.now()}`, who: form.who, role: form.role || "Professional", when: form.when || "TBD", mode: "Online" }]);
+    void apptsCol.upsert({ id: `a${Date.now()}`, who: form.who, role: form.role || "Professional", when: form.when || "TBD", mode: "Online" });
     setForm({ who: "", role: "", when: "" });
     setAdding(false);
   };
-  const addQ = () => { if (q.trim()) { setQuestions((p) => [...p, q.trim()]); setQ(""); } };
+  const addQ = () => { if (q.trim()) { void questionsCol.upsert({ id: `q${Date.now()}`, text: q.trim() }); setQ(""); } };
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[980px]">
@@ -67,7 +68,7 @@ export default function Appointments() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Chip tone="sky">{a.when}</Chip>
-                  <button onClick={() => setAppts((p) => p.filter((x) => x.id !== a.id))} aria-label="Remove appointment"><Trash2 className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
+                  <button onClick={() => void apptsCol.remove(a.id)} aria-label="Remove appointment"><Trash2 className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
                 </div>
               </div>
             ))}
@@ -77,10 +78,11 @@ export default function Appointments() {
 
       <SectionCard title="Prepare your questions" icon={<HelpCircle className="w-5 h-5" />} tone="mint">
         <ul className="space-y-2 mb-3">
-          {questions.map((qq, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
-              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "#1f8a5a" }} /> <span className="flex-1">{qq}</span>
-              <button onClick={() => setQuestions((p) => p.filter((_, j) => j !== i))} aria-label="Remove question"><X className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
+          {questions.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>Add a question you want to ask at the next session.</li>}
+          {questions.map((qq) => (
+            <li key={qq.id} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
+              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "#1f8a5a" }} /> <span className="flex-1">{qq.text}</span>
+              <button onClick={() => void questionsCol.remove(qq.id)} aria-label="Remove question"><X className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
             </li>
           ))}
         </ul>

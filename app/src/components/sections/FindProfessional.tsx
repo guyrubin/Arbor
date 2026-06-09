@@ -5,6 +5,7 @@ import { PageHeader, cardCls, Chip, PASTEL } from "../ui/kit";
 import type { Professional } from "../../services/professionals";
 import { authHeaders } from "../../lib/api";
 import { useArbor } from "../../context/ArborContext";
+import { useToast } from "../../context/ToastContext";
 
 const SPECIALTIES = [
   "Child Psychologist", "Speech Therapist", "Occupational Therapist", "Parenting Coach",
@@ -46,6 +47,7 @@ function matchesFilter(p: Professional, f: string): boolean {
  *  the Arbor professionals API, never "marketplace" in parent UI). */
 export default function FindProfessional() {
   const { childProfile, setActiveTab } = useArbor();
+  const { toast } = useToast();
   const first = childProfile.name.split(" ")[0];
   const [active, setActive] = useState<string[]>(["Verified by Arbor"]);
   const toggle = (f: string) => setActive((p) => (p.includes(f) ? p.filter((x) => x !== f) : [...p, f]));
@@ -147,14 +149,14 @@ export default function FindProfessional() {
 
               <div className="flex gap-2 mt-4">
                 <button
-                  onClick={() => setActiveTab("appointments")}
+                  onClick={() => { toast(`Let's prepare your consultation with ${p.name} — add it in Appointments.`, "info"); setActiveTab("appointments"); }}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 text-white font-bold text-xs rounded-xl py-2.5"
                   style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}
                 >
                   <Send className="w-3.5 h-3.5" /> Request consultation
                 </button>
                 <button
-                  onClick={() => setActiveTab("reports")}
+                  onClick={() => { toast("Build a shareable summary in Reports & Handoffs.", "info"); setActiveTab("reports"); }}
                   className="inline-flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl px-3 py-2.5 bg-white"
                   style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}
                 >
