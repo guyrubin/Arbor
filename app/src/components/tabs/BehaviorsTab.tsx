@@ -209,6 +209,19 @@ export default function BehaviorsTab() {
     setResolvedFilter("all");
   };
 
+  // Save with clear, non-blocking feedback (replaces handleAddLog's blocking
+  // alert, which read as "it didn't save even though I typed something").
+  const submitLog = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
+      toast("Fill in both “What triggered this?” and “What was your response?” to save.", "error");
+      return;
+    }
+    const wasEditing = !!editingLogId;
+    handleAddLog(e);
+    toast(wasEditing ? "Log updated." : "Moment logged — it's in your history below.", "success");
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
       <PageHeader
@@ -219,7 +232,7 @@ export default function BehaviorsTab() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8">
         {/* Form column */}
-        <form onSubmit={handleAddLog} className={`${cardCls} p-5 space-y-4 text-sm self-start`}>
+        <form onSubmit={submitLog} className={`${cardCls} p-5 space-y-4 text-sm self-start`}>
           <div className="flex items-center justify-between pb-2" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
             <h3 className="text-base font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
               {editingLogId ? <Pencil className="w-4 h-4" style={{ color: "#1f8a5a" }} /> : <Plus className="w-4 h-4" style={{ color: "#1f8a5a" }} />}
@@ -294,12 +307,12 @@ export default function BehaviorsTab() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>What Triggered This? (Active Stimulus)</label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>What Triggered This? (Active Stimulus) <span style={{ color: "#cf6f37" }}>*</span></label>
             <input type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder="e.g. Dressing shoe sequence, being told tablet goes off" className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>What Was Your Response?</label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>What Was Your Response? <span style={{ color: "#cf6f37" }}>*</span></label>
             <input type="text" value={newLogResponse} onChange={(e) => setNewLogResponse(e.target.value)} placeholder="e.g. Lowered voice height, used transitional object" className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
           </div>
 
