@@ -1,6 +1,7 @@
 import React from "react";
 import { Modal } from "../ui/Modal";
 import { useArbor } from "../../context/ArborContext";
+import { useToast } from "../../context/ToastContext";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview). */
 export default function QuickLogModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -15,15 +16,17 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
     setNewLogResponse,
     handleAddLog,
   } = useArbor();
+  const { toast } = useToast();
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLogTrigger.trim() || !newLogResponse.trim()) {
-      handleAddLog(e); // surfaces the validation alert
+      toast("Add what triggered it and how you responded, then save.", "error");
       return;
     }
     handleAddLog(e);
     onClose();
+    toast("Moment logged — view it in Behavior Patterns.", "success");
   };
 
   return (

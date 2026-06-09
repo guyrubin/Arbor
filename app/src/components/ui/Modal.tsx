@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 
@@ -26,7 +27,10 @@ export function Modal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  return (
+  // Render to document.body so the fixed overlay is positioned against the
+  // viewport, not against a transformed ancestor (the page's motion.div applies
+  // a CSS transform, which would otherwise clip/offset a `position: fixed` child).
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -61,7 +65,8 @@ export function Modal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 
