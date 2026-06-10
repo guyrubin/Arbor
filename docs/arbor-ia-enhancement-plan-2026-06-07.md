@@ -145,3 +145,14 @@ Academy                       → Stories · Masterclasses (only if real)
 ## Decision / next action
 
 **Recommended first move: Wave 0 (theme unification + kill hardcoded names + honest CTAs).** It's mostly mechanical, low-risk, and removes ~80% of the "it's broken / I don't get the point" perception before any feature work. **Proposed next action:** approve Wave 0 and I'll execute the 5 re-skins + the "Dylan" fixes as a single PR, then bring Wave 1 (merges) as a follow-up.
+
+---
+
+## Redesign build status (approved + shipped to production)
+
+The approved 3-phase product/UX redesign was implemented and **deployed to production** (arborprd-westeu.web.app), designed against the impeccable rubric (removed the hero-metric stat block, the identical-card "Arbor Way" grid, the internals-exposing "AI Engines" rail; benefit-named copy; em dashes removed; contrast/hierarchy checked).
+
+- **Phase 1 — clarity & nav (DONE):** Home rebuilt around one "pulse" + one dominant "Today" action zone + a single "How {child} is doing" panel folding in the moat (milestones + parent-approved memory + story); calm "How Arbor helps" trust rail replacing AI-Engines mode; Ask Arbor input clarified; "Child Intelligence"→"My Child", "Behavior tracker"→"Moments".
+- **Phase 2 — guidance/onboarding/trust (DONE):** instant-payoff onboarding (name + age + "what's on your mind" → seeds first focus); Development Check credibility line (CDC/AAP-style, non-diagnostic); privacy/trust surfaced in the rail.
+- **Phase 3 — monetization frame (DONE, client-side):** honest "Arbor Free / Arbor Plus (coming soon)" plan frame in Settings + interest capture; mobile Settings access.
+- **Deferred (needs backend / business decisions, not client-implementable):** real billing/checkout for Plus, real professional intro/booking transaction, weekly-digest push/email sending, and the B2B clinician/school portal.
