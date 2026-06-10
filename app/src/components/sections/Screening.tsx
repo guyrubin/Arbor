@@ -58,8 +58,12 @@ export default function Screening() {
         <SectionCard title={`Check for ${first} · ${band.label}`} icon={<ClipboardCheck className="w-5 h-5" />} tone="mint">
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
             You'll answer {band.items.length} quick questions about everyday things you can observe. It takes under 4 minutes.
-            There's no score and no labels — just whether any area is worth keeping an eye on. Children develop at their own pace.
+            There's no score and no labels, just whether any area is worth keeping an eye on. Children develop at their own pace.
           </p>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+            <ShieldCheck className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} />
+            Based on widely-used developmental guidance (CDC / AAP-style milestones). Non-diagnostic.
+          </div>
           {last && (
             <div className="mt-4 rounded-2xl p-3.5 flex items-center justify-between gap-3" style={{ background: "var(--arbor-paper-deep)" }}>
               <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>
