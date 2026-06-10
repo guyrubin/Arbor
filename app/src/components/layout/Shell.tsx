@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Sparkles, AlertTriangle, LogOut, Search, ShieldCheck } from "lucide-react";
+import { Sparkles, AlertTriangle, LogOut, Search, ShieldCheck, Settings as SettingsIcon } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -12,6 +12,7 @@ import { ErrorBoundary } from "../ErrorBoundary";
 import { ArborMark } from "../ui/ArborMark";
 import { TabSkeleton } from "../ui/Skeleton";
 import SearchModal from "../search/SearchModal";
+import SettingsModal from "./SettingsModal";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -77,6 +78,7 @@ export default function Shell() {
     : (childProfile.challenges?.[0]?.replace(/\s*\(.*\)/, "").trim() || "");
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -132,6 +134,15 @@ export default function Shell() {
                   <ShieldCheck className="w-3.5 h-3.5" /> How Arbor helps
                 </button>
               )}
+              <button
+                onClick={() => setSettingsOpen(true)}
+                aria-label="Settings"
+                title="Settings"
+                className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl transition bg-white"
+                style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              >
+                <SettingsIcon className="w-4 h-4" />
+              </button>
               {firebaseEnabled && user && (
                 <button
                   onClick={() => void signOut()}
@@ -209,6 +220,7 @@ export default function Shell() {
 
       <MobileNav />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

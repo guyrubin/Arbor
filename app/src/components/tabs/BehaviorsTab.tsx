@@ -236,7 +236,7 @@ export default function BehaviorsTab() {
           <div className="flex items-center justify-between pb-2" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
             <h3 className="text-base font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
               {editingLogId ? <Pencil className="w-4 h-4" style={{ color: "#1f8a5a" }} /> : <Plus className="w-4 h-4" style={{ color: "#1f8a5a" }} />}
-              {editingLogId ? "Edit log" : "Record Co-Regulation Event"}
+              {editingLogId ? "Edit this moment" : "Log a moment"}
             </h3>
             <button
               type="button"
