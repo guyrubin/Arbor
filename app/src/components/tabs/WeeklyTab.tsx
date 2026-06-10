@@ -132,7 +132,7 @@ export default function WeeklyTab() {
         <ArrowLeft className="w-4 h-4" /> {first}'s Story
       </button>
       <PageHeader
-        eyebrow="Child Intelligence"
+        eyebrow="My Child"
         title="Weekly Insight"
         subtitle={selected ? `${selected.weekLabel} · ${selected.id}` : `${currentLabel} · ${currentId}`}
         action={

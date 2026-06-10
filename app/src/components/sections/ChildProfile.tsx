@@ -26,7 +26,7 @@ export default function ChildProfile() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
-        eyebrow="Child Intelligence"
+        eyebrow="My Child"
         title={`${first}'s development profile`}
         subtitle={`Understand ${first}'s patterns, milestones, strengths and progress over time — in one place.`}
         action={

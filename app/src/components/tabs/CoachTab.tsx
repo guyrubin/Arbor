@@ -239,7 +239,7 @@ export default function CoachTab() {
           <div>
             <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Ask Arbor</span>
             <h2 className="text-2xl md:text-[2rem] font-extrabold leading-[1.12] mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Ask Arbor</h2>
-            <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>Calm guidance and exact words for hard parenting moments — age-aware, non-diagnostic, with escalation guidance built in.</p>
+            <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>Tell Arbor what's happening. You'll get a calm, age-aware next step and the exact words to say, and Arbor remembers it for next time.</p>
           </div>
           <div className="flex items-center gap-1 rounded-xl p-1 flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} title="Language for AI responses">
             <button
@@ -525,7 +525,7 @@ export default function CoachTab() {
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
               disabled={isChatLoading}
-              placeholder="Discuss behavior logs, dropoff problems or trigger resets (e.g. tablet disputes)..."
+              placeholder={`Tell Arbor what's happening with ${childProfile.name.split(" ")[0]}…`}
               className="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none transition"
               style={{ background: "#fff", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
             />

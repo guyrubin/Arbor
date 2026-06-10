@@ -7,7 +7,7 @@ import { SECTIONS } from "../../lib/navigation";
 // Views consolidated out of the primary nav in Wave 1 but still reachable —
 // kept searchable so nothing becomes undiscoverable.
 const EXTRA_COMMANDS: { tab: ActiveTab; label: string; sub: string; icon: React.ReactNode }[] = [
-  { tab: "weekly", label: "Weekly Insight", sub: "Child Intelligence · Story", icon: <BarChart2 className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> },
+  { tab: "weekly", label: "Weekly Insight", sub: "My Child · Story", icon: <BarChart2 className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> },
   { tab: "handoff", label: "School & Care Handoff", sub: "Care Network · Reports & Handoffs", icon: <FileText className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> },
   { tab: "scholar", label: "Scholar Frameworks", sub: "Ask Arbor", icon: <Compass className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> },
 ];

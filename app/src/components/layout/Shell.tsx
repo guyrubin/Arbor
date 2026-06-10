@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Sparkles, AlertTriangle, LogOut, Search } from "lucide-react";
+import { Sparkles, AlertTriangle, LogOut, Search, ShieldCheck } from "lucide-react";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -127,9 +127,9 @@ export default function Shell() {
                 <button
                   onClick={() => setShowAiRail(true)}
                   className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition cursor-pointer"
-                  style={{ background: "#fdeada", color: "#cf6f37" }}
+                  style={{ background: "#e4f4ec", color: "#1f8a5a" }}
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> AI Engines
+                  <ShieldCheck className="w-3.5 h-3.5" /> How Arbor helps
                 </button>
               )}
               {firebaseEnabled && user && (

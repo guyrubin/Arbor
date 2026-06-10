@@ -225,9 +225,9 @@ export default function BehaviorsTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
       <PageHeader
-        eyebrow="Child Intelligence"
-        title="Behavior & Emotion Tracker"
-        subtitle="Log the hard moments to see patterns, triggers, and what actually helps over time."
+        eyebrow="My Child"
+        title="Moments"
+        subtitle={`Log the hard moments with ${childProfile.name.split(" ")[0]} to see patterns, what sets them off, and what actually helps over time.`}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8">

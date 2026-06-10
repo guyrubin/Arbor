@@ -46,7 +46,7 @@ export const SECTIONS: NavSection[] = [
   },
   {
     id: "intelligence",
-    label: "Child Intelligence",
+    label: "My Child",
     icon: Brain,
     badge: "milestone",
     items: [
@@ -54,7 +54,7 @@ export const SECTIONS: NavSection[] = [
       { tab: "profile", label: "Development Profile", icon: UserCircle },
       { tab: "milestones", label: "Development Milestones", icon: CheckCircle2 },
       { tab: "screening", label: "Development Check", icon: ClipboardCheck },
-      { tab: "behaviors", label: "Behavior Patterns", icon: Activity },
+      { tab: "behaviors", label: "Moments", icon: Activity },
       { tab: "language", label: "Language & Communication", icon: Languages },
       { tab: "memory", label: "Child Memory", icon: BookMarked },
     ],

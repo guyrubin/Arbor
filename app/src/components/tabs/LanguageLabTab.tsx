@@ -83,7 +83,7 @@ export default function LanguageLabTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
-        eyebrow="Child Intelligence"
+        eyebrow="My Child"
         title="Language & Communication"
         subtitle={`Multilingual support for ${first} — a calm daily practice built around the languages spoken at home.`}
       />

@@ -108,7 +108,7 @@ export default function MilestonesTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Child Intelligence</span>
+          <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>My Child</span>
           <h2 className="text-2xl md:text-[2rem] font-extrabold leading-[1.12] mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Development Snapshot</h2>
           <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>Notice what you&apos;ve seen so far across developmental domains. This is a parent observation tracker — not a diagnostic score, and children develop at their own pace.</p>
         </div>

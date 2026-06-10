@@ -14,7 +14,7 @@ export default function ChildMemory() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[920px]">
-      <PageHeader eyebrow="Child Intelligence" title="Child memory" subtitle={`The facts about ${first} that Arbor remembers — only what you approve. Source-linked, time-stamped and forgettable, always.`} />
+      <PageHeader eyebrow="My Child" title="Child memory" subtitle={`The facts about ${first} that Arbor remembers — only what you approve. Source-linked, time-stamped and forgettable, always.`} />
 
       <TrustSafetyBar note="You control everything here. Nothing is shared without your approval." />
 

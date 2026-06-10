@@ -1,49 +1,32 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import {
-  TrendingUp, TrendingDown, Minus, MessageSquare, Plus, Sparkles, RefreshCw,
-  Sun, Sunrise, Moon, ArrowRight, Heart, BookOpen, Smile, Target,
-  ShieldCheck, Phone, Activity, CheckCircle2, ChevronRight,
-  Brain, Sprout, HeartHandshake, GraduationCap, BookMarked, Share2,
+  MessageSquare, Plus, RefreshCw, Sun, Sunrise, Moon, ArrowRight,
+  Heart, BookOpen, Smile, Phone, ChevronRight, BookMarked,
+  Share2, Waypoints, ClipboardCheck,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { AnimatedNumber } from "../ui/AnimatedNumber";
 import { ProgressRing } from "../ui/ProgressRing";
 import { Skeleton } from "../ui/Skeleton";
-import { ArborMascot } from "../ui/ArborMascot";
 import { ParentChildIllustration } from "../ui/ParentChildIllustration";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
-import { intensityColor } from "../../lib/behaviorUtils";
 import QuickLogModal from "../overview/QuickLogModal";
 import RemindersCard from "../overview/RemindersCard";
 import TrendsChart from "../overview/TrendsChart";
 import GoalsCard from "../overview/GoalsCard";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
-import { PASTEL, PastelKey, Chip, IconBadge, cardCls } from "../ui/kit";
-import { useToast } from "../../context/ToastContext";
+import { PASTEL, PastelKey, cardCls } from "../ui/kit";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-// Single token source lives in ui/kit. `card` kept as a local alias for brevity.
 const card = cardCls;
+const DAY = 86_400_000;
 
 export default function OverviewTab() {
   const {
-    setActiveTab,
-    actionPlans,
-    milestonesPercent,
-    checkedMilestones,
-    totalMilestones,
-    behaviorLogs,
-    chatMessages,
-    childProfile,
-    setPlanChallengeTopic,
-    setChatInput,
-    pendingMemoryItems,
-    approvedMemoryItems,
+    setActiveTab, milestonesPercent, checkedMilestones, totalMilestones,
+    behaviorLogs, childProfile, setPlanChallengeTopic, setChatInput,
+    pendingMemoryItems, approvedMemoryItems,
   } = useArbor();
-  const { toast } = useToast();
 
   const [quickLog, setQuickLog] = useState(false);
   const firstName = (childProfile.name || "your child").split(" ")[0];
@@ -55,246 +38,191 @@ export default function OverviewTab() {
     : hour < 18 ? { text: "Good afternoon", icon: <Sun className="w-4 h-4" /> }
     : { text: "Good evening", icon: <Moon className="w-4 h-4" /> };
 
-  const recentCount = useMemo(() => {
-    const cutoff = Date.now() - 7 * 86_400_000;
-    return behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= cutoff).length;
-  }, [behaviorLogs]);
+  const recentCount = useMemo(
+    () => behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= Date.now() - 7 * DAY).length,
+    [behaviorLogs]
+  );
 
   const { weekAvg, trend } = useMemo(() => {
     const now = Date.now();
-    const day = 86_400_000;
-    const window = (start: number, end: number) =>
-      behaviorLogs.filter((l) => {
-        const t = new Date(l.timestamp).getTime();
-        return t >= start && t < end;
-      });
-    const recent = window(now - 7 * day, now + day);
-    const prior = window(now - 14 * day, now - 7 * day);
-    const avg = (arr: typeof behaviorLogs) =>
-      arr.length ? arr.reduce((s, l) => s + l.intensity, 0) / arr.length : 0;
-    const r = avg(recent);
-    const p = avg(prior);
+    const inWindow = (start: number, end: number) =>
+      behaviorLogs.filter((l) => { const t = new Date(l.timestamp).getTime(); return t >= start && t < end; });
+    const avg = (arr: typeof behaviorLogs) => (arr.length ? arr.reduce((s, l) => s + l.intensity, 0) / arr.length : 0);
+    const r = avg(inWindow(now - 7 * DAY, now + DAY));
+    const p = avg(inWindow(now - 14 * DAY, now - 7 * DAY));
     const t: "up" | "down" | "flat" = r > p + 0.1 ? "up" : r < p - 0.1 ? "down" : "flat";
     return { weekAvg: r, trend: t };
   }, [behaviorLogs]);
 
-  const weeklyData = useMemo(() => {
-    const now = Date.now();
-    const cutoff = now - 28 * 86_400_000;
-    const buckets = DAYS.map((d) => ({ day: d, count: 0, intensitySum: 0 }));
-    for (const log of behaviorLogs) {
-      const t = new Date(log.timestamp).getTime();
-      if (t < cutoff) continue;
-      const idx = new Date(log.timestamp).getDay();
-      buckets[idx].count += 1;
-      buckets[idx].intensitySum += log.intensity;
-    }
-    return buckets.map((b) => ({ day: b.day, count: b.count, avgIntensity: b.count ? b.intensitySum / b.count : 0 }));
-  }, [behaviorLogs]);
-
-  const coachSessions = useMemo(() => chatMessages.filter((m) => m.sender === "user").length, [chatMessages]);
-
   const topTrigger = useMemo(() => {
     const counts = new Map<string, number>();
     behaviorLogs.forEach((l) => counts.set(l.behaviorType, (counts.get(l.behaviorType) || 0) + 1));
-    let top = "";
-    let max = 0;
+    let top = ""; let max = 0;
     counts.forEach((v, k) => { if (v > max) { max = v; top = k; } });
     return top;
   }, [behaviorLogs]);
-
-  const activePlanCount = actionPlans.length;
-  const watching = (childProfile.challenges?.[0] || "")
-    .replace(/\s*\(.*?\)\s*/g, "")
-    .trim()
-    .replace(/^(.{40}).*/, "$1…");
-
-  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  const trendLabel = trend === "up" ? "rising" : trend === "down" ? "easing" : "steady";
 
   const { focus, loading: focusLoading, regenerate } = useTodaysFocus(childProfile, {
     count: recentCount, avg: weekAvg, topTrigger, milestonesPercent,
   });
 
-  // Recommended-this-week tiles, tied to the child where possible.
-  const recommendations: { tone: PastelKey; icon: React.ReactNode; title: string; desc: string; tab: any }[] = [
-    { tone: "mint",   icon: <Heart className="w-5 h-5" />,    title: "Connect through play", desc: "10 minutes of child-led play to refill the tank.", tab: "plans" },
-    { tone: "coral",  icon: <Smile className="w-5 h-5" />,    title: "Name the feeling",     desc: `Practice co-regulation for ${firstName}'s big moments.`, tab: "coach" },
-    { tone: "lav",    icon: <BookOpen className="w-5 h-5" />, title: "Tonight's hero story", desc: "A short story that builds courage and resilience.", tab: "stories" },
-    { tone: "sky",    icon: <Moon className="w-5 h-5" />,     title: "Wind-down routine",    desc: "A calmer path into sleep and smoother mornings.", tab: "behaviors" },
-  ];
+  // One-line pulse: how the week is going, in plain words.
+  const pulse =
+    recentCount === 0 ? `Start ${firstName}'s story by capturing a moment or asking a question.`
+    : trend === "down" ? `${firstName} has had a calmer week. Hard moments are easing.`
+    : trend === "up" ? `${firstName}'s harder moments have picked up a little this week.`
+    : `${firstName}'s week looks steady, in line with last week.`;
 
-  // Data-derived insights.
-  const insights: { tone: PastelKey; icon: React.ReactNode; title: string; desc: string; plan?: string }[] = [];
-  if (trend === "down") insights.push({ tone: "mint", icon: <TrendingDown className="w-4 h-4" />, title: "A calmer week", desc: `${firstName}'s behavior intensity is easing versus last week.` });
-  else if (trend === "up") insights.push({ tone: "coral", icon: <TrendingUp className="w-4 h-4" />, title: "Intensity is rising", desc: `Worth a gentle check-in. A reset plan can help.`, plan: `Rising behavior intensity for ${firstName} — a calm-down and co-regulation reset plan.` });
-  else insights.push({ tone: "sky", icon: <Activity className="w-4 h-4" />, title: "Holding steady", desc: `${firstName}'s week looks consistent with the last one.` });
-  if (topTrigger) insights.push({ tone: "yellow", icon: <Target className="w-4 h-4" />, title: `Watch: ${topTrigger}`, desc: "Your most-logged moment this period. A focus plan can help.", plan: `${topTrigger} for ${firstName} — a focused plan to reduce frequency and support recovery.` });
-  insights.push({ tone: "lav", icon: <CheckCircle2 className="w-4 h-4" />, title: `${milestonesPercent}% milestone readiness`, desc: `${checkedMilestones} of ${totalMilestones} on track for age ${childProfile.age}.` });
+  const recommendations: { tone: PastelKey; icon: React.ReactNode; title: string; desc: string; tab: any }[] = [
+    { tone: "mint", icon: <Heart className="w-5 h-5" />, title: "Connect through play", desc: "Ten minutes of child-led play to refill the tank.", tab: "plans" },
+    { tone: "coral", icon: <Smile className="w-5 h-5" />, title: "Name the feeling", desc: `A quick co-regulation script for ${firstName}'s big moments.`, tab: "coach" },
+    { tone: "lav", icon: <BookOpen className="w-5 h-5" />, title: "Tonight's hero story", desc: "A short story that builds courage and resilience.", tab: "stories" },
+  ];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="space-y-7 relative max-w-[1180px]"
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="space-y-6 relative max-w-[1100px]"
     >
-      {/* ─── HERO GREETING ─────────────────────────────────────────────── */}
-      <section className={`${card} p-6 md:p-7`}>
-        <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-          {/* Avatar */}
-          <div className="flex items-center gap-5 flex-1 min-w-0">
-            <div className="relative flex-shrink-0">
-              <div className="w-[84px] h-[84px] rounded-full p-[3px]" style={{ background: "linear-gradient(135deg,#5fce97,#34b277)" }}>
-                <div className="w-full h-full rounded-full bg-white p-[3px]">
-                  {photoUrl ? (
-                    <img src={photoUrl} alt={firstName} className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full rounded-full flex items-center justify-center text-3xl font-extrabold" style={{ background: "#e4f4ec", color: "#1f8a5a", fontFamily: "var(--font-display)" }}>
-                      {firstName.charAt(0)}
-                    </div>
-                  )}
-                </div>
+      {/* ── Greeting + one-line pulse ───────────────────────────────────── */}
+      <section className="flex items-center gap-4 md:gap-5">
+        <div className="w-16 h-16 md:w-[72px] md:h-[72px] rounded-full p-[3px] flex-shrink-0" style={{ background: "linear-gradient(135deg,#5fce97,#34b277)" }}>
+          <div className="w-full h-full rounded-full bg-white p-[3px]">
+            {photoUrl ? (
+              <img src={photoUrl} alt={firstName} className="w-full h-full rounded-full object-cover" />
+            ) : (
+              <div className="w-full h-full rounded-full flex items-center justify-center text-2xl font-extrabold" style={{ background: "#e4f4ec", color: "#1f8a5a", fontFamily: "var(--font-display)" }}>
+                {firstName.charAt(0)}
               </div>
-            </div>
-            <div className="min-w-0">
-              <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "#1f8a5a" }}>
-                {greeting.icon} {greeting.text}
-              </span>
-              <h1 className="text-2xl md:text-[2rem] font-extrabold leading-[1.1] mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                Let&apos;s support {firstName} today
-              </h1>
-              <p className="text-sm mt-1.5" style={{ color: "var(--arbor-muted)" }}>
-                Age {childProfile.age}
-                {childProfile.schoolContext ? ` · ${childProfile.schoolContext}` : ""}
-              </p>
-              {watching && (
-                <div className="mt-3">
-                  <Chip tone="coral" icon={<ShieldCheck className="w-3.5 h-3.5" />}>Watching: {watching}</Chip>
-                </div>
-              )}
-            </div>
+            )}
           </div>
+        </div>
+        <div className="min-w-0">
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "#1f8a5a" }}>{greeting.icon} {greeting.text}</span>
+          <h1 className="text-2xl md:text-[1.9rem] font-extrabold leading-[1.1] mt-0.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" } as React.CSSProperties}>
+            {pulse}
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>
+            {firstName}, age {childProfile.age}{childProfile.schoolContext ? ` · ${childProfile.schoolContext}` : ""}
+          </p>
+        </div>
+      </section>
 
-          {/* Hero action */}
-          <div className="lg:w-[300px] lg:border-l lg:pl-6 flex flex-col gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
-            <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>
-              Had a hard moment? Capture it now, Arbor turns it into a calm next step.
+      {/* ── Today's one next step (the dominant action zone) ────────────── */}
+      <section className={`${card} p-6 md:p-7`} style={{ boxShadow: "0 6px 22px rgba(52,178,119,0.10)" }}>
+        <span className="text-[12px] font-extrabold" style={{ color: "#1f8a5a" }}>Today for {firstName}</span>
+        <div className="mt-2 min-h-[2.5rem]">
+          {focusLoading && !focus ? (
+            <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
+          ) : focus ? (
+            <p className="text-[17px] leading-relaxed font-medium" style={{ color: "var(--arbor-ink)", textWrap: "pretty" } as React.CSSProperties}>{focus.text}</p>
+          ) : recentCount > 0 ? (
+            <p className="text-[17px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Looking at {firstName}'s week to pick today's focus…</p>
+          ) : (
+            <p className="text-[17px] leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
+              Tell Arbor about a hard moment, or log one, and you'll get a calm, age-aware next step, plus a picture of {firstName} that grows over time.
             </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 mt-5">
+          <button
+            onClick={() => setQuickLog(true)}
+            className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
+            style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)", boxShadow: "0 8px 20px rgba(52,178,119,0.26)" }}
+          >
+            <Plus className="w-4 h-4" /> Log a moment
+          </button>
+          <button
+            onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
+            className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition"
+            style={{ background: "#e4f4ec", color: "#1f8a5a" }}
+          >
+            <MessageSquare className="w-4 h-4" /> Ask Arbor
+          </button>
+          {focus && (
             <button
-              onClick={() => setQuickLog(true)}
-              className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
-              style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}
+              onClick={() => void regenerate()}
+              disabled={focusLoading}
+              title="Suggest another focus"
+              aria-label="Suggest another focus"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-2xl transition disabled:opacity-50"
+              style={{ background: "var(--arbor-paper-deep)", color: "#1f8a5a" }}
             >
-              <Plus className="w-4 h-4" /> Log a moment
+              <RefreshCw className={`w-4 h-4 ${focusLoading ? "animate-spin" : ""}`} />
             </button>
-            <button
-              onClick={() => setActiveTab("coach")}
-              className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-2.5 transition"
-              style={{ background: "#e4f4ec", color: "#1f8a5a" }}
-            >
-              <MessageSquare className="w-4 h-4" /> Ask Arbor
-            </button>
-          </div>
+          )}
         </div>
       </section>
 
-      {/* ─── AT A GLANCE ───────────────────────────────────────────────── */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className={`${card} p-5 flex items-center gap-4`}>
-          <ProgressRing value={milestonesPercent} size={56} stroke={6}>
-            <span className="text-[13px] font-extrabold" style={{ color: "#1f8a5a" }}>{milestonesPercent}%</span>
-          </ProgressRing>
-          <div className="min-w-0">
-            <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              <AnimatedNumber value={checkedMilestones} /><span className="text-base" style={{ color: "var(--arbor-muted)" }}>/{totalMilestones}</span>
-            </div>
-            <p className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>Milestones</p>
-          </div>
+      {/* ── How your child is doing (the picture, with the moat folded in) ─ */}
+      <section className={`${card} overflow-hidden`}>
+        <div className="px-6 pt-5 pb-3 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>How {firstName} is doing</h2>
+          <button onClick={() => setActiveTab("timeline")} className="inline-flex items-center gap-1 text-sm font-bold" style={{ color: "#1f8a5a" }}>
+            Open {firstName}'s story <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
+        <div className="grid sm:grid-cols-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+          {/* Milestones */}
+          <button onClick={() => setActiveTab("milestones")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderRight: "1px solid var(--arbor-rule)" }}>
+            <ProgressRing value={milestonesPercent} size={52} stroke={6}>
+              <span className="text-[12px] font-extrabold" style={{ color: "#1f8a5a" }}>{milestonesPercent}%</span>
+            </ProgressRing>
+            <span className="min-w-0">
+              <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+                <AnimatedNumber value={checkedMilestones} /> of {totalMilestones} milestones
+              </span>
+              <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>noticed for age {childProfile.age}</span>
+            </span>
+          </button>
 
-        <div className={`${card} p-5 flex items-center gap-4`}>
-          <IconBadge tone="coral"><Activity className="w-5 h-5" /></IconBadge>
-          <div className="min-w-0">
-            <div className="text-2xl font-extrabold flex items-center gap-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              <AnimatedNumber value={weekAvg} decimals={1} /><span className="text-base" style={{ color: "var(--arbor-muted)" }}>/5</span>
-              <TrendIcon className="w-4 h-4 ml-0.5" style={{ color: trend === "down" ? "#1f8a5a" : trend === "up" ? "#cf6f37" : "#69747f" }} />
-            </div>
-            <p className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>Intensity · {trendLabel}</p>
-          </div>
+          {/* Memory (the moat) */}
+          <button onClick={() => setActiveTab("memory")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderRight: "1px solid var(--arbor-rule)" }}>
+            <span className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: pendingMemoryItems.length ? "#fbf1d4" : "#ece9fb", color: pendingMemoryItems.length ? "#a9780f" : "#6354c4" }}>
+              <BookMarked className="w-6 h-6" />
+            </span>
+            <span className="min-w-0">
+              {pendingMemoryItems.length > 0 ? (
+                <>
+                  <span className="block text-sm font-extrabold" style={{ color: "#a9780f" }}>{pendingMemoryItems.length} to review</span>
+                  <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>facts waiting for your approval</span>
+                </>
+              ) : (
+                <>
+                  <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}><AnimatedNumber value={approvedMemoryItems.length} /> things remembered</span>
+                  <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>only what you've approved</span>
+                </>
+              )}
+            </span>
+          </button>
+
+          {/* Story / capture */}
+          <button onClick={() => setActiveTab("timeline")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]">
+            <span className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "#e5f0fb", color: "#2f7bbf" }}>
+              <Waypoints className="w-6 h-6" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{recentCount} this week</span>
+              <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>moments in {firstName}'s story</span>
+            </span>
+          </button>
         </div>
-
-        <button onClick={() => setActiveTab("coach")} className={`${card} p-5 flex items-center gap-4 text-left transition hover:-translate-y-0.5`}>
-          <IconBadge tone="lav"><MessageSquare className="w-5 h-5" /></IconBadge>
-          <div className="min-w-0">
-            <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              <AnimatedNumber value={coachSessions} />
-            </div>
-            <p className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>Coach sessions</p>
-          </div>
-        </button>
-
-        <button onClick={() => setActiveTab("plans")} className={`${card} p-5 flex items-center gap-4 text-left transition hover:-translate-y-0.5`}>
-          <IconBadge tone="sky"><Target className="w-5 h-5" /></IconBadge>
-          <div className="min-w-0">
-            <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              <AnimatedNumber value={activePlanCount} />
-            </div>
-            <p className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>Active plans</p>
-          </div>
-        </button>
       </section>
 
-      {/* ─── THE ARBOR WAY (strategic capability model) ────────────────── */}
+      {/* ── A few things to try ─────────────────────────────────────────── */}
       <section>
-        <div className="flex items-end justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>The Arbor way</h2>
-            <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>Understand {firstName}, guide yourself, build growth, coordinate care, and form your family over time.</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {[
-            { tab: "profile" as const, tone: "sky" as const, icon: <Brain className="w-5 h-5" />, title: "Understand", section: "Child Intelligence", copy: `Understand ${firstName}'s patterns, milestones, and progress.` },
-            { tab: "coach" as const, tone: "coral" as const, icon: <Sparkles className="w-5 h-5" />, title: "Guide", section: "Ask Arbor", copy: "Get calm guidance and exact scripts." },
-            { tab: "plans" as const, tone: "mint" as const, icon: <Sprout className="w-5 h-5" />, title: "Grow", section: "Growth Plans", copy: "Build routines, responsibility, and resilience." },
-            { tab: "find-pro" as const, tone: "lav" as const, icon: <HeartHandshake className="w-5 h-5" />, title: "Connect", section: "Care Network", copy: "Find trusted professionals and coordinate support." },
-            { tab: "stories" as const, tone: "yellow" as const, icon: <GraduationCap className="w-5 h-5" />, title: "Learn", section: "Arbor Academy", copy: "Stories and lessons for long-term formation." },
-          ].map((c) => (
-            <button key={c.title} onClick={() => setActiveTab(c.tab)} className={`${card} p-4 text-left flex flex-col gap-2.5 transition hover:-translate-y-0.5`}>
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl" style={{ background: PASTEL[c.tone].soft, color: PASTEL[c.tone].ink }}>{c.icon}</span>
-              <div>
-                <h3 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{c.title}</h3>
-                <p className="text-[11px] font-bold" style={{ color: PASTEL[c.tone].ink }}>{c.section}</p>
-              </div>
-              <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.copy}</p>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── RECOMMENDED THIS WEEK ─────────────────────────────────────── */}
-      <section className={`${card} p-6`}>
-        <div className="flex items-end justify-between mb-5">
-          <div>
-            <h2 className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Recommended this week</h2>
-            <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>Small, doable steps chosen for {firstName}.</p>
-          </div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>A few things to try this week</h2>
           <button onClick={() => setActiveTab("plans")} className="hidden sm:inline-flex items-center gap-1 text-sm font-bold" style={{ color: "#1f8a5a" }}>
             All plans <ArrowRight className="w-4 h-4" />
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {recommendations.map((r) => (
-            <button
-              key={r.title}
-              onClick={() => setActiveTab(r.tab)}
-              className="group text-left rounded-2xl p-4 transition hover:-translate-y-0.5"
-              style={{ background: PASTEL[r.tone].soft }}
-            >
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white mb-3" style={{ color: PASTEL[r.tone].ink }}>
-                {r.icon}
-              </span>
+            <button key={r.title} onClick={() => setActiveTab(r.tab)} className="group text-left rounded-2xl p-4 transition hover:-translate-y-0.5" style={{ background: PASTEL[r.tone].soft }}>
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white mb-3" style={{ color: PASTEL[r.tone].ink }}>{r.icon}</span>
               <h3 className="text-[15px] font-extrabold leading-snug" style={{ color: "var(--arbor-ink)" }}>{r.title}</h3>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{r.desc}</p>
               <span className="inline-flex items-center gap-1 text-xs font-bold mt-2.5" style={{ color: PASTEL[r.tone].ink }}>
@@ -305,195 +233,48 @@ export default function OverviewTab() {
         </div>
       </section>
 
-      {/* ─── INSIGHTS + WEEKLY PATTERN ─────────────────────────────────── */}
-      <section className="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-5">
-        {/* Insights */}
-        <div className={`${card} p-6`}>
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4" style={{ color: "#1f8a5a" }} />
-            <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>This week&apos;s insights</h2>
-          </div>
-          <div className="space-y-1">
-            {insights.map((it, i) => (
-              <div key={i} className="flex items-start gap-3 py-3" style={{ borderTop: i ? "1px solid var(--arbor-rule)" : "none" }}>
-                <IconBadge tone={it.tone} size={36}>{it.icon}</IconBadge>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{it.title}</h3>
-                  <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{it.desc}</p>
-                  {it.plan && (
-                    <button
-                      onClick={() => { setPlanChallengeTopic(it.plan!); setActiveTab("plans"); toast("Seeded a Growth Plan — tap Generate", "info"); }}
-                      className="inline-flex items-center gap-1 text-xs font-bold mt-1.5"
-                      style={{ color: PASTEL[it.tone].ink }}
-                    >
-                      Create a plan <ArrowRight className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* AI focus */}
-          <div className="mt-4 rounded-2xl p-4" style={{ background: "#e4f4ec" }}>
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold" style={{ color: "#1f8a5a" }}>
-                <Sparkles className="w-3.5 h-3.5" /> Today&apos;s focus
-              </span>
-              <button onClick={() => void regenerate()} disabled={focusLoading} title="Regenerate" style={{ color: "#1f8a5a" }} className="disabled:opacity-50">
-                <RefreshCw className={`w-3.5 h-3.5 ${focusLoading ? "animate-spin" : ""}`} />
-              </button>
-            </div>
-            {focusLoading && !focus ? (
-              <div className="space-y-2 mt-2"><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-2/3" /></div>
-            ) : focus ? (
-              <>
-                <p className="text-sm leading-relaxed mt-2" style={{ color: "var(--arbor-ink)" }}>{focus.text}</p>
-                <button
-                  onClick={() => { setChatInput(`About today's focus: ${focus.text} What is one concrete step for ${firstName} today?`); setActiveTab("coach"); }}
-                  className="inline-flex items-center gap-1 text-xs font-extrabold mt-2"
-                  style={{ color: "#1f8a5a" }}
-                >
-                  Ask Arbor about this <ArrowRight className="w-3 h-3" />
-                </button>
-              </>
-            ) : (
-              <p className="text-sm mt-2" style={{ color: "var(--arbor-muted)" }}>
-                {recentCount > 0 ? "Generating today's focus…" : `Log a moment to unlock focus guidance for ${firstName}.`}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Weekly pattern */}
-        <div className={`${card} p-6`}>
-          <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Weekly pattern</h2>
-          <p className="text-sm mt-0.5 mb-3" style={{ color: "var(--arbor-muted)" }}>Behavior events by weekday (last 4 weeks).</p>
-          {weeklyData.every((d) => d.count === 0) ? (
-            <div className="h-52 flex flex-col items-center justify-center text-center gap-2 rounded-2xl" style={{ border: "1px dashed var(--arbor-rule-strong)" }}>
-              <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>No events logged yet</span>
-              <p className="text-xs max-w-xs" style={{ color: "var(--arbor-muted)" }}>Log a moment and the weekly pattern appears here.</p>
-              <button onClick={() => setQuickLog(true)} className="text-xs font-bold mt-1" style={{ color: "#1f8a5a" }}>Log a moment →</button>
-            </div>
-          ) : (
-            <div className="h-52 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyData} onClick={() => setActiveTab("behaviors")} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
-                  <XAxis dataKey="day" stroke="#69747f" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis allowDecimals={false} stroke="#69747f" fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    cursor={{ fill: "rgba(41,51,63,0.04)" }}
-                    contentStyle={{ background: "#fff", border: "1px solid rgba(41,51,63,0.12)", borderRadius: 12, fontSize: 12, boxShadow: "0 8px 24px rgba(41,51,63,0.10)" }}
-                    labelStyle={{ color: "#2a9c66", fontWeight: 700 }}
-                    formatter={(v: any, _n: any, item: any) => [`${v} events · avg ${item?.payload?.avgIntensity?.toFixed(1) || 0}/5`, "Behavior"]}
-                  />
-                  <Bar dataKey="count" radius={[6, 6, 0, 0]} cursor="pointer">
-                    {weeklyData.map((entry, i) => (
-                      <Cell key={i} fill={entry.count ? intensityColor(entry.avgIntensity) : "rgba(41,51,63,0.08)"} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ─── MEMORY + SHARING (the moat, surfaced) ─────────────────────── */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Child memory */}
-        <button onClick={() => setActiveTab("memory")} className={`${card} p-6 text-left transition hover:-translate-y-0.5`}>
-          <div className="flex items-center gap-3 mb-3">
-            <IconBadge tone="lav"><BookMarked className="w-5 h-5" /></IconBadge>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>What Arbor remembers</h3>
-              <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>Parent-approved facts that personalize every answer.</p>
-            </div>
-          </div>
-          {pendingMemoryItems.length > 0 ? (
-            <div className="rounded-2xl p-3.5 flex items-center justify-between gap-3" style={{ background: "#fbf1d4" }}>
-              <span className="text-sm font-bold" style={{ color: "#a9780f" }}>
-                {pendingMemoryItems.length} fact{pendingMemoryItems.length === 1 ? "" : "s"} waiting for your approval
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs font-extrabold" style={{ color: "#a9780f" }}>Review <ArrowRight className="w-3.5 h-3.5" /></span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>
-                <strong style={{ color: "var(--arbor-ink)" }}>{approvedMemoryItems.length}</strong> approved {approvedMemoryItems.length === 1 ? "fact" : "facts"} in {firstName}'s memory.
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs font-extrabold" style={{ color: "#6354c4" }}>Manage <ArrowRight className="w-3.5 h-3.5" /></span>
-            </div>
-          )}
+      {/* ── Loop in your circle + check-in (trust + B2B2C entry) ────────── */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button onClick={() => setActiveTab("sharing")} className={`${card} p-5 text-left flex items-center gap-4 transition hover:-translate-y-0.5`}>
+          <span className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "#e4f4ec", color: "#1f8a5a" }}><Share2 className="w-5 h-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>Share with your circle</span>
+            <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>A co-parent, teacher or therapist. You choose what, and for how long.</span>
+          </span>
+          <ArrowRight className="w-4 h-4 flex-shrink-0" style={{ color: "#1f8a5a" }} />
         </button>
-
-        {/* Trusted sharing */}
-        <button onClick={() => setActiveTab("sharing")} className={`${card} p-6 text-left transition hover:-translate-y-0.5`}>
-          <div className="flex items-center gap-3 mb-3">
-            <IconBadge tone="mint"><Share2 className="w-5 h-5" /></IconBadge>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Trusted sharing</h3>
-              <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>Decide what's shared, with whom, and for how long.</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "#1f8a5a" }}>
-              <ShieldCheck className="w-3.5 h-3.5" /> Time-boxed &amp; revocable — enforced on the server
-            </span>
-            <span className="inline-flex items-center gap-1 text-xs font-extrabold" style={{ color: "#1f8a5a" }}>Share <ArrowRight className="w-3.5 h-3.5" /></span>
-          </div>
+        <button onClick={() => setActiveTab("screening")} className={`${card} p-5 text-left flex items-center gap-4 transition hover:-translate-y-0.5`}>
+          <span className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "#e5f0fb", color: "#2f7bbf" }}><ClipboardCheck className="w-5 h-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>Is {firstName} on track?</span>
+            <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>A short, non-diagnostic check across developmental areas.</span>
+          </span>
+          <ArrowRight className="w-4 h-4 flex-shrink-0" style={{ color: "#2f7bbf" }} />
         </button>
       </section>
 
-      {/* ─── ASK ARBOR (mascot) ────────────────────────────────────────── */}
-      <section
-        className="rounded-[22px] p-6 md:p-7 flex flex-col sm:flex-row items-center gap-6 overflow-hidden relative"
-        style={{ background: "linear-gradient(120deg,#eef6f1 0%,#ece9fb 100%)", border: "1px solid var(--arbor-rule)" }}
-      >
-        <ArborMascot size={112} className="flex-shrink-0 drop-shadow-sm" />
+      {/* ── Your daily tools (secondary, kept) ──────────────────────────── */}
+      <section className="pt-2">
+        <h2 className="text-sm font-extrabold uppercase tracking-wide mb-3" style={{ color: "var(--arbor-muted)" }}>Your daily tools</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <DailyCheckinCard />
+          <GoalsCard />
+        </div>
+        <div className="mt-4 space-y-4">
+          <RemindersCard />
+          <TrendsChart logs={behaviorLogs} milestonesPercent={milestonesPercent} />
+        </div>
+      </section>
+
+      {/* ── Quiet safety footer ─────────────────────────────────────────── */}
+      <section className="rounded-[22px] p-5 md:p-6 flex flex-col sm:flex-row items-center gap-5" style={{ background: "linear-gradient(120deg,#e4f4ec,#eef6f1)", border: "1px solid var(--arbor-rule)" }}>
+        <ParentChildIllustration size={80} className="flex-shrink-0" />
         <div className="flex-1 text-center sm:text-left">
-          <h2 className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Ask Arbor anything</h2>
-          <p className="text-sm mt-1 max-w-md mx-auto sm:mx-0" style={{ color: "var(--arbor-muted)" }}>
-            Share a worry or a hard moment. Arbor gives you an age-aware, non-diagnostic next step, with a script you can use today.
-          </p>
+          <h3 className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Not sure something's right? We're here.</h3>
+          <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>Arbor is non-diagnostic. For anything urgent, or that needs an expert, we'll help you reach a professional.</p>
         </div>
-        <button
-          onClick={() => setActiveTab("coach")}
-          className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl px-6 py-3 transition active:scale-[0.98] flex-shrink-0"
-          style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}
-        >
-          <MessageSquare className="w-4 h-4" /> Open the coach
-        </button>
-      </section>
-
-      {/* ─── DAILY TOOLS (real features, kept) ─────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <DailyCheckinCard />
-        <GoalsCard />
-      </div>
-      <RemindersCard />
-      <TrendsChart logs={behaviorLogs} milestonesPercent={milestonesPercent} />
-
-      {/* ─── SAFETY / HANDOFF BAR ──────────────────────────────────────── */}
-      <section
-        className="rounded-[22px] p-5 md:p-6 flex flex-col sm:flex-row items-center gap-5"
-        style={{ background: "linear-gradient(120deg,#e4f4ec,#eef6f1)", border: "1px solid var(--arbor-rule)" }}
-      >
-        <ParentChildIllustration size={88} className="flex-shrink-0" />
-        <div className="flex-1 text-center sm:text-left">
-          <h3 className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            Not sure something&apos;s right? We&apos;re here to listen.
-          </h3>
-          <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>
-            Arbor is non-diagnostic. For anything urgent or that needs an expert, we&apos;ll help you reach a professional.
-          </p>
-        </div>
-        <button
-          onClick={() => setActiveTab("safety")}
-          className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition flex-shrink-0 bg-white"
-          style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}
-        >
-          <Phone className="w-4 h-4" /> Talk to someone
+        <button onClick={() => setActiveTab("safety")} className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition flex-shrink-0 bg-white" style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}>
+          <Phone className="w-4 h-4" /> Reach a professional
         </button>
       </section>
 

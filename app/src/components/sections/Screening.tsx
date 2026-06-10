@@ -47,7 +47,7 @@ export default function Screening() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[920px]">
       <PageHeader
-        eyebrow="Child Intelligence"
+        eyebrow="My Child"
         title="Development Check"
         subtitle={`A short, non-diagnostic check of how ${first} is doing across developmental areas — and a calm next step if anything is worth a professional conversation.`}
       />

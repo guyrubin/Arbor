@@ -123,7 +123,7 @@ export default function StoryTimelineTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <PageHeader
-        eyebrow="Child Intelligence"
+        eyebrow="My Child"
         title={`${firstName}'s Story`}
         subtitle="Every moment, milestone, plan and insight — one living timeline. Each entry feeds the next step Arbor suggests."
         action={
