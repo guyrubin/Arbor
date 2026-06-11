@@ -1,11 +1,19 @@
 # Auto-deploy Arbor to GCP on push to main (A8).
 #
-# Required repository secrets (Settings → Secrets and variables → Actions):
+# AUTH (SEC: prefer keyless WIF — see docs/ops/wif-migration.md):
+#   Repository VARS (Settings → Secrets and variables → Actions → Variables):
+#     GCP_WIF_PROVIDER   projects/<num>/locations/global/workloadIdentityPools/github/providers/arbor
+#     GCP_DEPLOY_SA      arbor-deployer@<project>.iam.gserviceaccount.com
+#   When GCP_WIF_PROVIDER is set, the workflow authenticates KEYLESSLY via
+#   Workload Identity Federation and GCP_SA_KEY is unused (delete it!).
+#   Until then it falls back to the long-lived key:
+#     GCP_SA_KEY         JSON key for a service account with roles:
+#                        Cloud Build Editor, Cloud Run Admin, Artifact
+#                        Registry Writer, Service Account User, Firebase
+#                        Admin, Datastore Owner.
+#
+# Required repository secrets:
 #   GCP_PROJECT_ID            e.g. arborprd-westeu
-#   GCP_SA_KEY               JSON key for a service account with roles:
-#                            Cloud Build Editor, Cloud Run Admin, Artifact
-#                            Registry Writer, Service Account User, Firebase
-#                            Admin, Datastore Owner.
 #   VITE_FIREBASE_API_KEY    Firebase web config (baked into the client build)
 #   VITE_FIREBASE_APP_ID
 # Optional vars: VITE_FIREBASE_AUTH_DOMAIN / _PROJECT_ID / _STORAGE_BUCKET
@@ -17,13 +25,18 @@ name: Arbor Deploy
 on:
   push:
     branches: [main]
-  # Manual trigger: once GCP_SA_KEY + project/Firebase secrets are set, deploy the
+  # Manual trigger: once auth + project/Firebase secrets are set, deploy the
   # current main from the Actions tab ("Run workflow") without needing a new commit.
   workflow_dispatch:
 
 concurrency:
   group: arbor-deploy
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  # Required for keyless WIF auth (OIDC token exchange); harmless for key auth.
+  id-token: write
 
 jobs:
   deploy:
@@ -48,7 +61,19 @@ jobs:
       - run: npm test
         working-directory: app
 
-      - id: auth
+      # Keyless auth via Workload Identity Federation (preferred — no stored key).
+      - id: auth-wif
+        if: vars.GCP_WIF_PROVIDER != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      # Fallback: long-lived SA key. Retire this path by setting GCP_WIF_PROVIDER
+      # + GCP_DEPLOY_SA vars (see docs/ops/wif-migration.md), then DELETE the
+      # GCP_SA_KEY secret and the key itself in IAM.
+      - id: auth-key
+        if: vars.GCP_WIF_PROVIDER == ''
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -81,7 +106,7 @@ jobs:
       # 3) Deploy Hosting + Firestore rules/indexes.
       - name: Deploy Hosting + Firestore
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth-wif.outputs.credentials_file_path || steps.auth-key.outputs.credentials_file_path }}
         run: |
           npx --yes firebase-tools deploy --only hosting,firestore \
             --project "$PROJECT_ID" --non-interactive
