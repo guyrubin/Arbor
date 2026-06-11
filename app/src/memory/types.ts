@@ -31,4 +31,6 @@ export type MemoryStore = {
     userId: string;
     childProfile?: Record<string, unknown>;
   }): Promise<void>;
+  /** GDPR erasure: permanently delete every memory event (and the child doc) for a child. Returns the number of events removed. */
+  eraseChild(childId: string): Promise<number>;
 };

@@ -13,6 +13,13 @@ import { buildGrant, type ShareStore } from "../sharing/shares.js";
 import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type } from "@google/genai";
+import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../server/redaction.js";
+import { screenModelOutput, renderBlockedOutputMarkdown } from "../safety/outputScreen.js";
+import { logger, requestIdOf } from "../server/logger.js";
+import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
+import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
+import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
+import type { UsageCounterStore } from "../server/quotaStore.js";
 
 type ApiDeps = {
   config: ArborConfig;
@@ -20,7 +27,14 @@ type ApiDeps = {
   memoryStore: MemoryStore;
   shareStore: ShareStore;
   framework: FrameworkDefinition;
+  entitlementStore: EntitlementStore;
+  counters: UsageCounterStore;
+  consultStore: ConsultStore;
 };
+
+/** Redact PII from a profile object by round-tripping its JSON through the redactor. */
+const redactProfile = <T,>(privacy: RedactionContext, profile: T): T =>
+  profile ? (JSON.parse(privacy.redact(JSON.stringify(profile))) as T) : profile;
 
 /** The authenticated actor (or a sandbox identity when auth is not enforced). */
 const actorOf = (req: express.Request) => ({
@@ -49,7 +63,7 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, framework }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, counters, consultStore }: ApiDeps) => {
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
@@ -61,7 +75,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       if (status) items = items.filter((item) => item.status === status);
       res.json({ items });
     } catch (error: any) {
-      console.error("Memory Read Error:", error);
+      logger.error("Memory Read Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to read Arbor memory review ledger", details: error.message });
     }
   });
@@ -82,7 +96,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
 
       res.json(result);
     } catch (error: any) {
-      console.error("Memory Update Error:", error);
+      logger.error("Memory Update Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to update Arbor memory review item", details: error.message });
     }
   });
@@ -112,7 +126,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       );
       res.json(grant);
     } catch (error: any) {
-      console.error("Arbor Share Create Error:", error);
+      logger.error("Arbor Share Create Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to create share", details: error.message });
     }
   });
@@ -123,7 +137,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const childId = req.query.childId ? String(req.query.childId) : undefined;
       res.json({ shares: await shareStore.listByOwner(uid, childId) });
     } catch (error: any) {
-      console.error("Arbor Share List Error:", error);
+      logger.error("Arbor Share List Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to list shares", details: error.message });
     }
   });
@@ -138,7 +152,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }
       res.json(revoked);
     } catch (error: any) {
-      console.error("Arbor Share Revoke Error:", error);
+      logger.error("Arbor Share Revoke Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to revoke share", details: error.message });
     }
   });
@@ -150,7 +164,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     try {
       res.json({ shares: await shareStore.listByRecipient(email) });
     } catch (error: any) {
-      console.error("Arbor Shared-With-Me Error:", error);
+      logger.error("Arbor Shared-With-Me Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to list shares", details: error.message });
     }
   });
@@ -169,7 +183,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       await memoryStore.ensureFamilyChild({ familyId, childId, userId, childProfile });
       res.json({ familyId, childId, userId, adapter: "firestore", created: true });
     } catch (error: any) {
-      console.error("Arbor Onboarding Error:", error);
+      logger.error("Arbor Onboarding Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to create Arbor family/child documents", details: error.message });
     }
   });
@@ -244,6 +258,10 @@ ${message}
 Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used.${languageDirective}
 `;
 
+      // SEC/CMP P0: child PII never reaches the model — redact at the call seam,
+      // restore in the parsed output so the product stays personalized.
+      const privacy = createRedaction(childProfile?.name);
+
       let rawResponse = "";
       if (streamResponse) {
         beginSse(res);
@@ -254,7 +272,7 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
 
       for await (const chunk of modelProvider.generateJsonStream({
         route: "coach_high_stakes",
-        prompt,
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: coachResponseSchema,
         temperature: 0.45
       })) {
@@ -263,16 +281,36 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
         if (streamResponse) writeSse(res, "chunk", { characters: rawResponse.length });
       }
 
-      const structured = coachResponseZodSchema.parse(parseJson(rawResponse.trim()));
+      const structured = privacy.restoreDeep(coachResponseZodSchema.parse(parseJson(rawResponse.trim())));
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((card) => card.id);
       }
+
+      // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
+      const renderedText = renderCoachResponse(structured);
+      const outputVerdict = await screenModelOutput(modelProvider, renderedText);
+      if (outputVerdict.flagged) {
+        logger.warn("Coach output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        const blockedPayload = { text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category };
+        if (streamResponse) {
+          writeSse(res, "done", blockedPayload);
+          res.end();
+        } else {
+          res.json(blockedPayload);
+        }
+        return;
+      }
+
       const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, structured.memoryProposals, {
         familyId,
         prompt: message,
         frameRouting: structured.frameRouting
       });
-      const payload = { text: renderCoachResponse(structured), contract: structured, memoryReviewItems };
+      const payload = { text: renderedText, contract: structured, memoryReviewItems };
       if (streamResponse) {
         writeSse(res, "done", payload);
         res.end();
@@ -281,7 +319,7 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       }
     } catch (error: any) {
       if (abortController.signal.aborted) return;
-      console.error("Arbor Chat Error:", error);
+      logger.error("Arbor Chat Error", error, { requestId: requestIdOf(req) });
       const payload = { error: "Failed to query Arbor parent coach", details: error.message };
       if (streamResponse) {
         if (!res.headersSent) beginSse(res);
@@ -319,8 +357,15 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       const childDomains = Array.isArray(childProfile?.domains) ? childProfile.domains : [];
       const council = selectCouncil(lead, childDomains, 3);
 
+      // SEC/CMP P0: scholar agents and the synthesizer only ever see redacted input.
+      const privacy = createRedaction(childProfile?.name);
+
       // 1) Each scholar agent deliberates in parallel.
-      const takes = await runScholarTakes(modelProvider, council, { message, childProfile, language });
+      const takes = await runScholarTakes(modelProvider, council, {
+        message: privacy.redact(message),
+        childProfile: redactProfile(privacy, childProfile),
+        language
+      });
 
       // 2) Ground the synthesis in the council's cards + approved memory.
       const scholarCards = await loadCardsByIds(council.flatMap((s) => s.cardIds));
@@ -360,22 +405,37 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
 
       const raw = await modelProvider.generateJson({
         route: "coach_high_stakes",
-        prompt,
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: coachResponseSchema,
         temperature: 0.4
       });
-      const structured = coachResponseZodSchema.parse(raw);
+      const structured = privacy.restoreDeep(coachResponseZodSchema.parse(raw));
+      const restoredTakes = privacy.restoreDeep(takes);
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((c) => c.id);
       }
+
+      // AI-2: output-side safety screen.
+      const renderedText = renderCoachResponse(structured);
+      const outputVerdict = await screenModelOutput(modelProvider, renderedText);
+      if (outputVerdict.flagged) {
+        logger.warn("Council output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        res.json({ text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category, council: [] });
+        return;
+      }
+
       const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, structured.memoryProposals, {
         familyId,
         prompt: message,
         frameRouting: structured.frameRouting
       });
-      res.json({ text: renderCoachResponse(structured), contract: structured, council: takes, memoryReviewItems });
+      res.json({ text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems });
     } catch (error: any) {
-      console.error("Arbor Council Error:", error);
+      logger.error("Arbor Council Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to convene the scholar council", details: error.message });
     }
   });
@@ -404,23 +464,29 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
     try {
       const scholar = resolveScholar(scholarLens);
       const languageDirective = language === "he" ? " Reply in warm, natural spoken Hebrew." : "";
+      const privacy = createRedaction(childProfile?.name);
       const prompt = `${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor, a warm, calm parenting coach speaking OUT LOUD to a parent. Apply this lens: ${scholar.name} — ${scholar.method}
 Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
 The parent just said: "${message}"
 Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
 
+      // SEC/CMP P0: redacted prompt in; aliases restored incrementally on the way out.
+      const restorer = privacy.createStreamRestorer();
       let any = false;
-      for await (const chunk of modelProvider.streamText({ route: "analysis_structured", prompt, temperature: 0.6 })) {
+      for await (const chunk of modelProvider.streamText({ route: "analysis_structured", prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6 })) {
         if (abortController.signal.aborted) { res.end(); return; }
-        if (chunk) { any = true; writeSse(res, "delta", { text: chunk }); }
+        const restored = restorer.push(chunk || "");
+        if (restored) { any = true; writeSse(res, "delta", { text: restored }); }
       }
+      const tail = restorer.flush();
+      if (tail) { any = true; writeSse(res, "delta", { text: tail }); }
       if (!any) writeSse(res, "delta", { text: "Let's take this one step at a time — tell me a little more about what's happening." });
       writeSse(res, "done", {});
       res.end();
     } catch (error: any) {
       if (abortController.signal.aborted) return;
-      console.error("Arbor Voice Stream Error:", error);
+      logger.error("Arbor Voice Stream Error", error, { requestId: requestIdOf(req) });
       if (!res.headersSent) beginSse(res);
       writeSse(res, "error", { error: "Voice stream failed", details: error.message });
       res.end();
@@ -431,7 +497,7 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
   // browser can open a Live (bidiGenerateContent) audio session DIRECTLY without
   // ever seeing the server key. Reports availability so the client can fall back
   // to the browser voice loop when Live isn't configured/provisioned.
-  router.post("/live/token", async (_req, res) => {
+  router.post("/live/token", async (req, res) => {
     const apiKey = config.geminiApiKey;
     if (!apiKey) {
       res.json({ available: false, reason: "Gemini Live is not configured on this server." });
@@ -452,7 +518,7 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
       });
       res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime });
     } catch (error: any) {
-      console.error("Arbor Live Token Error:", error);
+      logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req) });
       res.json({ available: false, reason: error.message });
     }
   });
@@ -496,9 +562,10 @@ Rules:
 - notes: one short neutral sentence capturing anything else useful ("" if none).
 Return only JSON matching the schema.`;
 
+      const privacy = createRedaction(childProfile?.name);
       const draft = await modelProvider.generateJson({
         route: "analysis_structured",
-        prompt,
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.2,
         schema: {
           type: Type.OBJECT,
@@ -514,9 +581,9 @@ Return only JSON matching the schema.`;
           }
         }
       });
-      res.json(draft);
+      res.json(privacy.restoreDeep(draft));
     } catch (error: any) {
-      console.error("Arbor Log Extraction Error:", error);
+      logger.error("Arbor Log Extraction Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to draft a log", details: error.message });
     }
   });
@@ -605,16 +672,17 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
         };
 
     try {
+      const privacy = createRedaction(childProfile?.name);
       const result = await modelProvider.generateJson({
         route: "analysis_structured",
-        prompt,
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.3,
         schema,
         images: [{ data: parsed.data, mimeType: parsed.mimeType }]
       });
-      res.json({ mode, ...(result as Record<string, unknown>) });
+      res.json({ mode, ...(privacy.restoreDeep(result) as Record<string, unknown>) });
     } catch (error: any) {
-      console.error("Arbor Vision Error:", error);
+      logger.error("Arbor Vision Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to analyze the image", details: error.message });
     }
   });
@@ -641,9 +709,10 @@ Profile: ${JSON.stringify(childProfile)}
 Focus Challenge: "${challengeTopic}"
 Return JSON with title, issue, phases, scripts, and successIndicators.
 `;
+      const privacy = createRedaction(childProfile?.name);
       const response = await modelProvider.generateJson({
         route: "analysis_structured",
-        prompt,
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: {
           type: Type.OBJECT,
           required: ["title", "issue", "phases", "scripts", "successIndicators"],
@@ -688,9 +757,9 @@ Return JSON with title, issue, phases, scripts, and successIndicators.
           }
         }
       });
-      res.json(response);
+      res.json(privacy.restoreDeep(response));
     } catch (error: any) {
-      console.error("Arbor Action Plan Error:", error);
+      logger.error("Arbor Action Plan Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor action plan", details: error.message });
     }
   });
@@ -708,6 +777,7 @@ Return JSON with title, issue, phases, scripts, and successIndicators.
     }
 
     try {
+      const privacy = createRedaction(childName);
       const prompt = `
 ${NON_DIAGNOSTIC_CONTRACT}
 Create an Arbor transition story for ${childName}, age ${age}.
@@ -715,9 +785,9 @@ Topic: ${topic}
 Moral / Target skill: ${moral}
 Return JSON with title, pages, illustrationPrompt, discussionQuestions, summary.
 `;
-      res.json(await modelProvider.generateJson({
+      res.json(privacy.restoreDeep(await modelProvider.generateJson({
         route: "creative_low_risk",
-        prompt,
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: {
           type: Type.OBJECT,
           required: ["title", "pages", "illustrationPrompt", "discussionQuestions", "summary"],
@@ -730,9 +800,9 @@ Return JSON with title, pages, illustrationPrompt, discussionQuestions, summary.
           }
         },
         temperature: 0.7
-      }));
+      })));
     } catch (error: any) {
-      console.error("Arbor Story Error:", error);
+      logger.error("Arbor Story Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor supportive story", details: error.message });
     }
   });
@@ -799,9 +869,10 @@ Reflection — parent questions:
 ${story.parentReflection.questions.map((q) => "- " + q).join("\n")}
 ${languageDirective}`;
 
-      const render = (await modelProvider.generateJson({
+      const privacy = createRedaction(childName);
+      const render = privacy.restoreDeep(await modelProvider.generateJson({
         route: "creative_low_risk",
-        prompt,
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.7,
         schema: {
           type: Type.OBJECT,
@@ -850,7 +921,7 @@ ${languageDirective}`;
         ...render
       });
     } catch (error: any) {
-      console.error("Arbor Hero Journey Error:", error);
+      logger.error("Arbor Hero Journey Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor hero journey", details: error.message });
     }
   });
@@ -879,9 +950,10 @@ Child Details: ${JSON.stringify(childProfile)}
 Behavior Logs: ${JSON.stringify(logs)}
 Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectivenessRating, expertInsights, actionPlanSuggestion.
 `;
-      res.json(await modelProvider.generateJson({
+      const privacy = createRedaction(childProfile?.name);
+      res.json(privacy.restoreDeep(await modelProvider.generateJson({
         route: "analysis_structured",
-        prompt,
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: {
           type: Type.OBJECT,
           required: ["frequencyCount", "intensityTrend", "triggerBreakdown", "effectivenessRating", "expertInsights", "actionPlanSuggestion"],
@@ -915,9 +987,9 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
             actionPlanSuggestion: { type: Type.STRING }
           }
         }
-      }));
+      })));
     } catch (error: any) {
-      console.error("Arbor Behavior Analysis Error:", error);
+      logger.error("Arbor Behavior Analysis Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to analyze Arbor behavior logs", details: error.message });
     }
   });
@@ -946,9 +1018,10 @@ Key Logged Behaviors: ${JSON.stringify(logs)}
 Milestone Context: ${JSON.stringify(milestones)}
 Return JSON with title, date, overview, keyStrengths, classroomChallenges, languageSupportPlan, suggestedTeacherStrategies, crisisEscalationTrigger.
 `;
-      res.json(await modelProvider.generateJson({
+      const privacy = createRedaction(childProfile?.name);
+      res.json(privacy.restoreDeep(await modelProvider.generateJson({
         route: "handoff_structured",
-        prompt,
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: {
           type: Type.OBJECT,
           required: ["title", "date", "overview", "keyStrengths", "classroomChallenges", "languageSupportPlan", "suggestedTeacherStrategies", "crisisEscalationTrigger"],
@@ -963,10 +1036,170 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
             crisisEscalationTrigger: { type: Type.STRING }
           }
         }
-      }));
+      })));
     } catch (error: any) {
-      console.error("Arbor Handoff Brief Error:", error);
+      logger.error("Arbor Handoff Brief Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor handoff brief", details: error.message });
+    }
+  });
+
+  // MON-1: the client reads its plan + limits + usage here. The billing seam:
+  // a Stripe/RevenueCat webhook writes entitlements/{uid}; nothing else changes.
+  router.get("/entitlement", async (req, res) => {
+    try {
+      const actor = actorOf(req);
+      const entitlement = await resolveEntitlement(entitlementStore, actor);
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const usage = entitlement.limits.coachMessagesPerDay !== null
+        ? await counters.peek(COACH_METER, actor.uid, DAY_MS)
+        : null;
+      res.json({
+        plan: entitlement.plan,
+        limits: entitlement.limits,
+        source: entitlement.source,
+        enforced: entitlement.enforced,
+        usage: { coachMessagesToday: usage?.count ?? 0 },
+      });
+    } catch (error: any) {
+      logger.error("Arbor Entitlement Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to resolve entitlement", details: error.message });
+    }
+  });
+
+  // RET-1: "{child}'s week" — deterministic stats core + AI narrative on top.
+  // The same payload is the future push/email body (subject/preheader included).
+  router.post("/digest", async (req, res) => {
+    const { childProfile, logs, milestones, language } = req.body;
+    const childName = (childProfile?.name && String(childProfile.name)) || "Your child";
+    const stats = computeWeeklyDigestStats(Array.isArray(logs) ? logs : [], Array.isArray(milestones) ? milestones : []);
+    const fallback = fallbackDigestNarrative(childName, stats);
+    try {
+      const privacy = createRedaction(childProfile?.name);
+      const languageDirective = language === "he" ? "\nWrite every human-readable value in warm, natural Hebrew (עברית)." : "";
+      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
+You are Arbor writing a parent's WEEKLY DIGEST — short, warm, concrete, zero fluff. Never diagnose.
+Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+This week's true, computed stats (do not contradict them): ${JSON.stringify(stats)}
+Write: title (e.g. "${privacy.redact(childName)}'s week"), subject (email subject), preheader (one line), summary (2-3 sentences),
+highlights (2-4 short bullets celebrating real effort/progress), watchFor (0-2 gentle observations worth keeping an eye on),
+tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only JSON matching the schema.${languageDirective}`;
+      const narrative = privacy.restoreDeep(await modelProvider.generateJson({
+        route: "analysis_structured",
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        temperature: 0.5,
+        schema: {
+          type: Type.OBJECT,
+          required: ["title", "subject", "preheader", "summary", "highlights", "watchFor", "tryThisWeek"],
+          properties: {
+            title: { type: Type.STRING },
+            subject: { type: Type.STRING },
+            preheader: { type: Type.STRING },
+            summary: { type: Type.STRING },
+            highlights: { type: Type.ARRAY, items: { type: Type.STRING } },
+            watchFor: { type: Type.ARRAY, items: { type: Type.STRING } },
+            tryThisWeek: { type: Type.STRING }
+          }
+        }
+      }) as Record<string, unknown>);
+      res.json({ ...(narrative as Record<string, unknown>), stats, generated: "ai" });
+    } catch (error: any) {
+      logger.warn("Digest AI narrative unavailable — serving deterministic fallback", {
+        requestId: requestIdOf(req),
+        errorMessage: error?.message,
+      });
+      res.json({ ...fallback, stats, generated: "fallback" });
+    }
+  });
+
+  // CMP-2 (GDPR Art. 15/20): server-side data export for one child. The client
+  // merges this with its own Firestore export into a single download.
+  router.get("/privacy/export/:childId", async (req, res) => {
+    const { uid } = actorOf(req);
+    try {
+      const childId = req.params.childId;
+      const memoryEvents = await memoryStore.listEvents(childId);
+      const shares = await shareStore.listByOwner(uid, childId);
+      res.json({
+        product: "Arbor",
+        exportedAt: new Date().toISOString(),
+        childId,
+        serverData: { memoryEvents, shares },
+      });
+    } catch (error: any) {
+      logger.error("Arbor Privacy Export Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to export server-side data", details: error.message });
+    }
+  });
+
+  // CMP-2 (GDPR Art. 17): REAL server-side erasure — replaces the former
+  // "processed server-side" placeholder. Hard-deletes the child's memory-event
+  // ledger + child doc and every share grant the caller created for the child.
+  router.post("/privacy/erase", async (req, res) => {
+    const { uid } = actorOf(req);
+    const { childId } = req.body;
+    if (!childId || typeof childId !== "string") {
+      res.status(400).json({ error: "childId is required" });
+      return;
+    }
+    try {
+      const memoryEvents = await memoryStore.eraseChild(childId);
+      const shares = await shareStore.eraseByChild(uid, childId);
+      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares });
+      res.json({ erased: { memoryEvents, shares }, childId, erasedAt: new Date().toISOString() });
+    } catch (error: any) {
+      logger.error("Arbor Privacy Erasure Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to erase server-side data", details: error.message });
+    }
+  });
+
+  // MON-3 v1: professional intro/booking — records a durable consult request and
+  // returns a ready-to-send email draft (email-based transaction first cut).
+  router.post("/consult-requests", async (req, res) => {
+    const { uid, email } = actorOf(req);
+    const { professionalId, childId, note, preferredMode } = req.body;
+    const professional = ARBOR_PROFESSIONALS.find((p) => p.id === professionalId);
+    if (!professional) {
+      res.status(404).json({ error: "Unknown professional" });
+      return;
+    }
+    try {
+      const request = await consultStore.create(buildConsultRequest({
+        ownerUid: uid,
+        ownerEmail: email,
+        childId,
+        professionalId: professional.id,
+        professionalName: professional.name,
+        specialty: professional.role,
+        preferredMode,
+        note,
+      }));
+      const intakeEmail = process.env.CONSULT_INTAKE_EMAIL || null;
+      const subject = `Arbor consultation request — ${professional.name} (${professional.role})`;
+      const body = [
+        `Professional: ${professional.name} — ${professional.role}`,
+        `Preferred mode: ${request.preferredMode}`,
+        request.note ? `What's going on: ${request.note}` : null,
+        `Request id: ${request.id}`,
+      ].filter(Boolean).join("\n");
+      res.json({
+        request,
+        mailto: intakeEmail
+          ? `mailto:${intakeEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+          : null,
+      });
+    } catch (error: any) {
+      logger.error("Arbor Consult Request Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to record the consultation request", details: error.message });
+    }
+  });
+
+  router.get("/consult-requests", async (req, res) => {
+    const { uid } = actorOf(req);
+    try {
+      res.json({ requests: await consultStore.listByOwner(uid) });
+    } catch (error: any) {
+      logger.error("Arbor Consult List Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to list consultation requests", details: error.message });
     }
   });
 

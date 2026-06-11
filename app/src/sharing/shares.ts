@@ -78,6 +78,8 @@ export interface ShareStore {
   listByRecipient(email: string): Promise<ShareGrant[]>;
   get(id: string): Promise<ShareGrant | null>;
   revoke(id: string, ownerUid: string): Promise<ShareGrant | null>;
+  /** GDPR erasure: hard-delete every grant (active, expired, or revoked) the owner created for a child. */
+  eraseByChild(ownerUid: string, childId: string): Promise<number>;
 }
 
 /** In-memory store for sandbox/dev. */
@@ -107,6 +109,17 @@ export class LocalShareStore implements ShareStore {
     const next = { ...g, revokedAt: new Date().toISOString() };
     this.grants.set(id, next);
     return next;
+  }
+
+  async eraseByChild(ownerUid: string, childId: string) {
+    let removed = 0;
+    for (const [id, g] of this.grants) {
+      if (g.ownerUid === ownerUid && g.childId === childId) {
+        this.grants.delete(id);
+        removed += 1;
+      }
+    }
+    return removed;
   }
 }
 
@@ -158,5 +171,14 @@ export class FirestoreShareStore implements ShareStore {
     const revokedAt = new Date().toISOString();
     await ref.update({ revokedAt });
     return { ...g, revokedAt };
+  }
+
+  async eraseByChild(ownerUid: string, childId: string) {
+    const snap = await this.col()
+      .where("ownerUid", "==", ownerUid)
+      .where("childId", "==", childId)
+      .get();
+    await Promise.all(snap.docs.map((d) => d.ref.delete()));
+    return snap.size;
   }
 }

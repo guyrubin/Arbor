@@ -9,6 +9,11 @@ const createStore = (seed: MemoryLedgerEvent[] = []): MemoryStore & { events: Me
   },
   async appendEvent(event) {
     this.events.push(event);
+  },
+  async eraseChild(childId: string) {
+    const before = this.events.length;
+    this.events = this.events.filter((event) => event.childId !== childId);
+    return before - this.events.length;
   }
 });
 

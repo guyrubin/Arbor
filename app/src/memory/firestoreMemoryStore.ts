@@ -47,4 +47,23 @@ export class FirestoreMemoryStore implements MemoryStore {
     await this.families.ensureFamilyMembership(input.familyId, input.userId);
     await this.families.ensureChild(input.familyId, input.childId, input.childProfile);
   }
+
+  /** GDPR erasure: hard-delete the child's memory event subcollection and child doc. */
+  async eraseChild(childId: string) {
+    const childRef = this.db.collection("children").doc(childId);
+    const events = await childRef.collection("memoryEvents").get();
+    let removed = 0;
+    // Firestore batches cap at 500 writes.
+    const docs = [...events.docs];
+    while (docs.length > 0) {
+      const batch = this.db.batch();
+      for (const doc of docs.splice(0, 450)) {
+        batch.delete(doc.ref);
+        removed += 1;
+      }
+      await batch.commit();
+    }
+    await childRef.delete();
+    return removed;
+  }
 }
