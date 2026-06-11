@@ -156,7 +156,17 @@ function useArborState() {
 
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
-  const [chatInput, setChatInput] = useState<string>("");
+  // Onboarding → coach seeding: OnboardingFlow (which renders outside this
+  // provider) leaves the parent's "what's on your mind" concern in storage; the
+  // coach composer starts pre-filled with it on the very first session.
+  const [chatInput, setChatInput] = useState<string>(() => {
+    const seed = readLS("arbor.coachSeed");
+    if (seed) {
+      try { localStorage.removeItem("arbor.coachSeed"); } catch { /* ignore */ }
+      return seed;
+    }
+    return "";
+  });
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   // Multi-thread coach conversations (persisted per child).
   const conversationsCol = useChildCollection<Conversation>(childProfile.id, "conversations");
@@ -538,6 +548,19 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
       if (!res.ok) {
         const errData = await res.json();
+        // MON-1: 402 = free-tier coach meter exhausted → render the Plus upsell
+        // inline instead of an error.
+        if (res.status === 402) {
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              sender: "ai",
+              text:
+                `### You've used today's free coaching\n${errData.details || "The free plan includes a daily number of coach messages."}\n\n**Arbor Plus** removes the limit and adds professional reports, advanced plans, and multiple children. Open **Settings → Your plan** to join the launch list — your question will still be here tomorrow.`,
+            },
+          ]);
+          return;
+        }
         throw new Error(errData.details || errData.error || "Server response failed");
       }
 

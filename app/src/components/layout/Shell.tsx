@@ -91,7 +91,8 @@ export default function Shell() {
   }, []);
 
   return (
-    <div className="arbor-app min-h-screen select-none text-sans antialiased overflow-x-hidden relative">
+    // select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility)
+    <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
       <div
         className={`grid grid-cols-1 md:grid-cols-[260px_1fr] ${
           showAiRail

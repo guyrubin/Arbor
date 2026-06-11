@@ -5,6 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useEntitlement } from "../../hooks/useEntitlement";
 
 /** Lightweight app settings — wired to real app state (AI language, AI Engines
  *  panel, account). Replaces the previously dead "Settings" sidebar button. */
@@ -13,27 +14,45 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const { showAiRail, setShowAiRail, setActiveTab } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
+  const { entitlement } = useEntitlement();
+  const isPlus = entitlement.plan === "plus";
+  const coachLimit = entitlement.limits.coachMessagesPerDay;
 
   return (
     <Modal open={open} onClose={onClose} title="Settings">
       <div className="space-y-5 text-sm">
-        {/* Plan */}
+        {/* Plan — read from the real entitlement endpoint (MON-1) */}
         <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,#eef6f1,#ece9fb)", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "#1f8a5a" }}><Sparkles className="w-4 h-4" /></span>
               <div className="min-w-0">
-                <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>Your plan: Arbor Free</p>
-                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>Coaching, tracking, and your child's memory are included.</p>
+                <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>
+                  Your plan: {isPlus ? (entitlement.enforced ? "Arbor Plus" : "Arbor Beta (full access)") : "Arbor Free"}
+                </p>
+                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
+                  {isPlus
+                    ? "Unlimited coaching, professional reports, advanced plans, and multiple children."
+                    : "Coaching, tracking, and your child's memory are included."}
+                </p>
               </div>
             </div>
           </div>
-          <p className="text-xs leading-relaxed mt-3" style={{ color: "var(--arbor-muted)" }}>
-            <strong style={{ color: "var(--arbor-ink)" }}>Arbor Plus</strong> (coming soon) will add unlimited coaching, professional reports, advanced plans, and multiple children.
-          </p>
-          <button onClick={() => toast("Thanks! We'll let you know the moment Arbor Plus is ready.", "success")} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "#34b277", color: "#fff" }}>
-            Tell me when Plus launches
-          </button>
+          {!isPlus && (
+            <>
+              {coachLimit !== null && (
+                <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
+                  Coach messages today: <strong style={{ color: "var(--arbor-ink)" }}>{entitlement.usage.coachMessagesToday}</strong> of {coachLimit}.
+                </p>
+              )}
+              <p className="text-xs leading-relaxed mt-3" style={{ color: "var(--arbor-muted)" }}>
+                <strong style={{ color: "var(--arbor-ink)" }}>Arbor Plus</strong> adds unlimited coaching, professional reports, advanced plans, and multiple children.
+              </p>
+              <button onClick={() => toast("Thanks! We'll let you know the moment Arbor Plus checkout is ready.", "success")} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "#34b277", color: "#fff" }}>
+                Tell me when Plus launches
+              </button>
+            </>
+          )}
         </div>
 
         {/* AI response language */}

@@ -133,6 +133,51 @@ export const api = {
   sharedWithMe: () => get<{ shares: ShareGrant[] }>("/api/shared-with-me"),
   // Gemini Live: mint an ephemeral token for a direct browser Live session.
   liveToken: () => post<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string }>("/api/live/token", {}),
+  // MON-1: plan + limits + usage for the signed-in parent.
+  entitlement: () => get<EntitlementInfo>("/api/entitlement"),
+  // RET-1: "{child}'s week" digest (stats are computed server-side from the data we send).
+  digest: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; language?: "en" | "he" }) =>
+    post<WeeklyDigest>("/api/digest", payload),
+  // CMP-2: GDPR server-side export + erasure.
+  privacyExport: (childId: string) =>
+    get<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`),
+  privacyErase: (childId: string) =>
+    post<{ erased: { memoryEvents: number; shares: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
+  // MON-3 v1: durable consultation request (email-based transaction).
+  requestConsult: (payload: { professionalId: string; childId?: string; note?: string; preferredMode?: string }) =>
+    post<{ request: { id: string; professionalName: string; status: string; createdAt: string }; mailto: string | null }>("/api/consult-requests", payload),
+};
+
+export type EntitlementInfo = {
+  plan: "free" | "plus";
+  limits: { coachMessagesPerDay: number | null; maxChildren: number; professionalReports: boolean; advancedPlans: boolean };
+  source: string;
+  enforced: boolean;
+  usage: { coachMessagesToday: number };
+};
+
+export type WeeklyDigest = {
+  title: string;
+  subject: string;
+  preheader: string;
+  summary: string;
+  highlights: string[];
+  watchFor: string[];
+  tryThisWeek: string;
+  generated: "ai" | "fallback";
+  stats: {
+    weekOf: string;
+    daysCovered: number;
+    momentsLogged: number;
+    previousWeekMoments: number;
+    avgIntensity: number | null;
+    intensityTrend: "easing" | "steady" | "intensifying" | "unknown";
+    resolvedCount: number;
+    topContext: string | null;
+    topBehavior: string | null;
+    milestonesDone: number;
+    milestonesTotal: number;
+  };
 };
 
 export type VisionObserve = {

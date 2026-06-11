@@ -290,6 +290,17 @@ export default function CoachTab() {
               );
             })}
           </div>
+          {/* "Use this lens when…" — makes the lens choice practical, not academic */}
+          {(() => {
+            const active = scholarsInfo.find((s) => s.name === selectedLens);
+            const hint = active?.useWhen
+              || (selectedLens === "Integrated Balanced" ? "The default: connection first, then the next achievable step, then the environment. Pick a named lens when one angle should lead." : null);
+            return hint ? (
+              <p className="text-[11px] leading-relaxed rounded-lg p-2.5 mt-1" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+                {hint}
+              </p>
+            ) : null;
+          })()}
         </div>
       </div>
 

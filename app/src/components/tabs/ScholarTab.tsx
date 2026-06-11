@@ -42,6 +42,11 @@ export default function ScholarTab() {
                 <div className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                   <span className="text-[10px] font-bold block italic" style={{ color: p.ink }}>Focus: {sch.theory}</span>
                   <p className="leading-relaxed text-[11px]" style={{ color: "var(--arbor-muted)" }}>{sch.value}</p>
+                  {sch.useWhen && (
+                    <p className="leading-relaxed text-[11px] rounded-lg p-2.5" style={{ background: p.soft, color: p.ink }}>
+                      {sch.useWhen}
+                    </p>
+                  )}
                 </div>
               </div>
 

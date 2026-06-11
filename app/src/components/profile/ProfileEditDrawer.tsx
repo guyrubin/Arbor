@@ -24,6 +24,14 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const [riskLevel, setRiskLevel] = useState<ChildProfile["riskLevel"]>(activeChild.riskLevel);
   const [saving, setSaving] = useState(false);
 
+  // Escape closes the drawer (keyboard parity with the backdrop click).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   // Re-sync the form whenever the drawer opens or the active child changes.
   useEffect(() => {
     if (!open) return;
@@ -85,8 +93,11 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(41,51,63,0.4)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+        <motion.div className="arbor-app fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(41,51,63,0.4)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit child profile"
             className="w-full max-w-md h-full bg-white p-6 overflow-y-auto"
             style={{ borderLeft: "1px solid var(--arbor-rule)" }}
             initial={{ x: "100%" }}

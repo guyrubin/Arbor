@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
-import { Search, ShieldCheck, Globe, MapPin, Languages as LangIcon, Star, Send, FileText } from "lucide-react";
+import { Search, ShieldCheck, Globe, MapPin, Languages as LangIcon, Star, Send, FileText, RefreshCw, CheckCircle2, Mail } from "lucide-react";
 import { PageHeader, cardCls, Chip, PASTEL } from "../ui/kit";
+import { Modal } from "../ui/Modal";
 import type { Professional } from "../../services/professionals";
-import { authHeaders } from "../../lib/api";
+import { api, authHeaders } from "../../lib/api";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 
@@ -53,6 +54,38 @@ export default function FindProfessional() {
   const toggle = (f: string) => setActive((p) => (p.includes(f) ? p.filter((x) => x !== f) : [...p, f]));
   const [pros, setPros] = useState<Professional[]>(FALLBACK);
   const [query, setQuery] = useState("");
+  // MON-3 v1: real consult request flow (durable, email-based transaction).
+  const [consultPro, setConsultPro] = useState<Professional | null>(null);
+  const [consultNote, setConsultNote] = useState("");
+  const [consultMode, setConsultMode] = useState<"either" | "video" | "in_person">("either");
+  const [consultBusy, setConsultBusy] = useState(false);
+  const [consultDone, setConsultDone] = useState<{ id: string; mailto: string | null } | null>(null);
+
+  const openConsult = (p: Professional) => {
+    setConsultPro(p);
+    setConsultNote(childProfile.challenges[0] ? `We're working on ${childProfile.challenges[0].toLowerCase()} with ${first} (age ${childProfile.age}).` : "");
+    setConsultMode("either");
+    setConsultDone(null);
+  };
+
+  const submitConsult = async () => {
+    if (!consultPro) return;
+    setConsultBusy(true);
+    try {
+      const { request, mailto } = await api.requestConsult({
+        professionalId: consultPro.id,
+        childId: childProfile.id,
+        note: consultNote,
+        preferredMode: consultMode,
+      });
+      setConsultDone({ id: request.id, mailto });
+      toast(`Consultation request sent for ${consultPro.name}.`, "success");
+    } catch (err: any) {
+      toast(err.message || "Couldn't record the request — please try again.", "error");
+    } finally {
+      setConsultBusy(false);
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -149,7 +182,7 @@ export default function FindProfessional() {
 
               <div className="flex gap-2 mt-4">
                 <button
-                  onClick={() => { toast(`Let's prepare your consultation with ${p.name} — add it in Appointments.`, "info"); setActiveTab("appointments"); }}
+                  onClick={() => openConsult(p)}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 text-white font-bold text-xs rounded-xl py-2.5"
                   style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}
                 >
@@ -168,6 +201,68 @@ export default function FindProfessional() {
         </div>
       )}
       <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>Every professional is reviewed and verified by Arbor. Curated, not crowdsourced.</p>
+
+      {/* MON-3 v1: consultation request modal */}
+      <Modal open={!!consultPro} onClose={() => setConsultPro(null)} title={consultPro ? `Request a consultation — ${consultPro.name}` : "Request a consultation"}>
+        {consultDone ? (
+          <div className="space-y-4 text-sm">
+            <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: "#e4f4ec" }}>
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: "#1f8a5a" }} />
+              <div>
+                <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>Request recorded</p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                  Arbor saved your consultation request{consultPro ? ` for ${consultPro.name}` : ""}. We'll coordinate the introduction — you can prepare context to share meanwhile.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {consultDone.mailto && (
+                <a href={consultDone.mailto} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 text-white" style={{ background: "#34b277" }}>
+                  <Mail className="w-3.5 h-3.5" /> Send the intro email
+                </a>
+              )}
+              <button onClick={() => { setConsultPro(null); setActiveTab("reports"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}>
+                <FileText className="w-3.5 h-3.5" /> Prepare a shareable summary
+              </button>
+              <button onClick={() => { setConsultPro(null); setActiveTab("appointments"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                Track it in Appointments
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 text-sm">
+            <div className="space-y-1.5">
+              <label htmlFor="consult-note" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>What's going on? (shared with the professional)</label>
+              <textarea
+                id="consult-note"
+                value={consultNote}
+                onChange={(e) => setConsultNote(e.target.value)}
+                rows={3}
+                placeholder={`A sentence or two about what you'd like help with for ${first}.`}
+                className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <span className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Preferred format</span>
+              <div className="flex gap-2">
+                {([["either", "Either"], ["video", "Video call"], ["in_person", "In person"]] as const).map(([k, label]) => (
+                  <button key={k} type="button" onClick={() => setConsultMode(k)} className="flex-1 py-2 rounded-xl text-xs font-bold transition"
+                    style={consultMode === k ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              Nothing from {first}'s profile is shared automatically — only the note above. You stay in control of any reports you choose to share.
+            </p>
+            <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}>
+              {consultBusy ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Sending…</>) : (<><Send className="w-4 h-4" /> Send the request</>)}
+            </button>
+          </div>
+        )}
+      </Modal>
     </motion.div>
   );
 }

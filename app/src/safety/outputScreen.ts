@@ -26,7 +26,7 @@ const CONDITIONS =
 
 const DIAGNOSIS_PATTERNS = [
   // "your child has ADHD", "she is autistic", "this is autism", "he suffers from OCD"
-  new RegExp(`\\b(?:your (?:child|son|daughter)|he|she|they|\\[child\\])\\s+(?:has|have|is|are|suffers? from|shows? signs of having)\\s+(?:\\w+\\s){0,2}(?:${CONDITIONS})`, "i"),
+  new RegExp(`(?:\\b(?:your (?:child|son|daughter)|he|she|they)|\\[\\s*child\\s*\\])\\s+(?:has|have|is|are|suffers? from|shows? signs of having)\\s+(?:\\w+\\s){0,2}(?:${CONDITIONS})`, "i"),
   new RegExp(`\\bdiagnos(?:is|e|ed) (?:of|with|as)\\s+(?:\\w+\\s){0,2}(?:${CONDITIONS})`, "i"),
   new RegExp(`\\bthis (?:is|confirms|indicates)\\s+(?:\\w+\\s){0,1}(?:${CONDITIONS})`, "i"),
 ];

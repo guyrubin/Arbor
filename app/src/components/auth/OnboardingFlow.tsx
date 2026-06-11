@@ -54,6 +54,17 @@ export default function OnboardingFlow() {
         challenges: challenge ? [challenge] : [],
         riskLevel: "Low",
       });
+      // Seed the coach with the concern: OnboardingFlow renders outside the
+      // ArborProvider, so the bridge is storage — the provider picks this up on
+      // its first mount and pre-fills the Ask Arbor composer.
+      if (challenge) {
+        try {
+          localStorage.setItem(
+            "arbor.coachSeed",
+            `${challenge} is on my mind with ${name.trim()} (age ${age}). Where should I start?`
+          );
+        } catch { /* ignore */ }
+      }
       toast(`Arbor is ready for ${name.trim()}.`, "success");
     } catch {
       toast("Couldn't create the profile. Please try again.", "error");

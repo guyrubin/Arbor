@@ -155,7 +155,8 @@ export const scholarsInfo = [
     color: "from-amber-500/10 to-transparent",
     theory: "Zone of Proximal Development (ZPD) & Scaffolding",
     value: "Finds the edge of where the child can perform with parent modeling, then gradually fades support as mastery builds. Prevents both boredom and overwhelming anxiety.",
-    examplePrompt: "Dylan wants to practice English school questions. Suggest a step-by-step scaffolding plan to practice introducing himself over 3 days.",
+    useWhen: "Use this lens when your child is learning a new skill — speech, school routines, self-care — and you're unsure how much to help versus step back.",
+    examplePrompt: "My child wants to practice introducing themselves at school. Suggest a step-by-step scaffolding plan to practice over 3 days.",
     slug: "vygotsky"
   },
   {
@@ -165,7 +166,8 @@ export const scholarsInfo = [
     color: "from-blue-500/10 to-transparent",
     theory: "Secure Base & Adaptive Attachment Behaviours",
     value: "Designs emotional interaction guidelines and rupture-repair scripts. Strengthens the child's relational security, viewing tantrums as dysregulated communication rather than misbehavior.",
-    examplePrompt: "Give me an conflict-repair script for after Dylan screamed and threw toys, and we both got dysregulated.",
+    useWhen: "Use this lens after meltdowns, clinginess, separation struggles, or any moment where the relationship itself feels strained and needs repair.",
+    examplePrompt: "Give me a conflict-repair script for after my child screamed and threw toys, and we both got dysregulated.",
     slug: "bowlby"
   },
   {
@@ -175,7 +177,8 @@ export const scholarsInfo = [
     color: "from-purple-500/10 to-transparent",
     theory: "Good-Enough Mothering & Transitional Objects",
     value: "Reduces parent pathologizing and guilt. Explains the critical developmental role of transitional comfort objects (like pebbles or plushies) and safe boundaries.",
-    examplePrompt: "Dylan is heavily attached to a pocket plush when leaving home. How can we respect this Winnicott style transitional object during school dropoffs?",
+    useWhen: "Use this lens when you're feeling guilt or self-doubt as a parent, or when comfort objects and security rituals are in play (drop-offs, bedtime).",
+    examplePrompt: "My child is heavily attached to a pocket plush when leaving home. How can we respect this transitional object during school dropoffs?",
     slug: "winnicott"
   },
   {
@@ -185,6 +188,7 @@ export const scholarsInfo = [
     color: "from-green-500/10 to-transparent",
     theory: "Prepared Environments & Practical Autonomy",
     value: "Coaches parents on preparing home tasks and routines so the child can exercise self-governance. Swaps child-restraint with structured freedoms.",
+    useWhen: "Use this lens when daily routines (dressing, eating, tidying) turn into battles — the fix is usually the environment, not the child.",
     examplePrompt: "Create a prepared bedroom environment routine to help a 5-year-old learn to dress and select clothes independently in the morning.",
     slug: "montessori"
   },
@@ -195,7 +199,8 @@ export const scholarsInfo = [
     color: "from-red-500/10 to-transparent",
     theory: "Ecological Systems Framework",
     value: "Analyzes family-school-neighborhood stressors. Evaluates micro, meso, and macrosystems to pinpoint why a child acts up during times of high family stress or bilingual migration.",
-    examplePrompt: "Analyze our bilingual school relocation transition journey. What Bronfenbrenner stressors should we modify to help Dylan calm down?",
+    useWhen: "Use this lens during big life changes — a move, new school, new sibling, family stress — when behavior shifts and the cause sits around the child, not in them.",
+    examplePrompt: "Analyze our bilingual school relocation transition. What environmental stressors should we modify to help my child settle?",
     slug: "bronfenbrenner"
   },
   {
@@ -205,7 +210,8 @@ export const scholarsInfo = [
     color: "from-teal-500/10 to-transparent",
     theory: "Cognitive Development Stages",
     value: "Keeps expectations grounded in biological reality. Reminds parents that a 5-year-old operates in the intuitive Preoperational stage (egocentric, magical thinking, struggles with abstract rules).",
-    examplePrompt: "Explain Dylan's transition refusal through Piaget's Preoperational cognitive framework. What can we realistically expect?",
+    useWhen: "Use this lens when you wonder whether an expectation is fair for the age — lying, sharing, abstract rules, 'why won't they just understand?'.",
+    examplePrompt: "Explain my child's transition refusal through Piaget's Preoperational cognitive framework. What can we realistically expect?",
     slug: "piaget"
   },
   {
@@ -215,7 +221,8 @@ export const scholarsInfo = [
     color: "from-rose-500/10 to-transparent",
     theory: "Psychosocial Stages (Autonomy, Initiative)",
     value: "Frames the moment within the child's current psychosocial task — autonomy vs. shame in toddlers, initiative vs. guilt in preschoolers — and supports its healthy resolution with encouragement and age-appropriate independence.",
-    examplePrompt: "Frame Dylan's bids for independence through Erikson's Initiative vs. Guilt stage and how to support it.",
+    useWhen: "Use this lens when your child pushes for independence ('I do it myself!') or seems ashamed after failing — the stage explains the stakes.",
+    examplePrompt: "Frame my child's bids for independence through Erikson's Initiative vs. Guilt stage and how to support it.",
     slug: "erikson"
   }
 ];

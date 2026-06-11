@@ -1,14 +1,19 @@
 import React, { useState } from "react";
+import { Sparkles } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
+import { useEntitlement } from "../../hooks/useEntitlement";
 
 const LANGUAGE_OPTIONS = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
 export default function AddChildModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { addChild } = useProfile();
+  const { addChild, profiles } = useProfile();
   const { toast } = useToast();
+  const { entitlement } = useEntitlement();
+  // MON-1: multi-child is a Plus feature once entitlements are enforced.
+  const atChildLimit = entitlement.enforced && profiles.length >= entitlement.limits.maxChildren;
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [age, setAge] = useState<number>(4);
@@ -59,6 +64,27 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
   };
 
   const canAdvance = step === 1 ? name.trim().length > 0 : true;
+
+  if (atChildLimit) {
+    return (
+      <Modal open={open} onClose={close} title="Add a child">
+        <div className="space-y-4 text-sm">
+          <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "linear-gradient(120deg,#eef6f1,#ece9fb)", border: "1px solid var(--arbor-rule)" }}>
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "#1f8a5a" }}><Sparkles className="w-4 h-4" /></span>
+            <div>
+              <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>Multiple children is an Arbor Plus feature</p>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                The free plan covers one child. Arbor Plus adds up to {entitlement.limits.maxChildren === 1 ? 6 : entitlement.limits.maxChildren} children, unlimited coaching, professional reports, and advanced plans.
+              </p>
+              <button onClick={() => { toast("Thanks! We'll let you know the moment Arbor Plus checkout is ready.", "success"); close(); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "#34b277", color: "#fff" }}>
+                Tell me when Plus launches
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal open={open} onClose={close} title={`Add a child · Step ${step} of 3`}>

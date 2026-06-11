@@ -6,7 +6,7 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Skeleton } from "../ui/Skeleton";
 import { scholarsInfo } from "../../initialData";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { authHeaders, getAiLanguage } from "../../lib/api";
+import { api, getAiLanguage, type WeeklyDigest } from "../../lib/api";
 import { PageHeader, SectionCard, cardCls, IconBadge } from "../ui/kit";
 
 const DAY = 86_400_000;
@@ -26,6 +26,8 @@ type WeeklyReport = {
   planProgress: { done: number; total: number };
   spotlight: { name: string; concept: string; value: string };
   insight: string;
+  /** RET-1: the structured "{child}'s week" digest (email/push-ready payload). */
+  digest?: WeeklyDigest;
 };
 
 export default function WeeklyTab() {
@@ -78,31 +80,29 @@ export default function WeeklyTab() {
   const generate = async () => {
     setGenerating(true);
     try {
-      let insight = "";
+      // RET-1: the digest endpoint computes truthful stats server-side and
+      // writes the warm narrative on top (deterministic fallback when AI is off).
+      let digest: WeeklyDigest | undefined;
       try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: await authHeaders(),
-          body: JSON.stringify({
-            message: `Write a single concise paragraph (3-4 sentences) analyzing this week's parenting patterns for ${childProfile.name} (age ${childProfile.age}). Data: ${snapshot.summary.count} behavior events, average intensity ${snapshot.summary.avg.toFixed(1)}/5, top trigger "${snapshot.summary.topTrigger}", ${snapshot.milestoneWins.length} milestones achieved, ${snapshot.planProgress.done}/${snapshot.planProgress.total} action steps complete. Warm, non-diagnostic, end with one concrete focus for next week. No headings.`,
-            childProfile,
-            scholarLens: "Integrated Balanced",
-            language: getAiLanguage(),
-          }),
+        digest = await api.digest({
+          childProfile,
+          logs: behaviorLogs,
+          milestones,
+          language: getAiLanguage(),
         });
-        if (res.ok) insight = String((await res.json()).text || "");
       } catch {
-        insight = "";
+        digest = undefined;
       }
-      if (!insight) {
-        insight = "AI insight unavailable right now — the structured summary below still reflects this week. Add your model key/credentials to enable live weekly insights.";
-      }
+      const insight = digest
+        ? [digest.summary, digest.tryThisWeek && `**Try this week:** ${digest.tryThisWeek}`].filter(Boolean).join("\n\n")
+        : "AI insight unavailable right now — the structured summary below still reflects this week. Add your model key/credentials to enable live weekly insights.";
       const report: WeeklyReport = {
         id: currentId,
         weekLabel: currentLabel,
         generatedAt: new Date().toISOString(),
         ...snapshot,
         insight,
+        ...(digest ? { digest } : {}),
       };
       await reportsCol.upsert(report);
       setSelectedId(currentId);
@@ -133,7 +133,7 @@ export default function WeeklyTab() {
       </button>
       <PageHeader
         eyebrow="My Child"
-        title="Weekly Insight"
+        title={`${first}'s week`}
         subtitle={selected ? `${selected.weekLabel} · ${selected.id}` : `${currentLabel} · ${currentId}`}
         action={
           <button
@@ -196,9 +196,32 @@ export default function WeeklyTab() {
 
           <div className="rounded-[22px] p-6 space-y-3" style={{ background: "#e4f4ec" }}>
             <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
-              <Sparkles className="w-3.5 h-3.5" /> AI insight
+              <Sparkles className="w-3.5 h-3.5" /> {selected.digest ? selected.digest.title : "AI insight"}
             </span>
-            <MarkdownBlock text={selected.insight} className="space-y-2 text-sm" />
+            {selected.digest ? (
+              <>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{selected.digest.summary}</p>
+                {selected.digest.highlights.length > 0 && (
+                  <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
+                    {selected.digest.highlights.map((h, i) => (
+                      <li key={i} className="flex items-start gap-2"><span style={{ color: "#1f8a5a" }}>✦</span> {h}</li>
+                    ))}
+                  </ul>
+                )}
+                {selected.digest.watchFor.length > 0 && (
+                  <p className="text-xs leading-relaxed" style={{ color: "#9a5a2a" }}>
+                    <strong>Worth watching:</strong> {selected.digest.watchFor.join(" ")}
+                  </p>
+                )}
+                {selected.digest.tryThisWeek && (
+                  <div className="rounded-xl p-3 text-sm bg-white" style={{ color: "var(--arbor-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
+                    <strong style={{ color: "#1f8a5a" }}>Try this week:</strong> {selected.digest.tryThisWeek}
+                  </div>
+                )}
+              </>
+            ) : (
+              <MarkdownBlock text={selected.insight} className="space-y-2 text-sm" />
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

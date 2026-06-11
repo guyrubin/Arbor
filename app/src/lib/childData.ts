@@ -1,5 +1,6 @@
 import { collection, deleteDoc, doc, getDocs } from "firebase/firestore";
 import { db, firebaseEnabled } from "./firebase";
+import { api } from "./api";
 import { ChildProfile } from "../types";
 
 /** Per-child subcollections that hold parent-generated data. */
@@ -19,11 +20,25 @@ const remoteActive = (uid?: string) =>
 
 /** Gather a full export of one child's data (profile + all subcollections). */
 export async function exportChildData(uid: string | undefined, child: ChildProfile) {
-  const out: { exportedAt: string; profile: ChildProfile; collections: Record<string, unknown[]> } = {
+  const out: {
+    exportedAt: string;
+    profile: ChildProfile;
+    collections: Record<string, unknown[]>;
+    serverData?: { memoryEvents: unknown[]; shares: unknown[] };
+  } = {
     exportedAt: new Date().toISOString(),
     profile: child,
     collections: {},
   };
+
+  // CMP-2 (GDPR Art. 15/20): include the server-side data (memory ledger +
+  // share grants) so the export is complete, not just the client collections.
+  try {
+    const server = await api.privacyExport(child.id);
+    out.serverData = server.serverData;
+  } catch {
+    /* server export unavailable — client collections still export */
+  }
 
   for (const name of CHILD_SUBCOLLECTIONS) {
     if (remoteActive(uid) && db) {
@@ -47,6 +62,13 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
 
 /** Permanently delete one child's data (all subcollections) and the child doc. */
 export async function deleteChildData(uid: string | undefined, childId: string) {
+  // CMP-2 (GDPR Art. 17): real server-side erasure — memory-event ledger and
+  // share grants are hard-deleted, not just the client's own collections.
+  try {
+    await api.privacyErase(childId);
+  } catch {
+    /* best effort: client-side deletion below still proceeds */
+  }
   if (remoteActive(uid) && db) {
     for (const name of CHILD_SUBCOLLECTIONS) {
       try {
