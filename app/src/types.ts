@@ -251,3 +251,52 @@ export interface SchoolBrief {
   suggestedTeacherStrategies: string[];
   crisisEscalationTrigger: string;
 }
+
+/* ---------- Practice Studio (Fall release: speech & language suite) ---------- */
+
+/** Where a practice item sits on the articulation ladder. */
+export type SpeechLevel = 'sound' | 'word' | 'sentence' | 'story';
+
+/** One scored articulation attempt. Audio never leaves the device — only the score is stored. */
+export interface SpeechAttempt {
+  id: string;
+  sound: string;            // target sound id, e.g. "s", "r", "sh"
+  level: SpeechLevel;
+  target: string;           // the word/sentence practiced
+  result: 'got' | 'almost' | 'missed';
+  method: 'auto' | 'parent'; // browser speech recognition vs parent scoring
+  heard?: string;            // what speech recognition transcribed (if auto)
+  timestamp: string;
+}
+
+/** One mimic-mirror imitation round, parent-rated. Camera is local-only and unrecorded. */
+export interface MimicSession {
+  id: string;
+  packId: string;
+  promptId: string;
+  rating: 1 | 2 | 3;         // 1 = tried it, 2 = close, 3 = nailed it
+  timestamp: string;
+}
+
+/** A daily development mission's completion record. */
+export interface MissionRecord {
+  id: string;                // `${date}-${missionId}`
+  date: string;              // YYYY-MM-DD
+  missionId: string;
+  domain: PracticeDomain;
+  completed: boolean;
+  timestamp: string;
+}
+
+/** One answered scene in a cognitive adventure. */
+export interface AdventureResult {
+  id: string;
+  scenarioId: string;
+  sceneId: string;
+  skill: AdventureSkill;
+  correct: boolean;
+  timestamp: string;
+}
+
+export type PracticeDomain = 'language' | 'speech' | 'cognition' | 'social' | 'emotional';
+export type AdventureSkill = 'vocabulary' | 'logic' | 'sequencing' | 'instructions' | 'abstract';

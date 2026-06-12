@@ -1,12 +1,23 @@
 import { describe, it, expect } from "vitest";
 import { SECTIONS, sectionForTab, primaryTabOf } from "./navigation";
 
-/** Structural guard for the six-section information architecture (IA v2).
- *  Catches accidental drift: wrong section count, duplicate/colliding tabs,
- *  empty sections, or a primary tab that doesn't belong to its section. */
+/** Structural guard for the seven-section information architecture (IA v2 +
+ *  Practice Studio). Catches accidental drift: wrong section count,
+ *  duplicate/colliding tabs, empty sections, or a primary tab that doesn't
+ *  belong to its section. */
 describe("navigation IA", () => {
-  it("exposes exactly six primary sections", () => {
-    expect(SECTIONS).toHaveLength(6);
+  it("exposes exactly seven primary sections", () => {
+    expect(SECTIONS).toHaveLength(7);
+  });
+
+  it("Practice Studio carries the speech & language suite", () => {
+    const practice = SECTIONS.find((s) => s.id === "practice");
+    const tabs = practice?.items.map((i) => i.tab) ?? [];
+    expect(tabs).toEqual(expect.arrayContaining(["missions", "speech", "mimic", "adventures"]));
+  });
+
+  it("Development Dashboard (Copilot) lives under My Child", () => {
+    expect(sectionForTab("copilot").id).toBe("intelligence");
   });
 
   it("every section has at least one capability", () => {

@@ -64,13 +64,20 @@ export type ActiveTab =
   | "sharing"        // Care Network › Trusted Sharing
   | "reports"        // Care Network › Reports
   | "masterclasses"  // Arbor Academy › Parent Masterclasses
-  | "family";        // Arbor Academy › Family Formation
+  | "family"         // Arbor Academy › Family Formation
+  // Practice Studio (Fall release: speech & language suite)
+  | "speech"         // Practice Studio › Speech Coach (articulation)
+  | "mimic"          // Practice Studio › Mimic Studio (imitation play)
+  | "missions"       // Practice Studio › Daily Missions + Development Score
+  | "adventures"     // Practice Studio › Cognitive Adventures
+  | "copilot";       // My Child › Development Dashboard (Copilot)
 
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
 // working browser back/forward button.
 const VALID_TABS = new Set<string>([
   "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
   "profile", "memory", "strengths", "screening", "timeline", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family",
+  "speech", "mimic", "missions", "adventures", "copilot",
 ]);
 function tabFromHash(): ActiveTab | null {
   try {

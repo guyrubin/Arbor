@@ -6,6 +6,7 @@ const SHORT: Record<string, string> = {
   home: "Home",
   ask: "Ask",
   intelligence: "Child",
+  practice: "Practice",
   growth: "Grow",
   care: "Care",
   academy: "Academy",
