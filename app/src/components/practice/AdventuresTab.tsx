@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { fillTemplate, scenariosForAge, type AdventureScenario } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
+import MemoryMatch from "./MemoryMatch";
 import type { AdventureResult } from "../../types";
 import { track } from "../../lib/analytics";
 
@@ -111,6 +112,8 @@ export default function AdventuresTab() {
           ))}
         </div>
       )}
+
+      {!scenario && <MemoryMatch data={data} />}
 
       {scenario && !finished && scene && (
         <SectionCard title={`${scenario.emoji} ${scenario.title}`} icon={<Map className="w-5 h-5" />} tone="lav"

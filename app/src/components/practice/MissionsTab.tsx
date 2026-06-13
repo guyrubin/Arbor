@@ -17,7 +17,7 @@ import { track } from "../../lib/analytics";
 export default function MissionsTab() {
   const { childProfile, milestones, setChatInput, setActiveTab } = useArbor();
   const data = usePracticeData(childProfile.id);
-  const { recommendation } = useCopilot(milestones, data);
+  const { recommendation } = useCopilot(milestones, data, childProfile.id);
   const first = childProfile.name.split(" ")[0];
   const vars = { name: first, age: childProfile.age, lang: childProfile.languages?.[1] };
 

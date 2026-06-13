@@ -68,7 +68,9 @@ export type ActiveTab =
   // Practice Studio (Fall release: speech & language suite)
   | "speech"         // Practice Studio › Speech Coach (articulation)
   | "mimic"          // Practice Studio › Mimic Studio (imitation play)
+  | "feelings"       // Practice Studio › Feelings Lab (emotion coaching)
   | "missions"       // Practice Studio › Daily Missions + Development Score
+  | "journey"        // Practice Studio › Development Journey
   | "adventures"     // Practice Studio › Cognitive Adventures
   | "copilot";       // My Child › Development Dashboard (Copilot)
 
@@ -77,7 +79,7 @@ export type ActiveTab =
 const VALID_TABS = new Set<string>([
   "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
   "profile", "memory", "strengths", "screening", "timeline", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family",
-  "speech", "mimic", "missions", "adventures", "copilot",
+  "speech", "mimic", "feelings", "missions", "journey", "adventures", "copilot",
 ]);
 function tabFromHash(): ActiveTab | null {
   try {

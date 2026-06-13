@@ -1,13 +1,19 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Activity, ClipboardCopy, Compass, FileBarChart, Gauge, Check } from "lucide-react";
+import { Activity, AlertTriangle, Check, ClipboardCopy, Compass, FileBarChart, Gauge, History, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
 import ProgressRing from "../ui/ProgressRing";
+import DomainRadar from "./DomainRadar";
 import { DOMAIN_META } from "../../practice/content";
 import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
+import { watchSignals } from "../../practice/watch";
+import type { ScreeningResult } from "../../lib/screening";
 import type { BandLevel } from "../../practice/signals";
 import { track } from "../../lib/analytics";
+
+type SavedScreening = ScreeningResult & { id: string };
 
 const BAND_COPY: Record<BandLevel, { label: string; note: string }> = {
   emerging:   { label: "Emerging",   note: "early signal — more observation and play will sharpen the picture" },
@@ -25,14 +31,40 @@ const BAND_COPY: Record<BandLevel, { label: string; note: string }> = {
  * estimates without normed instruments would be clinically indefensible.
  */
 export default function DevelopmentCopilot() {
-  const { childProfile, milestones, setActiveTab } = useArbor();
+  const { childProfile, milestones, behaviorLogs, setActiveTab } = useArbor();
   const data = usePracticeData(childProfile.id);
-  const { bands, recommendation } = useCopilot(milestones, data);
+  const { bands, recommendation, confidence, trend, snapshots } = useCopilot(milestones, data, childProfile.id);
+  const screeningsCol = useChildCollection<SavedScreening>(childProfile.id, "screenings");
   const first = childProfile.name.split(" ")[0];
   const [copied, setCopied] = useState(false);
 
   const advCount = data.adventures.items.length;
   const advCorrect = data.adventures.items.filter((a) => a.correct).length;
+  const lastScreening = useMemo(
+    () => [...screeningsCol.items].sort((a, b) => (a.answeredAt < b.answeredAt ? 1 : -1))[0],
+    [screeningsCol.items]
+  );
+  const screeningWatchLabels = useMemo(
+    () => lastScreening?.watchAreas.map((w) => w.label) ?? [],
+    [lastScreening]
+  );
+  const watch = useMemo(
+    () => watchSignals({
+      age: childProfile.age,
+      screeningWatchLabels,
+      logs: behaviorLogs,
+      stats: data.stats,
+      bands,
+      missions: data.missions.items,
+      adventureScenes: advCount,
+      adventureCorrect: advCorrect,
+    }),
+    [childProfile.age, screeningWatchLabels, behaviorLogs, data.stats, bands, data.missions.items, advCount, advCorrect]
+  );
+  const dashboardRisk: "Low" | "Moderate" | "High" =
+    childProfile.riskLevel === "High" ? "High" :
+    watch.some((w) => w.level === "discuss") || childProfile.riskLevel === "Moderate" ? "Moderate" :
+    "Low";
 
   const clinicianSummary = useMemo(() => {
     const lines: string[] = [
@@ -40,7 +72,7 @@ export default function DevelopmentCopilot() {
       `Generated ${data.today} · Parent-collected observational data · NOT a diagnostic assessment`,
       ``,
       `Domain picture (milestone checklist + home practice signal):`,
-      ...bands.map((b) => `  • ${DOMAIN_META[b.domain].label}: ${BAND_COPY[b.band].label} (basis: ${b.basis.join(", ")})`),
+      ...bands.map((b) => `  • ${DOMAIN_META[b.domain].label}: ${BAND_COPY[b.band].label}; confidence ${confidence[b.domain]}; trend ${trend[b.domain] >= 0 ? "+" : ""}${Math.round(trend[b.domain])} (basis: ${b.basis.join(", ")})`),
       ``,
       `Home practice, last 7 days: ${data.week.sessions} interactions on ${data.week.activeDays} day(s) across ${data.week.domainsTouched.length} domain(s). Streak: ${data.streak} day(s).`,
     ];
@@ -53,9 +85,13 @@ export default function DevelopmentCopilot() {
     if (advCount > 0) {
       lines.push(``, `Comprehension play: ${advCorrect}/${advCount} first-try correct across logic, sequencing, vocabulary and instruction scenes.`);
     }
+    if (watch.length > 0) {
+      lines.push(``, `Non-diagnostic watch signals:`);
+      watch.forEach((w) => lines.push(`  • ${w.area}: ${w.level}; evidence: ${w.evidence.join("; ")}`));
+    }
     lines.push(``, `Current focus suggested to the family: ${recommendation.headline}.`);
     return lines.join("\n");
-  }, [bands, childProfile, data.today, data.week, data.streak, data.stats, advCount, advCorrect, recommendation]);
+  }, [bands, confidence, trend, childProfile, data.today, data.week, data.streak, data.stats, advCount, advCorrect, watch, recommendation]);
 
   const copySummary = async () => {
     try {
@@ -77,17 +113,24 @@ export default function DevelopmentCopilot() {
       />
 
       <TrustSafetyBar
-        risk={childProfile.riskLevel === "High" ? "High" : childProfile.riskLevel === "Moderate" ? "Moderate" : "Low"}
+        risk={dashboardRisk}
         note="Bands reflect parent-observed data only. They are a conversation starter for professionals — never a diagnosis."
         onEscalate={() => setActiveTab("find-pro")}
       />
 
       {/* Feature 9: domain bands vs chronological age context */}
       <SectionCard title={`Domain picture — chronological age ${childProfile.age}`} icon={<Gauge className="w-5 h-5" />} tone="mint">
-        <div className="space-y-4">
+        <div className="flex flex-col lg:flex-row gap-6 items-center mb-5">
+          <div className="flex-shrink-0">
+            <DomainRadar bands={bands} />
+            <p className="text-[10px] text-center mt-1" style={{ color: "var(--arbor-muted)" }}>Each axis is one domain&apos;s current signal (0–100).</p>
+          </div>
+          <div className="flex-1 w-full space-y-4">
           {bands.map((b) => {
             const meta = DOMAIN_META[b.domain];
             const copy = BAND_COPY[b.band];
+            const delta = trend[b.domain] ?? 0;
+            const TrendIcon = delta > 1 ? TrendingUp : delta < -1 ? TrendingDown : Minus;
             return (
               <div key={b.domain} className="flex items-center gap-4">
                 <span className="w-40 flex-shrink-0 text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{meta.label}</span>
@@ -107,14 +150,21 @@ export default function DevelopmentCopilot() {
                 <span className="w-28 flex-shrink-0 text-right">
                   <Chip tone={b.band === "strong" ? "mint" : b.band === "on-track" ? "sky" : b.band === "developing" ? "yellow" : "pink"}>{copy.label}</Chip>
                 </span>
+                <span className="w-28 flex-shrink-0 inline-flex items-center justify-end gap-1 text-[11px] font-bold" style={{ color: delta > 1 ? "#1f8a5a" : delta < -1 ? "#bd4f74" : "var(--arbor-muted)" }}>
+                  <TrendIcon className="w-3.5 h-3.5" /> {delta > 0 ? "+" : ""}{Math.round(delta)}
+                </span>
+                <span className="w-24 flex-shrink-0 text-right">
+                  <Chip tone={confidence[b.domain] === "high" ? "mint" : confidence[b.domain] === "medium" ? "sky" : "yellow"}>{confidence[b.domain]}</Chip>
+                </span>
               </div>
             );
           })}
+          </div>
         </div>
         <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
           {bands.map((b) => (
             <p key={b.domain}>
-              <b style={{ color: DOMAIN_META[b.domain].color }}>{DOMAIN_META[b.domain].label}:</b> {BAND_COPY[b.band].note}. <i>Based on: {b.basis.join(" + ")}.</i>
+              <b style={{ color: DOMAIN_META[b.domain].color }}>{DOMAIN_META[b.domain].label}:</b> {BAND_COPY[b.band].note}. Confidence: {confidence[b.domain]}; trend: {trend[b.domain] > 0 ? "+" : ""}{Math.round(trend[b.domain] ?? 0)}. <i>Based on: {b.basis.join(" + ")}.</i>
             </p>
           ))}
         </div>
@@ -139,6 +189,75 @@ export default function DevelopmentCopilot() {
             <p className="text-xs mt-1.5 leading-relaxed max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{recommendation.why}</p>
           </div>
         </div>
+      </SectionCard>
+
+      <SectionCard title="Watch signals" icon={<AlertTriangle className="w-5 h-5" />} tone={watch.some((w) => w.level === "discuss") ? "yellow" : "mint"}>
+        {watch.length === 0 ? (
+          <div className="rounded-2xl p-4" style={{ background: "#e4f4ec" }}>
+            <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>No watch signals yet.</p>
+            <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
+              Arbor needs enough recent practice, logged moments, or a Development Check before it raises a pattern. Silence here means "not enough concerning signal", not a clinical clearance.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {watch.map((w) => {
+              const tone = w.level === "discuss" ? "yellow" : "sky";
+              return (
+                <div key={w.id} className={`${cardCls} p-4`}>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{w.area}</p>
+                    <Chip tone={tone}>{w.level === "discuss" ? "Discuss" : "Monitor"}</Chip>
+                  </div>
+                  <p className="text-[11px] font-bold mb-1" style={{ color: DOMAIN_META[w.domain].color }}>{DOMAIN_META[w.domain].label}</p>
+                  <div className="space-y-1.5">
+                    {w.evidence.map((e, i) => (
+                      <p key={i} className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Evidence: {e}</p>
+                    ))}
+                  </div>
+                  <button onClick={() => setActiveTab("reports")} className="mt-3 text-[11px] font-extrabold" style={{ color: "#1f8a5a" }}>
+                    Prepare a professional summary -&gt;
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Weekly history" icon={<History className="w-5 h-5" />} tone="sky">
+        {snapshots.length === 0 ? (
+          <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
+            The first weekly band snapshot will appear here once the dashboard has loaded practice data.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[...snapshots].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 3).map((snap) => (
+              <div key={snap.id} className={`${cardCls} p-4`}>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{snap.id}</p>
+                  <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{snap.date}</span>
+                </div>
+                <div className="space-y-2">
+                  {snap.bands.map((b) => {
+                    const meta = DOMAIN_META[b.domain];
+                    return (
+                      <div key={b.domain}>
+                        <div className="flex justify-between text-[10px] font-bold mb-1">
+                          <span style={{ color: meta.color }}>{meta.label}</span>
+                          <span style={{ color: "var(--arbor-muted)" }}>{Math.round(b.signal)}</span>
+                        </div>
+                        <div className="h-2 rounded-full" style={{ background: "rgba(41,51,63,0.08)" }}>
+                          <div className="h-2 rounded-full" style={{ width: `${b.signal}%`, background: meta.color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </SectionCard>
 
       {/* Practice pulse */}

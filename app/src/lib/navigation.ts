@@ -4,7 +4,7 @@ import {
   LayoutDashboard, UserCircle, CheckCircle2, Activity, Languages,
   BookMarked, Search, Users, FileBarChart, Calendar,
   Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert, ClipboardCheck,
-  Mic, Smile, Target, Map, Gauge,
+  Mic, Smile, Target, Map, Gauge, HeartPulse, CalendarDays,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -67,8 +67,10 @@ export const SECTIONS: NavSection[] = [
     icon: Target,
     items: [
       { tab: "missions", label: "Daily Missions", icon: Target },
+      { tab: "journey", label: "Development Journey", icon: CalendarDays },
       { tab: "speech", label: "Speech Coach", icon: Mic },
       { tab: "mimic", label: "Mimic Studio", icon: Smile },
+      { tab: "feelings", label: "Feelings Lab", icon: HeartPulse },
       { tab: "adventures", label: "Adventures", icon: Map },
     ],
   },

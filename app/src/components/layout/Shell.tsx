@@ -44,7 +44,9 @@ const FamilyFormation = lazy(() => import("../sections/FamilyFormation"));
 // Practice Studio (Fall release: speech & language suite).
 const SpeechCoachTab = lazy(() => import("../practice/SpeechCoachTab"));
 const MimicStudioTab = lazy(() => import("../practice/MimicStudioTab"));
+const FeelingsLabTab = lazy(() => import("../practice/FeelingsLabTab"));
 const MissionsTab = lazy(() => import("../practice/MissionsTab"));
+const JourneyTab = lazy(() => import("../practice/JourneyTab"));
 const AdventuresTab = lazy(() => import("../practice/AdventuresTab"));
 const DevelopmentCopilot = lazy(() => import("../practice/DevelopmentCopilot"));
 
@@ -74,7 +76,9 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   family: FamilyFormation,
   speech: SpeechCoachTab,
   mimic: MimicStudioTab,
+  feelings: FeelingsLabTab,
   missions: MissionsTab,
+  journey: JourneyTab,
   adventures: AdventuresTab,
   copilot: DevelopmentCopilot,
 };

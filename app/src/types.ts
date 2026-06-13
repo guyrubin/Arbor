@@ -300,3 +300,44 @@ export interface AdventureResult {
 
 export type PracticeDomain = 'language' | 'speech' | 'cognition' | 'social' | 'emotional';
 export type AdventureSkill = 'vocabulary' | 'logic' | 'sequencing' | 'instructions' | 'abstract';
+
+/* ---------- Ten-epics gap closure (assessment depth, play, journey) ---------- */
+
+/** Generic practice/play interaction record powering passive assessment. */
+export type PracticeEventKind =
+  | 'emotion-id'        // matched a feeling to a face/scenario
+  | 'emotion-why'       // explored why a feeling happens
+  | 'calm'              // completed a breathing/calm-down exercise
+  | 'memory'            // memory-match round
+  | 'vocab-naming'      // named an object
+  | 'vocab-category'    // sorted/picked within a category
+  | 'expressive';       // open question / scene description / story starter
+
+export interface PracticeEvent {
+  id: string;
+  kind: PracticeEventKind;
+  domain: PracticeDomain;
+  /** True/false where the round has a right answer; omitted for open-ended. */
+  correct?: boolean;
+  /** 0-100 where graded (e.g. memory round completion quality). */
+  score?: number;
+  meta?: string;
+  timestamp: string;
+}
+
+/** Weekly persisted snapshot of the domain bands — the historical progression record. */
+export interface BandSnapshot {
+  id: string;            // ISO week key, e.g. "2026-W24"
+  date: string;          // YYYY-MM-DD when taken
+  bands: { domain: PracticeDomain; signal: number; band: string }[];
+}
+
+/** A monthly development objective on the Journey. */
+export interface JourneyObjective {
+  id: string;
+  month: string;         // YYYY-MM
+  title: string;
+  domain: PracticeDomain;
+  done: boolean;
+  createdAt: string;
+}

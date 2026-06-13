@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { AudioLines, Check, ChevronRight, Ear, Mic, MicOff, Play, Sparkles, Square, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { AudioLines, BookOpen, Check, ChevronRight, Ear, MessageCircle, Mic, MicOff, Play, Sparkles, Square, Tags, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
+import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
 import { matchResult } from "../../practice/signals";
 import { usePracticeData } from "../../practice/usePracticeData";
-import type { SpeechAttempt, SpeechLevel } from "../../types";
+import type { PracticeEvent, SpeechAttempt, SpeechLevel } from "../../types";
 import { track } from "../../lib/analytics";
 
 /* Minimal typing for the (vendor-prefixed) Web Speech API. */
@@ -51,11 +52,22 @@ export default function SpeechCoachTab() {
   const sound: SoundEntry = SOUND_LIBRARY.find((s) => s.id === soundId) ?? SOUND_LIBRARY[0];
   const [level, setLevel] = useState<SpeechLevel>("word");
   const [itemIdx, setItemIdx] = useState(0);
+  const [vocabSetId, setVocabSetId] = useState(VOCAB_SETS[0].id);
+  const [vocabIdx, setVocabIdx] = useState(0);
+  const [categoryIdx, setCategoryIdx] = useState(0);
+  const [categoryPick, setCategoryPick] = useState<number | null>(null);
+  const [expressIdx, setExpressIdx] = useState(0);
+  const [languageSaved, setLanguageSaved] = useState<string | null>(null);
 
   useEffect(() => { setItemIdx(0); }, [soundId, level]);
 
   const items = level === "word" ? sound.words : level === "sentence" ? sound.sentences : [sound.storyPrompt];
   const target = items[Math.min(itemIdx, items.length - 1)];
+  const vocabSet = VOCAB_SETS.find((s) => s.id === vocabSetId) ?? VOCAB_SETS[0];
+  const vocabItem = vocabSet.items[vocabIdx % vocabSet.items.length];
+  const categoryRound = CATEGORY_ROUNDS[categoryIdx % CATEGORY_ROUNDS.length];
+  const expressPrompt = EXPRESS_PROMPTS[expressIdx % EXPRESS_PROMPTS.length];
+  const fillChild = (text: string) => text.replace(/\{name\}/g, first);
 
   // ---- Record & Compare (feature 2). Audio stays on-device; only scores persist. ----
   const [recState, setRecState] = useState<"idle" | "recording" | "review">("idle");
@@ -152,6 +164,43 @@ export default function SpeechCoachTab() {
     cleanupAudio();
     track("speech_attempt", { sound: sound.id, level, result, method });
     if (result === "got" && itemIdx < items.length - 1) setItemIdx((i) => i + 1);
+  };
+
+  const savePracticeEvent = (kind: PracticeEvent["kind"], correct?: boolean, meta?: string) => {
+    const event: PracticeEvent = {
+      id: `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      kind,
+      domain: "language",
+      correct,
+      meta,
+      timestamp: new Date().toISOString(),
+    };
+    void data.events.upsert(event);
+    setLanguageSaved(kind);
+    window.setTimeout(() => setLanguageSaved(null), 1400);
+    track("practice_event", { kind, domain: "language", correct });
+  };
+
+  const markNamed = () => {
+    savePracticeEvent("vocab-naming", true, `${vocabSet.id}:${vocabItem.word}`);
+    setVocabIdx((i) => (i + 1) % vocabSet.items.length);
+  };
+
+  const chooseCategory = (idx: number) => {
+    if (categoryPick !== null) return;
+    setCategoryPick(idx);
+    const option = categoryRound.options[idx];
+    savePracticeEvent("vocab-category", option.correct, categoryRound.id);
+  };
+
+  const nextCategory = () => {
+    setCategoryIdx((i) => (i + 1) % CATEGORY_ROUNDS.length);
+    setCategoryPick(null);
+  };
+
+  const completeExpress = () => {
+    savePracticeEvent("expressive", true, expressPrompt.id);
+    setExpressIdx((i) => (i + 1) % EXPRESS_PROMPTS.length);
   };
 
   // ---- Per-sound progress (feature 3) ----
@@ -314,6 +363,102 @@ export default function SpeechCoachTab() {
               <Check className="w-3.5 h-3.5" /> Saved
             </span>
           )}
+        </div>
+      </SectionCard>
+
+      {/* Vocabulary expansion + expressive language (Epic 3) */}
+      <SectionCard title="Words & Express" icon={<BookOpen className="w-5 h-5" />} tone="mint"
+        action={<Chip tone="mint">Language practice</Chip>}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className={`${cardCls} p-4`}>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <Tags className="w-4 h-4" style={{ color: "#1f8a5a" }} />
+                <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Object naming</p>
+              </div>
+              <Chip tone="mint">{vocabSet.category}</Chip>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {VOCAB_SETS.map((set) => (
+                <button
+                  key={set.id}
+                  onClick={() => { setVocabSetId(set.id); setVocabIdx(0); }}
+                  className="rounded-full px-3 py-1.5 text-[11px] font-extrabold"
+                  style={set.id === vocabSetId ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+                >
+                  {set.emoji} {set.category}
+                </button>
+              ))}
+            </div>
+            <div className="rounded-2xl p-5 text-center" style={{ background: "var(--arbor-paper-deep)" }}>
+              <p className="text-5xl">{vocabItem.emoji}</p>
+              <p className="text-xl font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{vocabItem.word}</p>
+              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Ask {first}: "What is this?" Then expand one word into a short sentence.</p>
+            </div>
+            <button onClick={markNamed} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "#34b277" }}>
+              {languageSaved === "vocab-naming" ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+              {languageSaved === "vocab-naming" ? "Saved" : "Named it"}
+            </button>
+          </div>
+
+          <div className={`${cardCls} p-4`}>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <Tags className="w-4 h-4" style={{ color: "#2f7bbf" }} />
+                <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Category pick</p>
+              </div>
+              <Chip tone="sky">{categoryIdx + 1} of {CATEGORY_ROUNDS.length}</Chip>
+            </div>
+            <p className="text-sm font-extrabold mb-3" style={{ color: "var(--arbor-ink)" }}>{categoryRound.question}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {categoryRound.options.map((option, idx) => {
+                const picked = categoryPick === idx;
+                return (
+                  <button
+                    key={`${categoryRound.id}-${option.word}`}
+                    onClick={() => chooseCategory(idx)}
+                    disabled={categoryPick !== null}
+                    className={`${cardCls} p-3 text-center transition`}
+                    style={{ border: picked ? `2px solid ${option.correct ? "#34b277" : "#bd4f74"}` : "1px solid rgba(41,51,63,0.06)" }}
+                  >
+                    <span className="text-3xl block">{option.emoji}</span>
+                    <span className="text-[11px] font-bold block mt-1" style={{ color: "var(--arbor-ink)" }}>{option.word}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {categoryPick !== null && (
+              <div className="mt-3 rounded-2xl p-3 flex items-center gap-3" style={{ background: categoryRound.options[categoryPick].correct ? "#e4f4ec" : "#fbf1d4" }}>
+                <p className="text-[11px] flex-1" style={{ color: "var(--arbor-ink)" }}>
+                  {categoryRound.options[categoryPick].correct ? "Nice sorting. Name one more thing in that category." : "Warm retry: talk through why the correct one belongs."}
+                </p>
+                <button onClick={nextCategory} className="text-[11px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "#2f7bbf" }}>
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className={`${cardCls} p-4`}>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4" style={{ color: "#cf6f37" }} />
+                <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Express mode</p>
+              </div>
+              <Chip tone="coral">{expressPrompt.kind.replace("-", " ")}</Chip>
+            </div>
+            <div className="rounded-2xl p-5" style={{ background: "var(--arbor-paper-deep)" }}>
+              <p className="text-4xl">{expressPrompt.emoji}</p>
+              <p className="text-base font-extrabold mt-3 leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                {fillChild(expressPrompt.prompt)}
+              </p>
+              <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Parent tip:</b> {expressPrompt.parentTip}</p>
+            </div>
+            <button onClick={completeExpress} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "#cf6f37" }}>
+              {languageSaved === "expressive" ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+              {languageSaved === "expressive" ? "Saved" : "We answered it"}
+            </button>
+          </div>
         </div>
       </SectionCard>
 

@@ -1,9 +1,12 @@
 import type {
   AdventureResult,
+  BandSnapshot,
+  DevelopmentMetrics,
   Milestone,
   MimicSession,
   MissionRecord,
   PracticeDomain,
+  PracticeEvent,
   SpeechAttempt,
   SpeechLevel,
 } from "../types";
@@ -99,13 +102,15 @@ export function weeklyActivity(
   mimic: MimicSession[],
   missions: MissionRecord[],
   adventures: AdventureResult[],
-  today: string
+  today: string,
+  practiceEvents: PracticeEvent[] = []
 ): WeeklyActivity {
   const events: { day: string; domain: PracticeDomain }[] = [
     ...speech.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.timestamp.slice(0, 10), domain: "speech" as const })),
     ...mimic.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.timestamp.slice(0, 10), domain: "speech" as const })),
     ...missions.filter((x) => x.completed && inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.date, domain: x.domain })),
     ...adventures.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.timestamp.slice(0, 10), domain: "cognition" as const })),
+    ...practiceEvents.filter((x) => inLastDays(x.timestamp, today, 7)).map((x) => ({ day: x.timestamp.slice(0, 10), domain: x.domain })),
   ];
   return {
     sessions: events.length,
@@ -153,16 +158,28 @@ function toBand(signal: number): BandLevel {
   return "emerging";
 }
 
+/** Accuracy 0–100 over events with a defined correct flag; null when too few. */
+function eventAccuracy(events: PracticeEvent[], kinds: PracticeEvent["kind"][], minN = 3): number | null {
+  const graded = events.filter((e) => kinds.includes(e.kind) && e.correct !== undefined);
+  if (graded.length < minN) return null;
+  return (graded.filter((e) => e.correct).length / graded.length) * 100;
+}
+
 /**
  * Blend milestone completion with live practice signal per domain.
  * Milestones anchor the band; practice data refines it where it exists.
  * Deliberately returns bands — never "developmental age" point estimates.
+ *
+ * `events` (Feelings Lab, Words/Express modes, Memory Match) and `heroMetrics`
+ * (story-choice deltas) extend the passive-assessment inputs when present.
  */
 export function domainBands(
   milestones: Milestone[],
   speech: SpeechAttempt[],
   missions: MissionRecord[],
-  adventures: AdventureResult[]
+  adventures: AdventureResult[],
+  events: PracticeEvent[] = [],
+  heroMetrics?: Partial<DevelopmentMetrics>
 ): DomainBand[] {
   const milestonePct = new Map<PracticeDomain, number>();
   const counts = new Map<PracticeDomain, { done: number; total: number }>();
@@ -188,6 +205,18 @@ export function domainBands(
     return Math.min(done * 2, 10); // sustained practice nudges the band, max +10
   };
 
+  const emotionAcc = eventAccuracy(events, ["emotion-id", "emotion-why"]);
+  const languageAcc = eventAccuracy(events, ["vocab-naming", "vocab-category", "expressive"]);
+  const memoryScores = events.filter((e) => e.kind === "memory" && e.score !== undefined);
+  const memoryAcc = memoryScores.length >= 2
+    ? memoryScores.reduce((s, e) => s + (e.score ?? 0), 0) / memoryScores.length
+    : null;
+  const calmCount = events.filter((e) => e.kind === "calm").length;
+  // Story-choice metrics: empathy reads as social signal; courage/resilience as
+  // emotional regulation practice. Capped nudges, not drivers.
+  const heroSocial = Math.min((heroMetrics?.empathy ?? 0) * 2, 8);
+  const heroEmotional = Math.min(((heroMetrics?.courage ?? 0) + (heroMetrics?.resilience ?? 0)) * 1.5, 8);
+
   const domains: PracticeDomain[] = ["language", "speech", "cognition", "social", "emotional"];
   return domains.map((domain) => {
     const basis: string[] = [];
@@ -204,9 +233,37 @@ export function domainBands(
       const ms = milestonePct.get(domain);
       signal = ms ?? 50;
       basis.push(ms !== undefined ? "milestone checklist" : "no milestone data yet");
-      if (domain === "cognition" && advBySkillDomain !== null) {
-        signal = signal * 0.6 + advBySkillDomain * 0.4;
-        basis.push("Adventure comprehension");
+      if (domain === "cognition") {
+        if (advBySkillDomain !== null) {
+          signal = signal * 0.6 + advBySkillDomain * 0.4;
+          basis.push("Adventure comprehension");
+        }
+        if (memoryAcc !== null) {
+          signal = signal * 0.75 + memoryAcc * 0.25;
+          basis.push("Memory Match");
+        }
+      }
+      if (domain === "language" && languageAcc !== null) {
+        signal = signal * 0.6 + languageAcc * 0.4;
+        basis.push("Words & Express practice");
+      }
+      if (domain === "emotional") {
+        if (emotionAcc !== null) {
+          signal = signal * 0.6 + emotionAcc * 0.4;
+          basis.push("Feelings Lab");
+        }
+        if (calmCount > 0) {
+          signal += Math.min(calmCount, 5);
+          basis.push("calm-down practice");
+        }
+        if (heroEmotional > 0) {
+          signal += heroEmotional;
+          basis.push("story choices");
+        }
+      }
+      if (domain === "social" && heroSocial > 0) {
+        signal += heroSocial;
+        basis.push("story choices");
       }
     }
     const boost = missionBoost(domain);
@@ -214,6 +271,81 @@ export function domainBands(
     signal = Math.max(0, Math.min(100, signal + boost));
     return { domain, signal: Math.round(signal), band: toBand(signal), basis };
   });
+}
+
+/* ---------------- Assessment depth (Epic 1): confidence, history, trend ---------------- */
+
+export type ConfidenceLevel = "low" | "medium" | "high";
+
+/**
+ * How much observed data backs each domain's band. Pure volume+recency framing
+ * ("based on a little / a fair amount / a lot of recent observation") — it does
+ * not claim statistical confidence.
+ */
+export function domainConfidence(
+  domain: PracticeDomain,
+  milestones: Milestone[],
+  speech: SpeechAttempt[],
+  adventures: AdventureResult[],
+  events: PracticeEvent[],
+  missions: MissionRecord[]
+): ConfidenceLevel {
+  const ms = milestones.filter((m) => m.checked).length > 0 ? 4 : 0;
+  let n = ms + missions.filter((r) => r.completed && r.domain === domain).length;
+  if (domain === "speech") n += speech.length;
+  if (domain === "cognition") n += adventures.length + events.filter((e) => e.kind === "memory").length;
+  if (domain === "language") n += events.filter((e) => ["vocab-naming", "vocab-category", "expressive"].includes(e.kind)).length;
+  if (domain === "emotional") n += events.filter((e) => ["emotion-id", "emotion-why", "calm"].includes(e.kind)).length;
+  if (n >= 20) return "high";
+  if (n >= 6) return "medium";
+  return "low";
+}
+
+/** ISO week key, e.g. "2026-W24". */
+export function weekKey(d: Date): string {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+/** Build this week's snapshot if none exists yet (the historical-progression record). */
+export function pendingSnapshot(existing: BandSnapshot[], bands: DomainBand[], today: string): BandSnapshot | null {
+  const wk = weekKey(new Date(`${today}T12:00:00`));
+  if (existing.some((s) => s.id === wk)) return null;
+  return { id: wk, date: today, bands: bands.map((b) => ({ domain: b.domain, signal: b.signal, band: b.band })) };
+}
+
+/** Per-domain change vs the previous snapshot (for trend arrows). */
+export function bandTrend(history: BandSnapshot[], current: DomainBand[]): Record<PracticeDomain, number> {
+  const sorted = [...history].sort((a, b) => (a.id < b.id ? -1 : 1));
+  const prev = sorted.length >= 2 ? sorted[sorted.length - 2] : sorted[sorted.length - 1];
+  const out = {} as Record<PracticeDomain, number>;
+  for (const b of current) {
+    const p = prev?.bands.find((x) => x.domain === b.domain);
+    out[b.domain] = p ? b.signal - p.signal : 0;
+  }
+  return out;
+}
+
+/* ---------------- Adaptive play difficulty (Epic 8) ---------------- */
+
+/**
+ * Memory Match grid size adapts to recent performance: start small, grow on
+ * sustained success, ease back after a hard round. Returns total card count.
+ */
+export function memoryGridSize(recentScores: number[]): 6 | 8 | 12 {
+  const last3 = recentScores.slice(-3);
+  const avg = last3.length ? last3.reduce((s, x) => s + x, 0) / last3.length : 0;
+  if (last3.length < 2) return 6;
+  if (avg >= 80) {
+    if (recentScores.length >= 6 && recentScores.slice(-6).every((s) => s >= 80)) return 12;
+    return 8;
+  }
+  if (avg >= 60) return 8;
+  return 6;
 }
 
 export interface CopilotRecommendation {
