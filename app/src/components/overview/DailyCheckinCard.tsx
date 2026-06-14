@@ -20,7 +20,7 @@ export default function DailyCheckinCard() {
 
   return (
     <div className={`${cardCls} p-6 space-y-4`}>
-      <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+      <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
         <HeartPulse className="w-3.5 h-3.5" /> Today&apos;s check-in
       </span>
 
@@ -33,7 +33,7 @@ export default function DailyCheckinCard() {
               onClick={() => save({ mood: i + 1 })}
               aria-label={`Mood ${i + 1}`}
               className="flex-1 py-2 rounded-xl text-xl transition"
-              style={cur.mood === i + 1 ? { background: "#e4f4ec", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
+              style={cur.mood === i + 1 ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
             >
               {m}
             </button>
@@ -43,8 +43,8 @@ export default function DailyCheckinCard() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Moon className="w-3 h-3" /> Sleep: <span style={{ color: "#1f8a5a" }}>{cur.sleepHours}h</span></span>
-          <input type="range" min={4} max={16} value={cur.sleepHours} onChange={(e) => save({ sleepHours: parseInt(e.target.value) })} className="w-full" style={{ accentColor: "#34b277" }} />
+          <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Moon className="w-3 h-3" /> Sleep: <span style={{ color: "var(--arbor-green-ink)" }}>{cur.sleepHours}h</span></span>
+          <input type="range" min={4} max={16} value={cur.sleepHours} onChange={(e) => save({ sleepHours: parseInt(e.target.value) })} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
         </div>
         <div className="space-y-1">
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Utensils className="w-3 h-3" /> Appetite</span>
@@ -54,7 +54,7 @@ export default function DailyCheckinCard() {
                 key={a}
                 onClick={() => save({ appetite: a })}
                 className="flex-1 py-1.5 rounded-lg text-[10px] font-bold capitalize transition"
-                style={cur.appetite === a ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                style={cur.appetite === a ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {a}
               </button>

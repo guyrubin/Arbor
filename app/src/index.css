@@ -1,47 +1,64 @@
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Heebo:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
-/* ─── Design Tokens — "Soft Daylight" ────────────────────────────────────────
-   A friendly, image-rich child-development dashboard: a faint mint canvas, pure
-   white rounded cards, GREEN as the single primary (logo, CTA, active nav,
-   gauges), and a pastel set for category icon chips. The component library is
-   authored in dark Tailwind classes; the override layer below maps them onto
-   this light, colorful system. (Token names are preserved for compatibility;
-   values are repurposed — `--arbor-clay` is now the primary green.) */
+/* ─── Design Tokens — "Soft Daylight" v2 ─────────────────────────────────────
+   A calm, image-rich child-development workspace. A cool off-white canvas (not
+   a flat mint), pure-white rounded cards on layered soft shadows, GREEN as the
+   single primary (logo, CTA, active nav, gauges), and a restrained pastel set
+   for category chips. Components are authored in two ways: (1) older views in
+   dark Tailwind classes that the override layer below remaps onto this light
+   system, and (2) newer views with inline styles referencing these tokens.
+   Brand-green + ink + muted values are stable (inline literals depend on them);
+   the neutral canvas, surfaces, shadows, radii, type and spacing are refined
+   here so the whole app gains structure and finish from one place. */
 :root {
-  /* Surfaces */
-  --arbor-paper:          #eef5f0;   /* app canvas, faint mint */
+  /* Surfaces — cool, faintly green, de-pastelled */
+  --arbor-paper:          #eef2ef;   /* app canvas */
   --arbor-paper-elevated: #ffffff;   /* cards + sidebar */
-  --arbor-paper-deep:     #f4f8f5;   /* subtle wells / recessed */
-  --arbor-ink:            #29333f;   /* primary text, soft slate-black */
-  --arbor-muted:          #69747f;   /* secondary text */
-  --arbor-rule:           rgba(41, 51, 63, 0.08);
-  --arbor-rule-strong:    rgba(41, 51, 63, 0.14);
+  --arbor-paper-deep:     #f4f8f5;   /* subtle wells / recessed (literal-linked) */
+  --arbor-paper-sunk:     #e9eeea;   /* deeper wells, track backgrounds */
+  --arbor-ink:            #29333f;   /* primary text, soft slate-black (literal-linked) */
+  --arbor-ink-soft:       #3c4853;   /* sub-headings */
+  --arbor-muted:          #5f6b75;   /* secondary text — nudged darker for AA */
+  --arbor-faint:          #6b747b;   /* tertiary / captions (AA on white) */
+  --arbor-rule:           rgba(41, 51, 63, 0.09);
+  --arbor-rule-strong:    rgba(41, 51, 63, 0.15);
 
-  /* Primary — friendly green (repurposes the clay token name) */
+  /* Primary — friendly green (repurposes the clay token name; stable values) */
   --arbor-clay:           #34b277;
   --arbor-clay-deep:      #2a9c66;
   --arbor-clay-dim:       rgba(52, 178, 119, 0.12);
   --arbor-green-soft:     #e4f4ec;   /* mint pill: active nav, soft chips */
+  --arbor-green-ink:      #1f8a5a;   /* text on green-soft (AA on mint) */
   --arbor-sage:           #34b277;
 
-  /* Pastel functional accents — soft tint bg + saturated icon/fg */
-  --arbor-peach:      #ef8a52;  --arbor-peach-soft:  #fdeada;
-  --arbor-lav:        #8a7be2;  --arbor-lav-soft:    #ece9fb;
-  --arbor-yellow:     #d99f2e;  --arbor-yellow-soft: #fbf1d4;
-  --arbor-pink:       #e3789b;  --arbor-pink-soft:   #fce2ec;
-  --arbor-sky:        #4f9bd6;  --arbor-sky-soft:    #e5f0fb;
-  --arbor-blue:       #4f9bd6;
-  --arbor-ochre:      #d99f2e;
+  /* Pastel functional accents — soft tint bg, saturated icon/fill, AA-safe ink for text */
+  --arbor-peach:      #d9763f;  --arbor-peach-soft:  #fceadb;  --arbor-peach-ink:  #a8511c;
+  --arbor-lav:        #7a6bd8;  --arbor-lav-soft:    #ece9fb;  --arbor-lav-ink:    #5a4cc0;
+  --arbor-yellow:     #c2882a;  --arbor-yellow-soft: #f8efd6;  --arbor-yellow-ink: #8a6512;
+  --arbor-pink:       #d65f87;  --arbor-pink-soft:   #fbe1ea;  --arbor-pink-ink:   #a13a5f;
+  --arbor-sky:        #3f8cc9;  --arbor-sky-soft:    #e4f0fa;  --arbor-sky-ink:    #2b6da3;
+  --arbor-blue:       #3f8cc9;
+  --arbor-ochre:      #c2882a;
+  --arbor-danger:     #d6566f;
 
-  --font-display: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+  --font-display: 'Fraunces', 'Nunito', Georgia, 'Times New Roman', serif;
   --font-sans:    'Nunito', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
-  /* Soft, friendly shadows (low, slightly green-neutral) */
+  /* Type scale (rem, product-fixed) */
+  --t-xs: 0.75rem; --t-sm: 0.8125rem; --t-base: 0.9375rem; --t-md: 1.0625rem;
+  --t-lg: 1.1875rem; --t-xl: 1.4375rem; --t-2xl: 1.75rem;
+
+  /* Radii */
+  --r-sm: 10px; --r: 14px; --r-lg: 18px; --r-xl: 22px;
+
+  /* Layered, low, slightly green-neutral shadows */
   --shadow-xs:   0 1px 2px rgba(41,51,63,0.05);
-  --shadow-sm:   0 2px 8px rgba(41,51,63,0.05), 0 1px 2px rgba(41,51,63,0.04);
-  --shadow-md:   0 8px 24px rgba(41,51,63,0.07), 0 2px 6px rgba(41,51,63,0.05);
-  --shadow-green:0 8px 20px rgba(52,178,119,0.28), 0 2px 6px rgba(52,178,119,0.18);
+  --shadow-sm:   0 2px 6px -1px rgba(41,51,63,0.06), 0 1px 2px rgba(41,51,63,0.05);
+  --shadow-md:   0 10px 26px -8px rgba(41,51,63,0.12), 0 3px 8px -3px rgba(41,51,63,0.07);
+  --shadow-lg:   0 28px 56px -20px rgba(41,51,63,0.22), 0 8px 18px -10px rgba(41,51,63,0.12);
+  --shadow-green:0 10px 22px -6px rgba(52,178,119,0.34), 0 2px 6px rgba(52,178,119,0.18);
+  --ring:        0 0 0 3px rgba(52, 178, 119, 0.18);
 }
 
 /* ─── Semantic surfaces (token-based; preferred for new/refactored UI) ─────── */
@@ -55,20 +72,46 @@
 /* ─── Base ───────────────────────────────────────────────────────────────── */
 html, body, #root { min-height: 100%; }
 
+/* ─── Hebrew / RTL ────────────────────────────────────────────────────────────
+   Latin families (Fraunces/Nunito) have no Hebrew glyphs, so swap to a Hebrew
+   serif (display) + sans (body) when the UI is Hebrew. The LanguageContext sets
+   <html lang/dir>; flex/grid auto-mirror under dir=rtl, with a few explicit
+   border/position flips for the shell. */
+html[lang="he"] {
+  --font-sans: "Heebo", "Assistant", -apple-system, system-ui, sans-serif;
+  --font-display: "Frank Ruhl Libre", "Heebo", Georgia, serif;
+}
+html[lang="he"] .display,
+html[lang="he"] .title,
+html[lang="he"] .arbor-app h1,
+html[lang="he"] .arbor-app h2,
+html[lang="he"] .arbor-app h3 { letter-spacing: 0; }
+html[dir="rtl"] .arbor-app aside:first-of-type {
+  border-right: none !important;
+  border-left: 1px solid var(--arbor-rule) !important;
+}
+html[dir="rtl"] .arbor-app .no-scrollbar { direction: rtl; }
+
 body {
   margin: 0;
   background: var(--arbor-paper);
   color: var(--arbor-ink);
   font-family: var(--font-sans);
+  font-size: var(--t-base);
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* ─── App Shell — clean mint canvas, no grid/grain ───────────────────────── */
+/* ─── App Shell — soft daylight canvas with a faint, calming wash ─────────── */
 .arbor-app {
   font-family: var(--font-sans);
-  background: var(--arbor-paper);
   color: var(--arbor-ink);
+  background:
+    radial-gradient(1100px 620px at 8% -6%, rgba(52,178,119,0.06), transparent 60%),
+    radial-gradient(900px 600px at 102% 0%, rgba(63,140,201,0.045), transparent 55%),
+    var(--arbor-paper);
+  background-attachment: fixed;
 }
 
 /* ─── Typography — Baloo 2 display, Nunito body ──────────────────────────── */
@@ -76,15 +119,19 @@ body {
 .arbor-app h2,
 .arbor-app h3 {
   font-family: var(--font-display) !important;
-  font-weight: 700;
+  font-weight: 600 !important;
+  font-optical-sizing: auto;
   letter-spacing: -0.01em;
+  line-height: 1.18;
   text-wrap: balance;
+  color: var(--arbor-ink);
 }
 .arbor-app h4,
 .arbor-app h5,
 .arbor-app h6 {
   font-family: var(--font-sans) !important;
   font-weight: 700;
+  letter-spacing: -0.005em;
 }
 .arbor-app p { text-wrap: pretty; }
 .arbor-app button,
@@ -97,11 +144,11 @@ body {
 }
 
 /* ─── Border Radius — friendly + rounded ─────────────────────────────────── */
-.arbor-app .rounded-lg   { border-radius: 12px !important; }
-.arbor-app .rounded-xl   { border-radius: 14px !important; }
-.arbor-app .rounded-2xl  { border-radius: 18px !important; }
+.arbor-app .rounded-lg   { border-radius: var(--r-sm) !important; }
+.arbor-app .rounded-xl   { border-radius: var(--r) !important; }
+.arbor-app .rounded-2xl  { border-radius: var(--r-lg) !important; }
 .arbor-app .rounded-3xl,
-.arbor-app .rounded-\[36px\] { border-radius: 22px !important; }
+.arbor-app .rounded-\[36px\] { border-radius: var(--r-xl) !important; }
 
 /* ─── Card surfaces: dark component bg classes → clean white ─────────────── */
 .arbor-app [class*="bg-[#08090c]"],
@@ -113,8 +160,10 @@ body {
 }
 
 /* ─── Text colour remapping ──────────────────────────────────────────────── */
+/* NB: .text-white is intentionally NOT remapped — new components use it for
+   white text on colored buttons (green/clay/sky), which must stay white. Only
+   the retired dark-theme's light-gray text tokens map down to ink. */
 .arbor-app [class*="text-[#f7f1e7]"],
-.arbor-app .text-white,
 .arbor-app .text-gray-100,
 .arbor-app .text-gray-200,
 .arbor-app .text-gray-300,
@@ -146,7 +195,6 @@ body {
 }
 
 /* ─── Pastel functional accents (soft tints for category chips) ──────────── */
-/* Primary-green soft tints */
 .arbor-app [class*="bg-[#d7aa55]/10"],
 .arbor-app [class*="bg-[#d7aa55]/15"],
 .arbor-app [class*="bg-[#d7aa55]/5"],
@@ -156,27 +204,23 @@ body {
 .arbor-app [class*="bg-amber-400/10"] {
   background-color: var(--arbor-green-soft) !important;
 }
-/* Sky */
 .arbor-app .bg-blue-500 { background-color: var(--arbor-sky) !important; }
 .arbor-app [class*="bg-blue-500/"],
 .arbor-app [class*="bg-blue-400/"],
 .arbor-app [class*="bg-sky-500/"] { background-color: var(--arbor-sky-soft) !important; }
 .arbor-app [class*="text-blue-"],
 .arbor-app [class*="text-sky-"] { color: var(--arbor-sky) !important; }
-.arbor-app [class*="border-blue-"] { border-color: rgba(79,155,214,0.22) !important; }
-/* Lavender */
+.arbor-app [class*="border-blue-"] { border-color: rgba(63,140,201,0.22) !important; }
 .arbor-app [class*="bg-purple-500/"],
 .arbor-app [class*="bg-violet-500/"],
 .arbor-app [class*="bg-indigo-500/"] { background-color: var(--arbor-lav-soft) !important; }
 .arbor-app [class*="text-purple-"],
 .arbor-app [class*="text-violet-"],
 .arbor-app [class*="text-indigo-"] { color: var(--arbor-lav) !important; }
-/* Pink */
 .arbor-app [class*="bg-pink-500/"],
 .arbor-app [class*="bg-rose-500/"] { background-color: var(--arbor-pink-soft) !important; }
 .arbor-app [class*="text-pink-"],
 .arbor-app [class*="text-rose-"] { color: var(--arbor-pink) !important; }
-/* Peach (warm highlight, e.g. "worth tracking" pills) */
 .arbor-app [class*="bg-orange-500/"],
 .arbor-app [class*="bg-orange-400/"] { background-color: var(--arbor-peach-soft) !important; }
 .arbor-app [class*="text-orange-"] { color: var(--arbor-peach) !important; }
@@ -196,11 +240,11 @@ body {
   border-color: rgba(52,178,119,0.30) !important;
 }
 
-/* ─── Shadows: soft daylight ─────────────────────────────────────────────── */
+/* ─── Shadows: soft daylight, layered ───────────────────────────────────── */
 .arbor-app [class*="shadow-"]    { box-shadow: var(--shadow-sm) !important; }
-.arbor-app [class*="shadow-lg"]  { box-shadow: var(--shadow-sm) !important; }
+.arbor-app [class*="shadow-lg"]  { box-shadow: var(--shadow-md) !important; }
 .arbor-app [class*="shadow-xl"]  { box-shadow: var(--shadow-md) !important; }
-.arbor-app [class*="shadow-2xl"] { box-shadow: var(--shadow-md) !important; }
+.arbor-app [class*="shadow-2xl"] { box-shadow: var(--shadow-lg) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SIDEBAR + AI RAIL — light surfaces that read as part of the page
@@ -214,7 +258,6 @@ body {
 .arbor-app aside:first-of-type { border-right: 1px solid var(--arbor-rule) !important; }
 .arbor-app aside:last-of-type  { border-left: 1px solid var(--arbor-rule) !important; }
 
-/* Nested panels inside the rails: faint mint wells */
 .arbor-app aside [class*="bg-[#08090c]"],
 .arbor-app aside [class*="bg-[#141821]"],
 .arbor-app aside [class*="bg-[#12141c]"],
@@ -226,11 +269,9 @@ body {
 .arbor-app nav button {
   transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
 }
-/* Active item: the only one carrying the static `bg-white/5` token (inactive
-   buttons carry `hover:bg-white/5`), so `~=` targets only the active one. */
 .arbor-app nav button[class~="bg-white/5"] {
   background-color: var(--arbor-green-soft) !important;
-  color: var(--arbor-clay-deep) !important;
+  color: var(--arbor-green-ink) !important;
   border-color: transparent !important;
   font-weight: 700;
 }
@@ -251,8 +292,6 @@ body {
   box-shadow: var(--shadow-green) !important;
   transform: translateY(-1px);
 }
-
-/* Ghost / secondary buttons */
 .arbor-app button[class*="bg-white/5"]:not([class~="bg-white/5"]) {
   background-color: var(--arbor-paper-deep) !important;
 }
@@ -267,19 +306,19 @@ body {
   background-color: var(--arbor-paper-deep) !important;
   border-color: var(--arbor-rule-strong) !important;
   color: var(--arbor-ink) !important;
-  border-radius: 12px;
+  border-radius: var(--r-sm);
 }
 .arbor-app input:focus,
 .arbor-app textarea:focus,
 .arbor-app select:focus {
   outline: none !important;
   border-color: var(--arbor-clay) !important;
-  box-shadow: 0 0 0 3px rgba(52, 178, 119, 0.16) !important;
+  box-shadow: var(--ring) !important;
 }
 .arbor-app input::placeholder,
 .arbor-app textarea::placeholder {
-  color: var(--arbor-muted) !important;
-  opacity: 0.75;
+  color: var(--arbor-faint) !important;
+  opacity: 1;
 }
 
 /* ─── Utilities ──────────────────────────────────────────────────────────── */
@@ -287,17 +326,17 @@ body {
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ─── Scrollbars ──────────────────────────────────────────────────────────── */
-.arbor-app ::-webkit-scrollbar          { width: 8px; height: 8px; }
+.arbor-app ::-webkit-scrollbar          { width: 9px; height: 9px; }
 .arbor-app ::-webkit-scrollbar-track    { background: transparent; }
-.arbor-app ::-webkit-scrollbar-thumb    { background: var(--arbor-rule-strong); border-radius: 99px; }
-.arbor-app ::-webkit-scrollbar-thumb:hover { background: var(--arbor-muted); }
+.arbor-app ::-webkit-scrollbar-thumb    { background: var(--arbor-rule-strong); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
+.arbor-app ::-webkit-scrollbar-thumb:hover { background: var(--arbor-faint); }
 
 /* ─── Status Colours ─────────────────────────────────────────────────────── */
 .arbor-app [class*="text-green-400"],
-.arbor-app [class*="text-green-500"] { color: var(--arbor-clay) !important; }
+.arbor-app [class*="text-green-500"] { color: var(--arbor-clay-deep) !important; }
 .arbor-app [class*="bg-green-500"]:not([class*="/"]) { background-color: var(--arbor-clay) !important; }
 .arbor-app [class*="bg-green-500/"]  { background-color: var(--arbor-green-soft) !important; }
-.arbor-app [class*="text-red-"]      { color: #e1607a !important; }
+.arbor-app [class*="text-red-"]      { color: var(--arbor-danger) !important; }
 .arbor-app [class*="bg-red-500/"]    { background-color: var(--arbor-pink-soft) !important; }
 
 /* ─── Stagger Entry Animations ────────────────────────────────────────────── */
@@ -306,11 +345,11 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .arbor-app main > div > *:nth-child(1) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay:   0ms; }
-.arbor-app main > div > *:nth-child(2) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay:  70ms; }
-.arbor-app main > div > *:nth-child(3) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 140ms; }
-.arbor-app main > div > *:nth-child(4) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 210ms; }
-.arbor-app main > div > *:nth-child(5) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 280ms; }
-.arbor-app main > div > *:nth-child(6) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 350ms; }
+.arbor-app main > div > *:nth-child(2) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay:  60ms; }
+.arbor-app main > div > *:nth-child(3) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 120ms; }
+.arbor-app main > div > *:nth-child(4) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 180ms; }
+.arbor-app main > div > *:nth-child(5) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 240ms; }
+.arbor-app main > div > *:nth-child(6) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 300ms; }
 
 /* ─── AI Rail Engine Cards ────────────────────────────────────────────────── */
 .arbor-app aside button[class*="rounded-xl"] {
@@ -331,14 +370,15 @@ body {
 }
 
 /* ─── Typography scale (display utilities) ───────────────────────────────── */
-.arbor-display-xl { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 3.4vw, 2.85rem); line-height: 1.08; letter-spacing: -0.015em; }
-.arbor-display-lg { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.5rem, 2.4vw, 1.95rem); line-height: 1.15; letter-spacing: -0.01em; }
+.arbor-display-xl { font-family: var(--font-display); font-weight: 600; font-optical-sizing: auto; font-size: clamp(1.9rem, 3.2vw, 2.65rem); line-height: 1.08; letter-spacing: -0.015em; }
+.arbor-display-lg { font-family: var(--font-display); font-weight: 600; font-optical-sizing: auto; font-size: clamp(1.45rem, 2.4vw, 1.9rem); line-height: 1.16; letter-spacing: -0.012em; }
 .arbor-label {
   font: 700 0.6875rem/1 var(--font-sans);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
+  color: var(--arbor-faint);
 }
-.arbor-muted-text { color: var(--arbor-muted); font-size: 0.875rem; }
+.arbor-muted-text { color: var(--arbor-muted); font-size: var(--t-sm); }
 
 /* ─── Skeleton shimmer ────────────────────────────────────────────────────── */
 .arbor-skeleton {

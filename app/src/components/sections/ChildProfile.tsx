@@ -5,6 +5,7 @@ import {
   BookMarked, Waypoints, ClipboardCheck, Sliders,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, Chip, IconBadge, cardCls, PASTEL } from "../ui/kit";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -21,6 +22,7 @@ export default function ChildProfile() {
     childProfile, milestones, milestonesPercent, checkedMilestones, totalMilestones,
     behaviorLogs, actionPlans, approvedMemoryItems, pendingMemoryItems, setActiveTab,
   } = useArbor();
+  const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   // Chapter 2 — what this week actually looked like, from the real log.
@@ -55,23 +57,23 @@ export default function ChildProfile() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         eyebrow="My Child"
-        title={`${first}'s development profile`}
-        subtitle={`${first}'s whole story in one place — patterns, milestones, strengths, language, and what Arbor remembers.`}
+        title={t("cp.title", { name: first })}
+        subtitle={t("cp.subtitle", { name: first })}
         action={
-          <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}>
-            <Sparkles className="w-4 h-4" /> Ask Arbor about {first}
+          <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}>
+            <Sparkles className="w-4 h-4" /> {t("cp.askAbout", { name: first })}
           </button>
         }
       />
 
       {/* Chapter 1 — who {first} is */}
-      <SectionCard title={`${first}, age ${childProfile.age}`} icon={<UserCircle className="w-5 h-5" />} tone="mint">
+      <SectionCard title={t("cp.ch.who", { name: first, age: childProfile.age })} icon={<UserCircle className="w-5 h-5" />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-          <Field label="Languages" value={childProfile.languages.join(" · ") || "—"} />
-          <Field label="School context" value={childProfile.schoolContext || "—"} />
-          <Field label="Risk level" value={childProfile.riskLevel} />
+          <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} />
+          <Field label={t("cp.f.school")} value={childProfile.schoolContext || "—"} />
+          <Field label={t("cp.f.risk")} value={childProfile.riskLevel} />
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--arbor-muted)" }}>Current developmental focus</p>
+            <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--arbor-muted)" }}>{t("cp.f.focus")}</p>
             <div className="flex flex-wrap gap-1.5">
               {focus.length > 0 ? focus.map((f) => <Chip key={f.label} tone={f.tone}>{f.label}</Chip>) : <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>Exploring — add a challenge to focus Arbor.</span>}
             </div>
@@ -80,7 +82,7 @@ export default function ChildProfile() {
       </SectionCard>
 
       {/* Chapter 2 — right now: this week's real moments */}
-      <SectionCard title="Right now" icon={<Activity className="w-5 h-5" />} tone="coral">
+      <SectionCard title={t("cp.ch.now")} icon={<Activity className="w-5 h-5" />} tone="coral">
         {week.count > 0 ? (
           <div className="space-y-3">
             <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
@@ -100,17 +102,17 @@ export default function ChildProfile() {
           <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>No moments logged in the past week. A 20-second note after a hard (or great!) moment keeps {first}'s story sharp.</p>
         )}
         <div className="flex flex-wrap gap-3 mt-3">
-          <JumpLink onClick={() => setActiveTab("behaviors")} color="#cf6f37">Open Moments</JumpLink>
-          <JumpLink onClick={() => setActiveTab("timeline")} color="#cf6f37">See {first}'s Story timeline</JumpLink>
+          <JumpLink onClick={() => setActiveTab("behaviors")} color="var(--arbor-peach-ink)">{t("cp.openMoments")}</JumpLink>
+          <JumpLink onClick={() => setActiveTab("timeline")} color="var(--arbor-peach-ink)">{t("cp.seeStory", { name: first })}</JumpLink>
         </div>
       </SectionCard>
 
       {/* Chapter 3 — milestones */}
-      <SectionCard title="Development milestones" icon={<CheckCircle2 className="w-5 h-5" />} tone="mint">
+      <SectionCard title={t("cp.ch.milestones")} icon={<CheckCircle2 className="w-5 h-5" />} tone="mint">
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${milestonesPercent}%`, background: "linear-gradient(90deg,#3cc081,#2a9c66)" }} />
+              <div className="h-full rounded-full transition-all" style={{ width: `${milestonesPercent}%`, background: "linear-gradient(90deg,#3cc081,var(--arbor-clay-deep))" }} />
             </div>
             <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
               <strong style={{ color: "var(--arbor-ink)" }}>{checkedMilestones} of {totalMilestones}</strong> reached ({milestonesPercent}%) for age {childProfile.age}.
@@ -123,38 +125,38 @@ export default function ChildProfile() {
             <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
               {nextMilestones.map((m) => (
                 <li key={m.id} className="flex items-start gap-2">
-                  <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#34b277" }} /> {m.title}
+                  <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-clay)" }} /> {m.title}
                 </li>
               ))}
             </ul>
           </div>
         )}
         <div className="flex flex-wrap gap-3 mt-3">
-          <JumpLink onClick={() => setActiveTab("milestones")} color="#1f8a5a">Review all milestones</JumpLink>
-          <JumpLink onClick={() => setActiveTab("screening")} color="#1f8a5a">Run a development check</JumpLink>
+          <JumpLink onClick={() => setActiveTab("milestones")} color="var(--arbor-green-ink)">{t("cp.reviewMilestones")}</JumpLink>
+          <JumpLink onClick={() => setActiveTab("screening")} color="var(--arbor-green-ink)">{t("cp.runCheck")}</JumpLink>
         </div>
       </SectionCard>
 
       {/* Chapter 4 — strengths & where to support */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <SectionCard title="Strengths" icon={<Gem className="w-5 h-5" />} tone="mint">
+        <SectionCard title={t("cp.ch.strengths")} icon={<Gem className="w-5 h-5" />} tone="mint">
           <ul className="space-y-3">
             {childProfile.strengths.map((s) => (
               <li key={s} className="flex items-start gap-3">
-                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#34b277" }} />
+                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
                 <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{s}</span>
               </li>
             ))}
             {childProfile.strengths.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>Add strengths in the profile editor.</li>}
           </ul>
         </SectionCard>
-        <SectionCard title="Where to support" icon={<Sprout className="w-5 h-5" />} tone="coral">
+        <SectionCard title={t("cp.ch.support")} icon={<Sprout className="w-5 h-5" />} tone="coral">
           <ul className="space-y-3">
             {childProfile.challenges.map((c) => (
               <li key={c} className={`${cardCls} p-3.5 flex items-start justify-between gap-3`}>
                 <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{c}</span>
-                <button onClick={() => setActiveTab("plans")} className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold" style={{ color: "#cf6f37" }}>
-                  Build a plan <ArrowRight className="w-3.5 h-3.5" />
+                <button onClick={() => setActiveTab("plans")} className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
+                  {t("cp.buildPlan")} <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </li>
             ))}
@@ -164,22 +166,22 @@ export default function ChildProfile() {
       </div>
 
       {/* Chapter 5 — language & communication */}
-      <SectionCard title="Language & communication" icon={<Languages className="w-5 h-5" />} tone="sky">
+      <SectionCard title={t("cp.ch.language")} icon={<Languages className="w-5 h-5" />} tone="sky">
         <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
           {childProfile.languages.length > 1
             ? `${first} is growing up with ${childProfile.languages.join(" and ")} — a real developmental asset that can look like a delay during the transition. The Language Lab tracks both languages so progress is never miscounted.`
             : `${first}'s home language is ${childProfile.languages[0] || "not set"}. Track expressive and receptive growth in the Language Lab.`}
         </p>
-        <div className="mt-3"><JumpLink onClick={() => setActiveTab("language")} color="#2d7eb5">Open Language Lab</JumpLink></div>
+        <div className="mt-3"><JumpLink onClick={() => setActiveTab("language")} color="var(--arbor-sky-ink)">{t("cp.openLang")}</JumpLink></div>
       </SectionCard>
 
       {/* Chapter 6 — what Arbor remembers (the parent-approved memory) */}
-      <SectionCard title="What Arbor remembers" icon={<BookMarked className="w-5 h-5" />} tone="lav">
+      <SectionCard title={t("cp.ch.memory")} icon={<BookMarked className="w-5 h-5" />} tone="lav">
         {approvedMemoryItems.length > 0 ? (
           <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
             {approvedMemoryItems.slice(0, 5).map((m) => (
               <li key={m.memoryId} className="flex items-start gap-2">
-                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#6354c4" }} /> {m.fact}
+                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-lav-ink)" }} /> {m.fact}
               </li>
             ))}
           </ul>
@@ -189,26 +191,26 @@ export default function ChildProfile() {
           </p>
         )}
         {pendingMemoryItems.length > 0 && (
-          <p className="text-xs mt-2 font-bold" style={{ color: "#6354c4" }}>{pendingMemoryItems.length} proposal{pendingMemoryItems.length === 1 ? "" : "s"} waiting for your review.</p>
+          <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-lav-ink)" }}>{pendingMemoryItems.length} proposal{pendingMemoryItems.length === 1 ? "" : "s"} waiting for your review.</p>
         )}
-        <div className="mt-3"><JumpLink onClick={() => setActiveTab("memory")} color="#6354c4">Review {first}'s memory</JumpLink></div>
+        <div className="mt-3"><JumpLink onClick={() => setActiveTab("memory")} color="var(--arbor-lav-ink)">{t("cp.reviewMemory", { name: first })}</JumpLink></div>
       </SectionCard>
 
       {/* Chapter 7 — the next step */}
-      <SectionCard title="The next step" icon={activePlan ? <Sliders className="w-5 h-5" /> : <ClipboardCheck className="w-5 h-5" />} tone="yellow">
+      <SectionCard title={t("cp.ch.next")} icon={activePlan ? <Sliders className="w-5 h-5" /> : <ClipboardCheck className="w-5 h-5" />} tone="yellow">
         {activePlan && planProgress ? (
           <>
             <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
               Active plan: <strong>{activePlan.title}</strong> — {planProgress.done} of {planProgress.total} steps done.
             </p>
-            <div className="mt-3"><JumpLink onClick={() => setActiveTab("plans")} color="#a9780f">Continue the plan</JumpLink></div>
+            <div className="mt-3"><JumpLink onClick={() => setActiveTab("plans")} color="var(--arbor-yellow-ink)">{t("cp.continuePlan")}</JumpLink></div>
           </>
         ) : (
           <>
             <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
               No active growth plan. Turn {first}'s current focus into a step-by-step plan with scripts you can use today.
             </p>
-            <div className="mt-3"><JumpLink onClick={() => setActiveTab("plans")} color="#a9780f">Create a growth plan</JumpLink></div>
+            <div className="mt-3"><JumpLink onClick={() => setActiveTab("plans")} color="var(--arbor-yellow-ink)">{t("cp.createPlan")}</JumpLink></div>
           </>
         )}
       </SectionCard>

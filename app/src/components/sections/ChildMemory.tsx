@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { BookMarked, Trash2, Clock, Link2, ShieldCheck, Check, X, Loader2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import type { MemoryReviewItem } from "../../types";
 import { PageHeader, SectionCard, Chip, cardCls, TrustSafetyBar } from "../ui/kit";
 
@@ -10,11 +11,12 @@ import { PageHeader, SectionCard, Chip, cardCls, TrustSafetyBar } from "../ui/ki
  *  time-stamped, editable via approve/forget, time-boxed when sensitive. */
 export default function ChildMemory() {
   const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating } = useArbor();
+  const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[920px]">
-      <PageHeader eyebrow="My Child" title="Child memory" subtitle={`The facts about ${first} that Arbor remembers — only what you approve. Source-linked, time-stamped and forgettable, always.`} />
+      <PageHeader eyebrow="My Child" title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />
 
       <TrustSafetyBar note="You control everything here. Nothing is shared without your approval." />
 
@@ -49,7 +51,7 @@ export default function ChildMemory() {
           </div>
         ) : (
           <div className="text-center py-8">
-            <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: "#ece9fb", color: "#6354c4" }}>
+            <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
               <BookMarked className="w-6 h-6" />
             </div>
             <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>No memory yet</p>
@@ -82,7 +84,7 @@ function MemoryRow({ m, busy, onApprove, onReject, onForget }: {
         <span className="flex-1" />
         {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
         {onApprove && !busy && (
-          <button onClick={onApprove} className="inline-flex items-center gap-1 font-bold" style={{ color: "#1f8a5a" }}>
+          <button onClick={onApprove} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-green-ink)" }}>
             <Check className="w-3.5 h-3.5" /> Approve
           </button>
         )}
@@ -92,7 +94,7 @@ function MemoryRow({ m, busy, onApprove, onReject, onForget }: {
           </button>
         )}
         {onForget && !busy && (
-          <button onClick={onForget} className="inline-flex items-center gap-1 font-bold" style={{ color: "#bd4f74" }}>
+          <button onClick={onForget} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-pink-ink)" }}>
             <Trash2 className="w-3.5 h-3.5" /> Forget
           </button>
         )}

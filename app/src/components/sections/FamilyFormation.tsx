@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { ScrollText, Repeat, ListChecks, MessageSquareHeart, BookOpen, ShieldCheck, CalendarHeart, Sparkles, Plus, X } from "lucide-react";
 import { PageHeader, SectionCard, cardCls, IconBadge, ComingSoon, PastelKey } from "../ui/kit";
+import { useLanguage } from "../../context/LanguageContext";
 
 const ITEMS: { title: string; desc: string; icon: React.ReactNode; tone: PastelKey; soon?: boolean }[] = [
   { title: "Rituals", desc: "Small repeatable moments that carry meaning and safety.", icon: <Repeat className="w-5 h-5" />, tone: "lav" },
@@ -18,6 +19,7 @@ const DEFAULT = ["Courage", "Honesty", "Responsibility", "Kindness"];
 
 /** Arbor Academy › Family Formation. The Family Charter is a real, persisted tool. */
 export default function FamilyFormation() {
+  const { t } = useLanguage();
   const [values, setValues] = useState<string[]>(DEFAULT);
   const [input, setInput] = useState("");
 
@@ -33,14 +35,14 @@ export default function FamilyFormation() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader eyebrow="Arbor Academy" title="Family formation" subtitle="The long game: values, rituals and stories that form a family over years, not days." />
+      <PageHeader eyebrow="Arbor Academy" title={t("sec.family.title")} subtitle={t("sec.family.sub")} />
 
       {/* Family Charter — the real, editable tool */}
       <SectionCard title="Family Charter" icon={<ScrollText className="w-5 h-5" />} tone="mint">
         <p className="text-sm mb-4" style={{ color: "var(--arbor-muted)" }}>Name the values you're forming your family around. Arbor uses these to keep guidance and stories aligned with what matters to you.</p>
         <div className="flex flex-wrap gap-2 mb-4">
           {values.map((v) => (
-            <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
+            <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
               {v}
               <button onClick={() => remove(v)} aria-label={`Remove ${v}`}><X className="w-3.5 h-3.5" /></button>
             </span>
@@ -49,7 +51,7 @@ export default function FamilyFormation() {
         </div>
         <div className="flex gap-2 max-w-md">
           <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder="Add a value (e.g. Patience)…" className="flex-1 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-          <button onClick={add} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 text-white" style={{ background: "#34b277" }}><Plus className="w-4 h-4" /> Add</button>
+          <button onClick={add} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 text-white" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /> Add</button>
         </div>
       </SectionCard>
 

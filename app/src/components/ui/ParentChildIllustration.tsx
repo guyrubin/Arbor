@@ -18,7 +18,7 @@ export function ParentChildIllustration({ size = 96, className = "" }: { size?: 
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* soft halo */}
-      <circle cx="60" cy="60" r="56" fill="#e4f4ec" />
+      <circle cx="60" cy="60" r="56" fill="var(--arbor-green-soft)" />
 
       {/* parent body */}
       <path d="M30 112 C30 84 42 70 60 70 C78 70 90 84 90 112 Z" fill="#5fb487" />

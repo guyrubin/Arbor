@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { GraduationCap, Clock } from "lucide-react";
 import { PageHeader, cardCls, IconBadge, ComingSoon, PastelKey } from "../ui/kit";
+import { useLanguage } from "../../context/LanguageContext";
 
 const CLASSES: { title: string; mins: number; tone: PastelKey }[] = [
   { title: "Holding the Line Without Anger", mins: 12, tone: "coral" },
@@ -16,9 +17,10 @@ const CLASSES: { title: string; mins: number; tone: PastelKey }[] = [
 
 /** Arbor Academy › Parent Masterclasses. */
 export default function Masterclasses() {
+  const { t } = useLanguage();
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader eyebrow="Arbor Academy" title="Parent masterclasses" subtitle="Short, premium lessons that turn hard moments into confident parenting. Our first lessons are in production — here's what's coming." />
+      <PageHeader eyebrow="Arbor Academy" title={t("sec.master.title")} subtitle={t("sec.master.sub")} />
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {CLASSES.map((c) => (
           <div key={c.title} className={`${cardCls} p-5 flex flex-col gap-3`}>

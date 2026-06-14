@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { motion } from "motion/react";
 import { CalendarDays, CheckCircle2, History, Sparkles, Target, Trophy } from "lucide-react";
 import { useArbor, type ActiveTab } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { DOMAIN_META, fillTemplate } from "../../practice/content";
@@ -21,6 +22,7 @@ const TAB_BY_EXTRA: Record<string, ActiveTab> = {
 
 export default function JourneyTab() {
   const { childProfile, milestones, setActiveTab } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const copilot = useCopilot(milestones, data, childProfile.id);
   const objectivesCol = useChildCollection<JourneyObjective>(childProfile.id, "journeyObjectives", {
@@ -88,8 +90,8 @@ export default function JourneyTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         eyebrow="Practice Studio"
-        title="Development Journey"
-        subtitle={`A weekly roadmap for ${first}: daily missions, aimed extras, monthly objectives, and effort-based achievements in one place.`}
+        title={t("prac.journey.title")}
+        subtitle={t("prac.journey.sub", { name: first })}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -121,7 +123,7 @@ export default function JourneyTab() {
               <div key={day.date} className={`${cardCls} p-4 flex flex-col gap-3`} style={day.isToday ? { border: "1px solid rgba(52,178,119,0.55)" } : undefined}>
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-extrabold" style={{ color: day.isToday ? "#1f8a5a" : "var(--arbor-muted)" }}>{day.weekday}</p>
+                    <p className="text-xs font-extrabold" style={{ color: day.isToday ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{day.weekday}</p>
                     {day.isToday && <Chip tone="mint">Today</Chip>}
                   </div>
                   <p className="text-[10px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{day.date.slice(5)}</p>
@@ -134,7 +136,7 @@ export default function JourneyTab() {
                 <button
                   onClick={() => toggleMission(day.mission.id, day.mission.domain, day.date)}
                   className="mt-auto inline-flex items-center justify-center gap-1.5 text-[11px] font-extrabold px-3 py-2 rounded-xl"
-                  style={done ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+                  style={done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" /> {done ? "Done" : "Mark done"}
                 </button>
@@ -155,7 +157,7 @@ export default function JourneyTab() {
 
       <SectionCard title={`${month} objectives`} icon={<Target className="w-5 h-5" />} tone="coral"
         action={!startedObjectives && (
-          <button onClick={startObjectives} className="inline-flex items-center gap-2 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "#cf6f37" }}>
+          <button onClick={startObjectives} className="inline-flex items-center gap-2 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-peach-ink)" }}>
             <Sparkles className="w-3.5 h-3.5" /> Start these
           </button>
         )}>
@@ -176,7 +178,7 @@ export default function JourneyTab() {
                   </Chip>
                 </span>
                 <span className="block text-sm font-extrabold mt-3" style={{ color: "var(--arbor-ink)" }}>{obj.title}</span>
-                <span className="block text-[11px] mt-2" style={{ color: obj.done ? "#1f8a5a" : "var(--arbor-muted)" }}>{obj.done ? "Completed" : "Tap to mark complete"}</span>
+                <span className="block text-[11px] mt-2" style={{ color: obj.done ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{obj.done ? "Completed" : "Tap to mark complete"}</span>
               </button>
             );
           })}

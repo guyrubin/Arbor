@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { AudioLines, BookOpen, Check, ChevronRight, Ear, MessageCircle, Mic, MicOff, Play, Sparkles, Square, Tags, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { AudioLines, BookOpen, Check, ChevronRight, Ear, Languages, MessageCircle, Mic, MicOff, Play, Sparkles, Square, Tags, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
@@ -35,6 +36,7 @@ const LADDER: { level: SpeechLevel; label: string; hint: string }[] = [
 
 export default function SpeechCoachTab() {
   const { childProfile, setChatInput, setActiveTab } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
 
@@ -222,8 +224,13 @@ export default function SpeechCoachTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         eyebrow="Practice Studio"
-        title="Speech Coach"
-        subtitle={`Playful articulation practice for ${first} — one sound, a few minutes, from single words up to stories. Recordings never leave this device.`}
+        title={t("prac.speech.title")}
+        subtitle={t("prac.speech.sub", { name: first })}
+        action={
+          <button onClick={() => setActiveTab("language")} className="inline-flex items-center gap-1.5 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
+            <Languages className="w-3.5 h-3.5" /> Multiple languages? Language &amp; Communication
+          </button>
+        }
       />
 
       <TrustSafetyBar
@@ -246,12 +253,12 @@ export default function SpeechCoachTab() {
                       key={s.id}
                       onClick={() => setSoundId(s.id)}
                       className="rounded-2xl px-3 py-2 text-xs font-extrabold transition"
-                      style={on ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid #34b277" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                      style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                       title={`${s.label} · typical ${s.typicalAge}`}
                     >
                       {s.id.toUpperCase()}
                       {st && st.attempts > 0 && (
-                        <span className="ml-1.5 font-bold" style={{ color: st.recentAccuracy >= 70 ? "#34b277" : "#a9780f" }}>{st.recentAccuracy}%</span>
+                        <span className="ml-1.5 font-bold" style={{ color: st.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow-ink)" }}>{st.recentAccuracy}%</span>
                       )}
                     </button>
                   );
@@ -276,7 +283,7 @@ export default function SpeechCoachTab() {
             return (
               <button key={l.level} role="tab" aria-selected={on} onClick={() => setLevel(l.level)}
                 className="rounded-full px-3.5 py-1.5 text-[11.5px] font-extrabold transition"
-                style={on ? { background: "#e5f0fb", color: "#2f7bbf" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                style={on ? { background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
                 {l.label}
               </button>
             );
@@ -311,19 +318,19 @@ export default function SpeechCoachTab() {
           {recState !== "recording" ? (
             <button onClick={() => void startRecording()}
               className="inline-flex items-center gap-2 font-extrabold text-xs px-4 py-2.5 rounded-xl text-white transition"
-              style={{ background: "#cf6f37" }}>
+              style={{ background: "var(--arbor-peach-ink)" }}>
               <Mic className="w-4 h-4" /> Record {first}
             </button>
           ) : (
             <button onClick={stopRecording}
               className="inline-flex items-center gap-2 font-extrabold text-xs px-4 py-2.5 rounded-xl text-white animate-pulse"
-              style={{ background: "#bd4f74" }}>
+              style={{ background: "var(--arbor-pink-ink)" }}>
               <Square className="w-4 h-4" /> Stop
             </button>
           )}
           {audioUrl && recState === "review" && (
             <span className="inline-flex items-center gap-2 text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>
-              <Play className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} />
+              <Play className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />
               <audio src={audioUrl} controls className="h-8" />
             </span>
           )}
@@ -333,15 +340,15 @@ export default function SpeechCoachTab() {
             </span>
           )}
         </div>
-        {micError && <p className="text-[11px] mb-3" style={{ color: "#bd4f74" }}>{micError}</p>}
+        {micError && <p className="text-[11px] mb-3" style={{ color: "var(--arbor-pink-ink)" }}>{micError}</p>}
 
         {heard && (
-          <div className="rounded-xl p-3 mb-3 text-xs flex items-center gap-2" style={{ background: "#e5f0fb", color: "#2f7bbf" }}>
+          <div className="rounded-xl p-3 mb-3 text-xs flex items-center gap-2" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
             <Ear className="w-4 h-4 flex-shrink-0" />
             <span>Arbor heard: <b>&ldquo;{heard}&rdquo;</b>{autoResult && <> — looks like <b>{autoResult === "got" ? "a match!" : autoResult === "almost" ? "a close try" : "a different word"}</b></>}</span>
             {autoResult && (
               <button onClick={() => saveAttempt(autoResult, "auto")}
-                className="ml-auto font-extrabold text-white rounded-full px-3 py-1" style={{ background: "#2f7bbf" }}>
+                className="ml-auto font-extrabold text-white rounded-full px-3 py-1" style={{ background: "var(--arbor-sky-ink)" }}>
                 Save this score
               </button>
             )}
@@ -354,12 +361,12 @@ export default function SpeechCoachTab() {
           {RESULT_BTN.map((b) => (
             <button key={b.result} onClick={() => saveAttempt(b.result, "parent")}
               className="text-xs font-extrabold px-3.5 py-2 rounded-xl transition"
-              style={{ background: b.tone === "mint" ? "#e4f4ec" : b.tone === "yellow" ? "#fbf1d4" : "#fce2ec", color: b.tone === "mint" ? "#1f8a5a" : b.tone === "yellow" ? "#a9780f" : "#bd4f74" }}>
+              style={{ background: b.tone === "mint" ? "var(--arbor-green-soft)" : b.tone === "yellow" ? "var(--arbor-yellow-soft)" : "var(--arbor-pink-soft)", color: b.tone === "mint" ? "var(--arbor-green-ink)" : b.tone === "yellow" ? "var(--arbor-yellow-ink)" : "var(--arbor-pink-ink)" }}>
               {b.label}
             </button>
           ))}
           {lastSaved && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "#34b277" }}>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-clay)" }}>
               <Check className="w-3.5 h-3.5" /> Saved
             </span>
           )}
@@ -373,7 +380,7 @@ export default function SpeechCoachTab() {
           <div className={`${cardCls} p-4`}>
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
-                <Tags className="w-4 h-4" style={{ color: "#1f8a5a" }} />
+                <Tags className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} />
                 <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Object naming</p>
               </div>
               <Chip tone="mint">{vocabSet.category}</Chip>
@@ -384,7 +391,7 @@ export default function SpeechCoachTab() {
                   key={set.id}
                   onClick={() => { setVocabSetId(set.id); setVocabIdx(0); }}
                   className="rounded-full px-3 py-1.5 text-[11px] font-extrabold"
-                  style={set.id === vocabSetId ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+                  style={set.id === vocabSetId ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 >
                   {set.emoji} {set.category}
                 </button>
@@ -395,7 +402,7 @@ export default function SpeechCoachTab() {
               <p className="text-xl font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{vocabItem.word}</p>
               <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Ask {first}: "What is this?" Then expand one word into a short sentence.</p>
             </div>
-            <button onClick={markNamed} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "#34b277" }}>
+            <button onClick={markNamed} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
               {languageSaved === "vocab-naming" ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
               {languageSaved === "vocab-naming" ? "Saved" : "Named it"}
             </button>
@@ -404,7 +411,7 @@ export default function SpeechCoachTab() {
           <div className={`${cardCls} p-4`}>
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
-                <Tags className="w-4 h-4" style={{ color: "#2f7bbf" }} />
+                <Tags className="w-4 h-4" style={{ color: "var(--arbor-sky-ink)" }} />
                 <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Category pick</p>
               </div>
               <Chip tone="sky">{categoryIdx + 1} of {CATEGORY_ROUNDS.length}</Chip>
@@ -419,7 +426,7 @@ export default function SpeechCoachTab() {
                     onClick={() => chooseCategory(idx)}
                     disabled={categoryPick !== null}
                     className={`${cardCls} p-3 text-center transition`}
-                    style={{ border: picked ? `2px solid ${option.correct ? "#34b277" : "#bd4f74"}` : "1px solid rgba(41,51,63,0.06)" }}
+                    style={{ border: picked ? `2px solid ${option.correct ? "var(--arbor-clay)" : "var(--arbor-pink-ink)"}` : "1px solid rgba(41,51,63,0.06)" }}
                   >
                     <span className="text-3xl block">{option.emoji}</span>
                     <span className="text-[11px] font-bold block mt-1" style={{ color: "var(--arbor-ink)" }}>{option.word}</span>
@@ -428,11 +435,11 @@ export default function SpeechCoachTab() {
               })}
             </div>
             {categoryPick !== null && (
-              <div className="mt-3 rounded-2xl p-3 flex items-center gap-3" style={{ background: categoryRound.options[categoryPick].correct ? "#e4f4ec" : "#fbf1d4" }}>
+              <div className="mt-3 rounded-2xl p-3 flex items-center gap-3" style={{ background: categoryRound.options[categoryPick].correct ? "var(--arbor-green-soft)" : "var(--arbor-yellow-soft)" }}>
                 <p className="text-[11px] flex-1" style={{ color: "var(--arbor-ink)" }}>
                   {categoryRound.options[categoryPick].correct ? "Nice sorting. Name one more thing in that category." : "Warm retry: talk through why the correct one belongs."}
                 </p>
-                <button onClick={nextCategory} className="text-[11px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "#2f7bbf" }}>
+                <button onClick={nextCategory} className="text-[11px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "var(--arbor-sky-ink)" }}>
                   Next
                 </button>
               </div>
@@ -442,7 +449,7 @@ export default function SpeechCoachTab() {
           <div className={`${cardCls} p-4`}>
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
-                <MessageCircle className="w-4 h-4" style={{ color: "#cf6f37" }} />
+                <MessageCircle className="w-4 h-4" style={{ color: "var(--arbor-peach-ink)" }} />
                 <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Express mode</p>
               </div>
               <Chip tone="coral">{expressPrompt.kind.replace("-", " ")}</Chip>
@@ -454,7 +461,7 @@ export default function SpeechCoachTab() {
               </p>
               <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Parent tip:</b> {expressPrompt.parentTip}</p>
             </div>
-            <button onClick={completeExpress} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "#cf6f37" }}>
+            <button onClick={completeExpress} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-peach-ink)" }}>
               {languageSaved === "expressive" ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
               {languageSaved === "expressive" ? "Saved" : "We answered it"}
             </button>
@@ -466,7 +473,7 @@ export default function SpeechCoachTab() {
       <SectionCard title={`${first}'s sound progress`} icon={<TrendingUp className="w-5 h-5" />} tone="lav"
         action={
           <button onClick={() => askCoach(`${first} (age ${childProfile.age}) is practicing the ${sound.label} sound and currently scores ${statForActive?.recentAccuracy ?? 0}% on recent tries at the ${level} level. Give me one playful way to practice it during daily routines this week, and what 'normal progress' looks like.`)}
-            className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "#ece9fb", color: "#6354c4" }}>
+            className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
             <Sparkles className="w-3.5 h-3.5" /> Coach me on this sound
           </button>
         }>
@@ -481,17 +488,17 @@ export default function SpeechCoachTab() {
               const TrendIcon = s.trend === "up" ? TrendingUp : s.trend === "down" ? TrendingDown : Minus;
               return (
                 <div key={s.sound} className={`${cardCls} p-4 flex items-center gap-4`}>
-                  <span className="text-xl font-extrabold w-10 text-center" style={{ color: "#6354c4" }}>{s.sound.toUpperCase()}</span>
+                  <span className="text-xl font-extrabold w-10 text-center" style={{ color: "var(--arbor-lav-ink)" }}>{s.sound.toUpperCase()}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{entry?.label ?? s.sound}</p>
                     <div className="h-2 rounded-full mt-1.5" style={{ background: "rgba(41,51,63,0.08)" }}>
-                      <div className="h-2 rounded-full transition-all" style={{ width: `${s.recentAccuracy}%`, background: s.recentAccuracy >= 70 ? "#34b277" : "#d7aa55" }} />
+                      <div className="h-2 rounded-full transition-all" style={{ width: `${s.recentAccuracy}%`, background: s.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow)" }} />
                     </div>
                     <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>
                       {s.attempts} tries · recent {s.recentAccuracy}% · reached {s.levelReached} level
                     </p>
                   </div>
-                  <TrendIcon className="w-4 h-4 flex-shrink-0" style={{ color: s.trend === "up" ? "#34b277" : s.trend === "down" ? "#bd4f74" : "var(--arbor-muted)" }} />
+                  <TrendIcon className="w-4 h-4 flex-shrink-0" style={{ color: s.trend === "up" ? "var(--arbor-clay)" : s.trend === "down" ? "var(--arbor-pink-ink)" : "var(--arbor-muted)" }} />
                 </div>
               );
             })}

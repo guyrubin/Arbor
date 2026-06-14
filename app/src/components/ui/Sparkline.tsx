@@ -5,7 +5,7 @@ export function Sparkline({
   data,
   width = 96,
   height = 24,
-  color = "#34b277",
+  color = "var(--arbor-clay)",
   max = 5,
 }: {
   data: number[];

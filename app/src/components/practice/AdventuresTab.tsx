@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Compass, Map, RotateCcw, Sparkles } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { fillTemplate, scenariosForAge, type AdventureScenario } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
@@ -25,6 +26,7 @@ const SKILL_LABEL: Record<string, string> = {
  */
 export default function AdventuresTab() {
   const { childProfile } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
   const vars = { name: first, age: childProfile.age };
@@ -88,8 +90,8 @@ export default function AdventuresTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         eyebrow="Practice Studio"
-        title="Adventures"
-        subtitle={`Little stories with big thinking inside — ${first} helps the characters and quietly practices logic, sequencing and word power. It never feels like a test.`}
+        title={t("prac.adventures.title")}
+        subtitle={t("prac.adventures.sub", { name: first })}
       />
 
       {!scenario && (
@@ -125,7 +127,7 @@ export default function AdventuresTab() {
           {/* Scene progress dots */}
           <div className="flex items-center gap-1.5 mb-5">
             {scenario.scenes.map((_, i) => (
-              <span key={i} className="h-2 rounded-full transition-all" style={{ width: i === sceneIdx ? 24 : 8, background: i <= sceneIdx ? "#6354c4" : "rgba(41,51,63,0.12)" }} />
+              <span key={i} className="h-2 rounded-full transition-all" style={{ width: i === sceneIdx ? 24 : 8, background: i <= sceneIdx ? "var(--arbor-lav-ink)" : "rgba(41,51,63,0.12)" }} />
             ))}
             <span className="text-[10px] font-bold ml-2 uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{SKILL_LABEL[scene.skill]}</span>
           </div>
@@ -147,7 +149,7 @@ export default function AdventuresTab() {
                       disabled={pickedChoice?.correct === true}
                       className={`${cardCls} p-4 text-center transition`}
                       style={{
-                        border: isPicked ? `2px solid ${c.correct ? "#34b277" : "#bd4f74"}` : "1px solid rgba(41,51,63,0.06)",
+                        border: isPicked ? `2px solid ${c.correct ? "var(--arbor-clay)" : "var(--arbor-pink-ink)"}` : "1px solid rgba(41,51,63,0.06)",
                         opacity: reveal && !isPicked && pickedChoice?.correct ? 0.5 : 1,
                       }}
                     >
@@ -161,14 +163,14 @@ export default function AdventuresTab() {
               {pickedChoice && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                   className="rounded-2xl p-4 text-sm flex flex-wrap items-center gap-3"
-                  style={{ background: pickedChoice.correct ? "#e4f4ec" : "#fbf1d4", color: "var(--arbor-ink)" }}>
+                  style={{ background: pickedChoice.correct ? "var(--arbor-green-soft)" : "var(--arbor-yellow-soft)", color: "var(--arbor-ink)" }}>
                   <span className="flex-1 min-w-[220px] leading-relaxed">{fillTemplate(pickedChoice.feedback, vars)}</span>
                   {pickedChoice.correct ? (
-                    <button onClick={next} className="font-extrabold text-white text-xs px-4 py-2.5 rounded-xl" style={{ background: "#34b277" }}>
+                    <button onClick={next} className="font-extrabold text-white text-xs px-4 py-2.5 rounded-xl" style={{ background: "var(--arbor-clay)" }}>
                       {sceneIdx < scenario.scenes.length - 1 ? "Keep going →" : "Finish the adventure 🎉"}
                     </button>
                   ) : (
-                    <span className="text-[11px] font-bold" style={{ color: "#a9780f" }}>Try another one — thinking out loud together is the whole game.</span>
+                    <span className="text-[11px] font-bold" style={{ color: "var(--arbor-yellow-ink)" }}>Try another one — thinking out loud together is the whole game.</span>
                   )}
                 </motion.div>
               )}
@@ -190,10 +192,10 @@ export default function AdventuresTab() {
               {sessionCorrect} of {scenario.scenes.length} first-try answers — every answer taught us something, and it all feeds {first}&apos;s development picture.
             </p>
             <div className="flex justify-center gap-2 mt-5">
-              <button onClick={() => openScenario(scenario.id)} className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl" style={{ background: "#ece9fb", color: "#6354c4" }}>
+              <button onClick={() => openScenario(scenario.id)} className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
                 <RotateCcw className="w-3.5 h-3.5" /> Play again
               </button>
-              <button onClick={() => setActiveId(null)} className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "#34b277" }}>
+              <button onClick={() => setActiveId(null)} className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
                 <Compass className="w-3.5 h-3.5" /> More adventures
               </button>
             </div>

@@ -90,8 +90,8 @@ export default function RemindersCard() {
   return (
     <div className={`${cardCls} p-6 space-y-4`}>
       <div className="flex items-center gap-2">
-        {anyOn ? <Bell className="w-4 h-4" style={{ color: "#1f8a5a" }} /> : <BellOff className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} />}
-        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Reminders</span>
+        {anyOn ? <Bell className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> : <BellOff className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} />}
+        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>Reminders</span>
       </div>
 
       <label className="flex items-center justify-between gap-3 text-sm">
@@ -100,6 +100,7 @@ export default function RemindersCard() {
           {prefs.dailyLog && (
             <input
               type="time"
+              aria-label="Daily reminder time"
               value={prefs.dailyTime}
               onChange={(e) => save({ ...prefs, dailyTime: e.target.value })}
               className="rounded-lg px-2 py-1 text-xs"
@@ -108,8 +109,11 @@ export default function RemindersCard() {
           )}
           <button
             onClick={() => void enable({ dailyLog: !prefs.dailyLog })}
+            role="switch"
+            aria-checked={prefs.dailyLog}
+            aria-label="Daily log reminder"
             className="w-10 h-5 rounded-full transition relative"
-            style={{ background: prefs.dailyLog ? "#34b277" : "var(--arbor-rule-strong)" }}
+            style={{ background: prefs.dailyLog ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
           >
             <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.dailyLog ? "left-5" : "left-0.5"}`} />
           </button>
@@ -120,8 +124,11 @@ export default function RemindersCard() {
         <span style={{ color: "var(--arbor-ink)" }}>Monthly safety review</span>
         <button
           onClick={() => void enable({ monthlySafety: !prefs.monthlySafety })}
+          role="switch"
+          aria-checked={prefs.monthlySafety}
+          aria-label="Monthly safety review"
           className="w-10 h-5 rounded-full transition relative"
-          style={{ background: prefs.monthlySafety ? "#34b277" : "var(--arbor-rule-strong)" }}
+          style={{ background: prefs.monthlySafety ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
         >
           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.monthlySafety ? "left-5" : "left-0.5"}`} />
         </button>

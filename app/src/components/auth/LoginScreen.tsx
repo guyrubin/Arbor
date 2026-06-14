@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Mail, Lock, RefreshCw } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 
 function ArborMark() {
@@ -10,6 +11,7 @@ function ArborMark() {
 
 export default function LoginScreen() {
   const { signInWithGoogle, signInWithEmail, resetPassword, error } = useAuth();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showEmail, setShowEmail] = useState(false);
@@ -18,14 +20,14 @@ export default function LoginScreen() {
 
   const handleReset = async () => {
     if (!email.trim()) {
-      setResetMsg("Enter your email above first.");
+      setResetMsg(t("auth.resetNeedEmail"));
       return;
     }
     try {
       await resetPassword(email.trim());
-      setResetMsg("Password reset email sent — check your inbox.");
+      setResetMsg(t("auth.resetSent"));
     } catch {
-      setResetMsg("Couldn't send a reset email for that address.");
+      setResetMsg(t("auth.resetFail"));
     }
   };
 
@@ -66,12 +68,12 @@ export default function LoginScreen() {
           <ArborMark />
           <div>
             <h1 className="text-3xl font-black tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</h1>
-            <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>Your child&apos;s development, thoughtfully guided.</p>
+            <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>{t("auth.tagline")}</p>
           </div>
         </div>
 
         {error && (
-          <div className="text-xs rounded-xl px-4 py-2.5" style={{ background: "#fce2ec", color: "#bd4f74" }}>
+          <div className="text-xs rounded-xl px-4 py-2.5" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
             {error}
           </div>
         )}
@@ -80,7 +82,7 @@ export default function LoginScreen() {
           onClick={handleGoogle}
           disabled={busy !== null}
           className="w-full text-white font-extrabold text-sm px-5 py-3.5 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}
+          style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}
         >
           {busy === "google" ? (
             <RefreshCw className="w-4 h-4 animate-spin" />
@@ -92,12 +94,12 @@ export default function LoginScreen() {
               <path fill="#1976D2" d="M43.6 20.5H24v8h11.3a12 12 0 0 1-4.1 5.6l6.2 5.2C41 39.3 44 32.5 44 24c0-1.3-.1-2.3-.4-3.5z" />
             </svg>
           )}
-          Continue with Google
+          {t("auth.continueGoogle")}
         </button>
 
         <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest" style={{ color: "var(--arbor-muted)" }}>
           <span className="flex-1 h-px" style={{ background: "var(--arbor-rule)" }} />
-          or
+          {t("auth.or")}
           <span className="flex-1 h-px" style={{ background: "var(--arbor-rule)" }} />
         </div>
 
@@ -107,7 +109,7 @@ export default function LoginScreen() {
             className="w-full font-bold text-sm px-5 py-3 rounded-2xl transition flex items-center justify-center gap-2 bg-white"
             style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
           >
-            <Mail className="w-4 h-4" style={{ color: "#1f8a5a" }} /> Continue with email
+            <Mail className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> {t("auth.continueEmail")}
           </button>
         ) : (
           <form onSubmit={handleEmail} className="space-y-3">
@@ -117,7 +119,7 @@ export default function LoginScreen() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={t("auth.emailPlaceholder")}
                 className="w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none transition"
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
@@ -128,7 +130,7 @@ export default function LoginScreen() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                placeholder={t("auth.passwordPlaceholder")}
                 className="w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none transition"
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
@@ -137,28 +139,28 @@ export default function LoginScreen() {
               type="submit"
               disabled={busy !== null}
               className="w-full text-white font-extrabold text-sm px-5 py-3 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
+              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
             >
               {busy === "email" ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-              Sign in
+              {t("auth.signIn")}
             </button>
             <div className="flex items-center justify-between">
               <button type="button" onClick={handleReset} className="text-[11px] transition" style={{ color: "var(--arbor-muted)" }}>
-                Forgot password?
+                {t("auth.forgot")}
               </button>
-              {resetMsg && <span className="text-[10px]" style={{ color: "#1f8a5a" }}>{resetMsg}</span>}
+              {resetMsg && <span className="text-[10px]" style={{ color: "var(--arbor-green-ink)" }}>{resetMsg}</span>}
             </div>
           </form>
         )}
 
         <p className="text-center text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-          Invite-only for now.{" "}
+          {t("auth.inviteOnly")}{" "}
           <a
             href="mailto:hello@arbor.app?subject=Arbor%20access%20request"
             className="font-bold hover:underline"
-            style={{ color: "#1f8a5a" }}
+            style={{ color: "var(--arbor-green-ink)" }}
           >
-            Request access
+            {t("auth.requestAccess")}
           </a>
         </p>
       </motion.div>

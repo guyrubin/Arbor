@@ -140,7 +140,7 @@ export default function WeeklyTab() {
             onClick={() => void generate()}
             disabled={generating}
             className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
+            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
           >
             {generating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Generating…</>) : (<><Sparkles className="w-4 h-4" /> {reports.some((r) => r.id === currentId) ? "Regenerate this week" : "Generate this week"}</>)}
           </button>
@@ -158,7 +158,7 @@ export default function WeeklyTab() {
                 key={r.id}
                 onClick={() => setSelectedId(r.id)}
                 className="text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition flex-shrink-0"
-                style={on ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {r.id}
               </button>
@@ -194,8 +194,8 @@ export default function WeeklyTab() {
             </div>
           </div>
 
-          <div className="rounded-[22px] p-6 space-y-3" style={{ background: "#e4f4ec" }}>
-            <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+          <div className="rounded-[22px] p-6 space-y-3" style={{ background: "var(--arbor-green-soft)" }}>
+            <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
               <Sparkles className="w-3.5 h-3.5" /> {selected.digest ? selected.digest.title : "AI insight"}
             </span>
             {selected.digest ? (
@@ -204,7 +204,7 @@ export default function WeeklyTab() {
                 {selected.digest.highlights.length > 0 && (
                   <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
                     {selected.digest.highlights.map((h, i) => (
-                      <li key={i} className="flex items-start gap-2"><span style={{ color: "#1f8a5a" }}>✦</span> {h}</li>
+                      <li key={i} className="flex items-start gap-2"><span style={{ color: "var(--arbor-green-ink)" }}>✦</span> {h}</li>
                     ))}
                   </ul>
                 )}
@@ -215,7 +215,7 @@ export default function WeeklyTab() {
                 )}
                 {selected.digest.tryThisWeek && (
                   <div className="rounded-xl p-3 text-sm bg-white" style={{ color: "var(--arbor-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
-                    <strong style={{ color: "#1f8a5a" }}>Try this week:</strong> {selected.digest.tryThisWeek}
+                    <strong style={{ color: "var(--arbor-green-ink)" }}>Try this week:</strong> {selected.digest.tryThisWeek}
                   </div>
                 )}
               </>
@@ -229,13 +229,13 @@ export default function WeeklyTab() {
               {selected.milestoneWins.length ? (
                 <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
                   {selected.milestoneWins.slice(0, 8).map((m, i) => (
-                    <li key={i} className="flex items-center gap-2"><span style={{ color: "#1f8a5a" }}>✓</span> {m}</li>
+                    <li key={i} className="flex items-center gap-2"><span style={{ color: "var(--arbor-green-ink)" }}>✓</span> {m}</li>
                   ))}
                 </ul>
               ) : (
                 <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>No milestones checked in this report.</p>
               )}
-              <button onClick={() => setActiveTab("milestones")} className="text-[11px] font-bold flex items-center gap-1 mt-3" style={{ color: "#1f8a5a" }}>
+              <button onClick={() => setActiveTab("milestones")} className="text-[11px] font-bold flex items-center gap-1 mt-3" style={{ color: "var(--arbor-green-ink)" }}>
                 <ClipboardList className="w-3 h-3" /> Review milestones →
               </button>
             </SectionCard>
@@ -246,7 +246,7 @@ export default function WeeklyTab() {
                 <span className="text-[10px] uppercase font-bold" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.concept}</span>
               </div>
               <p className="text-xs leading-relaxed mt-2" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.value}</p>
-              <button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3" style={{ color: "#6354c4" }}>Explore Scholar Frameworks →</button>
+              <button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3" style={{ color: "var(--arbor-lav-ink)" }}>Explore Scholar Frameworks →</button>
             </SectionCard>
           </div>
 
@@ -264,7 +264,7 @@ export default function WeeklyTab() {
                 setActiveTab("handoff");
               }}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
-              style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}
+              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}
             >
               <Send className="w-4 h-4" /> Generate school brief for {first}
             </button>

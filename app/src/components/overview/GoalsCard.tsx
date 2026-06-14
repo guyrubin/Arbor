@@ -28,7 +28,7 @@ export default function GoalsCard() {
   return (
     <div className={`${cardCls} p-6 space-y-4`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+        <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
           <Target className="w-3.5 h-3.5" /> Focus goals
         </span>
         {goals.length > 0 && <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{achievedCount}/{goals.length} achieved</span>}
@@ -41,7 +41,7 @@ export default function GoalsCard() {
               onClick={() => void goalsCol.upsert({ ...g, achieved: !g.achieved })}
               aria-label={g.achieved ? "Mark not achieved" : "Mark achieved"}
               className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition"
-              style={g.achieved ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" } : { border: "1px solid var(--arbor-rule-strong)", color: "transparent" }}
+              style={g.achieved ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { border: "1px solid var(--arbor-rule-strong)", color: "transparent" }}
             >
               <Check className="w-3.5 h-3.5" />
             </button>
@@ -62,7 +62,7 @@ export default function GoalsCard() {
           className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none"
           style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
         />
-        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "#34b277" }}><Plus className="w-4 h-4" /></button>
+        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
       </form>
     </div>
   );

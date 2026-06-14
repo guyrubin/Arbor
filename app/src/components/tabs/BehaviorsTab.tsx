@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Plus, Sparkles, RefreshCw, Brain, ExternalLink, Download, ChevronDown, Check, RotateCcw, Mic, Square, Trash2, Pencil } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Sparkline } from "../ui/Sparkline";
 import { Skeleton } from "../ui/Skeleton";
@@ -67,6 +68,8 @@ export default function BehaviorsTab() {
   } = useArbor();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const behFirst = (childProfile.name || "").split(" ")[0];
 
   // Voice-to-log
   const [listening, setListening] = useState(false);
@@ -226,8 +229,8 @@ export default function BehaviorsTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
       <PageHeader
         eyebrow="My Child"
-        title="Moments"
-        subtitle={`Log the hard moments with ${childProfile.name.split(" ")[0]} to see patterns, what sets them off, and what actually helps over time.`}
+        title={t("nav.tab.behaviors")}
+        subtitle={t("beh.subtitle", { name: behFirst })}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8">
@@ -235,8 +238,8 @@ export default function BehaviorsTab() {
         <form onSubmit={submitLog} className={`${cardCls} p-5 space-y-4 text-sm self-start`}>
           <div className="flex items-center justify-between pb-2" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
             <h3 className="text-base font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
-              {editingLogId ? <Pencil className="w-4 h-4" style={{ color: "#1f8a5a" }} /> : <Plus className="w-4 h-4" style={{ color: "#1f8a5a" }} />}
-              {editingLogId ? "Edit this moment" : "Log a moment"}
+              {editingLogId ? <Pencil className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> : <Plus className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} />}
+              {editingLogId ? t("beh.editMoment") : t("beh.logMoment")}
             </h3>
             <button
               type="button"
@@ -245,18 +248,18 @@ export default function BehaviorsTab() {
               title="Speak to log"
               className={`flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg transition ${listening ? "animate-pulse" : ""}`}
               style={listening
-                ? { background: "#fce2ec", color: "#bd4f74", border: "1px solid rgba(189,79,116,0.40)" }
-                : { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}
+                ? { background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)", border: "1px solid rgba(189,79,116,0.40)" }
+                : { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
             >
               {parsing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : listening ? <Square className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-              {parsing ? "Parsing…" : listening ? "Stop" : "Speak"}
+              {parsing ? t("beh.parsing") : listening ? t("beh.stop") : t("beh.speak")}
             </button>
           </div>
 
-          <div className="p-3 rounded-xl space-y-1.5" style={{ background: "#fdeada" }}>
-            <span className="text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1" style={{ color: "#cf6f37" }}>
+          <div className="p-3 rounded-xl space-y-1.5" style={{ background: "var(--arbor-peach-soft)" }}>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1" style={{ color: "var(--arbor-peach-ink)" }}>
               <Sparkles className="w-3 h-3" />
-              🪄 Quick-Fill AI Scenarios:
+              {t("beh.quickFill")}
             </span>
             <div className="flex flex-wrap gap-1">
               <button type="button" onClick={() => autofillLogTemplate("morning")} className="px-2 py-1 rounded text-[10px] font-bold transition cursor-pointer bg-white" style={{ color: "var(--arbor-ink)" }}>Morning Refusal</button>
@@ -266,7 +269,7 @@ export default function BehaviorsTab() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Type of Challenge</label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.typeLabel")}</label>
             <select value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
               <option value="Transition Refusal">Departure Refusal (Mornings / Leaving home)</option>
               <option value="Sensory Overload">Sensory Overload Meltdown (Loud / Overcrowded spaces)</option>
@@ -278,7 +281,7 @@ export default function BehaviorsTab() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Where did it happen?</label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.whereLabel")}</label>
             <div className="grid grid-cols-4 gap-1.5">
               {CONTEXTS.map((c) => (
                 <button
@@ -286,7 +289,7 @@ export default function BehaviorsTab() {
                   type="button"
                   onClick={() => setNewLogContext(c)}
                   className="py-1.5 rounded-lg text-[10px] font-bold transition"
-                  style={newLogContext === c ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                  style={newLogContext === c ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
                   {c}
                 </button>
@@ -296,41 +299,41 @@ export default function BehaviorsTab() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Intensity (1-5)</label>
-              <input type="range" min="1" max="5" value={newLogIntensity} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="w-full mt-2.5" style={{ accentColor: "#34b277" }} />
-              <span className="text-[10px] font-bold text-center block" style={{ color: "#1f8a5a" }}>Level {newLogIntensity} / 5</span>
+              <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.intensity")}</label>
+              <input type="range" min="1" max="5" value={newLogIntensity} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="w-full mt-2.5" style={{ accentColor: "var(--arbor-clay)" }} />
+              <span className="text-[10px] font-bold text-center block" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.level", { n: newLogIntensity })}</span>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Duration (Minutes)</label>
+              <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.duration")}</label>
               <input type="number" min="2" value={newLogDuration} onChange={(e) => setNewLogDuration(parseInt(e.target.value) || 5)} className="w-full rounded-xl p-2 text-xs text-center" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>What Triggered This? (Active Stimulus) <span style={{ color: "#cf6f37" }}>*</span></label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.trigger")} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
             <input type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder="e.g. Dressing shoe sequence, being told tablet goes off" className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>What Was Your Response? <span style={{ color: "#cf6f37" }}>*</span></label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.response")} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
             <input type="text" value={newLogResponse} onChange={(e) => setNewLogResponse(e.target.value)} placeholder="e.g. Lowered voice height, used transitional object" className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Observations & Notes (Optional)</label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.notes")}</label>
             <textarea value={newLogNotes} onChange={(e) => setNewLogNotes(e.target.value)} rows={2} placeholder="Notes on calming down time, physical behavior..." className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Photo (Optional)</label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.photo")}</label>
             {newLogPhoto ? (
               <div className="relative inline-block">
                 <img src={newLogPhoto} alt="attachment" className="h-20 rounded-lg object-cover" style={{ border: "1px solid var(--arbor-rule)" }} />
-                <button type="button" onClick={() => setNewLogPhoto("")} className="absolute -top-2 -right-2 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black" style={{ background: "#bd4f74" }}>×</button>
+                <button type="button" onClick={() => setNewLogPhoto("")} className="absolute -top-2 -right-2 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black" style={{ background: "var(--arbor-pink-ink)" }}>×</button>
               </div>
             ) : (
               <label className="flex items-center gap-2 text-[11px] rounded-xl px-3 py-2 cursor-pointer transition" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px dashed var(--arbor-rule-strong)" }}>
-                <Plus className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> Add a photo
+                <Plus className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.addPhoto")}
                 <input
                   type="file"
                   accept="image/*"
@@ -362,12 +365,12 @@ export default function BehaviorsTab() {
           </div>
 
           <div className="flex gap-2">
-            <button type="submit" className="flex-1 py-3 transition text-white font-extrabold text-xs rounded-xl active:scale-[0.98]" style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}>
-              {editingLogId ? "Update log" : "Save Log Incident"}
+            <button type="submit" className="flex-1 py-3 transition text-white font-extrabold text-xs rounded-xl active:scale-[0.98]" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}>
+              {editingLogId ? t("beh.update") : t("beh.save")}
             </button>
             {editingLogId && (
               <button type="button" onClick={cancelEditLog} className="px-4 py-3 font-bold text-xs rounded-xl transition" style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
-                Cancel
+                {t("beh.cancel")}
               </button>
             )}
           </div>
@@ -381,7 +384,7 @@ export default function BehaviorsTab() {
           {/* Per-type intensity sparklines */}
           {sparkSeries.length > 0 && (
             <div className={`${cardCls} p-5 space-y-3`}>
-              <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Intensity trend by type (30 days)</span>
+              <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>Intensity trend by type (30 days)</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {sparkSeries.map(({ type, series }) => (
                   <div key={type} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -396,41 +399,41 @@ export default function BehaviorsTab() {
           <div className={`${cardCls} p-5 space-y-4`}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>Active observation logs</h3>
-                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{filtered.length} of {behaviorLogs.length} entries</p>
+                <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("beh.activeLogs")}</h3>
+                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("beh.entriesOf", { n: filtered.length, total: behaviorLogs.length })}</p>
               </div>
               <div className="flex items-center gap-2 ml-auto">
                 <button onClick={exportPdf} className="font-bold text-xs px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
-                  <Download className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} /> Export PDF
+                  <Download className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
                 </button>
-                <button onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} className="text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}>
-                  {isAnalyzingBehavior ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Synthesizing...</>) : (<><Brain className="w-3.5 h-3.5" /> Analyze with AI</>)}
+                <button onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} className="text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
+                  {isAnalyzingBehavior ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("beh.synthesizing")}</>) : (<><Brain className="w-3.5 h-3.5" /> {t("beh.analyze")}</>)}
                 </button>
               </div>
             </div>
 
             {/* Filter bar */}
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search triggers, notes…" className="flex-1 min-w-[160px] rounded-xl px-3 py-2 focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("beh.searchPlaceholder")} className="flex-1 min-w-[160px] rounded-xl px-3 py-2 focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
               <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-                <option value="all">All types</option>
-                {types.map((t) => <option key={t} value={t}>{t}</option>)}
+                <option value="all">{t("beh.allTypes")}</option>
+                {types.map((ty) => <option key={ty} value={ty}>{ty}</option>)}
               </select>
               <select value={intensityFilter} onChange={(e) => setIntensityFilter(e.target.value)} className="rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-                <option value="all">Any intensity</option>
-                {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>Level {n}</option>)}
+                <option value="all">{t("beh.anyIntensity")}</option>
+                {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{t("beh.level", { n })}</option>)}
               </select>
               <select value={resolvedFilter} onChange={(e) => setResolvedFilter(e.target.value)} className="rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-                <option value="all">All status</option>
-                <option value="open">Open</option>
-                <option value="resolved">Resolved</option>
+                <option value="all">{t("beh.allStatus")}</option>
+                <option value="open">{t("beh.open")}</option>
+                <option value="resolved">{t("beh.resolved")}</option>
               </select>
-              <button onClick={resetFilters} className="flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><RotateCcw className="w-3 h-3" /> Reset</button>
+              <button onClick={resetFilters} className="flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><RotateCcw className="w-3 h-3" /> {t("beh.reset")}</button>
             </div>
 
             {behaviorAnalysis && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,#eef6f1,#ece9fb)", border: "1px solid var(--arbor-rule)" }}>
-                <h4 className="text-sm font-extrabold flex items-center gap-1" style={{ color: "#1f8a5a" }}>✨ AI Longitudinal Synthesis & Repair Feedback</h4>
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+                <h4 className="text-sm font-extrabold flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>What the pattern shows</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>Parent Response Evaluation:</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.effectivenessRating}</p></div>
                   <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>Developmental Recommendation:</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.actionPlanSuggestion}</p></div>
@@ -440,7 +443,7 @@ export default function BehaviorsTab() {
                   <div className="space-y-2">
                     {behaviorAnalysis.expertInsights.map((ins, i) => (
                       <div key={i} className="p-2.5 rounded-xl bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider block" style={{ color: "#1f8a5a" }}>{ins.scholarLens || "Development theory"}</span>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider block" style={{ color: "var(--arbor-green-ink)" }}>{ins.scholarLens || "Development theory"}</span>
                         <strong className="font-bold block mt-1" style={{ color: "var(--arbor-ink)" }}>{ins.heading}</strong>
                         <p className="mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{ins.text}</p>
                       </div>
@@ -456,7 +459,7 @@ export default function BehaviorsTab() {
                 <div className="space-y-2"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div>
               )}
               {logsLoaded && grouped.length === 0 && (
-                <div className="text-center py-10 text-xs rounded-xl" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>No logs match these filters.</div>
+                <div className="text-center py-10 text-xs rounded-xl" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>{t("beh.noMatch")}</div>
               )}
               {grouped.map(([weekKey, logs]) => {
                 const collapsed = collapsedWeeks[weekKey];
@@ -467,7 +470,7 @@ export default function BehaviorsTab() {
                       className="w-full flex items-center justify-between text-[11px] font-bold rounded-lg px-3 py-2"
                       style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
                     >
-                      <span>Week of {weekLabel(weekKey)} · {logs.length} {logs.length === 1 ? "entry" : "entries"}</span>
+                      <span>{t("beh.weekOf")} {weekLabel(weekKey)} · {logs.length} {logs.length === 1 ? t("beh.entry") : t("beh.entries")}</span>
                       <ChevronDown className={`w-4 h-4 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
                     </button>
 
@@ -483,14 +486,14 @@ export default function BehaviorsTab() {
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap justify-end">
                                   {log.context && <span className="px-2 py-0.5 rounded font-bold" style={{ background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{log.context}</span>}
-                                  <span className="px-2 py-0.5 rounded font-extrabold" style={{ background: "#fbf1d4", color: "#a9780f" }}>Level {log.intensity}/5</span>
-                                  <span className="px-2 py-0.5 rounded font-bold" style={{ background: "#e5f0fb", color: "#2f7bbf" }}>{log.durationMinutes}m</span>
+                                  <span className="px-2 py-0.5 rounded font-extrabold" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>Level {log.intensity}/5</span>
+                                  <span className="px-2 py-0.5 rounded font-bold" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>{log.durationMinutes}m</span>
                                   <button
                                     onClick={() => toggleLogResolved(log.id)}
                                     className="px-2 py-0.5 rounded font-bold flex items-center gap-1 transition"
-                                    style={log.resolved ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                                    style={log.resolved ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                                   >
-                                    <Check className="w-3 h-3" /> {log.resolved ? "Resolved" : "Mark resolved"}
+                                    <Check className="w-3 h-3" /> {log.resolved ? t("beh.resolved") : t("beh.markResolved")}
                                   </button>
                                   <button
                                     onClick={() => startEditLog(log.id)}
@@ -512,19 +515,19 @@ export default function BehaviorsTab() {
                               </div>
 
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                                <p><strong style={{ color: "var(--arbor-ink)" }}>Trigger:</strong> {log.trigger}</p>
-                                <p><strong style={{ color: "var(--arbor-ink)" }}>Parent Action:</strong> {log.response}</p>
+                                <p><strong style={{ color: "var(--arbor-ink)" }}>{t("beh.triggerField")}</strong> {log.trigger}</p>
+                                <p><strong style={{ color: "var(--arbor-ink)" }}>{t("beh.parentAction")}</strong> {log.response}</p>
                               </div>
-                              {log.notes && <p className="p-2 rounded italic bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}><strong style={{ color: "var(--arbor-ink)" }}>Observer Note:</strong> {log.notes}</p>}
+                              {log.notes && <p className="p-2 rounded italic bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}><strong style={{ color: "var(--arbor-ink)" }}>{t("beh.observerNote")}</strong> {log.notes}</p>}
                               {log.photoAttachment && (
                                 <img src={log.photoAttachment} alt="log attachment" className="h-24 rounded-lg object-cover" style={{ border: "1px solid var(--arbor-rule)" }} />
                               )}
 
                               <div className="pt-2.5 mt-2 flex flex-col gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[9px] font-semibold font-mono" style={{ color: "var(--arbor-muted)" }}>Arbor AI Coregulation Layer</span>
-                                  <button type="button" onClick={() => handleGetInlineCoRegulationScript(log)} disabled={isGeneratingInlineScript[log.id]} className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
-                                    {isGeneratingInlineScript[log.id] ? (<><RefreshCw className="w-3 h-3 animate-spin" /> Analyzing...</>) : inlineCoRegulationScripts[log.id] ? (<><Sparkles className="w-3 h-3" /> Regenerate Script</>) : (<><Sparkles className="w-3 h-3" /> Generate AI Parent Script ➔</>)}
+                                  <span className="text-[9px] font-semibold font-mono" style={{ color: "var(--arbor-muted)" }}>{t("beh.parentScriptLayer")}</span>
+                                  <button type="button" onClick={() => handleGetInlineCoRegulationScript(log)} disabled={isGeneratingInlineScript[log.id]} className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+                                    {isGeneratingInlineScript[log.id] ? (<><RefreshCw className="w-3 h-3 animate-spin" /> {t("beh.analyzing")}</>) : inlineCoRegulationScripts[log.id] ? (<><Sparkles className="w-3 h-3" /> {t("beh.regenerateScript")}</>) : (<><Sparkles className="w-3 h-3" /> {t("beh.generateScript")}</>)}
                                   </button>
                                 </div>
 
@@ -533,8 +536,8 @@ export default function BehaviorsTab() {
                                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-xl space-y-2 mt-1 text-[11px] leading-relaxed select-text overflow-hidden bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
                                       <MarkdownBlock text={inlineCoRegulationScripts[log.id]} className="space-y-1.5" />
                                       <div className="flex justify-end pt-1 gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                                        <button type="button" onClick={() => { setChatInput(`Regarding the log event where the child did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${inlineCoRegulationScripts[log.id]}\n\nHow do I adapt this if they continue to resist or act physically aggressive?`); setSelectedLens("Bowlby's Attachment Model"); setActiveTab("coach"); }} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "#1f8a5a" }}>
-                                          Discuss further with Coach <ExternalLink className="w-2.5 h-2.5" />
+                                        <button type="button" onClick={() => { setChatInput(`Regarding the log event where the child did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${inlineCoRegulationScripts[log.id]}\n\nHow do I adapt this if they continue to resist or act physically aggressive?`); setSelectedLens("Bowlby's Attachment Model"); setActiveTab("coach"); }} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
+                                          {t("beh.discussCoach")} <ExternalLink className="w-2.5 h-2.5" />
                                         </button>
                                       </div>
                                     </motion.div>

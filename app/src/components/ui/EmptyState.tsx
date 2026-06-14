@@ -16,7 +16,7 @@ export function EmptyState({
 }) {
   return (
     <div className={`flex flex-col items-center justify-center text-center gap-3 py-12 px-6 ${className}`}>
-      {icon && <div style={{ color: "#1f8a5a" }}>{icon}</div>}
+      {icon && <div style={{ color: "var(--arbor-green-ink)" }}>{icon}</div>}
       <h3 className="text-xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{headline}</h3>
       {body && <p className="text-xs max-w-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{body}</p>}
       {action && <div className="pt-1">{action}</div>}

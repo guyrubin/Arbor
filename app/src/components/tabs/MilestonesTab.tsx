@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { Check, Sparkles, RefreshCw, Brain, Eye, Plus, ExternalLink, PartyPopper, BookOpen, Trash2, Pencil } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { ProgressRing } from "../ui/ProgressRing";
 import { cardCls } from "../ui/kit";
@@ -16,7 +17,7 @@ function celebrate() {
     particleCount: 90,
     spread: 70,
     origin: { y: 0.6 },
-    colors: ["#d7aa55", "#f4d991", "#e2562d", "#6f9e6f"],
+    colors: ["#34b277", "#5fce97", "#d9763f", "#3f8cc9"],
   });
 }
 
@@ -39,6 +40,7 @@ export default function MilestonesTab() {
     updateMilestoneTitle,
   } = useArbor();
 
+  const { t } = useLanguage();
   const domainOptions = framework.domains;
   const [activeDomain, setActiveDomain] = useState<string>("all");
   const [explanations, setExplanations] = useState<Record<string, string>>({});
@@ -108,14 +110,13 @@ export default function MilestonesTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>My Child</span>
-          <h2 className="text-2xl md:text-[2rem] font-extrabold leading-[1.12] mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Development Snapshot</h2>
-          <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>Notice what you&apos;ve seen so far across developmental domains. This is a parent observation tracker — not a diagnostic score, and children develop at their own pace.</p>
+          <h2 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h2>
+          <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("ms.subtitle")}</p>
         </div>
         <div className={`${cardCls} p-4 text-center`}>
-          <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Observed so far</span>
-          <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "#1f8a5a" }}>{checkedMilestones} <span className="text-lg font-bold" style={{ color: "var(--arbor-muted)" }}>of</span> {totalMilestones}</div>
-          <span className="text-[9px] block mt-0.5" style={{ color: "var(--arbor-muted)" }}>A snapshot, not a score</span>
+          <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</span>
+          <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{checkedMilestones} <span className="text-lg font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")}</span> {totalMilestones}</div>
+          <span className="text-[9px] block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.snapshotNotScore")}</span>
         </div>
       </div>
 
@@ -124,9 +125,9 @@ export default function MilestonesTab() {
         <button
           onClick={() => setActiveDomain("all")}
           className="px-4 py-2 rounded-xl text-xs font-bold transition"
-          style={activeDomain === "all" ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+          style={activeDomain === "all" ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
         >
-          All · {milestonesPercent}%
+          {t("ms.all")} · {milestonesPercent}%
         </button>
         {domainOptions.map((dom) => {
           const s = domainStats[dom.id] || { total: 0, checked: 0 };
@@ -137,7 +138,7 @@ export default function MilestonesTab() {
               key={dom.id}
               onClick={() => setActiveDomain(dom.id)}
               className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
-              style={on ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
               <ProgressRing value={pct} size={22} stroke={3} />
               {dom.label.split(" ")[0]}
@@ -153,8 +154,8 @@ export default function MilestonesTab() {
           const itemsInDom = milestones.filter((m) => m.domain === dom.id);
           return (
             <div key={dom.id} className={`${cardCls} p-5 space-y-3`}>
-              <h3 className="text-sm font-extrabold flex items-center gap-2" style={{ color: "#1f8a5a" }}>
-                <span className="p-1.5 rounded-lg flex items-center justify-center" style={{ background: "#e4f4ec", color: "#1f8a5a" }}><Check className="w-4 h-4" /></span>
+              <h3 className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
+                <span className="p-1.5 rounded-lg flex items-center justify-center" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Check className="w-4 h-4" /></span>
                 {dom.label}
               </h3>
 
@@ -166,14 +167,14 @@ export default function MilestonesTab() {
                     style={item.checked ? { background: "var(--arbor-paper-deep)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
                   >
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input type="checkbox" checked={item.checked} onChange={() => onToggle(item.id, item.checked)} className="mt-1" style={{ accentColor: "#34b277" }} />
+                      <input type="checkbox" checked={item.checked} onChange={() => onToggle(item.id, item.checked)} className="mt-1" style={{ accentColor: "var(--arbor-clay)" }} />
                       <div className="space-y-0.5 flex-1">
-                        <span className="font-bold block" style={{ color: item.checked ? "#1f8a5a" : "var(--arbor-ink)" }}>{item.title}</span>
+                        <span className="font-bold block" style={{ color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{item.title}</span>
                         <span className="text-[10px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.description}</span>
                         <div className="flex items-center gap-2 flex-wrap pt-1">
-                          {item.checked && <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "#1f8a5a", background: "#e4f4ec" }}>Observed</span>}
-                          {item.ageGroup && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>Age: {item.ageGroup}</span>}
-                          {item.custom && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "#cf6f37", background: "#fdeada" }}>Custom</span>}
+                          {item.checked && <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.observed")}</span>}
+                          {item.ageGroup && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.age")} {item.ageGroup}</span>}
+                          {item.custom && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
                           {item.custom && (
                             <button
                               type="button"
@@ -197,7 +198,7 @@ export default function MilestonesTab() {
                             </button>
                           )}
                           {item.references?.map((r, i) => (
-                            <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold flex items-center gap-0.5" style={{ color: "#2f7bbf" }}>
+                            <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold flex items-center gap-0.5" style={{ color: "var(--arbor-sky-ink)" }}>
                               {r.label} <ExternalLink className="w-2.5 h-2.5" />
                             </a>
                           ))}
@@ -208,7 +209,7 @@ export default function MilestonesTab() {
                               rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               className="text-[9px] font-bold flex items-center gap-0.5"
-                              style={{ color: "#2f7bbf" }}
+                              style={{ color: "var(--arbor-sky-ink)" }}
                             >
                               {DOMAIN_REFERENCES[item.domain].label} <ExternalLink className="w-2.5 h-2.5" />
                             </a>
@@ -218,15 +219,15 @@ export default function MilestonesTab() {
                             onClick={(e) => { e.preventDefault(); void explain(item); }}
                             disabled={explaining[item.id]}
                             className="text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
-                            style={{ color: "#1f8a5a", background: "#e4f4ec" }}
+                            style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
                           >
                             {explaining[item.id] ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <BookOpen className="w-2.5 h-2.5" />}
-                            {explanations[item.id] ? "Hide" : "Explain"}
+                            {explanations[item.id] ? t("ms.hide") : t("ms.explain")}
                           </button>
                         </div>
                       </div>
                       {item.checked && (
-                        <button type="button" onClick={(e) => { e.preventDefault(); celebrate(); }} title="Celebrate" className="transition" style={{ color: "#cf6f37" }}>
+                        <button type="button" onClick={(e) => { e.preventDefault(); celebrate(); }} title="Celebrate" className="transition" style={{ color: "var(--arbor-peach-ink)" }}>
                           <PartyPopper className="w-4 h-4" />
                         </button>
                       )}
@@ -242,7 +243,7 @@ export default function MilestonesTab() {
                     </AnimatePresence>
                   </div>
                 ))}
-                {itemsInDom.length === 0 && <p className="text-[10px] italic" style={{ color: "var(--arbor-muted)" }}>No milestones in this domain yet.</p>}
+                {itemsInDom.length === 0 && <p className="text-[10px] italic" style={{ color: "var(--arbor-muted)" }}>{t("ms.noMilestones")}</p>}
               </div>
             </div>
           );
@@ -252,32 +253,32 @@ export default function MilestonesTab() {
       {/* Add custom milestone */}
       <div className={`${cardCls} p-5`}>
         {!showAdd ? (
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-bold transition" style={{ color: "#1f8a5a" }}>
-            <Plus className="w-4 h-4" /> Add milestone
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
+            <Plus className="w-4 h-4" /> {t("ms.addMilestone")}
           </button>
         ) : (
           <form onSubmit={submitCustom} className="flex flex-col sm:flex-row gap-2 items-stretch">
-            <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New milestone…" className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+            <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t("ms.newPlaceholder")} className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             <select value={newDomain} onChange={(e) => setNewDomain(e.target.value as DevelopmentalDomainId)} className="rounded-xl px-3 py-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
               {domainOptions.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
             </select>
-            <button type="submit" className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition" style={{ background: "#34b277" }}>Add</button>
-            <button type="button" onClick={() => setShowAdd(false)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>Cancel</button>
+            <button type="submit" className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition" style={{ background: "var(--arbor-clay)" }}>{t("ms.add")}</button>
+            <button type="button" onClick={() => setShowAdd(false)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
           </form>
         )}
       </div>
 
       {/* Interactive AI scaffolding gap analyzer */}
-      <div className="rounded-2xl p-6 space-y-4" style={{ background: "linear-gradient(120deg,#eef6f1,#ece9fb)", border: "1px solid var(--arbor-rule)" }}>
+      <div className="rounded-2xl p-6 space-y-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h4 className="text-base font-extrabold flex items-center gap-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              <Sparkles className="w-4 h-4" style={{ color: "#1f8a5a" }} /> Vygotskian AI Scaffolding Analyzer
+              <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> {t("ms.nurtureNext")}
             </h4>
-            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>Maps supportive next steps from what you&apos;ve observed and not yet observed — a next-best-challenge view, never a deficit list.</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.nurtureDesc")}</p>
           </div>
-          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ml-auto sm:ml-0 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}>
-            {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Analyzing Gaps...</>) : (<><Brain className="w-3.5 h-3.5" /> Run AI Gap Review</>)}
+          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ml-auto sm:ml-0 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
+            {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("ms.findingSteps")}</>) : (<><Brain className="w-3.5 h-3.5" /> {t("ms.findSteps")}</>)}
           </button>
         </div>
 
@@ -285,22 +286,22 @@ export default function MilestonesTab() {
           <div className="p-4 rounded-xl text-xs leading-relaxed space-y-3 select-text bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
             <MarkdownBlock text={milestoneAnalysisOfGaps} className="space-y-2" />
             <div className="pt-2.5 flex justify-end" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-              <button type="button" onClick={() => { setChatInput(`Regarding the scaffolding gap analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?`); setSelectedLens("Vygotsky's Scaffolding"); setActiveTab("coach"); }} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "#1f8a5a" }}>
-                Adjust Scaffolding in Coach Chat ➔
+              <button type="button" onClick={() => { setChatInput(`Regarding the scaffolding gap analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?`); setSelectedLens("Vygotsky's Scaffolding"); setActiveTab("coach"); }} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
+                {t("ms.discussCoach")}
               </button>
             </div>
           </div>
         ) : (
           <div className="p-4 rounded-xl text-center text-xs bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
-            Click "Run AI Gap Review" above to map progress and formulate custom, co-active routine play exercises.
+            {t("ms.runHint")}
           </div>
         )}
       </div>
 
-      <div className="p-5 rounded-2xl flex items-start gap-4 text-xs" style={{ background: "#fbf1d4" }}>
-        <Eye className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "#a9780f" }} />
+      <div className="p-5 rounded-2xl flex items-start gap-4 text-xs" style={{ background: "var(--arbor-yellow-soft)" }}>
+        <Eye className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-yellow-ink)" }} />
         <div className="space-y-1 leading-relaxed">
-          <strong className="text-sm block" style={{ color: "var(--arbor-ink)" }}>Gentle watch points</strong>
+          <strong className="text-sm block" style={{ color: "var(--arbor-ink)" }}>{t("ms.watchPoints")}</strong>
           <p style={{ color: "var(--arbor-muted)" }}>
             A few areas are still in the &ldquo;not seen yet&rdquo; column for this age — including comfort code-switching between {childProfile.languages.join(" and ") || "home and school languages"}. That&apos;s common and rarely a concern on its own. Keep noticing, keep playing, and revisit in a few weeks. If something feels persistent, or you&apos;d simply like reassurance, you can ask Arbor or share a development snapshot with your pediatrician or teacher.
           </p>

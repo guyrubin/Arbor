@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { ShieldAlert, Phone, Plus, Trash2, CalendarCheck, AlertTriangle, BrainCircuit } from "lucide-react";
+import { ShieldAlert, Phone, Plus, Trash2, CalendarCheck, AlertTriangle, BrainCircuit, Stethoscope, Lock, Users } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
@@ -90,8 +90,8 @@ export default function SafetyTab() {
       </div>
 
       {/* Crisis script (pinned) */}
-      <div className="rounded-2xl p-6 space-y-2" style={{ background: "#fce2ec" }}>
-        <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#bd4f74" }}>
+      <div className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-soft)" }}>
+        <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-pink-ink)" }}>
           <AlertTriangle className="w-4 h-4" /> Crisis script — say this
         </span>
         <p className="text-sm leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>
@@ -106,8 +106,8 @@ export default function SafetyTab() {
           <div className="space-y-2">
             {WARNING_SIGNS.map((sign, i) => (
               <label key={i} className={`${cardCls} flex items-start gap-3 p-2.5 transition cursor-pointer text-xs`}>
-                <input type="checkbox" checked={!!checked[i]} onChange={() => toggleSign(i)} className="mt-0.5" style={{ accentColor: "#bd4f74" }} />
-                <span style={{ color: checked[i] ? "#bd4f74" : "var(--arbor-ink)", fontWeight: checked[i] ? 700 : 400 }}>{sign}</span>
+                <input type="checkbox" checked={!!checked[i]} onChange={() => toggleSign(i)} className="mt-0.5" style={{ accentColor: "var(--arbor-pink-ink)" }} />
+                <span style={{ color: checked[i] ? "var(--arbor-pink-ink)" : "var(--arbor-ink)", fontWeight: checked[i] ? 700 : 400 }}>{sign}</span>
               </label>
             ))}
           </div>
@@ -116,14 +116,14 @@ export default function SafetyTab() {
 
         <SectionCard title="Safety review" icon={<CalendarCheck className="w-5 h-5" />} tone="sky"
           action={
-            <button onClick={markReviewed} className="font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>Mark reviewed</button>
+            <button onClick={markReviewed} className="font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>Mark reviewed</button>
           }
         >
           <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
             Last reviewed: <strong>{lastReviewed ? new Date(lastReviewed).toLocaleDateString() : "never"}</strong>
           </p>
           {reviewStale && (
-            <div className="text-xs rounded-xl px-3 py-2 mt-3" style={{ background: "#fbf1d4", color: "#a9780f" }}>
+            <div className="text-xs rounded-xl px-3 py-2 mt-3" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>
               It&apos;s been a while — review safety info monthly to keep it current.
             </div>
           )}
@@ -155,7 +155,7 @@ export default function SafetyTab() {
           <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className={inputCls} style={inputStyle} />
           <div className="flex gap-2">
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes" className={`flex-1 ${inputCls}`} style={inputStyle} />
-            <button type="submit" className="text-white font-extrabold px-3 rounded-lg flex items-center" style={{ background: "#34b277" }}><Plus className="w-4 h-4" /></button>
+            <button type="submit" aria-label="Add contact" className="text-white font-extrabold px-3 rounded-lg flex items-center" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
           </div>
         </form>
       </SectionCard>
@@ -174,7 +174,7 @@ export default function SafetyTab() {
                   onClick={() => handleMemoryDecision(item.memoryId, "deleted")}
                   disabled={isMemoryUpdating === item.memoryId}
                   className="text-[10px] font-bold flex-shrink-0 disabled:opacity-50"
-                  style={{ color: "#bd4f74" }}
+                  style={{ color: "var(--arbor-pink-ink)" }}
                 >
                   Forget
                 </button>
@@ -187,12 +187,12 @@ export default function SafetyTab() {
       {/* Static safeguards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
         {[
-          { emoji: "🩺", tone: "yellow" as PastelKey, title: "Medical escalation safeguard", body: "The Parent Coach screens high-risk terms (fever, injury, self-harm, abuse, regression, severe distress) and routes parents toward professional or urgent support." },
-          { emoji: "🇪🇺", tone: "sky" as PastelKey, title: "GDPR & minimization controls", body: "Arbor is designed for GDPR-aligned children's data minimization. No unsupervised AI interaction for children; details are stored as parent-approved observations." },
-          { emoji: "🛡️", tone: "mint" as PastelKey, title: "Multi-professional handoff", body: "The printable summary bridges home observations with specialized care profiles, giving teachers and clinics non-diagnosing observational context instantly." },
+          { icon: <Stethoscope className="w-5 h-5" />, tone: "yellow" as PastelKey, title: "Medical escalation safeguard", body: "The Parent Coach screens high-risk terms (fever, injury, self-harm, abuse, regression, severe distress) and routes parents toward professional or urgent support." },
+          { icon: <Lock className="w-5 h-5" />, tone: "sky" as PastelKey, title: "GDPR & data minimization", body: "Arbor is designed for GDPR-aligned children's data minimization. No unsupervised AI interaction for children; details are stored as parent-approved observations." },
+          { icon: <Users className="w-5 h-5" />, tone: "mint" as PastelKey, title: "Multi-professional handoff", body: "The printable summary bridges home observations with specialized care profiles, giving teachers and clinics non-diagnosing observational context instantly." },
         ].map((s) => (
           <div key={s.title} className={`${cardCls} p-5 space-y-3`}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: PASTEL[s.tone].soft }}>{s.emoji}</div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: PASTEL[s.tone].soft, color: PASTEL[s.tone].ink }}>{s.icon}</div>
             <h3 className="font-extrabold text-sm" style={{ color: "var(--arbor-ink)" }}>{s.title}</h3>
             <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{s.body}</p>
           </div>

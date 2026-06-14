@@ -4,6 +4,7 @@ import { Sparkles, AlertTriangle, LogOut, Search, ShieldCheck, Settings as Setti
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { sectionForTab } from "../../lib/navigation";
 import Sidebar from "./Sidebar";
 import AiRail from "./AiRail";
@@ -87,6 +88,7 @@ export default function Shell() {
   const { activeTab, setActiveTab, showAiRail, setShowAiRail, showSandboxBanner, childProfile } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
+  const { t, uiLang, setUiLang } = useLanguage();
   const ActiveTabComponent = tabRegistry[activeTab];
   const section = sectionForTab(activeTab);
   const focusLabel = childProfile.languages.length > 1
@@ -128,34 +130,47 @@ export default function Shell() {
           {/* Top workspace accessories header row */}
           <div className="flex justify-between items-center mb-5 gap-4">
             <span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
-              <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "#34b277" }} />
-              <span className="truncate">Caring for <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · Age {childProfile.age}</strong>
-              {focusLabel && <span className="hidden sm:inline"> · Focus: <strong style={{ color: "#1f8a5a" }}>{focusLabel}</strong></span>}</span>
+              <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
+              <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {t("top.age")} {childProfile.age}</strong>
+              {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-green-ink)" }}>{focusLabel}</strong></span>}</span>
             </span>
             <div className="flex items-center gap-2">
+              {/* Whole-app language switch (UI + AI). Hebrew flips the app to RTL. */}
+              <div className="flex items-center rounded-xl p-0.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} title={t("top.language")}>
+                {(["en", "he"] as const).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setUiLang(l)}
+                    className="px-2 py-1 rounded-lg text-[11px] font-extrabold transition"
+                    style={uiLang === l ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}
+                  >
+                    {l === "en" ? "EN" : "עב"}
+                  </button>
+                ))}
+              </div>
               <button
                 onClick={() => setSearchOpen(true)}
-                aria-label="Search"
+                aria-label={t("top.search")}
                 title="Search (Ctrl/Cmd+K)"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition bg-white"
+                className="flex items-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl text-[11px] font-bold transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
-                <Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Search</span>
+                <Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t("top.search")}</span>
               </button>
               {!showAiRail && (
                 <button
                   onClick={() => setShowAiRail(true)}
-                  className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition cursor-pointer"
-                  style={{ background: "#e4f4ec", color: "#1f8a5a" }}
+                  className="hidden xl:flex items-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
+                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                 >
-                  <ShieldCheck className="w-3.5 h-3.5" /> How Arbor helps
+                  <ShieldCheck className="w-3.5 h-3.5" /> {t("top.howHelps")}
                 </button>
               )}
               <button
                 onClick={() => setSettingsOpen(true)}
                 aria-label="Settings"
                 title="Settings"
-                className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl transition bg-white"
+                className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 <SettingsIcon className="w-4 h-4" />
@@ -165,7 +180,7 @@ export default function Shell() {
                   onClick={() => void signOut()}
                   aria-label="Sign out"
                   title="Sign out"
-                  className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition bg-white"
+                  className="md:hidden flex items-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl text-[11px] font-bold transition bg-white"
                   style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
                   <LogOut className="w-3.5 h-3.5" /> Sign out
@@ -187,9 +202,9 @@ export default function Shell() {
                     aria-selected={on}
                     onClick={() => setActiveTab(it.tab)}
                     className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
-                    style={on ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                    style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", boxShadow: "inset 0 0 0 1px rgba(52,178,119,0.18)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                   >
-                    <Icon className="w-3.5 h-3.5" /> {it.label}
+                    <Icon className="w-3.5 h-3.5" /> {t("nav.tab." + it.tab)}
                   </button>
                 );
               })}
@@ -198,7 +213,7 @@ export default function Shell() {
 
           {/* Sandbox banner if API key is missing */}
           {showSandboxBanner && (
-            <div className="mb-6 p-4 rounded-2xl text-xs flex items-center justify-between gap-4" style={{ background: "#fdeada", color: "#9a5a2a" }}>
+            <div className="mb-6 p-4 rounded-2xl text-xs flex items-center justify-between gap-4" style={{ background: "var(--arbor-peach-soft)", color: "#8a5326" }}>
               <span className="flex items-center gap-3">
                 <AlertTriangle className="w-5 h-5 flex-shrink-0" />
                 <span>
@@ -208,7 +223,7 @@ export default function Shell() {
               <button
                 onClick={() => toast("Add GEMINI_API_KEY to app/.env.local (copy from app/.env.example) to enable live AI responses.", "info")}
                 className="text-white font-extrabold px-3 py-1.5 rounded-xl flex-shrink-0"
-                style={{ background: "#cf6f37" }}
+                style={{ background: "var(--arbor-peach)" }}
               >
                 Learn how
               </button>

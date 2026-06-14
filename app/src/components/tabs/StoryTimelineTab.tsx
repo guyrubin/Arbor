@@ -131,7 +131,7 @@ export default function StoryTimelineTab() {
             <button
               onClick={() => setActiveTab("weekly")}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
-              style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}
+              style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
             >
               <BarChart2 className="w-4 h-4" /> Weekly insight
             </button>
@@ -208,7 +208,7 @@ export default function StoryTimelineTab() {
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
-                style={on ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {f.label} <span className="opacity-60">{n}</span>
               </button>

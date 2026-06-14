@@ -120,7 +120,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
               onClick={analyze}
               disabled={loading}
               className="w-full text-white font-extrabold text-sm py-3 rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
+              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
             >
               {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Arbor is looking…</> : <><Sparkles className="w-4 h-4" /> {isDoc ? "Read this document" : "Ask Arbor to look"}</>}
             </button>
@@ -129,7 +129,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
       )}
 
       {error && (
-        <div className="mt-3 p-3 rounded-xl text-[12px] flex items-start gap-2" style={{ background: "#fce2ec", color: "#bd4f74" }}>
+        <div className="mt-3 p-3 rounded-xl text-[12px] flex items-start gap-2" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
           <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" /> {error}
         </div>
       )}
@@ -142,16 +142,16 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
 
       {result && !result.offTopic && result.mode === "observe" && (
         <div className="mt-3 space-y-2.5">
-          <List icon={<Eye className="w-3 h-3" />} title="What Arbor sees" tint="#6354c4" items={(result as VisionObserve).observations} />
-          <List icon={<Sparkles className="w-3 h-3" />} title="What it may mean" tint="#a9780f" items={(result as VisionObserve).possibleMeanings} />
-          <List icon={<ListChecks className="w-3 h-3" />} title="Try today" tint="#1f8a5a" items={(result as VisionObserve).tryToday} />
-          <List icon={<Ban className="w-3 h-3" />} title="Avoid" tint="#cf6f37" items={(result as VisionObserve).avoid} />
+          <List icon={<Eye className="w-3 h-3" />} title="What Arbor sees" tint="var(--arbor-lav-ink)" items={(result as VisionObserve).observations} />
+          <List icon={<Sparkles className="w-3 h-3" />} title="What it may mean" tint="var(--arbor-yellow-ink)" items={(result as VisionObserve).possibleMeanings} />
+          <List icon={<ListChecks className="w-3 h-3" />} title="Try today" tint="var(--arbor-green-ink)" items={(result as VisionObserve).tryToday} />
+          <List icon={<Ban className="w-3 h-3" />} title="Avoid" tint="var(--arbor-peach-ink)" items={(result as VisionObserve).avoid} />
           {(result as VisionObserve).nonDiagnosticNote && (
             <p className="text-[11px] italic px-1" style={{ color: "var(--arbor-muted)" }}>{(result as VisionObserve).nonDiagnosticNote}</p>
           )}
           <div className="flex flex-wrap gap-2 pt-1">
             <button onClick={() => { onSeedCoach(`About the photo I showed you${note ? ` (${note})` : ""}: ${(result as VisionObserve).observations?.[0] || ""}. What's one thing to try this week?`); close(); }}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
               <MessageSquare className="w-3.5 h-3.5" /> Discuss in Arbor
             </button>
             <button onClick={() => { onGoBehaviors((result as VisionObserve).observations?.join(". ") || note); close(); }}
@@ -165,15 +165,15 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
       {result && !result.offTopic && result.mode === "document" && (
         <div className="mt-3 space-y-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5" style={{ color: "#2f7bbf" }}><FileText className="w-3 h-3" /> {(result as VisionDocument).documentType || "Document"}</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}><FileText className="w-3 h-3" /> {(result as VisionDocument).documentType || "Document"}</span>
           </div>
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{(result as VisionDocument).summary}</p>
-          <List icon={<ListChecks className="w-3 h-3" />} title="Key points" tint="#1f8a5a" items={(result as VisionDocument).keyPoints} />
-          <List icon={<BookMarked className="w-3 h-3" />} title="Worth remembering" tint="#a9780f" items={(result as VisionDocument).suggestedMemory} />
-          <List icon={<MessageSquare className="w-3 h-3" />} title="Ask the professional" tint="#6354c4" items={(result as VisionDocument).questionsForProfessional} />
+          <List icon={<ListChecks className="w-3 h-3" />} title="Key points" tint="var(--arbor-green-ink)" items={(result as VisionDocument).keyPoints} />
+          <List icon={<BookMarked className="w-3 h-3" />} title="Worth remembering" tint="var(--arbor-yellow-ink)" items={(result as VisionDocument).suggestedMemory} />
+          <List icon={<MessageSquare className="w-3 h-3" />} title="Ask the professional" tint="var(--arbor-lav-ink)" items={(result as VisionDocument).questionsForProfessional} />
           <div className="flex flex-wrap gap-2 pt-1">
             <button onClick={() => { const n = (result as VisionDocument).handoffNote || (result as VisionDocument).summary; copy(n); onGoHandoff(n); close(); }}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
               <Send className="w-3.5 h-3.5" /> Use in a handoff
             </button>
             <button onClick={() => { onSeedCoach(`Here's what a ${(result as VisionDocument).documentType || "document"} from my child's school/clinic says: ${(result as VisionDocument).summary}. What should I take from this and do next?`); close(); }}

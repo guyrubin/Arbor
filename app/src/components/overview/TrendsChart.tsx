@@ -37,13 +37,13 @@ export default function TrendsChart({ logs, milestonesPercent }: { logs: Behavio
     <div className={`${cardCls} p-6 space-y-4`}>
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+          <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
             <TrendingUp className="w-3.5 h-3.5" /> Trend over time
           </span>
           <h3 className="text-lg font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Behavior intensity · last 6 months</h3>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "#1f8a5a" }}>{milestonesPercent}%</div>
+          <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{milestonesPercent}%</div>
           <span className="text-[10px] uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>milestone readiness</span>
         </div>
       </div>
@@ -52,14 +52,14 @@ export default function TrendsChart({ logs, milestonesPercent }: { logs: Behavio
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
               <CartesianGrid stroke="rgba(41,51,63,0.06)" vertical={false} />
-              <XAxis dataKey="label" stroke="#69747f" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 5]} stroke="#69747f" fontSize={11} tickLine={false} axisLine={false} />
+              <XAxis dataKey="label" stroke="var(--arbor-muted)" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis domain={[0, 5]} stroke="var(--arbor-muted)" fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip
                 contentStyle={{ background: "#ffffff", border: "1px solid rgba(41,51,63,0.12)", borderRadius: 12, fontSize: 12, boxShadow: "0 8px 24px rgba(41,51,63,0.10)" }}
-                labelStyle={{ color: "#2a9c66", fontWeight: 700 }}
+                labelStyle={{ color: "var(--arbor-clay-deep)", fontWeight: 700 }}
                 formatter={(v: any, _n: any, item: any) => [`avg ${v}/5 · ${item?.payload?.count || 0} events`, "Intensity"]}
               />
-              <Line type="monotone" dataKey="avg" stroke="#34b277" strokeWidth={2.5} dot={{ r: 3, fill: "#34b277" }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="avg" stroke="var(--arbor-clay)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--arbor-clay)" }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

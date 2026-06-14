@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Check, Heart, RotateCcw, Smile, Sparkles, Wind } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
@@ -12,6 +13,7 @@ const eventId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toS
 
 export default function FeelingsLabTab() {
   const { childProfile } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
 
@@ -75,8 +77,8 @@ export default function FeelingsLabTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         eyebrow="Practice Studio"
-        title="Feelings Lab"
-        subtitle={`Emotion recognition and regulation practice for ${first}: match feelings, talk about why they happen, then practice calm-down tools before big feelings arrive.`}
+        title={t("prac.feelings.title")}
+        subtitle={t("prac.feelings.sub", { name: first })}
       />
 
       <TrustSafetyBar
@@ -119,7 +121,7 @@ export default function FeelingsLabTab() {
                 disabled={!!pickedEmotion}
                 className={`${cardCls} p-4 text-center transition`}
                 style={{
-                  border: picked ? `2px solid ${correct ? "#34b277" : "#bd4f74"}` : "1px solid rgba(41,51,63,0.06)",
+                  border: picked ? `2px solid ${correct ? "var(--arbor-clay)" : "var(--arbor-pink-ink)"}` : "1px solid rgba(41,51,63,0.06)",
                   opacity: reveal && !picked && !correct ? 0.58 : 1,
                 }}
               >
@@ -130,13 +132,13 @@ export default function FeelingsLabTab() {
           })}
         </div>
         {pickedEmotion && (
-          <div className="mt-4 rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: pickedEmotion === scenario.answer ? "#e4f4ec" : "#fbf1d4" }}>
+          <div className="mt-4 rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: pickedEmotion === scenario.answer ? "var(--arbor-green-soft)" : "var(--arbor-yellow-soft)" }}>
             <p className="text-sm flex-1 min-w-[220px]" style={{ color: "var(--arbor-ink)" }}>
               {pickedEmotion === scenario.answer
                 ? `Yes. This sounds like ${answer.label.toLowerCase()}. Ask: where do you feel that in your body?`
                 : `Warm retry: it might look more like ${answer.label.toLowerCase()}. Try making that face together.`}
             </p>
-            <button onClick={nextScenario} className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "#a9780f" }}>
+            <button onClick={nextScenario} className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-yellow-ink)" }}>
               Next feeling
             </button>
           </div>
@@ -154,7 +156,7 @@ export default function FeelingsLabTab() {
                   <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Why:</b> {emotion.why}</p>
                   <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Looks like:</b> {emotion.looksLike}</p>
                   <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Helps:</b> {emotion.helps}</p>
-                  <button onClick={() => markTalked(emotion.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl" style={{ background: "#fce2ec", color: "#bd4f74" }}>
+                  <button onClick={() => markTalked(emotion.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
                     {talkedEmotion === emotion.id ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
                     {talkedEmotion === emotion.id ? "Logged" : "We talked this through"}
                   </button>
@@ -178,7 +180,7 @@ export default function FeelingsLabTab() {
               <p className="text-[10px] mt-2 font-bold" style={{ color: "var(--arbor-muted)" }}>
                 In {pattern.inhale}s, hold {pattern.hold}s, out {pattern.exhale}s x {pattern.rounds}
               </p>
-              <button onClick={() => completeCalm(pattern.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl" style={{ background: "#e5f0fb", color: "#2f7bbf" }}>
+              <button onClick={() => completeCalm(pattern.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
                 {completedCalm === pattern.id ? <Check className="w-3.5 h-3.5" /> : <RotateCcw className="w-3.5 h-3.5" />}
                 {completedCalm === pattern.id ? "Logged" : "Complete one round"}
               </button>

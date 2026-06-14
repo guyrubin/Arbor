@@ -15,12 +15,12 @@ import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
  */
 
 const RISK_TONE: Record<string, { fg: string; bg: string; label: string }> = {
-  low: { fg: "#1f8a5a", bg: "#e4f4ec", label: "Low" },
-  moderate: { fg: "#a9780f", bg: "#fbf1d4", label: "Moderate" },
-  elevated: { fg: "#a9780f", bg: "#fbf1d4", label: "Elevated" },
-  high: { fg: "#bd4f74", bg: "#fce2ec", label: "High" },
-  severe: { fg: "#bd4f74", bg: "#fce2ec", label: "Severe" },
-  urgent: { fg: "#bd4f74", bg: "#fce2ec", label: "Urgent" },
+  low: { fg: "var(--arbor-green-ink)", bg: "var(--arbor-green-soft)", label: "Low" },
+  moderate: { fg: "var(--arbor-yellow-ink)", bg: "var(--arbor-yellow-soft)", label: "Moderate" },
+  elevated: { fg: "var(--arbor-yellow-ink)", bg: "var(--arbor-yellow-soft)", label: "Elevated" },
+  high: { fg: "var(--arbor-pink-ink)", bg: "var(--arbor-pink-soft)", label: "High" },
+  severe: { fg: "var(--arbor-pink-ink)", bg: "var(--arbor-pink-soft)", label: "Severe" },
+  urgent: { fg: "var(--arbor-pink-ink)", bg: "var(--arbor-pink-soft)", label: "Urgent" },
 };
 
 const FRAME_LABELS: Record<string, string> = {
@@ -79,7 +79,7 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
       {/* Meta header: attribution + age + domains + risk */}
       <div className="flex flex-wrap items-center gap-1.5">
         {showLens && (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>Aligned with {lens}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>Aligned with {lens}</span>
         )}
         {contract.ageBand && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{contract.ageBand}</span>}
         {contract.domains?.slice(0, 3).map((d) => (
@@ -90,7 +90,7 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
 
       {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
       {council && council.length > 0 && (
-        <Panel icon={<Users className="w-3 h-3" />} title={`The council weighed in · ${council.length} voices`} tint="#2f7bbf">
+        <Panel icon={<Users className="w-3 h-3" />} title={`The council weighed in · ${council.length} voices`} tint="var(--arbor-sky-ink)">
           <ul className="space-y-2">
             {council.map((c) => (
               <li key={c.scholarId} className="text-[12.5px] leading-snug">
@@ -106,7 +106,7 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
 
       {/* What may be happening */}
       {contract.nonDiagnosticHypotheses?.length > 0 && (
-        <Panel icon={<Lightbulb className="w-3 h-3" />} title="What may be happening" tint="#a9780f">
+        <Panel icon={<Lightbulb className="w-3 h-3" />} title="What may be happening" tint="var(--arbor-yellow-ink)">
           <ul className="space-y-1.5">
             {contract.nonDiagnosticHypotheses.map((h, i) => (
               <li key={i} className="text-[12.5px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
@@ -122,7 +122,7 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
       {/* Today's plan — interactive checklist */}
       {contract.todayPlan?.length > 0 && (
         <Panel
-          icon={<ListChecks className="w-3 h-3" />} title="Try today" tint="#1f8a5a"
+          icon={<ListChecks className="w-3 h-3" />} title="Try today" tint="var(--arbor-green-ink)"
           action={
             <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan[0])}
               className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
@@ -134,7 +134,7 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
             {contract.todayPlan.map((step, i) => (
               <li key={i}>
                 <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-start gap-2 text-left w-full group">
-                  <span className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition" style={done[i] ? { background: "#34b277", border: "1px solid #34b277" } : { border: "1px solid var(--arbor-rule-strong)" }}>
+                  <span className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition" style={done[i] ? { background: "var(--arbor-clay)", border: "1px solid var(--arbor-clay)" } : { border: "1px solid var(--arbor-rule-strong)" }}>
                     {done[i] && <Check className="w-3 h-3 text-white" />}
                   </span>
                   <span className="text-[12.5px] leading-snug" style={done[i] ? { color: "var(--arbor-muted)", textDecoration: "line-through" } : { color: "var(--arbor-ink)" }}>{step}</span>
@@ -148,7 +148,7 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
       {/* Parent script — say aloud */}
       {contract.parentScript && (
         <Panel
-          icon={<MessageSquareQuote className="w-3 h-3" />} title="Say this" tint="#2f7bbf"
+          icon={<MessageSquareQuote className="w-3 h-3" />} title="Say this" tint="var(--arbor-sky-ink)"
           action={
             <div className="flex items-center gap-2">
               {ttsSupported() && (
@@ -169,14 +169,14 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
       {/* Avoid / Observe */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {contract.avoid?.length > 0 && (
-          <Panel icon={<Ban className="w-3 h-3" />} title="Avoid" tint="#cf6f37">
+          <Panel icon={<Ban className="w-3 h-3" />} title="Avoid" tint="var(--arbor-peach-ink)">
             <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.avoid.map((a, i) => <li key={i}>{a}</li>)}
             </ul>
           </Panel>
         )}
         {contract.observe?.length > 0 && (
-          <Panel icon={<Eye className="w-3 h-3" />} title="Watch for" tint="#6354c4">
+          <Panel icon={<Eye className="w-3 h-3" />} title="Watch for" tint="var(--arbor-lav-ink)">
             <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.observe.map((o, i) => <li key={i}>{o}</li>)}
             </ul>
@@ -186,8 +186,8 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
 
       {/* Escalate */}
       {contract.escalateIf?.length > 0 && (
-        <Panel icon={<AlertTriangle className="w-3 h-3" />} title="Reach out for help if" tint="#bd4f74">
-          <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "#bd4f74" }}>
+        <Panel icon={<AlertTriangle className="w-3 h-3" />} title="Reach out for help if" tint="var(--arbor-pink-ink)">
+          <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "var(--arbor-pink-ink)" }}>
             {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
         </Panel>
@@ -195,11 +195,11 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
 
       {/* Six-frame routing chips (SF-2) */}
       {frames.length > 0 && (
-        <Panel icon={<Compass className="w-3 h-3" />} title="Developmental frame" tint="#a9780f">
+        <Panel icon={<Compass className="w-3 h-3" />} title="Developmental frame" tint="var(--arbor-yellow-ink)">
           <div className="flex flex-wrap gap-1.5">
             {frames.map(([k, v]) => (
               <span key={k} className="text-[10.5px] leading-tight rounded-lg px-2 py-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                <span className="font-extrabold" style={{ color: "#a9780f" }}>{FRAME_LABELS[k] || k}:</span>{" "}
+                <span className="font-extrabold" style={{ color: "var(--arbor-yellow-ink)" }}>{FRAME_LABELS[k] || k}:</span>{" "}
                 <span style={{ color: "var(--arbor-muted)" }}>{String(v)}</span>
               </span>
             ))}
@@ -210,7 +210,7 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
       {/* Structured actions — the answer feeds the rest of the app (ECO-3) */}
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || "")}
-          className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
           <ListPlus className="w-3.5 h-3.5" /> Save to plan
         </button>
         <button onClick={onCreateLog}

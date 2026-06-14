@@ -1,5 +1,4 @@
 import React from "react";
-import { Sparkles } from "lucide-react";
 
 /** Inline parser: bolds **text** segments, leaves the rest as plain text. */
 export function parseInline(text: string) {
@@ -27,18 +26,17 @@ export function renderMarkdown(text: string) {
       return (
         <h4
           key={idx}
-          className="text-sm font-bold tracking-wider uppercase mt-5 mb-2 pb-1 flex items-center gap-2"
-          style={{ color: "#1f8a5a", borderBottom: "1px solid var(--arbor-rule)" }}
+          className="text-[13px] font-bold mt-5 mb-1.5"
+          style={{ color: "var(--arbor-green-ink)" }}
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          {content.replace("### ", "")}
+          {parseInline(content.replace("### ", ""))}
         </h4>
       );
     }
     if (content.startsWith("## ")) {
       return (
-        <h3 key={idx} className="text-base font-extrabold mt-6 mb-3 tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-          {content.replace("## ", "")}
+        <h3 key={idx} className="text-base font-semibold mt-6 mb-3 tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+          {parseInline(content.replace("## ", ""))}
         </h3>
       );
     }

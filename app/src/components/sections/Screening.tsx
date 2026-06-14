@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ClipboardCheck, ShieldCheck, Check, AlertTriangle, RefreshCw, FileText, Search, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
 import { PageHeader, SectionCard, cardCls, Chip, IconBadge, TrustSafetyBar } from "../ui/kit";
@@ -20,6 +21,7 @@ const ANSWERS: { key: ScreenAnswer; label: string }[] = [
 export default function Screening() {
   const { childProfile, setActiveTab } = useArbor();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
   const band = useMemo(() => bandForAge(childProfile.age), [childProfile.age]);
 
@@ -48,8 +50,8 @@ export default function Screening() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[920px]">
       <PageHeader
         eyebrow="My Child"
-        title="Development Check"
-        subtitle={`A short, non-diagnostic check of how ${first} is doing across developmental areas — and a calm next step if anything is worth a professional conversation.`}
+        title={t("sec.screen.title")}
+        subtitle={t("sec.screen.sub", { name: first })}
       />
 
       <TrustSafetyBar note="Arbor is not a medical device and does not diagnose. This is a parent-awareness check — a conversation with a professional never hurts." />
@@ -61,7 +63,7 @@ export default function Screening() {
             There's no score and no labels, just whether any area is worth keeping an eye on. Children develop at their own pace.
           </p>
           <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-            <ShieldCheck className="w-3.5 h-3.5" style={{ color: "#1f8a5a" }} />
+            <ShieldCheck className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />
             Based on widely-used developmental guidance (CDC / AAP-style milestones). Non-diagnostic.
           </div>
           {last && (
@@ -70,13 +72,13 @@ export default function Screening() {
                 Last checked {new Date(last.answeredAt).toLocaleDateString()} ·{" "}
                 {last.elevated ? `${last.watchAreas.length} area(s) flagged` : "all areas on track"}
               </span>
-              <button onClick={() => { setResult(last); setPhase("result"); }} className="text-xs font-bold" style={{ color: "#1f8a5a" }}>View last result</button>
+              <button onClick={() => { setResult(last); setPhase("result"); }} className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>View last result</button>
             </div>
           )}
           <button
             onClick={() => setPhase("questions")}
             className="mt-4 inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3"
-            style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
+            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
           >
             <ClipboardCheck className="w-4 h-4" /> Start the check
           </button>
@@ -100,7 +102,7 @@ export default function Screening() {
                           onClick={() => setAnswers((p) => ({ ...p, [it.id]: a.key }))}
                           className="px-3 py-1.5 rounded-full text-xs font-bold transition"
                           style={on
-                            ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" }
+                            ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
                             : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                         >
                           {a.label}
@@ -118,7 +120,7 @@ export default function Screening() {
               onClick={submit}
               disabled={!allAnswered}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}
+              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}
             >
               See result <ArrowRight className="w-4 h-4" />
             </button>
@@ -130,7 +132,7 @@ export default function Screening() {
         {phase === "result" && result && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
             {/* Headline */}
-            <div className="rounded-[22px] p-6" style={{ background: result.elevated ? "#fbf1d4" : "#e4f4ec" }}>
+            <div className="rounded-[22px] p-6" style={{ background: result.elevated ? "var(--arbor-yellow-soft)" : "var(--arbor-green-soft)" }}>
               <div className="flex items-center gap-3">
                 <IconBadge tone={result.elevated ? "yellow" : "mint"}>
                   {result.elevated ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
@@ -165,10 +167,10 @@ export default function Screening() {
               <div className="flex flex-wrap gap-2">
                 {result.elevated && (
                   <>
-                    <button onClick={() => { setActiveTab("reports"); toast("Build a handoff to share this with a professional", "info"); }} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}>
+                    <button onClick={() => { setActiveTab("reports"); toast("Build a handoff to share this with a professional", "info"); }} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
                       <FileText className="w-4 h-4" /> Prepare a professional summary
                     </button>
-                    <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}>
+                    <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
                       <Search className="w-4 h-4" /> Find a professional
                     </button>
                   </>

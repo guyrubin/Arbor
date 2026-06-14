@@ -48,14 +48,15 @@ export function HeroScenePlayer({
 
   return (
     <div className="flex flex-col items-center text-center gap-5">
-      <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest text-[#f4d991] font-bold">
+      <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>
         <span>
           Beat {beatNumber} of {beatTotal}
         </span>
         {ttsSupported() && (
           <button
             onClick={toggleSpeak}
-            className={`flex items-center gap-1 transition ${speaking ? "text-[#f4d991]" : "text-[#a8a093] hover:text-white"}`}
+            className="flex items-center gap-1 transition"
+            style={{ color: speaking ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
             aria-label={speaking ? "Stop reading" : "Read aloud"}
           >
             {speaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
@@ -64,7 +65,7 @@ export function HeroScenePlayer({
         )}
       </div>
 
-      <div className={`${artSize} rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10`}>
+      <div className={`${artSize} rounded-3xl overflow-hidden shadow-2xl`} style={{ outline: "1px solid var(--arbor-rule)" }}>
         {photoUrl ? (
           <img src={photoUrl} alt="Hero" className="w-full h-full object-cover" />
         ) : (
@@ -72,14 +73,14 @@ export function HeroScenePlayer({
         )}
       </div>
 
-      <h3 className={`font-extrabold tracking-tight text-[#f7f1e7] ${immersive ? "text-lg" : "text-base"}`}>
+      <h3 className={`font-extrabold tracking-tight ${immersive ? "text-lg" : "text-base"}`} style={{ color: "var(--arbor-ink)" }}>
         {scene.title}
       </h3>
 
       <p
         dir="auto"
-        className={`${textSize} text-gray-200 font-medium max-w-2xl`}
-        style={immersive ? { fontFamily: "var(--font-display, Georgia), serif" } : undefined}
+        className={`${textSize} font-medium max-w-2xl`}
+        style={{ color: "var(--arbor-ink-soft)", ...(immersive ? { fontFamily: "var(--font-display), Georgia, serif" } : {}) }}
       >
         {scene.narration}
       </p>

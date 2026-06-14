@@ -4,6 +4,7 @@ import { ChevronDown, Plus, Check, Pencil } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import AddChildModal from "./AddChildModal";
 import ProfileEditDrawer from "./ProfileEditDrawer";
+import { Avatar } from "../ui/Avatar";
 
 export default function ProfileSwitcher() {
   const { profiles, activeChild, setActiveChild } = useProfile();
@@ -15,9 +16,7 @@ export default function ProfileSwitcher() {
     <div className="relative">
       <div className="rounded-2xl p-3 flex items-center justify-between gap-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
         <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 flex-1 text-left group">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold" style={{ color: "#1f8a5a", background: "#e4f4ec", boxShadow: "0 0 0 2px rgba(52,178,119,0.30)" }}>
-            {activeChild.name.slice(0, 1).toUpperCase()}
-          </div>
+          <Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={36} ring />
           <div className="min-w-0">
             <h4 className="text-sm font-bold leading-tight truncate" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
             <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>Age {activeChild.age}</p>
@@ -55,14 +54,12 @@ export default function ProfileSwitcher() {
                   className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition"
                   style={{ background: p.id === activeChild.id ? "var(--arbor-paper-deep)" : "transparent" }}
                 >
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold" style={{ color: "#1f8a5a", background: "#e4f4ec" }}>
-                    {p.name.slice(0, 1).toUpperCase()}
-                  </div>
+                  <Avatar name={p.name} photoURL={p.photoUrl} size={28} />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{p.name}</span>
                     <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>Age {p.age}</span>
                   </div>
-                  {p.id === activeChild.id && <Check className="w-4 h-4" style={{ color: "#34b277" }} />}
+                  {p.id === activeChild.id && <Check className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} />}
                 </button>
               ))}
               <button
@@ -71,9 +68,9 @@ export default function ProfileSwitcher() {
                   setShowAdd(true);
                 }}
                 className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition mt-1"
-                style={{ color: "#1f8a5a", borderTop: "1px solid var(--arbor-rule)" }}
+                style={{ color: "var(--arbor-green-ink)", borderTop: "1px solid var(--arbor-rule)" }}
               >
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#e4f4ec" }}>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--arbor-green-soft)" }}>
                   <Plus className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-bold">Add child</span>

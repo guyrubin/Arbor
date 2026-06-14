@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Languages, Sparkles, MessageSquare } from "lucide-react";
+import { Languages, Sparkles, MessageSquare, Mic } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { PageHeader, SectionCard, cardCls, Chip, PastelKey } from "../ui/kit";
 
@@ -85,7 +85,12 @@ export default function LanguageLabTab() {
       <PageHeader
         eyebrow="My Child"
         title="Language & Communication"
-        subtitle={`Multilingual support for ${first} — a calm daily practice built around the languages spoken at home.`}
+        subtitle={`Growing the languages ${first} speaks at home, with calm daily practice. For practicing how specific sounds are formed, that's Speech Coach.`}
+        action={
+          <button onClick={() => setActiveTab("speech")} className="inline-flex items-center gap-1.5 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
+            <Mic className="w-3.5 h-3.5" /> Sound practice? Speech Coach
+          </button>
+        }
       />
 
       {langs.length === 0 ? (
@@ -97,7 +102,7 @@ export default function LanguageLabTab() {
           <button
             onClick={() => setActiveTab("profile")}
             className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
-            style={{ background: "#e4f4ec", color: "#1f8a5a" }}
+            style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
           >
             Edit {first}&apos;s profile
           </button>
@@ -137,13 +142,13 @@ export default function LanguageLabTab() {
                   )
                 }
                 className="inline-flex items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
-                style={{ background: "#e4f4ec", color: "#1f8a5a" }}
+                style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
               >
                 <Sparkles className="w-3.5 h-3.5" /> Ask for a week plan
               </button>
             }
           >
-            <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "#1f8a5a" }}>Daily practice · Vygotsky ZPD</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-green-ink)" }}>Daily practice · Vygotsky ZPD</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               {activities.map((item) => (
                 <div key={item.title} className={`${cardCls} p-4 space-y-2`}>
@@ -156,7 +161,7 @@ export default function LanguageLabTab() {
                     {item.example}
                   </p>
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#1f8a5a" }}>{item.lens}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{item.lens}</span>
                     <button
                       onClick={() =>
                         askCoach(

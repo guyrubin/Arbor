@@ -3,10 +3,10 @@ import React from "react";
 type Tone = "amber" | "blue" | "green" | "red" | "neutral";
 
 const tones: Record<Tone, string> = {
-  amber: "bg-[#fbf1d4] text-[#a9780f] border-[#fbf1d4]",
-  blue: "bg-[#e5f0fb] text-[#2f7bbf] border-[#e5f0fb]",
-  green: "bg-[#e4f4ec] text-[#1f8a5a] border-[#e4f4ec]",
-  red: "bg-[#fce2ec] text-[#bd4f74] border-[#fce2ec]",
+  amber: "bg-[var(--arbor-yellow-soft)] text-[var(--arbor-yellow-ink)] border-[var(--arbor-yellow-soft)]",
+  blue: "bg-[var(--arbor-sky-soft)] text-[var(--arbor-sky-ink)] border-[var(--arbor-sky-soft)]",
+  green: "bg-[var(--arbor-green-soft)] text-[var(--arbor-green-ink)] border-[var(--arbor-green-soft)]",
+  red: "bg-[var(--arbor-pink-soft)] text-[var(--arbor-pink-ink)] border-[var(--arbor-pink-soft)]",
   neutral: "bg-[#f4f8f5] text-[#69747f] border-[rgba(41,51,63,0.08)]",
 };
 

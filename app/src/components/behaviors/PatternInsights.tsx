@@ -59,10 +59,10 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
   );
 
   return (
-    <div className="rounded-2xl p-5 space-y-3" style={{ background: "linear-gradient(120deg,#eef6f1,#ece9fb)", border: "1px solid var(--arbor-rule)" }}>
+    <div className="rounded-2xl p-5 space-y-3" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center gap-2">
-        <Activity className="w-4 h-4" style={{ color: "#1f8a5a" }} />
-        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Pattern intelligence</span>
+        <Activity className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} />
+        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>Pattern intelligence</span>
       </div>
       <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>{headline}</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

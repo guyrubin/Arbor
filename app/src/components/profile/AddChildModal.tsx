@@ -69,14 +69,14 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
     return (
       <Modal open={open} onClose={close} title="Add a child">
         <div className="space-y-4 text-sm">
-          <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "linear-gradient(120deg,#eef6f1,#ece9fb)", border: "1px solid var(--arbor-rule)" }}>
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "#1f8a5a" }}><Sparkles className="w-4 h-4" /></span>
+          <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
             <div>
               <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>Multiple children is an Arbor Plus feature</p>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                 The free plan covers one child. Arbor Plus adds up to {entitlement.limits.maxChildren === 1 ? 6 : entitlement.limits.maxChildren} children, unlimited coaching, professional reports, and advanced plans.
               </p>
-              <button onClick={() => { toast("Thanks! We'll let you know the moment Arbor Plus checkout is ready.", "success"); close(); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "#34b277", color: "#fff" }}>
+              <button onClick={() => { toast("Thanks! We'll let you know the moment Arbor Plus checkout is ready.", "success"); close(); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
                 Tell me when Plus launches
               </button>
             </div>
@@ -92,7 +92,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
         {/* Step progress */}
         <div className="flex gap-1.5">
           {[1, 2, 3].map((s) => (
-            <div key={s} className="h-1 flex-1 rounded-full" style={{ background: s <= step ? "#34b277" : "var(--arbor-rule-strong)" }} />
+            <div key={s} className="h-1 flex-1 rounded-full" style={{ background: s <= step ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }} />
           ))}
         </div>
 
@@ -110,8 +110,8 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Age: <span style={{ color: "#1f8a5a" }}>{age}</span></label>
-              <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "#34b277" }} />
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Age: <span style={{ color: "var(--arbor-green-ink)" }}>{age}</span></label>
+              <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
             </div>
           </div>
         )}
@@ -127,7 +127,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
                   onClick={() => toggleLanguage(lang)}
                   className="px-3 py-2 rounded-xl text-xs font-bold transition"
                   style={languages.includes(lang)
-                    ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" }
+                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
                     : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
                   {lang}

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
 import { Share2, ShieldCheck, Clock, X, Download, Trash2, History, Plus, Users, Inbox, RefreshCw } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { downloadJson } from "../../lib/childData";
 import { api } from "../../lib/api";
 import type { ShareGrant, ShareRole } from "../../types";
@@ -22,6 +23,7 @@ const expiryLabel = (g: ShareGrant) =>
  *  time-boxed, revocable grants (incl. co-parents), plus what's shared with you. */
 export default function TrustedSharing() {
   const { childProfile, behaviorLogs, actionPlans } = useArbor();
+  const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   const [shares, setShares] = useState<ShareGrant[]>([]);
@@ -100,10 +102,10 @@ export default function TrustedSharing() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[920px]">
       <PageHeader
         eyebrow="Care Network"
-        title="Trusted sharing"
-        subtitle={`You decide what about ${first} is shared, with whom, and for how long. Every grant is time-boxed and revoked instantly — the server stops sharing the moment it expires.`}
+        title={t("sec.sharing.title")}
+        subtitle={t("sec.sharing.sub", { name: first })}
         action={
-          <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}>
+          <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
             <Plus className="w-4 h-4" /> New share
           </button>
         }
@@ -122,7 +124,7 @@ export default function TrustedSharing() {
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>Their role</p>
             <div className="flex flex-wrap gap-1.5">
               {ROLES.map((r) => (
-                <button key={r.id} onClick={() => setDraft({ ...draft, role: r.id })} aria-pressed={draft.role === r.id} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.role === r.id ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{r.label}</button>
+                <button key={r.id} onClick={() => setDraft({ ...draft, role: r.id })} aria-pressed={draft.role === r.id} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.role === r.id ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{r.label}</button>
               ))}
             </div>
           </div>
@@ -131,7 +133,7 @@ export default function TrustedSharing() {
             <div className="flex flex-wrap gap-1.5">
               {SCOPE_OPTIONS.map((f) => {
                 const on = draft.scopes.includes(f);
-                return <button key={f} onClick={() => setScope(f)} aria-pressed={on} className="rounded-full px-3 py-1 text-xs font-bold" style={on ? { background: "#34b277", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{f}</button>;
+                return <button key={f} onClick={() => setScope(f)} aria-pressed={on} className="rounded-full px-3 py-1 text-xs font-bold" style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{f}</button>;
               })}
             </div>
           </div>
@@ -139,11 +141,11 @@ export default function TrustedSharing() {
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>Access duration</p>
             <div className="flex flex-wrap gap-1.5">
               {DURATIONS.map((d) => (
-                <button key={d} onClick={() => setDraft({ ...draft, duration: d })} aria-pressed={draft.duration === d} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.duration === d ? { background: "#e4f4ec", color: "#1f8a5a" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{d}</button>
+                <button key={d} onClick={() => setDraft({ ...draft, duration: d })} aria-pressed={draft.duration === d} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.duration === d ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{d}</button>
               ))}
             </div>
           </div>
-          <button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "#34b277" }}>
+          <button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
             {busy === "create" ? <><RefreshCw className="w-4 h-4 animate-spin" /> Sharing…</> : "Approve & share"}
           </button>
         </div>
@@ -162,7 +164,7 @@ export default function TrustedSharing() {
                   <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{s.recipientEmail}</h3>
                   <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{roleLabel(s.role)}</p>
                 </div>
-                <button onClick={() => revoke(s)} disabled={busy === s.id} className="inline-flex items-center gap-1 text-xs font-bold disabled:opacity-50" style={{ color: "#bd4f74" }}>
+                <button onClick={() => revoke(s)} disabled={busy === s.id} className="inline-flex items-center gap-1 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>
                   {busy === s.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />} Revoke access
                 </button>
               </div>
@@ -201,7 +203,7 @@ export default function TrustedSharing() {
         <SectionCard title="Your data" icon={<Download className="w-5 h-5" />} tone="lav">
           <div className="space-y-2">
             <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Download className="w-4 h-4" /> Export all data</button>
-            <button onClick={deleteData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "#fce2ec", color: "#bd4f74" }}><Trash2 className="w-4 h-4" /> Delete child data</button>
+            <button onClick={deleteData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}><Trash2 className="w-4 h-4" /> Delete child data</button>
           </div>
         </SectionCard>
         <SectionCard title="This session" icon={<History className="w-5 h-5" />} tone="sky">

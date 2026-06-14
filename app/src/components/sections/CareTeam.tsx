@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Users, Eye, RefreshCw, Search, ShieldCheck, Clock, Share2, Inbox, UserPlus } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import type { ShareGrant, ShareRole } from "../../types";
 import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey } from "../ui/kit";
@@ -19,6 +20,7 @@ const expiryLabel = (g: ShareGrant) =>
  *  from real, server-enforced share grants (no placeholder data). */
 export default function CareTeam() {
   const { childProfile, setActiveTab } = useArbor();
+  const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   const [mine, setMine] = useState<ShareGrant[]>([]);
@@ -45,14 +47,14 @@ export default function CareTeam() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         eyebrow="Care Network"
-        title="My care team"
-        subtitle={`The people coordinating around ${first} — with exactly the context you've shared, and nothing more.`}
+        title={t("sec.care.title")}
+        subtitle={t("sec.care.sub", { name: first })}
         action={
           <div className="flex items-center gap-2">
-            <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}>
+            <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
               <UserPlus className="w-4 h-4" /> Add someone
             </button>
-            <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}>
+            <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
               <Search className="w-4 h-4" /> Find a professional
             </button>
           </div>
@@ -65,7 +67,7 @@ export default function CareTeam() {
         </div>
       ) : mine.length === 0 && inbound.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>
-          <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
+          <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
             <Users className="w-6 h-6" />
           </div>
           <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>No one on the team yet</h3>
@@ -73,10 +75,10 @@ export default function CareTeam() {
             Add a co-parent, teacher or therapist and choose exactly what they can see about {first}. Every grant is time-boxed and revocable.
           </p>
           <div className="flex items-center justify-center gap-2 mt-4">
-            <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}>
+            <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
               <UserPlus className="w-4 h-4" /> Add someone
             </button>
-            <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}>
+            <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
               <Search className="w-4 h-4" /> Find a professional
             </button>
           </div>

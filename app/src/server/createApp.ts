@@ -48,6 +48,11 @@ const cspDirectives = () => ({
 
 export const createApp = (config: ArborConfig) => {
   const app = express();
+  // Cloud Run (and Firebase Hosting rewrites) front the app with a proxy, so the
+  // real client IP arrives via X-Forwarded-For. Trust exactly one hop so
+  // express-rate-limit keys on the user, not the proxy. (Without this it logs
+  // ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and rate-limits everyone as one IP.)
+  app.set("trust proxy", 1);
   const framework = loadFramework();
   const modelProvider = createModelProvider(config);
   const memoryStore = config.memoryAdapter === "firestore"

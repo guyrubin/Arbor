@@ -9,8 +9,8 @@ type Item = { id: string; phaseIdx: number; stepIdx: number; text: string; statu
 
 const COLUMNS: { status: StepStatus; label: string; tint: string }[] = [
   { status: "todo", label: "Not Started", tint: "text-[#69747f]" },
-  { status: "doing", label: "In Progress", tint: "text-[#cf6f37]" },
-  { status: "done", label: "Completed", tint: "text-[#1f8a5a]" },
+  { status: "doing", label: "In Progress", tint: "text-[var(--arbor-peach-ink)]" },
+  { status: "done", label: "Completed", tint: "text-[var(--arbor-green-ink)]" },
 ];
 
 function deriveStatus(step: { completed: boolean; status?: StepStatus }): StepStatus {
@@ -34,7 +34,7 @@ function StepCard({ item }: { item: Item }) {
     <div
       ref={setNodeRef}
       style={{ ...style, background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-      className={`group rounded-xl p-2.5 text-[11px] flex items-start gap-2 ${isDragging ? "opacity-60 ring-1 ring-[#34b277]/50" : ""}`}
+      className={`group rounded-xl p-2.5 text-[11px] flex items-start gap-2 ${isDragging ? "opacity-60 ring-1 ring-[var(--arbor-clay)]/50" : ""}`}
     >
       <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-0.5" style={{ color: "var(--arbor-muted)" }} aria-label="Drag step">
         <GripVertical className="w-3.5 h-3.5" />
@@ -112,7 +112,7 @@ export default function PlanKanban({ plan }: { plan: ActionPlan }) {
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <ProgressRing value={pct} size={56}>
-            <span className="text-[11px] font-black" style={{ color: "#1f8a5a" }}>{pct}%</span>
+            <span className="text-[11px] font-black" style={{ color: "var(--arbor-green-ink)" }}>{pct}%</span>
           </ProgressRing>
           <button
             onClick={() => { if (window.confirm(`Delete the plan "${plan.title}"?`)) deletePlan(plan.id); }}

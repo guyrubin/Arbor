@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Activity, AlertTriangle, Check, ClipboardCopy, Compass, FileBarChart, Gauge, History, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
 import ProgressRing from "../ui/ProgressRing";
@@ -32,6 +33,7 @@ const BAND_COPY: Record<BandLevel, { label: string; note: string }> = {
  */
 export default function DevelopmentCopilot() {
   const { childProfile, milestones, behaviorLogs, setActiveTab } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const { bands, recommendation, confidence, trend, snapshots } = useCopilot(milestones, data, childProfile.id);
   const screeningsCol = useChildCollection<SavedScreening>(childProfile.id, "screenings");
@@ -108,8 +110,8 @@ export default function DevelopmentCopilot() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         eyebrow="My Child"
-        title="Development Dashboard"
-        subtitle={`${first}'s whole picture in one place — language, speech, thinking, social and emotional signals from milestones and daily practice, with one clear focus for the week.`}
+        title={t("prac.copilot.title")}
+        subtitle={t("prac.copilot.sub", { name: first })}
       />
 
       <TrustSafetyBar
@@ -150,7 +152,7 @@ export default function DevelopmentCopilot() {
                 <span className="w-28 flex-shrink-0 text-right">
                   <Chip tone={b.band === "strong" ? "mint" : b.band === "on-track" ? "sky" : b.band === "developing" ? "yellow" : "pink"}>{copy.label}</Chip>
                 </span>
-                <span className="w-28 flex-shrink-0 inline-flex items-center justify-end gap-1 text-[11px] font-bold" style={{ color: delta > 1 ? "#1f8a5a" : delta < -1 ? "#bd4f74" : "var(--arbor-muted)" }}>
+                <span className="w-28 flex-shrink-0 inline-flex items-center justify-end gap-1 text-[11px] font-bold" style={{ color: delta > 1 ? "var(--arbor-green-ink)" : delta < -1 ? "var(--arbor-pink-ink)" : "var(--arbor-muted)" }}>
                   <TrendIcon className="w-3.5 h-3.5" /> {delta > 0 ? "+" : ""}{Math.round(delta)}
                 </span>
                 <span className="w-24 flex-shrink-0 text-right">
@@ -176,8 +178,8 @@ export default function DevelopmentCopilot() {
       {/* Feature 10a: the weekly recommendation */}
       <SectionCard title="This week's focus" icon={<Compass className="w-5 h-5" />} tone="coral"
         action={
-          <button onClick={() => setActiveTab("missions")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl text-white transition" style={{ background: "#cf6f37" }}>
-            Open the aimed mission →
+          <button onClick={() => setActiveTab("missions")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl text-white transition" style={{ background: "var(--arbor-peach-ink)" }}>
+            Open this week's mission →
           </button>
         }>
         <div className="flex items-start gap-4">
@@ -193,7 +195,7 @@ export default function DevelopmentCopilot() {
 
       <SectionCard title="Watch signals" icon={<AlertTriangle className="w-5 h-5" />} tone={watch.some((w) => w.level === "discuss") ? "yellow" : "mint"}>
         {watch.length === 0 ? (
-          <div className="rounded-2xl p-4" style={{ background: "#e4f4ec" }}>
+          <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)" }}>
             <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>No watch signals yet.</p>
             <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
               Arbor needs enough recent practice, logged moments, or a Development Check before it raises a pattern. Silence here means "not enough concerning signal", not a clinical clearance.
@@ -215,8 +217,8 @@ export default function DevelopmentCopilot() {
                       <p key={i} className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Evidence: {e}</p>
                     ))}
                   </div>
-                  <button onClick={() => setActiveTab("reports")} className="mt-3 text-[11px] font-extrabold" style={{ color: "#1f8a5a" }}>
-                    Prepare a professional summary -&gt;
+                  <button onClick={() => setActiveTab("reports")} className="mt-3 text-[11px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
+                    Prepare a professional summary →
                   </button>
                 </div>
               );
@@ -263,7 +265,7 @@ export default function DevelopmentCopilot() {
       {/* Practice pulse */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className={`${cardCls} p-5 flex items-center gap-4`}>
-          <ProgressRing value={data.score} size={64} stroke={6} color="#34b277">
+          <ProgressRing value={data.score} size={64} stroke={6} color="var(--arbor-clay)">
             <span className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.score}</span>
           </ProgressRing>
           <div>
@@ -285,7 +287,7 @@ export default function DevelopmentCopilot() {
       <SectionCard title="Share with a professional" icon={<FileBarChart className="w-5 h-5" />} tone="sky"
         action={
           <div className="flex gap-2">
-            <button onClick={() => void copySummary()} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "#e5f0fb", color: "#2f7bbf" }}>
+            <button onClick={() => void copySummary()} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
               {copied ? <Check className="w-3.5 h-3.5" /> : <ClipboardCopy className="w-3.5 h-3.5" />} {copied ? "Copied" : "Copy summary"}
             </button>
             <button onClick={() => setActiveTab("reports")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>

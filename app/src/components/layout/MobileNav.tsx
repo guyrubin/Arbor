@@ -1,20 +1,12 @@
 import React from "react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
-
-const SHORT: Record<string, string> = {
-  home: "Home",
-  ask: "Ask",
-  intelligence: "Child",
-  practice: "Practice",
-  growth: "Grow",
-  care: "Care",
-  academy: "Academy",
-};
 
 /** Bottom tab bar shown on mobile (< md) — the six primary sections. */
 export default function MobileNav() {
   const { activeTab, setActiveTab } = useArbor();
+  const { t } = useLanguage();
   const activeSectionId = sectionForTab(activeTab).id;
 
   return (
@@ -30,10 +22,10 @@ export default function MobileNav() {
             key={sec.id}
             onClick={() => setActiveTab(primaryTabOf(sec))}
             className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9.5px] font-bold transition"
-            style={{ color: on ? "#1f8a5a" : "var(--arbor-muted)" }}
+            style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
           >
             <Icon className="w-[18px] h-[18px]" />
-            {SHORT[sec.id]}
+            {t("nav.short." + sec.id)}
           </button>
         );
       })}

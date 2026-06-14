@@ -36,7 +36,7 @@ export default function DomainRadar({ bands, size = 240 }: { bands: DomainBand[]
         return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="rgba(41,51,63,0.10)" strokeWidth={1} />;
       })}
       {/* data polygon */}
-      <polygon points={dataPolygon} fill="rgba(52,178,119,0.22)" stroke="#34b277" strokeWidth={2} />
+      <polygon points={dataPolygon} fill="rgba(52,178,119,0.22)" stroke="var(--arbor-clay)" strokeWidth={2} />
       {/* data points */}
       {bands.map((b, i) => {
         const p = point(i, (Math.max(0, Math.min(100, b.signal)) / 100) * r);

@@ -138,7 +138,7 @@ export default function MemoryMatch({ data }: { data: PracticeData }) {
           return (
             <button key={s.id} onClick={() => { setSetIdx(i); reset(size, i); }}
               className="rounded-full px-3 py-1.5 text-[11px] font-extrabold transition"
-              style={on ? { background: "#ece9fb", color: "#6354c4" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+              style={on ? { background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
               {s.title}
             </button>
           );
@@ -153,7 +153,7 @@ export default function MemoryMatch({ data }: { data: PracticeData }) {
           <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
             Solved in {moves} moves{lastScore.current !== null && ` · score ${lastScore.current}`}. {recommendedSize > size ? "Next round gets a little bigger!" : recommendedSize < size ? "We'll keep it comfy next round." : "Nicely done."}
           </p>
-          <button onClick={() => reset()} className="mt-4 inline-flex items-center gap-2 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl" style={{ background: "#6354c4" }}>
+          <button onClick={() => reset()} className="mt-4 inline-flex items-center gap-2 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl" style={{ background: "var(--arbor-lav-ink)" }}>
             <Sparkles className="w-3.5 h-3.5" /> Play again
           </button>
         </div>
@@ -164,11 +164,11 @@ export default function MemoryMatch({ data }: { data: PracticeData }) {
               <button key={c.uid} onClick={() => flip(c.uid)} aria-label={c.flipped || c.matched ? c.emoji : "hidden card"}
                 className="aspect-square rounded-2xl flex items-center justify-center text-3xl transition"
                 style={{
-                  background: c.matched ? "#e4f4ec" : c.flipped ? "#fff" : "#ece9fb",
-                  border: c.matched ? "2px solid #34b277" : "1px solid rgba(41,51,63,0.08)",
+                  background: c.matched ? "var(--arbor-green-soft)" : c.flipped ? "#fff" : "var(--arbor-lav-soft)",
+                  border: c.matched ? "2px solid var(--arbor-clay)" : "1px solid rgba(41,51,63,0.08)",
                   cursor: c.matched ? "default" : "pointer",
                 }}>
-                {(c.flipped || c.matched) ? c.emoji : <span style={{ color: "#6354c4", fontSize: 20 }}>?</span>}
+                {(c.flipped || c.matched) ? c.emoji : <span style={{ color: "var(--arbor-lav-ink)", fontSize: 20 }}>?</span>}
               </button>
             ))}
           </div>

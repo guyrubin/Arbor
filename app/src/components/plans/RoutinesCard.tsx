@@ -36,7 +36,7 @@ export default function RoutinesCard() {
 
   return (
     <div className={`${cardCls} p-6 space-y-4`}>
-      <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+      <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
         <ListChecks className="w-3.5 h-3.5" /> Routines
       </span>
 
@@ -58,7 +58,7 @@ export default function RoutinesCard() {
               <div className="space-y-1">
                 {r.steps.map((s, i) => (
                   <button key={i} onClick={() => toggle(r, i)} className="w-full flex items-center gap-2 text-left text-[11px]">
-                    <span className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={s.done ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" } : { border: "1px solid var(--arbor-rule-strong)", color: "transparent" }}>
+                    <span className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={s.done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { border: "1px solid var(--arbor-rule-strong)", color: "transparent" }}>
                       <Check className="w-3 h-3" />
                     </span>
                     <span style={{ color: s.done ? "var(--arbor-muted)" : "var(--arbor-ink)", textDecoration: s.done ? "line-through" : "none" }}>{s.text}</span>
@@ -74,7 +74,7 @@ export default function RoutinesCard() {
                   className="flex-1 rounded-lg px-2 py-1 text-[11px] focus:outline-none bg-white"
                   style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                 />
-                <button onClick={() => addStep(r)} aria-label="Add step" style={{ color: "#1f8a5a" }}><Plus className="w-4 h-4" /></button>
+                <button onClick={() => addStep(r)} aria-label="Add step" style={{ color: "var(--arbor-green-ink)" }}><Plus className="w-4 h-4" /></button>
               </div>
             </div>
           );
@@ -83,7 +83,7 @@ export default function RoutinesCard() {
 
       <form onSubmit={addRoutine} className="flex gap-2">
         <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New routine name…" className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
-        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "#34b277" }}><Plus className="w-4 h-4" /></button>
+        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
       </form>
     </div>
   );

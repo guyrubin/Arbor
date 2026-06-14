@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { RefreshCw, Sparkles, MessageSquare, Sliders } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { Skeleton } from "../ui/Skeleton";
 import { EmptyState } from "../ui/EmptyState";
 import { PageHeader, cardCls } from "../ui/kit";
@@ -20,21 +21,22 @@ export default function PlansTab() {
     setSelectedLens,
     setActiveTab,
   } = useArbor();
+  const { t } = useLanguage();
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
       <PageHeader
         eyebrow="Growth Plans"
-        title="Active Growth Plans"
-        subtitle="Track multi-stage developmental plans as a board — drag steps from Not Started to Completed."
+        title={t("plan.title")}
+        subtitle={t("plan.subtitle")}
       />
 
       <div className={`${cardCls} p-6 space-y-4`}>
-        <span className="text-xs font-extrabold tracking-wider uppercase block" style={{ color: "#1f8a5a" }}>Weave a custom child action blueprint</span>
+        <span className="text-xs font-extrabold tracking-wider uppercase block" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.create")}</span>
 
         {/* Templates — start from a common challenge */}
         <div className="flex flex-wrap gap-1.5">
-          <span className="text-[10px] font-bold self-center mr-1" style={{ color: "var(--arbor-muted)" }}>Templates:</span>
+          <span className="text-[10px] font-bold self-center mr-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
           {[
             "Morning departure refusal and tantrums when leaving for school",
             "Screen-time shut-off meltdowns at night",
@@ -50,7 +52,7 @@ export default function PlansTab() {
               key={tpl}
               type="button"
               onClick={() => setPlanChallengeTopic(tpl)}
-              className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition"
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
               style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
             >
               {tpl.split(" ").slice(0, 3).join(" ")}…
@@ -63,7 +65,7 @@ export default function PlansTab() {
             type="text"
             value={planChallengeTopic}
             onChange={(e) => setPlanChallengeTopic(e.target.value)}
-            placeholder="Describe behavioral dispute (e.g., throwing cutlery during dinner)..."
+            placeholder={t("plan.placeholder")}
             className="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />
@@ -71,9 +73,9 @@ export default function PlansTab() {
             onClick={handleGenerateActionPlan}
             disabled={isPlanGenerating}
             className="text-white font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
+            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
           >
-            {isPlanGenerating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Structuring guidelines...</>) : (<><Sparkles className="w-4 h-4" /> Generate AI Blueprint</>)}
+            {isPlanGenerating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> {t("plan.creating")}</>) : (<><Sparkles className="w-4 h-4" /> {t("plan.createBtn")}</>)}
           </button>
         </div>
       </div>
@@ -86,8 +88,8 @@ export default function PlansTab() {
       {plansLoaded && actionPlans.length === 0 && (
         <EmptyState
           icon={<Sliders className="w-8 h-8" />}
-          headline="No action plans yet"
-          body="Describe a challenge above (or pick a template) and generate your first AI blueprint."
+          headline={t("plan.empty.head")}
+          body={t("plan.empty.body")}
         />
       )}
 
@@ -99,15 +101,15 @@ export default function PlansTab() {
             <div className={`${cardCls} p-6 space-y-5`}>
               <div className="space-y-3 p-4 rounded-2xl" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
-                  <MessageSquare className="w-3.5 h-3.5" style={{ color: "#cf6f37" }} /> Attachment co-regulation parent scripts
+                  <MessageSquare className="w-3.5 h-3.5" style={{ color: "var(--arbor-peach-ink)" }} /> {t("plan.whatToSay")}
                 </h4>
                 <div className="space-y-3 text-xs">
                   {plan.scripts.map((sc, scIdx) => (
                     <div key={scIdx} className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 p-3 rounded-xl bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-                      <div><strong className="block" style={{ color: "#1f8a5a" }}>{sc.scenario}</strong></div>
+                      <div><strong className="block" style={{ color: "var(--arbor-green-ink)" }}>{sc.scenario}</strong></div>
                       <div className="space-y-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                        <p>🗣️ <b style={{ color: "var(--arbor-ink)" }}>What to Say:</b> “{sc.say}”</p>
-                        {sc.avoid && <p>❌ <b style={{ color: "#bd4f74" }}>What to Avoid:</b> {sc.avoid}</p>}
+                        <p><b style={{ color: "var(--arbor-ink)" }}>{t("plan.say")}</b> “{sc.say}”</p>
+                        {sc.avoid && <p><b style={{ color: "var(--arbor-pink-ink)" }}>{t("plan.avoid")}</b> {sc.avoid}</p>}
                       </div>
                     </div>
                   ))}
@@ -121,15 +123,15 @@ export default function PlansTab() {
                       setActiveTab("coach");
                     }}
                     className="text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
-                    style={{ background: "#e4f4ec", color: "#1f8a5a" }}
+                    style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                   >
-                    <Sparkles className="w-3 h-3" /> Refine these scripts with AI Coach ➔
+                    <Sparkles className="w-3 h-3" /> {t("plan.refine")}
                   </button>
                 </div>
               </div>
 
               <div className="space-y-2 text-xs">
-                <span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>Woven success completion flags:</span>
+                <span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("plan.signs")}</span>
                 <ul className="list-disc pl-5 space-y-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                   {plan.successIndicators.map((sc, scIdx) => <li key={scIdx}>{sc}</li>)}
                 </ul>

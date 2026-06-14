@@ -7,6 +7,8 @@ export interface ChildProfile {
   strengths: string[];
   challenges: string[];
   riskLevel: 'Low' | 'Moderate' | 'High';
+  /** Optional profile photo (Firebase Storage URL, or an inlined data URL fallback). */
+  photoUrl?: string;
 }
 
 export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';

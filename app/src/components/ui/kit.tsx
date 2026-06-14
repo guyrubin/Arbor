@@ -4,12 +4,12 @@ import React from "react";
    Green = trust/growth (primary). Coral/peach = AI/action/attention. */
 
 export const PASTEL = {
-  mint:   { soft: "#e4f4ec", ink: "#1f8a5a" },
-  coral:  { soft: "#fdeada", ink: "#cf6f37" },
-  lav:    { soft: "#ece9fb", ink: "#6354c4" },
-  yellow: { soft: "#fbf1d4", ink: "#a9780f" },
-  pink:   { soft: "#fce2ec", ink: "#bd4f74" },
-  sky:    { soft: "#e5f0fb", ink: "#2f7bbf" },
+  mint:   { soft: "var(--arbor-green-soft)", ink: "var(--arbor-green-ink)" },
+  coral:  { soft: "var(--arbor-peach-soft)", ink: "var(--arbor-peach-ink)" },
+  lav:    { soft: "var(--arbor-lav-soft)", ink: "var(--arbor-lav-ink)" },
+  yellow: { soft: "var(--arbor-yellow-soft)", ink: "var(--arbor-yellow-ink)" },
+  pink:   { soft: "var(--arbor-pink-soft)", ink: "var(--arbor-pink-ink)" },
+  sky:    { soft: "var(--arbor-sky-soft)", ink: "var(--arbor-sky-ink)" },
 } as const;
 export type PastelKey = keyof typeof PASTEL;
 
@@ -34,13 +34,15 @@ export function IconBadge({ tone = "mint", children, size = 44 }: { tone?: Paste
   );
 }
 
-export function PageHeader({ eyebrow, title, subtitle, action }: { eyebrow?: string; title: string; subtitle?: string; action?: React.ReactNode }) {
+// `eyebrow` is accepted for backward compat but no longer rendered: an uppercase
+// section kicker above every page is the saturated AI tell, and the sidebar
+// already shows the active section. Title carries the page on its own.
+export function PageHeader({ title, subtitle, action }: { eyebrow?: string; title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-7">
       <div>
-        {eyebrow && <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>{eyebrow}</span>}
-        <h1 className="text-2xl md:text-[2rem] font-extrabold leading-[1.12] mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h1>
-        {subtitle && <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{subtitle}</p>}
+        <h1 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h1>
+        {subtitle && <p className="text-sm mt-2 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{subtitle}</p>}
       </div>
       {action}
     </div>

@@ -58,7 +58,7 @@ export default function ScholarTab() {
                     setActiveTab("coach");
                   }}
                   className="w-full py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
-                  style={{ background: "#e4f4ec", color: "#1f8a5a" }}
+                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                 >
                   <Sparkles className="w-3.5 h-3.5" /> Apply to {first}
                 </button>

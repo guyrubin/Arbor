@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { motion } from "motion/react";
 import { CalendarCheck, Check, Compass, Flame, MessageSquare, Sparkles, Target } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import ProgressRing from "../ui/ProgressRing";
 import { DOMAIN_META, MISSION_CYCLE, fillTemplate, type MissionTemplate } from "../../practice/content";
@@ -16,6 +17,7 @@ import { track } from "../../lib/analytics";
  */
 export default function MissionsTab() {
   const { childProfile, milestones, setChatInput, setActiveTab } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const { recommendation } = useCopilot(milestones, data, childProfile.id);
   const first = childProfile.name.split(" ")[0];
@@ -77,7 +79,7 @@ export default function MissionsTab() {
             onClick={() => toggleMission(m)}
             aria-pressed={done}
             className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3.5 py-2 rounded-xl transition flex-shrink-0"
-            style={done ? { background: "#34b277", color: "#fff" } : { background: meta.soft, color: meta.color }}
+            style={done ? { background: "var(--arbor-clay)", color: "#fff" } : { background: meta.soft, color: meta.color }}
           >
             <Check className="w-3.5 h-3.5" /> {done ? "Done!" : "Mark done"}
           </button>
@@ -98,14 +100,14 @@ export default function MissionsTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         eyebrow="Practice Studio"
-        title="Daily Missions"
-        subtitle={`One small mission a day for ${first} — language, feelings, stories, sounds and social play, on a steady 5-day rotation.`}
+        title={t("prac.missions.title")}
+        subtitle={t("prac.missions.sub", { name: first })}
       />
 
       {/* Development Score (feature 7) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className={`${cardCls} p-5 flex items-center gap-4`}>
-          <ProgressRing value={data.score} size={72} stroke={7} color="#34b277">
+          <ProgressRing value={data.score} size={72} stroke={7} color="var(--arbor-clay)">
             <span className="text-lg font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.score}</span>
           </ProgressRing>
           <div>
@@ -116,8 +118,8 @@ export default function MissionsTab() {
           </div>
         </div>
         <div className={`${cardCls} p-5 flex items-center gap-4`}>
-          <span className="inline-flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: "#fdeada", width: 56, height: 56 }}>
-            <Flame className="w-6 h-6" style={{ color: "#cf6f37" }} />
+          <span className="inline-flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-peach-soft)", width: 56, height: 56 }}>
+            <Flame className="w-6 h-6" style={{ color: "var(--arbor-peach-ink)" }} />
           </span>
           <div>
             <p className="text-2xl font-extrabold leading-none" style={{ color: "var(--arbor-ink)" }}>{data.streak}<span className="text-sm font-bold ml-1">day{data.streak === 1 ? "" : "s"}</span></p>
@@ -125,8 +127,8 @@ export default function MissionsTab() {
           </div>
         </div>
         <div className={`${cardCls} p-5 flex items-center gap-4`}>
-          <span className="inline-flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: "#e5f0fb", width: 56, height: 56 }}>
-            <CalendarCheck className="w-6 h-6" style={{ color: "#2f7bbf" }} />
+          <span className="inline-flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", width: 56, height: 56 }}>
+            <CalendarCheck className="w-6 h-6" style={{ color: "var(--arbor-sky-ink)" }} />
           </span>
           <div>
             <p className="text-2xl font-extrabold leading-none" style={{ color: "var(--arbor-ink)" }}>{completedThisWeek}</p>

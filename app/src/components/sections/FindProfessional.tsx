@@ -7,6 +7,7 @@ import type { Professional } from "../../services/professionals";
 import { api, authHeaders } from "../../lib/api";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 
 const SPECIALTIES = [
   "Child Psychologist", "Speech Therapist", "Occupational Therapist", "Parenting Coach",
@@ -49,6 +50,7 @@ function matchesFilter(p: Professional, f: string): boolean {
 export default function FindProfessional() {
   const { childProfile, setActiveTab } = useArbor();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
   const [active, setActive] = useState<string[]>(["Verified by Arbor"]);
   const toggle = (f: string) => setActive((p) => (p.includes(f) ? p.filter((x) => x !== f) : [...p, f]));
@@ -112,7 +114,7 @@ export default function FindProfessional() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader eyebrow="Care Network" title="Find a professional" subtitle={`A curated, Arbor-verified network of child-development specialists — coordinated around ${first}, with your context ready to share.`} />
+      <PageHeader eyebrow="Care Network" title={t("sec.findpro.title")} subtitle={t("sec.findpro.sub", { name: childProfile.name.split(" ")[0] })} />
 
       {/* Search + filters */}
       <div className={`${cardCls} p-5 space-y-4`}>
@@ -131,7 +133,7 @@ export default function FindProfessional() {
             const on = active.includes(f);
             return (
               <button key={f} onClick={() => toggle(f)} className="rounded-full px-3 py-1.5 text-xs font-bold transition inline-flex items-center gap-1"
-                style={on ? { background: "#34b277", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+                style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                 {f === "Verified by Arbor" && <ShieldCheck className="w-3.5 h-3.5" />}{f}
               </button>
             );
@@ -150,7 +152,7 @@ export default function FindProfessional() {
       {results.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>
           <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>No professionals match those filters.</p>
-          <button onClick={() => { setActive([]); setQuery(""); }} className="text-xs font-bold mt-2" style={{ color: "#1f8a5a" }}>Clear filters</button>
+          <button onClick={() => { setActive([]); setQuery(""); }} className="text-xs font-bold mt-2" style={{ color: "var(--arbor-green-ink)" }}>Clear filters</button>
         </div>
       ) : (
         <div className="grid lg:grid-cols-2 gap-5">
@@ -165,10 +167,10 @@ export default function FindProfessional() {
                     <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{p.name}</h3>
                     {p.verified && <Chip tone="mint" icon={<ShieldCheck className="w-3.5 h-3.5" />}>Verified by Arbor</Chip>}
                   </div>
-                  <p className="text-sm font-semibold" style={{ color: "#1f8a5a" }}>{p.role}</p>
+                  <p className="text-sm font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{p.role}</p>
                   <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{p.creds}</p>
                 </div>
-                <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "#a9780f" }}><Star className="w-3.5 h-3.5 fill-current" /> {p.rating}</span>
+                <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-yellow-ink)" }}><Star className="w-3.5 h-3.5 fill-current" /> {p.rating}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
@@ -184,14 +186,14 @@ export default function FindProfessional() {
                 <button
                   onClick={() => openConsult(p)}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 text-white font-bold text-xs rounded-xl py-2.5"
-                  style={{ background: "linear-gradient(135deg,#3cc081,#2a9c66)" }}
+                  style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}
                 >
                   <Send className="w-3.5 h-3.5" /> Request consultation
                 </button>
                 <button
                   onClick={() => { toast("Build a shareable summary in Reports & Handoffs.", "info"); setActiveTab("reports"); }}
                   className="inline-flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl px-3 py-2.5 bg-white"
-                  style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}
+                  style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
                 >
                   <FileText className="w-3.5 h-3.5" /> Share Arbor summary
                 </button>
@@ -206,8 +208,8 @@ export default function FindProfessional() {
       <Modal open={!!consultPro} onClose={() => setConsultPro(null)} title={consultPro ? `Request a consultation — ${consultPro.name}` : "Request a consultation"}>
         {consultDone ? (
           <div className="space-y-4 text-sm">
-            <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: "#e4f4ec" }}>
-              <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: "#1f8a5a" }} />
+            <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)" }}>
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} />
               <div>
                 <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>Request recorded</p>
                 <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
@@ -217,11 +219,11 @@ export default function FindProfessional() {
             </div>
             <div className="flex flex-wrap gap-2">
               {consultDone.mailto && (
-                <a href={consultDone.mailto} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 text-white" style={{ background: "#34b277" }}>
+                <a href={consultDone.mailto} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 text-white" style={{ background: "var(--arbor-clay)" }}>
                   <Mail className="w-3.5 h-3.5" /> Send the intro email
                 </a>
               )}
-              <button onClick={() => { setConsultPro(null); setActiveTab("reports"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }}>
+              <button onClick={() => { setConsultPro(null); setActiveTab("reports"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
                 <FileText className="w-3.5 h-3.5" /> Prepare a shareable summary
               </button>
               <button onClick={() => { setConsultPro(null); setActiveTab("appointments"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
@@ -248,7 +250,7 @@ export default function FindProfessional() {
               <div className="flex gap-2">
                 {([["either", "Either"], ["video", "Video call"], ["in_person", "In person"]] as const).map(([k, label]) => (
                   <button key={k} type="button" onClick={() => setConsultMode(k)} className="flex-1 py-2 rounded-xl text-xs font-bold transition"
-                    style={consultMode === k ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                    style={consultMode === k ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
                     {label}
                   </button>
                 ))}
@@ -257,7 +259,7 @@ export default function FindProfessional() {
             <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
               Nothing from {first}'s profile is shared automatically — only the note above. You stay in control of any reports you choose to share.
             </p>
-            <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}>
+            <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}>
               {consultBusy ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Sending…</>) : (<><Send className="w-4 h-4" /> Send the request</>)}
             </button>
           </div>

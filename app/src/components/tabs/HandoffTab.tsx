@@ -45,7 +45,7 @@ export default function HandoffTab() {
             onClick={handleGenerateBrief}
             disabled={isGeneratingBrief}
             className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
+            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
           >
             {isGeneratingBrief ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Weaving brief…</>) : (<><Sparkles className="w-4 h-4" /> Compile brief summary</>)}
           </button>
@@ -66,10 +66,10 @@ export default function HandoffTab() {
                 onClick={() => setHandoffAudience(a.id)}
                 className="py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col justify-center text-left gap-0.5"
                 style={on
-                  ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }
+                  ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
                   : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
-                <span className="font-extrabold text-[11px]" style={{ color: on ? "#1f8a5a" : "var(--arbor-ink)" }}>{a.label}</span>
+                <span className="font-extrabold text-[11px]" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{a.label}</span>
                 <span className="text-[9px] font-normal" style={{ color: "var(--arbor-muted)" }}>{a.sub}</span>
               </button>
             );
@@ -81,7 +81,7 @@ export default function HandoffTab() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 gap-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
           <div>
             <h3 className="text-lg font-extrabold flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              <School className="w-5 h-5" style={{ color: "#1f8a5a" }} />
+              <School className="w-5 h-5" style={{ color: "var(--arbor-green-ink)" }} />
               {first}&apos;s Development Handoff Summary
             </h3>
             <p className="text-[10px] uppercase font-bold tracking-wider mt-1" style={{ color: "var(--arbor-muted)" }}>
@@ -90,7 +90,7 @@ export default function HandoffTab() {
           </div>
           <div className="flex items-center gap-2 self-end sm:self-auto">
             {schoolBrief && (
-              <button onClick={saveBrief} className="px-3.5 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5" style={{ background: "var(--arbor-paper-deep)", color: "#1f8a5a" }}>
+              <button onClick={saveBrief} className="px-3.5 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}>
                 <Save className="w-3.5 h-3.5" /> Save
               </button>
             )}
@@ -117,7 +117,7 @@ export default function HandoffTab() {
               <BriefList title="Teacher co-regulation strategies" items={schoolBrief.suggestedTeacherStrategies} tone="mint" />
             </div>
 
-            <div className="p-4 rounded-xl mt-4" style={{ background: "#fce2ec", color: "#bd4f74" }}>
+            <div className="p-4 rounded-xl mt-4" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
               <strong>Crisis trigger warning index:</strong> {schoolBrief.crisisEscalationTrigger}
             </div>
           </div>
@@ -140,8 +140,8 @@ export default function HandoffTab() {
                   <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{new Date(b.generatedAt).toLocaleDateString()} {new Date(b.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <button onClick={() => setSchoolBrief(b.brief)} className="text-[10px] font-bold" style={{ color: "#1f8a5a" }}>Open</button>
-                  <button onClick={() => void briefsCol.remove(b.id)} className="text-[10px] font-bold" style={{ color: "#bd4f74" }}>Delete</button>
+                  <button onClick={() => setSchoolBrief(b.brief)} className="text-[10px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>Open</button>
+                  <button onClick={() => void briefsCol.remove(b.id)} className="text-[10px] font-bold" style={{ color: "var(--arbor-pink-ink)" }}>Delete</button>
                 </div>
               </div>
             ))}
@@ -155,7 +155,7 @@ export default function HandoffTab() {
 function BriefList({ title, items, tone = "ink" }: { title: string; items: string[]; tone?: "ink" | "mint" }) {
   return (
     <div className="space-y-2">
-      <span className="font-bold block text-sm" style={{ color: tone === "mint" ? "#1f8a5a" : "var(--arbor-ink)" }}>{title}</span>
+      <span className="font-bold block text-sm" style={{ color: tone === "mint" ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{title}</span>
       <ul className="list-disc pl-5 space-y-1" style={{ color: "var(--arbor-muted)" }}>
         {items.map((it, i) => <li key={i}>{it}</li>)}
       </ul>

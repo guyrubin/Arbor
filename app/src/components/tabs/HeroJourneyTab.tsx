@@ -182,19 +182,20 @@ export default function HeroJourneyTab() {
     isDecision &&
     !choiceId && (
       <div className="space-y-2 w-full max-w-xl mx-auto">
-        <p className="text-[11px] uppercase tracking-widest text-[#f4d991] font-bold text-center">
+        <p className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
           What do you do, {childProfile.name}?
         </p>
         {render?.choices.map((c) => (
           <button
             key={c.id}
             onClick={() => chooseOption(c.id)}
-            className="w-full text-left p-3.5 rounded-2xl border border-white/10 bg-white/[0.03] hover:border-[#d7aa55]/50 hover:bg-[#d7aa55]/10 transition flex items-center gap-3 group"
+            className="w-full text-left p-3.5 rounded-2xl transition flex items-center gap-3 group hover:-translate-y-0.5"
+            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
           >
-            <span className="w-7 h-7 rounded-full bg-[#d7aa55]/20 text-[#f4d991] font-extrabold flex items-center justify-center flex-shrink-0 uppercase">
+            <span className="w-7 h-7 rounded-full font-extrabold flex items-center justify-center flex-shrink-0 uppercase" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
               {c.id}
             </span>
-            <span dir="auto" className="text-sm text-gray-100 font-medium group-hover:text-white">
+            <span dir="auto" className="text-sm font-medium" style={{ color: "var(--arbor-ink)" }}>
               {c.label}
             </span>
           </button>
@@ -208,23 +209,25 @@ export default function HeroJourneyTab() {
       <button
         onClick={() => setSceneIndex((i) => Math.max(0, i - 1))}
         disabled={sceneIndex === 0}
-        className="text-[#a8a093] disabled:opacity-20 hover:text-white flex items-center gap-1 text-sm"
+        className="disabled:opacity-30 flex items-center gap-1 text-sm"
+        style={{ color: "var(--arbor-muted)" }}
       >
         <ChevronLeft className="w-4 h-4" /> Back
       </button>
-      <span className="text-[10px] text-[#a8a093] uppercase tracking-wider">
+      <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>
         {activeStory && `${sceneIndex + 1} / ${activeStory.beats.length}`}
       </span>
       {sceneIndex < scenes.length - 1 ? (
         <button
           onClick={() => canAdvance && setSceneIndex((i) => Math.min(scenes.length - 1, i + 1))}
           disabled={!canAdvance}
-          className="text-[#f4d991] disabled:opacity-20 hover:text-white flex items-center gap-1 text-sm font-bold"
+          className="disabled:opacity-30 flex items-center gap-1 text-sm font-bold"
+          style={{ color: "var(--arbor-green-ink)" }}
         >
           Next <ChevronRight className="w-4 h-4" />
         </button>
       ) : (
-        <span className="text-[10px] text-emerald-300 uppercase tracking-wider font-bold">The End</span>
+        <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "var(--arbor-green-ink)" }}>The End</span>
       )}
     </div>
   );
@@ -234,9 +237,8 @@ export default function HeroJourneyTab() {
     return (
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Arbor Academy</span>
-          <h2 className="text-2xl md:text-[2rem] font-extrabold leading-[1.12] tracking-tight flex items-center gap-2 mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            <Mountain className="w-7 h-7" style={{ color: "#1f8a5a" }} /> Story Journeys
+          <h2 className="text-2xl md:text-[2rem] leading-[1.1] tracking-tight flex items-center gap-2.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            <Mountain className="w-6 h-6" style={{ color: "var(--arbor-green-ink)" }} /> Story Journeys
           </h2>
           <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
             {childProfile.name} becomes the hero of timeless stories that build courage, responsibility,
@@ -247,7 +249,7 @@ export default function HeroJourneyTab() {
         {/* Development metrics */}
         <div className={`${cardCls} p-5 space-y-4`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+            <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
               <Trophy className="w-3.5 h-3.5" /> {childProfile.name}'s development
             </span>
             <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{runs.length} journeys completed</span>
@@ -275,7 +277,7 @@ export default function HeroJourneyTab() {
           <button
             onClick={() => setPackFilter("all")}
             className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition"
-            style={packFilter === "all" ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+            style={packFilter === "all" ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
           >
             All packs
           </button>
@@ -323,7 +325,7 @@ export default function HeroJourneyTab() {
                   onClick={() => startJourney(story)}
                   disabled={!!loadingId}
                   className="mt-1 w-full py-2.5 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
-                  style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
+                  style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
                 >
                   {isLoading ? (
                     <>
@@ -342,7 +344,7 @@ export default function HeroJourneyTab() {
 
         {/* Library */}
         <div className={`${cardCls} p-5 space-y-4`}>
-          <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
+          <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
             <Library className="w-3.5 h-3.5" /> Journey library ({runs.length})
           </span>
           {!runsCol.loaded ? (
@@ -395,13 +397,14 @@ export default function HeroJourneyTab() {
       {/* Reflection / completion */}
       {isReflection && (
         <div className="w-full max-w-xl mx-auto space-y-4">
-          <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4 space-y-2">
-            <p className="text-[11px] uppercase tracking-widest text-emerald-300 font-bold">Today we practiced</p>
+          <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
+            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>Today we practiced</p>
             <div className="flex flex-wrap gap-2">
               {render.reflection.practiced.map((p, i) => (
                 <span
                   key={i}
-                  className="text-xs font-bold text-emerald-200 bg-emerald-500/15 px-2.5 py-1 rounded-lg flex items-center gap-1"
+                  className="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1"
+                  style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
                 >
                   <Check className="w-3 h-3" /> {p}
                 </span>
@@ -410,21 +413,19 @@ export default function HeroJourneyTab() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-widest text-[#f4d991] font-bold">Talk about it together</p>
+            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>Talk about it together</p>
             {render.reflection.questions.map((q, i) => (
               <button
                 key={i}
                 onClick={() => setQuestionsChecked((s) => ({ ...s, [i]: !s[i] }))}
-                className={`w-full text-left p-2.5 rounded-xl border transition flex items-start gap-2 ${
-                  questionsChecked[i]
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
-                    : "bg-white/[0.03] border-white/10 text-gray-200 hover:border-white/20"
-                }`}
+                className="w-full text-left p-2.5 rounded-xl transition flex items-start gap-2"
+                style={questionsChecked[i]
+                  ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }
+                  : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
               >
                 <span
-                  className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${
-                    questionsChecked[i] ? "bg-emerald-500/30" : "bg-white/10"
-                  }`}
+                  className="mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 text-white"
+                  style={{ background: questionsChecked[i] ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
                 >
                   {questionsChecked[i] && <Check className="w-3 h-3" />}
                 </span>
@@ -438,12 +439,13 @@ export default function HeroJourneyTab() {
           {!saved ? (
             <button
               onClick={finishJourney}
-              className="w-full py-3 bg-[#d7aa55] hover:bg-[#c39947] text-black font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
+              className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
+              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
             >
               <Trophy className="w-4 h-4" /> Finish & save {childProfile.name}'s development
             </button>
           ) : (
-            <div className="text-center text-emerald-300 text-sm font-bold flex items-center justify-center gap-2">
+            <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
               <Check className="w-4 h-4" /> Saved to {childProfile.name}'s development
             </div>
           )}
@@ -470,16 +472,16 @@ export default function HeroJourneyTab() {
         </button>
       </div>
 
-      <div className="bg-gradient-to-br from-[#12141c] to-[#04060c] border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl">
+      <div className="rounded-3xl p-6 md:p-8" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-md)" }}>
         {playerBody(false)}
       </div>
 
       {/* Immersive fullscreen overlay */}
       {immersive && (
-        <div className="fixed inset-0 z-[60] bg-[#06070a] flex flex-col">
+        <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "var(--arbor-paper)" }}>
           <div className="flex items-center justify-between px-6 py-4">
-            <span className="text-xs font-bold tracking-wider uppercase text-[#a8a093]">{render.title}</span>
-            <button onClick={() => setImmersive(false)} aria-label="Exit immersive" className="text-[#a8a093] hover:text-white">
+            <span className="text-xs font-bold tracking-wider uppercase" style={{ color: "var(--arbor-muted)" }}>{render.title}</span>
+            <button onClick={() => setImmersive(false)} aria-label="Exit immersive" style={{ color: "var(--arbor-muted)" }}>
               <X className="w-5 h-5" />
             </button>
           </div>

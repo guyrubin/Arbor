@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Camera, CameraOff, ChevronLeft, ChevronRight, ShieldCheck, Smile, Star } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { MIMIC_PACKS, type MimicPack } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
@@ -15,6 +16,7 @@ import { track } from "../../lib/analytics";
  */
 export default function MimicStudioTab() {
   const { childProfile } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
 
@@ -89,12 +91,12 @@ export default function MimicStudioTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         eyebrow="Practice Studio"
-        title="Mimic Studio"
-        subtitle={`"Can you do what I do?" — face, mouth and sound imitation games for ${first}. You model it, ${first} mirrors it.`}
+        title={t("prac.mimic.title")}
+        subtitle={t("prac.mimic.sub", { name: first })}
       />
 
-      <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]" style={{ background: "#e4f4ec", color: "var(--arbor-ink)" }}>
-        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "#1f8a5a" }}><ShieldCheck className="w-4 h-4" /> Camera privacy</span>
+      <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
+        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><ShieldCheck className="w-4 h-4" /> Camera privacy</span>
         <span style={{ color: "var(--arbor-muted)" }}>The mirror is local-only: nothing is recorded, stored, or uploaded — ever. Only your star rating is saved.</span>
       </div>
 
@@ -106,13 +108,13 @@ export default function MimicStudioTab() {
           return (
             <button key={p.id} onClick={() => setPackId(p.id)}
               className={`${cardCls} p-4 text-left transition`}
-              style={on ? { border: "1px solid #34b277", background: "#f3faf6" } : undefined}>
+              style={on ? { border: "1px solid var(--arbor-clay)", background: "#f3faf6" } : undefined}>
               <span className="text-2xl">{p.emoji}</span>
               <p className="text-sm font-extrabold mt-1.5" style={{ color: "var(--arbor-ink)" }}>{p.title}</p>
               <p className="text-[10.5px] mt-0.5 leading-snug" style={{ color: "var(--arbor-muted)" }}>{p.blurb}</p>
               <div className="flex items-center gap-1 mt-2">
                 {p.prompts.map((_, i) => (
-                  <span key={i} className="w-2 h-2 rounded-full" style={{ background: i < done ? "#34b277" : "rgba(41,51,63,0.12)" }} />
+                  <span key={i} className="w-2 h-2 rounded-full" style={{ background: i < done ? "var(--arbor-clay)" : "rgba(41,51,63,0.12)" }} />
                 ))}
                 {done === p.prompts.length && <Star className="w-3.5 h-3.5 ml-1" style={{ color: "#d7aa55", fill: "#d7aa55" }} />}
               </div>
@@ -142,7 +144,7 @@ export default function MimicStudioTab() {
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
-            {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "#34b277" }}>✓ Already played — replays still count</p>}
+            {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "var(--arbor-clay)" }}>✓ Already played — replays still count</p>}
           </div>
 
           {/* Mirror — the child watches themselves try it */}
@@ -154,7 +156,7 @@ export default function MimicStudioTab() {
                 <p className="text-xs mb-4 max-w-[260px] mx-auto" style={{ color: "#a8a093" }}>
                   Turn on the mirror so {first} can watch their own mouth while copying you. Local-only — never recorded.
                 </p>
-                <button onClick={() => void startMirror()} className="font-extrabold text-xs px-4 py-2.5 rounded-xl text-white" style={{ background: "#34b277" }}>
+                <button onClick={() => void startMirror()} className="font-extrabold text-xs px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
                   Turn on mirror
                 </button>
                 {camError && <p className="text-[11px] mt-3" style={{ color: "#e9a0b6" }}>{camError}</p>}
@@ -172,9 +174,9 @@ export default function MimicStudioTab() {
         <div className="flex flex-wrap items-center gap-2 mt-5">
           <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>How did {first}&apos;s copy go?</span>
           {([
-            { r: 1 as const, label: "Tried it!", bg: "#fce2ec", fg: "#bd4f74" },
-            { r: 2 as const, label: "So close", bg: "#fbf1d4", fg: "#a9780f" },
-            { r: 3 as const, label: "Nailed it ⭐", bg: "#e4f4ec", fg: "#1f8a5a" },
+            { r: 1 as const, label: "Tried it!", bg: "var(--arbor-pink-soft)", fg: "var(--arbor-pink-ink)" },
+            { r: 2 as const, label: "So close", bg: "var(--arbor-yellow-soft)", fg: "var(--arbor-yellow-ink)" },
+            { r: 3 as const, label: "Nailed it ⭐", bg: "var(--arbor-green-soft)", fg: "var(--arbor-green-ink)" },
           ]).map((b) => (
             <button key={b.r} onClick={() => rate(b.r)} className="text-xs font-extrabold px-3.5 py-2 rounded-xl transition" style={{ background: b.bg, color: b.fg }}>
               {b.label}

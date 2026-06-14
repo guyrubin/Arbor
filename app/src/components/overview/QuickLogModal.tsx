@@ -45,8 +45,8 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Intensity: <span style={{ color: "#1f8a5a" }}>{newLogIntensity} / 5</span></label>
-          <input type="range" min={1} max={5} value={newLogIntensity} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="w-full" style={{ accentColor: "#34b277" }} />
+          <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Intensity: <span style={{ color: "var(--arbor-green-ink)" }}>{newLogIntensity} / 5</span></label>
+          <input type="range" min={1} max={5} value={newLogIntensity} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
         </div>
 
         <div className="space-y-1.5">
@@ -59,7 +59,7 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
           <input value={newLogResponse} onChange={(e) => setNewLogResponse(e.target.value)} placeholder="e.g. named the feeling, offered choice" className="w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
         </div>
 
-        <button type="submit" className="w-full py-3 text-white font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}>
+        <button type="submit" className="w-full py-3 text-white font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}>
           Save log
         </button>
       </form>

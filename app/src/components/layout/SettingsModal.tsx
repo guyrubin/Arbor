@@ -22,10 +22,10 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     <Modal open={open} onClose={onClose} title="Settings">
       <div className="space-y-5 text-sm">
         {/* Plan — read from the real entitlement endpoint (MON-1) */}
-        <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,#eef6f1,#ece9fb)", border: "1px solid var(--arbor-rule)" }}>
+        <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "#1f8a5a" }}><Sparkles className="w-4 h-4" /></span>
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
               <div className="min-w-0">
                 <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>
                   Your plan: {isPlus ? (entitlement.enforced ? "Arbor Plus" : "Arbor Beta (full access)") : "Arbor Free"}
@@ -48,7 +48,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <p className="text-xs leading-relaxed mt-3" style={{ color: "var(--arbor-muted)" }}>
                 <strong style={{ color: "var(--arbor-ink)" }}>Arbor Plus</strong> adds unlimited coaching, professional reports, advanced plans, and multiple children.
               </p>
-              <button onClick={() => toast("Thanks! We'll let you know the moment Arbor Plus checkout is ready.", "success")} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "#34b277", color: "#fff" }}>
+              <button onClick={() => toast("Thanks! We'll let you know the moment Arbor Plus checkout is ready.", "success")} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
                 Tell me when Plus launches
               </button>
             </>
@@ -60,7 +60,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
               <button key={k} onClick={() => setAiLang(k)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
-                style={aiLang === k ? { background: "#34b277", color: "#fff" } : { color: "var(--arbor-muted)" }}>
+                style={aiLang === k ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}>
                 {label}
               </button>
             ))}
@@ -69,14 +69,14 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         {/* AI Engines panel */}
         <Row icon={<Sparkles className="w-4 h-4" />} title="“How Arbor helps” panel" sub="Show the side panel that explains what goes into each answer.">
-          <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 h-6 rounded-full transition relative" style={{ background: showAiRail ? "#34b277" : "var(--arbor-rule-strong)" }}>
+          <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 h-6 rounded-full transition relative" style={{ background: showAiRail ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}>
             <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "left-[22px]" : "left-0.5"}`} />
           </button>
         </Row>
 
         {/* Data & privacy → profile editor (export / delete live there) */}
         <Row icon={<ShieldCheck className="w-4 h-4" />} title="Child profile & data" sub="Edit the profile, export data, or delete a child.">
-          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
+          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
             Open profile
           </button>
         </Row>
@@ -88,7 +88,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 <p className="text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user.displayName || "Signed in"}</p>
                 {user.email && <p className="text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
               </div>
-              <button onClick={() => void signOut()} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "#fce2ec", color: "#bd4f74" }}>
+              <button onClick={() => void signOut()} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
                 <LogOut className="w-3.5 h-3.5" /> Sign out
               </button>
             </div>
@@ -103,7 +103,7 @@ function Row({ icon, title, sub, children }: { icon: React.ReactNode; title: str
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-start gap-3 min-w-0">
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>{icon}</span>
+        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{icon}</span>
         <div className="min-w-0">
           <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>{title}</p>
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{sub}</p>

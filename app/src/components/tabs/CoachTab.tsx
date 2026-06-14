@@ -4,6 +4,9 @@ import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight,
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
+import { Avatar } from "../ui/Avatar";
+import { ArborMascot } from "../ui/ArborMascot";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
@@ -82,7 +85,9 @@ export default function CoachTab() {
     deleteConversation,
   } = useArbor();
   const { toast } = useToast();
-  const { aiLang, setAiLang } = useLanguage();
+  const { aiLang, setAiLang, t } = useLanguage();
+  const { user } = useAuth();
+  const childFirst = (childProfile.name || "").split(" ")[0];
 
   // Animate (typewriter) only AI messages that arrive after mount, not restored history.
   const revealedRef = useRef<number | null>(null);
@@ -237,22 +242,21 @@ export default function CoachTab() {
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#1f8a5a" }}>Ask Arbor</span>
-            <h2 className="text-2xl md:text-[2rem] font-extrabold leading-[1.12] mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Ask Arbor</h2>
-            <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>Tell Arbor what's happening. You'll get a calm, age-aware next step and the exact words to say, and Arbor remembers it for next time.</p>
+            <h2 className="text-2xl md:text-[2rem] leading-[1.12]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("nav.tab.coach")}</h2>
+            <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
           </div>
           <div className="flex items-center gap-1 rounded-xl p-1 flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} title="Language for AI responses">
             <button
               onClick={() => setAiLang("en")}
               className="px-2.5 py-1 rounded-lg text-xs font-bold transition"
-              style={aiLang === "en" ? { background: "#34b277", color: "#fff" } : { color: "var(--arbor-muted)" }}
+              style={aiLang === "en" ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}
             >
               EN
             </button>
             <button
               onClick={() => setAiLang("he")}
               className="px-2.5 py-1 rounded-lg text-xs font-bold transition"
-              style={aiLang === "he" ? { background: "#34b277", color: "#fff" } : { color: "var(--arbor-muted)" }}
+              style={aiLang === "he" ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}
             >
               עב
             </button>
@@ -260,16 +264,16 @@ export default function CoachTab() {
         </div>
 
         <div className="space-y-2">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "#1f8a5a" }}>Active Scholar Lens</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.lens")}</span>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedLens("Integrated Balanced")}
               className="px-3 py-2 rounded-xl text-xs font-bold transition"
               style={selectedLens === "Integrated Balanced"
-                ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }
+                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
                 : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
-              🌟 Integrated Balanced
+              Integrated Balanced
             </button>
             {scholarsInfo.map((s, idx) => {
               const on = selectedLens === s.name;
@@ -279,10 +283,10 @@ export default function CoachTab() {
                   onClick={() => setSelectedLens(s.name)}
                   className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
                   style={on
-                    ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }
+                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
                     : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
-                  <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? "#fff" : "var(--arbor-paper-deep)", color: "#1f8a5a" }}>
+                  <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? "#fff" : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}>
                     {s.initial}
                   </span>
                   {s.name} ({s.concept})
@@ -306,8 +310,8 @@ export default function CoachTab() {
 
       {/* Fast-start scenarios (IA-2) — shown on a fresh conversation */}
       {chatMessages.length <= 1 && (
-        <div className="rounded-2xl p-4" style={{ background: "#fdeada" }}>
-          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "#cf6f37" }}>Fast start — pick a moment</span>
+        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-peach-soft)" }}>
+          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-peach)" }}>{t("coach.fastStart")}</span>
           <div className="flex flex-wrap gap-2 mt-2.5">
             {SCENARIOS.map((s) => (
               <button
@@ -329,9 +333,9 @@ export default function CoachTab() {
         <button
           onClick={newConversation}
           className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full transition"
-          style={{ background: "#e4f4ec", color: "#1f8a5a" }}
+          style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
         >
-          <Plus className="w-3.5 h-3.5" /> New
+          <Plus className="w-3.5 h-3.5" /> {t("coach.new")}
         </button>
         {conversations.map((c) => {
           const on = c.id === activeConversationId;
@@ -339,9 +343,9 @@ export default function CoachTab() {
             <div
               key={c.id}
               className="flex-shrink-0 flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1 transition"
-              style={on ? { background: "#e4f4ec", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
+              style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
             >
-              <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "#1f8a5a" : "var(--arbor-muted)" }}>
+              <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
                 <MessageSquare className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{c.title}</span>
               </button>
               <button onClick={() => deleteConversation(c.id)} aria-label="Delete conversation" className="transition" style={{ color: "var(--arbor-muted)" }}>
@@ -355,9 +359,9 @@ export default function CoachTab() {
       {/* Chat Viewport Area */}
       <div className={`${cardCls} flex flex-col h-[520px] overflow-hidden justify-between`}>
         <div className="px-4 py-2 text-xs flex items-center justify-between" style={{ background: "var(--arbor-paper-deep)", borderBottom: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
-          <span>Conversation frame: <strong style={{ color: "var(--arbor-ink)" }}>Active child context</strong></span>
-          <span className="font-bold flex items-center gap-1.5" style={{ color: "#1f8a5a" }}>
-            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#34b277" }} />}
+          <span>{t("coach.frame")} <strong style={{ color: "var(--arbor-ink)" }}>{t("coach.activeContext")}</strong></span>
+          <span className="font-bold flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
+            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} />}
             Lens: {selectedLens}
           </span>
         </div>
@@ -365,16 +369,19 @@ export default function CoachTab() {
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           {chatMessages.map((msg, idx) => (
             <div key={idx} className={`flex gap-3 max-w-[85%] group ${msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"}`}>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={msg.sender === "user" ? { background: "#e5f0fb", color: "#2f7bbf" } : { background: "#fdeada", color: "#cf6f37" }}>
-                {msg.sender === "user" ? "U" : "Ar"}
-              </div>
+              {msg.sender === "user" ? (
+                <Avatar name={user?.displayName} photoURL={user?.photoURL} size={32} />
+              ) : (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ background: "var(--arbor-green-soft)" }} title="Arbor">
+                  <ArborMascot size={30} />
+                </div>
+              )}
               <div className="p-4 rounded-2xl text-sm"
                 style={msg.sender === "user"
-                  ? { background: "#e5f0fb", color: "var(--arbor-ink)" }
+                  ? { background: "var(--arbor-sky-soft)", color: "var(--arbor-ink)" }
                   : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "#e4f4ec", color: "#1f8a5a" }}>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
                     Aligned with {msg.lens}
                   </span>
                 )}
@@ -467,7 +474,7 @@ export default function CoachTab() {
                   key={q}
                   onClick={() => handleChatSend(q)}
                   className="text-[11px] px-3 py-1.5 rounded-full transition flex items-center gap-1.5 font-bold"
-                  style={{ background: "#e4f4ec", color: "#1f8a5a" }}
+                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                 >
                   {q} <ArrowRight className="w-3 h-3" />
                 </button>
@@ -477,18 +484,18 @@ export default function CoachTab() {
 
           {isChatLoading && (
             <div className="flex gap-3 max-w-[85%] mr-auto">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold animate-spin" style={{ background: "#fdeada", color: "#cf6f37" }}>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold animate-spin" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach)" }}>
                 <RefreshCw className="w-4 h-4" />
               </div>
               <div className="p-4 rounded-2xl text-xs flex items-center gap-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                <span className="animate-pulse">{chatStreamStatus || "Arbor developmental model synthesizing guidance..."}</span>
+                <span className="animate-pulse">{chatStreamStatus || t("coach.loading")}</span>
                 <button
                   type="button"
                   onClick={handleCancelChat}
                   className="px-2 py-1 rounded-lg font-bold flex items-center gap-1"
                   style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 >
-                  <X className="w-3 h-3" /> Stop
+                  <X className="w-3 h-3" /> {t("coach.stop")}
                 </button>
               </div>
             </div>
@@ -506,7 +513,7 @@ export default function CoachTab() {
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
               style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
-              <Camera className="w-3.5 h-3.5" /> Photo
+              <Camera className="w-3.5 h-3.5" /> {t("coach.photo")}
             </button>
             <button
               type="button"
@@ -514,7 +521,7 @@ export default function CoachTab() {
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
               style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
-              <FileText className="w-3.5 h-3.5" /> Document
+              <FileText className="w-3.5 h-3.5" /> {t("coach.document")}
             </button>
             <button
               type="button"
@@ -522,11 +529,11 @@ export default function CoachTab() {
               aria-pressed={voicePhase !== "off"}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
               style={voicePhase !== "off"
-                ? { background: "#e4f4ec", color: "#1f8a5a", border: "1px solid rgba(52,178,119,0.30)" }
+                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
                 : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
               {voicePhase === "off" ? <Mic className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />} {voiceLabel}
-              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#34b277" }} />}
+              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} />}
             </button>
           </div>
           <div className="flex gap-2">
@@ -536,7 +543,7 @@ export default function CoachTab() {
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
               disabled={isChatLoading}
-              placeholder={`Tell Arbor what's happening with ${childProfile.name.split(" ")[0]}…`}
+              placeholder={t("coach.placeholder", { name: childFirst })}
               className="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none transition"
               style={{ background: "#fff", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
             />
@@ -544,22 +551,22 @@ export default function CoachTab() {
               onClick={() => handleChatSend()}
               disabled={isChatLoading}
               className="text-white font-extrabold text-sm px-5 py-3 rounded-xl transition flex items-center gap-2 disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#3cc081,#34b277 60%,#2a9c66)" }}
+              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
             >
-              Send
+              {t("coach.send")}
             </button>
             <button
               onClick={() => handleCouncilSend()}
               disabled={isChatLoading}
               title="Convene 3 scholars — each weighs in, then Arbor synthesizes"
               className="font-extrabold text-sm px-4 py-3 rounded-xl transition flex items-center gap-2 disabled:opacity-50"
-              style={{ background: "#fff", border: "1px solid rgba(52,178,119,0.30)", color: "#1f8a5a" }}
+              style={{ background: "#fff", border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }}
             >
-              <Users className="w-4 h-4" /> Council
+              <Users className="w-4 h-4" /> {t("coach.council")}
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--arbor-muted)" }}>
-            <span className="font-bold">Suggested prompts:</span>
+            <span className="font-bold">{t("coach.suggested")}</span>
             <button
               onClick={() => handleChatSend(`${childProfile.name.split(" ")[0]} screams and hides behind the couch during shoe departures.`)}
               disabled={isChatLoading}
@@ -593,28 +600,28 @@ export default function CoachTab() {
       <div className={`${cardCls} p-5 space-y-4`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "#1f8a5a" }}>Memory Review</span>
-            <h3 className="text-lg font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Parent approval queue</h3>
+            <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.memReview")}</span>
+            <h3 className="text-lg font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("coach.memQueue")}</h3>
             <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
-              Arbor saves proposed observations as pending review. They become active child memory only after approval.
+              {t("coach.memDesc")}
             </p>
           </div>
           <div className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-            <strong style={{ color: "var(--arbor-ink)" }}>{pendingMemoryItems.length}</strong> pending · <strong style={{ color: "var(--arbor-ink)" }}>{approvedMemoryItems.length}</strong> approved
+            <strong style={{ color: "var(--arbor-ink)" }}>{pendingMemoryItems.length}</strong> {t("coach.pending")} · <strong style={{ color: "var(--arbor-ink)" }}>{approvedMemoryItems.length}</strong> {t("coach.approved")}
           </div>
         </div>
 
         {memoryReviewItems.length === 0 ? (
           <div className="text-xs rounded-xl p-4" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>
-            Ask the coach a question to generate reviewable observations. Nothing is active memory yet.
+            {t("coach.memEmpty")}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {memoryReviewItems.slice(0, 6).map((item) => {
               const statusStyle =
-                item.status === "approved" ? { background: "#e4f4ec", color: "#1f8a5a" }
-                : item.status === "rejected" ? { background: "#fce2ec", color: "#bd4f74" }
-                : { background: "#fbf1d4", color: "#a9780f" };
+                item.status === "approved" ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
+                : item.status === "rejected" ? { background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }
+                : { background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" };
               return (
                 <div key={item.memoryId} className="rounded-xl p-4 space-y-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                   <div className="flex items-center justify-between gap-3">
@@ -635,9 +642,9 @@ export default function CoachTab() {
                         onClick={() => handleMemoryDecision(item.memoryId, "approved")}
                         disabled={isMemoryUpdating === item.memoryId}
                         className="flex-1 text-white font-extrabold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        style={{ background: "#34b277" }}
+                        style={{ background: "var(--arbor-clay)" }}
                       >
-                        <Check className="w-3.5 h-3.5" /> Approve
+                        <Check className="w-3.5 h-3.5" /> {t("coach.approve")}
                       </button>
                       <button
                         onClick={() => handleMemoryDecision(item.memoryId, "rejected")}
@@ -645,7 +652,7 @@ export default function CoachTab() {
                         className="flex-1 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
                         style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Reject
+                        <Trash2 className="w-3.5 h-3.5" /> {t("coach.reject")}
                       </button>
                     </div>
                   )}
@@ -656,7 +663,7 @@ export default function CoachTab() {
                       className="w-full font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
                       style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                     >
-                      <Trash2 className="w-3.5 h-3.5" /> Delete from active memory
+                      <Trash2 className="w-3.5 h-3.5" /> {t("coach.deleteActive")}
                     </button>
                   )}
                 </div>
