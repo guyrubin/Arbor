@@ -1,23 +1,32 @@
 import { describe, it, expect } from "vitest";
 import { SECTIONS, sectionForTab, primaryTabOf } from "./navigation";
 
-/** Structural guard for the seven-section information architecture (IA v2 +
- *  Practice Studio). Catches accidental drift: wrong section count,
- *  duplicate/colliding tabs, empty sections, or a primary tab that doesn't
- *  belong to its section. */
+/** Structural guard for the six-pillar information architecture (IA v3:
+ *  Today / Ask / My Child / Grow / Care / Academy). Catches accidental drift:
+ *  wrong section count, duplicate/colliding tabs, empty sections, a primary tab
+ *  that doesn't belong, or a demoted leaf that no longer resolves. */
 describe("navigation IA", () => {
-  it("exposes exactly seven primary sections", () => {
-    expect(SECTIONS).toHaveLength(7);
+  it("exposes exactly six task-based pillars", () => {
+    expect(SECTIONS).toHaveLength(6);
+    expect(SECTIONS.map((s) => s.id)).toEqual(["today", "ask", "child", "grow", "care", "academy"]);
   });
 
-  it("Practice Studio carries the speech & language suite", () => {
-    const practice = SECTIONS.find((s) => s.id === "practice");
-    const tabs = practice?.items.map((i) => i.tab) ?? [];
-    expect(tabs).toEqual(expect.arrayContaining(["missions", "speech", "mimic", "adventures"]));
+  it("My Child collapses the development leaves into one Development hub", () => {
+    const child = SECTIONS.find((s) => s.id === "child");
+    const tabs = child?.items.map((i) => i.tab) ?? [];
+    expect(tabs).toEqual(["timeline", "development", "behaviors", "language"]);
   });
 
-  it("Development Dashboard (Copilot) lives under My Child", () => {
-    expect(sectionForTab("copilot").id).toBe("intelligence");
+  it("Grow holds Daily Play, the Practice hub, and Growth Plans", () => {
+    const grow = SECTIONS.find((s) => s.id === "grow");
+    const tabs = grow?.items.map((i) => i.tab) ?? [];
+    expect(tabs).toEqual(["daily-play", "practice", "plans"]);
+  });
+
+  it("Care leads with the consolidated Consult flow", () => {
+    const care = SECTIONS.find((s) => s.id === "care");
+    expect(care?.items[0].tab).toBe("consult");
+    expect(care?.items.some((i) => i.tab === "safety")).toBe(true);
   });
 
   it("every section has at least one capability", () => {
@@ -37,7 +46,7 @@ describe("navigation IA", () => {
       }
   });
 
-  it("sectionForTab resolves each tab back to its owning section", () => {
+  it("sectionForTab resolves each surfaced tab back to its owning section", () => {
     for (const s of SECTIONS)
       for (const it of s.items) expect(sectionForTab(it.tab).id).toBe(s.id);
   });
@@ -46,17 +55,19 @@ describe("navigation IA", () => {
     for (const s of SECTIONS) expect(s.items.some((i) => i.tab === primaryTabOf(s))).toBe(true);
   });
 
-  it("Safety has a primary home under Care Network (Wave 1: no longer orphaned)", () => {
-    const care = SECTIONS.find((s) => s.id === "care");
-    expect(care?.items.some((i) => i.tab === "safety")).toBe(true);
-  });
-
-  it("consolidated tabs still resolve to a section via fallback (Wave 1 demotions)", () => {
-    // These views were removed from the primary nav but remain valid routes;
-    // sectionForTab must still map them so the sidebar highlights correctly.
-    expect(sectionForTab("strengths").id).toBe("intelligence");
-    expect(sectionForTab("weekly").id).toBe("intelligence");
-    expect(sectionForTab("scholar").id).toBe("ask");
+  it("demoted leaves still resolve to a section via fallback (nothing deleted)", () => {
+    // Former primary leaves are now reached via hubs/spines, but remain valid
+    // routes; sectionForTab must still map them so the sidebar highlights right.
+    expect(sectionForTab("copilot").id).toBe("child");   // → Development hub
+    expect(sectionForTab("profile").id).toBe("child");
+    expect(sectionForTab("milestones").id).toBe("child");
+    expect(sectionForTab("screening").id).toBe("child");
+    expect(sectionForTab("memory").id).toBe("child");
+    expect(sectionForTab("speech").id).toBe("grow");      // → Practice hub
+    expect(sectionForTab("adventures").id).toBe("grow");
+    expect(sectionForTab("reports").id).toBe("care");     // → Consult
+    expect(sectionForTab("find-pro").id).toBe("care");
     expect(sectionForTab("handoff").id).toBe("care");
+    expect(sectionForTab("scholar").id).toBe("ask");
   });
 });

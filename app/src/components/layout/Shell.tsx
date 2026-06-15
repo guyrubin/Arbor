@@ -51,6 +51,12 @@ const JourneyTab = lazy(() => import("../practice/JourneyTab"));
 const AdventuresTab = lazy(() => import("../practice/AdventuresTab"));
 const DevelopmentCopilot = lazy(() => import("../practice/DevelopmentCopilot"));
 
+// IA v3: consolidation hubs (merge confusable/duplicate leaves).
+const DevelopmentTab = lazy(() => import("../tabs/DevelopmentTab"));
+const DailyPlayTab = lazy(() => import("../tabs/DailyPlayTab"));
+const PracticeHubTab = lazy(() => import("../practice/PracticeHubTab"));
+const ConsultTab = lazy(() => import("../tabs/ConsultTab"));
+
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
   coach: CoachTab,
@@ -82,6 +88,10 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   journey: JourneyTab,
   adventures: AdventuresTab,
   copilot: DevelopmentCopilot,
+  development: DevelopmentTab,
+  "daily-play": DailyPlayTab,
+  practice: PracticeHubTab,
+  consult: ConsultTab,
 };
 
 export default function Shell() {

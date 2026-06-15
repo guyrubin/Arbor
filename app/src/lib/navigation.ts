@@ -1,10 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home, Sparkles, Brain, Sprout, HeartHandshake, GraduationCap,
-  LayoutDashboard, UserCircle, CheckCircle2, Activity, Languages,
-  BookMarked, Search, Users, FileBarChart, Calendar,
-  Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert, ClipboardCheck,
-  Mic, Smile, Target, Map, Gauge, HeartPulse, CalendarDays,
+  LayoutDashboard, Activity, Languages,
+  Users, FileBarChart, Calendar,
+  Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert,
+  Target, Map, Gauge,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -34,10 +34,10 @@ export type NavSection = {
  */
 export const SECTIONS: NavSection[] = [
   {
-    id: "home",
-    label: "Home",
+    id: "today",
+    label: "Today",
     icon: Home,
-    items: [{ tab: "overview", label: "Home", icon: LayoutDashboard }],
+    items: [{ tab: "overview", label: "Today", icon: LayoutDashboard }],
   },
   {
     id: "ask",
@@ -46,49 +46,35 @@ export const SECTIONS: NavSection[] = [
     items: [{ tab: "coach", label: "Ask Arbor", icon: Sparkles }],
   },
   {
-    id: "intelligence",
+    id: "child",
     label: "My Child",
     icon: Brain,
     badge: "milestone",
     items: [
       { tab: "timeline", label: "Story", icon: Waypoints },
-      { tab: "copilot", label: "Development Dashboard", icon: Gauge },
-      { tab: "profile", label: "Development Profile", icon: UserCircle },
-      { tab: "milestones", label: "Development Milestones", icon: CheckCircle2 },
-      { tab: "screening", label: "Development Check", icon: ClipboardCheck },
+      { tab: "development", label: "Development", icon: Gauge },
       { tab: "behaviors", label: "Moments", icon: Activity },
       { tab: "language", label: "Language & Communication", icon: Languages },
-      { tab: "memory", label: "Child Memory", icon: BookMarked },
     ],
   },
   {
-    id: "practice",
-    label: "Practice Studio",
-    icon: Target,
-    items: [
-      { tab: "missions", label: "Daily Missions", icon: Target },
-      { tab: "journey", label: "Development Journey", icon: CalendarDays },
-      { tab: "speech", label: "Speech Coach", icon: Mic },
-      { tab: "mimic", label: "Mimic Studio", icon: Smile },
-      { tab: "feelings", label: "Feelings Lab", icon: HeartPulse },
-      { tab: "adventures", label: "Adventures", icon: Map },
-    ],
-  },
-  {
-    id: "growth",
-    label: "Growth Plans",
+    id: "grow",
+    label: "Grow",
     icon: Sprout,
     badge: "plans",
-    items: [{ tab: "plans", label: "Active Growth Plans", icon: Sliders }],
+    items: [
+      { tab: "daily-play", label: "Daily Play", icon: Map },
+      { tab: "practice", label: "Practice", icon: Target },
+      { tab: "plans", label: "Growth Plans", icon: Sliders },
+    ],
   },
   {
     id: "care",
     label: "Care Network",
     icon: HeartHandshake,
     items: [
+      { tab: "consult", label: "Consult", icon: FileBarChart },
       { tab: "care-team", label: "My Care Team", icon: Users },
-      { tab: "find-pro", label: "Find a Professional", icon: Search },
-      { tab: "reports", label: "Reports & Handoffs", icon: FileBarChart },
       { tab: "sharing", label: "Trusted Sharing", icon: Share2 },
       { tab: "appointments", label: "Appointments", icon: Calendar },
       { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
@@ -99,8 +85,8 @@ export const SECTIONS: NavSection[] = [
     label: "Arbor Academy",
     icon: GraduationCap,
     items: [
-      { tab: "stories", label: "Story Journeys", icon: BookOpen },
       { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
+      { tab: "stories", label: "Story Journeys", icon: BookOpen },
       { tab: "family", label: "Family Formation", icon: Heart },
     ],
   },
@@ -113,10 +99,27 @@ export const SECTIONS: NavSection[] = [
  * section when one of those views is opened by deep link or in-app navigation.
  */
 const TAB_SECTION_FALLBACK: Record<string, string> = {
-  strengths: "intelligence",
-  weekly: "intelligence",
+  // My Child — leaves now reached via the Development hub or Story spine.
+  copilot: "child",
+  profile: "child",
+  milestones: "child",
+  strengths: "child",
+  journey: "child",
+  screening: "child",
+  memory: "child",
+  weekly: "child",
+  // Ask — scholar lens lives inside the coach.
   scholar: "ask",
+  // Grow — drills reached via the Practice hub; missions folded into Today loop.
+  speech: "grow",
+  mimic: "grow",
+  feelings: "grow",
+  adventures: "grow",
+  missions: "grow",
+  // Care — the former handoff doors now live inside Consult.
+  reports: "care",
   handoff: "care",
+  "find-pro": "care",
 };
 
 export function sectionForTab(tab: ActiveTab): NavSection {

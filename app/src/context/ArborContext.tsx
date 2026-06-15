@@ -72,7 +72,12 @@ export type ActiveTab =
   | "missions"       // Practice Studio › Daily Missions + Development Score
   | "journey"        // Practice Studio › Development Journey
   | "adventures"     // Practice Studio › Cognitive Adventures
-  | "copilot";       // My Child › Development Dashboard (Copilot)
+  | "copilot"        // My Child › Development Dashboard (Copilot)
+  // IA v3: 6-pillar consolidation hubs (merge confusable/duplicate leaves)
+  | "development"    // My Child › Development (merges copilot+profile+milestones+journey)
+  | "daily-play"     // Grow › Daily Play (household-item activity library)
+  | "practice"       // Grow › Practice (hub over speech+mimic+feelings+adventures)
+  | "consult";       // Care › Consult (merges reports+handoff+find-pro)
 
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
 // working browser back/forward button.
@@ -80,6 +85,7 @@ const VALID_TABS = new Set<string>([
   "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
   "profile", "memory", "strengths", "screening", "timeline", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family",
   "speech", "mimic", "feelings", "missions", "journey", "adventures", "copilot",
+  "development", "daily-play", "practice", "consult",
 ]);
 function tabFromHash(): ActiveTab | null {
   try {
