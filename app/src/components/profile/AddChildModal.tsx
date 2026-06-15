@@ -4,6 +4,7 @@ import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
 
 const LANGUAGE_OPTIONS = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
@@ -11,6 +12,7 @@ const LANGUAGE_OPTIONS = ["Hebrew", "English", "Arabic", "Russian", "French", "O
 export default function AddChildModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { addChild, profiles } = useProfile();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { entitlement } = useEntitlement();
   // MON-1: multi-child is a Plus feature once entitlements are enforced.
   const atChildLimit = entitlement.enforced && profiles.length >= entitlement.limits.maxChildren;
@@ -56,7 +58,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
         challenges: toLines(challenges),
         riskLevel: "Low",
       });
-      toast(`${childName}'s profile added`, "success");
+      toast(t("ac.addedToast", { name: childName }), "success");
       close();
     } finally {
       setSaving(false);
@@ -67,17 +69,17 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
 
   if (atChildLimit) {
     return (
-      <Modal open={open} onClose={close} title="Add a child">
+      <Modal open={open} onClose={close} title={t("ac.title")}>
         <div className="space-y-4 text-sm">
           <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
             <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
             <div>
-              <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>Multiple children is an Arbor Plus feature</p>
+              <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ac.limitTitle")}</p>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                The free plan covers one child. Arbor Plus adds up to {entitlement.limits.maxChildren === 1 ? 6 : entitlement.limits.maxChildren} children, unlimited coaching, professional reports, and advanced plans.
+                {t("ac.limitBody", { max: entitlement.limits.maxChildren === 1 ? 6 : entitlement.limits.maxChildren })}
               </p>
-              <button onClick={() => { toast("Thanks! We'll let you know the moment Arbor Plus checkout is ready.", "success"); close(); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
-                Tell me when Plus launches
+              <button onClick={() => { toast(t("ac.notifyToast"), "success"); close(); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
+                {t("ac.notify")}
               </button>
             </div>
           </div>
@@ -87,7 +89,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
   }
 
   return (
-    <Modal open={open} onClose={close} title={`Add a child · Step ${step} of 3`}>
+    <Modal open={open} onClose={close} title={t("ac.titleStep", { step })}>
       <div className="space-y-5 text-sm">
         {/* Step progress */}
         <div className="flex gap-1.5">
@@ -99,18 +101,18 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
         {step === 1 && (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Child&apos;s name</label>
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.name")}</label>
               <input
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Maya"
+                placeholder={t("ac.namePh")}
                 className="w-full rounded-xl px-4 py-2.5 focus:outline-none"
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Age: <span style={{ color: "var(--arbor-green-ink)" }}>{age}</span></label>
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.age")} <span style={{ color: "var(--arbor-green-ink)" }}>{age}</span></label>
               <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
             </div>
           </div>
@@ -118,7 +120,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
 
         {step === 2 && (
           <div className="space-y-3">
-            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Languages (select all that apply)</label>
+            <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("ac.langs")}</label>
             <div className="flex flex-wrap gap-2">
               {LANGUAGE_OPTIONS.map((lang) => (
                 <button
@@ -130,7 +132,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
                     ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
                     : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
-                  {lang}
+                  {t("ob.lang." + lang.toLowerCase())}
                 </button>
               ))}
             </div>
@@ -140,11 +142,11 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
         {step === 3 && (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Key strengths <span style={{ opacity: 0.7 }}>(optional, one per line)</span></label>
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.strengths")} <span style={{ opacity: 0.7 }}>{t("ac.optLines")}</span></label>
               <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Current challenges <span style={{ opacity: 0.7 }}>(optional, one per line)</span></label>
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.challenges")} <span style={{ opacity: 0.7 }}>{t("ac.optLines")}</span></label>
               <textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
           </div>
@@ -152,15 +154,15 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
 
         <div className="flex justify-between gap-3 pt-2">
           <Button variant="ghost" size="sm" onClick={step === 1 ? close : () => setStep((s) => s - 1)}>
-            {step === 1 ? "Cancel" : "Back"}
+            {step === 1 ? t("ac.cancel") : t("ac.back")}
           </Button>
           {step < 3 ? (
             <Button size="sm" disabled={!canAdvance} onClick={() => setStep((s) => s + 1)}>
-              Next
+              {t("ac.next")}
             </Button>
           ) : (
             <Button size="sm" disabled={saving} onClick={finish}>
-              {saving ? "Adding…" : "Add child"}
+              {saving ? t("ac.adding") : t("ac.add")}
             </Button>
           )}
         </div>

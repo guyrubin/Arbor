@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { useToast } from "../../context/ToastContext";
 import { ProgressRing } from "../ui/ProgressRing";
 import { Skeleton } from "../ui/Skeleton";
 import { ParentChildIllustration } from "../ui/ParentChildIllustration";
@@ -16,7 +17,11 @@ import RemindersCard from "../overview/RemindersCard";
 import TrendsChart from "../overview/TrendsChart";
 import GoalsCard from "../overview/GoalsCard";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
+import RhythmStrip from "../overview/RhythmStrip";
+import DailyPlayCard from "../overview/DailyPlayCard";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
+import { predictRhythm, hourLabel } from "../../rhythm/predict";
+import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
 
 const card = cardCls;
 const DAY = 86_400_000;
@@ -36,9 +41,54 @@ export default function OverviewTab() {
   } = useArbor();
 
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [quickLog, setQuickLog] = useState(false);
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const photoUrl = childProfile.photoUrl;
+
+  // ── Today surface: Rhythm prediction + Daily Play pick (memory-driven) ──
+  const rhythm = useMemo(
+    () => predictRhythm(
+      behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })),
+      Date.now(),
+      { ageYears: childProfile.age }
+    ),
+    [behaviorLogs, childProfile.age]
+  );
+  const [donePlayIds, setDonePlayIds] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`arbor.play.done.${childProfile.id}`) || "[]"); }
+    catch { return []; }
+  });
+  const dailyPlay: ScoredActivity | null = useMemo(() => {
+    const concernDomains = concernDomainsFromLogs(
+      behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, timestamp: l.timestamp })),
+      Date.now()
+    );
+    const picks = selectDailyPlay({
+      ageYears: childProfile.age,
+      concernDomains,
+      recentlyDoneIds: donePlayIds,
+      daySeed: daySeedFor(Date.now()),
+    }, 1);
+    return picks[0] ?? null;
+  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds]);
+
+  const prepWindow = (hour: number) => {
+    setChatInput(`${firstName} tends to have a harder time around ${hourLabel(hour)}. Give me one short, calm script I can use to get ahead of it today.`);
+    setActiveTab("coach");
+  };
+  const coachOnPlay = (p: ScoredActivity) => {
+    setChatInput(`We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`);
+    setActiveTab("coach");
+  };
+  const markPlayDone = (p: ScoredActivity) => {
+    setDonePlayIds((prev) => {
+      const next = prev.includes(p.activity.id) ? prev : [p.activity.id, ...prev].slice(0, 30);
+      try { localStorage.setItem(`arbor.play.done.${childProfile.id}`, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+    toast(`Nice. Added to ${firstName}'s day.`, "success");
+  };
 
   const hour = new Date().getHours();
   const greeting =
@@ -180,6 +230,20 @@ export default function OverviewTab() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ── Today: predicted rhythm + a play idea (the daily-return surface) ─ */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <RhythmStrip prediction={rhythm} childName={firstName} onPrepWindow={prepWindow} />
+        {dailyPlay && (
+          <DailyPlayCard
+            pick={dailyPlay}
+            childName={firstName}
+            done={donePlayIds.includes(dailyPlay.activity.id)}
+            onDid={markPlayDone}
+            onCoach={coachOnPlay}
+          />
+        )}
       </section>
 
       {/* ── How your child is doing (the picture, with the moat folded in) ─ */}
