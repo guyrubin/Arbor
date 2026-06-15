@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useReducedMotion } from "motion/react";
 import { Activity, Moon, Sparkles } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 import type { RhythmPrediction, RhythmTone } from "../../rhythm/predict";
 import { hourLabel } from "../../rhythm/predict";
 
@@ -29,17 +30,18 @@ export default function RhythmStrip({
   onPrepWindow?: (hour: number) => void;
 }) {
   const reduce = useReducedMotion();
+  const { t } = useLanguage();
   const { confidence, daysNeeded, bands, frictionPeak, calmWindow, windDownHour } = prediction;
   const learning = confidence === "none" || confidence === "low";
 
   const ariaSummary = useMemo(() => {
-    if (learning) return `Arbor is still learning ${childName}'s daily rhythm.`;
+    if (learning) return t("rhythm.ariaLearning", { name: childName });
     const parts: string[] = [];
     if (frictionPeak) parts.push(`hardest around ${hourLabel(frictionPeak.hour)}`);
     if (calmWindow) parts.push(`calmest ${hourLabel(calmWindow.startHour)} to ${hourLabel(calmWindow.endHour)}`);
     if (windDownHour != null) parts.push(`wind-down near ${hourLabel(windDownHour)}`);
     return `${childName}'s predicted rhythm today: ${parts.join(", ")}.`;
-  }, [learning, childName, frictionPeak, calmWindow, windDownHour]);
+  }, [learning, childName, frictionPeak, calmWindow, windDownHour, t]);
 
   return (
     <section
@@ -49,16 +51,16 @@ export default function RhythmStrip({
       <div className="px-6 pt-5 pb-4 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-            <Activity className="w-3.5 h-3.5" /> Today's rhythm
+            <Activity className="w-3.5 h-3.5" /> {t("rhythm.eyebrow")}
           </span>
           <h2 className="text-lg font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK }}>
-            {learning ? `Learning ${childName}'s day` : `How ${childName}'s day tends to go`}
+            {learning ? t("rhythm.learningTitle", { name: childName }) : t("rhythm.title", { name: childName })}
           </h2>
         </div>
         {!learning && (
           <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold flex-shrink-0"
             style={{ background: "var(--arbor-paper-deep)", color: MUTED, border: `1px solid ${RULE}` }}>
-            from your last few weeks
+            {t("rhythm.fromWeeks")}
           </span>
         )}
       </div>
@@ -71,8 +73,8 @@ export default function RhythmStrip({
             ))}
           </div>
           <p className="text-sm mt-4 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
-            Log a few more moments and Arbor will start predicting {childName}'s harder and calmer windows.
-            {daysNeeded > 0 && <> About <strong style={{ color: INK }}>{daysNeeded} more day{daysNeeded === 1 ? "" : "s"}</strong> of logging to go.</>}
+            {t("rhythm.learningBody", { name: childName })}
+            {daysNeeded > 0 && <> <strong style={{ color: INK }}>{t("rhythm.daysToGo", { n: daysNeeded })}</strong></>}
           </p>
         </div>
       ) : (
@@ -99,7 +101,7 @@ export default function RhythmStrip({
           {/* Hour ticks */}
           <div className="flex justify-between mt-1.5 text-[10px] font-semibold" style={{ color: "var(--arbor-faint)" }}>
             <span>{hourLabel(bands[0].hour)}</span>
-            <span>noon</span>
+            <span>{t("rhythm.noon")}</span>
             <span>{hourLabel(bands[bands.length - 1].hour)}</span>
           </div>
 
@@ -111,19 +113,19 @@ export default function RhythmStrip({
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-bold transition active:scale-[0.98]"
                 style={{ background: TONE.friction.bg, color: TONE.friction.ink }}
               >
-                <Sparkles className="w-3.5 h-3.5" /> Get a script ready for {hourLabel(frictionPeak.hour)}
+                <Sparkles className="w-3.5 h-3.5" /> {t("rhythm.prep", { time: hourLabel(frictionPeak.hour) })}
               </button>
             )}
             {windDownHour != null && (
               <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-bold"
                 style={{ background: "var(--arbor-paper-deep)", color: INK, border: `1px solid ${RULE}` }}>
-                <Moon className="w-3.5 h-3.5" style={{ color: "var(--arbor-lav-ink)" }} /> Start wind-down ~{hourLabel(windDownHour)}
+                <Moon className="w-3.5 h-3.5" style={{ color: "var(--arbor-lav-ink)" }} /> {t("rhythm.windDown", { time: hourLabel(windDownHour) })}
               </span>
             )}
             {calmWindow && (
               <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-bold"
                 style={{ background: TONE.calm.bg, color: TONE.calm.ink }}>
-                Calmest {hourLabel(calmWindow.startHour)}–{hourLabel(calmWindow.endHour)}
+                {t("rhythm.calmest", { from: hourLabel(calmWindow.startHour), to: hourLabel(calmWindow.endHour) })}
               </span>
             )}
           </div>
