@@ -3,9 +3,9 @@ import { motion } from "motion/react";
 import { Sprout } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
-import { bandForAge, PLAY_BANDS } from "../../playbank/content";
 
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
    matched to their band and recently-logged concerns. The single hero pick also
@@ -14,8 +14,8 @@ import { bandForAge, PLAY_BANDS } from "../../playbank/content";
 export default function DailyPlayTab() {
   const { behaviorLogs, childProfile, setChatInput, setActiveTab } = useArbor();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
-  const bandLabel = PLAY_BANDS.find((b) => b.band === bandForAge(childProfile.age))?.label ?? "this stage";
 
   const [doneIds, setDoneIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(`arbor.play.done.${childProfile.id}`) || "[]"); }
@@ -55,13 +55,13 @@ export default function DailyPlayTab() {
     >
       <header>
         <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-          <Sprout className="w-3.5 h-3.5" /> Daily Play
+          <Sprout className="w-3.5 h-3.5" /> {t("play.libEyebrow")}
         </span>
         <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-          Play ideas for {firstName}
+          {t("play.libTitle", { name: firstName })}
         </h1>
         <p className="text-sm mt-1.5" style={{ color: "var(--arbor-muted)" }}>
-          Matched to {bandLabel.toLowerCase()} and what {firstName} has been working through. Each uses things you already have at home.
+          {t("play.libSubtitle", { name: firstName })}
         </p>
       </header>
 

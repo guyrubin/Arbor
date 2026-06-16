@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Stethoscope, ShieldCheck, Copy, Download, Send, Check } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { buildConsultPacket, serializePacket, countIncluded } from "../../consult/packet";
 
 /* Care › Consult › Ask a specialist — the warm handoff.
@@ -20,6 +21,7 @@ const RULE = "var(--arbor-rule)";
 export default function AskSpecialist() {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems } = useArbor();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
 
@@ -65,13 +67,13 @@ export default function AskSpecialist() {
     >
       <header>
         <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-          <Stethoscope className="w-3.5 h-3.5" /> Ask a specialist
+          <Stethoscope className="w-3.5 h-3.5" /> {t("consult.eyebrow")}
         </span>
         <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
-          Bring a specialist up to speed in minutes
+          {t("consult.title")}
         </h1>
         <p className="text-sm mt-1.5 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
-          A short, honest summary of {firstName}'s history so a therapist, teacher or doctor starts already in context, not from scratch. You choose exactly what to share.
+          {t("consult.subtitle", { name: firstName })}
         </p>
       </header>
 
@@ -79,7 +81,7 @@ export default function AskSpecialist() {
       <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: GREEN_SOFT }}>
         <ShieldCheck className="w-5 h-5 flex-shrink-0" style={{ color: GREEN }} />
         <p className="text-[13px] leading-relaxed" style={{ color: GREEN }}>
-          Nothing is shared until you export it. Uncheck anything you'd rather keep private. This is a conversation starter, never a diagnosis.
+          {t("consult.trust")}
         </p>
       </div>
 
@@ -120,22 +122,22 @@ export default function AskSpecialist() {
       {/* Export bar */}
       <div className="sticky bottom-2 rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
         <span className="text-[13px] font-bold mr-auto" style={{ color: MUTED }}>
-          <strong style={{ color: INK }}>{includedCount}</strong> detail{includedCount === 1 ? "" : "s"} selected
+          {t("consult.selected", { n: includedCount })}
         </span>
         <button onClick={copy} disabled={includedCount === 0}
           className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-2.5 transition disabled:opacity-50"
           style={{ background: GREEN_SOFT, color: GREEN }}>
-          <Copy className="w-4 h-4" /> Copy
+          <Copy className="w-4 h-4" /> {t("consult.copy")}
         </button>
         <button onClick={download} disabled={includedCount === 0}
           className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 transition disabled:opacity-50"
           style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}>
-          <Download className="w-4 h-4" /> Download
+          <Download className="w-4 h-4" /> {t("consult.download")}
         </button>
-        <button disabled title="Coming soon — send straight to a vetted Arbor specialist"
+        <button disabled title={t("consult.sendSoon")}
           className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-2.5 cursor-not-allowed"
           style={{ background: "var(--arbor-paper-sunk)", color: "var(--arbor-faint)" }}>
-          <Send className="w-4 h-4" /> Send to an Arbor specialist (soon)
+          <Send className="w-4 h-4" /> {t("consult.sendSoon")}
         </button>
       </div>
     </motion.div>

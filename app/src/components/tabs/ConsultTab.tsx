@@ -1,5 +1,6 @@
 import React, { lazy } from "react";
 import { Stethoscope, FileBarChart, Search } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 import HubTabs from "../ui/HubTabs";
 
 /* Care › Consult — one verb for "get expert input". Collapses the former doors
@@ -12,13 +13,14 @@ const Reports = lazy(() => import("../sections/Reports"));
 const FindProfessional = lazy(() => import("../sections/FindProfessional"));
 
 export default function ConsultTab() {
+  const { t } = useLanguage();
   return (
     <HubTabs
       ariaLabel="Consult steps"
       panels={[
-        { id: "ask", label: "Ask a specialist", icon: Stethoscope, Comp: AskSpecialist },
-        { id: "brief", label: "AI handoff brief", icon: FileBarChart, Comp: Reports },
-        { id: "find", label: "Find a professional", icon: Search, Comp: FindProfessional },
+        { id: "ask", label: t("consult.ask"), icon: Stethoscope, Comp: AskSpecialist },
+        { id: "brief", label: t("consult.brief"), icon: FileBarChart, Comp: Reports },
+        { id: "find", label: t("consult.find"), icon: Search, Comp: FindProfessional },
       ]}
     />
   );

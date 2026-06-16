@@ -1,5 +1,6 @@
 import React, { lazy } from "react";
 import { Mic, Smile, HeartPulse, Map } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 import HubTabs from "../ui/HubTabs";
 
 /* Grow › Practice — the targeted drills gathered under one entry. Daily Missions
@@ -12,14 +13,15 @@ const FeelingsLabTab = lazy(() => import("./FeelingsLabTab"));
 const AdventuresTab = lazy(() => import("./AdventuresTab"));
 
 export default function PracticeHubTab() {
+  const { t } = useLanguage();
   return (
     <HubTabs
       ariaLabel="Practice drills"
       panels={[
-        { id: "speech", label: "Speech Coach", icon: Mic, Comp: SpeechCoachTab },
-        { id: "mimic", label: "Mimic Studio", icon: Smile, Comp: MimicStudioTab },
-        { id: "feelings", label: "Feelings Lab", icon: HeartPulse, Comp: FeelingsLabTab },
-        { id: "adventures", label: "Adventures", icon: Map, Comp: AdventuresTab },
+        { id: "speech", label: t("nav.tab.speech"), icon: Mic, Comp: SpeechCoachTab },
+        { id: "mimic", label: t("nav.tab.mimic"), icon: Smile, Comp: MimicStudioTab },
+        { id: "feelings", label: t("nav.tab.feelings"), icon: HeartPulse, Comp: FeelingsLabTab },
+        { id: "adventures", label: t("nav.tab.adventures"), icon: Map, Comp: AdventuresTab },
       ]}
     />
   );
