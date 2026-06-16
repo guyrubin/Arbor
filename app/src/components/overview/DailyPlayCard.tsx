@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Sprout, Check, MessageSquare, ChevronDown, Clock } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
+import { localizeActivity } from "../../playbank/content";
 import type { ScoredActivity } from "../../playbank/select";
 
 /* Daily Play — one stage-appropriate, household-item activity for today,
@@ -27,8 +28,9 @@ export default function DailyPlayCard({
   onCoach: (a: ScoredActivity) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { t } = useLanguage();
-  const { activity, reason } = pick;
+  const { t, uiLang } = useLanguage();
+  const { reason } = pick;
+  const activity = localizeActivity(pick.activity, uiLang);
 
   const why =
     reason === "concern-match"
