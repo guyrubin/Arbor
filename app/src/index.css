@@ -386,3 +386,33 @@ body {
   75%      { transform: translateX(4px); }
 }
 .play-nudge { animation: play-nudge 320ms ease-in-out 1; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   NATIVE SAFE AREAS — Capacitor iOS/Android (notch, status bar, home indicator).
+   Scoped to .is-native (set on <html> by src/lib/native.ts) so the web app is
+   byte-for-byte unchanged. viewport-fit=cover is set in index.html, so env()
+   insets are non-zero only where the OS actually reserves space. This is what
+   makes the app render correctly edge-to-edge on real devices (the iOS/Play bar).
+   ════════════════════════════════════════════════════════════════════════════ */
+.is-native .arbor-app {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* Bottom tab bar floats above the home indicator. */
+.is-native nav.fixed.bottom-0 {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* Main scroll area stays clear of the (now taller) bottom nav + home indicator. */
+.is-native main {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom)) !important;
+}
+/* Full-screen overlays (immersive story, modals, AI rail) respect notch + home bar. */
+.is-native .fixed.inset-0 {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* A sticky/floating top header (if present) clears the status bar / notch. */
+.is-native .sticky.top-0,
+.is-native .fixed.top-0 {
+  padding-top: env(safe-area-inset-top);
+}

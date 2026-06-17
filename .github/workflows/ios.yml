@@ -1,0 +1,61 @@
+name: iOS build
+
+# Builds the Capacitor iOS app on a cloud macOS runner (no local Mac needed).
+# By default it does an UNSIGNED archive — a full compile/build verification
+# that proves the iOS project is store-ready. To produce a signed .ipa for
+# App Store Connect, add signing secrets (BUILD_CERTIFICATE_BASE64,
+# P12_PASSWORD, PROVISIONING_PROFILE_BASE64, plus an App Store Connect API key)
+# and switch CODE_SIGNING_ALLOWED to YES with an export step — see app/MOBILE.md.
+# Firebase VITE_* values are the PUBLIC web client config, not secrets.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, exec-blueprint-wave0 ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/ios.yml'
+
+jobs:
+  ios:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: app
+    env:
+      VITE_HAS_GEMINI_API: 'true'
+      VITE_FIREBASE_API_KEY: AIzaSyAa0MZ87e_ofMHlBFdfCxPBSAelC0ghqvs
+      VITE_FIREBASE_AUTH_DOMAIN: arborprd-westeu.firebaseapp.com
+      VITE_FIREBASE_PROJECT_ID: arborprd-westeu
+      VITE_FIREBASE_STORAGE_BUCKET: arborprd-westeu.firebasestorage.app
+      VITE_FIREBASE_MESSAGING_SENDER_ID: '628681500167'
+      VITE_FIREBASE_APP_ID: '1:628681500167:web:f78b93f5f692e174d2aca2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - name: Build web bundle
+        run: npm run build
+      - name: Sync Capacitor (iOS)
+        run: npx cap sync ios
+      - name: Xcode build (unsigned archive — store-ready compile verification)
+        working-directory: app/ios/App
+        run: |
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            archive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbor-ios-archive
+          if-no-files-found: warn
+          path: ${{ runner.temp }}/App.xcarchive

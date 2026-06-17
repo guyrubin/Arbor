@@ -1,0 +1,64 @@
+name: Android build
+
+# Builds the Capacitor Android app in the cloud (no local Android Studio/SDK
+# needed). Produces a debug APK (install + smoke test) and a release AAB
+# (Play upload). Runs on every app change and on demand.
+#
+# The release AAB is UNSIGNED unless an upload keystore is provided via secrets
+# (ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS /
+# ANDROID_KEY_PASSWORD). To submit to Google Play, add those secrets and Play
+# App Signing handles the rest. Firebase VITE_* values below are the PUBLIC web
+# client config (already shipped in the web bundle), not secrets.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, exec-blueprint-wave0 ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/android.yml'
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      VITE_HAS_GEMINI_API: 'true'
+      VITE_FIREBASE_API_KEY: AIzaSyAa0MZ87e_ofMHlBFdfCxPBSAelC0ghqvs
+      VITE_FIREBASE_AUTH_DOMAIN: arborprd-westeu.firebaseapp.com
+      VITE_FIREBASE_PROJECT_ID: arborprd-westeu
+      VITE_FIREBASE_STORAGE_BUCKET: arborprd-westeu.firebasestorage.app
+      VITE_FIREBASE_MESSAGING_SENDER_ID: '628681500167'
+      VITE_FIREBASE_APP_ID: '1:628681500167:web:f78b93f5f692e174d2aca2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - name: Build web bundle
+        run: npm run build
+      - name: Sync Capacitor (Android)
+        run: npx cap sync android
+      - name: Gradle build (debug APK + release AAB)
+        working-directory: app/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --stacktrace
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbor-android
+          if-no-files-found: warn
+          path: |
+            app/android/app/build/outputs/apk/debug/*.apk
+            app/android/app/build/outputs/bundle/release/*.aab

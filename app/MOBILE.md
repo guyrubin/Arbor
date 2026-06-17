@@ -63,6 +63,19 @@ npx @capacitor/assets generate \
 
 This also emits PWA icons to `icons/`.
 
+## Cloud CI builds (no local Android Studio / Mac needed)
+
+Two GitHub Actions workflows build the native apps in the cloud:
+
+- **`.github/workflows/android.yml`** (Linux runner) → debug APK + release AAB, uploaded as the `arbor-android` artifact. Runs on push to `app/**` and on demand (Actions tab → "Android build" → Run workflow).
+- **`.github/workflows/ios.yml`** (macOS runner) → unsigned Xcode archive (full compile verification), uploaded as `arbor-ios-archive`.
+
+Both build the web bundle, `npx cap sync`, then the native build. The Firebase `VITE_*` values in the workflows are the public web client config (already in the shipped bundle), not secrets.
+
+### To produce SIGNED, submittable binaries, add repo secrets:
+- **Android (Google Play):** `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` (generate an upload key with `keytool -genkey -v -keystore upload.keystore -alias arbor -keyalg RSA -keysize 2048 -validity 10000`, then base64 it). Play App Signing manages the app signing key after upload.
+- **iOS (App Store Connect):** `BUILD_CERTIFICATE_BASE64` + `P12_PASSWORD`, `PROVISIONING_PROFILE_BASE64`, and an App Store Connect API key — then flip `CODE_SIGNING_ALLOWED=YES` and add an `-exportArchive` step to emit a signed `.ipa`.
+
 ## Native runtime config
 
 - `capacitor.config.ts` — app id/name, splash, status bar (dark icons on the light
