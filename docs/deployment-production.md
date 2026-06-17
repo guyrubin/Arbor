@@ -40,6 +40,11 @@ plus `REQUIRE_AUTH=true`. On Cloud Run the Admin SDK verifies ID tokens using th
 service account's Application Default Credentials, so no service-account key
 secrets are required.
 
+Production also enforces monetization by default: unknown users resolve to Free,
+and Plus is granted only through `entitlements/{uid}` in Firestore or the
+`ARBOR_PLUS_UIDS` / `ARBOR_PLUS_EMAILS` allowlists. The prod Cloud Build config
+sets `ENFORCE_ENTITLEMENTS=true` and `FREE_COACH_MESSAGES_PER_DAY=10` explicitly.
+
 ## 2. Deploy the API (Cloud Run)
 
 ```bash

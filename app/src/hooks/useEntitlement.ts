@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { api, type EntitlementInfo } from "../lib/api";
 
-/** Default while loading / when the API is unreachable: full access (beta posture). */
-const OPEN_ACCESS: EntitlementInfo = {
-  plan: "plus",
-  limits: { coachMessagesPerDay: null, maxChildren: 6, professionalReports: true, advancedPlans: true },
-  source: "client_default",
-  enforced: false,
+/** Default while loading / when the API is unreachable: fail closed to Free. */
+const FALLBACK_FREE: EntitlementInfo = {
+  plan: "free",
+  limits: { coachMessagesPerDay: 10, maxChildren: 1, professionalReports: false, advancedPlans: false },
+  source: "client_fallback",
+  enforced: true,
   usage: { coachMessagesToday: 0 },
 };
 
@@ -18,7 +18,7 @@ const fetchEntitlement = () => {
   if (!inflight) {
     inflight = api.entitlement()
       .then((e) => { cached = e; return e; })
-      .catch(() => OPEN_ACCESS)
+      .catch(() => FALLBACK_FREE)
       .finally(() => { inflight = null; });
   }
   return inflight;
@@ -28,11 +28,12 @@ const fetchEntitlement = () => {
 export const refreshEntitlement = () => { cached = null; return fetchEntitlement(); };
 
 /**
- * MON-1 client seam: read the parent's plan, limits, and coach usage. While
- * entitlements are unenforced (beta) this resolves to Plus and no UI gates show.
+ * MON-1 client seam: read the parent's plan, limits, and coach usage. The server
+ * can still return beta Plus when enforcement is explicitly disabled; otherwise
+ * the client fails closed until the entitlement endpoint answers.
  */
 export function useEntitlement(): { entitlement: EntitlementInfo; loading: boolean } {
-  const [entitlement, setEntitlement] = useState<EntitlementInfo>(cached || OPEN_ACCESS);
+  const [entitlement, setEntitlement] = useState<EntitlementInfo>(cached || FALLBACK_FREE);
   const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {

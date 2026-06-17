@@ -4,7 +4,7 @@ import { PLAN_LIMITS, entitlementsEnforced, resolveEntitlement, type Entitlement
 const nullStore: EntitlementStore = { async getPlan() { return null; } };
 const plusStore: EntitlementStore = { async getPlan() { return "plus"; } };
 
-const ENV_KEYS = ["ENFORCE_ENTITLEMENTS", "ARBOR_PLUS_UIDS", "ARBOR_PLUS_EMAILS"];
+const ENV_KEYS = ["ARBOR_ENV", "ENFORCE_ENTITLEMENTS", "ARBOR_PLUS_UIDS", "ARBOR_PLUS_EMAILS"];
 
 afterEach(() => {
   for (const k of ENV_KEYS) delete process.env[k];
@@ -17,6 +17,15 @@ describe("entitlement layer (MON-1)", () => {
     expect(e.plan).toBe("plus");
     expect(e.enforced).toBe(false);
     expect(e.limits.coachMessagesPerDay).toBeNull();
+  });
+
+  it("defaults to enforced in prod so missing env cannot leak Plus", async () => {
+    process.env.ARBOR_ENV = "prod";
+    expect(entitlementsEnforced()).toBe(true);
+    const e = await resolveEntitlement(nullStore, { uid: "u1", email: null });
+    expect(e.plan).toBe("free");
+    expect(e.source).toBe("default");
+    expect(e.enforced).toBe(true);
   });
 
   it("enforced: unknown users default to free with metered coach + single child", async () => {

@@ -5,8 +5,9 @@
  * webhook) only has to write `{ plan: "plus" }` to `entitlements/{uid}` in
  * Firestore and the whole product gates itself. Until billing exists:
  *
- *  - ENFORCE_ENTITLEMENTS=false (default): everyone resolves to "plus", so the
- *    private beta keeps full access. Flipping the flag turns the paywall on.
+ *  - ENFORCE_ENTITLEMENTS=false: everyone resolves to "plus", so a private beta
+ *    can keep full access. Production defaults to enforced even if the env var
+ *    is missing, so an omitted Cloud Run flag cannot leak Plus.
  *  - ARBOR_PLUS_UIDS / ARBOR_PLUS_EMAILS env lists grant Plus manually
  *    (founder accounts, comped testers) without touching Firestore.
  *
@@ -55,7 +56,8 @@ export type Entitlement = {
 const flag = (value: string | undefined, fallback: boolean) =>
   value === undefined ? fallback : ["1", "true", "yes", "on"].includes(value.toLowerCase());
 
-export const entitlementsEnforced = () => flag(process.env.ENFORCE_ENTITLEMENTS, false);
+export const entitlementsEnforced = () =>
+  flag(process.env.ENFORCE_ENTITLEMENTS, (process.env.ARBOR_ENV || "").toLowerCase() === "prod");
 
 const envList = (name: string) =>
   (process.env[name] || "")
