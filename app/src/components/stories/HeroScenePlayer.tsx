@@ -4,6 +4,7 @@ import { Volume2, VolumeX, Download } from "lucide-react";
 import { StoryIllustration } from "./StoryIllustration";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { api, type AvatarStyle } from "../../lib/api";
+import { runInstrumented } from "../../hooks/useAsyncAction";
 import type { HeroSceneRender } from "../../types";
 
 /**
@@ -71,15 +72,20 @@ export function HeroScenePlayer({
 
     let active = true;
     setArtLoading(true);
+    // M4: scene art is generated lazily and degrades gracefully (the catch below
+    // keeps the fallback illustration). runInstrumented adds start/success/error
+    // analytics ("scene_art_*") so silent generation failures are observable.
     const run =
       sceneArtInFlight.get(key) ??
-      api.generateComic({
-        avatar: { dataUrl: heroAvatarUrl },
-        heroName,
-        theme: scene.imagePrompt,
-        // dialogue omitted → no speech bubble; the narration caption carries the words
-        style: (heroAvatarStyle ?? "comichero"),
-      })
+      runInstrumented("scene_art", () =>
+        api.generateComic({
+          avatar: { dataUrl: heroAvatarUrl },
+          heroName,
+          theme: scene.imagePrompt,
+          // dialogue omitted → no speech bubble; the narration caption carries the words
+          style: (heroAvatarStyle ?? "comichero"),
+        }),
+      )
         .then((r) => { sceneArtCache.set(key, r.dataUrl); return r.dataUrl; })
         .finally(() => sceneArtInFlight.delete(key));
     sceneArtInFlight.set(key, run);

@@ -23,8 +23,10 @@ import type { PracticeEvent } from "../../types";
 /* ════════════════════════════════════════════════════════════════════════════
    Early Reading track + Letter Trace mini-game (Mission M7).
    Layers an articulation → phonics → sight words → reading ladder, plus a
-   finger letter-tracing game, into the child register. All scoped to .arbor-play
-   via PlayKit. No dark patterns: short, self-paced, effort-celebrated rounds.
+   finger letter-tracing game, into the child register. The returned tree is
+   wrapped in an `.arbor-play` container so the child play register (background
+   wash, larger --play-radius scale) resolves; play vars also carry literal
+   fallbacks. No dark patterns: short, self-paced, effort-celebrated rounds.
    ════════════════════════════════════════════════════════════════════════════ */
 
 type LogEvent = (kind: PracticeEvent["kind"], correct?: boolean, meta?: string, score?: number) => void;
@@ -139,8 +141,8 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
             height={TRACE_SIZE}
             viewBox={`0 0 ${TRACE_SIZE} ${TRACE_SIZE}`}
             role="img"
-            aria-label={`Trace the letter ${letter.letter}`}
-            className="rounded-[var(--play-radius-lg)] touch-none select-none"
+            aria-label={t("prac.read.trace.aria", { letter: letter.letter })}
+            className="rounded-[var(--play-radius-lg,32px)] touch-none select-none"
             style={{ background: "var(--arbor-paper-deep)", border: "2px solid var(--arbor-lav-soft)", cursor: done ? "default" : "crosshair" }}
             onPointerDown={start}
             onPointerMove={move}
@@ -166,20 +168,20 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
         <div className="flex-1 min-w-0 w-full">
           {done ? (
             <div className="text-center sm:text-left play-pop-in">
-              <div className="flex justify-center sm:justify-start gap-1 mb-2" aria-label={`${done.stars} of 3 stars`}>
+              <div className="flex justify-center sm:justify-start gap-1 mb-2" aria-label={t("prac.read.trace.stars", { n: done.stars })}>
                 {[0, 1, 2].map((i) => (
                   <span key={i} className="text-2xl" style={{ filter: i < done.stars ? "none" : "grayscale(1)", opacity: i < done.stars ? 1 : 0.35 }}>⭐</span>
                 ))}
               </div>
               <p className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                You traced {letter.letter}! It says “{letter.sound}”.
+                {t("prac.read.trace.win", { letter: letter.letter, sound: letter.sound })}
               </p>
               <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
                 <button onClick={() => sayAloud(letter.sound)} className="play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-4 min-h-[44px] rounded-full" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-                  <Volume2 className="w-4 h-4" /> Hear it
+                  <Volume2 className="w-4 h-4" /> {t("prac.read.trace.hearShort")}
                 </button>
                 <button onClick={nextLetter} className="play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-5 min-h-[44px] rounded-full text-white" style={{ background: "var(--arbor-clay)" }}>
-                  Next letter
+                  {t("prac.read.trace.next")}
                 </button>
               </div>
             </div>
@@ -189,7 +191,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
                 {t("prac.read.trace.start")}
               </p>
               <p className="text-[11px] mb-3" style={{ color: "var(--arbor-muted)" }}>
-                Stroke {Math.min(strokeIdx + 1, totalStrokes)} of {totalStrokes}
+                {t("prac.read.trace.stroke", { current: Math.min(strokeIdx + 1, totalStrokes), total: totalStrokes })}
               </p>
               <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ background: "rgba(41,51,63,0.08)" }}>
                 <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(coverage * 100)}%`, background: "var(--arbor-clay)" }} />
@@ -200,7 +202,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
                   <Volume2 className="w-4 h-4" /> {t("prac.read.trace.hear")}
                 </button>
                 <button onClick={() => reset(strokeIdx)} className="play-pressable text-xs font-extrabold px-4 min-h-[44px] rounded-full" style={{ background: "#fff", color: "var(--arbor-muted)", border: "2px solid var(--arbor-rule)" }}>
-                  Start this stroke over
+                  {t("prac.read.trace.restart")}
                 </button>
               </div>
             </>
@@ -217,6 +219,12 @@ const STAGE_LABEL_KEY: Record<ReadingStage, string> = {
   phonics: "prac.read.stage.phonics",
   "sight-words": "prac.read.stage.sight",
   reading: "prac.read.stage.reading",
+};
+
+const STAGE_HINT_KEY: Record<ReadingStage, string> = {
+  phonics: "prac.read.stage.hint.phonics",
+  "sight-words": "prac.read.stage.hint.sight",
+  reading: "prac.read.stage.hint.reading",
 };
 
 export default function EarlyReadingTrack({ age, first, onLog }: { age: number; first: string; onLog: LogEvent }) {
@@ -256,52 +264,51 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
     setReadIdx((i) => (i + 1) % READING_LINES.length);
   };
 
-  const activeStage = READING_STAGES.find((s) => s.stage === stage) ?? READING_STAGES[0];
-
   return (
+    <div className="arbor-play">
     <SectionCard title={t("prac.read.title")} icon={<BookOpen className="w-5 h-5" />} tone="lav"
       action={<Chip tone="lav">{t("prac.read.tag")}</Chip>}>
       <p className="text-xs rounded-xl p-3 mb-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
-        After the sounds come the symbols. We build reading the gentle way — letter sounds first, then a handful of sight words, then blending them into a short sentence. Letters appear as {first} grows into them.
+        {t("prac.read.intro", { first })}
       </p>
 
       {/* Stage selector — only stages appropriate to the age are offered */}
-      <div role="tablist" aria-label="Reading stage" className="flex flex-wrap gap-2 mb-4">
+      <div role="tablist" aria-label={t("prac.read.tablist")} className="flex flex-wrap gap-2 mb-4">
         {READING_STAGES.map((s) => {
           const on = s.stage === stage;
           const ready = available.includes(s.stage);
           return (
             <button key={s.stage} role="tab" aria-selected={on} disabled={!ready}
               onClick={() => ready && setStage(s.stage)}
-              className="rounded-full px-3.5 py-1.5 text-[11.5px] font-extrabold transition disabled:opacity-40 disabled:cursor-not-allowed"
-              title={ready ? s.hint : `Usually a little later than ${first}'s age — it'll unlock as ${first} grows.`}
+              className="rounded-full px-3.5 min-h-[44px] text-[11.5px] font-extrabold transition disabled:opacity-40 disabled:cursor-not-allowed"
+              title={ready ? t(STAGE_HINT_KEY[s.stage]) : t("prac.read.stage.locked", { first })}
               style={on ? { background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
               {t(STAGE_LABEL_KEY[s.stage])}
             </button>
           );
         })}
-        <span className="self-center text-[11px] ml-1" style={{ color: "var(--arbor-muted)" }}>{activeStage.hint}</span>
+        <span className="self-center text-[11px] ml-1" style={{ color: "var(--arbor-muted)" }}>{t(STAGE_HINT_KEY[stage])}</span>
       </div>
 
       {stage === "phonics" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="rounded-[var(--play-radius-lg)] p-7 text-center" style={{ background: "linear-gradient(135deg, var(--arbor-lav-soft), #ffffff 75%)", border: "2px solid var(--arbor-lav-soft)" }}>
+          <div className="rounded-[var(--play-radius-lg,32px)] p-7 text-center" style={{ background: "linear-gradient(135deg, var(--arbor-lav-soft), #ffffff 75%)", border: "2px solid var(--arbor-lav-soft)" }}>
             <p className="text-[64px] leading-none font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{phonics.letter}</p>
             <p className="text-2xl mt-2">{phonics.emoji}</p>
             <p className="text-base font-extrabold mt-1" style={{ color: "var(--arbor-ink)" }}>
-              {phonics.letter} says “{phonics.sound}” — like <b>{phonics.keyword}</b>
+              {t("prac.read.phonics.says", { letter: phonics.letter, sound: phonics.sound, keyword: phonics.keyword })}
             </p>
             <button onClick={() => sayAloud(phonics.sound)} className="mt-3 play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-4 min-h-[44px] rounded-full" style={{ background: "#fff", color: "var(--arbor-lav-ink)", border: "2px solid var(--arbor-lav-soft)" }}>
-              <Volume2 className="w-4 h-4" /> Hear the sound
+              <Volume2 className="w-4 h-4" /> {t("prac.read.phonics.hear")}
             </button>
           </div>
           <div className="flex flex-col justify-center">
             <p className="text-[13px] rounded-xl p-3 mb-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}>
-              <b>Model it:</b> {phonics.cue}
+              <b>{t("prac.read.phonics.model")}</b> {phonics.cue}
             </p>
-            <button onClick={heardPhonics} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
+            <button onClick={heardPhonics} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
               {saved === "phonics" ? <Check className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-              {saved === "phonics" ? "Saved" : `${first} said the sound`}
+              {saved === "phonics" ? t("prac.read.saved") : t("prac.read.phonics.cta", { first })}
             </button>
           </div>
         </div>
@@ -309,17 +316,17 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
 
       {stage === "sight-words" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="rounded-[var(--play-radius-lg)] p-8 text-center" style={{ background: "var(--arbor-sky-soft)", border: "2px solid var(--arbor-sky-soft)" }}>
+          <div className="rounded-[var(--play-radius-lg,32px)] p-8 text-center" style={{ background: "var(--arbor-sky-soft)", border: "2px solid var(--arbor-sky-soft)" }}>
             <p className="text-[56px] leading-none font-extrabold lowercase" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-sky-ink)" }}>{sight.word}</p>
             <p className="text-sm mt-4 font-bold" style={{ color: "var(--arbor-ink)" }}>“{sight.sentence}”</p>
           </div>
           <div className="flex flex-col justify-center">
             <p className="text-[13px] rounded-xl p-3 mb-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}>
-              Sight words don't sound out — we just know them. Point to it, say it together a few times, then find it in the little sentence.
+              {t("prac.read.sight.help")}
             </p>
-            <button onClick={readSight} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 rounded-xl text-white" style={{ background: "var(--arbor-sky-ink)" }}>
+            <button onClick={readSight} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-sky-ink)" }}>
               {saved === "sight" ? <Check className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-              {saved === "sight" ? "Saved" : `${first} read it`}
+              {saved === "sight" ? t("prac.read.saved") : t("prac.read.sight.cta", { first })}
             </button>
           </div>
         </div>
@@ -327,16 +334,16 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
 
       {stage === "reading" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="rounded-[var(--play-radius-lg)] p-8 text-center flex items-center justify-center" style={{ background: "linear-gradient(135deg, var(--arbor-green-soft), #ffffff 75%)", border: "2px solid var(--arbor-green-soft)" }}>
+          <div className="rounded-[var(--play-radius-lg,32px)] p-8 text-center flex items-center justify-center" style={{ background: "linear-gradient(135deg, var(--arbor-green-soft), #ffffff 75%)", border: "2px solid var(--arbor-green-soft)" }}>
             <p className="text-[28px] leading-tight font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{line.text}</p>
           </div>
           <div className="flex flex-col justify-center">
             <p className="text-[13px] rounded-xl p-3 mb-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}>
-              <b>Read together:</b> {line.tip}
+              <b>{t("prac.read.reading.together")}</b> {line.tip}
             </p>
-            <button onClick={readLine} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
+            <button onClick={readLine} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
               {saved === "read" ? <Check className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-              {saved === "read" ? "Saved" : "We read the sentence"}
+              {saved === "read" ? t("prac.read.saved") : t("prac.read.reading.cta")}
             </button>
           </div>
         </div>
@@ -347,8 +354,9 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
       </div>
 
       <p className="text-[11px] mt-4" style={{ color: "var(--arbor-muted)" }}>
-        Every sound said, word read and letter traced is logged to {first}'s record — it feeds the development trend and the report you can share with a professional. Reading ranges are typical, never deadlines.
+        {t("prac.read.footer", { first })}
       </p>
     </SectionCard>
+    </div>
   );
 }

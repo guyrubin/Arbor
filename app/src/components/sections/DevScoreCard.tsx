@@ -3,6 +3,7 @@ import { Gauge, ArrowUp, ArrowDown, Minus, Sparkles } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ProgressRing } from "../ui/ProgressRing";
+import { HeroAvatar } from "../ui/HeroAvatar";
 import {
   computeDevScore, toSnapshot, shouldSnapshot, type DevScoreSnapshot, type Trend,
 } from "../../growth/devScore";
@@ -51,12 +52,18 @@ export default function DevScoreCard() {
   if (score.confidence === "none") {
     return (
       <section className="rounded-[22px] p-6" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-        <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-          <Gauge className="w-3.5 h-3.5" /> {t("devscore.eyebrow")}
-        </span>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
-          {t("devscore.empty", { name: firstName })}
-        </p>
+        <div className="flex items-start gap-3.5">
+          {/* The child as the hero of their own record — modest, no comic frame here. */}
+          <HeroAvatar size={48} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
+              <Gauge className="w-3.5 h-3.5" /> {t("devscore.eyebrow")}
+            </span>
+            <p className="text-sm mt-2 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
+              {t("devscore.empty", { name: firstName })}
+            </p>
+          </div>
+        </div>
       </section>
     );
   }
@@ -70,9 +77,13 @@ export default function DevScoreCard() {
   return (
     <section className="rounded-[22px] overflow-hidden" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
       <div className="p-6">
-        <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-          <Gauge className="w-3.5 h-3.5" /> {t("devscore.eyebrow")}
-        </span>
+        <div className="flex items-center gap-3">
+          {/* The child as the hero of their own development record — modest parent register. */}
+          <HeroAvatar size={44} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
+            <Gauge className="w-3.5 h-3.5" /> {t("devscore.eyebrow")}
+          </span>
+        </div>
 
         <div className="flex items-center gap-5 mt-3">
           <ProgressRing value={score.overall} size={72} stroke={8}>

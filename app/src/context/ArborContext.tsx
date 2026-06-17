@@ -23,6 +23,7 @@ import { useProfile } from "./ProfileContext";
 import { api, authHeaders, getAiLanguage, PaywallError } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 import { track } from "../lib/analytics";
+import { runInstrumented } from "../hooks/useAsyncAction";
 import { trackFirstPlan } from "../lib/loopEvents";
 
 const readLS = (key: string): string | null => {
@@ -758,7 +759,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setIsPlanGenerating(true);
     setApiError(null);
     try {
-      const planData = await api.generatePlan({ challengeTopic: planChallengeTopic, childProfile });
+      // M4: wrap with start/success/error analytics ("plan_create_*") without
+      // disturbing the context-wide loading/error/paywall handling below.
+      const planData = await runInstrumented("plan_create", () =>
+        api.generatePlan({ challengeTopic: planChallengeTopic, childProfile }),
+      );
       planData.id = `plan-${Date.now()}`;
       await plansCol.upsert(planData);
       track("plan_generated", { title: planData.title });

@@ -17,6 +17,15 @@ export interface ChildProfile {
     source: 'descriptor' | 'photo';
     createdAt: string;
   };
+  /**
+   * Prematurity adjustment (AAP): for babies born preterm, developmental
+   * milestones are compared against *corrected* (adjusted) age until ~2 years.
+   * `gestationalWeeks` is the gestation at birth (e.g. 32). Term is 40 weeks;
+   * the correction is `(40 - gestationalWeeks)` weeks subtracted from chronological age.
+   */
+  preterm?: {
+    gestationalWeeks: number;
+  };
 }
 
 export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';
@@ -108,9 +117,21 @@ export interface BehaviorLog {
 export interface Milestone {
   id: string;
   domain: DevelopmentalDomainId;
+  /** Human-readable checklist label, e.g. "9 months" or "Age 4-5". */
   ageGroup: string;
+  /**
+   * Numeric anchor for the checklist in months (e.g. 9, 24, 60). Drives
+   * corrected-age comparison for preterm infants. Optional for legacy/custom items.
+   */
+  ageMonths?: number;
   title: string;
+  /** Short summary line shown under the title (the CDC-style "most children…" phrasing). */
   description: string;
+  /**
+   * Plain-language "what the skill looks like" — a concrete, everyday picture of
+   * the behavior a parent can actually watch for. Optional; falls back to `description`.
+   */
+  skillLooksLike?: string;
   checked: boolean;
   references?: { label: string; url: string }[];
   custom?: boolean;

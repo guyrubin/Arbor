@@ -9,6 +9,7 @@ import MemoryMatch from "./MemoryMatch";
 import type { AdventureResult } from "../../types";
 import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
 
 const SKILL_LABEL: Record<string, string> = {
@@ -26,7 +27,7 @@ const SKILL_LABEL: Record<string, string> = {
  * Wrong answers get warm scaffolding and a retry — there is no "fail" state.
  */
 export default function AdventuresTab() {
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile, setActiveTab, openPaywall } = useArbor();
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
@@ -35,25 +36,29 @@ export default function AdventuresTab() {
   const ageScenarios = useMemo(() => scenariosForAge(childProfile.age), [childProfile.age]);
   // Generated adventures (this session) sit alongside the curated ones.
   const [generated, setGenerated] = useState<AdventureScenario[]>([]);
-  const [generating, setGenerating] = useState(false);
-  const [genError, setGenError] = useState<string | null>(null);
   const scenarios = useMemo(() => [...generated, ...ageScenarios], [generated, ageScenarios]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const scenario: AdventureScenario | null = scenarios.find((s) => s.id === activeId) ?? null;
 
+  // M4: loading + friendly error + start/success/error analytics ("adventure_create_*").
+  // A 402 opens the paywall (conversion moment) instead of an inline error.
+  const adventureGen = useAsyncAction(
+    "adventure_create",
+    () => api.generateAdventure({ childProfile }),
+    {
+      fallbackError: t("gen.adventure.fail"),
+      onPaywall: (err) => openPaywall(err.feature || "adventureGenerate", err.plan),
+    },
+  );
+  const generating = adventureGen.loading;
+  const genError = adventureGen.error;
+
   const createAdventure = async () => {
-    setGenerating(true);
-    setGenError(null);
-    try {
-      const adv = await api.generateAdventure({ childProfile });
-      setGenerated((prev) => [adv, ...prev]);
-      track("adventure_generated", { id: adv.id });
-      openScenario(adv.id);
-    } catch (e: any) {
-      setGenError(e?.message || "Couldn't create a new adventure — please try again.");
-    } finally {
-      setGenerating(false);
-    }
+    const adv = await adventureGen.run();
+    if (!adv) return;
+    setGenerated((prev) => [adv, ...prev]);
+    track("adventure_generated", { id: adv.id });
+    openScenario(adv.id);
   };
 
   const [sceneIdx, setSceneIdx] = useState(0);

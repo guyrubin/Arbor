@@ -206,7 +206,15 @@ export function domainBands(
   };
 
   const emotionAcc = eventAccuracy(events, ["emotion-id", "emotion-why"]);
-  const languageAcc = eventAccuracy(events, ["vocab-naming", "vocab-category", "expressive", "phonics", "sight-word"]);
+  // phonics/sight-word are parent-confirmed taps always logged correct=true, so
+  // they are exposure (confidence) signals — not accuracy — and are excluded here
+  // to avoid inflating the language band that feeds the provider-shared trend.
+  // letter-trace carries a real score (trace coverage) and is folded in below.
+  const languageAcc = eventAccuracy(events, ["vocab-naming", "vocab-category", "expressive"]);
+  const traceScores = events.filter((e) => e.kind === "letter-trace" && e.score !== undefined);
+  const traceAcc = traceScores.length >= 2
+    ? traceScores.reduce((s, e) => s + (e.score ?? 0), 0) / traceScores.length
+    : null;
   const memoryScores = events.filter((e) => e.kind === "memory" && e.score !== undefined);
   const memoryAcc = memoryScores.length >= 2
     ? memoryScores.reduce((s, e) => s + (e.score ?? 0), 0) / memoryScores.length
@@ -246,6 +254,11 @@ export function domainBands(
       if (domain === "language" && languageAcc !== null) {
         signal = signal * 0.6 + languageAcc * 0.4;
         basis.push("Words & Express practice");
+      }
+      if (domain === "language" && traceAcc !== null) {
+        // Real trace coverage (a graded score), blended as a lighter input.
+        signal = signal * 0.8 + traceAcc * 0.2;
+        basis.push("Letter tracing");
       }
       if (domain === "emotional") {
         if (emotionAcc !== null) {

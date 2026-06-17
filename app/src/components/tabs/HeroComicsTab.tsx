@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Sparkles, Wand2, Download, RefreshCw, ShieldCheck, BookOpen } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel } from "../ui/playkit";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 
@@ -22,36 +24,42 @@ const ADVENTURES: { id: string; emoji: string; title: string; theme: string; dia
 ];
 
 export default function HeroComicsTab() {
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile, setActiveTab, openPaywall } = useArbor();
+  const { t } = useLanguage();
   const { url: heroUrl, hasHero, name } = useHeroAvatar();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [comic, setComic] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const make = async (adventureId: string) => {
-    const adv = ADVENTURES.find((a) => a.id === adventureId);
-    if (!adv) return;
-    setActiveId(adventureId);
-    setLoading(true);
-    setError(null);
-    setComic(null);
-    try {
-      const res = await api.generateComic({
+  // M4: loading + friendly error + start/success/error analytics ("hero_comic_*").
+  // A 402 opens the paywall (conversion moment) instead of an inline error.
+  const comicGen = useAsyncAction(
+    "hero_comic",
+    (adv: (typeof ADVENTURES)[number]) =>
+      api.generateComic({
         ...(heroUrl && heroUrl.startsWith("data:") ? { avatar: { dataUrl: heroUrl } } : {}),
         heroName: name,
         theme: adv.theme,
         dialogue: adv.dialogue(name),
         sfx: adv.sfx,
         style: "comichero",
-      });
-      setComic(res.dataUrl);
-      track("hero_comic_generated", { adventure: adventureId });
-    } catch (e: any) {
-      setError(e?.message || "Couldn't create this comic right now — please try again.");
-    } finally {
-      setLoading(false);
-    }
+      }),
+    {
+      fallbackError: t("gen.comic.fail"),
+      onPaywall: (err) => openPaywall(err.feature || "heroComic", err.plan),
+    },
+  );
+  const loading = comicGen.loading;
+  const error = comicGen.error;
+
+  const make = async (adventureId: string) => {
+    const adv = ADVENTURES.find((a) => a.id === adventureId);
+    if (!adv) return;
+    setActiveId(adventureId);
+    setComic(null);
+    const res = await comicGen.run(adv);
+    if (!res) return;
+    setComic(res.dataUrl);
+    track("hero_comic_generated", { adventure: adventureId });
   };
 
   const download = () => {

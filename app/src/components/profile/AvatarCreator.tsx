@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Sparkles, Camera, Wand2, ShieldCheck } from "lucide-react";
 import { api, type AvatarStyle, type AvatarDescriptors } from "../../lib/api";
 import { fileToThumbnail } from "../../lib/image";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
+import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
 
 /**
@@ -39,39 +42,50 @@ export default function AvatarCreator({
   const [descriptors, setDescriptors] = useState<AvatarDescriptors>({});
   const [consent, setConsent] = useState(false);
   const [refPhoto, setRefPhoto] = useState<string | undefined>();
-  const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<string | undefined>();
-  const [error, setError] = useState<string | undefined>();
+  const [photoError, setPhotoError] = useState<string | undefined>();
+  const { openPaywall } = useArbor();
+  const { t } = useLanguage();
+
+  // M4: loading + error + start/success/error analytics for the generation call.
+  // A 402 opens the paywall (conversion moment) instead of an inline error.
+  const avatar = useAsyncAction(
+    "avatar_create",
+    (input: { style: AvatarStyle; mode: "describe" | "photo"; refPhoto?: string; descriptors: AvatarDescriptors }) =>
+      api.generateAvatar({
+        style: input.style,
+        ...(input.mode === "photo" && input.refPhoto ? { photo: { dataUrl: input.refPhoto } } : { descriptors: input.descriptors }),
+      }),
+    {
+      fallbackError: t("gen.avatar.fail"),
+      onPaywall: (err) => openPaywall(err.feature || "avatarGenerate", err.plan),
+    },
+  );
+  const generating = avatar.loading;
+  const error = photoError ?? avatar.error ?? undefined;
 
   const reset = () => {
     setMode("describe"); setStyle("comichero"); setDescriptors({}); setConsent(false);
-    setRefPhoto(undefined); setResult(undefined); setError(undefined); setGenerating(false);
+    setRefPhoto(undefined); setResult(undefined); setPhotoError(undefined); avatar.clearError();
   };
   const close = () => { reset(); onClose(); };
 
   const onPickPhoto = async (file?: File) => {
     if (!file) return;
+    setPhotoError(undefined);
     try {
       // Downscale on-device before it ever leaves the browser.
       setRefPhoto(await fileToThumbnail(file, 512, 0.85));
     } catch {
-      setError("Couldn't read that image.");
+      setPhotoError("Couldn't read that image.");
     }
   };
 
   const generate = async () => {
-    setGenerating(true); setError(undefined); setResult(undefined);
-    try {
-      const res = await api.generateAvatar({
-        style,
-        ...(mode === "photo" && refPhoto ? { photo: { dataUrl: refPhoto } } : { descriptors })
-      });
-      setResult(res.dataUrl);
-    } catch (e: any) {
-      setError(e?.message || "Couldn't create that avatar — please try again.");
-    } finally {
-      setGenerating(false);
-    }
+    setPhotoError(undefined);
+    setResult(undefined);
+    const res = await avatar.run({ style, mode, refPhoto, descriptors });
+    if (res) setResult(res.dataUrl);
   };
 
   const use = () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AdventureResult, Milestone, MissionRecord, SpeechAttempt } from "../types";
+import type { AdventureResult, Milestone, MissionRecord, PracticeEvent, PracticeEventKind, SpeechAttempt } from "../types";
 import {
   ageAppropriateSoundIds,
   developmentScore,
@@ -143,6 +143,41 @@ describe("domainBands + recommend", () => {
     const cog = low.find((b) => b.domain === "cognition")!;
     expect(cog.signal).toBeGreaterThan(0);
     expect(cog.basis).toContain("Adventure comprehension");
+  });
+
+  const ev = (kind: PracticeEventKind, correct?: boolean, score?: number): PracticeEvent => ({
+    id: `e-${kind}-${Math.random()}`,
+    kind,
+    domain: "language",
+    correct,
+    score,
+    timestamp: new Date().toISOString(),
+  });
+
+  it("does not let always-true phonics/sight-word taps inflate the language band", () => {
+    // A child with weak (unchecked) language milestones who only tapped the
+    // self-reported phonics/sight-word CTAs should NOT read as strong language.
+    const taps = [
+      ev("phonics", true), ev("phonics", true), ev("phonics", true),
+      ev("sight-word", true), ev("sight-word", true), ev("sight-word", true),
+    ];
+    const lowMs: Milestone[] = [ms("language_communication", false), ms("language_communication", false)];
+    const withTaps = domainBands(lowMs, [], [], [], taps);
+    const withoutTaps = domainBands(lowMs, [], [], [], []);
+    const langWith = withTaps.find((b) => b.domain === "language")!;
+    const langWithout = withoutTaps.find((b) => b.domain === "language")!;
+    // Excluded from accuracy → the band is unchanged by the always-true taps.
+    expect(langWith.signal).toBe(langWithout.signal);
+    expect(langWith.basis).not.toContain("Words & Express practice");
+  });
+
+  it("folds real letter-trace coverage scores into the language signal", () => {
+    const lowMs: Milestone[] = [ms("language_communication", false), ms("language_communication", false)];
+    const strongTrace = [ev("letter-trace", true, 100), ev("letter-trace", true, 100)];
+    const base = domainBands(lowMs, [], [], [], []).find((b) => b.domain === "language")!;
+    const lifted = domainBands(lowMs, [], [], [], strongTrace).find((b) => b.domain === "language")!;
+    expect(lifted.signal).toBeGreaterThan(base.signal);
+    expect(lifted.basis).toContain("Letter tracing");
   });
 
   it("recommends the weakest domain with a matching mission", () => {
