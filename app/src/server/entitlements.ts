@@ -21,7 +21,12 @@ import type { ArborConfig } from "../config/env.js";
 import type { UsageCounterStore } from "./quotaStore.js";
 import { logger } from "./logger.js";
 
-export type Plan = "free" | "plus";
+export type Plan = "free" | "plus" | "family";
+
+/** Lifecycle of a paid entitlement, mirrored from the billing provider. */
+export type EntitlementStatus = "active" | "in_trial" | "grace_period" | "canceled" | "expired";
+/** Where the active subscription was bought. `comp` = manual env grant. */
+export type BillingProvider = "stripe" | "app_store" | "play_store" | "comp" | "none";
 
 export type PlanLimits = {
   /** Coach + council messages per day; null = unlimited. */
@@ -29,6 +34,8 @@ export type PlanLimits = {
   maxChildren: number;
   professionalReports: boolean;
   advancedPlans: boolean;
+  /** Shared-access adults beyond the account owner (co-parent seats). Family = 1. */
+  coParentSeats: number;
 };
 
 export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
@@ -37,13 +44,40 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     maxChildren: 1,
     professionalReports: false,
     advancedPlans: false,
+    coParentSeats: 0,
   },
   plus: {
     coachMessagesPerDay: null,
     maxChildren: 6,
     professionalReports: true,
     advancedPlans: true,
+    coParentSeats: 0,
   },
+  family: {
+    coachMessagesPerDay: null,
+    maxChildren: 6,
+    professionalReports: true,
+    advancedPlans: true,
+    coParentSeats: 1,
+  },
+};
+
+/**
+ * The shape persisted at `entitlements/{uid}` — written by the billing webhook
+ * (see server/billing.ts), read by the resolver and the Account screen.
+ */
+export type EntitlementRecord = {
+  plan: Plan;
+  status?: EntitlementStatus;
+  provider?: BillingProvider;
+  productId?: string | null;
+  /** True while the subscription is set to auto-renew. */
+  willRenew?: boolean;
+  /** ISO 8601 end of the current paid period (renewal or expiry date). */
+  currentPeriodEnd?: string | null;
+  /** RevenueCat's stable cross-platform user id, for support/debugging. */
+  rcOriginalAppUserId?: string | null;
+  updatedAt?: string;
 };
 
 export type Entitlement = {
@@ -51,6 +85,10 @@ export type Entitlement = {
   limits: PlanLimits;
   source: "default" | "env" | "store" | "beta_unenforced";
   enforced: boolean;
+  status?: EntitlementStatus;
+  provider?: BillingProvider;
+  currentPeriodEnd?: string | null;
+  willRenew?: boolean;
 };
 
 const flag = (value: string | undefined, fallback: boolean) =>
@@ -67,13 +105,25 @@ const envList = (name: string) =>
 
 export interface EntitlementStore {
   getPlan(uid: string): Promise<Plan | null>;
+  /** Full stored record (plan + status + renewal) for display + lifecycle logic. */
+  getRecord?(uid: string): Promise<EntitlementRecord | null>;
+  /** Persist a billing event into the seam. Read-only stores omit this. */
+  setEntitlement?(uid: string, record: EntitlementRecord): Promise<void>;
 }
+
+const isPlan = (value: unknown): value is Plan =>
+  value === "free" || value === "plus" || value === "family";
 
 export class NullEntitlementStore implements EntitlementStore {
   async getPlan() { return null; }
+  async getRecord() { return null; }
+  async setEntitlement(uid: string, record: EntitlementRecord) {
+    // Local/sandbox has no billing backend; log so webhook wiring is observable in dev.
+    logger.info("Entitlement write skipped (NullEntitlementStore)", { uid, plan: record.plan, status: record.status ?? null });
+  }
 }
 
-/** Reads `entitlements/{uid}` — the doc a billing webhook will maintain. */
+/** Reads + writes `entitlements/{uid}` — the doc the billing webhook maintains. */
 export class FirestoreEntitlementStore implements EntitlementStore {
   private readonly db;
   constructor(config: ArborConfig) {
@@ -82,17 +132,53 @@ export class FirestoreEntitlementStore implements EntitlementStore {
     }
     this.db = getFirestore(config.firestoreDatabaseId);
   }
-  async getPlan(uid: string): Promise<Plan | null> {
+  async getRecord(uid: string): Promise<EntitlementRecord | null> {
     try {
       const snap = await this.db.collection("entitlements").doc(uid).get();
-      const plan = snap.data()?.plan;
-      return plan === "plus" || plan === "free" ? plan : null;
+      const data = snap.data();
+      if (!data || !isPlan(data.plan)) return null;
+      const periodEnd = typeof data.currentPeriodEnd === "string"
+        ? data.currentPeriodEnd
+        : (data.currentPeriodEnd?.toDate?.().toISOString() ?? null);
+      return {
+        plan: data.plan,
+        status: data.status,
+        provider: data.provider,
+        productId: data.productId ?? null,
+        willRenew: data.willRenew,
+        currentPeriodEnd: periodEnd,
+        rcOriginalAppUserId: data.rcOriginalAppUserId ?? null,
+        updatedAt: typeof data.updatedAt === "string" ? data.updatedAt : undefined,
+      };
     } catch (error) {
       logger.error("Entitlement store read failed — defaulting", error, { uid });
       return null;
     }
   }
+  async getPlan(uid: string): Promise<Plan | null> {
+    return (await this.getRecord(uid))?.plan ?? null;
+  }
+  async setEntitlement(uid: string, record: EntitlementRecord): Promise<void> {
+    await this.db.collection("entitlements").doc(uid).set(
+      { ...record, updatedAt: new Date().toISOString() },
+      { merge: true },
+    );
+  }
 }
+
+/**
+ * A stored paid record still entitles the user until it lapses. A canceled sub
+ * keeps its plan until the period end; an expired/refunded one drops to Free.
+ */
+const recordStillEntitles = (record: EntitlementRecord): boolean => {
+  if (record.plan === "free") return true;
+  if (record.status === "expired") return false;
+  if (record.currentPeriodEnd && record.willRenew === false && record.status !== "in_trial") {
+    const end = Date.parse(record.currentPeriodEnd);
+    if (Number.isFinite(end) && end < Date.now()) return false;
+  }
+  return true;
+};
 
 export const createEntitlementStore = (config: ArborConfig): EntitlementStore =>
   config.memoryAdapter === "firestore" ? new FirestoreEntitlementStore(config) : new NullEntitlementStore();
@@ -102,16 +188,32 @@ export const resolveEntitlement = async (
   actor: { uid: string; email: string | null },
 ): Promise<Entitlement> => {
   if (!entitlementsEnforced()) {
-    return { plan: "plus", limits: PLAN_LIMITS.plus, source: "beta_unenforced", enforced: false };
+    return { plan: "plus", limits: PLAN_LIMITS.plus, source: "beta_unenforced", enforced: false, status: "active" };
   }
   const uid = actor.uid.toLowerCase();
   const email = (actor.email || "").toLowerCase();
   if (envList("ARBOR_PLUS_UIDS").includes(uid) || (email && envList("ARBOR_PLUS_EMAILS").includes(email))) {
-    return { plan: "plus", limits: PLAN_LIMITS.plus, source: "env", enforced: true };
+    return { plan: "plus", limits: PLAN_LIMITS.plus, source: "env", enforced: true, status: "active", provider: "comp" };
   }
-  const stored = await store.getPlan(actor.uid);
-  if (stored) return { plan: stored, limits: PLAN_LIMITS[stored], source: "store", enforced: true };
-  return { plan: "free", limits: PLAN_LIMITS.free, source: "default", enforced: true };
+  // Prefer the rich record (status + renewal); fall back to the legacy plan-only read.
+  const record = store.getRecord ? await store.getRecord(actor.uid) : null;
+  if (record && recordStillEntitles(record) && record.plan !== "free") {
+    return {
+      plan: record.plan,
+      limits: PLAN_LIMITS[record.plan],
+      source: "store",
+      enforced: true,
+      status: record.status,
+      provider: record.provider,
+      currentPeriodEnd: record.currentPeriodEnd ?? null,
+      willRenew: record.willRenew,
+    };
+  }
+  if (!store.getRecord) {
+    const stored = await store.getPlan(actor.uid);
+    if (stored) return { plan: stored, limits: PLAN_LIMITS[stored], source: "store", enforced: true };
+  }
+  return { plan: "free", limits: PLAN_LIMITS.free, source: "default", enforced: true, status: "active" };
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;

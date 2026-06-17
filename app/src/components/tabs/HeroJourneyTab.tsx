@@ -18,7 +18,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { api } from "../../lib/api";
+import { api, type AvatarStyle } from "../../lib/api";
 import {
   HERO_STORIES,
   PACKS,
@@ -65,6 +65,10 @@ export default function HeroJourneyTab() {
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
   const runs = runsCol.items;
   const photoUrl = (childProfile as unknown as { photoUrl?: string }).photoUrl;
+  // AVA-3: use a generated stylized character (a data-URL avatar) as the story hero —
+  // never a raw face photo or a remote URL — so scenes stay consistent and privacy-safe.
+  const heroAvatarUrl = childProfile.avatar && photoUrl?.startsWith("data:") ? photoUrl : undefined;
+  const heroAvatarStyle = childProfile.avatar?.style as AvatarStyle | undefined;
 
   const totalMetrics = useMemo(
     () => runs.reduce((acc, r) => addMetrics(acc, r.metricsEarned ?? {}), emptyMetrics()),
@@ -388,6 +392,8 @@ export default function HeroJourneyTab() {
           beatNumber={sceneIndex + 1}
           beatTotal={activeStory.beats.length}
           photoUrl={photoUrl}
+          heroAvatarUrl={heroAvatarUrl}
+          heroAvatarStyle={heroAvatarStyle}
           immersive={immersiveMode}
         />
       )}

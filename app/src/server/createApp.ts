@@ -13,8 +13,10 @@ import { createAuthMiddleware } from "./authMiddleware.js";
 import { createAiQuota } from "./aiQuota.js";
 import { createCounterStore } from "./quotaStore.js";
 import { createEntitlementStore, createCoachMeter, requirePlusFeature } from "./entitlements.js";
+import { createBillingWebhookRouter } from "./billing.js";
 import { createConsultStore } from "./consultRequests.js";
 import { requestObservability } from "./logger.js";
+import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
 
 /**
  * SEC-2: tightened Content-Security-Policy (was disabled). Allows exactly what
@@ -69,6 +71,8 @@ export const createApp = (config: ArborConfig) => {
 
   // OPS-1: request ids + structured request logs on every route.
   app.use(requestObservability);
+  // COST-2: carry request id + uid through the async chain for token-usage attribution.
+  app.use(requestContextMiddleware);
 
   app.use(helmet({
     contentSecurityPolicy: config.arborEnv === "local" ? false : { directives: cspDirectives() },
@@ -83,6 +87,10 @@ export const createApp = (config: ArborConfig) => {
       callback(new Error("Origin is not allowed by Arbor CORS policy."));
     }
   }));
+  // MON-2: billing webhook — mounted BEFORE the /api auth + rate-limit chain
+  // (RevenueCat carries its own shared-secret header, not a Firebase token) and
+  // parses its own JSON body. It is the only writer of entitlements/{uid}.
+  app.use("/webhooks/billing", createBillingWebhookRouter(config, entitlementStore));
   app.use("/api", rateLimit({
     windowMs: 60_000,
     limit: 30,
@@ -97,6 +105,8 @@ export const createApp = (config: ArborConfig) => {
   app.use("/api/vision", express.json({ limit: "12mb" }));
   app.use(express.json({ limit: "250kb" }));
   app.use("/api", createAuthMiddleware(config));
+  // COST-2: now that auth has resolved, stamp the uid onto the active usage context.
+  app.use("/api", bindUidToContext);
   // Per-user hourly cap on the AI-generating endpoints (cost guardrail).
   app.use(
     ["/api/chat", "/api/council", "/api/vision", "/api/generate-plan", "/api/generate-story", "/api/analyze-behavior", "/api/generate-handoff", "/api/digest"],

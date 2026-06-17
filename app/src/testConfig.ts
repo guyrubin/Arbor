@@ -13,9 +13,11 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   vertexModelStory: "gemini-2.5-flash",
   vertexModelAnalysis: "gemini-2.5-pro",
   vertexModelHandoff: "gemini-2.5-flash",
+  vertexModelImage: "gemini-2.5-flash-image",
   modelProvider: "vertex",
   geminiApiKey: "test-key",
   geminiModel: "gemini-2.5-flash",
+  geminiImageModel: "gemini-2.5-flash-image",
   firebaseProjectId: "arbor-test",
   firestoreDatabaseId: "(default)",
   memoryAdapter: "local",
@@ -23,5 +25,6 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   enableHighRiskReviewQueue: true,
   maxOutputTokens: 8192,
   memoryPromptMaxFacts: 40,
+  billingCheckoutUrls: {},
   ...overrides
 });

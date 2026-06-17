@@ -15,9 +15,13 @@ export type ArborConfig = {
   vertexModelStory: string;
   vertexModelAnalysis: string;
   vertexModelHandoff: string;
+  /** Image-generation model (Gemini 2.5 Flash Image / "Nano Banana"). Outputs carry SynthID + C2PA. */
+  vertexModelImage: string;
   modelProvider: ModelProviderKind;
   geminiApiKey?: string;
   geminiModel: string;
+  /** Local-dev image model (Gemini Developer API). */
+  geminiImageModel: string;
   firebaseProjectId?: string;
   firestoreDatabaseId: string;
   knowledgePath?: string;
@@ -28,6 +32,12 @@ export type ArborConfig = {
   maxOutputTokens: number;
   /** Max number of approved memory facts injected into a coach prompt (token-window guard). */
   memoryPromptMaxFacts: number;
+  /** MON-2: shared secret RevenueCat sends as the webhook Authorization header. */
+  revenueCatWebhookAuth?: string;
+  /** MON-2: hosted-checkout links keyed `${plan}_${cadence}` (e.g. plus_monthly). */
+  billingCheckoutUrls: Record<string, string>;
+  /** MON-2: customer self-service portal (Stripe Billing portal) for web subs. */
+  billingManageUrl?: string;
 };
 
 const boolFromEnv = (value: string | undefined, fallback: boolean) => {
@@ -75,9 +85,11 @@ export const loadConfig = (): ArborConfig => {
     vertexModelStory: process.env.VERTEX_MODEL_STORY || "gemini-2.5-flash",
     vertexModelAnalysis: process.env.VERTEX_MODEL_ANALYSIS || "gemini-2.5-flash",
     vertexModelHandoff: process.env.VERTEX_MODEL_HANDOFF || "gemini-2.5-flash",
+    vertexModelImage: process.env.VERTEX_MODEL_IMAGE || "gemini-2.5-flash-image",
     modelProvider,
     geminiApiKey: process.env.GEMINI_API_KEY,
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    geminiImageModel: process.env.GEMINI_IMAGE_MODEL || process.env.VERTEX_MODEL_IMAGE || "gemini-2.5-flash-image",
     firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT_ID,
     firestoreDatabaseId: process.env.FIRESTORE_DATABASE_ID || "(default)",
     knowledgePath: process.env.ARBOR_KNOWLEDGE_PATH || process.env.KNOWLEDGE_PATH,
@@ -85,7 +97,15 @@ export const loadConfig = (): ArborConfig => {
     enableLocalMemoryAdapter,
     enableHighRiskReviewQueue: boolFromEnv(process.env.ENABLE_HIGH_RISK_REVIEW_QUEUE, true),
     maxOutputTokens: Number(process.env.MAX_OUTPUT_TOKENS || 8192),
-    memoryPromptMaxFacts: Number(process.env.MEMORY_PROMPT_MAX_FACTS || 40)
+    memoryPromptMaxFacts: Number(process.env.MEMORY_PROMPT_MAX_FACTS || 40),
+    revenueCatWebhookAuth: process.env.REVENUECAT_WEBHOOK_AUTH,
+    billingCheckoutUrls: {
+      ...(process.env.BILLING_URL_PLUS_MONTHLY ? { plus_monthly: process.env.BILLING_URL_PLUS_MONTHLY } : {}),
+      ...(process.env.BILLING_URL_PLUS_ANNUAL ? { plus_annual: process.env.BILLING_URL_PLUS_ANNUAL } : {}),
+      ...(process.env.BILLING_URL_FAMILY_MONTHLY ? { family_monthly: process.env.BILLING_URL_FAMILY_MONTHLY } : {}),
+      ...(process.env.BILLING_URL_FAMILY_ANNUAL ? { family_annual: process.env.BILLING_URL_FAMILY_ANNUAL } : {}),
+    },
+    billingManageUrl: process.env.BILLING_MANAGE_URL,
   };
 
   if (config.arborEnv === "prod") {

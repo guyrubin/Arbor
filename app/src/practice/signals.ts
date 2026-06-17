@@ -332,20 +332,39 @@ export function bandTrend(history: BandSnapshot[], current: DomainBand[]): Recor
 
 /* ---------------- Adaptive play difficulty (Epic 8) ---------------- */
 
+/** Age-appropriate ceiling on Memory Match difficulty (a toddler shouldn't face 12 cards). */
+export function memoryMaxCards(age?: number): 6 | 8 | 12 {
+  if (age == null) return 12;
+  if (age < 3) return 6;
+  if (age < 5) return 8;
+  return 12;
+}
+
 /**
  * Memory Match grid size adapts to recent performance: start small, grow on
- * sustained success, ease back after a hard round. Returns total card count.
+ * sustained success, ease back after a hard round — but never above the
+ * age-appropriate ceiling (`maxCards`). Returns total card count.
  */
-export function memoryGridSize(recentScores: number[]): 6 | 8 | 12 {
+export function memoryGridSize(recentScores: number[], maxCards: 6 | 8 | 12 = 12): 6 | 8 | 12 {
   const last3 = recentScores.slice(-3);
   const avg = last3.length ? last3.reduce((s, x) => s + x, 0) / last3.length : 0;
+  const clamp = (n: 6 | 8 | 12): 6 | 8 | 12 => (n <= maxCards ? n : maxCards);
   if (last3.length < 2) return 6;
   if (avg >= 80) {
-    if (recentScores.length >= 6 && recentScores.slice(-6).every((s) => s >= 80)) return 12;
-    return 8;
+    if (recentScores.length >= 6 && recentScores.slice(-6).every((s) => s >= 80)) return clamp(12);
+    return clamp(8);
   }
-  if (avg >= 60) return 8;
+  if (avg >= 60) return clamp(8);
   return 6;
+}
+
+/** Pick a card theme suited to the child's age (gentler themes for the youngest). */
+export function memorySetIndexForAge(age: number | undefined, setCount: number): number {
+  if (setCount <= 1) return 0;
+  if (age == null) return 0;
+  if (age < 4) return 0;       // Animals — most universally recognizable
+  if (age < 6) return 1;       // Everyday objects / food
+  return 2 % setCount;         // Space and the more abstract themes for older kids
 }
 
 export interface CopilotRecommendation {
@@ -371,6 +390,98 @@ const DOMAIN_ACTIVITY: Record<PracticeDomain, string> = {
   social: "turn-taking games",
 };
 
+/* ---------------- Weekly milestone closed-loop (Kinedu-style) ---------------- */
+
+export interface MissionFocus {
+  domain: PracticeDomain;
+  missionId: string;
+  /** A representative not-yet-reached milestone this focus builds toward. */
+  targetMilestone?: string;
+  /** Count of unchecked milestones mapped to this domain. */
+  gaps: number;
+  reason: string;
+}
+
+export interface WeeklyMissionPlan {
+  weekKey: string;
+  focus: MissionFocus[];
+}
+
+/**
+ * The closed loop: build this WEEK's focus from the child's milestones that are
+ * NOT yet reached, re-weighted by what was actually practiced last week. Domains
+ * with more gaps rank higher; a domain practiced last week yields slightly to a
+ * neglected one (it's progressing), while missed targets persist. Deterministic
+ * (no randomness), regenerates each ISO week as milestones/missions change.
+ *
+ * Pure — pass `today`. Powered by Arbor's logged data, which is the moat: a
+ * content-only rival can't aim missions at THIS child's specific open milestones.
+ */
+export function weeklyMissionPlan(
+  milestones: Milestone[],
+  missions: MissionRecord[],
+  today: string,
+  size = 3
+): WeeklyMissionPlan {
+  const wk = weekKey(new Date(`${today}T12:00:00`));
+
+  // Not-yet-reached milestones grouped by the practice domain they map to.
+  const gaps = new Map<PracticeDomain, Milestone[]>();
+  for (const m of milestones) {
+    const domain = MILESTONE_DOMAIN_MAP[m.domain];
+    if (!domain || m.checked) continue;
+    const list = gaps.get(domain) ?? [];
+    list.push(m);
+    gaps.set(domain, list);
+  }
+
+  // Missions actually completed in the trailing 7 days, per domain.
+  const lastWeekStart = daysAgo(today, 7);
+  const doneByDomain = new Map<PracticeDomain, number>();
+  for (const r of missions) {
+    if (!r.completed || r.date <= lastWeekStart || r.date > today) continue;
+    doneByDomain.set(r.domain, (doneByDomain.get(r.domain) ?? 0) + 1);
+  }
+
+  const domains: PracticeDomain[] = ["language", "speech", "cognition", "social", "emotional"];
+  const scored = domains.map((domain) => {
+    const list = gaps.get(domain) ?? [];
+    const practiced = doneByDomain.get(domain) ?? 0;
+    // Each open milestone is worth 10; recent practice eases priority by up to 8
+    // so a neglected domain outranks one already getting attention.
+    const priority = list.length * 10 - Math.min(practiced, 4) * 2;
+    return { domain, list, gapCount: list.length, practiced, priority };
+  });
+  scored.sort((a, b) => b.priority - a.priority || b.gapCount - a.gapCount);
+
+  const focus: MissionFocus[] = scored
+    .filter((s) => s.gapCount > 0)
+    .slice(0, size)
+    .map((s) => ({
+      domain: s.domain,
+      missionId: DOMAIN_MISSION[s.domain],
+      targetMilestone: s.list[0]?.title,
+      gaps: s.gapCount,
+      reason: s.practiced > 0
+        ? `${s.gapCount} milestone${s.gapCount === 1 ? "" : "s"} still emerging here — you practiced this ${s.practiced}× last week, so keep the momentum.`
+        : `${s.gapCount} milestone${s.gapCount === 1 ? "" : "s"} not yet reached, and nothing logged here last week.`,
+    }));
+
+  // No milestone gaps (all checked, or none recorded yet) → a balanced default week.
+  if (focus.length === 0) {
+    return {
+      weekKey: wk,
+      focus: domains.slice(0, size).map((domain) => ({
+        domain,
+        missionId: DOMAIN_MISSION[domain],
+        gaps: 0,
+        reason: "Keeping a broad, balanced week of play while milestones fill in.",
+      })),
+    };
+  }
+  return { weekKey: wk, focus };
+}
+
 /** One concrete weekly recommendation: lowest band wins; ties → least-practiced domain. */
 export function recommend(bands: DomainBand[], missions: MissionRecord[]): CopilotRecommendation {
   const practiced = (domain: PracticeDomain) => missions.filter((m) => m.completed && m.domain === domain).length;
@@ -381,6 +492,64 @@ export function recommend(bands: DomainBand[], missions: MissionRecord[]): Copil
     missionId: DOMAIN_MISSION[target.domain],
     headline: `Increase ${DOMAIN_ACTIVITY[target.domain]} this week`,
     why: `This is currently the domain with the least signal (${target.band}). Small daily reps move it fastest — tomorrow's mission is aimed there.`,
+  };
+}
+
+/* ---------------- ASHA articulation: age-gating + dosage ---------------- */
+
+export type AcqBand = "early" | "middle" | "late";
+
+/**
+ * Is a target sound developmentally appropriate to drill at this age? Gated to
+ * ASHA / Crowe & McLeod acquisition norms (75th-percentile framing): early sounds
+ * (plosives/nasals/glides) ~by 3; middle ~by 4; late (liquids/fricatives like
+ * l, r, s, sh, ch, th) ~by 5–7. We don't push late sounds before they're typical.
+ */
+export function isSoundAgeAppropriate(band: AcqBand, age: number): boolean {
+  if (band === "early") return true;
+  if (band === "middle") return age >= 3;
+  return age >= 4; // late
+}
+
+/** Filter a sound library to the targets appropriate for the child's age (the moat picks the targets). */
+export function ageAppropriateSoundIds(library: { id: string; band: AcqBand }[], age: number): string[] {
+  return library.filter((s) => isSoundAgeAppropriate(s.band, age)).map((s) => s.id);
+}
+
+export interface SpeechDose {
+  trialsToday: number;
+  perSessionTarget: number;     // ASHA: 50–100 production trials per session
+  sessionMetToday: boolean;
+  sessionsThisWeek: number;     // distinct practice days in the trailing 7
+  weeklySessionTarget: number;  // ASHA: 2–3 sessions per week
+  weeklyMet: boolean;
+}
+
+/**
+ * ASHA articulation dosage tracking: ~50–100 production trials per session, 2–3
+ * sessions/week. Pure — pass `today`. Each SpeechAttempt is one production trial.
+ */
+export function speechDose(
+  attempts: SpeechAttempt[],
+  today: string,
+  perSessionTarget = 50,
+  weeklySessionTarget = 3
+): SpeechDose {
+  const weekStart = daysAgo(today, 7);
+  const trialsToday = attempts.filter((a) => a.timestamp.slice(0, 10) === today).length;
+  const days = new Set(
+    attempts
+      .map((a) => a.timestamp.slice(0, 10))
+      .filter((d) => d > weekStart && d <= today)
+  );
+  const sessionsThisWeek = days.size;
+  return {
+    trialsToday,
+    perSessionTarget,
+    sessionMetToday: trialsToday >= perSessionTarget,
+    sessionsThisWeek,
+    weeklySessionTarget,
+    weeklyMet: sessionsThisWeek >= weeklySessionTarget,
   };
 }
 

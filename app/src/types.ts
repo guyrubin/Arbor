@@ -7,8 +7,16 @@ export interface ChildProfile {
   strengths: string[];
   challenges: string[];
   riskLevel: 'Low' | 'Moderate' | 'High';
-  /** Optional profile photo (Firebase Storage URL, or an inlined data URL fallback). */
+  /** Optional profile image — a generated stylized avatar, or a raw photo
+   *  (Firebase Storage URL, or an inlined data URL fallback). Rendered by `Avatar`. */
   photoUrl?: string;
+  /** Metadata for an AVA-1 generated avatar. The raw reference photo is never stored. */
+  avatar?: {
+    style: string;
+    /** 'descriptor' = built from text cues (no face); 'photo' = stylized from a reference photo. */
+    source: 'descriptor' | 'photo';
+    createdAt: string;
+  };
 }
 
 export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';

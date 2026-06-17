@@ -2,6 +2,7 @@ import { GoogleAuth } from "google-auth-library";
 import type { ArborConfig } from "../config/env.js";
 import { coachResponseZodSchema } from "../contracts/coach.js";
 import { withModelRetry } from "./modelRetry.js";
+import { recordUsage } from "./usage.js";
 import type { GenerateJsonOptions, ModelRoute } from "./modelRouter.js";
 
 const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
@@ -96,6 +97,7 @@ export class ClaudeVertexProvider {
       return response.json();
     });
 
+    recordUsage({ route: options.route, provider: "vertex_claude", model }, payload?.usage);
     const parsed = extractToolInput(payload);
     if (options.route === "coach_high_stakes") return coachResponseZodSchema.parse(parsed);
     return parsed;

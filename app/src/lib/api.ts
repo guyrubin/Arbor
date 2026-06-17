@@ -122,6 +122,13 @@ export const api = {
     post<{ behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string }>("/api/extract-log", payload),
   vision: (payload: { image: { dataUrl: string }; mode: "observe" | "document"; note?: string; childProfile: ChildProfile }) =>
     post<VisionResult>("/api/vision", payload),
+  // AVA-1: generate a stylized character avatar from descriptors (default) or an
+  // optional reference photo. The photo is never stored server-side.
+  generateAvatar: (payload: { descriptors?: AvatarDescriptors; photo?: { dataUrl: string }; style?: AvatarStyle }) =>
+    post<{ dataUrl: string; style: string; source: "descriptor" | "photo" }>("/api/generate-avatar", payload),
+  // AVA-3: render a story-beat scene featuring the child's generated character.
+  generateScene: (payload: { imagePrompt: string; avatar?: { dataUrl: string }; style?: AvatarStyle }) =>
+    post<{ dataUrl: string }>("/api/generate-scene", payload),
   council: (payload: { message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" }) =>
     post<{ text: string; contract?: CoachContract; council?: CouncilTake[]; memoryReviewItems?: MemoryReviewItem[] }>("/api/council", payload),
   // Co-parent / trusted sharing (server-enforced expiry).
@@ -135,6 +142,11 @@ export const api = {
   liveToken: () => post<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string }>("/api/live/token", {}),
   // MON-1: plan + limits + usage for the signed-in parent.
   entitlement: () => get<EntitlementInfo>("/api/entitlement"),
+  // MON-2: start a hosted checkout for a plan + cadence; returns the URL to open.
+  billingCheckout: (plan: "plus" | "family", cadence: "monthly" | "annual") =>
+    post<{ url: string }>("/api/billing/checkout", { plan, cadence }),
+  // MON-2: self-service portal link to manage/cancel a web subscription.
+  billingPortal: () => get<{ url: string | null }>("/api/billing/portal"),
   // RET-1: "{child}'s week" digest (stats are computed server-side from the data we send).
   digest: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; language?: "en" | "he" }) =>
     post<WeeklyDigest>("/api/digest", payload),
@@ -149,11 +161,15 @@ export const api = {
 };
 
 export type EntitlementInfo = {
-  plan: "free" | "plus";
-  limits: { coachMessagesPerDay: number | null; maxChildren: number; professionalReports: boolean; advancedPlans: boolean };
+  plan: "free" | "plus" | "family";
+  limits: { coachMessagesPerDay: number | null; maxChildren: number; professionalReports: boolean; advancedPlans: boolean; coParentSeats: number };
   source: string;
   enforced: boolean;
   usage: { coachMessagesToday: number };
+  status?: "active" | "in_trial" | "grace_period" | "canceled" | "expired" | null;
+  provider?: "stripe" | "app_store" | "play_store" | "comp" | "none" | null;
+  currentPeriodEnd?: string | null;
+  willRenew?: boolean | null;
 };
 
 export type WeeklyDigest = {
@@ -189,3 +205,12 @@ export type VisionDocument = {
   suggestedMemory: string[]; questionsForProfessional: string[]; handoffNote: string;
 };
 export type VisionResult = VisionObserve | VisionDocument;
+
+export type AvatarStyle = "storybook" | "soft3d" | "watercolor" | "flat";
+export type AvatarDescriptors = {
+  hair?: string;
+  skin?: string;
+  eyes?: string;
+  vibe?: string;
+  notes?: string;
+};

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Download, Trash2, Camera } from "lucide-react";
+import { X, Download, Trash2, Camera, Sparkles } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -10,6 +10,7 @@ import { ChildProfile } from "../../types";
 import { Avatar } from "../ui/Avatar";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
+import AvatarCreator from "./AvatarCreator";
 
 const RISK_LEVELS: ChildProfile["riskLevel"][] = ["Low", "Moderate", "High"];
 
@@ -26,7 +27,9 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const [challenges, setChallenges] = useState(activeChild.challenges.join("\n"));
   const [riskLevel, setRiskLevel] = useState<ChildProfile["riskLevel"]>(activeChild.riskLevel);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(activeChild.photoUrl);
+  const [avatarMeta, setAvatarMeta] = useState<ChildProfile["avatar"]>(activeChild.avatar);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [showCreator, setShowCreator] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const onPickPhoto = async (file?: File) => {
@@ -39,6 +42,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         try { url = await uploadChildPhoto(user.uid, activeChild.id, thumb); } catch { /* keep inline data URL */ }
       }
       setPhotoUrl(url);
+      setAvatarMeta(undefined); // a raw uploaded photo isn't a generated avatar
     } catch {
       toast("Couldn't process that image", "error");
     } finally {
@@ -65,6 +69,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setChallenges(activeChild.challenges.join("\n"));
     setRiskLevel(activeChild.riskLevel);
     setPhotoUrl(activeChild.photoUrl);
+    setAvatarMeta(activeChild.avatar);
   }, [open, activeChild]);
 
   const handleExport = async () => {
@@ -106,6 +111,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         challenges: challenges.split("\n").map((s) => s.trim()).filter(Boolean),
         riskLevel,
         photoUrl: photoUrl || "",
+        ...(avatarMeta ? { avatar: avatarMeta } : {}),
       });
       onClose();
     } finally {
@@ -140,14 +146,24 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
             <div className="space-y-4 text-sm">
               <div className="flex items-center gap-4">
                 <Avatar name={name} photoURL={photoUrl} size={56} ring />
-                <div className="flex flex-col items-start gap-1">
-                  <label className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl cursor-pointer transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-                    <Camera className="w-3.5 h-3.5" /> {photoBusy ? "Uploading…" : photoUrl ? "Change photo" : "Add photo"}
-                    <input type="file" accept="image/*" className="hidden" disabled={photoBusy} onChange={(e) => onPickPhoto(e.target.files?.[0])} />
-                  </label>
-                  {photoUrl && (
-                    <button type="button" onClick={() => setPhotoUrl(undefined)} className="text-[11px] font-bold px-1" style={{ color: "var(--arbor-muted)" }}>Remove photo</button>
-                  )}
+                <div className="flex flex-col items-start gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreator(true)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition"
+                    style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> {photoUrl ? "New avatar" : "Create avatar"}
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <label className="inline-flex items-center gap-1.5 text-[11px] font-bold cursor-pointer" style={{ color: "var(--arbor-muted)" }}>
+                      <Camera className="w-3 h-3" /> {photoBusy ? "Uploading…" : "Upload a photo instead"}
+                      <input type="file" accept="image/*" className="hidden" disabled={photoBusy} onChange={(e) => onPickPhoto(e.target.files?.[0])} />
+                    </label>
+                    {photoUrl && (
+                      <button type="button" onClick={() => { setPhotoUrl(undefined); setAvatarMeta(undefined); }} className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>Remove</button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -219,6 +235,15 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               </div>
             </div>
           </motion.div>
+          <AvatarCreator
+            open={showCreator}
+            childName={name || activeChild.name}
+            onClose={() => setShowCreator(false)}
+            onCreated={({ dataUrl, style, source }) => {
+              setPhotoUrl(dataUrl);
+              setAvatarMeta({ style, source, createdAt: new Date().toISOString() });
+            }}
+          />
         </motion.div>
       )}
     </AnimatePresence>,

@@ -38,12 +38,22 @@ export const STAGES: StageDef[] = [
 
 const STAGE_BY_ID = new Map(STAGES.map((s) => [s.stage, s]));
 
-/** Map an age in years (may be fractional, e.g. 1.5) to its micro-stage. */
+/** Map an age in years (may be fractional, e.g. 1.5) to its micro-stage.
+ *
+ * Windows are half-open `[minMonths, maxMonths)` — inclusive lower bound,
+ * exclusive upper bound — matching how milestone trackers (CDC et al.) bucket
+ * by *completed* months. So a child of exactly 3.0 months has finished the
+ * first window and is entering "3-6m", not still in "0-3m". This is what keeps
+ * the windows contiguous and non-overlapping: each boundary month belongs to
+ * exactly one stage (its lower one). Do not make the lowest window closed at
+ * the top to pull 3.0m back into "0-3m" — it would desync that single edge
+ * from every other boundary.
+ */
 export function ageToStage(ageYears: number): Stage {
+  if (!Number.isFinite(ageYears)) return "0-3m"; // unknown/NaN age → earliest window
   const months = Math.max(0, Math.round(ageYears * 12));
   const hit = STAGES.find((s) => months >= s.minMonths && months < s.maxMonths);
-  if (hit) return hit.stage;
-  return months < 0 ? "0-3m" : STAGES[STAGES.length - 1].stage; // clamp above 12y
+  return hit ? hit.stage : STAGES[STAGES.length - 1].stage; // clamp above 12y
 }
 
 export function stageDef(stage: Stage): StageDef {

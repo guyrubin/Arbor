@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Languages, Sparkles, LogOut, ShieldCheck } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { useLanguage } from "../../context/LanguageContext";
@@ -6,6 +6,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
+import { api } from "../../lib/api";
 
 /** Lightweight app settings — wired to real app state (AI language, AI Engines
  *  panel, account). Replaces the previously dead "Settings" sidebar button. */
@@ -15,28 +16,105 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
   const { entitlement } = useEntitlement();
-  const isPlus = entitlement.plan === "plus";
+  const isPaid = entitlement.plan !== "free";
+  const isBeta = isPaid && !entitlement.enforced;
   const coachLimit = entitlement.limits.coachMessagesPerDay;
+  const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
+  const [busy, setBusy] = useState(false);
+
+  const planLabel = isBeta
+    ? t("set.plan.beta")
+    : entitlement.plan === "family"
+      ? t("set.plan.family")
+      : entitlement.plan === "plus"
+        ? t("set.plan.plus")
+        : t("set.plan.free");
+  const planDesc = entitlement.plan === "family"
+    ? t("set.plan.familyDesc")
+    : entitlement.plan === "plus"
+      ? t("set.plan.plusDesc")
+      : t("set.plan.freeDesc");
+
+  const fmtDate = (iso?: string | null) => {
+    if (!iso) return "";
+    const ms = Date.parse(iso);
+    return Number.isFinite(ms) ? new Date(ms).toLocaleDateString() : "";
+  };
+  // The status line under a paid plan: trial / renews / ends / payment issue.
+  const statusLine = (() => {
+    if (!isPaid || isBeta) return null;
+    const date = fmtDate(entitlement.currentPeriodEnd);
+    if (entitlement.status === "grace_period") return t("set.plan.grace");
+    if (entitlement.status === "in_trial" && date) return t("set.plan.trial", { date });
+    if (entitlement.willRenew === false && date) return t("set.plan.renewOff", { date });
+    if (date) return t("set.plan.renews", { date });
+    return null;
+  })();
+
+  const startCheckout = async (plan: "plus" | "family") => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { url } = await api.billingCheckout(plan, cadence);
+      window.location.href = url;
+    } catch {
+      toast(t("set.plan.checkoutSoon"), "success");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const openPortal = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { url } = await api.billingPortal();
+      if (url) window.location.href = url;
+      else toast(t("set.plan.manageStore"), "success");
+    } catch {
+      toast(t("set.plan.manageStore"), "success");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Modal open={open} onClose={onClose} title={t("set.title")}>
       <div className="space-y-5 text-sm">
-        {/* Plan — read from the real entitlement endpoint (MON-1) */}
+        {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
         <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
               <div className="min-w-0">
                 <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>
-                  {t("set.plan.your", { plan: isPlus ? (entitlement.enforced ? t("set.plan.plus") : t("set.plan.beta")) : t("set.plan.free") })}
+                  {t("set.plan.your", { plan: planLabel })}
                 </p>
-                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-                  {isPlus ? t("set.plan.plusDesc") : t("set.plan.freeDesc")}
-                </p>
+                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{planDesc}</p>
               </div>
             </div>
           </div>
-          {!isPlus && (
+
+          {/* Paid: show renewal/trial status + manage */}
+          {isPaid && !isBeta && (
+            <>
+              {statusLine && (
+                <p className="text-xs mt-2" style={{ color: entitlement.status === "grace_period" ? "var(--arbor-pink-ink)" : "var(--arbor-muted)" }}>
+                  {statusLine}
+                </p>
+              )}
+              {entitlement.provider && entitlement.provider !== "none" && entitlement.provider !== "comp" && (
+                <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
+                  {t("set.plan.viaStore", { provider: entitlement.provider })}
+                </p>
+              )}
+              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+                {t("set.plan.manage")}
+              </button>
+            </>
+          )}
+
+          {/* Free: usage + cadence toggle + upgrade to Plus / Family */}
+          {!isPaid && (
             <>
               {coachLimit !== null && (
                 <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
@@ -46,9 +124,22 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <p className="text-xs leading-relaxed mt-3" style={{ color: "var(--arbor-muted)" }}>
                 {t("set.plan.plusPitch")}
               </p>
-              <button onClick={() => toast(t("set.plan.notifyToast"), "success")} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
-                {t("set.plan.notify")}
-              </button>
+              <div className="flex items-center gap-1 rounded-xl p-1 mt-3 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                {(["monthly", "annual"] as const).map((c) => (
+                  <button key={c} onClick={() => setCadence(c)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
+                    style={cadence === c ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}>
+                    {t(c === "monthly" ? "set.plan.monthly" : "set.plan.annual")}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2.5">
+                <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
+                  {t("set.plan.upgradePlus")}
+                </button>
+                <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-green-ink)", color: "#fff" }}>
+                  {t("set.plan.upgradeFamily")}
+                </button>
+              </div>
             </>
           )}
         </div>

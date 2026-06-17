@@ -4,10 +4,11 @@ import { api, type EntitlementInfo } from "../lib/api";
 /** Default while loading / when the API is unreachable: fail closed to Free. */
 const FALLBACK_FREE: EntitlementInfo = {
   plan: "free",
-  limits: { coachMessagesPerDay: 10, maxChildren: 1, professionalReports: false, advancedPlans: false },
+  limits: { coachMessagesPerDay: 10, maxChildren: 1, professionalReports: false, advancedPlans: false, coParentSeats: 0 },
   source: "client_fallback",
   enforced: true,
   usage: { coachMessagesToday: 0 },
+  status: "active",
 };
 
 // Module-level cache so every consumer shares one fetch per session.

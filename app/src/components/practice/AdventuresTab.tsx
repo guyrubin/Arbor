@@ -115,7 +115,7 @@ export default function AdventuresTab() {
         </div>
       )}
 
-      {!scenario && <MemoryMatch data={data} />}
+      {!scenario && <MemoryMatch data={data} childAge={childProfile.age} />}
 
       {scenario && !finished && scene && (
         <SectionCard title={`${scenario.emoji} ${scenario.title}`} icon={<Map className="w-5 h-5" />} tone="lav"

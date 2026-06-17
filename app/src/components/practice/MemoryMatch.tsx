@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Brain, RotateCcw, Sparkles } from "lucide-react";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { MEMORY_EMOJI_SETS } from "../../practice/playContent";
-import { memoryGridSize } from "../../practice/signals";
+import { memoryGridSize, memoryMaxCards, memorySetIndexForAge } from "../../practice/signals";
 import type { PracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
@@ -34,17 +34,18 @@ function buildDeck(size: 6 | 8 | 12, setIdx: number): Card[] {
  * after a hard round (see memoryGridSize). Each completed round logs a
  * `memory` practiceEvent scored on efficiency, feeding the cognition band.
  */
-export default function MemoryMatch({ data }: { data: PracticeData }) {
-  // Past round scores drive the adaptive grid size.
+export default function MemoryMatch({ data, childAge }: { data: PracticeData; childAge?: number }) {
+  // Past round scores drive the adaptive grid size, bounded by an age-appropriate ceiling.
   const pastScores = useMemo(
     () => data.events.items.filter((e) => e.kind === "memory" && e.score !== undefined).map((e) => e.score as number).reverse(),
     [data.events.items]
   );
-  const recommendedSize = memoryGridSize(pastScores);
+  const maxCards = memoryMaxCards(childAge);
+  const recommendedSize = memoryGridSize(pastScores, maxCards);
 
-  const [setIdx, setSetIdx] = useState(0);
+  const [setIdx, setSetIdx] = useState(() => memorySetIndexForAge(childAge, MEMORY_EMOJI_SETS.length));
   const [size, setSize] = useState<6 | 8 | 12>(recommendedSize);
-  const [deck, setDeck] = useState<Card[]>(() => buildDeck(recommendedSize, 0));
+  const [deck, setDeck] = useState<Card[]>(() => buildDeck(recommendedSize, memorySetIndexForAge(childAge, MEMORY_EMOJI_SETS.length)));
   const [flipped, setFlipped] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [lock, setLock] = useState(false);

@@ -61,4 +61,40 @@ describe("entitlement layer (MON-1)", () => {
     expect(PLAN_LIMITS.plus.advancedPlans).toBe(true);
     expect(PLAN_LIMITS.plus.maxChildren).toBeGreaterThan(PLAN_LIMITS.free.maxChildren);
   });
+
+  it("Family adds a co-parent seat on top of everything Plus has", () => {
+    expect(PLAN_LIMITS.family.coParentSeats).toBe(1);
+    expect(PLAN_LIMITS.plus.coParentSeats).toBe(0);
+    expect(PLAN_LIMITS.free.coParentSeats).toBe(0);
+    expect(PLAN_LIMITS.family.coachMessagesPerDay).toBeNull();
+    expect(PLAN_LIMITS.family.professionalReports).toBe(true);
+  });
+
+  it("enforced: a stored Family record resolves to Family with its seat", async () => {
+    process.env.ENFORCE_ENTITLEMENTS = "true";
+    const familyStore: EntitlementStore = {
+      async getPlan() { return "family"; },
+      async getRecord() {
+        return { plan: "family", status: "active", provider: "stripe", willRenew: true, currentPeriodEnd: "2999-01-01T00:00:00Z" };
+      },
+    };
+    const e = await resolveEntitlement(familyStore, { uid: "paying-family", email: null });
+    expect(e.plan).toBe("family");
+    expect(e.source).toBe("store");
+    expect(e.limits.coParentSeats).toBe(1);
+    expect(e.status).toBe("active");
+  });
+
+  it("enforced: a lapsed (canceled + past period, no renew) record drops to Free", async () => {
+    process.env.ENFORCE_ENTITLEMENTS = "true";
+    const lapsedStore: EntitlementStore = {
+      async getPlan() { return "plus"; },
+      async getRecord() {
+        return { plan: "plus", status: "canceled", willRenew: false, currentPeriodEnd: "2000-01-01T00:00:00Z" };
+      },
+    };
+    const e = await resolveEntitlement(lapsedStore, { uid: "lapsed", email: null });
+    expect(e.plan).toBe("free");
+    expect(e.source).toBe("default");
+  });
 });

@@ -19,6 +19,7 @@ import { logger, requestIdOf } from "../server/logger.js";
 import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
+import { billingCheckoutUrl } from "../server/billing.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 
 type ApiDeps = {
@@ -687,6 +688,132 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     }
   });
 
+  // AVA-1: Augmented Avatar. Turn descriptors (default) or an optional reference
+  // photo into a STYLIZED, non-photorealistic character. Privacy-first: the
+  // reference photo is used only for this single generation call and is NEVER
+  // persisted server-side. Outputs from Gemini 2.5 Flash Image carry SynthID + C2PA.
+  const AVATAR_STYLES: Record<string, string> = {
+    storybook: "a warm hand-illustrated children's storybook character, soft ink linework and gentle watercolor shading",
+    soft3d: "a soft rounded 3D-rendered character, friendly and approachable, soft studio lighting",
+    watercolor: "a soft watercolor children's-book character with loose painterly edges",
+    flat: "a clean flat vector character illustration with simple rounded shapes and a cheerful palette"
+  };
+
+  router.post("/generate-avatar", async (req, res) => {
+    const { descriptors, photo, style } = req.body ?? {};
+    const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.storybook;
+
+    // Safety-screen any free-text descriptor the parent typed.
+    const freeText = [descriptors?.vibe, descriptors?.notes].filter(Boolean).join(" ");
+    const escalationMatch = screenForImmediateEscalation({ note: freeText });
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `Let's pause on the avatar for now. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category
+      });
+      return;
+    }
+
+    // Optional reference photo: validate + size-cap, never store it.
+    let referenceImage: { data: string; mimeType: string } | null = null;
+    if (photo) {
+      const parsed = parseDataUrl(photo?.dataUrl ?? photo);
+      if (!parsed || !parsed.mimeType.startsWith("image/")) {
+        res.status(400).json({ error: "Only image uploads are supported for the photo reference" });
+        return;
+      }
+      const approxBytes = Math.floor((parsed.data.length * 3) / 4);
+      if (approxBytes > 6 * 1024 * 1024) {
+        res.status(413).json({ error: "Photo too large — please use a smaller image" });
+        return;
+      }
+      referenceImage = parsed;
+    }
+
+    const cues = descriptors
+      ? [
+          descriptors.hair && `hair: ${descriptors.hair}`,
+          descriptors.skin && `skin tone: ${descriptors.skin}`,
+          descriptors.eyes && `eyes: ${descriptors.eyes}`,
+          descriptors.vibe && `personality/vibe: ${descriptors.vibe}`
+        ].filter(Boolean).join("; ")
+      : "";
+
+    const prompt = `Create a single, friendly, age-appropriate CHARACTER AVATAR for a child, for use in a calm parenting app.
+Style: ${stylePrompt}.
+This must be a STYLIZED, NON-photorealistic illustration — create an original, friendly character. Do NOT reproduce any real person's exact likeness.
+${cues ? `Loose appearance cues (stylize, do not copy literally): ${cues}.` : "Use a warm, neutral, friendly child character."}
+${referenceImage ? "A reference photo is attached ONLY to capture general vibe (approximate hair colour, age). Produce a cartoon character inspired by it — never a realistic reproduction of the person." : ""}
+Framing: head-and-shoulders portrait, centered, simple soft background, warm and calm. Single character only. No text, no logos, no words drawn into the image.`;
+
+    try {
+      const image = await modelProvider.generateImage({
+        prompt,
+        images: referenceImage ? [referenceImage] : undefined
+      });
+      // The reference photo (referenceImage) is intentionally discarded here — it is
+      // never written to storage, logs, or the response.
+      res.json({
+        dataUrl: `data:${image.mimeType};base64,${image.data}`,
+        style: style ?? "storybook",
+        source: referenceImage ? "photo" : "descriptor"
+      });
+    } catch (error: any) {
+      logger.error("Arbor Avatar Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Couldn't create that avatar — please try again", details: error.message });
+    }
+  });
+
+  // AVA-3: Child-as-hero. Render a storybook SCENE for one story beat, featuring the
+  // child's own stylized character (passed as a reference for cross-scene consistency).
+  // The reference is a generated stylized avatar (never a raw face) and is not stored.
+  router.post("/generate-scene", async (req, res) => {
+    const { imagePrompt, avatar, style } = req.body ?? {};
+    if (!imagePrompt || typeof imagePrompt !== "string") {
+      res.status(400).json({ error: "An imagePrompt is required" });
+      return;
+    }
+    const escalationMatch = screenForImmediateEscalation({ note: imagePrompt });
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `Let's pause this story scene. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category
+      });
+      return;
+    }
+
+    let referenceImage: { data: string; mimeType: string } | null = null;
+    if (avatar) {
+      const parsed = parseDataUrl(avatar?.dataUrl ?? avatar);
+      if (parsed && parsed.mimeType.startsWith("image/")) {
+        const approxBytes = Math.floor((parsed.data.length * 3) / 4);
+        if (approxBytes <= 6 * 1024 * 1024) referenceImage = parsed;
+      }
+    }
+
+    const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.storybook;
+    const prompt = `Create a single, warm children's-storybook SCENE illustration.
+Style: ${stylePrompt}.
+Scene: ${imagePrompt}
+${referenceImage
+  ? "The attached character is the HERO of this story — feature this same stylized character as the main character in the scene, kept recognizable and consistent with the reference."
+  : "Feature a single friendly child character as the hero."}
+Gentle, non-scary, age-appropriate for ages 4-8. Calm, soft palette. No text, words, letters, or logos drawn in the image.`;
+
+    try {
+      const image = await modelProvider.generateImage({
+        prompt,
+        images: referenceImage ? [referenceImage] : undefined
+      });
+      res.json({ dataUrl: `data:${image.mimeType};base64,${image.data}` });
+    } catch (error: any) {
+      logger.error("Arbor Scene Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Couldn't illustrate this scene", details: error.message });
+    }
+  });
+
   router.post("/generate-plan", async (req, res) => {
     const { challengeTopic, childProfile } = req.body;
     const escalationMatch = screenForImmediateEscalation({ challengeTopic });
@@ -1059,11 +1186,48 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         source: entitlement.source,
         enforced: entitlement.enforced,
         usage: { coachMessagesToday: usage?.count ?? 0 },
+        status: entitlement.status ?? null,
+        provider: entitlement.provider ?? null,
+        currentPeriodEnd: entitlement.currentPeriodEnd ?? null,
+        willRenew: entitlement.willRenew ?? null,
       });
     } catch (error: any) {
       logger.error("Arbor Entitlement Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to resolve entitlement", details: error.message });
     }
+  });
+
+  // MON-2: start a hosted checkout (RevenueCat Web Billing / Stripe link) for the
+  // signed-in parent. The uid is forwarded so the purchase webhook lands here.
+  router.post("/billing/checkout", async (req, res) => {
+    try {
+      const actor = actorOf(req);
+      const plan = String(req.body?.plan ?? "plus");
+      const cadence = String(req.body?.cadence ?? "monthly");
+      if (!["plus", "family"].includes(plan) || !["monthly", "annual"].includes(cadence)) {
+        res.status(400).json({ error: "Invalid plan or cadence" });
+        return;
+      }
+      const url = billingCheckoutUrl(config, {
+        plan: plan as "plus" | "family",
+        cadence: cadence as "monthly" | "annual",
+        uid: actor.uid,
+        email: actor.email,
+      });
+      if (!url) {
+        res.status(503).json({ error: "Checkout not configured", details: `No checkout link set for ${plan} ${cadence}.` });
+        return;
+      }
+      res.json({ url });
+    } catch (error: any) {
+      logger.error("Arbor Billing Checkout Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to start checkout", details: error.message });
+    }
+  });
+
+  // MON-2: customer self-service portal link (manage / cancel web subscriptions).
+  router.get("/billing/portal", (_req, res) => {
+    res.json({ url: config.billingManageUrl ?? null });
   });
 
   // RET-1: "{child}'s week" — deterministic stats core + AI narrative on top.

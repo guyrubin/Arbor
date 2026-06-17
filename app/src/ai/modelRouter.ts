@@ -2,6 +2,7 @@ import { GoogleGenAI, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
 import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
 import { withModelRetry } from "./modelRetry.js";
+import { recordUsage } from "./usage.js";
 
 export { withModelRetry } from "./modelRetry.js";
 
@@ -21,6 +22,33 @@ export type GenerateJsonOptions = {
   temperature?: number;
   /** Optional images for multimodal (vision / document) requests. */
   images?: ImagePart[];
+};
+
+/** Options for image GENERATION (Gemini 2.5 Flash Image). No JSON schema; optional
+ *  reference images steer style/consistency (e.g. a prior character asset). */
+export type GenerateImageOptions = {
+  prompt: string;
+  images?: ImagePart[];
+};
+
+/** A generated image returned as raw base64 (no `data:` prefix). */
+export type GeneratedImage = { data: string; mimeType: string };
+
+/** Pull the first inline image out of a model `candidates` array (genai + vertex shapes). */
+export const extractInlineImage = (candidates: any): GeneratedImage => {
+  const parts = candidates?.[0]?.content?.parts ?? [];
+  for (const part of parts) {
+    const inline = part?.inlineData ?? part?.inline_data;
+    if (inline?.data) {
+      return { data: inline.data, mimeType: inline.mimeType ?? inline.mime_type ?? "image/png" };
+    }
+  }
+  const finishReason = candidates?.[0]?.finishReason;
+  throw new Error(
+    finishReason && finishReason !== "STOP"
+      ? `Image generation returned no image (finishReason: ${finishReason}); the request was likely blocked.`
+      : "Image generation returned no image content."
+  );
 };
 
 /** Build a `contents` value for @google/genai: a bare string, or text + images. */
@@ -75,6 +103,8 @@ export type ModelProvider = {
   generateJsonStream(options: GenerateJsonOptions): AsyncIterable<string>;
   /** Plain-text token stream — used by the realtime streaming voice coach. */
   streamText(options: StreamTextOptions): AsyncIterable<string>;
+  /** Generate a stylized image (avatars, story scenes). Always routed to a Gemini image model. */
+  generateImage(options: GenerateImageOptions): Promise<GeneratedImage>;
   routeDecision(route: ModelRoute): RouteDecision;
 };
 
@@ -145,9 +175,10 @@ export class GeminiDevProvider implements ModelProvider {
 
   async generateJson(options: GenerateJsonOptions) {
     this.assertApiKey();
+    const model = modelForGeminiRequest(this.config, options.route, options.images);
     const response = await withModelRetry(() =>
       this.ai.models.generateContent({
-        model: modelForGeminiRequest(this.config, options.route, options.images),
+        model,
         contents: buildGenAiContents(options.prompt, options.images) as any,
         config: {
           responseMimeType: "application/json",
@@ -157,15 +188,17 @@ export class GeminiDevProvider implements ModelProvider {
         }
       })
     );
+    recordUsage({ route: options.route, provider: "gemini_dev", model }, (response as any)?.usageMetadata);
     const finishReason = (response as any)?.candidates?.[0]?.finishReason;
     return parseModelJson(response.text, finishReason);
   }
 
   async *generateJsonStream(options: GenerateJsonOptions) {
     this.assertApiKey();
+    const model = modelForGeminiRequest(this.config, options.route, options.images);
     const responseStream = await withModelRetry(() =>
       this.ai.models.generateContentStream({
-        model: modelForGeminiRequest(this.config, options.route, options.images),
+        model,
         contents: buildGenAiContents(options.prompt, options.images) as any,
         config: {
           responseMimeType: "application/json",
@@ -176,23 +209,43 @@ export class GeminiDevProvider implements ModelProvider {
       })
     );
 
+    let usage: any;
     for await (const chunk of responseStream) {
+      if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
       if (chunk.text) yield chunk.text;
     }
+    recordUsage({ route: options.route, provider: "gemini_dev", model }, usage);
   }
 
   async *streamText(options: StreamTextOptions) {
     this.assertApiKey();
+    const model = modelForRoute(this.config, options.route);
     const responseStream = await withModelRetry(() =>
       this.ai.models.generateContentStream({
-        model: modelForRoute(this.config, options.route),
+        model,
         contents: options.prompt,
         config: { temperature: options.temperature ?? 0.5, maxOutputTokens: this.config.maxOutputTokens }
       })
     );
+    let usage: any;
     for await (const chunk of responseStream) {
+      if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
       if (chunk.text) yield chunk.text;
     }
+    recordUsage({ route: options.route, provider: "gemini_dev", model }, usage);
+  }
+
+  async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
+    this.assertApiKey();
+    const response = await withModelRetry(() =>
+      this.ai.models.generateContent({
+        model: this.config.geminiImageModel,
+        contents: buildGenAiContents(options.prompt, options.images) as any,
+        config: { responseModalities: ["IMAGE"] } as any
+      })
+    );
+    recordUsage({ route: "creative_low_risk", provider: "gemini_dev", model: this.config.geminiImageModel }, (response as any)?.usageMetadata);
+    return extractInlineImage((response as any)?.candidates);
   }
 
   private assertApiKey() {
@@ -208,6 +261,7 @@ export class VertexGeminiProvider {
   constructor(private readonly config: ArborConfig) {}
 
   async generateJson(options: GenerateJsonOptions) {
+    const modelId = modelForGeminiRequest(this.config, options.route, options.images);
     const model = await this.getModel(options.route, options.images);
     const result: any = await withModelRetry(() =>
       model.generateContent({
@@ -220,12 +274,14 @@ export class VertexGeminiProvider {
         }
       })
     );
+    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId }, result.response?.usageMetadata);
     const candidate = result.response?.candidates?.[0];
     const text = candidate?.content?.parts?.map((part: any) => part.text || "").join("") || "";
     return parseModelJson(text, candidate?.finishReason);
   }
 
   async *generateJsonStream(options: GenerateJsonOptions) {
+    const modelId = modelForGeminiRequest(this.config, options.route, options.images);
     const model = await this.getModel(options.route, options.images);
     const result: any = await withModelRetry(() =>
       model.generateContentStream({
@@ -239,13 +295,17 @@ export class VertexGeminiProvider {
       })
     );
 
+    let usage: any;
     for await (const item of result.stream) {
+      if (item.usageMetadata) usage = item.usageMetadata;
       const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
       if (text) yield text;
     }
+    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId }, usage ?? (await result.response)?.usageMetadata);
   }
 
   async *streamText(options: StreamTextOptions) {
+    const modelId = modelForRoute(this.config, options.route);
     const model = await this.getModel(options.route);
     const result: any = await withModelRetry(() =>
       model.generateContentStream({
@@ -253,21 +313,45 @@ export class VertexGeminiProvider {
         generationConfig: { temperature: options.temperature ?? 0.5, maxOutputTokens: this.config.maxOutputTokens }
       })
     );
+    let usage: any;
     for await (const item of result.stream) {
+      if (item.usageMetadata) usage = item.usageMetadata;
       const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
       if (text) yield text;
     }
+    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId }, usage ?? (await result.response)?.usageMetadata);
+  }
+
+  async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
+    const model = await this.getImageModel();
+    const result: any = await withModelRetry(() =>
+      model.generateContent({
+        contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
+        generationConfig: { responseModalities: ["IMAGE"] }
+      })
+    );
+    recordUsage({ route: "creative_low_risk", provider: "vertex_gemini", model: this.config.vertexModelImage }, result.response?.usageMetadata);
+    return extractInlineImage(result.response?.candidates);
   }
 
   private async getModel(route: ModelRoute, images?: ImagePart[]) {
+    const vertex = await this.getVertex();
+    return vertex.getGenerativeModel({ model: modelForGeminiRequest(this.config, route, images) });
+  }
+
+  private async getImageModel() {
+    const vertex = await this.getVertex();
+    return vertex.getGenerativeModel({ model: this.config.vertexModelImage });
+  }
+
+  private async getVertex() {
     if (!this.vertexPromise) {
       this.vertexPromise = import("@google-cloud/vertexai").then(({ VertexAI }) => new VertexAI({
         project: this.config.gcpProjectId,
         location: this.config.vertexLocation
       }));
     }
-    const vertex = await this.vertexPromise;
-    return vertex.getGenerativeModel({ model: modelForGeminiRequest(this.config, route, images) });
+    return this.vertexPromise;
   }
 }
 
@@ -291,6 +375,11 @@ export class VertexModelProvider implements ModelProvider {
   streamText(options: StreamTextOptions) {
     // Plain-text voice streaming always uses the Gemini provider.
     return this.gemini.streamText(options);
+  }
+
+  generateImage(options: GenerateImageOptions) {
+    // Image generation always uses the Gemini image model (Claude can't render images).
+    return this.gemini.generateImage(options);
   }
 
   generateJsonStream(options: GenerateJsonOptions) {

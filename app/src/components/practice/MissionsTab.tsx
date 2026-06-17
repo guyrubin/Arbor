@@ -7,6 +7,7 @@ import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import ProgressRing from "../ui/ProgressRing";
 import { DOMAIN_META, MISSION_CYCLE, fillTemplate, type MissionTemplate } from "../../practice/content";
 import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
+import { weeklyMissionPlan } from "../../practice/signals";
 import type { MissionRecord } from "../../types";
 import { track } from "../../lib/analytics";
 
@@ -33,6 +34,17 @@ export default function MissionsTab() {
 
   const todaysMission = MISSION_CYCLE[cycleDay];
   const recommendedMission = MISSION_CYCLE.find((m) => m.id === recommendation.missionId) ?? todaysMission;
+
+  // AVA/closed-loop: this week's focus is generated from {name}'s not-yet-reached
+  // milestones, re-weighted by what was practiced last week, and regenerates weekly.
+  const weekPlan = useMemo(
+    () => weeklyMissionPlan(milestones, data.missions.items, data.today),
+    [milestones, data.missions.items, data.today]
+  );
+  const focusCards = weekPlan.focus
+    .map((f) => ({ focus: f, mission: MISSION_CYCLE.find((m) => m.id === f.missionId) }))
+    .filter((x): x is { focus: typeof x.focus; mission: MissionTemplate } => !!x.mission);
+  const hasMilestoneTargets = weekPlan.focus.some((f) => f.gaps > 0);
 
   const recordFor = (m: MissionTemplate): MissionRecord | undefined =>
     data.missions.items.find((r) => r.date === data.today && r.missionId === m.id);
@@ -136,6 +148,38 @@ export default function MissionsTab() {
           </div>
         </div>
       </div>
+
+      {/* Closed loop: this week's focus from {name}'s not-yet-reached milestones */}
+      {focusCards.length > 0 && (
+        <SectionCard
+          title={`This week's focus for ${first}`}
+          icon={<Target className="w-5 h-5" />}
+          tone="lav"
+          action={<Chip tone="lav" icon={<Sparkles className="w-3 h-3" />}>{hasMilestoneTargets ? "From milestones" : "Balanced week"}</Chip>}
+        >
+          <p className="text-[11px] mb-4" style={{ color: "var(--arbor-muted)" }}>
+            {hasMilestoneTargets
+              ? `Chosen from the milestones ${first} hasn't reached yet, and adjusted by what you practiced last week. It refreshes every week.`
+              : `A broad, balanced week while ${first}'s milestones fill in. Check off milestones to make this sharper.`}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {focusCards.map(({ focus, mission }) => {
+              const meta = DOMAIN_META[focus.domain];
+              return (
+                <div key={focus.domain} className="space-y-2">
+                  {focus.targetMilestone && (
+                    <div className="rounded-xl px-3 py-2 text-[11px] leading-snug" style={{ background: meta.soft, color: "var(--arbor-ink)" }}>
+                      <b style={{ color: meta.color }}>Builds toward:</b> {focus.targetMilestone}
+                      <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{focus.reason}</span>
+                    </div>
+                  )}
+                  <MissionCard m={mission} featured />
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
 
       {/* Copilot re-aim (feature 10 hook) */}
       {recommendedMission.id !== todaysMission.id && (

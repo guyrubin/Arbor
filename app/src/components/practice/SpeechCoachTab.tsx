@@ -6,7 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
-import { matchResult } from "../../practice/signals";
+import { matchResult, speechDose, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
 import { usePracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent, SpeechAttempt, SpeechLevel } from "../../types";
 import { track } from "../../lib/analytics";
@@ -40,15 +40,18 @@ export default function SpeechCoachTab() {
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
 
-  // Default sound: the band matching the child's age, first sound not yet strong.
+  // Default sound: the first age-appropriate sound (ASHA-gated) not yet strong.
   const defaultSound = useMemo(() => {
-    const band = childProfile.age <= 3 ? "early" : childProfile.age <= 4 ? "middle" : "late";
+    const appropriate = new Set(ageAppropriateSoundIds(SOUND_LIBRARY, childProfile.age));
     const practiced = new Map(data.stats.map((s) => [s.sound, s]));
-    const candidates = SOUND_LIBRARY.filter((s) => s.band === band);
+    const candidates = SOUND_LIBRARY.filter((s) => appropriate.has(s.id));
     const unfinished = candidates.find((s) => (practiced.get(s.id)?.recentAccuracy ?? 0) < 80);
     return (unfinished ?? candidates[0] ?? SOUND_LIBRARY[0]).id;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childProfile.age]);
+
+  // ASHA dosage: ~50 production trials/session, 2–3 sessions/week.
+  const dose = useMemo(() => speechDose(data.speech.items, data.today), [data.speech.items, data.today]);
 
   const [soundId, setSoundId] = useState<string>(defaultSound);
   const sound: SoundEntry = SOUND_LIBRARY.find((s) => s.id === soundId) ?? SOUND_LIBRARY[0];
@@ -238,6 +241,25 @@ export default function SpeechCoachTab() {
         note={`Sound ages are typical ranges, not deadlines. If you're concerned about ${first}'s speech, the right next step is a speech-language professional — Arbor can prepare the report.`}
       />
 
+      {/* ASHA dosage: practice little and often (≈50 reps/session, 2–3×/week) */}
+      <div className={`${cardCls} p-5`}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
+            <AudioLines className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> Today&apos;s practice dose
+          </p>
+          <Chip tone={dose.sessionMetToday ? "mint" : "yellow"}>
+            {dose.sessionMetToday ? "Today's dose done 🎉" : `${dose.trialsToday}/${dose.perSessionTarget} reps`}
+          </Chip>
+        </div>
+        <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: "var(--arbor-paper-deep)" }}>
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((dose.trialsToday / dose.perSessionTarget) * 100))}%`, background: "var(--arbor-clay)" }} />
+        </div>
+        <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
+          Speech practice works best little and often — about {dose.perSessionTarget} gentle repetitions a session, {dose.weeklySessionTarget}× a week (ASHA guidance).
+          {" "}This week: <b style={{ color: dose.weeklyMet ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{dose.sessionsThisWeek}/{dose.weeklySessionTarget} sessions</b>{dose.weeklyMet ? " — nicely consistent." : "."}
+        </p>
+      </div>
+
       {/* Sound Studio (feature 1): age-banded sound picker */}
       <SectionCard title="Pick today's sound" icon={<AudioLines className="w-5 h-5" />} tone="mint">
         <div className="space-y-4">
@@ -248,15 +270,19 @@ export default function SpeechCoachTab() {
                 {SOUND_LIBRARY.filter((s) => s.band === band).map((s) => {
                   const on = s.id === soundId;
                   const st = data.stats.find((x) => x.sound === s.id);
+                  const appropriate = isSoundAgeAppropriate(s.band, childProfile.age);
                   return (
                     <button
                       key={s.id}
                       onClick={() => setSoundId(s.id)}
                       className="rounded-2xl px-3 py-2 text-xs font-extrabold transition"
-                      style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                      title={`${s.label} · typical ${s.typicalAge}`}
+                      style={on
+                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay)" }
+                        : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
+                      title={appropriate ? `${s.label} · typical ${s.typicalAge}` : `${s.label} · typically emerges ${s.typicalAge} — usually later than ${first}'s age, so go gently`}
                     >
                       {s.id.toUpperCase()}
+                      {!appropriate && <span className="ml-1" aria-hidden="true">·</span>}
                       {st && st.attempts > 0 && (
                         <span className="ml-1.5 font-bold" style={{ color: st.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow-ink)" }}>{st.recentAccuracy}%</span>
                       )}

@@ -1,0 +1,72 @@
+import { describe, expect, it } from "vitest";
+import { planFromRevenueCat, recordFromRevenueCat } from "./billing.js";
+
+describe("RevenueCat → entitlement mapping (MON-2)", () => {
+  it("maps a Family product to the family plan, others to plus", () => {
+    expect(planFromRevenueCat({ product_id: "arbor_family_monthly" })).toBe("family");
+    expect(planFromRevenueCat({ entitlement_ids: ["family"] })).toBe("family");
+    expect(planFromRevenueCat({ product_id: "arbor_plus_annual" })).toBe("plus");
+    expect(planFromRevenueCat({ product_id: "something_else" })).toBe("plus");
+  });
+
+  it("an initial App Store purchase grants an active plan with renewal date", () => {
+    const out = recordFromRevenueCat({
+      type: "INITIAL_PURCHASE",
+      app_user_id: "firebase-uid-1",
+      product_id: "arbor_plus_monthly",
+      store: "APP_STORE",
+      period_type: "NORMAL",
+      expiration_at_ms: 4102444800000, // 2100-01-01
+    });
+    expect(out).not.toBeNull();
+    expect(out!.uid).toBe("firebase-uid-1");
+    expect(out!.record.plan).toBe("plus");
+    expect(out!.record.status).toBe("active");
+    expect(out!.record.provider).toBe("app_store");
+    expect(out!.record.willRenew).toBe(true);
+    expect(out!.record.currentPeriodEnd).toBe("2100-01-01T00:00:00.000Z");
+  });
+
+  it("a trial start is marked in_trial", () => {
+    const out = recordFromRevenueCat({
+      type: "TRIAL_STARTED",
+      app_user_id: "u2",
+      product_id: "arbor_family_annual",
+      store: "STRIPE",
+      period_type: "TRIAL",
+      expiration_at_ms: 4102444800000,
+    });
+    expect(out!.record.plan).toBe("family");
+    expect(out!.record.status).toBe("in_trial");
+    expect(out!.record.provider).toBe("stripe");
+  });
+
+  it("a cancellation keeps the plan but turns off renewal", () => {
+    const out = recordFromRevenueCat({
+      type: "CANCELLATION",
+      app_user_id: "u3",
+      product_id: "arbor_plus_monthly",
+      store: "PLAY_STORE",
+    });
+    expect(out!.record.plan).toBe("plus");
+    expect(out!.record.status).toBe("canceled");
+    expect(out!.record.willRenew).toBe(false);
+    expect(out!.record.provider).toBe("play_store");
+  });
+
+  it("an expiration revokes access (drops to free)", () => {
+    const out = recordFromRevenueCat({
+      type: "EXPIRATION",
+      app_user_id: "u4",
+      product_id: "arbor_plus_monthly",
+      store: "APP_STORE",
+    });
+    expect(out!.record.plan).toBe("free");
+    expect(out!.record.status).toBe("expired");
+    expect(out!.record.willRenew).toBe(false);
+  });
+
+  it("an event without an app_user_id is skipped (null)", () => {
+    expect(recordFromRevenueCat({ type: "RENEWAL", product_id: "arbor_plus_monthly" })).toBeNull();
+  });
+});
