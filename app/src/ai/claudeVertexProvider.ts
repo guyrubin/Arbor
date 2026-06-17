@@ -1,6 +1,7 @@
 import { GoogleAuth } from "google-auth-library";
 import type { ArborConfig } from "../config/env.js";
 import { coachResponseZodSchema } from "../contracts/coach.js";
+import { withModelRetry } from "./modelRetry.js";
 import type { GenerateJsonOptions, ModelRoute } from "./modelRouter.js";
 
 const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
@@ -64,32 +65,38 @@ export class ClaudeVertexProvider {
     const model = toAnthropicVertexModelId(modelForRoute(this.config, options.route));
     const url = `https://${this.config.vertexLocation}-aiplatform.googleapis.com/v1/projects/${this.config.gcpProjectId}/locations/${this.config.vertexLocation}/publishers/anthropic/models/${model}:rawPredict`;
     const schema = toJsonSchema(options.schema);
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        anthropic_version: "vertex-2023-10-16",
-        max_tokens: 4096,
-        temperature: options.temperature ?? 0.45,
-        system: "You are Arbor. Return structured data by calling the provided tool. Do not include markdown prose.",
-        messages: [{ role: "user", content: options.prompt }],
-        tools: schema ? [{
-          name: "arbor_coach_response",
-          description: "Structured Arbor parent coach response.",
-          input_schema: schema
-        }] : undefined,
-        tool_choice: schema ? { type: "tool", name: "arbor_coach_response" } : undefined
-      })
+    const payload = await withModelRetry(async () => {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          anthropic_version: "vertex-2023-10-16",
+          max_tokens: this.config.maxOutputTokens,
+          temperature: options.temperature ?? 0.45,
+          system: "You are Arbor. Return structured data by calling the provided tool. Do not include markdown prose.",
+          messages: [{ role: "user", content: options.prompt }],
+          tools: schema ? [{
+            name: "arbor_coach_response",
+            description: "Structured Arbor parent coach response.",
+            input_schema: schema
+          }] : undefined,
+          tool_choice: schema ? { type: "tool", name: "arbor_coach_response" } : undefined
+        })
+      });
+
+      if (!response.ok) {
+        // Surface the status on the error so withModelRetry can detect 429/503 and back off.
+        const err: any = new Error(`Claude on Vertex failed (${response.status}): ${await response.text()}`);
+        err.status = response.status;
+        throw err;
+      }
+      return response.json();
     });
 
-    if (!response.ok) {
-      throw new Error(`Claude on Vertex failed (${response.status}): ${await response.text()}`);
-    }
-
-    const parsed = extractToolInput(await response.json());
+    const parsed = extractToolInput(payload);
     if (options.route === "coach_high_stakes") return coachResponseZodSchema.parse(parsed);
     return parsed;
   }

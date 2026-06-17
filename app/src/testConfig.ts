@@ -21,5 +21,7 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   memoryAdapter: "local",
   enableLocalMemoryAdapter: true,
   enableHighRiskReviewQueue: true,
+  maxOutputTokens: 8192,
+  memoryPromptMaxFacts: 40,
   ...overrides
 });

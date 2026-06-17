@@ -24,6 +24,10 @@ export type ArborConfig = {
   memoryAdapter: MemoryAdapterKind;
   enableLocalMemoryAdapter: boolean;
   enableHighRiskReviewQueue: boolean;
+  /** Hard cap on tokens any single model generation may produce (runaway/cost guard). */
+  maxOutputTokens: number;
+  /** Max number of approved memory facts injected into a coach prompt (token-window guard). */
+  memoryPromptMaxFacts: number;
 };
 
 const boolFromEnv = (value: string | undefined, fallback: boolean) => {
@@ -79,7 +83,9 @@ export const loadConfig = (): ArborConfig => {
     knowledgePath: process.env.ARBOR_KNOWLEDGE_PATH || process.env.KNOWLEDGE_PATH,
     memoryAdapter,
     enableLocalMemoryAdapter,
-    enableHighRiskReviewQueue: boolFromEnv(process.env.ENABLE_HIGH_RISK_REVIEW_QUEUE, true)
+    enableHighRiskReviewQueue: boolFromEnv(process.env.ENABLE_HIGH_RISK_REVIEW_QUEUE, true),
+    maxOutputTokens: Number(process.env.MAX_OUTPUT_TOKENS || 8192),
+    memoryPromptMaxFacts: Number(process.env.MEMORY_PROMPT_MAX_FACTS || 40)
   };
 
   if (config.arborEnv === "prod") {

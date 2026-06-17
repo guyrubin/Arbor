@@ -64,12 +64,19 @@ export const isMemoryExpired = (item: { retention?: string; createdAt: string },
   return now - new Date(item.createdAt).getTime() > ms;
 };
 
-export const getApprovedMemoryContext = async (store: MemoryStore, childId: string) => {
+export const getApprovedMemoryContext = async (store: MemoryStore, childId: string, maxFacts = 40) => {
   const events = await store.listEvents(childId);
-  return foldMemoryEvents(events, childId)
-    .filter((item) => item.status === "approved" && !isMemoryExpired(item))
-    .map((item) => `- ${item.fact} (${item.source}; retention: ${item.retention})`)
-    .join("\n");
+  // foldMemoryEvents returns newest-first, so the slice keeps the most recent facts —
+  // bounding prompt token growth as a child's memory ledger accumulates over time.
+  const approved = foldMemoryEvents(events, childId).filter(
+    (item) => item.status === "approved" && !isMemoryExpired(item)
+  );
+  const windowed = approved.slice(0, Math.max(1, maxFacts));
+  const lines = windowed.map((item) => `- ${item.fact} (${item.source}; retention: ${item.retention})`);
+  if (approved.length > windowed.length) {
+    lines.push(`- (+${approved.length - windowed.length} older facts retained but omitted from this prompt for brevity)`);
+  }
+  return lines.join("\n");
 };
 
 export const appendMemoryProposals = async (

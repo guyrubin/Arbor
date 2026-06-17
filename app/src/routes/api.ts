@@ -219,7 +219,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     try {
       const childId = toChildId(childProfile);
       const familyId = toFamilyId(childProfile);
-      const approvedMemory = await getApprovedMemoryContext(memoryStore, childId);
+      const approvedMemory = await getApprovedMemoryContext(memoryStore, childId, config.memoryPromptMaxFacts);
       // SCH-3: the selected lens is now load-bearing — its scholar's card(s) are
       // guaranteed into the context and lead, alongside age/domain matches.
       const scholar = resolveScholar(scholarLens);
@@ -352,7 +352,7 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
     try {
       const childId = toChildId(childProfile);
       const familyId = toFamilyId(childProfile);
-      const approvedMemory = await getApprovedMemoryContext(memoryStore, childId);
+      const approvedMemory = await getApprovedMemoryContext(memoryStore, childId, config.memoryPromptMaxFacts);
       const lead = resolveScholar(scholarLens);
       const childDomains = Array.isArray(childProfile?.domains) ? childProfile.domains : [];
       const council = selectCouncil(lead, childDomains, 3);

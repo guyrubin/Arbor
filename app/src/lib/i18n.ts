@@ -96,6 +96,11 @@ const en: Dict = {
   "play.libEyebrow": "Daily Play",
   "play.libTitle": "Play ideas for {name}",
   "play.libSubtitle": "Matched to {name}'s stage and what's been coming up lately. Each uses things you already have at home.",
+  // Daily Play Courses
+  "course.eyebrow": "Play course",
+  "course.progress": "{done} of {total} done",
+  "course.next": "Up next",
+  "course.complete": "Course complete — nicely done.",
   // hub facet labels
   "hub.now": "Now",
   "hub.milestones": "Milestones",
@@ -555,6 +560,11 @@ const he: Dict = {
   "play.libEyebrow": "משחק יומי",
   "play.libTitle": "רעיונות למשחק עבור {name}",
   "play.libSubtitle": "מותאם לשלב של {name} ולמה שעלה לאחרונה. כל פעילות משתמשת בדברים שכבר יש בבית.",
+  // Daily Play Courses
+  "course.eyebrow": "מסלול משחק",
+  "course.progress": "{done} מתוך {total} הושלמו",
+  "course.next": "הבא בתור",
+  "course.complete": "המסלול הושלם — כל הכבוד.",
   // hub facet labels
   "hub.now": "עכשיו",
   "hub.milestones": "אבני דרך",

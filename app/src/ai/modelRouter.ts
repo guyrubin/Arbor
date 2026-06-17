@@ -1,6 +1,9 @@
 import { GoogleGenAI, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
 import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
+import { withModelRetry } from "./modelRetry.js";
+
+export { withModelRetry } from "./modelRetry.js";
 
 export type ModelRoute =
   | "coach_high_stakes"
@@ -34,6 +37,28 @@ export const buildVertexParts = (prompt: string, images?: ImagePart[]) => [
   { text: prompt },
   ...(images || []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } })),
 ];
+
+/** Parse model JSON output, surfacing truncation/safety blocks instead of a raw SyntaxError. */
+export const parseModelJson = (text: string | undefined, finishReason?: string): unknown => {
+  const trimmed = (text || "").trim();
+  if (!trimmed) {
+    throw new Error(
+      finishReason
+        ? `Model returned no content (finishReason: ${finishReason}); the response was likely blocked or truncated.`
+        : "Model returned an empty response."
+    );
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    if (finishReason && finishReason !== "STOP") {
+      throw new Error(
+        `Model output was incomplete (finishReason: ${finishReason}); JSON could not be parsed. Consider raising MAX_OUTPUT_TOKENS.`
+      );
+    }
+    throw new Error("Model returned malformed JSON that could not be parsed.");
+  }
+};
 
 export type ProviderId = "gemini_dev" | "vertex_gemini" | "vertex_claude";
 
@@ -120,29 +145,36 @@ export class GeminiDevProvider implements ModelProvider {
 
   async generateJson(options: GenerateJsonOptions) {
     this.assertApiKey();
-    const response = await this.ai.models.generateContent({
-      model: modelForGeminiRequest(this.config, options.route, options.images),
-      contents: buildGenAiContents(options.prompt, options.images) as any,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: options.schema as Schema,
-        temperature: options.temperature ?? 0.4
-      }
-    });
-    return JSON.parse(response.text.trim());
+    const response = await withModelRetry(() =>
+      this.ai.models.generateContent({
+        model: modelForGeminiRequest(this.config, options.route, options.images),
+        contents: buildGenAiContents(options.prompt, options.images) as any,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: options.schema as Schema,
+          temperature: options.temperature ?? 0.4,
+          maxOutputTokens: this.config.maxOutputTokens
+        }
+      })
+    );
+    const finishReason = (response as any)?.candidates?.[0]?.finishReason;
+    return parseModelJson(response.text, finishReason);
   }
 
   async *generateJsonStream(options: GenerateJsonOptions) {
     this.assertApiKey();
-    const responseStream = await this.ai.models.generateContentStream({
-      model: modelForGeminiRequest(this.config, options.route, options.images),
-      contents: buildGenAiContents(options.prompt, options.images) as any,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: options.schema as Schema,
-        temperature: options.temperature ?? 0.4
-      }
-    });
+    const responseStream = await withModelRetry(() =>
+      this.ai.models.generateContentStream({
+        model: modelForGeminiRequest(this.config, options.route, options.images),
+        contents: buildGenAiContents(options.prompt, options.images) as any,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: options.schema as Schema,
+          temperature: options.temperature ?? 0.4,
+          maxOutputTokens: this.config.maxOutputTokens
+        }
+      })
+    );
 
     for await (const chunk of responseStream) {
       if (chunk.text) yield chunk.text;
@@ -151,11 +183,13 @@ export class GeminiDevProvider implements ModelProvider {
 
   async *streamText(options: StreamTextOptions) {
     this.assertApiKey();
-    const responseStream = await this.ai.models.generateContentStream({
-      model: modelForRoute(this.config, options.route),
-      contents: options.prompt,
-      config: { temperature: options.temperature ?? 0.5 }
-    });
+    const responseStream = await withModelRetry(() =>
+      this.ai.models.generateContentStream({
+        model: modelForRoute(this.config, options.route),
+        contents: options.prompt,
+        config: { temperature: options.temperature ?? 0.5, maxOutputTokens: this.config.maxOutputTokens }
+      })
+    );
     for await (const chunk of responseStream) {
       if (chunk.text) yield chunk.text;
     }
@@ -175,28 +209,35 @@ export class VertexGeminiProvider {
 
   async generateJson(options: GenerateJsonOptions) {
     const model = await this.getModel(options.route, options.images);
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: options.schema,
-        temperature: options.temperature ?? 0.35
-      }
-    });
-    const text = result.response?.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
-    return JSON.parse(text.trim());
+    const result: any = await withModelRetry(() =>
+      model.generateContent({
+        contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: options.schema,
+          temperature: options.temperature ?? 0.35,
+          maxOutputTokens: this.config.maxOutputTokens
+        }
+      })
+    );
+    const candidate = result.response?.candidates?.[0];
+    const text = candidate?.content?.parts?.map((part: any) => part.text || "").join("") || "";
+    return parseModelJson(text, candidate?.finishReason);
   }
 
   async *generateJsonStream(options: GenerateJsonOptions) {
     const model = await this.getModel(options.route, options.images);
-    const result = await model.generateContentStream({
-      contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: options.schema,
-        temperature: options.temperature ?? 0.35
-      }
-    });
+    const result: any = await withModelRetry(() =>
+      model.generateContentStream({
+        contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: options.schema,
+          temperature: options.temperature ?? 0.35,
+          maxOutputTokens: this.config.maxOutputTokens
+        }
+      })
+    );
 
     for await (const item of result.stream) {
       const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
@@ -206,10 +247,12 @@ export class VertexGeminiProvider {
 
   async *streamText(options: StreamTextOptions) {
     const model = await this.getModel(options.route);
-    const result = await model.generateContentStream({
-      contents: [{ role: "user", parts: [{ text: options.prompt }] }],
-      generationConfig: { temperature: options.temperature ?? 0.5 }
-    });
+    const result: any = await withModelRetry(() =>
+      model.generateContentStream({
+        contents: [{ role: "user", parts: [{ text: options.prompt }] }],
+        generationConfig: { temperature: options.temperature ?? 0.5, maxOutputTokens: this.config.maxOutputTokens }
+      })
+    );
     for await (const item of result.stream) {
       const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
       if (text) yield text;

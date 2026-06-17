@@ -5,7 +5,10 @@ import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
+import CourseCard from "../overview/CourseCard";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
+import { recommendCourse } from "../../playbank/courses";
+import { type PlayActivity } from "../../playbank/content";
 
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
    matched to their band and recently-logged concerns. The single hero pick also
@@ -22,18 +25,43 @@ export default function DailyPlayTab() {
     catch { return []; }
   });
 
-  const picks: ScoredActivity[] = useMemo(() => {
-    const concernDomains = concernDomainsFromLogs(
+  const concernDomains = useMemo(
+    () => concernDomainsFromLogs(
       behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, timestamp: l.timestamp })),
       Date.now()
-    );
-    return selectDailyPlay({
+    ),
+    [behaviorLogs]
+  );
+
+  const picks: ScoredActivity[] = useMemo(
+    () => selectDailyPlay({
       ageYears: childProfile.age,
       concernDomains,
       recentlyDoneIds: doneIds,
       daySeed: daySeedFor(Date.now()),
-    }, 4);
-  }, [behaviorLogs, childProfile.age, childProfile.id, doneIds]);
+    }, 4),
+    [concernDomains, childProfile.age, doneIds]
+  );
+
+  // Recommended course — matched to the child's top logged concern (the moat).
+  const course = useMemo(() => recommendCourse(concernDomains), [concernDomains]);
+  const [courseProg, setCourseProg] = useState<Record<string, string[]>>(() => {
+    try { return JSON.parse(localStorage.getItem(`arbor.course.${childProfile.id}`) || "{}"); }
+    catch { return {}; }
+  });
+  const courseDone = courseProg[course.id] ?? [];
+  const toggleCourseActivity = (activityId: string) => {
+    const cur = courseProg[course.id] ?? [];
+    const adding = !cur.includes(activityId);
+    const updated = { ...courseProg, [course.id]: adding ? [...cur, activityId] : cur.filter((x) => x !== activityId) };
+    setCourseProg(updated);
+    try { localStorage.setItem(`arbor.course.${childProfile.id}`, JSON.stringify(updated)); } catch { /* ignore */ }
+    if (adding) toast(`Nice. Added to ${firstName}'s day.`, "success");
+  };
+  const coachActivity = (a: PlayActivity) => {
+    setChatInput(`We're going to try "${a.title}" with ${firstName} today (it builds ${a.domain}). How can I get the most out of it, and what should I watch for?`);
+    setActiveTab("coach");
+  };
 
   const markDone = (p: ScoredActivity) => {
     setDoneIds((prev) => {
@@ -64,6 +92,16 @@ export default function DailyPlayTab() {
           {t("play.libSubtitle", { name: firstName })}
         </p>
       </header>
+
+      <div className="max-w-[640px]">
+        <CourseCard
+          course={course}
+          childName={firstName}
+          completedIds={courseDone}
+          onToggle={toggleCourseActivity}
+          onCoach={coachActivity}
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {picks.map((p) => (
