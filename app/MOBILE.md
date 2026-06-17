@@ -74,7 +74,13 @@ Both build the web bundle, `npx cap sync`, then the native build. The Firebase `
 
 ### To produce SIGNED, submittable binaries, add repo secrets:
 - **Android (Google Play):** `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` (generate an upload key with `keytool -genkey -v -keystore upload.keystore -alias arbor -keyalg RSA -keysize 2048 -validity 10000`, then base64 it). Play App Signing manages the app signing key after upload.
-- **iOS (App Store Connect):** `BUILD_CERTIFICATE_BASE64` + `P12_PASSWORD`, `PROVISIONING_PROFILE_BASE64`, and an App Store Connect API key — then flip `CODE_SIGNING_ALLOWED=YES` and add an `-exportArchive` step to emit a signed `.ipa`.
+- **iOS (Apple App Store / TestFlight):** the `ios.yml` workflow runs **Fastlane** (`app/ios/App/fastlane/Fastfile`) which, from **just an App Store Connect API key**, creates the distribution certificate + provisioning profile, builds a **signed `.ipa`**, and uploads it to **TestFlight** — no Mac, no manual cert export. Add three repo **secrets** and (optionally) one **variable**:
+  - `ASC_KEY_ID` — the App Store Connect API key id.
+  - `ASC_ISSUER_ID` — the API key issuer id.
+  - `ASC_KEY_CONTENT` — the `.p8` key, base64-encoded.
+  - repo **variable** `IOS_BUNDLE_ID` — your registered bundle id (must match `capacitor.config.ts`; defaults to `app.arbor.family`).
+
+  **One-time Apple setup you do (account actions I can't):** enroll in the **Apple Developer Program** ($99/yr) → in **App Store Connect → Users and Access → Integrations**, create an **API key** (App Manager role) and download the `.p8` → create the **app record** (with the bundle id above). Once the secrets are set, every push (or a manual "iOS build" run) ships a new TestFlight build; promote to the App Store from App Store Connect. Until the secrets exist, the workflow still does an unsigned compile so the project stays verified green.
 
 ## Native runtime config
 

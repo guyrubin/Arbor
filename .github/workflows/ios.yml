@@ -1,12 +1,15 @@
 name: iOS build
 
 # Builds the Capacitor iOS app on a cloud macOS runner (no local Mac needed).
-# By default it does an UNSIGNED archive — a full compile/build verification
-# that proves the iOS project is store-ready. To produce a signed .ipa for
-# App Store Connect, add signing secrets (BUILD_CERTIFICATE_BASE64,
-# P12_PASSWORD, PROVISIONING_PROFILE_BASE64, plus an App Store Connect API key)
-# and switch CODE_SIGNING_ALLOWED to YES with an export step — see app/MOBILE.md.
+#
+# - With Apple App Store Connect API-key secrets set (ASC_KEY_ID, ASC_ISSUER_ID,
+#   ASC_KEY_CONTENT), it builds a SIGNED .ipa and uploads it to TestFlight via
+#   Fastlane (which also creates the signing cert + profile from the API key).
+# - Without them, it does an UNSIGNED archive — a store-ready compile check.
+#
 # Firebase VITE_* values are the PUBLIC web client config, not secrets.
+# Bundle id comes from the IOS_BUNDLE_ID repo variable (defaults to the
+# capacitor.config.ts value). See app/MOBILE.md for the exact secrets to add.
 
 on:
   workflow_dispatch:
@@ -30,6 +33,11 @@ jobs:
       VITE_FIREBASE_STORAGE_BUCKET: arborprd-westeu.firebasestorage.app
       VITE_FIREBASE_MESSAGING_SENDER_ID: '628681500167'
       VITE_FIREBASE_APP_ID: '1:628681500167:web:f78b93f5f692e174d2aca2'
+      # Apple App Store Connect API key (set as repo secrets to enable signed upload)
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+      IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'app.arbor.family' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,7 +50,25 @@ jobs:
         run: npm run build
       - name: Sync Capacitor (iOS)
         run: npx cap sync ios
+
+      # ── Signed build + TestFlight upload (when Apple secrets are configured) ──
+      - name: Build signed IPA + upload to TestFlight
+        if: env.ASC_KEY_ID != ''
+        working-directory: app/ios/App
+        run: |
+          bundle install
+          bundle exec fastlane beta
+      - name: Upload IPA artifact
+        if: env.ASC_KEY_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbor-ios-ipa
+          if-no-files-found: warn
+          path: app/ios/App/build/*.ipa
+
+      # ── Unsigned archive (compile verification when no Apple secrets yet) ──
       - name: Xcode build (unsigned archive — store-ready compile verification)
+        if: env.ASC_KEY_ID == ''
         working-directory: app/ios/App
         run: |
           xcodebuild \
@@ -54,6 +80,7 @@ jobs:
             archive \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
       - name: Upload archive
+        if: env.ASC_KEY_ID == ''
         uses: actions/upload-artifact@v4
         with:
           name: arbor-ios-archive
