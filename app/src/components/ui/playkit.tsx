@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import confetti from "canvas-confetti";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
 import { HeroAvatar } from "./HeroAvatar";
+import { BRAND_CONFETTI, TONE_INK, TONE_SOFT, type PlayTone } from "../../lib/tokens";
 
 /* ════════════════════════════════════════════════════════════════════════════
    PlayKit — the child-facing primitive set for Practice Studio.
@@ -13,7 +14,10 @@ import { HeroAvatar } from "./HeroAvatar";
    (see index.css) so parent surfaces stay premium and quiet.
    ════════════════════════════════════════════════════════════════════════════ */
 
-const BRAND_CONFETTI = ["#34b277", "#5fce97", "#d9763f", "#3f8cc9", "#7a6bd8", "#c2882a"];
+// `BRAND_CONFETTI`, `TONE_INK`, `TONE_SOFT`, and `PlayTone` now come from the
+// typed token mirror (`src/lib/tokens.ts`). Re-export PlayTone so consumers that
+// did `import { PlayTone } from ".../playkit"` keep working unchanged.
+export type { PlayTone };
 
 /** Fire a short, brand-colored confetti burst. Respects reduced-motion. */
 export function celebrateBurst(): void {
@@ -41,24 +45,6 @@ export function PlayShell({ children, className = "" }: { children: React.ReactN
     </motion.div>
   );
 }
-
-const TONE_INK: Record<string, string> = {
-  clay: "var(--arbor-clay-deep)",
-  lav: "var(--arbor-lav-ink)",
-  sky: "var(--arbor-sky-ink)",
-  yellow: "var(--arbor-yellow-ink)",
-  pink: "var(--arbor-pink-ink)",
-  peach: "var(--arbor-peach-ink)",
-};
-const TONE_SOFT: Record<string, string> = {
-  clay: "var(--arbor-green-soft)",
-  lav: "var(--arbor-lav-soft)",
-  sky: "var(--arbor-sky-soft)",
-  yellow: "var(--arbor-yellow-soft)",
-  pink: "var(--arbor-pink-soft)",
-  peach: "var(--arbor-peach-soft)",
-};
-export type PlayTone = keyof typeof TONE_INK;
 
 /** Big friendly page header: Sprout + display title + a one-line speech bubble. */
 export function PlayHeader({

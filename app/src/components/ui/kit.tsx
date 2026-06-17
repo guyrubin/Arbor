@@ -3,18 +3,13 @@ import React from "react";
 /* Shared Soft-Daylight UI kit used across the new section/capability pages.
    Green = trust/growth (primary). Coral/peach = AI/action/attention. */
 
-export const PASTEL = {
-  mint:   { soft: "var(--arbor-green-soft)", ink: "var(--arbor-green-ink)" },
-  coral:  { soft: "var(--arbor-peach-soft)", ink: "var(--arbor-peach-ink)" },
-  lav:    { soft: "var(--arbor-lav-soft)", ink: "var(--arbor-lav-ink)" },
-  yellow: { soft: "var(--arbor-yellow-soft)", ink: "var(--arbor-yellow-ink)" },
-  pink:   { soft: "var(--arbor-pink-soft)", ink: "var(--arbor-pink-ink)" },
-  sky:    { soft: "var(--arbor-sky-soft)", ink: "var(--arbor-sky-ink)" },
-} as const;
-export type PastelKey = keyof typeof PASTEL;
-
-export const cardCls =
-  "bg-white rounded-[22px] border border-[rgba(41,51,63,0.06)] shadow-[0_2px_10px_rgba(41,51,63,0.05)]";
+// Token vocabulary now lives in the typed mirror `src/lib/tokens.ts` (the single
+// source of truth for TS; index.css `:root` remains the runtime source). Re-export
+// so existing `import { PASTEL, cardCls } from "../ui/kit"` call sites are unchanged.
+export { PASTEL, cardCls } from "../../lib/tokens";
+export type { PastelKey } from "../../lib/tokens";
+import { PASTEL, cardCls } from "../../lib/tokens";
+import type { PastelKey } from "../../lib/tokens";
 
 export function Chip({ tone = "mint", icon, children }: { tone?: PastelKey; icon?: React.ReactNode; children: React.ReactNode }) {
   const p = PASTEL[tone];
