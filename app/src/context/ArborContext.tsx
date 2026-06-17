@@ -23,6 +23,7 @@ import { useProfile } from "./ProfileContext";
 import { api, authHeaders, getAiLanguage } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 import { track } from "../lib/analytics";
+import { trackFirstPlan } from "../lib/loopEvents";
 
 const readLS = (key: string): string | null => {
   try {
@@ -749,6 +750,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       planData.id = `plan-${Date.now()}`;
       await plansCol.upsert(planData);
       track("plan_generated", { title: planData.title });
+      trackFirstPlan({ title: planData.title }); // activation: only the family's first plan
       alert(`Action Plan successfully woven: "${planData.title}"`);
     } catch (err: any) {
       console.error(err);

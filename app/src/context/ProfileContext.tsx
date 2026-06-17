@@ -5,6 +5,7 @@ import { useAuth } from "./AuthContext";
 import { ChildProfile } from "../types";
 import { defaultChildProfile } from "../initialData";
 import { deleteChildData } from "../lib/childData";
+import { trackProfileCreated } from "../lib/loopEvents";
 
 const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
@@ -124,8 +125,15 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           /* fall through to local state update */
         }
       }
-      setProfiles((prev) => [...prev, newChild]);
+      let count = 0;
+      setProfiles((prev) => {
+        count = prev.length + 1;
+        return [...prev, newChild];
+      });
       setActiveChildId(newChild.id);
+      // Activation signal — fired outside the updater so React StrictMode's
+      // double-invoke in dev doesn't double-count.
+      try { trackProfileCreated(count); } catch { /* noop */ }
       return newChild;
     },
     [useFirestore, profilesPath]

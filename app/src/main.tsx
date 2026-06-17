@@ -2,7 +2,15 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import {track} from './lib/analytics';
+import {track, setGlobalProps} from './lib/analytics';
+import {captureAttribution, attributionProps} from './lib/attribution';
+import {trackAppStart} from './lib/loopEvents';
+
+// Growth loop: capture first-touch attribution (referral/utm/source/market) and
+// attach it to every analytics event, then emit install/app_open.
+const attribution = captureAttribution();
+setGlobalProps(() => attributionProps(attribution));
+trackAppStart();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
