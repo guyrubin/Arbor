@@ -14,6 +14,7 @@ import { Avatar } from "../ui/Avatar";
  */
 
 const STYLES: { id: AvatarStyle; label: string }[] = [
+  { id: "comichero", label: "Comic hero" },
   { id: "storybook", label: "Storybook" },
   { id: "soft3d", label: "Soft 3D" },
   { id: "watercolor", label: "Watercolor" },
@@ -34,7 +35,7 @@ export default function AvatarCreator({
   onCreated: (result: Result) => void;
 }) {
   const [mode, setMode] = useState<"describe" | "photo">("describe");
-  const [style, setStyle] = useState<AvatarStyle>("storybook");
+  const [style, setStyle] = useState<AvatarStyle>("comichero");
   const [descriptors, setDescriptors] = useState<AvatarDescriptors>({});
   const [consent, setConsent] = useState(false);
   const [refPhoto, setRefPhoto] = useState<string | undefined>();
@@ -43,7 +44,7 @@ export default function AvatarCreator({
   const [error, setError] = useState<string | undefined>();
 
   const reset = () => {
-    setMode("describe"); setStyle("storybook"); setDescriptors({}); setConsent(false);
+    setMode("describe"); setStyle("comichero"); setDescriptors({}); setConsent(false);
     setRefPhoto(undefined); setResult(undefined); setError(undefined); setGenerating(false);
   };
   const close = () => { reset(); onClose(); };
@@ -137,7 +138,7 @@ export default function AvatarCreator({
             {/* Style picker */}
             <div className="space-y-1.5 mb-4">
               <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Style</label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {STYLES.map((s) => (
                   <button
                     key={s.id}

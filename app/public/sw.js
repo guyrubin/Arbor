@@ -1,7 +1,13 @@
 /* Arbor service worker: app-shell cache for installability + offline load.
    API and cross-origin requests are never cached (Firestore handles offline
-   data via its own IndexedDB cache). */
-const CACHE = "arbor-shell-v2";
+   data via its own IndexedDB cache).
+
+   CACHE is stamped with a unique build id at build time (scripts/stamp-sw.mjs
+   replaces __BUILD_ID__). Because the bytes of this file change every deploy,
+   the browser detects a new service worker, activates it (skipWaiting +
+   clients.claim), and the controllerchange handler in main.tsx reloads open
+   tabs once — so users always get the latest build instead of a stale shell. */
+const CACHE = "arbor-shell-__BUILD_ID__";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

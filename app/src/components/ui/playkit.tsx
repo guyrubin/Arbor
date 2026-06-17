@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import confetti from "canvas-confetti";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
+import { HeroAvatar } from "./HeroAvatar";
 
 /* ════════════════════════════════════════════════════════════════════════════
    PlayKit — the child-facing primitive set for Practice Studio.
@@ -73,7 +74,7 @@ export function PlayHeader({
 }) {
   return (
     <header className="flex flex-wrap items-center gap-x-5 gap-y-3">
-      <ArborMascot size={84} mood={mood} animate className="flex-shrink-0 drop-shadow-sm" />
+      <HeroAvatar size={84} mood={mood} animate className="flex-shrink-0 drop-shadow-sm" />
       <div className="flex-1 min-w-[200px]">
         <h1
           className="text-[1.9rem] md:text-[2.4rem] leading-[1.05]"

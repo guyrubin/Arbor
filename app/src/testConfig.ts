@@ -26,5 +26,7 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   maxOutputTokens: 8192,
   memoryPromptMaxFacts: 40,
   billingCheckoutUrls: {},
+  childAsrProvider: "none",
+  whisperModel: "whisper-1",
   ...overrides
 });

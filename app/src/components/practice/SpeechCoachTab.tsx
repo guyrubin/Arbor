@@ -7,6 +7,7 @@ import { PlayShell, PlayHeader, PlayButton } from "../ui/playkit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
 import { matchResult, speechDose, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
+import { scoreUtterance } from "../../lib/speechScorer";
 import { usePracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent, SpeechAttempt, SpeechLevel } from "../../types";
 import { track } from "../../lib/analytics";
@@ -110,11 +111,23 @@ export default function SpeechCoachTab() {
       const rec = new MediaRecorder(stream);
       chunksRef.current = [];
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      rec.onstop = () => {
+      rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         setAudioUrl(URL.createObjectURL(blob));
         setRecState("review");
+        // Cloud upgrade: if a child-ASR provider (SoapBox/Whisper) is configured,
+        // score the recording for a more accurate result. Otherwise the on-device
+        // Web Speech transcript above remains the result; parent scoring is the floor.
+        if (level !== "story") {
+          try {
+            const score = await scoreUtterance({ target, sound: sound.id, level, audioBlob: blob });
+            if (score && score.source === "cloud") {
+              setHeard(score.heard ?? null);
+              setAutoResult(score.result);
+            }
+          } catch { /* keep the on-device result */ }
+        }
       };
       mediaRef.current = rec;
       rec.start();
@@ -275,16 +288,15 @@ export default function SpeechCoachTab() {
                     <button
                       key={s.id}
                       onClick={() => setSoundId(s.id)}
-                      className="rounded-2xl px-3 py-2 text-xs font-extrabold transition"
+                      className="play-pressable min-w-[52px] h-[52px] px-3 rounded-2xl text-base font-extrabold transition inline-flex items-center justify-center gap-1"
                       style={on
-                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay)" }
-                        : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
+                        ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "0 6px 16px rgba(52,178,119,0.28)" }
+                        : { background: "#fff", color: "var(--arbor-ink)", border: "2px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
                       title={appropriate ? `${s.label} · typical ${s.typicalAge}` : `${s.label} · typically emerges ${s.typicalAge} — usually later than ${first}'s age, so go gently`}
                     >
                       {s.id.toUpperCase()}
-                      {!appropriate && <span className="ml-1" aria-hidden="true">·</span>}
                       {st && st.attempts > 0 && (
-                        <span className="ml-1.5 font-bold" style={{ color: st.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow-ink)" }}>{st.recentAccuracy}%</span>
+                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : st.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow-ink)" }}>{st.recentAccuracy}%</span>
                       )}
                     </button>
                   );
@@ -317,23 +329,23 @@ export default function SpeechCoachTab() {
           <span className="self-center text-[11px] ml-1" style={{ color: "var(--arbor-muted)" }}>{LADDER.find((l) => l.level === level)?.hint}</span>
         </div>
 
-        {/* Target */}
-        <div className={`${cardCls} p-6 text-center mb-4`} style={{ background: "var(--arbor-paper-deep)" }}>
-          <p className="text-[10px] uppercase font-bold tracking-wider mb-2" style={{ color: "var(--arbor-muted)" }}>
+        {/* Target — the big, friendly say-it-together card */}
+        <div className="rounded-[var(--play-radius-lg)] p-7 text-center mb-4" style={{ background: "linear-gradient(135deg, var(--arbor-sky-soft), #ffffff 75%)", border: "2px solid var(--arbor-sky-soft)" }}>
+          <p className="text-[11px] uppercase font-extrabold tracking-wider mb-3" style={{ color: "var(--arbor-sky-ink)" }}>
             {level === "story" ? "Story time" : `Say it together — ${itemIdx + 1} of ${items.length}`}
           </p>
-          <p className="font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", fontSize: level === "word" ? "2.2rem" : "1.25rem" }}>
+          <p className="font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", fontSize: level === "word" ? "3.4rem" : "1.6rem" }}>
             {target}
           </p>
           {level !== "story" && (
-            <div className="flex justify-center gap-2 mt-3">
+            <div className="flex justify-center gap-2.5 mt-5">
               <button onClick={() => setItemIdx((i) => Math.max(0, i - 1))} disabled={itemIdx === 0}
-                className="text-[11px] font-bold px-3 py-1.5 rounded-xl disabled:opacity-40" style={{ background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                className="play-pressable text-[13px] font-extrabold px-5 min-h-[44px] rounded-full disabled:opacity-40" style={{ background: "#fff", color: "var(--arbor-sky-ink)", border: "2px solid var(--arbor-sky-soft)" }}>
                 Back
               </button>
               <button onClick={() => setItemIdx((i) => Math.min(items.length - 1, i + 1))} disabled={itemIdx >= items.length - 1}
-                className="text-[11px] font-bold px-3 py-1.5 rounded-xl inline-flex items-center gap-1 disabled:opacity-40" style={{ background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-                Next <ChevronRight className="w-3 h-3" />
+                className="play-pressable text-[13px] font-extrabold px-5 min-h-[44px] rounded-full inline-flex items-center gap-1 disabled:opacity-40 text-white" style={{ background: "var(--arbor-sky-ink)" }}>
+                Next <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}

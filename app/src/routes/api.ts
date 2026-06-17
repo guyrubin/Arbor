@@ -19,6 +19,7 @@ import { logger, requestIdOf } from "../server/logger.js";
 import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
+import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
@@ -691,6 +692,42 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     }
   });
 
+  // Child articulation ASR (child voice only; parent voice = Gemini Live). GET
+  // reports whether a cloud scorer is configured so the client caches capability
+  // and falls back to on-device Web Speech when it isn't.
+  router.get("/score-utterance", (_req, res) => {
+    res.json({ configured: childAsrConfigured(config), provider: config.childAsrProvider });
+  });
+
+  router.post("/score-utterance", async (req, res) => {
+    const { target, sound, level, audio } = req.body ?? {};
+    if (!childAsrConfigured(config)) { res.json({ configured: false }); return; }
+    if (!target || typeof target !== "string") { res.status(400).json({ error: "target is required" }); return; }
+
+    // Lenient audio data-URL parse — MediaRecorder mime types include `;codecs=…`.
+    const dataUrl: unknown = audio?.dataUrl ?? audio;
+    const m = typeof dataUrl === "string" ? /^data:(.*?);base64,(.+)$/s.exec(dataUrl) : null;
+    if (!m) { res.status(400).json({ error: "An audio data URL is required" }); return; }
+    const mimeType = (typeof audio?.mimeType === "string" && audio.mimeType) || m[1].split(";")[0] || "audio/webm";
+    if (!mimeType.startsWith("audio/")) { res.status(400).json({ error: "Only audio is supported" }); return; }
+    const dataB64 = m[2];
+    if (Math.floor((dataB64.length * 3) / 4) > 8 * 1024 * 1024) { res.status(413).json({ error: "Audio too large" }); return; }
+
+    try {
+      const result = await scoreChildUtterance(config, {
+        target,
+        sound: String(sound ?? ""),
+        level: String(level ?? "word"),
+        audio: { data: dataB64, mimeType },
+      });
+      res.json({ configured: true, ...result });
+    } catch (error: any) {
+      if (error instanceof NotConfiguredError) { res.json({ configured: false }); return; }
+      logger.error("Child ASR Error", error, { requestId: requestIdOf(req) });
+      res.status(502).json({ error: "Couldn't score that recording", details: error.message });
+    }
+  });
+
   // AVA-1: Augmented Avatar. Turn descriptors (default) or an optional reference
   // photo into a STYLIZED, non-photorealistic character. Privacy-first: the
   // reference photo is used only for this single generation call and is NEVER
@@ -699,7 +736,8 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     storybook: "a warm hand-illustrated children's storybook character, soft ink linework and gentle watercolor shading",
     soft3d: "a soft rounded 3D-rendered character, friendly and approachable, soft studio lighting",
     watercolor: "a soft watercolor children's-book character with loose painterly edges",
-    flat: "a clean flat vector character illustration with simple rounded shapes and a cheerful palette"
+    flat: "a clean flat vector character illustration with simple rounded shapes and a cheerful palette",
+    comichero: "a friendly child superhero in a modern cel-shaded comic-book style: bold clean ink linework, bright primary colors, a small cape and a stylized hero suit with a leaf emblem, a big confident smile, dynamic but never scary or violent — wholesome and age-appropriate for young children"
   };
 
   router.post("/generate-avatar", async (req, res) => {

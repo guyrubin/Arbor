@@ -18,10 +18,10 @@ export default function PracticeHubTab() {
     <HubTabs
       ariaLabel="Practice drills"
       panels={[
+        { id: "adventures", label: t("nav.tab.adventures"), icon: Map, Comp: AdventuresTab },
+        { id: "feelings", label: t("nav.tab.feelings"), icon: HeartPulse, Comp: FeelingsLabTab },
         { id: "speech", label: t("nav.tab.speech"), icon: Mic, Comp: SpeechCoachTab },
         { id: "mimic", label: t("nav.tab.mimic"), icon: Smile, Comp: MimicStudioTab },
-        { id: "feelings", label: t("nav.tab.feelings"), icon: HeartPulse, Comp: FeelingsLabTab },
-        { id: "adventures", label: t("nav.tab.adventures"), icon: Map, Comp: AdventuresTab },
       ]}
     />
   );

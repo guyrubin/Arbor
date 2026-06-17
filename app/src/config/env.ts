@@ -38,6 +38,16 @@ export type ArborConfig = {
   billingCheckoutUrls: Record<string, string>;
   /** MON-2: customer self-service portal (Stripe Billing portal) for web subs. */
   billingManageUrl?: string;
+  /** Child articulation ASR provider. Parent voice stays on Gemini Live — this is
+   *  ONLY for scoring the child's pronunciation. "none" = on-device fallback only. */
+  childAsrProvider: "none" | "soapbox" | "whisper";
+  /** Hosted (OpenAI-compatible) Whisper transcription endpoint for child ASR fallback. */
+  whisperApiUrl?: string;
+  whisperApiKey?: string;
+  whisperModel: string;
+  /** SoapBox Labs kid-ASR endpoint + key (phoneme-level; primary when licensed). */
+  soapboxApiUrl?: string;
+  soapboxApiKey?: string;
 };
 
 const boolFromEnv = (value: string | undefined, fallback: boolean) => {
@@ -113,6 +123,15 @@ export const loadConfig = (): ArborConfig => {
       ...(process.env.BILLING_URL_FAMILY_ANNUAL ? { family_annual: process.env.BILLING_URL_FAMILY_ANNUAL } : {}),
     },
     billingManageUrl: process.env.BILLING_MANAGE_URL,
+    childAsrProvider: (() => {
+      const v = (process.env.CHILD_ASR_PROVIDER || "none").toLowerCase();
+      return v === "soapbox" || v === "whisper" ? v : "none";
+    })(),
+    whisperApiUrl: process.env.WHISPER_API_URL,
+    whisperApiKey: process.env.WHISPER_API_KEY,
+    whisperModel: process.env.WHISPER_MODEL || "whisper-1",
+    soapboxApiUrl: process.env.SOAPBOX_API_URL,
+    soapboxApiKey: process.env.SOAPBOX_API_KEY,
   };
 
   if (config.arborEnv === "prod") {

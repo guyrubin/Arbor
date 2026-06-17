@@ -11,6 +11,7 @@ import { useToast } from "../../context/ToastContext";
 import { ProgressRing } from "../ui/ProgressRing";
 import { Skeleton } from "../ui/Skeleton";
 import { ParentChildIllustration } from "../ui/ParentChildIllustration";
+import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import QuickLogModal from "../overview/QuickLogModal";
 import RemindersCard from "../overview/RemindersCard";
@@ -45,6 +46,7 @@ export default function OverviewTab() {
   const [quickLog, setQuickLog] = useState(false);
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const photoUrl = childProfile.photoUrl;
+  const { hasHero } = useHeroAvatar();
 
   // ── Today surface: Rhythm prediction + Daily Play pick (memory-driven) ──
   const rhythm = useMemo(
@@ -230,6 +232,44 @@ export default function OverviewTab() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ── Practice & Play launcher — the bright door into the kids' games ─ */}
+      <section
+        className="relative overflow-hidden rounded-[24px] p-5 md:p-6 flex flex-wrap items-center gap-x-5 gap-y-4"
+        style={{
+          background:
+            "radial-gradient(120% 140% at 8% 0%, var(--arbor-lav-soft), transparent 60%), radial-gradient(120% 140% at 100% 100%, var(--arbor-sky-soft), transparent 55%), linear-gradient(120deg, var(--arbor-green-soft), #ffffff 70%)",
+          border: `1px solid ${RULE}`,
+          boxShadow: "var(--shadow-sm)",
+        }}
+      >
+        <HeroAvatar size={76} mood="wave" animate className="flex-shrink-0 drop-shadow-sm" />
+        <div className="flex-1 min-w-[200px]">
+          <h2 className="text-[1.35rem] md:text-[1.6rem] font-extrabold leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
+            {hasHero ? t("ov.play.title", { name: firstName }) : t("ov.hero.title", { name: firstName })}
+          </h2>
+          <p className="text-sm mt-1.5 max-w-md" style={{ color: MUTED }}>
+            {hasHero ? t("ov.play.desc") : t("ov.hero.desc", { name: firstName })}
+          </p>
+        </div>
+        {hasHero ? (
+          <button
+            onClick={() => setActiveTab("practice")}
+            className="inline-flex items-center justify-center gap-2 text-white font-extrabold text-[15px] rounded-full px-6 min-h-[52px] transition active:scale-[0.97] hover:-translate-y-0.5 flex-shrink-0"
+            style={{ background: "linear-gradient(135deg, #7a6bd8, #5a4cc0)", boxShadow: "0 8px 20px rgba(90,76,192,0.28)" }}
+          >
+            <Sparkles className="w-5 h-5" /> {t("ov.play.cta")}
+          </button>
+        ) : (
+          <button
+            onClick={() => setActiveTab("profile")}
+            className="inline-flex items-center justify-center gap-2 text-white font-extrabold text-[15px] rounded-full px-6 min-h-[52px] transition active:scale-[0.97] hover:-translate-y-0.5 flex-shrink-0"
+            style={{ background: "linear-gradient(135deg, #3cc081, var(--arbor-clay) 60%, var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+          >
+            <Sparkles className="w-5 h-5" /> {t("ov.hero.cta", { name: firstName })}
+          </button>
+        )}
       </section>
 
       {/* ── Today: predicted rhythm + a play idea (the daily-return surface) ─ */}

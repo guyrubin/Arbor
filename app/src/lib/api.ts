@@ -133,6 +133,10 @@ export const api = {
   // Generative Cognitive Adventure personalized to the child (AdventureScenario shape).
   generateAdventure: (payload: { childProfile: ChildProfile; focusSkill?: string }) =>
     post<AdventureScenario>("/api/generate-adventure", payload),
+  // Child articulation scoring (cloud SoapBox/Whisper). `configured:false` => fall back on-device.
+  childAsrStatus: () => get<{ configured: boolean; provider: string }>("/api/score-utterance"),
+  scoreUtterance: (payload: { target: string; sound: string; level: string; audio: { dataUrl: string; mimeType?: string } }) =>
+    post<{ configured: boolean; result?: "got" | "almost" | "missed"; heard?: string; confidence?: number; provider?: string }>("/api/score-utterance", payload),
   council: (payload: { message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" }) =>
     post<{ text: string; contract?: CoachContract; council?: CouncilTake[]; memoryReviewItems?: MemoryReviewItem[] }>("/api/council", payload),
   // Co-parent / trusted sharing (server-enforced expiry).
@@ -228,7 +232,7 @@ export type VisionDocument = {
 };
 export type VisionResult = VisionObserve | VisionDocument;
 
-export type AvatarStyle = "storybook" | "soft3d" | "watercolor" | "flat";
+export type AvatarStyle = "storybook" | "soft3d" | "watercolor" | "flat" | "comichero";
 export type AvatarDescriptors = {
   hair?: string;
   skin?: string;

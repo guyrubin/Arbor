@@ -424,14 +424,17 @@ body {
 .arbor-play::before {
   content: "";
   position: absolute;
-  inset: -8px -8px 0;
+  inset: -16px -16px 0;
   z-index: -1;
   border-radius: 36px;
+  /* A clearly tinted, playful wash — bigger, more saturated brand blobs on a
+     soft mint base so the kids' zone reads as colorful, not near-white. */
   background:
-    radial-gradient(46% 40% at 12% 4%, color-mix(in oklab, var(--arbor-lav-soft) 80%, transparent), transparent 70%),
-    radial-gradient(50% 44% at 92% 0%, color-mix(in oklab, var(--arbor-sky-soft) 78%, transparent), transparent 72%),
-    radial-gradient(60% 50% at 80% 100%, color-mix(in oklab, var(--arbor-green-soft) 70%, transparent), transparent 75%),
-    radial-gradient(54% 46% at 4% 92%, color-mix(in oklab, var(--arbor-peach-soft) 64%, transparent), transparent 72%);
+    radial-gradient(60% 52% at 8% -4%, color-mix(in oklab, var(--arbor-lav) 30%, transparent), transparent 70%),
+    radial-gradient(64% 56% at 98% 2%, color-mix(in oklab, var(--arbor-sky) 28%, transparent), transparent 72%),
+    radial-gradient(70% 60% at 88% 102%, color-mix(in oklab, var(--arbor-clay) 26%, transparent), transparent 74%),
+    radial-gradient(64% 56% at -2% 96%, color-mix(in oklab, var(--arbor-peach) 24%, transparent), transparent 72%),
+    linear-gradient(135deg, color-mix(in oklab, var(--arbor-green-soft) 70%, #fff), #ffffff 80%);
   pointer-events: none;
 }
 
