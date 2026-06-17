@@ -74,10 +74,17 @@ export const loadConfig = (): ArborConfig => {
     arborEnv,
     port: Number(process.env.PORT || 3000),
     appUrl: process.env.APP_URL || "http://localhost:3000",
-    corsOrigins: (process.env.CORS_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000")
-      .split(",")
-      .map((origin) => origin.trim())
-      .filter(Boolean),
+    corsOrigins: Array.from(new Set([
+      ...(process.env.CORS_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000")
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+      // Native shells (Capacitor): the iOS/Android webviews send these fixed
+      // origins. They are not secrets and are always allowed so the mobile apps
+      // can reach the API without a CORS_ORIGINS env change on every deploy.
+      "capacitor://localhost", // iOS
+      "https://localhost",     // Android (androidScheme: https)
+    ])),
     gcpProjectId: process.env.GCP_PROJECT_ID,
     gcpRegion: process.env.GCP_REGION || "europe-west4",
     vertexLocation: process.env.VERTEX_LOCATION || process.env.GCP_REGION || "europe-west4",

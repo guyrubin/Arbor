@@ -11,6 +11,7 @@ import { Avatar } from "../ui/Avatar";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import AvatarCreator from "./AvatarCreator";
+import RewardsCard from "./RewardsCard";
 
 const RISK_LEVELS: ChildProfile["riskLevel"][] = ["Low", "Moderate", "High"];
 
@@ -222,6 +223,9 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               >
                 {saving ? "Saving…" : "Save changes"}
               </button>
+
+              {/* A5: earned-through-play rewards */}
+              <RewardsCard childId={activeChild.id} name={name || activeChild.name} />
 
               {/* Data & privacy (GDPR) */}
               <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
