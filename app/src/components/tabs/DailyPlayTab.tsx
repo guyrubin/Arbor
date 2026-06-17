@@ -7,7 +7,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import CourseCard from "../overview/CourseCard";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
-import { recommendCourse } from "../../playbank/courses";
+import { recommendCourse, READINESS_COURSES, localizeCourse } from "../../playbank/courses";
 import { type PlayActivity } from "../../playbank/content";
 
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
@@ -17,7 +17,7 @@ import { type PlayActivity } from "../../playbank/content";
 export default function DailyPlayTab() {
   const { behaviorLogs, childProfile, setChatInput, setActiveTab } = useArbor();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
   const [doneIds, setDoneIds] = useState<string[]>(() => {
@@ -49,15 +49,20 @@ export default function DailyPlayTab() {
     try { return JSON.parse(localStorage.getItem(`arbor.course.${childProfile.id}`) || "{}"); }
     catch { return {}; }
   });
-  const courseDone = courseProg[course.id] ?? [];
-  const toggleCourseActivity = (activityId: string) => {
-    const cur = courseProg[course.id] ?? [];
+  const doneFor = (courseId: string) => courseProg[courseId] ?? [];
+  const toggleFor = (courseId: string) => (activityId: string) => {
+    const cur = courseProg[courseId] ?? [];
     const adding = !cur.includes(activityId);
-    const updated = { ...courseProg, [course.id]: adding ? [...cur, activityId] : cur.filter((x) => x !== activityId) };
+    const updated = { ...courseProg, [courseId]: adding ? [...cur, activityId] : cur.filter((x) => x !== activityId) };
     setCourseProg(updated);
     try { localStorage.setItem(`arbor.course.${childProfile.id}`, JSON.stringify(updated)); } catch { /* ignore */ }
     if (adding) toast(`Nice. Added to ${firstName}'s day.`, "success");
   };
+
+  // Readiness tracks — parent-chosen goal courses (school / sibling / sleep).
+  const [readinessId, setReadinessId] = useState<string>(READINESS_COURSES[0]?.id);
+  const readinessCourse = READINESS_COURSES.find((c) => c.id === readinessId) ?? READINESS_COURSES[0];
+
   const coachActivity = (a: PlayActivity) => {
     setChatInput(`We're going to try "${a.title}" with ${firstName} today (it builds ${a.domain}). How can I get the most out of it, and what should I watch for?`);
     setActiveTab("coach");
@@ -97,11 +102,45 @@ export default function DailyPlayTab() {
         <CourseCard
           course={course}
           childName={firstName}
-          completedIds={courseDone}
-          onToggle={toggleCourseActivity}
+          completedIds={doneFor(course.id)}
+          onToggle={toggleFor(course.id)}
           onCoach={coachActivity}
         />
       </div>
+
+      {/* Readiness tracks — goal courses the parent chooses (school / sibling / sleep) */}
+      <section className="max-w-[640px]">
+        <div className="mb-3">
+          <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("play.readinessTitle")}</h2>
+          <p className="text-[13px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("play.readinessSubtitle")}</p>
+        </div>
+        <div role="tablist" aria-label={t("play.readinessTitle")} className="flex flex-wrap gap-2 mb-3">
+          {READINESS_COURSES.map((rc) => {
+            const on = rc.id === readinessId;
+            return (
+              <button
+                key={rc.id}
+                role="tab"
+                aria-selected={on}
+                onClick={() => setReadinessId(rc.id)}
+                className="rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition"
+                style={on
+                  ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "var(--shadow-sm)" }
+                  : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              >
+                {localizeCourse(rc, uiLang).title}
+              </button>
+            );
+          })}
+        </div>
+        <CourseCard
+          course={readinessCourse}
+          childName={firstName}
+          completedIds={doneFor(readinessCourse.id)}
+          onToggle={toggleFor(readinessCourse.id)}
+          onCoach={coachActivity}
+        />
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {picks.map((p) => (

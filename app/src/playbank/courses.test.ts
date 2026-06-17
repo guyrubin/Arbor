@@ -1,24 +1,32 @@
 import { describe, it, expect } from "vitest";
 import {
-  COURSES, COURSES_HE, recommendCourse, courseProgress, courseActivities, localizeCourse,
+  COURSES, READINESS_COURSES, COURSES_HE, recommendCourse, courseProgress, courseActivities, localizeCourse,
 } from "./courses";
 import { PLAY_ACTIVITIES } from "./content";
 
+const ALL_COURSES = [...COURSES, ...READINESS_COURSES];
+
 describe("Daily Play Courses", () => {
-  it("every course references real, in-bank activities", () => {
+  it("every course (incl. readiness tracks) references real, in-bank activities", () => {
     const ids = new Set(PLAY_ACTIVITIES.map((a) => a.id));
-    for (const c of COURSES) {
+    for (const c of ALL_COURSES) {
       expect(c.activityIds.length).toBeGreaterThan(0);
       for (const id of c.activityIds) expect(ids.has(id), `${c.id} → ${id}`).toBe(true);
       expect(courseActivities(c).length).toBe(c.activityIds.length);
     }
   });
 
-  it("every course has a Hebrew translation", () => {
-    for (const c of COURSES) {
+  it("every course (incl. readiness tracks) has a Hebrew translation", () => {
+    for (const c of ALL_COURSES) {
       expect(COURSES_HE[c.id], `missing he for ${c.id}`).toBeDefined();
       expect(COURSES_HE[c.id].title.trim().length).toBeGreaterThan(0);
     }
+  });
+
+  it("readiness tracks carry a life-moment goal incl. school", () => {
+    const goals = READINESS_COURSES.map((c) => c.goal);
+    expect(goals).toContain("school");
+    expect(READINESS_COURSES.find((c) => c.goal === "school")?.id).toBe("ready-for-school");
   });
 
   it("recommends a course matching the top concern domain", () => {

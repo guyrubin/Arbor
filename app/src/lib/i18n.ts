@@ -96,6 +96,8 @@ const en: Dict = {
   "play.libEyebrow": "Daily Play",
   "play.libTitle": "Play ideas for {name}",
   "play.libSubtitle": "Matched to {name}'s stage and what's been coming up lately. Each uses things you already have at home.",
+  "play.readinessTitle": "Get ready for…",
+  "play.readinessSubtitle": "Short tracks for the moments parents prepare for.",
   // Daily Play Courses
   "course.eyebrow": "Play course",
   "course.progress": "{done} of {total} done",
@@ -560,6 +562,8 @@ const he: Dict = {
   "play.libEyebrow": "משחק יומי",
   "play.libTitle": "רעיונות למשחק עבור {name}",
   "play.libSubtitle": "מותאם לשלב של {name} ולמה שעלה לאחרונה. כל פעילות משתמשת בדברים שכבר יש בבית.",
+  "play.readinessTitle": "להתכונן ל…",
+  "play.readinessSubtitle": "מסלולים קצרים לרגעים שהורים מתכוננים אליהם.",
   // Daily Play Courses
   "course.eyebrow": "מסלול משחק",
   "course.progress": "{done} מתוך {total} הושלמו",

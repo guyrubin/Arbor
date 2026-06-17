@@ -7,6 +7,8 @@
  * this stays small and hand-written; AI-generated activities are a fast-follow.
  */
 
+import type { Stage } from "./stages";
+
 export type PlayDomain = "regulation" | "language" | "motor" | "cognitive" | "social";
 
 /** Coarse developmental bands (avoid "developmental age" numbers per the clinical stance). */
@@ -16,6 +18,8 @@ export interface PlayActivity {
   id: string;
   title: string;
   bands: PlayBand[];
+  /** Optional finer-grained targeting; falls back to the bands' micro-stages. */
+  stages?: Stage[];
   domain: PlayDomain;
   skillTags: string[];
   householdItems: string[];
@@ -229,6 +233,136 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 5,
   },
+
+  // ── 12–30 month window (the thin band) + early infant ──────────────────
+  {
+    id: "ball-roll",
+    title: "Roll the ball back and forth",
+    bands: ["toddler"], stages: ["12-18m", "18-24m"],
+    domain: "social",
+    skillTags: ["turn-taking", "gross-motor", "connection"],
+    householdItems: ["any soft ball"],
+    whatItBuilds: "Early turn-taking and the joy of back-and-forth, with big-muscle play.",
+    steps: [
+      "Sit on the floor facing each other, legs apart.",
+      "Roll the ball to them and say 'your turn'.",
+      "Wait, then cheer when they push it back.",
+      "Name it each time: 'my turn... your turn'.",
+    ],
+    durationMin: 6,
+  },
+  {
+    id: "point-and-name",
+    title: "Point and name around the room",
+    bands: ["toddler"], stages: ["12-18m", "18-24m"],
+    domain: "language",
+    skillTags: ["vocabulary", "joint-attention", "early-language"],
+    householdItems: ["a picture book, or just the room"],
+    whatItBuilds: "First words and shared attention by naming what they look at.",
+    steps: [
+      "Follow their gaze and point to what they see.",
+      "Name it slowly and clearly: 'dog. that's a dog.'",
+      "Pause and give them a turn to point.",
+      "Repeat their sound or word back, a little fuller.",
+    ],
+    durationMin: 5,
+  },
+  {
+    id: "in-and-out",
+    title: "In-and-out treasure box",
+    bands: ["toddler"], stages: ["12-18m"],
+    domain: "cognitive",
+    skillTags: ["cause-and-effect", "object-permanence", "fine-motor"],
+    householdItems: ["a box or bowl", "a few safe objects"],
+    whatItBuilds: "Cause and effect and 'where did it go' — the roots of problem-solving.",
+    steps: [
+      "Put a few safe objects next to an empty box.",
+      "Show them dropping one in, then tipping it out.",
+      "Let them fill and empty it over and over.",
+      "Hide one under a cloth and find it together.",
+    ],
+    durationMin: 8,
+  },
+  {
+    id: "name-the-feeling-toddler",
+    title: "Name the wobble",
+    bands: ["toddler"], stages: ["18-24m", "2-3y"],
+    domain: "regulation",
+    skillTags: ["emotion-naming", "self-regulation", "connection"],
+    householdItems: ["nothing — just you"],
+    whatItBuilds: "The first link between a big feeling and a word for it.",
+    steps: [
+      "Get low to their level when a meltdown starts.",
+      "Put the feeling into one short word: 'you're mad.'",
+      "Stay calm and close; you are the anchor.",
+      "Once it passes, name what helped: 'a hug helped.'",
+    ],
+    durationMin: 5,
+  },
+  {
+    id: "bubble-chase",
+    title: "Blow and chase bubbles",
+    bands: ["toddler"], stages: ["18-24m", "2-3y"],
+    domain: "motor",
+    skillTags: ["gross-motor", "joint-attention", "cause-and-effect"],
+    householdItems: ["bubble mix, or dish soap and water"],
+    whatItBuilds: "Big-muscle movement and shared delight, plus tracking with the eyes.",
+    steps: [
+      "Blow a few bubbles up high.",
+      "Chase and pop them together.",
+      "Pause with the wand and wait for 'more'.",
+      "Let them try to blow, even if nothing comes out.",
+    ],
+    durationMin: 8,
+  },
+  {
+    id: "two-step-helper",
+    title: "Two-step helper",
+    bands: ["toddler", "preschool"], stages: ["18-24m", "2-3y"],
+    domain: "language",
+    skillTags: ["following-directions", "listening", "competence"],
+    householdItems: ["everyday objects"],
+    whatItBuilds: "Listening and holding two things in mind: 'get your shoes, bring them here.'",
+    steps: [
+      "Give one clear instruction first and celebrate it.",
+      "When ready, try two steps: 'pick up the cup, put it in the sink.'",
+      "Use gestures alongside your words.",
+      "Thank them for the help, specifically.",
+    ],
+    durationMin: 6,
+  },
+  {
+    id: "pretend-snack",
+    title: "Pretend tea for teddy",
+    bands: ["toddler", "preschool"], stages: ["2-3y", "3-4y"],
+    domain: "social",
+    skillTags: ["pretend-play", "empathy", "early-language"],
+    householdItems: ["a cup, a spoon, a soft toy"],
+    whatItBuilds: "Imagination and caring-for-others through simple pretend.",
+    steps: [
+      "Offer teddy a 'drink' and a 'snack'.",
+      "Narrate: 'teddy is thirsty. teddy says thank you.'",
+      "Let them take over feeding and caring.",
+      "Follow their story wherever it goes.",
+    ],
+    durationMin: 8,
+  },
+  {
+    id: "peekaboo",
+    title: "Peekaboo and hide-the-toy",
+    bands: ["infant"], stages: ["6-9m", "9-12m"],
+    domain: "social",
+    skillTags: ["object-permanence", "connection", "anticipation"],
+    householdItems: ["a small cloth or your hands"],
+    whatItBuilds: "That people and things still exist when hidden, and the warm surprise of reunion.",
+    steps: [
+      "Cover your face with your hands, then 'peekaboo!'",
+      "Watch for their smile and do it again.",
+      "Hide a toy under a cloth and reveal it.",
+      "Let them pull the cloth off themselves.",
+    ],
+    durationMin: 5,
+  },
 ];
 
 /* Hebrew translations of the activity CONTENT, keyed by activity id. Skill tags,
@@ -374,6 +508,94 @@ export const PLAY_ACTIVITIES_HE: Record<string, PlayActivityHe> = {
       "תנו להם להוביל פרצוף שאתם תחקו.",
     ],
     householdItems: ["רק הפרצופים שלכם, או מראה"],
+  },
+  "ball-roll": {
+    title: "לגלגל את הכדור הלוך ושוב",
+    whatItBuilds: "לקיחת תורות מוקדמת והכיף של הלוך ושוב, עם משחק של שרירים גדולים.",
+    steps: [
+      "שבו על הרצפה זה מול זה, רגליים פתוחות.",
+      "גלגלו אליהם את הכדור ואמרו 'התור שלך'.",
+      "חכו, ואז הריעו כשהם דוחפים אותו בחזרה.",
+      "תנו לזה שם בכל פעם: 'התור שלי... התור שלך'.",
+    ],
+    householdItems: ["כדור רך כלשהו"],
+  },
+  "point-and-name": {
+    title: "להצביע ולקרוא בשם בחדר",
+    whatItBuilds: "מילים ראשונות וקשב משותף דרך קריאת שם למה שהם מסתכלים עליו.",
+    steps: [
+      "עקבו אחרי המבט שלהם והצביעו על מה שהם רואים.",
+      "קראו בשם לאט וברור: 'כלב. זה כלב.'",
+      "עצרו ותנו להם תור להצביע.",
+      "חזרו על הצליל או המילה שלהם, קצת יותר מלאים.",
+    ],
+    householdItems: ["ספר תמונות, או פשוט החדר"],
+  },
+  "in-and-out": {
+    title: "קופסת אוצר של פנימה והחוצה",
+    whatItBuilds: "סיבה ותוצאה ו'לאן זה נעלם' — השורשים של פתרון בעיות.",
+    steps: [
+      "הניחו כמה חפצים בטוחים ליד קופסה ריקה.",
+      "הראו להם להפיל אחד פנימה, ואז לשפוך החוצה.",
+      "תנו להם למלא ולרוקן שוב ושוב.",
+      "הסתירו אחד מתחת לבד ומצאו יחד.",
+    ],
+    householdItems: ["קופסה או קערה", "כמה חפצים בטוחים"],
+  },
+  "name-the-feeling-toddler": {
+    title: "לתת שם לסערה",
+    whatItBuilds: "החיבור הראשון בין רגש גדול למילה עבורו.",
+    steps: [
+      "התכופפו לגובה שלהם כשמתחילה התפרצות.",
+      "הכניסו את הרגש למילה אחת קצרה: 'אתה כועס.'",
+      "הישארו רגועים וקרובים; אתם העוגן.",
+      "כשזה עובר, תנו שם למה שעזר: 'חיבוק עזר.'",
+    ],
+    householdItems: ["כלום — רק אתם"],
+  },
+  "bubble-chase": {
+    title: "לנשוף ולרדוף אחרי בועות",
+    whatItBuilds: "תנועה של שרירים גדולים והנאה משותפת, ומעקב עם העיניים.",
+    steps: [
+      "נשפו כמה בועות גבוה למעלה.",
+      "רדפו ופוצצו אותן יחד.",
+      "עצרו עם המקל וחכו ל'עוד'.",
+      "תנו להם לנסות לנשוף, גם אם כלום לא יוצא.",
+    ],
+    householdItems: ["תמיסת בועות, או סבון כלים ומים"],
+  },
+  "two-step-helper": {
+    title: "עוזר בשני שלבים",
+    whatItBuilds: "הקשבה והחזקת שני דברים בראש: 'קח את הנעליים, תביא אותן לכאן.'",
+    steps: [
+      "תנו קודם הוראה אחת ברורה וחגגו אותה.",
+      "כשמוכנים, נסו שני שלבים: 'הרם את הכוס, שים אותה בכיור.'",
+      "השתמשו בתנועות יחד עם המילים.",
+      "הודו להם על העזרה, באופן ספציפי.",
+    ],
+    householdItems: ["חפצים יומיומיים"],
+  },
+  "pretend-snack": {
+    title: "תה מדומה לדובי",
+    whatItBuilds: "דמיון ודאגה לאחר דרך משחק 'כאילו' פשוט.",
+    steps: [
+      "הציעו לדובי 'שתייה' ו'חטיף'.",
+      "ספרו: 'דובי צמא. דובי אומר תודה.'",
+      "תנו להם להשתלט על ההאכלה והדאגה.",
+      "עקבו אחרי הסיפור שלהם לאן שהוא הולך.",
+    ],
+    householdItems: ["כוס, כף, בובה רכה"],
+  },
+  "peekaboo": {
+    title: "קוקו ומחבואים לצעצוע",
+    whatItBuilds: "שאנשים ודברים עדיין קיימים כשהם מוסתרים, וההפתעה החמה של המפגש מחדש.",
+    steps: [
+      "כסו את הפנים בידיים, ואז 'קוקו!'",
+      "חכו לחיוך שלהם ועשו את זה שוב.",
+      "הסתירו צעצוע מתחת לבד וחשפו אותו.",
+      "תנו להם למשוך את הבד בעצמם.",
+    ],
+    householdItems: ["בד קטן או הידיים שלכם"],
   },
 };
 

@@ -7,11 +7,16 @@
 
 import { PLAY_ACTIVITIES, type PlayBand, type PlayDomain } from "./content";
 
+/** Life-moment goals a parent prepares for — orthogonal to the domain axis. */
+export type ReadinessGoal = "school" | "sibling" | "sleep";
+
 export interface PlayCourse {
   id: string;
   title: string;
   /** Developmental focus — also the concern domain it answers. */
   domain: PlayDomain;
+  /** Optional life-moment goal (readiness tracks span several domains). */
+  goal?: ReadinessGoal;
   bands: PlayBand[];
   whatItBuilds: string;
   /** Ordered activity ids (each is a "day"), all present in PLAY_ACTIVITIES. */
@@ -53,8 +58,53 @@ export const COURSES: PlayCourse[] = [
   },
 ];
 
+/* Readiness tracks — goal-oriented (not domain-oriented) courses for the life
+   moments parents prepare for. Composed from existing activities across domains;
+   chosen by the parent rather than auto-recommended. */
+export const READINESS_COURSES: PlayCourse[] = [
+  {
+    id: "ready-for-school",
+    title: "Getting ready for school",
+    domain: "social",
+    goal: "school",
+    bands: ["preschool", "early-school"],
+    whatItBuilds: "The everyday skills that make starting school easier: smooth transitions, listening, sharing, focus, and feeling capable.",
+    activityIds: ["transition-countdown", "two-step-helper", "turn-taking-tower", "treasure-hunt", "helper-of-the-day"],
+  },
+  {
+    id: "new-sibling",
+    title: "Welcoming a new sibling",
+    domain: "social",
+    goal: "sibling",
+    bands: ["toddler", "preschool"],
+    whatItBuilds: "Naming big feelings, gentle care for others, and feeling like an important helper, not a replaced one.",
+    activityIds: ["name-the-feeling-toddler", "pretend-snack", "mirror-faces", "helper-of-the-day"],
+  },
+  {
+    id: "calmer-bedtimes",
+    title: "Calmer bedtimes",
+    domain: "regulation",
+    goal: "sleep",
+    bands: ["toddler", "preschool", "early-school"],
+    whatItBuilds: "A few days of practice winding down, naming the day's feelings, and settling the body before sleep.",
+    activityIds: ["feelings-weather", "calm-down-jar", "transition-countdown"],
+  },
+];
+
 /** Hebrew copy for course titles/whatItBuilds (first draft, native review pending). */
 export const COURSES_HE: Record<string, { title: string; whatItBuilds: string }> = {
+  "ready-for-school": {
+    title: "להתכונן לבית הספר",
+    whatItBuilds: "המיומנויות היומיומיות שמקלות על ההתחלה בבית הספר: מעברים חלקים, הקשבה, שיתוף, ריכוז, ותחושת מסוגלות.",
+  },
+  "new-sibling": {
+    title: "לקבל אח או אחות חדשים",
+    whatItBuilds: "לתת שם לרגשות גדולים, דאגה עדינה לאחר, ותחושה של עוזר חשוב — לא של מי שהוחלף.",
+  },
+  "calmer-bedtimes": {
+    title: "שעת שינה רגועה יותר",
+    whatItBuilds: "כמה ימים של תרגול הרגעה, מתן שם לרגשות היום, והרגעת הגוף לפני השינה.",
+  },
   "big-feelings": {
     title: "לעבור דרך רגשות גדולים",
     whatItBuilds: "כמה ימים של תרגול בקריאת שם להרגשות חזקות ובהרגעתן, יחד.",
