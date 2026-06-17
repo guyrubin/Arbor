@@ -5,12 +5,13 @@
    A calm, image-rich child-development workspace. A cool off-white canvas (not
    a flat mint), pure-white rounded cards on layered soft shadows, GREEN as the
    single primary (logo, CTA, active nav, gauges), and a restrained pastel set
-   for category chips. Components are authored in two ways: (1) older views in
-   dark Tailwind classes that the override layer below remaps onto this light
-   system, and (2) newer views with inline styles referencing these tokens.
-   Brand-green + ink + muted values are stable (inline literals depend on them);
-   the neutral canvas, surfaces, shadows, radii, type and spacing are refined
-   here so the whole app gains structure and finish from one place. */
+   for category chips. Components are authored token-first: views use inline
+   styles referencing these tokens (the legacy dark-theme override layer has
+   been retired). Brand-green + ink + muted values are stable (inline literals
+   depend on them); the neutral canvas, surfaces, shadows, radii, type and
+   spacing are refined here so the whole app gains structure and finish from one
+   place. Structural remaps for live Tailwind utilities (radius, shadows, nav,
+   buttons, forms) remain below. */
 :root {
   /* Surfaces — cool, faintly green, de-pastelled */
   --arbor-paper:          #eef2ef;   /* app canvas */
@@ -150,96 +151,6 @@ body {
 .arbor-app .rounded-3xl,
 .arbor-app .rounded-\[36px\] { border-radius: var(--r-xl) !important; }
 
-/* ─── Card surfaces: dark component bg classes → clean white ─────────────── */
-.arbor-app [class*="bg-[#08090c]"],
-.arbor-app [class*="bg-[#141821]"],
-.arbor-app [class*="bg-[#12141c]"],
-.arbor-app [class*="bg-[#04060c]"] {
-  background-color: var(--arbor-paper-elevated) !important;
-  background-image: none !important;
-}
-
-/* ─── Text colour remapping ──────────────────────────────────────────────── */
-/* NB: .text-white is intentionally NOT remapped — new components use it for
-   white text on colored buttons (green/clay/sky), which must stay white. Only
-   the retired dark-theme's light-gray text tokens map down to ink. */
-.arbor-app [class*="text-[#f7f1e7]"],
-.arbor-app .text-gray-100,
-.arbor-app .text-gray-200,
-.arbor-app .text-gray-300,
-.arbor-app .text-gray-350 {
-  color: var(--arbor-ink) !important;
-}
-.arbor-app [class*="text-[#a8a093]"],
-.arbor-app .text-gray-400,
-.arbor-app .text-gray-500,
-.arbor-app .text-slate-400 {
-  color: var(--arbor-muted) !important;
-}
-
-/* ─── Primary GREEN: solid amber/clay accents become the brand green ─────── */
-.arbor-app [class*="text-[#f4d991]"],
-.arbor-app [class*="text-[#d7aa55]"],
-.arbor-app .text-amber-200,
-.arbor-app .text-amber-300,
-.arbor-app .text-amber-400 {
-  color: var(--arbor-clay) !important;
-}
-.arbor-app [class*="bg-[#d7aa55]"],
-.arbor-app [class*="bg-[#f4d991]"],
-.arbor-app .bg-amber-500,
-.arbor-app .bg-yellow-500 {
-  background-color: var(--arbor-clay) !important;
-  background-image: linear-gradient(135deg, #3cc081 0%, var(--arbor-clay) 60%, var(--arbor-clay-deep) 100%) !important;
-  color: #fff !important;
-}
-
-/* ─── Pastel functional accents (soft tints for category chips) ──────────── */
-.arbor-app [class*="bg-[#d7aa55]/10"],
-.arbor-app [class*="bg-[#d7aa55]/15"],
-.arbor-app [class*="bg-[#d7aa55]/5"],
-.arbor-app [class*="bg-[#f4d991]/10"],
-.arbor-app [class*="bg-amber-500/10"],
-.arbor-app [class*="bg-amber-500/15"],
-.arbor-app [class*="bg-amber-400/10"] {
-  background-color: var(--arbor-green-soft) !important;
-}
-.arbor-app .bg-blue-500 { background-color: var(--arbor-sky) !important; }
-.arbor-app [class*="bg-blue-500/"],
-.arbor-app [class*="bg-blue-400/"],
-.arbor-app [class*="bg-sky-500/"] { background-color: var(--arbor-sky-soft) !important; }
-.arbor-app [class*="text-blue-"],
-.arbor-app [class*="text-sky-"] { color: var(--arbor-sky) !important; }
-.arbor-app [class*="border-blue-"] { border-color: rgba(63,140,201,0.22) !important; }
-.arbor-app [class*="bg-purple-500/"],
-.arbor-app [class*="bg-violet-500/"],
-.arbor-app [class*="bg-indigo-500/"] { background-color: var(--arbor-lav-soft) !important; }
-.arbor-app [class*="text-purple-"],
-.arbor-app [class*="text-violet-"],
-.arbor-app [class*="text-indigo-"] { color: var(--arbor-lav) !important; }
-.arbor-app [class*="bg-pink-500/"],
-.arbor-app [class*="bg-rose-500/"] { background-color: var(--arbor-pink-soft) !important; }
-.arbor-app [class*="text-pink-"],
-.arbor-app [class*="text-rose-"] { color: var(--arbor-pink) !important; }
-.arbor-app [class*="bg-orange-500/"],
-.arbor-app [class*="bg-orange-400/"] { background-color: var(--arbor-peach-soft) !important; }
-.arbor-app [class*="text-orange-"] { color: var(--arbor-peach) !important; }
-
-/* ─── Borders ────────────────────────────────────────────────────────────── */
-.arbor-app [class*="border-white/10"],
-.arbor-app [class*="border-white/15"],
-.arbor-app [class*="border-white/20"] {
-  border-color: var(--arbor-rule-strong) !important;
-}
-.arbor-app [class*="border-white/5"],
-.arbor-app [class*="border-white/\[0"] {
-  border-color: var(--arbor-rule) !important;
-}
-.arbor-app [class*="border-[#d7aa55]"],
-.arbor-app [class*="border-[#d7aa55]/"] {
-  border-color: rgba(52,178,119,0.30) !important;
-}
-
 /* ─── Shadows: soft daylight, layered ───────────────────────────────────── */
 .arbor-app [class*="shadow-"]    { box-shadow: var(--shadow-sm) !important; }
 .arbor-app [class*="shadow-lg"]  { box-shadow: var(--shadow-md) !important; }
@@ -257,13 +168,6 @@ body {
 }
 .arbor-app aside:first-of-type { border-right: 1px solid var(--arbor-rule) !important; }
 .arbor-app aside:last-of-type  { border-left: 1px solid var(--arbor-rule) !important; }
-
-.arbor-app aside [class*="bg-[#08090c]"],
-.arbor-app aside [class*="bg-[#141821]"],
-.arbor-app aside [class*="bg-[#12141c]"],
-.arbor-app aside [class*="bg-[#04060c]"] {
-  background-color: var(--arbor-paper-deep) !important;
-}
 
 /* ─── Nav as soft mint pills ─────────────────────────────────────────────── */
 .arbor-app nav button {
@@ -321,6 +225,10 @@ body {
   opacity: 1;
 }
 
+/* ─── Toast dismiss button (hover darken; inline styles can't do :hover) ──── */
+.arbor-app .arbor-toast-dismiss { color: var(--arbor-muted); }
+.arbor-app .arbor-toast-dismiss:hover { color: var(--arbor-ink); }
+
 /* ─── Utilities ──────────────────────────────────────────────────────────── */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -330,14 +238,6 @@ body {
 .arbor-app ::-webkit-scrollbar-track    { background: transparent; }
 .arbor-app ::-webkit-scrollbar-thumb    { background: var(--arbor-rule-strong); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
 .arbor-app ::-webkit-scrollbar-thumb:hover { background: var(--arbor-faint); }
-
-/* ─── Status Colours ─────────────────────────────────────────────────────── */
-.arbor-app [class*="text-green-400"],
-.arbor-app [class*="text-green-500"] { color: var(--arbor-clay-deep) !important; }
-.arbor-app [class*="bg-green-500"]:not([class*="/"]) { background-color: var(--arbor-clay) !important; }
-.arbor-app [class*="bg-green-500/"]  { background-color: var(--arbor-green-soft) !important; }
-.arbor-app [class*="text-red-"]      { color: var(--arbor-danger) !important; }
-.arbor-app [class*="bg-red-500/"]    { background-color: var(--arbor-pink-soft) !important; }
 
 /* ─── Stagger Entry Animations ────────────────────────────────────────────── */
 @keyframes arbor-fade-up {
@@ -362,7 +262,6 @@ body {
 /* ─── Progress / Range ────────────────────────────────────────────────────── */
 .arbor-app input[type="range"]    { accent-color: var(--arbor-clay); }
 .arbor-app input[type="checkbox"] { accent-color: var(--arbor-clay); }
-.arbor-app [class*="bg-[#d7aa55]"][style*="width"] { background-color: var(--arbor-clay) !important; background-image: none !important; }
 
 /* ─── Pulse animation override ────────────────────────────────────────────── */
 .arbor-app .animate-pulse:not(button):not(span[class*="bg-purple"]) {

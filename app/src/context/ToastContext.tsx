@@ -11,10 +11,11 @@ type ToastContextValue = {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const STYLES: Record<ToastType, { ring: string; icon: React.ReactNode }> = {
-  success: { ring: "border-emerald-500/40", icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" /> },
-  error: { ring: "border-[#e2562d]/40", icon: <AlertTriangle className="w-4 h-4 text-[#e2562d]" /> },
-  info: { ring: "border-blue-500/40", icon: <Info className="w-4 h-4 text-blue-400" /> },
+// TODO(m5): gate toast motion on prefers-reduced-motion
+const STYLES: Record<ToastType, { border: string; icon: React.ReactNode }> = {
+  success: { border: "rgba(52,178,119,0.40)", icon: <CheckCircle2 className="w-4 h-4" style={{ color: "var(--arbor-clay-deep)" }} /> },
+  error: { border: "rgba(214,86,111,0.40)", icon: <AlertTriangle className="w-4 h-4" style={{ color: "var(--arbor-danger)" }} /> },
+  info: { border: "rgba(63,140,201,0.40)", icon: <Info className="w-4 h-4" style={{ color: "var(--arbor-sky)" }} /> },
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -42,11 +43,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 40 }}
-              className={`bg-[#141821] border ${STYLES[t.type].ring} rounded-2xl px-4 py-3 shadow-2xl flex items-start gap-3 text-sm text-white`}
+              className="border rounded-2xl px-4 py-3 shadow-2xl flex items-start gap-3 text-sm"
+              style={{
+                background: "var(--arbor-paper-elevated)",
+                borderColor: STYLES[t.type].border,
+                color: "var(--arbor-ink)",
+              }}
             >
               {STYLES[t.type].icon}
-              <span className="flex-1 leading-snug">{t.message}</span>
-              <button onClick={() => remove(t.id)} className="text-[#a8a093] hover:text-white" aria-label="Dismiss">
+              <span className="flex-1 leading-snug" style={{ color: "var(--arbor-ink)" }}>{t.message}</span>
+              <button onClick={() => remove(t.id)} className="arbor-toast-dismiss" aria-label="Dismiss">
                 <X className="w-3.5 h-3.5" />
               </button>
             </motion.div>

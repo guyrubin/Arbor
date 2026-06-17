@@ -22,8 +22,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="arbor-app min-h-screen flex items-center justify-center text-[#a8a093]">
-        <RefreshCw className="w-5 h-5 animate-spin text-[#d7aa55]" />
+      <div
+        className="arbor-app min-h-screen flex items-center justify-center"
+        style={{ color: "var(--arbor-muted)" }}
+        role="status"
+        aria-label="Loading"
+      >
+        <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-clay)" }} />
       </div>
     );
   }
@@ -34,7 +39,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 function ProductionAuthConfigError() {
   return (
-    <div className="arbor-app min-h-screen flex items-center justify-center px-6" style={{ background: "var(--arbor-bg)" }}>
+    <div className="arbor-app min-h-screen flex items-center justify-center px-6" style={{ background: "var(--arbor-paper)" }}>
       <div className="w-full max-w-xl rounded-2xl p-6 shadow-sm" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
         <div className="flex items-start gap-3">
           <div className="rounded-2xl p-2" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
@@ -63,8 +68,13 @@ function ProfileGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="arbor-app min-h-screen flex items-center justify-center text-[#a8a093]">
-        <RefreshCw className="w-5 h-5 animate-spin text-[#d7aa55]" />
+      <div
+        className="arbor-app min-h-screen flex items-center justify-center"
+        style={{ color: "var(--arbor-muted)" }}
+        role="status"
+        aria-label="Loading"
+      >
+        <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-clay)" }} />
       </div>
     );
   }
