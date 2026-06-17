@@ -12,8 +12,9 @@ import { getStorage, type FirebaseStorage } from "firebase/storage";
 /**
  * Firebase client initialization. Reads VITE_FIREBASE_* env vars (exposed to the
  * browser by Vite). When the config is absent — e.g. local sandbox mode — Firebase
- * is left uninitialized and `firebaseEnabled` is false, so the app falls back to an
- * open, local-only experience instead of hard-gating behind a login it cannot serve.
+ * is left uninitialized and `firebaseEnabled` is false. Local development falls
+ * back to an open, local-only experience; hosted production fails closed because
+ * the API requires Firebase ID tokens.
  */
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -23,9 +24,26 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-export const firebaseEnabled = Boolean(
-  firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId
-);
+const requiredClientConfig = {
+  VITE_FIREBASE_API_KEY: firebaseConfig.apiKey,
+  VITE_FIREBASE_AUTH_DOMAIN: firebaseConfig.authDomain,
+  VITE_FIREBASE_PROJECT_ID: firebaseConfig.projectId,
+  VITE_FIREBASE_APP_ID: firebaseConfig.appId,
+};
+
+const isLocalHost = () => {
+  if (typeof window === "undefined") return true;
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
+    || window.location.hostname.endsWith(".localhost");
+};
+
+export const missingFirebaseClientConfig = Object.entries(requiredClientConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+
+export const firebaseEnabled = missingFirebaseClientConfig.length === 0;
+export const firebaseRequiredForHostedApp = Boolean(import.meta.env.PROD && !isLocalHost());
+export const firebaseClientMisconfigured = firebaseRequiredForHostedApp && !firebaseEnabled;
 
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;

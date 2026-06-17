@@ -8,6 +8,9 @@
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="he" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-he.html" />
     <xhtml:link rel="alternate" hreflang="en" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-de.html" />
+    <xhtml:link rel="alternate" hreflang="nl" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-nl.html" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-fr.html" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://arborprd-westeu.web.app/marketing/" />
   </url>
   <url>
@@ -17,6 +20,9 @@
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="he" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-he.html" />
     <xhtml:link rel="alternate" hreflang="en" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-de.html" />
+    <xhtml:link rel="alternate" hreflang="nl" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-nl.html" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-fr.html" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://arborprd-westeu.web.app/marketing/" />
   </url>
   <url>
@@ -26,6 +32,45 @@
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="he" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-he.html" />
     <xhtml:link rel="alternate" hreflang="en" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-de.html" />
+    <xhtml:link rel="alternate" hreflang="nl" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-nl.html" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-fr.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arborprd-westeu.web.app/marketing/" />
+  </url>
+  <url>
+    <loc>https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-de.html</loc>
+    <lastmod>2026-06-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="he" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-he.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-de.html" />
+    <xhtml:link rel="alternate" hreflang="nl" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-nl.html" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-fr.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arborprd-westeu.web.app/marketing/" />
+  </url>
+  <url>
+    <loc>https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-nl.html</loc>
+    <lastmod>2026-06-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="he" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-he.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-de.html" />
+    <xhtml:link rel="alternate" hreflang="nl" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-nl.html" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-fr.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://arborprd-westeu.web.app/marketing/" />
+  </url>
+  <url>
+    <loc>https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-fr.html</loc>
+    <lastmod>2026-06-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="he" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-he.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-de.html" />
+    <xhtml:link rel="alternate" hreflang="nl" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-nl.html" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-fr.html" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://arborprd-westeu.web.app/marketing/" />
   </url>
   <url>

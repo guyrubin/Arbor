@@ -99,11 +99,11 @@ export const createApp = (config: ArborConfig) => {
   app.use("/api", createAuthMiddleware(config));
   // Per-user hourly cap on the AI-generating endpoints (cost guardrail).
   app.use(
-    ["/api/chat", "/api/council", "/api/generate-plan", "/api/generate-story", "/api/analyze-behavior", "/api/generate-handoff", "/api/digest"],
+    ["/api/chat", "/api/council", "/api/vision", "/api/generate-plan", "/api/generate-story", "/api/analyze-behavior", "/api/generate-handoff", "/api/digest"],
     createAiQuota(counters)
   );
-  // MON-1: free-tier coach meter + Plus-only feature gates. No-ops until
-  // ENFORCE_ENTITLEMENTS=true (everyone resolves to Plus during the beta).
+  // MON-1: free-tier coach meter + Plus-only feature gates. Production enforces
+  // by default; local beta can still opt out with ENFORCE_ENTITLEMENTS=false.
   app.use(["/api/chat", "/api/council"], createCoachMeter(entitlementStore, counters));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));

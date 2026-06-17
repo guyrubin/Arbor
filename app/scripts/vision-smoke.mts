@@ -5,10 +5,14 @@
  *
  *   npx tsx scripts/vision-smoke.mts
  */
+import dotenv from "dotenv";
 import zlib from "node:zlib";
 import { Type } from "@google/genai";
 import { loadConfig } from "../src/config/env.js";
-import { createModelProvider } from "../src/ai/modelRouter.js";
+import { createModelProvider, modelForRoute } from "../src/ai/modelRouter.js";
+
+dotenv.config();
+dotenv.config({ path: ".env.local", override: true });
 
 // --- minimal solid-colour RGB PNG encoder ---
 const crcTable = (() => {
@@ -43,7 +47,7 @@ const solidPng = (size: number, [r, g, b]: [number, number, number]) => {
 };
 
 const run = async () => {
-  process.env.MODEL_PROVIDER = "vertex";
+  process.env.MODEL_PROVIDER ||= "vertex";
   process.env.GCP_PROJECT_ID ||= "arborprd-westeu";
   process.env.FIREBASE_PROJECT_ID ||= "arborprd-westeu";
   process.env.GCP_REGION ||= "europe-west4";
@@ -56,7 +60,8 @@ const run = async () => {
 
   const png = solidPng(96, [20, 160, 90]); // a clear green
   const data = png.toString("base64");
-  console.log(`[vision-smoke] sending ${png.length}-byte green PNG to ${config.vertexModelAnalysis} @ ${config.vertexLocation}`);
+  const model = modelForRoute(config, "analysis_structured");
+  console.log(`[vision-smoke] sending ${png.length}-byte green PNG to ${model} (provider: ${config.modelProvider})`);
 
   const result = await provider.generateJson({
     route: "analysis_structured",

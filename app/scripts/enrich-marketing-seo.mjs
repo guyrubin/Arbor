@@ -4,6 +4,45 @@ import path from "node:path";
 const root = path.resolve("public/marketing");
 const origin = "https://arborprd-westeu.web.app";
 const logo = `${origin}/brand/arbor-mark-transparent.png`;
+const supportedLanguages = ["he", "en", "de", "nl", "fr"];
+
+const localeMeta = {
+  he: {
+    appDescription:
+      "Arbor היא מערכת הפעלה להתפתחות הילד: זיכרון חי, הכוונה ממומחים, משחק יומי, סיפורים אישיים וסיכום מקצועי מאושר להורה.",
+    audience: "הורים לילדים צעירים",
+    guidesName: "מדריכים",
+    guidesPath: "guides.html",
+  },
+  en: {
+    appDescription:
+      "Arbor is an operating system for child development: living memory, expert guidance, daily play, personalized stories, and parent-approved professional handoff.",
+    audience: "parents of young children",
+    guidesName: "Guides",
+    guidesPath: "guides-en.html",
+  },
+  de: {
+    appDescription:
+      "Arbor ist ein Betriebssystem für kindliche Entwicklung: lebendige Erinnerung, fundierte Orientierung, tägliches Spiel, personalisierte Geschichten und eine von Eltern freigegebene professionelle Übergabe.",
+    audience: "Eltern junger Kinder",
+    guidesName: "Guides",
+    guidesPath: "guides-en.html",
+  },
+  nl: {
+    appDescription:
+      "Arbor is een besturingssysteem voor kinderontwikkeling: levend geheugen, deskundige begeleiding, dagelijks spel, persoonlijke verhalen en een door ouders goedgekeurde professionele overdracht.",
+    audience: "ouders van jonge kinderen",
+    guidesName: "Guides",
+    guidesPath: "guides-en.html",
+  },
+  fr: {
+    appDescription:
+      "Arbor est un système de pilotage pour le développement de l'enfant: mémoire vivante, repères experts, jeu quotidien, histoires personnalisées et dossier professionnel validé par les parents.",
+    audience: "parents de jeunes enfants",
+    guidesName: "Guides",
+    guidesPath: "guides-en.html",
+  },
+};
 
 async function listHtmlFiles(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -24,18 +63,35 @@ function toPublicPath(file) {
   return `/${path.relative(path.resolve("public"), file).replaceAll(path.sep, "/")}`;
 }
 
+function pageLanguage({ publicPath, htmlLang }) {
+  const landingLocale = publicPath.match(/arbor-marketing-landing-page-(he|en|de|nl|fr)\.html$/)?.[1];
+  const sectionLocale = publicPath.match(/\/marketing\/(he|en)\//)?.[1];
+  const resolvedLang =
+    landingLocale
+    ?? sectionLocale
+    ?? (publicPath.endsWith("/guides.html") || publicPath.endsWith("/marketing/index.html")
+      ? "he"
+      : htmlLang.slice(0, 2));
+
+  return supportedLanguages.includes(resolvedLang) ? resolvedLang : "en";
+}
+
+function isLandingPage(publicPath) {
+  return publicPath.endsWith("/marketing/index.html")
+    || /\/arbor-marketing-landing-page-(he|en|de|nl|fr)\.html$/.test(publicPath);
+}
+
 function jsonLdFor({ file, html }) {
   const publicPath = toPublicPath(file);
   const canonical = pick(/<link\s+rel=["']canonical["']\s+href=["']([^"']+)["'][^>]*>/i, html)
     || `${origin}${publicPath}`;
   const title = pick(/<title>([\s\S]*?)<\/title>/i, html);
   const description = pick(/<meta\s+name=["']description["']\s+content=["']([^"']*)["'][^>]*>/i, html);
-  const lang = pick(/<html[^>]*\slang=["']([^"']+)["']/i, html) || "en";
-  const isHebrew = lang.startsWith("he") || publicPath.includes("/he/") || publicPath.endsWith("guides.html");
+  const htmlLang = pick(/<html[^>]*\slang=["']([^"']+)["']/i, html) || "en";
+  const lang = pageLanguage({ publicPath, htmlLang });
+  const locale = localeMeta[lang] ?? localeMeta.en;
   const isGuideHub = publicPath.endsWith("/guides.html") || publicPath.endsWith("/guides-en.html");
-  const isLanding = publicPath.endsWith("/marketing/index.html")
-    || publicPath.endsWith("/arbor-marketing-landing-page-he.html")
-    || publicPath.endsWith("/arbor-marketing-landing-page-en.html");
+  const isLanding = isLandingPage(publicPath);
 
   const pageId = `${canonical}#webpage`;
   const appId = `${origin}/#software`;
@@ -60,7 +116,7 @@ function jsonLdFor({ file, html }) {
       "name": "Arbor",
       "url": origin,
       "publisher": { "@id": orgId },
-      "inLanguage": ["he", "en"],
+      "inLanguage": supportedLanguages,
     },
     {
       "@type": "SoftwareApplication",
@@ -70,13 +126,11 @@ function jsonLdFor({ file, html }) {
       "operatingSystem": "Web",
       "url": `${origin}/marketing/`,
       "image": logo,
-      "description": isHebrew
-        ? "Arbor היא מערכת הפעלה להתפתחות הילד: זיכרון חי, הכוונה ממומחים, משחק יומי, סיפורים אישיים וסיכום מקצועי מאושר להורה."
-        : "Arbor is an operating system for child development: living memory, expert guidance, daily play, personalized stories, and parent-approved professional handoff.",
+      "description": locale.appDescription,
       "publisher": { "@id": orgId },
       "audience": {
         "@type": "Audience",
-        "audienceType": isHebrew ? "הורים לילדים צעירים" : "parents of young children",
+        "audienceType": locale.audience,
       },
       "offers": {
         "@type": "Offer",
@@ -101,7 +155,7 @@ function jsonLdFor({ file, html }) {
       "url": logo,
     },
     "publisher": { "@id": orgId },
-    "inLanguage": isHebrew ? "he" : "en",
+    "inLanguage": lang,
     "dateModified": "2026-06-17",
   });
 
@@ -115,7 +169,7 @@ function jsonLdFor({ file, html }) {
       "author": { "@id": orgId },
       "publisher": { "@id": orgId },
       "dateModified": "2026-06-17",
-      "inLanguage": isHebrew ? "he" : "en",
+      "inLanguage": lang,
     });
   }
 
@@ -123,11 +177,11 @@ function jsonLdFor({ file, html }) {
     { name: "Arbor", item: `${origin}/marketing/` },
   ];
   if (isGuideHub) {
-    crumbs.push({ name: isHebrew ? "מדריכים" : "Guides", item: canonical });
+    crumbs.push({ name: locale.guidesName, item: canonical });
   } else if (!isLanding) {
     crumbs.push({
-      name: isHebrew ? "מדריכים" : "Guides",
-      item: `${origin}/marketing/${isHebrew ? "guides.html" : "guides-en.html"}`,
+      name: locale.guidesName,
+      item: `${origin}/marketing/${locale.guidesPath}`,
     });
     crumbs.push({ name: title.replace(/\s+\|\s+Arbor.*$/i, ""), item: canonical });
   }

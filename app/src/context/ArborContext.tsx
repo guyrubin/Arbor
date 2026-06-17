@@ -39,6 +39,16 @@ const writeLS = (key: string, value: string) => {
   }
 };
 
+const renderApiConnectionError = (message: string) => {
+  const reason = message || "An exception occurred while connecting to Arbor services.";
+  const authHint = /failed_precondition|requires an index|firestore\/indexes/i.test(reason)
+    ? "Arbor couldn't read your child's memory because a database index is still building. This is a server-side setup step, not an API-key issue — please try again in a few minutes."
+    : /authorization|unauthorized|firebase id token/i.test(reason)
+    ? "Refresh the page and sign in again. If the production site shows Sandbox Parent, the browser build is missing Firebase client configuration."
+    : "If this continues, check the Arbor API deployment and model provider configuration.";
+  return `### Connection Error\nCould not fetch response from the server.\n\n**Reason:** ${reason}\n\n${authHint}`;
+};
+
 export type ActiveTab =
   // existing leaf views (preserved)
   | "overview"
@@ -266,13 +276,13 @@ Respond with EXACTLY three short markdown items:
           language: getAiLanguage(),
         }),
       });
-      if (!res.ok) throw new Error("Fetch failed");
+      if (!res.ok) throw new Error((await res.text().catch(() => "")) || `Request failed (${res.status})`);
       const data = await res.json();
       setInlineCoRegulationScripts((prev) => ({ ...prev, [log.id]: data.text }));
     } catch (err: any) {
       setInlineCoRegulationScripts((prev) => ({
         ...prev,
-        [log.id]: `### Error Generating Guideline\nCould not fetch response from server.\n\nVerify that your **Google Gemini API Key** is configured in \`.env.local\` to connect real AI insights.`,
+        [log.id]: renderApiConnectionError(err?.message),
       }));
     } finally {
       setIsGeneratingInlineScript((prev) => ({ ...prev, [log.id]: false }));
@@ -307,13 +317,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
           language: getAiLanguage(),
         }),
       });
-      if (!res.ok) throw new Error("Fetch failed");
+      if (!res.ok) throw new Error((await res.text().catch(() => "")) || `Request failed (${res.status})`);
       const data = await res.json();
       setMilestoneAnalysisOfGaps(data.text);
-    } catch (err) {
-      setMilestoneAnalysisOfGaps(
-        "### Guidance Error\nCould not fetch developmental recommendations. Verify your Google Gemini API Key is saved correctly in `.env.local`."
-      );
+    } catch (err: any) {
+      setMilestoneAnalysisOfGaps(renderApiConnectionError(err?.message));
     } finally {
       setIsAnalyzingMilestones(false);
     }
@@ -599,7 +607,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         ...prev,
         {
           sender: "ai",
-          text: `### Connection Error\nCould not fetch response from the server.\n\n**Reason:** ${err.message}\n\nPlease verify that your **Google Gemini API Key** is saved correctly in \`.env.local\`.`,
+          text: renderApiConnectionError(err.message),
         },
       ]);
     } finally {

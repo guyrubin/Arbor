@@ -10,10 +10,16 @@ Arbor is not a diagnostic tool, doctor, therapist, or emergency service. It is p
 
 - [Hebrew marketing page](https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-he.html): Hebrew positioning and product narrative for parents, professionals, and organizations.
 - [English marketing page](https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html): English overview of Arbor's child-development operating system.
+- [German marketing page](https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-de.html): German product narrative for parents, professionals, and organizations.
+- [Dutch marketing page](https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-nl.html): Dutch product narrative for parents, professionals, and organizations.
+- [French marketing page](https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-fr.html): French product narrative for parents, professionals, and organizations.
 - [Hebrew guide hub](https://arborprd-westeu.web.app/marketing/guides.html): All Hebrew Arbor SEO guides in one place.
 - [English guide hub](https://arborprd-westeu.web.app/marketing/guides-en.html): All English Arbor SEO guides in one place.
 - [Hebrew Markdown summary](https://arborprd-westeu.web.app/marketing/arbor-he.md): Clean machine-readable Hebrew summary.
 - [English Markdown summary](https://arborprd-westeu.web.app/marketing/arbor-en.md): Clean machine-readable English summary.
+- [German Markdown summary](https://arborprd-westeu.web.app/marketing/arbor-de.md): Clean machine-readable German summary.
+- [Dutch Markdown summary](https://arborprd-westeu.web.app/marketing/arbor-nl.md): Clean machine-readable Dutch summary.
+- [French Markdown summary](https://arborprd-westeu.web.app/marketing/arbor-fr.md): Clean machine-readable French summary.
 - [Application](https://arborprd-westeu.web.app/): Private beta application.
 
 ## Intent Pages

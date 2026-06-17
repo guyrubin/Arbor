@@ -65,6 +65,25 @@ export const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
   return map[route];
 };
 
+const isClaudeVertexModel = (model: string) => /^claude-/i.test(model);
+
+export const modelForGeminiRequest = (config: ArborConfig, route: ModelRoute, images?: ImagePart[]) => {
+  const routeModel = modelForRoute(config, route);
+  if (!images?.length || !isClaudeVertexModel(routeModel)) return routeModel;
+
+  const multimodalModel = [
+    config.vertexModelAnalysis,
+    config.vertexModelStory,
+    config.vertexModelHandoff,
+    config.geminiModel
+  ].find((model) => model && !isClaudeVertexModel(model));
+
+  if (!multimodalModel) {
+    throw new Error("No Gemini model is configured for multimodal image requests.");
+  }
+  return multimodalModel;
+};
+
 export const routeDecisionFor = (config: ArborConfig, route: ModelRoute): RouteDecision => {
   if (config.modelProvider === "gemini_dev") {
     return { route, provider: "gemini_dev", model: config.geminiModel };
@@ -102,7 +121,7 @@ export class GeminiDevProvider implements ModelProvider {
   async generateJson(options: GenerateJsonOptions) {
     this.assertApiKey();
     const response = await this.ai.models.generateContent({
-      model: modelForRoute(this.config, options.route),
+      model: modelForGeminiRequest(this.config, options.route, options.images),
       contents: buildGenAiContents(options.prompt, options.images) as any,
       config: {
         responseMimeType: "application/json",
@@ -116,8 +135,8 @@ export class GeminiDevProvider implements ModelProvider {
   async *generateJsonStream(options: GenerateJsonOptions) {
     this.assertApiKey();
     const responseStream = await this.ai.models.generateContentStream({
-      model: modelForRoute(this.config, options.route),
-      contents: options.prompt,
+      model: modelForGeminiRequest(this.config, options.route, options.images),
+      contents: buildGenAiContents(options.prompt, options.images) as any,
       config: {
         responseMimeType: "application/json",
         responseSchema: options.schema as Schema,
@@ -155,7 +174,7 @@ export class VertexGeminiProvider {
   constructor(private readonly config: ArborConfig) {}
 
   async generateJson(options: GenerateJsonOptions) {
-    const model = await this.getModel(options.route);
+    const model = await this.getModel(options.route, options.images);
     const result = await model.generateContent({
       contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
       generationConfig: {
@@ -169,9 +188,9 @@ export class VertexGeminiProvider {
   }
 
   async *generateJsonStream(options: GenerateJsonOptions) {
-    const model = await this.getModel(options.route);
+    const model = await this.getModel(options.route, options.images);
     const result = await model.generateContentStream({
-      contents: [{ role: "user", parts: [{ text: options.prompt }] }],
+      contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: options.schema,
@@ -197,7 +216,7 @@ export class VertexGeminiProvider {
     }
   }
 
-  private async getModel(route: ModelRoute) {
+  private async getModel(route: ModelRoute, images?: ImagePart[]) {
     if (!this.vertexPromise) {
       this.vertexPromise = import("@google-cloud/vertexai").then(({ VertexAI }) => new VertexAI({
         project: this.config.gcpProjectId,
@@ -205,7 +224,7 @@ export class VertexGeminiProvider {
       }));
     }
     const vertex = await this.vertexPromise;
-    return vertex.getGenerativeModel({ model: modelForRoute(this.config, route) });
+    return vertex.getGenerativeModel({ model: modelForGeminiRequest(this.config, route, images) });
   }
 }
 
@@ -223,7 +242,7 @@ export class VertexModelProvider implements ModelProvider {
   }
 
   generateJson(options: GenerateJsonOptions) {
-    return this.providerFor(options.route).generateJson(options);
+    return this.providerFor(options).generateJson(options);
   }
 
   streamText(options: StreamTextOptions) {
@@ -232,11 +251,12 @@ export class VertexModelProvider implements ModelProvider {
   }
 
   generateJsonStream(options: GenerateJsonOptions) {
-    return this.providerFor(options.route).generateJsonStream(options);
+    return this.providerFor(options).generateJsonStream(options);
   }
 
-  private providerFor(route: ModelRoute) {
-    return /^claude-/i.test(modelForRoute(this.config, route)) ? this.claude : this.gemini;
+  private providerFor(options: GenerateJsonOptions) {
+    if (options.images?.length) return this.gemini;
+    return isClaudeVertexModel(modelForRoute(this.config, options.route)) ? this.claude : this.gemini;
   }
 }
 
