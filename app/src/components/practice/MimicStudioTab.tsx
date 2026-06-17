@@ -7,6 +7,7 @@ import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { PlayShell, PlayHeader, PlayButton } from "../ui/playkit";
 import { MIMIC_PACKS, type MimicPack } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
+import MimicMatch from "./MimicMatch";
 import type { MimicSession } from "../../types";
 import { track } from "../../lib/analytics";
 
@@ -193,6 +194,9 @@ export default function MimicStudioTab() {
           Every attempt counts — in video-modeling practice, the imitation effort matters more than a perfect copy.
         </p>
       </SectionCard>
+
+      {/* On-device MediaPipe expression mimicry (geometry only, nothing leaves the device) */}
+      <MimicMatch childId={childProfile.id} name={first} />
     </PlayShell>
   );
 }

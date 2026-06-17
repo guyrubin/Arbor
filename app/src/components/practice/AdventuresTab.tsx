@@ -26,7 +26,7 @@ const SKILL_LABEL: Record<string, string> = {
  * Wrong answers get warm scaffolding and a retry — there is no "fail" state.
  */
 export default function AdventuresTab() {
-  const { childProfile } = useArbor();
+  const { childProfile, setActiveTab } = useArbor();
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
@@ -234,8 +234,11 @@ export default function AdventuresTab() {
             <PlayButton variant="soft" tone="lav" onClick={() => openScenario(scenario.id)}>
               <RotateCcw className="w-4 h-4" /> Play again
             </PlayButton>
-            <PlayButton tone="clay" onClick={() => setActiveId(null)}>
+            <PlayButton variant="soft" tone="clay" onClick={() => setActiveId(null)}>
               <Compass className="w-4 h-4" /> More adventures
+            </PlayButton>
+            <PlayButton tone="lav" onClick={() => setActiveTab("comics")}>
+              <Sparkles className="w-4 h-4" /> Make a hero comic
             </PlayButton>
           </Celebrate>
         </PlayPanel>

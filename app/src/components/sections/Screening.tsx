@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ClipboardCheck, ShieldCheck, Check, AlertTriangle, RefreshCw, FileText, Search, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ClipboardCheck, ShieldCheck, Check, AlertTriangle, RefreshCw, FileText, Search, ArrowRight, CheckCircle2, Eye } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
 import { PageHeader, SectionCard, cardCls, Chip, IconBadge, TrustSafetyBar } from "../ui/kit";
 import { bandForAge, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
+import { deriveMonitoring, buildMonitoringReportDoc } from "../../lib/monitoring";
+import { openPrintableReport } from "../../lib/reportExport";
 
 type SavedScreening = ScreeningResult & { id: string };
 
@@ -19,11 +21,24 @@ const ANSWERS: { key: ScreenAnswer; label: string }[] = [
 /** Child Intelligence › Development Check — non-diagnostic, age-banded screener
  *  that surfaces "worth a professional conversation" areas and routes to care. */
 export default function Screening() {
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile, behaviorLogs, milestones, setActiveTab } = useArbor();
   const { toast } = useToast();
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
   const band = useMemo(() => bandForAge(childProfile.age), [childProfile.age]);
+
+  // Passive developmental-monitoring layer (Mission M8): derived from the child's
+  // own milestones + behavior logs, surfaced as calm, non-diagnostic watch notes.
+  const monitoring = useMemo(
+    () => deriveMonitoring({ ageYears: childProfile.age, milestones, behaviorLogs }, first),
+    [childProfile.age, milestones, behaviorLogs, first]
+  );
+
+  const exportMonitoring = () => {
+    const doc = buildMonitoringReportDoc(monitoring, childProfile.name, childProfile.age);
+    openPrintableReport(doc, childProfile.name);
+    toast("Opening a provider-ready summary to print or save as PDF", "info");
+  };
 
   const col = useChildCollection<SavedScreening>(childProfile.id, "screenings");
   const last = useMemo(
@@ -55,6 +70,46 @@ export default function Screening() {
       />
 
       <TrustSafetyBar note="Arbor is not a medical device and does not diagnose. This is a parent-awareness check — a conversation with a professional never hurts." />
+
+      {/* Passive developmental-monitoring layer — surveillance, never a test or diagnosis. */}
+      <SectionCard
+        title={t("monitor.title")}
+        icon={<Eye className="w-5 h-5" />}
+        tone={monitoring.elevated ? "yellow" : "mint"}
+        action={
+          monitoring.elevated ? (
+            <button
+              onClick={exportMonitoring}
+              className="inline-flex items-center gap-2 font-bold text-xs rounded-xl px-3.5 py-2 bg-white"
+              style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
+            >
+              <FileText className="w-3.5 h-3.5" /> {t("monitor.export")}
+            </button>
+          ) : undefined
+        }
+      >
+        <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+          {t("monitor.sub")}
+        </p>
+        {monitoring.elevated ? (
+          <div className="mt-3 space-y-2.5">
+            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{monitoring.headline}.</p>
+            {monitoring.watchAreas.map((d) => (
+              <div key={d.domain} className="rounded-2xl p-3.5" style={{ background: "var(--arbor-yellow-soft)" }}>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5" style={{ color: "var(--arbor-clay-deep)" }} />
+                  <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{d.label}</span>
+                </div>
+                <p className="text-[12.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{d.note}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-bold" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+            <Check className="w-3.5 h-3.5" /> {t("monitor.ontrack")}
+          </div>
+        )}
+      </SectionCard>
 
       {phase === "intro" && (
         <SectionCard title={`Check for ${first} · ${band.label}`} icon={<ClipboardCheck className="w-5 h-5" />} tone="mint">

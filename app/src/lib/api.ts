@@ -44,6 +44,23 @@ export async function authHeaders(extra: Record<string, string> = {}): Promise<R
   return headers;
 }
 
+/**
+ * MON-2: a 402 from a metered/Plus-gated endpoint is not a generic error — it's
+ * a conversion moment. request() throws this so the UI can open the paywall
+ * (with the suggested plan + which feature was hit) instead of showing an error.
+ */
+export class PaywallError extends Error {
+  readonly status = 402;
+  readonly plan?: "plus" | "family";
+  readonly feature?: string;
+  constructor(message: string, opts: { plan?: "plus" | "family"; feature?: string } = {}) {
+    super(message);
+    this.name = "PaywallError";
+    this.plan = opts.plan;
+    this.feature = opts.feature;
+  }
+}
+
 async function request<T>(url: string, method: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
     method,
@@ -52,11 +69,16 @@ async function request<T>(url: string, method: string, body?: unknown): Promise<
   });
   if (!res.ok) {
     let detail = "Request failed";
+    let errData: any = null;
     try {
-      const errData = await res.json();
+      errData = await res.json();
       detail = errData.details || errData.error || detail;
     } catch {
       /* non-JSON error body */
+    }
+    if (res.status === 402) {
+      const plan = errData?.upgrade?.plan === "family" ? "family" : "plus";
+      throw new PaywallError(detail, { plan, feature: errData?.upgrade?.feature });
     }
     throw new Error(detail);
   }
@@ -130,6 +152,17 @@ export const api = {
   // AVA-3: render a story-beat scene featuring the child's generated character.
   generateScene: (payload: { imagePrompt: string; avatar?: { dataUrl: string }; style?: AvatarStyle }) =>
     post<{ dataUrl: string }>("/api/generate-scene", payload),
+  // A3b: a full-page Hero Comic panel starring the child's hero (avatar reference).
+  generateComic: (payload: {
+    avatar?: { dataUrl: string };
+    heroName?: string;
+    sidekickName?: string;
+    theme?: string;
+    dialogue?: string;
+    sfx?: string[];
+    setting?: string;
+    style?: AvatarStyle;
+  }) => post<{ dataUrl: string }>("/api/generate-comic", payload),
   // Generative Cognitive Adventure personalized to the child (AdventureScenario shape).
   generateAdventure: (payload: { childProfile: ChildProfile; focusSkill?: string }) =>
     post<AdventureScenario>("/api/generate-adventure", payload),

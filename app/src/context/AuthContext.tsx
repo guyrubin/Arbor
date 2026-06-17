@@ -45,6 +45,29 @@ const toAuthUser = (u: User): AuthUser => ({
   photoURL: u.photoURL,
 });
 
+/** Map raw Firebase auth error codes to calm, parent-friendly copy (handoff P0.1).
+ *  Never surface "Firebase: Error (auth/…)" strings to a parent. */
+const friendlyAuthError = (err: any): string => {
+  switch (err?.code) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/invalid-email":
+      return "We couldn't sign you in. Please check your email and password, or request access.";
+    case "auth/user-not-found":
+      return "No Arbor account found for this email. Request access if you haven't been invited yet.";
+    case "auth/user-disabled":
+      return "This account has been disabled. Contact hello@arbor.app for help.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please wait a moment and try again, or reset your password.";
+    case "auth/network-request-failed":
+      return "We couldn't reach Arbor. Check your connection and try again.";
+    case "auth/popup-blocked":
+      return "Your browser blocked the sign-in popup. Allow popups for Arbor and try again.";
+    default:
+      return "Something went wrong signing you in. Please try again or request access.";
+  }
+};
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -69,7 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
     } catch (err: any) {
-      setError(err?.message || "Google sign-in failed.");
+      if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") return;
+      setError(friendlyAuthError(err));
       throw err;
     }
   };
@@ -80,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      setError(err?.message || "Email sign-in failed. Check your credentials.");
+      setError(friendlyAuthError(err));
       throw err;
     }
   };

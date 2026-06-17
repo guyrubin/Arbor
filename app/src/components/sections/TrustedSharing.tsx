@@ -4,7 +4,7 @@ import { Share2, ShieldCheck, Clock, X, Download, Trash2, History, Plus, Users, 
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { downloadJson } from "../../lib/childData";
-import { api } from "../../lib/api";
+import { api, PaywallError } from "../../lib/api";
 import type { ShareGrant, ShareRole } from "../../types";
 import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar } from "../ui/kit";
 
@@ -22,7 +22,7 @@ const expiryLabel = (g: ShareGrant) =>
 /** Care Network › Trusted Sharing — real, server-enforced sharing: scoped,
  *  time-boxed, revocable grants (incl. co-parents), plus what's shared with you. */
 export default function TrustedSharing() {
-  const { childProfile, behaviorLogs, actionPlans } = useArbor();
+  const { childProfile, behaviorLogs, actionPlans, openPaywall } = useArbor();
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
@@ -63,7 +63,8 @@ export default function TrustedSharing() {
       setAdding(false);
       await load();
     } catch (e: any) {
-      setAudit((a) => [`Could not create share: ${e.message}`, ...a]);
+      if (e instanceof PaywallError) openPaywall(e.feature, e.plan);
+      else setAudit((a) => [`Could not create share: ${e.message}`, ...a]);
     } finally {
       setBusy(null);
     }

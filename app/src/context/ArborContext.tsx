@@ -20,7 +20,7 @@ import {
   sampleBedtimeStory,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
-import { api, authHeaders, getAiLanguage } from "../lib/api";
+import { api, authHeaders, getAiLanguage, PaywallError } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 import { track } from "../lib/analytics";
 import { trackFirstPlan } from "../lib/loopEvents";
@@ -76,6 +76,7 @@ export type ActiveTab =
   | "reports"        // Care Network › Reports
   | "masterclasses"  // Arbor Academy › Parent Masterclasses
   | "family"         // Arbor Academy › Family Formation
+  | "comics"         // Arbor Academy › Hero Comics (child-as-hero comic generator)
   // Practice Studio (Fall release: speech & language suite)
   | "speech"         // Practice Studio › Speech Coach (articulation)
   | "mimic"          // Practice Studio › Mimic Studio (imitation play)
@@ -94,7 +95,7 @@ export type ActiveTab =
 // working browser back/forward button.
 const VALID_TABS = new Set<string>([
   "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
-  "profile", "memory", "strengths", "screening", "timeline", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family",
+  "profile", "memory", "strengths", "screening", "timeline", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family", "comics",
   "speech", "mimic", "feelings", "missions", "journey", "adventures", "copilot",
   "development", "daily-play", "practice", "consult",
 ]);
@@ -205,6 +206,12 @@ function useArborState() {
   const [chatStreamStatus, setChatStreamStatus] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
+
+  // MON-2 paywall: a 402 (PaywallError) opens an inline upgrade prompt instead
+  // of surfacing as an error. Tracks which feature was hit + the suggested plan.
+  const [paywall, setPaywall] = useState<{ open: boolean; feature?: string; suggestedPlan?: "plus" | "family" }>({ open: false });
+  const openPaywall = (feature?: string, suggestedPlan?: "plus" | "family") => setPaywall({ open: true, feature, suggestedPlan });
+  const closePaywall = () => setPaywall((p) => ({ ...p, open: false }));
 
   // Form states: Log Behavior
   const [newLogType, setNewLogType] = useState<string>("Transition Refusal");
@@ -575,12 +582,13 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         // MON-1: 402 = free-tier coach meter exhausted → render the Plus upsell
         // inline instead of an error.
         if (res.status === 402) {
+          openPaywall(errData?.upgrade?.feature || "coach_unlimited", errData?.upgrade?.plan === "family" ? "family" : "plus");
           setChatMessages((prev) => [
             ...prev,
             {
               sender: "ai",
               text:
-                `### You've used today's free coaching\n${errData.details || "The free plan includes a daily number of coach messages."}\n\n**Arbor Plus** removes the limit and adds professional reports, advanced plans, and multiple children. Open **Settings → Your plan** to join the launch list — your question will still be here tomorrow.`,
+                `### You've used today's free coaching\n${errData.details || "The free plan includes a daily number of coach messages."}\n\nUpgrade to keep going — your question will still be here.`,
             },
           ]);
           return;
@@ -645,11 +653,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       track("coach_council", { lens: selectedLens, voices: data.council?.length || 0 });
     } catch (err: any) {
       console.error(err);
-      setApiError(err.message || "The scholar council could not be reached.");
-      setChatMessages((prev) => [
-        ...prev,
-        { sender: "ai", text: `### Council unavailable\n${err.message}` },
-      ]);
+      if (err instanceof PaywallError) {
+        openPaywall(err.feature, err.plan);
+      } else {
+        setApiError(err.message || "The scholar council could not be reached.");
+        setChatMessages((prev) => [
+          ...prev,
+          { sender: "ai", text: `### Council unavailable\n${err.message}` },
+        ]);
+      }
     } finally {
       setIsChatLoading(false);
       setChatStreamStatus(null);
@@ -754,7 +766,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       alert(`Action Plan successfully woven: "${planData.title}"`);
     } catch (err: any) {
       console.error(err);
-      setApiError(err.message || "Failed to generate developmental Action Plan.");
+      if (err instanceof PaywallError) openPaywall(err.feature || "advancedPlans", err.plan);
+      else setApiError(err.message || "Failed to generate developmental Action Plan.");
     } finally {
       setIsPlanGenerating(false);
     }
@@ -796,7 +809,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       setSchoolBrief(briefData);
     } catch (err: any) {
       console.error(err);
-      setApiError(err.message || "Failed to generate professional school ready brief.");
+      if (err instanceof PaywallError) openPaywall(err.feature || "professionalReports", err.plan);
+      else setApiError(err.message || "Failed to generate professional school ready brief.");
     } finally {
       setIsGeneratingBrief(false);
     }
@@ -884,6 +898,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     isChatLoading,
     chatStreamStatus,
     apiError,
+    paywall,
+    openPaywall,
+    closePaywall,
     newLogType,
     setNewLogType,
     newLogIntensity,

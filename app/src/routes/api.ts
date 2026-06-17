@@ -9,7 +9,7 @@ import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toCh
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 import { resolveScholar } from "../services/scholars.js";
 import { selectCouncil, runScholarTakes, renderCouncilForSynthesis } from "../services/council.js";
-import { buildGrant, type ShareStore } from "../sharing/shares.js";
+import { buildGrant, isShareActive, type ShareStore } from "../sharing/shares.js";
 import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type } from "@google/genai";
@@ -124,6 +124,31 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     if (!childId || !recipientEmail) {
       res.status(400).json({ error: "childId and recipientEmail are required" });
       return;
+    }
+    // MON-2: the co-parent seat is the Family tier's differentiator. Gate it on
+    // the entitlement's coParentSeats (Free/Plus = 0, Family = 1) and the count of
+    // active co-parent grants the owner already holds. 402 → client opens paywall.
+    if (role === "co_parent") {
+      const entitlement = await resolveEntitlement(entitlementStore, { uid, email });
+      const seats = entitlement.limits.coParentSeats;
+      if (seats < 1) {
+        res.status(402).json({
+          error: "Co-parent sharing is an Arbor Family feature",
+          details: "Upgrade to Arbor Family to invite a co-parent to share your account.",
+          upgrade: { feature: "coParentSeats", plan: "family" },
+        });
+        return;
+      }
+      const activeCoParents = (await shareStore.listByOwner(uid))
+        .filter((g) => g.role === "co_parent" && isShareActive(g)).length;
+      if (activeCoParents >= seats) {
+        res.status(402).json({
+          error: "Co-parent seat limit reached",
+          details: `Your plan includes ${seats} co-parent seat${seats === 1 ? "" : "s"}. Revoke the current co-parent before inviting another.`,
+          upgrade: { feature: "coParentSeats", plan: "family" },
+        });
+        return;
+      }
     }
     try {
       const grant = await shareStore.create(
@@ -852,6 +877,67 @@ Gentle, non-scary, age-appropriate for ages 4-8. Calm, soft palette. No text, wo
     } catch (error: any) {
       logger.error("Arbor Scene Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Couldn't illustrate this scene", details: error.message });
+    }
+  });
+
+  // HERO COMIC (A3b): a single dynamic full-page comic-book panel that stars the
+  // child's own stylized hero (avatar passed as a consistency reference, never a
+  // raw face, never stored). Cel-shaded premium comic style with short SFX +
+  // one dialogue line — wholesome and age-appropriate. Powered by the image model
+  // (Nano Banana), which auto-applies SynthID + C2PA provenance.
+  router.post("/generate-comic", async (req, res) => {
+    const { avatar, heroName, sidekickName, theme, dialogue, sfx, setting, style } = req.body ?? {};
+    const safeName = String(heroName ?? "the hero").slice(0, 40);
+    const themeText = String(theme ?? "a brave, kind everyday adventure").slice(0, 200);
+
+    const escalationMatch = screenForImmediateEscalation({ note: `${themeText} ${dialogue ?? ""}` });
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `Let's pause this comic. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category
+      });
+      return;
+    }
+
+    let referenceImage: { data: string; mimeType: string } | null = null;
+    if (avatar) {
+      const parsed = parseDataUrl(avatar?.dataUrl ?? avatar);
+      if (parsed && parsed.mimeType.startsWith("image/")) {
+        const approxBytes = Math.floor((parsed.data.length * 3) / 4);
+        if (approxBytes <= 6 * 1024 * 1024) referenceImage = parsed;
+      }
+    }
+
+    const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.comichero;
+    const sfxLine = Array.isArray(sfx) && sfx.length
+      ? sfx.slice(0, 4).map((s: unknown) => String(s).slice(0, 12)).join(", ")
+      : "KA-POW!, ZAP!, WHOOSH!";
+    // Dialogue bubble is OPTIONAL: standalone comics pass a line; embedded story
+    // panels omit it (the narration caption carries the words) so text isn't doubled.
+    const dialogueLine = dialogue === undefined || dialogue === null ? "" : String(dialogue).slice(0, 120);
+
+    const prompt = `Create a SINGLE dynamic full-page comic-book panel in a modern, premium cel-shaded comic/manga art style: bold clean ink linework, bright primary colors, strong radial action and speed lines, tiny glowing sparkle effects, energetic and heroic.
+Hero: ${stylePrompt}. Name: ${safeName}.
+${referenceImage
+  ? "The attached character is the HERO — feature this exact stylized character as the main, central figure, kept recognizable and consistent with the reference (same face, hair, suit)."
+  : "Feature a single friendly child superhero as the central figure."}
+${sidekickName ? `Include a friendly younger sidekick named ${String(sidekickName).slice(0, 40)} in a matching hero suit beside them.` : ""}
+Scene/theme: ${themeText}.
+Setting: ${String(setting ?? "a cozy, lived-in family home interior").slice(0, 160)}.
+Include comic sound-effects as stylized layered text floating in the scene: ${sfxLine}.
+${dialogueLine ? `Include ONE white speech bubble with the short, legible, friendly line: "${dialogueLine}".` : "Do not draw any speech bubbles or sentences — only the short sound-effect words."}
+Wholesome and age-appropriate for young children: confident and exciting, but NO real violence, weapons, blood, fear, or scary imagery. Keep all text short and clearly legible.`;
+
+    try {
+      const image = await modelProvider.generateImage({
+        prompt,
+        images: referenceImage ? [referenceImage] : undefined
+      });
+      res.json({ dataUrl: `data:${image.mimeType};base64,${image.data}` });
+    } catch (error: any) {
+      logger.error("Arbor Comic Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Couldn't create this comic", details: error.message });
     }
   });
 

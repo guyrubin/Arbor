@@ -58,5 +58,17 @@ service cloud.firestore {
     match /organizations/{organizationId}/{document=**} {
       allow read, write: if false;
     }
+
+    // MON-2 / COST-3: entitlements (billing state) and usageRollup (token spend)
+    // are written ONLY by the server via the Admin SDK, which bypasses these
+    // rules. Clients must never touch them directly — deny outright so a user
+    // cannot self-grant a plan or read aggregate usage/cost.
+    match /entitlements/{uid} {
+      allow read, write: if false;
+    }
+
+    match /usageRollup/{day} {
+      allow read, write: if false;
+    }
   }
 }

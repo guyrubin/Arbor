@@ -321,7 +321,10 @@ export type PracticeEventKind =
   | 'memory'            // memory-match round
   | 'vocab-naming'      // named an object
   | 'vocab-category'    // sorted/picked within a category
-  | 'expressive';       // open question / scene description / story starter
+  | 'expressive'        // open question / scene description / story starter
+  | 'phonics'           // matched a letter to its sound (early reading)
+  | 'sight-word'        // read/recognized a high-frequency sight word
+  | 'letter-trace';     // traced a letter path in the tracing mini-game
 
 export interface PracticeEvent {
   id: string;

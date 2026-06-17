@@ -77,6 +77,10 @@ export type EntitlementRecord = {
   currentPeriodEnd?: string | null;
   /** RevenueCat's stable cross-platform user id, for support/debugging. */
   rcOriginalAppUserId?: string | null;
+  /** Idempotency: the billing event id + its timestamp (ms). Writes for an event
+   *  not newer than the stored one are skipped (dedupes resends + out-of-order). */
+  lastEventId?: string;
+  lastEventTs?: number;
   updatedAt?: string;
 };
 
@@ -159,10 +163,16 @@ export class FirestoreEntitlementStore implements EntitlementStore {
     return (await this.getRecord(uid))?.plan ?? null;
   }
   async setEntitlement(uid: string, record: EntitlementRecord): Promise<void> {
-    await this.db.collection("entitlements").doc(uid).set(
-      { ...record, updatedAt: new Date().toISOString() },
-      { merge: true },
-    );
+    const ref = this.db.collection("entitlements").doc(uid);
+    // Idempotent write: in a transaction, skip events not newer than the last one
+    // applied — so RevenueCat resends and out-of-order deliveries can't regress state.
+    await this.db.runTransaction(async (tx) => {
+      const current = (await tx.get(ref)).data();
+      if (record.lastEventTs && current?.lastEventTs && current.lastEventTs >= record.lastEventTs) {
+        return;
+      }
+      tx.set(ref, { ...record, updatedAt: new Date().toISOString() }, { merge: true });
+    });
   }
 }
 

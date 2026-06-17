@@ -30,6 +30,8 @@ import { logger } from "./logger.js";
 
 /** Minimal shape of a RevenueCat webhook `event` (fields we read; many more exist). */
 export type RevenueCatEvent = {
+  id?: string;
+  event_timestamp_ms?: number | string;
   type?: string;
   app_user_id?: string;
   original_app_user_id?: string;
@@ -102,6 +104,8 @@ export const recordFromRevenueCat = (
     : null;
   const productId = event.product_id ?? null;
   const rcOriginalAppUserId = event.original_app_user_id ?? uid;
+  const lastEventId = event.id;
+  const lastEventTs = event.event_timestamp_ms ? Number(event.event_timestamp_ms) : undefined;
 
   if (REVOKING.has(type)) {
     return {
@@ -114,6 +118,8 @@ export const recordFromRevenueCat = (
         willRenew: false,
         currentPeriodEnd: periodEnd,
         rcOriginalAppUserId,
+        lastEventId,
+        lastEventTs,
       },
     };
   }
@@ -141,6 +147,8 @@ export const recordFromRevenueCat = (
       willRenew,
       currentPeriodEnd: periodEnd,
       rcOriginalAppUserId,
+      lastEventId,
+      lastEventTs,
     },
   };
 };

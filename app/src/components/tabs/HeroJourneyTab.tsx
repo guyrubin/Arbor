@@ -394,6 +394,7 @@ export default function HeroJourneyTab() {
           photoUrl={photoUrl}
           heroAvatarUrl={heroAvatarUrl}
           heroAvatarStyle={heroAvatarStyle}
+          heroName={childProfile.name?.split(" ")[0]}
           immersive={immersiveMode}
         />
       )}

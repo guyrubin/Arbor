@@ -14,6 +14,8 @@ import { ArborMark } from "../ui/ArborMark";
 import { TabSkeleton } from "../ui/Skeleton";
 import SearchModal from "../search/SearchModal";
 import SettingsModal from "./SettingsModal";
+import PaywallModal from "../billing/PaywallModal";
+import { refreshEntitlement } from "../../hooks/useEntitlement";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -41,6 +43,7 @@ const TrustedSharing = lazy(() => import("../sections/TrustedSharing"));
 const Reports = lazy(() => import("../sections/Reports"));
 const Masterclasses = lazy(() => import("../sections/Masterclasses"));
 const FamilyFormation = lazy(() => import("../sections/FamilyFormation"));
+const HeroComicsTab = lazy(() => import("../tabs/HeroComicsTab"));
 
 // Practice Studio (Fall release: speech & language suite).
 const SpeechCoachTab = lazy(() => import("../practice/SpeechCoachTab"));
@@ -81,6 +84,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   reports: Reports,
   masterclasses: Masterclasses,
   family: FamilyFormation,
+  comics: HeroComicsTab,
   speech: SpeechCoachTab,
   mimic: MimicStudioTab,
   feelings: FeelingsLabTab,
@@ -117,6 +121,28 @@ export default function Shell() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // MON-2: returning from hosted checkout (success URL carries ?billing=success).
+  // The RevenueCat webhook writes the entitlement async, so poll a few times until
+  // the plan flips, then confirm. Strip the param so a refresh doesn't re-trigger.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("billing") !== "success") return;
+    params.delete("billing");
+    const clean = window.location.pathname + (params.toString() ? `?${params}` : "") + window.location.hash;
+    try { window.history.replaceState(null, "", clean); } catch { /* noop */ }
+    toast(t("pw.activating"), "info");
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      tries += 1;
+      const ent = await refreshEntitlement();
+      if (ent.plan !== "free") { toast(t("pw.activated"), "success"); return; }
+      if (tries < 6) timer = setTimeout(() => void poll(), 2500);
+    };
+    void poll();
+    return () => clearTimeout(timer);
+  }, [toast, t]);
 
   return (
     // select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility)
@@ -263,6 +289,7 @@ export default function Shell() {
       <MobileNav />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <PaywallModal />
     </div>
   );
 }

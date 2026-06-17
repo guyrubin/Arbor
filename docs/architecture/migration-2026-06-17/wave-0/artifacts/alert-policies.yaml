@@ -1,0 +1,193 @@
+# OPS-1 — Cloud Monitoring alert policies as code (WAF migration 2026-06-17)
+#
+# Three alert policies + their backing log-based metrics, derived ENTIRELY from log
+# lines Arbor already emits (no new instrumentation, free-tier on existing logs):
+#
+#   (a) error-rate  — 5xx rate on the request-completion line (httpRequest.status >= 500)
+#   (b) latency     — p95 of the `latencyMs` field on the request-completion line
+#   (c) ai-failure  — AI call failures, from the ERROR line emitted around a model call
+#                     (and a companion volume metric off the `ai.usage` line)
+#
+# Region: all resources MUST stay in europe-west4 / EU log scope (GDPR/AVG residency —
+# see NL note). Do NOT create US-scoped log sinks or metric scopes.
+#
+# These are declarative. Apply with the gcloud commands in `applySteps` of the OPS-1
+# return, or via the (human-run) infra/monitoring/apply.sh script described in the design
+# doc. `${PROJECT_ID}` and `${NOTIFICATION_CHANNEL_ID}` are substituted at apply time.
+
+# ---------------------------------------------------------------------------
+# Log-based metrics (create FIRST — the policies reference them by type).
+# ---------------------------------------------------------------------------
+logBasedMetrics:
+  # 5xx counter — every request-completion ERROR line with an httpRequest.status >= 500.
+  - name: arbor_api_5xx
+    description: "Count of Arbor API responses with HTTP status >= 500 (request-completion log line)."
+    filter: |
+      resource.type="cloud_run_revision"
+      resource.labels.service_name="arbor-api"
+      jsonPayload.httpRequest.status>=500
+    metricKind: DELTA
+    valueType: INT64
+
+  # Total request counter — denominator for the error-RATE ratio.
+  - name: arbor_api_requests
+    description: "Count of all Arbor API request-completion log lines (has httpRequest.status)."
+    filter: |
+      resource.type="cloud_run_revision"
+      resource.labels.service_name="arbor-api"
+      jsonPayload.httpRequest.status>=100
+    metricKind: DELTA
+    valueType: INT64
+
+  # Request latency distribution — extracts the numeric latencyMs field.
+  - name: arbor_api_latency_ms
+    description: "Distribution of Arbor API request latency in milliseconds (latencyMs field)."
+    filter: |
+      resource.type="cloud_run_revision"
+      resource.labels.service_name="arbor-api"
+      jsonPayload.latencyMs>=0
+    metricKind: DELTA
+    valueType: DISTRIBUTION
+    valueExtractor: 'EXTRACT(jsonPayload.latencyMs)'
+    bucketOptions:
+      exponentialBuckets:
+        numFiniteBuckets: 64
+        growthFactor: 1.4
+        scale: 1.0
+
+  # AI-call failure counter — ERROR lines whose message names an AI/model failure.
+  # logger.error puts the stack into `message`; we match on the model-call error prefix
+  # the AI provider code logs (e.g. "ai.error" / "model call failed"). Tune the regex to
+  # the exact string the provider emits once OPS-1 wiring lands.
+  - name: arbor_ai_failures
+    description: "Count of AI/model-call failures (ERROR severity lines emitted around a model call)."
+    filter: |
+      resource.type="cloud_run_revision"
+      resource.labels.service_name="arbor-api"
+      severity=ERROR
+      (jsonPayload.message=~"ai\.error" OR jsonPayload.message=~"model call failed" OR jsonPayload.errorMessage=~"(?i)vertex|gemini|anthropic|model")
+    metricKind: DELTA
+    valueType: INT64
+
+  # AI token volume — successful model calls, for cost/anomaly tiles (ai.usage line).
+  - name: arbor_ai_calls
+    description: "Count of successful AI model calls (one per ai.usage log line)."
+    filter: |
+      resource.type="cloud_run_revision"
+      resource.labels.service_name="arbor-api"
+      jsonPayload.message="ai.usage"
+    metricKind: DELTA
+    valueType: INT64
+
+  - name: arbor_ai_tokens
+    description: "Sum of total tokens across AI model calls (totalTokens on ai.usage line)."
+    filter: |
+      resource.type="cloud_run_revision"
+      resource.labels.service_name="arbor-api"
+      jsonPayload.message="ai.usage"
+      jsonPayload.totalTokens>=0
+    metricKind: DELTA
+    valueType: INT64
+    valueExtractor: 'EXTRACT(jsonPayload.totalTokens)'
+
+# ---------------------------------------------------------------------------
+# Alert policies. notificationChannels is the founder email channel id, recorded
+# once in infra/monitoring/README.md (see design doc). EU-scoped.
+# ---------------------------------------------------------------------------
+notificationChannels:
+  - ${NOTIFICATION_CHANNEL_ID}   # email channel to founder; created once via gcloud (see README)
+
+alertPolicies:
+  # (a) ERROR RATE — fire when 5xx rate > 2% over a rolling 5 min window.
+  - displayName: "Arbor API — 5xx error rate > 2% (5m)"
+    documentation:
+      content: |
+        Arbor API 5xx error rate exceeded 2% over the last 5 minutes.
+        Triage: open Cloud Trace for a failing request (every 5xx line carries
+        logging.googleapis.com/trace), check Error Reporting for the grouped stack,
+        and consult docs/compliance/incident-response-plan.md (OPS-5). If a recent
+        deploy correlates, roll back via infra/rollback.sh (OPS-2).
+      mimeType: text/markdown
+    combiner: OR
+    conditions:
+      - displayName: "5xx ratio > 0.02 over 5m"
+        conditionMonitoringQueryLanguage:
+          # MQL ratio of the two delta counters, aligned to 5 minutes.
+          query: |
+            { errors:
+                fetch cloud_run_revision::logging.googleapis.com/user/arbor_api_5xx
+                | align delta(5m) | every 1m
+            ; total:
+                fetch cloud_run_revision::logging.googleapis.com/user/arbor_api_requests
+                | align delta(5m) | every 1m }
+            | join | value [ratio: val(0) / val(1)]
+            | condition ratio > 0.02 '1'
+          duration: 0s
+          trigger:
+            count: 1
+    alertStrategy:
+      autoClose: 1800s
+    severity: ERROR
+    notificationChannels:
+      - ${NOTIFICATION_CHANNEL_ID}
+
+  # (b) LATENCY — fire when p95 request latency > 5s over 10 min.
+  - displayName: "Arbor API — p95 latency > 5s (10m)"
+    documentation:
+      content: |
+        Arbor API p95 request latency exceeded 5000ms over the last 10 minutes.
+        Likely an upstream AI provider slowdown or a Firestore hot path. Check the
+        ai.usage volume tile and Cloud Trace for the slow spans; consider shedding
+        load or rolling back a recent deploy (infra/rollback.sh).
+      mimeType: text/markdown
+    combiner: OR
+    conditions:
+      - displayName: "p95 latencyMs > 5000 over 10m"
+        conditionMonitoringQueryLanguage:
+          query: |
+            fetch cloud_run_revision::logging.googleapis.com/user/arbor_api_latency_ms
+            | align delta(10m) | every 1m
+            | value val() | percentile 95
+            | condition val() > 5000 'ms'
+          duration: 0s
+          trigger:
+            count: 1
+    alertStrategy:
+      autoClose: 1800s
+    severity: WARNING
+    notificationChannels:
+      - ${NOTIFICATION_CHANNEL_ID}
+
+  # (c) AI FAILURE — fire on a burst of AI/model-call failures (> 5 in 5m).
+  - displayName: "Arbor AI — model-call failure burst (>5 in 5m)"
+    documentation:
+      content: |
+        More than 5 AI/model-call failures in 5 minutes. Check provider health
+        (Vertex / Gemini / Anthropic-on-Vertex), the modelRouter fallbacks, and the
+        coach_high_stakes route. Each failure ERROR line carries a trace id; pivot
+        from the alert into Cloud Trace + Error Reporting. This is also the OPS-5
+        detection feed — if failures coincide with unsafe output reaching a parent,
+        escalate per the incident-response runbook.
+      mimeType: text/markdown
+    combiner: OR
+    conditions:
+      - displayName: "AI failures > 5 over 5m"
+        conditionThreshold:
+          filter: |
+            resource.type="cloud_run_revision"
+            resource.label.service_name="arbor-api"
+            metric.type="logging.googleapis.com/user/arbor_ai_failures"
+          comparison: COMPARISON_GT
+          thresholdValue: 5
+          duration: 0s
+          aggregations:
+            - alignmentPeriod: 300s
+              perSeriesAligner: ALIGN_DELTA
+              crossSeriesReducer: REDUCE_SUM
+          trigger:
+            count: 1
+    alertStrategy:
+      autoClose: 1800s
+    severity: ERROR
+    notificationChannels:
+      - ${NOTIFICATION_CHANNEL_ID}

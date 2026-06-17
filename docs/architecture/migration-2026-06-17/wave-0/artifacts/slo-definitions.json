@@ -1,0 +1,59 @@
+{
+  "_comment": "REL-5 Service Monitoring SLOs for the arbor-api Cloud Run service. Four SLOs: availability, interactive latency, AI-sync latency, AI success. 30-day rolling. Availability + latency ride on Cloud Run BUILT-IN request metrics (no app code). AI-success rides on the log-based metric arbor_model_call_outcome (REL-2). BEFORE APPLY: (1) resolve the Service Monitoring service id for arbor-api via `gcloud monitoring services list`; SLOs are created under that service. (2) Apply each entry in `slos[]` separately: `gcloud monitoring slos create --service <SERVICE_ID> --slo-from-file <one-slo.json>` (split this array, or use the API). Targets/windows match docs slis-slos-error-budget.md §3 — keep them in sync.",
+  "service": "arbor-api",
+  "rollingPeriodDays": 30,
+  "slos": [
+    {
+      "displayName": "Arbor API availability (non-5xx on /api/**, 99.5%)",
+      "sloId": "arbor-availability",
+      "goal": 0.995,
+      "rollingPeriod": "2592000s",
+      "requestBasedSli": {
+        "goodTotalRatio": {
+          "_comment": "good = responses NOT 5xx; total = all responses EXCEPT 429 (rate-limit is a correct protective outcome, see SLI-1). Uses Cloud Run built-in request_count sliced by response_code_class.",
+          "goodServiceFilter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"arbor-api\" metric.label.\"response_code_class\"!=\"5xx\" metric.label.\"response_code\"!=\"429\"",
+          "totalServiceFilter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"arbor-api\" metric.label.\"response_code\"!=\"429\""
+        }
+      }
+    },
+    {
+      "displayName": "Arbor interactive latency <=1s (95%)",
+      "sloId": "arbor-latency-interactive",
+      "goal": 0.95,
+      "rollingPeriod": "2592000s",
+      "requestBasedSli": {
+        "_comment": "Distribution cut on Cloud Run built-in request_latencies, thresholded at 1000ms. Filter restricts to the interactive/CRUD route prefixes and EXCLUDES SSE routes (/api/chat,/api/voice) and AI-sync routes (covered by arbor-latency-ai). url_map_name / request path filtering on Cloud Run is via metric.label paths where available; if path labels are unavailable in this project, apply this SLO at the service level and rely on the AI-sync SLO's higher threshold to avoid mixing classes — see slis-slos-error-budget.md §2.",
+        "distributionCut": {
+          "distributionFilter": "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"arbor-api\"",
+          "range": { "min": 0, "max": 1000 }
+        }
+      }
+    },
+    {
+      "displayName": "Arbor AI-synchronous latency <=8s (90%)",
+      "sloId": "arbor-latency-ai",
+      "goal": 0.90,
+      "rollingPeriod": "2592000s",
+      "requestBasedSli": {
+        "_comment": "AI-sync routes (/api/council, /api/generate-*, /api/extract-log, /api/vision, /api/analyze-behavior, /api/generate-handoff, /api/score-utterance) thresholded at 8000ms. SSE routes still excluded (they are not in this class). If per-path Cloud Run labels are not exposed in this project, see the OPTION-B note in artifacts/README.md to derive this SLI from the existing request log instead.",
+        "distributionCut": {
+          "distributionFilter": "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"arbor-api\"",
+          "range": { "min": 0, "max": 8000 }
+        }
+      }
+    },
+    {
+      "displayName": "Arbor AI success rate (model_call ok, 98%)",
+      "sloId": "arbor-ai-success",
+      "goal": 0.98,
+      "rollingPeriod": "2592000s",
+      "requestBasedSli": {
+        "goodTotalRatio": {
+          "_comment": "good = model_call outcome=ok; total = terminal outcomes only (ok+timeout+circuit_open+error). 'retry' is EXCLUDED from both (a retry that later succeeds is not a user-visible failure) — see SLI-3. Source = log-based metric arbor_model_call_outcome (REL-2). Requires that metric to exist first.",
+          "goodServiceFilter": "metric.type=\"logging.googleapis.com/user/arbor_model_call_outcome\" resource.type=\"cloud_run_revision\" metric.label.\"outcome\"=\"ok\"",
+          "totalServiceFilter": "metric.type=\"logging.googleapis.com/user/arbor_model_call_outcome\" resource.type=\"cloud_run_revision\" metric.label.\"outcome\"=one_of(\"ok\",\"timeout\",\"circuit_open\",\"error\")"
+        }
+      }
+    }
+  ]
+}

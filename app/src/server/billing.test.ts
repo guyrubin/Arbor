@@ -69,4 +69,17 @@ describe("RevenueCat → entitlement mapping (MON-2)", () => {
   it("an event without an app_user_id is skipped (null)", () => {
     expect(recordFromRevenueCat({ type: "RENEWAL", product_id: "arbor_plus_monthly" })).toBeNull();
   });
+
+  it("carries the event id + timestamp for idempotent, ordered writes", () => {
+    const out = recordFromRevenueCat({
+      id: "evt_123",
+      event_timestamp_ms: 1750000000000,
+      type: "RENEWAL",
+      app_user_id: "u5",
+      product_id: "arbor_plus_monthly",
+      store: "APP_STORE",
+    });
+    expect(out!.record.lastEventId).toBe("evt_123");
+    expect(out!.record.lastEventTs).toBe(1750000000000);
+  });
 });

@@ -11,6 +11,7 @@ import { scoreUtterance } from "../../lib/speechScorer";
 import { usePracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent, SpeechAttempt, SpeechLevel } from "../../types";
 import { track } from "../../lib/analytics";
+import EarlyReadingTrack from "./EarlyReadingTrack";
 
 /* Minimal typing for the (vendor-prefixed) Web Speech API. */
 interface SpeechRecognitionLike {
@@ -184,12 +185,13 @@ export default function SpeechCoachTab() {
     if (result === "got" && itemIdx < items.length - 1) setItemIdx((i) => i + 1);
   };
 
-  const savePracticeEvent = (kind: PracticeEvent["kind"], correct?: boolean, meta?: string) => {
+  const savePracticeEvent = (kind: PracticeEvent["kind"], correct?: boolean, meta?: string, score?: number) => {
     const event: PracticeEvent = {
       id: `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       kind,
       domain: "language",
       correct,
+      score,
       meta,
       timestamp: new Date().toISOString(),
     };
@@ -502,6 +504,10 @@ export default function SpeechCoachTab() {
           </div>
         </div>
       </SectionCard>
+
+      {/* Early reading + letter tracing (Mission M7) — articulation → phonics →
+          sight words → reading, age-gated, plus the finger letter-trace game. */}
+      <EarlyReadingTrack age={childProfile.age} first={first} onLog={savePracticeEvent} />
 
       {/* Sound Progress Tracking (feature 3) */}
       <SectionCard title={`${first}'s sound progress`} icon={<TrendingUp className="w-5 h-5" />} tone="lav"

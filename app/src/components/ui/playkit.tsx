@@ -249,7 +249,8 @@ export function Celebrate({
   }, []);
   return (
     <div className="text-center py-6 play-pop-in">
-      <ArborMascot size={132} mood="cheer" animate className="mx-auto play-cheer" />
+      {/* The child's own hero takes the bow (Sprout cheers when no hero yet). */}
+      <div className="mx-auto w-fit play-cheer"><HeroAvatar size={132} mood="cheer" animate /></div>
       <h2 className="text-[1.6rem] font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" }}>
         {title}
       </h2>

@@ -206,7 +206,7 @@ export function domainBands(
   };
 
   const emotionAcc = eventAccuracy(events, ["emotion-id", "emotion-why"]);
-  const languageAcc = eventAccuracy(events, ["vocab-naming", "vocab-category", "expressive"]);
+  const languageAcc = eventAccuracy(events, ["vocab-naming", "vocab-category", "expressive", "phonics", "sight-word"]);
   const memoryScores = events.filter((e) => e.kind === "memory" && e.score !== undefined);
   const memoryAcc = memoryScores.length >= 2
     ? memoryScores.reduce((s, e) => s + (e.score ?? 0), 0) / memoryScores.length
@@ -294,7 +294,7 @@ export function domainConfidence(
   let n = ms + missions.filter((r) => r.completed && r.domain === domain).length;
   if (domain === "speech") n += speech.length;
   if (domain === "cognition") n += adventures.length + events.filter((e) => e.kind === "memory").length;
-  if (domain === "language") n += events.filter((e) => ["vocab-naming", "vocab-category", "expressive"].includes(e.kind)).length;
+  if (domain === "language") n += events.filter((e) => ["vocab-naming", "vocab-category", "expressive", "phonics", "sight-word", "letter-trace"].includes(e.kind)).length;
   if (domain === "emotional") n += events.filter((e) => ["emotion-id", "emotion-why", "calm"].includes(e.kind)).length;
   if (n >= 20) return "high";
   if (n >= 6) return "medium";

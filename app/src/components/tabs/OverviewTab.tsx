@@ -12,6 +12,8 @@ import { ProgressRing } from "../ui/ProgressRing";
 import { Skeleton } from "../ui/Skeleton";
 import { ParentChildIllustration } from "../ui/ParentChildIllustration";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
+import { downloadHeroCard } from "../../lib/heroCard";
+import { nextNudge } from "../../lib/jitai";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import QuickLogModal from "../overview/QuickLogModal";
 import RemindersCard from "../overview/RemindersCard";
@@ -138,6 +140,21 @@ export default function OverviewTab() {
     : trend === "down" ? t("ov.trend.easing") : trend === "up" ? t("ov.trend.attention") : t("ov.trend.steady");
   const trendTone: PastelKey = trend === "up" ? "yellow" : "mint";
 
+  // JITAI: one well-timed nudge off the child's logged rhythm + today's state.
+  const loggedTodayCount = useMemo(() => {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    return behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= start.getTime()).length;
+  }, [behaviorLogs]);
+  const nudge = useMemo(
+    () => nextNudge({ nowMs: Date.now(), rhythm, loggedToday: loggedTodayCount, recent7d: recentCount, childName: firstName }),
+    [rhythm, loggedTodayCount, recentCount, firstName]
+  );
+  const onNudge = () => {
+    if (!nudge) return;
+    if (nudge.action === "log") setQuickLog(true);
+    else setActiveTab(nudge.action as Parameters<typeof setActiveTab>[0]);
+  };
+
   const recommendations: { tone: PastelKey; icon: React.ReactNode; title: string; desc: string; tab: any }[] = [
     { tone: "mint", icon: <Heart className="w-5 h-5" />, title: t("ov.reco.play.title"), desc: t("ov.reco.play.desc"), tab: "plans" },
     { tone: "coral", icon: <Smile className="w-5 h-5" />, title: t("ov.reco.feeling.title"), desc: t("ov.reco.feeling.desc", { name: firstName }), tab: "coach" },
@@ -234,6 +251,22 @@ export default function OverviewTab() {
         </div>
       </section>
 
+      {/* ── JITAI nudge — one well-timed cue off the child's logged rhythm ─── */}
+      {nudge && (
+        <section className="rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: PASTEL[nudge.tone].soft, border: `1px solid ${RULE}` }}>
+          <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style={{ background: "var(--arbor-paper-elevated)", color: PASTEL[nudge.tone].ink }}>
+            {nudge.kind === "calm" ? <Moon className="w-5 h-5" /> : nudge.kind === "log" ? <Plus className="w-5 h-5" /> : nudge.kind === "practice" ? <Heart className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+          </span>
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-[15px] font-extrabold" style={{ color: INK }}>{nudge.headline}</p>
+            <p className="text-[13px] mt-0.5 leading-snug" style={{ color: MUTED }}>{nudge.body}</p>
+          </div>
+          <button onClick={onNudge} className="inline-flex items-center justify-center gap-1.5 font-bold text-sm rounded-full px-4 min-h-[44px] flex-shrink-0 text-white transition active:scale-[0.98]" style={{ background: PASTEL[nudge.tone].ink }}>
+            {nudge.cta} <ArrowRight className="w-4 h-4" />
+          </button>
+        </section>
+      )}
+
       {/* ── Practice & Play launcher — the bright door into the kids' games ─ */}
       <section
         className="relative overflow-hidden rounded-[24px] p-5 md:p-6 flex flex-wrap items-center gap-x-5 gap-y-4"
@@ -254,13 +287,22 @@ export default function OverviewTab() {
           </p>
         </div>
         {hasHero ? (
-          <button
-            onClick={() => setActiveTab("practice")}
-            className="inline-flex items-center justify-center gap-2 text-white font-extrabold text-[15px] rounded-full px-6 min-h-[52px] transition active:scale-[0.97] hover:-translate-y-0.5 flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #7a6bd8, #5a4cc0)", boxShadow: "0 8px 20px rgba(90,76,192,0.28)" }}
-          >
-            <Sparkles className="w-5 h-5" /> {t("ov.play.cta")}
-          </button>
+          <div className="flex flex-col gap-2 flex-shrink-0">
+            <button
+              onClick={() => setActiveTab("practice")}
+              className="inline-flex items-center justify-center gap-2 text-white font-extrabold text-[15px] rounded-full px-6 min-h-[52px] transition active:scale-[0.97] hover:-translate-y-0.5"
+              style={{ background: "linear-gradient(135deg, #7a6bd8, #5a4cc0)", boxShadow: "0 8px 20px rgba(90,76,192,0.28)" }}
+            >
+              <Sparkles className="w-5 h-5" /> {t("ov.play.cta")}
+            </button>
+            <button
+              onClick={() => { void downloadHeroCard({ imageUrl: childProfile.photoUrl!, name: firstName, age: childProfile.age }); }}
+              className="inline-flex items-center justify-center gap-1.5 font-bold text-[13px] rounded-full px-4 min-h-[40px] transition"
+              style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: `1px solid ${RULE}` }}
+            >
+              ★ {t("ov.hero.card")}
+            </button>
+          </div>
         ) : (
           <button
             onClick={() => setActiveTab("profile")}
