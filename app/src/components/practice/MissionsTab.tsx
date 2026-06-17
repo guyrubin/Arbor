@@ -1,9 +1,9 @@
 import React, { useMemo } from "react";
-import { motion } from "motion/react";
 import { CalendarCheck, Check, Compass, Flame, MessageSquare, Sparkles, Target } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
+import { SectionCard, cardCls, Chip } from "../ui/kit";
+import { PlayShell, PlayHeader } from "../ui/playkit";
 import ProgressRing from "../ui/ProgressRing";
 import { DOMAIN_META, MISSION_CYCLE, fillTemplate, type MissionTemplate } from "../../practice/content";
 import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
@@ -109,11 +109,11 @@ export default function MissionsTab() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader
-        eyebrow="Practice Studio"
+    <PlayShell>
+      <PlayHeader
         title={t("prac.missions.title")}
-        subtitle={t("prac.missions.sub", { name: first })}
+        say={t("prac.missions.sub", { name: first })}
+        mood="wave"
       />
 
       {/* Development Score (feature 7) */}
@@ -211,6 +211,6 @@ export default function MissionsTab() {
           ))}
         </div>
       </SectionCard>
-    </motion.div>
+    </PlayShell>
   );
 }

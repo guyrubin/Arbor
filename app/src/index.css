@@ -405,3 +405,82 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PLAY LAYER — child-facing Practice Studio only.
+   Everything here is scoped under `.arbor-play`, so the calm, premium parent
+   surfaces are never touched. This is the deliberate "more visual / kid
+   friendly" register: softer light, bigger touch targets, a little bounce.
+   Honors the global reduced-motion guard above.
+   ════════════════════════════════════════════════════════════════════════════ */
+.arbor-play {
+  position: relative;
+  isolation: isolate;
+  --play-radius: 26px;
+  --play-radius-lg: 32px;
+}
+/* A gentle, layered wash of brand softs behind the play surface — readable,
+   never garish. Sits behind content via a pseudo-element. */
+.arbor-play::before {
+  content: "";
+  position: absolute;
+  inset: -8px -8px 0;
+  z-index: -1;
+  border-radius: 36px;
+  background:
+    radial-gradient(46% 40% at 12% 4%, color-mix(in oklab, var(--arbor-lav-soft) 80%, transparent), transparent 70%),
+    radial-gradient(50% 44% at 92% 0%, color-mix(in oklab, var(--arbor-sky-soft) 78%, transparent), transparent 72%),
+    radial-gradient(60% 50% at 80% 100%, color-mix(in oklab, var(--arbor-green-soft) 70%, transparent), transparent 75%),
+    radial-gradient(54% 46% at 4% 92%, color-mix(in oklab, var(--arbor-peach-soft) 64%, transparent), transparent 72%);
+  pointer-events: none;
+}
+
+/* Big, friendly play buttons + tiles get a soft springy press. */
+.play-pressable { transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 140ms ease; }
+.play-pressable:active { transform: scale(0.96); }
+.play-pressable:hover { transform: translateY(-2px); }
+
+/* Mascot idle bob — calm, ~3s, infinite. */
+@keyframes sprout-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-6px) rotate(-1.5deg); }
+}
+.sprout-bob { animation: sprout-bob 3s ease-in-out infinite; transform-origin: 70px 120px; }
+
+/* Sparkle twinkle accompanying celebratory moods. */
+@keyframes sprout-sparkle {
+  0%, 100% { opacity: 0.55; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+.sprout-sparkle { animation: sprout-sparkle 1.4s ease-in-out infinite; transform-origin: 107px 32px; }
+
+/* Pop-in for revealed feedback / new scenes. */
+@keyframes play-pop-in {
+  0%   { opacity: 0; transform: scale(0.82) translateY(8px); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.play-pop-in { animation: play-pop-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* A celebratory wiggle for the win mascot. */
+@keyframes play-cheer {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  25%      { transform: rotate(4deg) translateY(-4px); }
+  75%      { transform: rotate(-4deg) translateY(-4px); }
+}
+.play-cheer { animation: play-cheer 900ms ease-in-out 2; transform-origin: 70px 124px; }
+
+/* Correct-tile happy pulse. */
+@keyframes play-correct {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--arbor-clay) 55%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+.play-correct { animation: play-correct 600ms ease-out 1; }
+
+/* Gentle shake for a warm retry (never harsh). */
+@keyframes play-nudge {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
+.play-nudge { animation: play-nudge 320ms ease-in-out 1; }

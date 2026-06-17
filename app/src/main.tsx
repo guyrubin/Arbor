@@ -5,6 +5,14 @@ import './index.css';
 import {track, setGlobalProps} from './lib/analytics';
 import {captureAttribution, attributionProps} from './lib/attribution';
 import {trackAppStart} from './lib/loopEvents';
+import {installApiBaseShim} from './lib/runtime';
+import {initNativeShell} from './lib/native';
+
+// Native shells (iOS/Android) load the bundle from a local origin, so re-point
+// relative `/api/*` calls at the remote backend. No-op on the web. Must run
+// before any fetch fires.
+installApiBaseShim();
+void initNativeShell();
 
 // Growth loop: capture first-touch attribution (referral/utm/source/market) and
 // attach it to every analytics event, then emit install/app_open.

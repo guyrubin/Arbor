@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
-import { Brain, RotateCcw, Sparkles } from "lucide-react";
-import { SectionCard, cardCls, Chip } from "../ui/kit";
+import { Brain, RotateCcw } from "lucide-react";
+import { PlayPanel, PlayButton, Celebrate } from "../ui/playkit";
 import { MEMORY_EMOJI_SETS } from "../../practice/playContent";
 import { memoryGridSize, memoryMaxCards, memorySetIndexForAge } from "../../practice/signals";
 import type { PracticeData } from "../../practice/usePracticeData";
@@ -127,59 +126,68 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
   const cols = size === 6 ? 3 : size === 8 ? 4 : 4;
 
   return (
-    <SectionCard title="Memory Match" icon={<Brain className="w-5 h-5" />} tone="lav"
-      action={<Chip tone="lav">{pairs} pairs · adapts to skill</Chip>}>
-      <p className="text-[11px] mb-4" style={{ color: "var(--arbor-muted)" }}>
-        Flip two cards to find a pair. The grid grows as {""}working memory gets stronger and eases back after a tricky round — no settings to fiddle with.
-      </p>
+    <PlayPanel>
+      <div className="flex items-center gap-3 mb-2">
+        <span className="grid place-items-center w-12 h-12 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+          <Brain className="w-6 h-6" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Memory Match</h2>
+          <p className="text-[12px] font-semibold" style={{ color: "var(--arbor-muted)" }}>Find the matching pairs — the board grows as you get stronger.</p>
+        </div>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-5 mt-3">
         {MEMORY_EMOJI_SETS.map((s, i) => {
           const on = i === setIdx;
           return (
             <button key={s.id} onClick={() => { setSetIdx(i); reset(size, i); }}
-              className="rounded-full px-3 py-1.5 text-[11px] font-extrabold transition"
-              style={on ? { background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+              className="play-pressable rounded-full px-4 py-2 text-[13px] font-extrabold"
+              style={on ? { background: "var(--arbor-lav-ink)", color: "#fff" } : { background: "#fff", color: "var(--arbor-muted)", border: "1.5px solid var(--arbor-rule)" }}>
               {s.title}
             </button>
           );
         })}
-        <span className="text-[11px] ml-auto" style={{ color: "var(--arbor-muted)" }}>Moves: <b style={{ color: "var(--arbor-ink)" }}>{moves}</b> · Found {matchedCount}/{pairs}</span>
+        <span className="text-[13px] font-bold ml-auto" style={{ color: "var(--arbor-muted)" }}>Moves: <b style={{ color: "var(--arbor-ink)" }}>{moves}</b> · Found {matchedCount}/{pairs}</span>
       </div>
 
       {won ? (
-        <div className="text-center py-8">
-          <motion.span initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 14 }} className="text-5xl block">🧠</motion.span>
-          <p className="text-lg font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>All pairs found!</p>
-          <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
-            Solved in {moves} moves{lastScore.current !== null && ` · score ${lastScore.current}`}. {recommendedSize > size ? "Next round gets a little bigger!" : recommendedSize < size ? "We'll keep it comfy next round." : "Nicely done."}
-          </p>
-          <button onClick={() => reset()} className="mt-4 inline-flex items-center gap-2 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl" style={{ background: "var(--arbor-lav-ink)" }}>
-            <Sparkles className="w-3.5 h-3.5" /> Play again
-          </button>
-        </div>
+        <Celebrate
+          title="All pairs found!"
+          stars={lastScore.current !== null ? Math.max(1, Math.round((lastScore.current / 100) * 3)) : 3}
+          starsTotal={3}
+          subtitle={`Solved in ${moves} moves. ${recommendedSize > size ? "Next round gets a little bigger!" : recommendedSize < size ? "We'll keep it comfy next round." : "Nicely done."}`}
+        >
+          <PlayButton tone="lav" onClick={() => reset()}>
+            <RotateCcw className="w-4 h-4" /> Play again
+          </PlayButton>
+        </Celebrate>
       ) : (
         <>
-          <div className="grid gap-2.5 mx-auto" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, maxWidth: 420 }}>
-            {deck.map((c) => (
-              <button key={c.uid} onClick={() => flip(c.uid)} aria-label={c.flipped || c.matched ? c.emoji : "hidden card"}
-                className="aspect-square rounded-2xl flex items-center justify-center text-3xl transition"
-                style={{
-                  background: c.matched ? "var(--arbor-green-soft)" : c.flipped ? "#fff" : "var(--arbor-lav-soft)",
-                  border: c.matched ? "2px solid var(--arbor-clay)" : "1px solid rgba(41,51,63,0.08)",
-                  cursor: c.matched ? "default" : "pointer",
-                }}>
-                {(c.flipped || c.matched) ? c.emoji : <span style={{ color: "var(--arbor-lav-ink)", fontSize: 20 }}>?</span>}
-              </button>
-            ))}
+          <div className="grid gap-3 mx-auto" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, maxWidth: 460 }}>
+            {deck.map((c) => {
+              const face = c.flipped || c.matched;
+              return (
+                <button key={c.uid} onClick={() => flip(c.uid)} aria-label={face ? c.emoji : "hidden card"}
+                  className={`play-pressable aspect-square rounded-[var(--play-radius)] flex items-center justify-center text-[2.4rem] ${c.matched ? "play-correct" : ""}`}
+                  style={{
+                    background: c.matched ? "var(--arbor-green-soft)" : face ? "#fff" : "var(--arbor-lav-soft)",
+                    border: c.matched ? "2.5px solid var(--arbor-clay)" : face ? "2.5px solid var(--arbor-lav-ink)" : "2.5px solid transparent",
+                    cursor: c.matched ? "default" : "pointer",
+                    boxShadow: "0 4px 14px rgba(41,51,63,0.07)",
+                  }}>
+                  {face ? c.emoji : <span style={{ color: "var(--arbor-lav-ink)", fontSize: 28, fontWeight: 800 }}>?</span>}
+                </button>
+              );
+            })}
           </div>
-          <div className="text-center mt-4">
-            <button onClick={() => reset()} className="inline-flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-              <RotateCcw className="w-3 h-3" /> Shuffle &amp; restart
-            </button>
+          <div className="text-center mt-5">
+            <PlayButton variant="ghost" size="md" onClick={() => reset()}>
+              <RotateCcw className="w-4 h-4" /> Shuffle &amp; restart
+            </PlayButton>
           </div>
         </>
       )}
-    </SectionCard>
+    </PlayPanel>
   );
 }

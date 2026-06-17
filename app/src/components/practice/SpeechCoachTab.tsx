@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
 import { AudioLines, BookOpen, Check, ChevronRight, Ear, Languages, MessageCircle, Mic, MicOff, Play, Sparkles, Square, Tags, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
+import { SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
+import { PlayShell, PlayHeader, PlayButton } from "../ui/playkit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
 import { matchResult, speechDose, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
@@ -224,11 +224,11 @@ export default function SpeechCoachTab() {
   ];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader
-        eyebrow="Practice Studio"
+    <PlayShell>
+      <PlayHeader
         title={t("prac.speech.title")}
-        subtitle={t("prac.speech.sub", { name: first })}
+        say={t("prac.speech.sub", { name: first })}
+        mood="happy"
         action={
           <button onClick={() => setActiveTab("language")} className="inline-flex items-center gap-1.5 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
             <Languages className="w-3.5 h-3.5" /> Multiple languages? Language &amp; Communication
@@ -342,17 +342,13 @@ export default function SpeechCoachTab() {
         {/* Record & Compare (feature 2) */}
         <div className="flex flex-wrap items-center gap-3 mb-3">
           {recState !== "recording" ? (
-            <button onClick={() => void startRecording()}
-              className="inline-flex items-center gap-2 font-extrabold text-xs px-4 py-2.5 rounded-xl text-white transition"
-              style={{ background: "var(--arbor-peach-ink)" }}>
-              <Mic className="w-4 h-4" /> Record {first}
-            </button>
+            <PlayButton onClick={() => void startRecording()} tone="peach">
+              <Mic className="w-5 h-5" /> Record {first}
+            </PlayButton>
           ) : (
-            <button onClick={stopRecording}
-              className="inline-flex items-center gap-2 font-extrabold text-xs px-4 py-2.5 rounded-xl text-white animate-pulse"
-              style={{ background: "var(--arbor-pink-ink)" }}>
-              <Square className="w-4 h-4" /> Stop
-            </button>
+            <PlayButton onClick={stopRecording} tone="pink" className="animate-pulse">
+              <Square className="w-5 h-5" /> Stop
+            </PlayButton>
           )}
           {audioUrl && recState === "review" && (
             <span className="inline-flex items-center gap-2 text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>
@@ -534,6 +530,6 @@ export default function SpeechCoachTab() {
           This trend is included in professional reports (Care Network → Reports &amp; Handoffs) so a speech-language professional sees real between-session data.
         </p>
       </SectionCard>
-    </motion.div>
+    </PlayShell>
   );
 }

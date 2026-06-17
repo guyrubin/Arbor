@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { motion } from "motion/react";
 import { Check, Heart, RotateCcw, Smile, Sparkles, Wind } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
+import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
+import { PlayShell, PlayHeader, StatBubble, ChoiceTile, MascotSay, PlayButton, PlayPanel } from "../ui/playkit";
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
@@ -97,11 +97,11 @@ export default function FeelingsLabTab() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader
-        eyebrow="Practice Studio"
+    <PlayShell>
+      <PlayHeader
         title={t("prac.feelings.title")}
-        subtitle={t("prac.feelings.sub", { name: first })}
+        say={t("prac.feelings.sub", { name: first })}
+        mood="happy"
       />
 
       <TrustSafetyBar
@@ -109,23 +109,22 @@ export default function FeelingsLabTab() {
         note="This is coaching and practice, not mental-health diagnosis. Patterns worth discussing are surfaced gently in the Development Dashboard."
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={`${cardCls} p-5`}>
-          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{emotionRounds}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Emotion rounds completed</p>
-        </div>
-        <div className={`${cardCls} p-5`}>
-          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{emotionAccuracy === null ? "-" : `${emotionAccuracy}%`}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Recognition accuracy, parent-observed</p>
-        </div>
-        <div className={`${cardCls} p-5`}>
-          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{calmRounds}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Calm-down practices logged</p>
-        </div>
+      <div className="grid grid-cols-3 gap-3">
+        <StatBubble tone="yellow" value={emotionRounds} label="Emotion rounds" />
+        <StatBubble tone="clay" value={emotionAccuracy === null ? "–" : `${emotionAccuracy}%`} label="Recognition" />
+        <StatBubble tone="sky" value={calmRounds} label="Calm practices" />
       </div>
 
-      <SectionCard title="Emotion match" icon={<Smile className="w-5 h-5" />} tone="yellow"
-        action={<Chip tone="yellow">{scenarioIdx + 1} of {EMOTION_SCENARIOS.length}</Chip>}>
+      <PlayPanel tone="yellow">
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid place-items-center w-11 h-11 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>
+              <Smile className="w-6 h-6" />
+            </span>
+            <h2 className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Emotion match</h2>
+          </div>
+          <span className="rounded-full px-3 py-1.5 text-[12px] font-extrabold" style={{ background: "#fff", color: "var(--arbor-yellow-ink)" }}>{scenarioIdx + 1} of {EMOTION_SCENARIOS.length}</span>
+        </div>
         {/* A4: the child's own avatar mirrors how they feel right now */}
         <div className="flex items-center gap-4 rounded-2xl p-4 mb-4" style={{ background: "var(--arbor-paper-deep)" }}>
           <EmotionAvatar
@@ -158,9 +157,9 @@ export default function FeelingsLabTab() {
           </div>
         </div>
 
-        <div className="rounded-2xl p-5 mb-4" style={{ background: "var(--arbor-paper-deep)" }}>
-          <p className="text-4xl mb-3">{scenario.emoji}</p>
-          <p className="text-lg font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+        <div className="rounded-[var(--play-radius)] p-6 mb-4 bg-white shadow-[0_2px_12px_rgba(41,51,63,0.05)]">
+          <p className="text-5xl mb-3">{scenario.emoji}</p>
+          <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {scenario.text}
           </p>
         </div>
@@ -169,36 +168,32 @@ export default function FeelingsLabTab() {
             const picked = pickedEmotion === emotion.id;
             const reveal = pickedEmotion !== null;
             const correct = emotion.id === scenario.answer;
+            const state = picked ? (correct ? "correct" : "wrong") : reveal && !correct ? "dim" : "idle";
             return (
-              <button
+              <ChoiceTile
                 key={emotion.id}
+                emoji={emotion.emoji}
+                label={emotion.label}
                 onClick={() => chooseEmotion(emotion.id)}
                 disabled={!!pickedEmotion}
-                className={`${cardCls} p-4 text-center transition`}
-                style={{
-                  border: picked ? `2px solid ${correct ? "var(--arbor-clay)" : "var(--arbor-pink-ink)"}` : "1px solid rgba(41,51,63,0.06)",
-                  opacity: reveal && !picked && !correct ? 0.58 : 1,
-                }}
-              >
-                <span className="text-3xl block">{emotion.emoji}</span>
-                <span className="text-sm font-extrabold block mt-2" style={{ color: "var(--arbor-ink)" }}>{emotion.label}</span>
-              </button>
+                state={state}
+              />
             );
           })}
         </div>
         {pickedEmotion && (
-          <div className="mt-4 rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: pickedEmotion === scenario.answer ? "var(--arbor-green-soft)" : "var(--arbor-yellow-soft)" }}>
-            <p className="text-sm flex-1 min-w-[220px]" style={{ color: "var(--arbor-ink)" }}>
+          <div className="mt-5">
+            <MascotSay mood={pickedEmotion === scenario.answer ? "proud" : "think"} tone={pickedEmotion === scenario.answer ? "clay" : "yellow"}>
               {pickedEmotion === scenario.answer
                 ? `Yes. This sounds like ${answer.label.toLowerCase()}. Ask: where do you feel that in your body?`
                 : `Warm retry: it might look more like ${answer.label.toLowerCase()}. Try making that face together.`}
-            </p>
-            <button onClick={nextScenario} className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-yellow-ink)" }}>
-              Next feeling
-            </button>
+            </MascotSay>
+            <div className="mt-4">
+              <PlayButton tone="yellow" onClick={nextScenario}>Next feeling →</PlayButton>
+            </div>
           </div>
         )}
-      </SectionCard>
+      </PlayPanel>
 
       <SectionCard title="Why feelings happen" icon={<Heart className="w-5 h-5" />} tone="pink">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -252,6 +247,6 @@ export default function FeelingsLabTab() {
           ))}
         </div>
       </SectionCard>
-    </motion.div>
+    </PlayShell>
   );
 }

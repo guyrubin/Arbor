@@ -1,0 +1,29 @@
+<svg width="2732" height="2732" viewBox="0 0 2732 2732" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="wash" cx="0.5" cy="0.42" r="0.62">
+      <stop offset="0" stop-color="#f4faf6"/>
+      <stop offset="1" stop-color="#e3f1e8"/>
+    </radialGradient>
+    <linearGradient id="bud" x1="1366" y1="1040" x2="1366" y2="1420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3fc187"/>
+      <stop offset="1" stop-color="#2a9c66"/>
+    </linearGradient>
+  </defs>
+  <rect width="2732" height="2732" fill="url(#wash)"/>
+  <g transform="translate(1366 1230) scale(1.05) translate(-512 -460)">
+    <path d="M392 760 H632 L600 906 Q595 928 573 928 H451 Q429 928 424 906 Z" fill="#f3a886"/>
+    <rect x="372" y="724" width="280" height="64" rx="32" fill="#ef8a52"/>
+    <path d="M512 744 V516" stroke="#2a9c66" stroke-width="30" stroke-linecap="round"/>
+    <path d="M512 636 C432 652 372 600 360 524 C448 512 506 560 512 636 Z" fill="#5fce97"/>
+    <path d="M512 600 C592 612 652 560 664 484 C576 472 506 520 512 600 Z" fill="#5fce97"/>
+    <path d="M512 540 C372 540 304 444 318 332 C332 236 416 180 512 180 C608 180 692 236 706 332 C720 444 652 540 512 540 Z" fill="url(#bud)"/>
+    <path d="M512 208 V496" stroke="#2a9c66" stroke-width="14" stroke-linecap="round" opacity="0.5"/>
+    <circle cx="454" cy="356" r="24" fill="#16352a"/>
+    <circle cx="570" cy="356" r="24" fill="#16352a"/>
+    <circle cx="463" cy="347" r="8" fill="#ffffff"/>
+    <circle cx="579" cy="347" r="8" fill="#ffffff"/>
+    <path d="M468 412 Q512 448 556 412" stroke="#16352a" stroke-width="17" stroke-linecap="round" fill="none"/>
+  </g>
+  <text x="1366" y="1880" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="190" font-weight="600" fill="#29333f">Arbor</text>
+  <text x="1366" y="1980" text-anchor="middle" font-family="Nunito, system-ui, sans-serif" font-size="62" font-weight="700" letter-spacing="2" fill="#5f6b75">Grow together</text>
+</svg>

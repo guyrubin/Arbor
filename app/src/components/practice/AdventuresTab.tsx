@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Compass, Map, RotateCcw, Sparkles, Wand2 } from "lucide-react";
+import { Compass, RotateCcw, Sparkles, Wand2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { fillTemplate, scenariosForAge, type AdventureScenario } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
 import MemoryMatch from "./MemoryMatch";
 import type { AdventureResult } from "../../types";
 import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
+import { PlayShell, PlayHeader, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
 
 const SKILL_LABEL: Record<string, string> = {
   vocabulary: "Vocabulary",
@@ -108,73 +108,78 @@ export default function AdventuresTab() {
     new Set(data.adventures.items.filter((r) => r.scenarioId === s.id).map((r) => r.sceneId)).size;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader
-        eyebrow="Practice Studio"
+    <PlayShell>
+      <PlayHeader
         title={t("prac.adventures.title")}
-        subtitle={t("prac.adventures.sub", { name: first })}
+        say={t("prac.adventures.sub", { name: first })}
+        mood="wave"
       />
 
+      {/* Make-a-new-adventure CTA */}
       {!scenario && (
-        <div className={`${cardCls} p-5 flex flex-wrap items-center gap-3`} style={{ background: "var(--arbor-lav-soft)" }}>
-          <Wand2 className="w-5 h-5 flex-shrink-0" style={{ color: "var(--arbor-lav-ink)" }} />
+        <PlayPanel tone="lav" className="flex flex-wrap items-center gap-4">
+          <span className="grid place-items-center w-14 h-14 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+            <Wand2 className="w-7 h-7" />
+          </span>
           <div className="flex-1 min-w-[200px]">
-            <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Make a fresh adventure for {first}</p>
-            <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>A brand-new comprehension story, personalized to {first}&apos;s age and interests.</p>
+            <p className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Make a brand-new adventure</p>
+            <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>A fresh comprehension story, made just for {first}.</p>
           </div>
-          <button
-            onClick={createAdventure}
-            disabled={generating}
-            className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white transition active:scale-[0.98] disabled:opacity-60"
-            style={{ background: "var(--arbor-lav-ink)" }}
-          >
-            <Sparkles className="w-3.5 h-3.5" /> {generating ? "Creating…" : "Create adventure"}
-          </button>
-          {genError && <p className="w-full text-[11px]" style={{ color: "var(--arbor-pink-ink)" }}>{genError}</p>}
-        </div>
+          <PlayButton onClick={createAdventure} disabled={generating} tone="lav">
+            <Sparkles className="w-4 h-4" /> {generating ? "Creating…" : "Create"}
+          </PlayButton>
+          {genError && <p className="w-full text-[13px] font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{genError}</p>}
+        </PlayPanel>
       )}
 
+      {/* Scenario picker */}
       {!scenario && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {scenarios.map((s) => (
-            <button key={s.id} onClick={() => openScenario(s.id)} className={`${cardCls} p-5 text-left transition hover:shadow-md`}>
-              <div className="flex items-start gap-3">
-                <span className="text-4xl">{s.emoji}</span>
-                <div className="flex-1">
-                  <p className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{s.title}</p>
-                  <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{fillTemplate(s.intro, vars)}</p>
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    <Chip tone="sky">Ages {s.ageBand[0]}–{s.ageBand[1]}</Chip>
-                    <Chip tone="lav">{s.scenes.length} choices</Chip>
-                    {playedCount(s) > 0 && <Chip tone="mint">Played ✓</Chip>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {scenarios.map((s) => {
+            const played = playedCount(s) > 0;
+            return (
+              <button
+                key={s.id}
+                onClick={() => openScenario(s.id)}
+                className="play-pressable rounded-[var(--play-radius-lg)] p-5 text-left bg-white shadow-[0_4px_20px_rgba(41,51,63,0.06)] flex items-start gap-4"
+              >
+                <span className="grid place-items-center w-16 h-16 rounded-2xl text-4xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)" }}>{s.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-lg font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{s.title}</p>
+                  <p className="text-[13px] mt-1 leading-relaxed font-medium" style={{ color: "var(--arbor-muted)" }}>{fillTemplate(s.intro, vars)}</p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <PlayPill tone="sky">Ages {s.ageBand[0]}–{s.ageBand[1]}</PlayPill>
+                    <PlayPill tone="lav">{s.scenes.length} choices</PlayPill>
+                    {played && <PlayPill tone="clay">Played ✓</PlayPill>}
                   </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {!scenario && <MemoryMatch data={data} childAge={childProfile.age} />}
 
+      {/* Active scene */}
       {scenario && !finished && scene && (
-        <SectionCard title={`${scenario.emoji} ${scenario.title}`} icon={<Map className="w-5 h-5" />} tone="lav"
-          action={
-            <button onClick={() => setActiveId(null)} className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-              ← All adventures
-            </button>
-          }>
-          {/* Scene progress dots */}
-          <div className="flex items-center gap-1.5 mb-5">
-            {scenario.scenes.map((_, i) => (
-              <span key={i} className="h-2 rounded-full transition-all" style={{ width: i === sceneIdx ? 24 : 8, background: i <= sceneIdx ? "var(--arbor-lav-ink)" : "rgba(41,51,63,0.12)" }} />
-            ))}
-            <span className="text-[10px] font-bold ml-2 uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{SKILL_LABEL[scene.skill]}</span>
+        <PlayPanel>
+          <div className="flex items-center justify-between mb-5 gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-3xl">{scenario.emoji}</span>
+              <p className="text-lg font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{scenario.title}</p>
+            </div>
+            <button onClick={() => setActiveId(null)} className="text-[13px] font-bold flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>← All</button>
+          </div>
+
+          <div className="flex items-center gap-3 mb-6">
+            <ProgressPips total={scenario.scenes.length} current={sceneIdx} tone="lav" />
+            <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>{SKILL_LABEL[scene.skill]}</span>
           </div>
 
           <AnimatePresence mode="wait">
-            <motion.div key={scene.id} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.18 }}>
-              <p className="text-lg font-extrabold leading-snug mb-5 max-w-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            <motion.div key={scene.id} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}>
+              <p className="text-[1.4rem] font-extrabold leading-snug mb-5 max-w-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                 {fillTemplate(scene.prompt, vars)}
               </p>
 
@@ -182,66 +187,74 @@ export default function AdventuresTab() {
                 {scene.choices.map((c) => {
                   const isPicked = picked === c.id;
                   const reveal = picked !== null;
+                  const tileState = isPicked ? (c.correct ? "correct" : "wrong") : reveal && pickedChoice?.correct ? "dim" : "idle";
                   return (
-                    <button
+                    <ChoiceTile
                       key={c.id}
+                      emoji={c.emoji}
+                      label={c.text}
                       onClick={() => choose(c.id)}
                       disabled={pickedChoice?.correct === true}
-                      className={`${cardCls} p-4 text-center transition`}
-                      style={{
-                        border: isPicked ? `2px solid ${c.correct ? "var(--arbor-clay)" : "var(--arbor-pink-ink)"}` : "1px solid rgba(41,51,63,0.06)",
-                        opacity: reveal && !isPicked && pickedChoice?.correct ? 0.5 : 1,
-                      }}
-                    >
-                      <span className="text-3xl block">{c.emoji}</span>
-                      <span className="text-xs font-bold block mt-2" style={{ color: "var(--arbor-ink)" }}>{c.text}</span>
-                    </button>
+                      state={tileState}
+                    />
                   );
                 })}
               </div>
 
               {pickedChoice && (
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl p-4 text-sm flex flex-wrap items-center gap-3"
-                  style={{ background: pickedChoice.correct ? "var(--arbor-green-soft)" : "var(--arbor-yellow-soft)", color: "var(--arbor-ink)" }}>
-                  <span className="flex-1 min-w-[220px] leading-relaxed">{fillTemplate(pickedChoice.feedback, vars)}</span>
-                  {pickedChoice.correct ? (
-                    <button onClick={next} className="font-extrabold text-white text-xs px-4 py-2.5 rounded-xl" style={{ background: "var(--arbor-clay)" }}>
-                      {sceneIdx < scenario.scenes.length - 1 ? "Keep going →" : "Finish the adventure 🎉"}
-                    </button>
-                  ) : (
-                    <span className="text-[11px] font-bold" style={{ color: "var(--arbor-yellow-ink)" }}>Try another one — thinking out loud together is the whole game.</span>
-                  )}
-                </motion.div>
+                <div className="mt-5">
+                  <MascotSay mood={pickedChoice.correct ? "proud" : "think"} tone={pickedChoice.correct ? "clay" : "yellow"}>
+                    {fillTemplate(pickedChoice.feedback, vars)}
+                  </MascotSay>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    {pickedChoice.correct ? (
+                      <PlayButton onClick={next} tone="clay">
+                        {sceneIdx < scenario.scenes.length - 1 ? "Keep going →" : "Finish the adventure 🎉"}
+                      </PlayButton>
+                    ) : (
+                      <span className="text-[13px] font-bold" style={{ color: "var(--arbor-yellow-ink)" }}>Try another one — thinking out loud together is the whole game.</span>
+                    )}
+                  </div>
+                </div>
               )}
             </motion.div>
           </AnimatePresence>
-        </SectionCard>
+        </PlayPanel>
       )}
 
+      {/* Finished */}
       {scenario && finished && (
-        <SectionCard title="Adventure complete!" icon={<Sparkles className="w-5 h-5" />} tone="mint">
-          <div className="text-center py-6">
-            <motion.span initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 14 }} className="text-6xl block">
-              {scenario.emoji}
-            </motion.span>
-            <p className="text-xl font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              {first} helped finish &ldquo;{scenario.title}&rdquo;!
-            </p>
-            <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
-              {sessionCorrect} of {scenario.scenes.length} first-try answers — every answer taught us something, and it all feeds {first}&apos;s development picture.
-            </p>
-            <div className="flex justify-center gap-2 mt-5">
-              <button onClick={() => openScenario(scenario.id)} className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-                <RotateCcw className="w-3.5 h-3.5" /> Play again
-              </button>
-              <button onClick={() => setActiveId(null)} className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
-                <Compass className="w-3.5 h-3.5" /> More adventures
-              </button>
-            </div>
-          </div>
-        </SectionCard>
+        <PlayPanel>
+          <Celebrate
+            title={`${first} finished “${scenario.title}”!`}
+            stars={sessionCorrect}
+            starsTotal={scenario.scenes.length}
+            subtitle={`${sessionCorrect} of ${scenario.scenes.length} first-try answers — and every answer taught us something for ${first}'s development picture.`}
+          >
+            <PlayButton variant="soft" tone="lav" onClick={() => openScenario(scenario.id)}>
+              <RotateCcw className="w-4 h-4" /> Play again
+            </PlayButton>
+            <PlayButton tone="clay" onClick={() => setActiveId(null)}>
+              <Compass className="w-4 h-4" /> More adventures
+            </PlayButton>
+          </Celebrate>
+        </PlayPanel>
       )}
-    </motion.div>
+    </PlayShell>
+  );
+}
+
+/** Small rounded label used on scenario cards. */
+function PlayPill({ tone, children }: { tone: "sky" | "lav" | "clay"; children: React.ReactNode }) {
+  const map = {
+    sky: ["var(--arbor-sky-soft)", "var(--arbor-sky-ink)"],
+    lav: ["var(--arbor-lav-soft)", "var(--arbor-lav-ink)"],
+    clay: ["var(--arbor-green-soft)", "var(--arbor-green-ink)"],
+  } as const;
+  const [bg, fg] = map[tone];
+  return (
+    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-extrabold" style={{ background: bg, color: fg }}>
+      {children}
+    </span>
   );
 }

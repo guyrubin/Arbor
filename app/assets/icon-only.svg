@@ -1,0 +1,34 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#eef6f0"/>
+      <stop offset="1" stop-color="#dcefe2"/>
+    </linearGradient>
+    <linearGradient id="bud" x1="512" y1="180" x2="512" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3fc187"/>
+      <stop offset="1" stop-color="#2a9c66"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
+  <!-- soft halo -->
+  <circle cx="512" cy="430" r="300" fill="#34b277" opacity="0.07"/>
+  <!-- pot -->
+  <path d="M392 760 H632 L600 906 Q595 928 573 928 H451 Q429 928 424 906 Z" fill="#f3a886"/>
+  <rect x="372" y="724" width="280" height="64" rx="32" fill="#ef8a52"/>
+  <!-- stem -->
+  <path d="M512 744 V516" stroke="#2a9c66" stroke-width="30" stroke-linecap="round"/>
+  <!-- side leaves -->
+  <path d="M512 636 C432 652 372 600 360 524 C448 512 506 560 512 636 Z" fill="#5fce97"/>
+  <path d="M512 600 C592 612 652 560 664 484 C576 472 506 520 512 600 Z" fill="#5fce97"/>
+  <!-- bud head -->
+  <path d="M512 540 C372 540 304 444 318 332 C332 236 416 180 512 180 C608 180 692 236 706 332 C720 444 652 540 512 540 Z" fill="url(#bud)"/>
+  <path d="M512 208 V496" stroke="#2a9c66" stroke-width="14" stroke-linecap="round" opacity="0.5"/>
+  <!-- face -->
+  <circle cx="454" cy="356" r="24" fill="#16352a"/>
+  <circle cx="570" cy="356" r="24" fill="#16352a"/>
+  <circle cx="463" cy="347" r="8" fill="#ffffff"/>
+  <circle cx="579" cy="347" r="8" fill="#ffffff"/>
+  <circle cx="404" cy="398" r="22" fill="#ffffff" opacity="0.30"/>
+  <circle cx="620" cy="398" r="22" fill="#ffffff" opacity="0.30"/>
+  <path d="M468 412 Q512 448 556 412" stroke="#16352a" stroke-width="17" stroke-linecap="round" fill="none"/>
+</svg>

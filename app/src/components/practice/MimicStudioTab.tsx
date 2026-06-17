@@ -3,7 +3,8 @@ import { motion } from "motion/react";
 import { Camera, CameraOff, ChevronLeft, ChevronRight, ShieldCheck, Smile, Star } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
+import { SectionCard, cardCls, Chip } from "../ui/kit";
+import { PlayShell, PlayHeader, PlayButton } from "../ui/playkit";
 import { MIMIC_PACKS, type MimicPack } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
 import type { MimicSession } from "../../types";
@@ -88,11 +89,11 @@ export default function MimicStudioTab() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader
-        eyebrow="Practice Studio"
+    <PlayShell>
+      <PlayHeader
         title={t("prac.mimic.title")}
-        subtitle={t("prac.mimic.sub", { name: first })}
+        say={t("prac.mimic.sub", { name: first })}
+        mood="cheer"
       />
 
       <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
@@ -116,7 +117,7 @@ export default function MimicStudioTab() {
                 {p.prompts.map((_, i) => (
                   <span key={i} className="w-2 h-2 rounded-full" style={{ background: i < done ? "var(--arbor-clay)" : "rgba(41,51,63,0.12)" }} />
                 ))}
-                {done === p.prompts.length && <Star className="w-3.5 h-3.5 ml-1" style={{ color: "#d7aa55", fill: "#d7aa55" }} />}
+                {done === p.prompts.length && <Star className="w-3.5 h-3.5 ml-1" style={{ color: "var(--arbor-yellow)", fill: "var(--arbor-yellow)" }} />}
               </div>
             </button>
           );
@@ -156,9 +157,9 @@ export default function MimicStudioTab() {
                 <p className="text-xs mb-4 max-w-[260px] mx-auto" style={{ color: "#a8a093" }}>
                   Turn on the mirror so {first} can watch their own mouth while copying you. Local-only — never recorded.
                 </p>
-                <button onClick={() => void startMirror()} className="font-extrabold text-xs px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
-                  Turn on mirror
-                </button>
+                <PlayButton onClick={() => void startMirror()} tone="clay" size="md">
+                  <Camera className="w-4 h-4" /> Turn on mirror
+                </PlayButton>
                 {camError && <p className="text-[11px] mt-3" style={{ color: "#e9a0b6" }}>{camError}</p>}
               </div>
             )}
@@ -171,16 +172,16 @@ export default function MimicStudioTab() {
         </div>
 
         {/* Rating */}
-        <div className="flex flex-wrap items-center gap-2 mt-5">
-          <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>How did {first}&apos;s copy go?</span>
+        <div className="flex flex-wrap items-center gap-2.5 mt-5">
+          <span className="text-[13px] font-bold w-full sm:w-auto" style={{ color: "var(--arbor-muted)" }}>How did {first}&apos;s copy go?</span>
           {([
-            { r: 1 as const, label: "Tried it!", bg: "var(--arbor-pink-soft)", fg: "var(--arbor-pink-ink)" },
-            { r: 2 as const, label: "So close", bg: "var(--arbor-yellow-soft)", fg: "var(--arbor-yellow-ink)" },
-            { r: 3 as const, label: "Nailed it ⭐", bg: "var(--arbor-green-soft)", fg: "var(--arbor-green-ink)" },
+            { r: 1 as const, label: "Tried it!", tone: "pink" as const },
+            { r: 2 as const, label: "So close", tone: "yellow" as const },
+            { r: 3 as const, label: "Nailed it ⭐", tone: "clay" as const },
           ]).map((b) => (
-            <button key={b.r} onClick={() => rate(b.r)} className="text-xs font-extrabold px-3.5 py-2 rounded-xl transition" style={{ background: b.bg, color: b.fg }}>
+            <PlayButton key={b.r} onClick={() => rate(b.r)} variant="soft" tone={b.tone} size="md">
               {b.label}
-            </button>
+            </PlayButton>
           ))}
           {justRated && (
             <motion.span initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-base">
@@ -192,6 +193,6 @@ export default function MimicStudioTab() {
           Every attempt counts — in video-modeling practice, the imitation effort matters more than a perfect copy.
         </p>
       </SectionCard>
-    </motion.div>
+    </PlayShell>
   );
 }
