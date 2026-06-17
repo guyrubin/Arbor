@@ -2,10 +2,11 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { collection, doc, getDocs, setDoc, updateDoc } from "firebase/firestore";
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "./AuthContext";
-import { ChildProfile } from "../types";
+import { ChildProfile, DeletionReceipt } from "../types";
 import { defaultChildProfile } from "../initialData";
-import { deleteChildData } from "../lib/childData";
+import { eraseEverything } from "../lib/childData";
 import { trackProfileCreated } from "../lib/loopEvents";
+import { bandForAge } from "../lib/screening";
 
 const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
@@ -23,8 +24,9 @@ type ProfileContextValue = {
   setActiveChild: (id: string) => void;
   addChild: (input: NewChildInput) => Promise<ChildProfile>;
   updateChild: (id: string, patch: Partial<ChildProfile>) => Promise<void>;
-  /** Permanently delete a child and all of their data (GDPR). */
-  deleteChild: (id: string) => Promise<void>;
+  /** Permanently delete a child and all of their data (GDPR/COPPA). Returns a
+   *  provable deletion receipt from the server when available. */
+  deleteChild: (id: string) => Promise<DeletionReceipt | null>;
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
@@ -132,8 +134,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       });
       setActiveChildId(newChild.id);
       // Activation signal — fired outside the updater so React StrictMode's
-      // double-invoke in dev doesn't double-count.
-      try { trackProfileCreated(count); } catch { /* noop */ }
+      // double-invoke in dev doesn't double-count. Carry the child's coarse age
+      // band (non-PII) so activation is sliceable by band in the dashboard.
+      try { trackProfileCreated(count, bandForAge(newChild.age).id); } catch { /* noop */ }
       return newChild;
     },
     [useFirestore, profilesPath]
@@ -154,13 +157,15 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   );
 
   const deleteChild = useCallback(
-    async (id: string) => {
-      await deleteChildData(user?.uid, id);
+    async (id: string): Promise<DeletionReceipt | null> => {
+      // M9: provable erasure — server wipe (memory + shares + consent) + client wipe.
+      const receipt = await eraseEverything(user?.uid, id);
       setProfiles((prev) => {
         const next = prev.filter((p) => p.id !== id);
         if (id === activeChildId) setActiveChildId(next[0]?.id ?? null);
         return next;
       });
+      return receipt;
     },
     [user?.uid, activeChildId]
   );

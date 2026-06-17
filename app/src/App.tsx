@@ -9,6 +9,8 @@ import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
 import OnboardingFlow from "./components/auth/OnboardingFlow";
 import { firebaseClientMisconfigured, missingFirebaseClientConfig } from "./lib/firebase";
+import { refreshEntitlement } from "./hooks/useEntitlement";
+import { recordBillingTransition } from "./lib/billingTransition";
 
 /**
  * Gates the app behind authentication. When Firebase is configured, unauthenticated
@@ -82,6 +84,39 @@ function ProfileGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Pay-funnel instrumentation (P0-4). Runs once for a signed-in user: if we
+ * returned from a hosted checkout (`?billing=success`), refresh the cached
+ * entitlement and strip the param; then re-read the entitlement and let
+ * recordBillingTransition() fire `trial_start`/`paid` exactly once per real
+ * transition (deduped in localStorage, beta/comp excluded). Driving off the
+ * entitlement transition — not the query param — means native RevenueCat
+ * upgrades fire correctly too, since they never see the web redirect.
+ */
+function BillingReturnWatcher() {
+  React.useEffect(() => {
+    let alive = true;
+    const params = new URLSearchParams(window.location.search);
+    const returnedFromCheckout = params.get("billing") === "success";
+
+    if (returnedFromCheckout) {
+      params.delete("billing");
+      const qs = params.toString();
+      const clean = window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
+      try { window.history.replaceState({}, "", clean); } catch { /* ignore */ }
+    }
+
+    // Always evaluate the transition on boot — refreshEntitlement() forces a
+    // fresh fetch, which covers both the web checkout redirect-back and native
+    // RevenueCat upgrades (no web redirect). The localStorage dedup makes the
+    // unconditional boot read cheap and idempotent.
+    void refreshEntitlement().then((e) => { if (alive) recordBillingTransition(e); });
+
+    return () => { alive = false; };
+  }, []);
+  return null;
+}
+
 /** Thin application shell: auth gate → profile gate → state provider → layout. */
 export default function App() {
   return (
@@ -89,6 +124,7 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <AuthGate>
+            <BillingReturnWatcher />
             <ProfileProvider>
               <ProfileGate>
                 <ArborProvider>

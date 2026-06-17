@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import type { CoachContract, CouncilTake } from "../../types";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
+import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 
 /**
  * Generative answer surface (v6 UX-3 / v5 GUI-1·2·3). Renders the coach's real
@@ -60,7 +61,11 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
   const showLens = lens && lens !== "Integrated Balanced";
 
   const copy = (text: string, key: string) => {
-    navigator.clipboard?.writeText(text);
+    // Growth loop (P0-4): copying an answer card is a share intent → completion.
+    trackShareInitiated("answer_card", "coach");
+    void Promise.resolve(navigator.clipboard?.writeText(text)).then(() =>
+      trackShareCompleted("answer_card", "clipboard")
+    );
     setCopied(key);
     setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
   };

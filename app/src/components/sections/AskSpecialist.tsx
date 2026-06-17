@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildConsultPacket, serializePacket, countIncluded } from "../../consult/packet";
+import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 
 /* Care › Consult › Ask a specialist — the warm handoff.
    Builds a packet from the child's record, lets the parent redact line by line
@@ -47,7 +48,14 @@ export default function AskSpecialist() {
   const markdown = () => serializePacket(packet, excluded);
 
   const copy = async () => {
-    try { await navigator.clipboard.writeText(markdown()); toast("Packet copied. Paste it to your professional.", "success"); }
+    // Growth loop (P0-4): the consult packet is a `story` artifact shared to a
+    // professional — reuse the existing union value, don't mint a new one here.
+    trackShareInitiated("story", "ask_specialist");
+    try {
+      await navigator.clipboard.writeText(markdown());
+      trackShareCompleted("story", "clipboard");
+      toast("Packet copied. Paste it to your professional.", "success");
+    }
     catch { toast("Could not copy. Try Download instead.", "error"); }
   };
   const download = () => {

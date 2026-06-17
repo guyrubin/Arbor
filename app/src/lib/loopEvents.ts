@@ -53,15 +53,24 @@ export function trackFirstPlan(props: Record<string, unknown> = {}): void {
   if (once(LS_FIRST_PLAN)) track(LoopEvent.FirstPlan, props);
 }
 
+// wired by: CoachAnswerCards.copy() ("answer_card"/"coach") + AskSpecialist.copy()
+// ("story"/"ask_specialist"). Future surfaces: mk-p0-3 (avatar), mk-p2-6 (growth_card).
 export const trackShareInitiated = (artifact: LoopArtifact, surface?: string): void =>
   track(LoopEvent.ShareInitiated, { artifact, ...(surface ? { surface } : {}) });
 
+// wired by: CoachAnswerCards.copy() + AskSpecialist.copy() on clipboard success.
 export const trackShareCompleted = (artifact: LoopArtifact, channel?: string): void =>
   track(LoopEvent.ShareCompleted, { artifact, ...(channel ? { channel } : {}) });
 
+// wired by: mk-p0-2-referral-loop (invite UI owner). Signature frozen here; do
+// not add a placeholder call-site — that mission calls it at "invite sent".
 export const trackInviteSent = (channel?: string): void =>
   track(LoopEvent.InviteSent, channel ? { channel } : {});
 
+// wired by: lib/billingTransition.recordBillingTransition() (App BillingReturnWatcher),
+// on the free/beta → in_trial entitlement transition. Beta/comp excluded.
 export const trackTrialStart = (tier: string): void => track(LoopEvent.TrialStart, { tier });
 
+// wired by: lib/billingTransition.recordBillingTransition() (App BillingReturnWatcher),
+// on the transition into active on a real paid plan (provider ≠ comp/none, enforced).
 export const trackPaid = (tier: string): void => track(LoopEvent.Paid, { tier });
