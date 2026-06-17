@@ -8,6 +8,7 @@
  */
 import { logger } from "../server/logger.js";
 import { currentRequestContext } from "../server/requestContext.js";
+import { recordUsageRollup } from "../server/usageRollup.js";
 import type { ModelRoute, ProviderId } from "./modelRouter.js";
 
 export type TokenUsage = {
@@ -57,6 +58,8 @@ export const recordUsage = (
       outputTokens: usage.outputTokens,
       totalTokens: usage.totalTokens,
     });
+    // COST-3: aggregate into today's Firestore rollup for the founder dashboard.
+    recordUsageRollup(meta.provider, usage);
   } catch {
     /* telemetry must never break a request */
   }

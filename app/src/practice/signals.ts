@@ -330,6 +330,57 @@ export function bandTrend(history: BandSnapshot[], current: DomainBand[]): Recor
   return out;
 }
 
+/* ---------------- Longitudinal development trajectory (the moat made visible) ---------------- */
+
+export interface DomainTrajectory {
+  domain: PracticeDomain;
+  /** Signal (0–100) per weekly snapshot, oldest → newest. */
+  series: number[];
+  latest: number;
+  /** Change from the first to the latest snapshot. */
+  delta: number;
+}
+
+export interface DevelopmentTrajectory {
+  weeks: number;
+  /** Overall (mean-of-domains) signal per snapshot, oldest → newest. */
+  overall: number[];
+  overallLatest: number;
+  overallDelta: number;
+  domains: DomainTrajectory[];
+}
+
+/**
+ * Turn the weekly BandSnapshot history into trend series — per domain and an
+ * overall (mean of domains) — for sparkline trend lines. This is the longitudinal
+ * picture no content-only competitor can show: it's built from THIS child's own
+ * accumulating record. Pure; deterministic ordering by ISO-week id.
+ */
+export function developmentTrajectory(history: BandSnapshot[]): DevelopmentTrajectory {
+  const sorted = [...history].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const domains: PracticeDomain[] = ["language", "speech", "cognition", "social", "emotional"];
+
+  const overall = sorted.map((s) => {
+    const sig = s.bands.map((b) => b.signal);
+    return sig.length ? Math.round(sig.reduce((x, y) => x + y, 0) / sig.length) : 0;
+  });
+
+  const domainSeries: DomainTrajectory[] = domains.map((domain) => {
+    const series = sorted.map((s) => Math.round(s.bands.find((b) => b.domain === domain)?.signal ?? 0));
+    const latest = series.length ? series[series.length - 1] : 0;
+    const first = series.length ? series[0] : 0;
+    return { domain, series, latest, delta: latest - first };
+  });
+
+  return {
+    weeks: sorted.length,
+    overall,
+    overallLatest: overall.length ? overall[overall.length - 1] : 0,
+    overallDelta: overall.length ? overall[overall.length - 1] - overall[0] : 0,
+    domains: domainSeries,
+  };
+}
+
 /* ---------------- Adaptive play difficulty (Epic 8) ---------------- */
 
 /** Age-appropriate ceiling on Memory Match difficulty (a toddler shouldn't face 12 cards). */

@@ -6,12 +6,13 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
 import ProgressRing from "../ui/ProgressRing";
+import { Sparkline } from "../ui/Sparkline";
 import DomainRadar from "./DomainRadar";
 import { DOMAIN_META } from "../../practice/content";
 import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
 import { watchSignals } from "../../practice/watch";
 import type { ScreeningResult } from "../../lib/screening";
-import type { BandLevel } from "../../practice/signals";
+import { developmentTrajectory, type BandLevel } from "../../practice/signals";
 import { track } from "../../lib/analytics";
 
 type SavedScreening = ScreeningResult & { id: string };
@@ -36,6 +37,8 @@ export default function DevelopmentCopilot() {
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const { bands, recommendation, confidence, trend, snapshots } = useCopilot(milestones, data, childProfile.id);
+  // Longitudinal trajectory (the moat made visible) — trend lines from the weekly history.
+  const trajectory = useMemo(() => developmentTrajectory(snapshots), [snapshots]);
   const screeningsCol = useChildCollection<SavedScreening>(childProfile.id, "screenings");
   const first = childProfile.name.split(" ")[0];
   const [copied, setCopied] = useState(false);
@@ -228,6 +231,42 @@ export default function DevelopmentCopilot() {
       </SectionCard>
 
       <SectionCard title="Weekly history" icon={<History className="w-5 h-5" />} tone="sky">
+        {/* Longitudinal trend lines — only meaningful once there's more than one week */}
+        {trajectory.weeks >= 2 && (
+          <div className={`${cardCls} p-4 mb-4`}>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
+                <TrendingUp className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> Trend over {trajectory.weeks} weeks
+              </p>
+              <span className="flex items-center gap-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                Overall
+                <Sparkline data={trajectory.overall} max={100} width={84} height={22} color="var(--arbor-green-ink)" />
+                <span style={{ color: trajectory.overallDelta >= 0 ? "var(--arbor-green-ink)" : "var(--arbor-pink-ink)" }}>
+                  {trajectory.overallDelta >= 0 ? "+" : ""}{trajectory.overallDelta}
+                </span>
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+              {trajectory.domains.map((d) => {
+                const meta = DOMAIN_META[d.domain];
+                return (
+                  <div key={d.domain} className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold" style={{ color: meta.color }}>{meta.label}</span>
+                    <span className="flex items-center gap-2">
+                      <Sparkline data={d.series} max={100} width={72} height={20} color={meta.color} />
+                      <span className="text-[10px] font-bold w-8 text-right" style={{ color: d.delta >= 0 ? "var(--arbor-green-ink)" : "var(--arbor-pink-ink)" }}>
+                        {d.delta >= 0 ? "+" : ""}{d.delta}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[10px] mt-3" style={{ color: "var(--arbor-muted)" }}>
+              {first}&apos;s own signal over time — a conversation starter, never a diagnosis.
+            </p>
+          </div>
+        )}
         {snapshots.length === 0 ? (
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
             The first weekly band snapshot will appear here once the dashboard has loaded practice data.

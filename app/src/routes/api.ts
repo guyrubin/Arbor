@@ -20,6 +20,8 @@ import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/dig
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import { billingCheckoutUrl } from "../server/billing.js";
+import { isAdmin } from "../server/admin.js";
+import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 
 type ApiDeps = {
@@ -31,6 +33,7 @@ type ApiDeps = {
   entitlementStore: EntitlementStore;
   counters: UsageCounterStore;
   consultStore: ConsultStore;
+  adminMetrics: AdminMetricsStore;
 };
 
 /** Redact PII from a profile object by round-tripping its JSON through the redactor. */
@@ -64,7 +67,7 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, counters, consultStore }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, counters, consultStore, adminMetrics }: ApiDeps) => {
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
@@ -814,6 +817,137 @@ Gentle, non-scary, age-appropriate for ages 4-8. Calm, soft palette. No text, wo
     }
   });
 
+  // Generative Cognitive Adventure: a personalized, kids-safe comprehension story
+  // returned in the exact AdventureScenario shape the Practice Studio already renders.
+  // Server normalizes ids + enforces exactly one correct choice per scene.
+  const ADVENTURE_SKILLS = ["vocabulary", "logic", "sequencing", "instructions", "abstract"];
+  const normalizeAdventure = (raw: any, age: number) => {
+    const scenesIn = Array.isArray(raw?.scenes) ? raw.scenes.slice(0, 4) : [];
+    const scenes = scenesIn.map((sc: any, i: number) => {
+      const choicesIn = Array.isArray(sc?.choices) ? sc.choices.slice(0, 3) : [];
+      let seenCorrect = false;
+      const choices = choicesIn.map((c: any, j: number) => {
+        const correct = !seenCorrect && c?.correct === true;
+        if (correct) seenCorrect = true;
+        return {
+          id: `c${j}`,
+          emoji: typeof c?.emoji === "string" && c.emoji ? c.emoji : "•",
+          text: String(c?.text ?? "").slice(0, 120),
+          correct,
+          feedback: String(c?.feedback ?? "").slice(0, 300),
+        };
+      });
+      // Guarantee exactly one correct choice.
+      if (choices.length > 0 && !choices.some((c: any) => c.correct)) choices[0].correct = true;
+      return {
+        id: `s${i}`,
+        skill: ADVENTURE_SKILLS.includes(sc?.skill) ? sc.skill : "logic",
+        prompt: String(sc?.prompt ?? "").slice(0, 300),
+        choices,
+      };
+    }).filter((s: any) => s.choices.length >= 2 && s.prompt);
+    return {
+      id: `gen-${Date.now()}`,
+      title: String(raw?.title ?? "A New Adventure").slice(0, 80),
+      emoji: typeof raw?.emoji === "string" && raw.emoji ? raw.emoji : "🧭",
+      ageBand: [Math.max(0, age - 1), age + 1] as [number, number],
+      intro: String(raw?.intro ?? "").slice(0, 300),
+      scenes,
+    };
+  };
+
+  router.post("/generate-adventure", async (req, res) => {
+    const { childProfile, focusSkill } = req.body ?? {};
+    const name = (childProfile?.name && String(childProfile.name).trim()) || "your child";
+    const age = Number(childProfile?.age ?? 5);
+    const interests = Array.isArray(childProfile?.strengths) ? childProfile.strengths.slice(0, 4).join(", ") : "";
+
+    // Safety gate on the child's free-text profile fields before generating child-facing play.
+    const escalationMatch = screenForImmediateEscalation({
+      behaviorLogs: [interests, ...(Array.isArray(childProfile?.challenges) ? childProfile.challenges : [])].join(" "),
+    });
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `Let's pause new story play for now. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category,
+      });
+      return;
+    }
+
+    const skillLine = ADVENTURE_SKILLS.includes(focusSkill)
+      ? `Aim most scenes at this thinking skill: ${focusSkill}.`
+      : "Vary the thinking skills across scenes (vocabulary, logic, sequencing, following instructions, abstract).";
+
+    const prompt = `${NON_DIAGNOSTIC_CONTRACT}
+You are Arbor's gentle children's storyteller. Build a SHORT "Cognitive Adventure" — a comprehension game disguised as a warm little story for ${name}, age ${age}.
+${interests ? `Weave in things ${name} loves: ${interests}.` : ""}
+${skillLine}
+
+RULES:
+- 3 scenes. Each scene: a 1-2 sentence situation ending in a simple question, plus EXACTLY 3 choices.
+- Exactly ONE choice is correct; the other two are gentle, plausible, never silly-cruel.
+- Every choice has warm, encouraging "feedback" — the child NEVER fails; wrong picks get a kind nudge to think again.
+- Vocabulary and sentence length fit age ${age}. Use ${name} by name.
+- Completely safe and non-scary: no violence, injury, death, fear, or frightening imagery. Conflict stays light and resolves kindly.
+- Each scene names a "skill" from exactly: vocabulary, logic, sequencing, instructions, abstract.
+- Give a short title, one emoji, and a one-sentence intro that addresses ${name}.
+- Use "{name}" as a placeholder for the child's name in prompts/feedback where natural.`;
+
+    const schema = {
+      type: Type.OBJECT,
+      required: ["title", "emoji", "intro", "scenes"],
+      properties: {
+        title: { type: Type.STRING },
+        emoji: { type: Type.STRING },
+        intro: { type: Type.STRING },
+        scenes: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            required: ["prompt", "skill", "choices"],
+            properties: {
+              prompt: { type: Type.STRING },
+              skill: { type: Type.STRING },
+              choices: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  required: ["text", "emoji", "correct", "feedback"],
+                  properties: {
+                    text: { type: Type.STRING },
+                    emoji: { type: Type.STRING },
+                    correct: { type: Type.BOOLEAN },
+                    feedback: { type: Type.STRING },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    try {
+      const privacy = createRedaction(name);
+      const raw = privacy.restoreDeep(await modelProvider.generateJson({
+        route: "creative_low_risk",
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        temperature: 0.8,
+        schema,
+      })) as Record<string, unknown>;
+      const adventure = normalizeAdventure(raw, age);
+      if (adventure.scenes.length === 0) {
+        res.status(502).json({ error: "Couldn't build a complete adventure — please try again" });
+        return;
+      }
+      res.json(adventure);
+    } catch (error: any) {
+      logger.error("Arbor Adventure Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Couldn't create that adventure — please try again", details: error.message });
+    }
+  });
+
   router.post("/generate-plan", async (req, res) => {
     const { challengeTopic, childProfile } = req.body;
     const escalationMatch = screenForImmediateEscalation({ challengeTopic });
@@ -1190,6 +1324,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         provider: entitlement.provider ?? null,
         currentPeriodEnd: entitlement.currentPeriodEnd ?? null,
         willRenew: entitlement.willRenew ?? null,
+        isAdmin: isAdmin(actor),
       });
     } catch (error: any) {
       logger.error("Arbor Entitlement Error", error, { requestId: requestIdOf(req) });
@@ -1228,6 +1363,22 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
   // MON-2: customer self-service portal link (manage / cancel web subscriptions).
   router.get("/billing/portal", (_req, res) => {
     res.json({ url: config.billingManageUrl ?? null });
+  });
+
+  // ADM-1: founder dashboard — total users, paying-by-plan, today's token spend.
+  // Gated to ARBOR_ADMIN_UIDS / ARBOR_ADMIN_EMAILS; 403 for everyone else.
+  router.get("/admin/overview", async (req, res) => {
+    const actor = actorOf(req);
+    if (!isAdmin(actor)) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+    try {
+      res.json(await adminMetrics.overview());
+    } catch (error: any) {
+      logger.error("Arbor Admin Overview Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to load admin overview", details: error.message });
+    }
   });
 
   // RET-1: "{child}'s week" — deterministic stats core + AI narrative on top.

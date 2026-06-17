@@ -1,4 +1,5 @@
 import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole } from "../types";
+import type { AdventureScenario } from "../practice/content";
 
 /**
  * Typed fetch wrappers for the Arbor API. An auth-token provider can be
@@ -129,6 +130,9 @@ export const api = {
   // AVA-3: render a story-beat scene featuring the child's generated character.
   generateScene: (payload: { imagePrompt: string; avatar?: { dataUrl: string }; style?: AvatarStyle }) =>
     post<{ dataUrl: string }>("/api/generate-scene", payload),
+  // Generative Cognitive Adventure personalized to the child (AdventureScenario shape).
+  generateAdventure: (payload: { childProfile: ChildProfile; focusSkill?: string }) =>
+    post<AdventureScenario>("/api/generate-adventure", payload),
   council: (payload: { message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" }) =>
     post<{ text: string; contract?: CoachContract; council?: CouncilTake[]; memoryReviewItems?: MemoryReviewItem[] }>("/api/council", payload),
   // Co-parent / trusted sharing (server-enforced expiry).
@@ -147,6 +151,8 @@ export const api = {
     post<{ url: string }>("/api/billing/checkout", { plan, cadence }),
   // MON-2: self-service portal link to manage/cancel a web subscription.
   billingPortal: () => get<{ url: string | null }>("/api/billing/portal"),
+  // ADM-1: founder dashboard — users + paying-by-plan + today's token spend (403 if not admin).
+  adminOverview: () => get<AdminOverview>("/api/admin/overview"),
   // RET-1: "{child}'s week" digest (stats are computed server-side from the data we send).
   digest: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; language?: "en" | "he" }) =>
     post<WeeklyDigest>("/api/digest", payload),
@@ -170,6 +176,22 @@ export type EntitlementInfo = {
   provider?: "stripe" | "app_store" | "play_store" | "comp" | "none" | null;
   currentPeriodEnd?: string | null;
   willRenew?: boolean | null;
+  isAdmin?: boolean;
+};
+
+export type AdminOverview = {
+  users: number;
+  paying: { plus: number; family: number; trialing: number; total: number };
+  usageToday: {
+    date: string;
+    calls: number;
+    promptTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    byProvider: Record<string, { calls?: number; promptTokens?: number; outputTokens?: number }>;
+    approxCostEur: number;
+  };
+  generatedAt: string;
 };
 
 export type WeeklyDigest = {

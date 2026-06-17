@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Languages, Sparkles, LogOut, ShieldCheck } from "lucide-react";
+import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3 } from "lucide-react";
 import { Modal } from "../ui/Modal";
+import AdminDashboard from "./AdminDashboard";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
@@ -20,6 +21,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const isBeta = isPaid && !entitlement.enforced;
   const coachLimit = entitlement.limits.coachMessagesPerDay;
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
+  const [adminOpen, setAdminOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const planLabel = isBeta
@@ -78,6 +80,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   };
 
   return (
+    <>
     <Modal open={open} onClose={onClose} title={t("set.title")}>
       <div className="space-y-5 text-sm">
         {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
@@ -170,6 +173,15 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </button>
         </Row>
 
+        {/* ADM-1: founder-only single-pane dashboard (users, paying, token spend) */}
+        {entitlement.isAdmin && (
+          <Row icon={<BarChart3 className="w-4 h-4" />} title="Founder dashboard" sub="Users, paying plans, and AI spend today">
+            <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
+              Open
+            </button>
+          </Row>
+        )}
+
         {firebaseEnabled && user && (
           <div className="pt-4" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
             <div className="flex items-center justify-between gap-3">
@@ -185,6 +197,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         )}
       </div>
     </Modal>
+    {entitlement.isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} />}
+    </>
   );
 }
 

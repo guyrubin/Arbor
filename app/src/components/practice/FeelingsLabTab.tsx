@@ -6,10 +6,21 @@ import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
+import { EmotionAvatar } from "../ui/EmotionAvatar";
 import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
 
 const eventId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+// Each feeling gets a calm tone for the avatar's aura.
+const EMOTION_TONE: Record<string, string> = {
+  happy: "var(--arbor-yellow-ink)",
+  excited: "var(--arbor-peach-ink)",
+  sad: "var(--arbor-sky-ink)",
+  afraid: "var(--arbor-lav-ink)",
+  angry: "var(--arbor-pink-ink)",
+  frustrated: "var(--arbor-pink-ink)",
+};
 
 export default function FeelingsLabTab() {
   const { childProfile } = useArbor();
@@ -19,6 +30,7 @@ export default function FeelingsLabTab() {
 
   const [scenarioIdx, setScenarioIdx] = useState(0);
   const [pickedEmotion, setPickedEmotion] = useState<string | null>(null);
+  const [feltEmotion, setFeltEmotion] = useState<string | null>(null);
   const [talkedEmotion, setTalkedEmotion] = useState<string | null>(null);
   const [completedCalm, setCompletedCalm] = useState<string | null>(null);
   const scenario = EMOTION_SCENARIOS[scenarioIdx % EMOTION_SCENARIOS.length];
@@ -55,6 +67,17 @@ export default function FeelingsLabTab() {
     setPickedEmotion(id);
     record("emotion-id", id === scenario.answer, scenario.id);
   };
+
+  // Self-check: the child says how THEY feel; their avatar mirrors it (A4).
+  const feel = (id: string) => {
+    if (id === feltEmotion) return;
+    setFeltEmotion(id);
+    record("emotion-why", true, `self:${id}`);
+  };
+
+  // The emotion the avatar should be wearing right now.
+  const activeEmotion = EMOTIONS.find((e) => e.id === (feltEmotion ?? pickedEmotion)) ?? null;
+  const activeColor = activeEmotion ? EMOTION_TONE[activeEmotion.id] ?? "var(--arbor-clay)" : "var(--arbor-clay)";
 
   const nextScenario = () => {
     setScenarioIdx((i) => (i + 1) % EMOTION_SCENARIOS.length);
@@ -103,6 +126,38 @@ export default function FeelingsLabTab() {
 
       <SectionCard title="Emotion match" icon={<Smile className="w-5 h-5" />} tone="yellow"
         action={<Chip tone="yellow">{scenarioIdx + 1} of {EMOTION_SCENARIOS.length}</Chip>}>
+        {/* A4: the child's own avatar mirrors how they feel right now */}
+        <div className="flex items-center gap-4 rounded-2xl p-4 mb-4" style={{ background: "var(--arbor-paper-deep)" }}>
+          <EmotionAvatar
+            name={first}
+            photoURL={childProfile.photoUrl}
+            emotionEmoji={activeEmotion?.emoji}
+            emotionLabel={activeEmotion?.label}
+            color={activeColor}
+            size={64}
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>How are you feeling right now, {first}?</p>
+            <div className="flex flex-wrap gap-1.5">
+              {EMOTIONS.map((e) => {
+                const on = feltEmotion === e.id;
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => feel(e.id)}
+                    aria-pressed={on}
+                    title={e.label}
+                    className="rounded-full px-2.5 py-1.5 text-base transition"
+                    style={on ? { background: "#fff", boxShadow: `0 0 0 2px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
+                  >
+                    {e.emoji}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         <div className="rounded-2xl p-5 mb-4" style={{ background: "var(--arbor-paper-deep)" }}>
           <p className="text-4xl mb-3">{scenario.emoji}</p>
           <p className="text-lg font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>

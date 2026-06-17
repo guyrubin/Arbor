@@ -14,6 +14,8 @@ import { createAiQuota } from "./aiQuota.js";
 import { createCounterStore } from "./quotaStore.js";
 import { createEntitlementStore, createCoachMeter, requirePlusFeature } from "./entitlements.js";
 import { createBillingWebhookRouter } from "./billing.js";
+import { createAdminMetricsStore } from "./adminMetrics.js";
+import { initUsageRollup } from "./usageRollup.js";
 import { createConsultStore } from "./consultRequests.js";
 import { requestObservability } from "./logger.js";
 import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
@@ -68,6 +70,9 @@ export const createApp = (config: ArborConfig) => {
   const counters = createCounterStore(config);
   const entitlementStore = createEntitlementStore(config);
   const consultStore = createConsultStore(config);
+  // ADM-1 / COST-3: founder metrics read-side + the daily token-usage rollup writer.
+  const adminMetrics = createAdminMetricsStore(config);
+  initUsageRollup(config);
 
   // OPS-1: request ids + structured request logs on every route.
   app.use(requestObservability);
@@ -117,7 +122,7 @@ export const createApp = (config: ArborConfig) => {
   app.use(["/api/chat", "/api/council"], createCoachMeter(entitlementStore, counters));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, counters, consultStore }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, counters, consultStore, adminMetrics }));
 
   return app;
 };

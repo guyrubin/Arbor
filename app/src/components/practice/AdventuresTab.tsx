@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Compass, Map, RotateCcw, Sparkles } from "lucide-react";
+import { Compass, Map, RotateCcw, Sparkles, Wand2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
@@ -8,6 +8,7 @@ import { fillTemplate, scenariosForAge, type AdventureScenario } from "../../pra
 import { usePracticeData } from "../../practice/usePracticeData";
 import MemoryMatch from "./MemoryMatch";
 import type { AdventureResult } from "../../types";
+import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
 
 const SKILL_LABEL: Record<string, string> = {
@@ -31,9 +32,29 @@ export default function AdventuresTab() {
   const first = childProfile.name.split(" ")[0];
   const vars = { name: first, age: childProfile.age };
 
-  const scenarios = useMemo(() => scenariosForAge(childProfile.age), [childProfile.age]);
+  const ageScenarios = useMemo(() => scenariosForAge(childProfile.age), [childProfile.age]);
+  // Generated adventures (this session) sit alongside the curated ones.
+  const [generated, setGenerated] = useState<AdventureScenario[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const scenarios = useMemo(() => [...generated, ...ageScenarios], [generated, ageScenarios]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const scenario: AdventureScenario | null = scenarios.find((s) => s.id === activeId) ?? null;
+
+  const createAdventure = async () => {
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const adv = await api.generateAdventure({ childProfile });
+      setGenerated((prev) => [adv, ...prev]);
+      track("adventure_generated", { id: adv.id });
+      openScenario(adv.id);
+    } catch (e: any) {
+      setGenError(e?.message || "Couldn't create a new adventure — please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const [sceneIdx, setSceneIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -93,6 +114,25 @@ export default function AdventuresTab() {
         title={t("prac.adventures.title")}
         subtitle={t("prac.adventures.sub", { name: first })}
       />
+
+      {!scenario && (
+        <div className={`${cardCls} p-5 flex flex-wrap items-center gap-3`} style={{ background: "var(--arbor-lav-soft)" }}>
+          <Wand2 className="w-5 h-5 flex-shrink-0" style={{ color: "var(--arbor-lav-ink)" }} />
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Make a fresh adventure for {first}</p>
+            <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>A brand-new comprehension story, personalized to {first}&apos;s age and interests.</p>
+          </div>
+          <button
+            onClick={createAdventure}
+            disabled={generating}
+            className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white transition active:scale-[0.98] disabled:opacity-60"
+            style={{ background: "var(--arbor-lav-ink)" }}
+          >
+            <Sparkles className="w-3.5 h-3.5" /> {generating ? "Creating…" : "Create adventure"}
+          </button>
+          {genError && <p className="w-full text-[11px]" style={{ color: "var(--arbor-pink-ink)" }}>{genError}</p>}
+        </div>
+      )}
 
       {!scenario && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

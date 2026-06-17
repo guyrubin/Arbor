@@ -3,6 +3,7 @@ import type { AdventureResult, Milestone, MissionRecord, SpeechAttempt } from ".
 import {
   ageAppropriateSoundIds,
   developmentScore,
+  developmentTrajectory,
   domainBands,
   isSoundAgeAppropriate,
   matchResult,
@@ -268,5 +269,37 @@ describe("ASHA speech age-gating + dosage", () => {
     expect(dose.trialsToday).toBe(0);
     expect(dose.sessionMetToday).toBe(false);
     expect(dose.weeklyMet).toBe(false);
+  });
+});
+
+describe("developmentTrajectory", () => {
+  const snap = (id: string, lang: number, social: number): import("../types").BandSnapshot => ({
+    id, date: "2026-06-01",
+    bands: [
+      { domain: "language", signal: lang, band: "developing" },
+      { domain: "speech", signal: 50, band: "developing" },
+      { domain: "cognition", signal: 50, band: "developing" },
+      { domain: "social", signal: social, band: "developing" },
+      { domain: "emotional", signal: 50, band: "developing" },
+    ],
+  });
+
+  it("builds per-domain + overall series oldest→newest with deltas", () => {
+    const traj = developmentTrajectory([snap("2026-W22", 40, 60), snap("2026-W24", 70, 50), snap("2026-W23", 55, 55)]);
+    expect(traj.weeks).toBe(3);
+    const lang = traj.domains.find((d) => d.domain === "language")!;
+    expect(lang.series).toEqual([40, 55, 70]); // sorted by week id
+    expect(lang.latest).toBe(70);
+    expect(lang.delta).toBe(30);
+    const social = traj.domains.find((d) => d.domain === "social")!;
+    expect(social.delta).toBe(-10); // 60 → 50
+    expect(traj.overall.length).toBe(3);
+  });
+
+  it("is safe with no history", () => {
+    const traj = developmentTrajectory([]);
+    expect(traj.weeks).toBe(0);
+    expect(traj.overallLatest).toBe(0);
+    expect(traj.overall).toEqual([]);
   });
 });
