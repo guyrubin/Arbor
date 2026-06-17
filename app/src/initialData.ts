@@ -63,6 +63,55 @@ export const sampleBehaviorLogs: BehaviorLog[] = [
 ];
 
 export const initialMilestones: Milestone[] = [
+  // ── CDC/AAP-2022 75th-percentile checklists (birth–3y) + ASHA-2023 communication.
+  //    Non-diagnostic surveillance milestones; checked defaults reflect a typically
+  //    developing child and are edited per child. CDC domains map onto Arbor's six.
+  // 2 months
+  { id: "cdc-2m-1", domain: "social_development", ageGroup: "2 months", title: "Smiles at people", description: "Smiles on their own to get your attention; calms when spoken to or picked up.", checked: true },
+  { id: "cdc-2m-2", domain: "language_communication", ageGroup: "2 months", title: "Coos and makes sounds", description: "Makes sounds other than crying; reacts to loud sounds.", checked: true },
+  { id: "cdc-2m-3", domain: "cognition_executive_function", ageGroup: "2 months", title: "Watches and follows", description: "Watches you as you move; looks at a toy for several seconds.", checked: true },
+  { id: "cdc-2m-4", domain: "sensory_motor_patterns", ageGroup: "2 months", title: "Lifts head in tummy time", description: "Holds head up during tummy time; moves both arms and both legs.", checked: true },
+  // 6 months
+  { id: "cdc-6m-1", domain: "social_development", ageGroup: "6 months", title: "Knows familiar people", description: "Recognises familiar faces; likes to look at themselves in a mirror.", checked: true },
+  { id: "cdc-6m-2", domain: "language_communication", ageGroup: "6 months", title: "Takes turns with sounds", description: "Takes turns making sounds with you; blows raspberries.", checked: true },
+  { id: "cdc-6m-3", domain: "cognition_executive_function", ageGroup: "6 months", title: "Explores by reaching and mouthing", description: "Reaches to grab a toy; puts things in their mouth to explore them.", checked: true },
+  { id: "cdc-6m-4", domain: "sensory_motor_patterns", ageGroup: "6 months", title: "Rolls over", description: "Rolls from tummy to back; pushes up on straight arms; leans on hands when sitting.", checked: true },
+  // 9 months
+  { id: "cdc-9m-1", domain: "attachment_regulation", ageGroup: "9 months", title: "Shows stranger awareness", description: "Is shy, clingy or fearful around strangers; shows several facial expressions.", checked: true },
+  { id: "cdc-9m-2", domain: "language_communication", ageGroup: "9 months", title: "Babbles long strings", description: "Makes many different sounds like 'mamama' and 'babababa'; lifts arms to be picked up.", checked: true },
+  { id: "cdc-9m-3", domain: "cognition_executive_function", ageGroup: "9 months", title: "Looks for dropped things", description: "Looks for objects when dropped out of sight; bangs two things together.", checked: true },
+  { id: "cdc-9m-4", domain: "sensory_motor_patterns", ageGroup: "9 months", title: "Sits without support", description: "Sits without support; moves things from one hand to the other.", checked: true },
+  // 12 months
+  { id: "cdc-12m-1", domain: "social_development", ageGroup: "12 months", title: "Plays games with you", description: "Plays back-and-forth games like pat-a-cake.", checked: true },
+  { id: "cdc-12m-2", domain: "language_communication", ageGroup: "12 months", title: "Waves and says mama/dada", description: "Waves bye-bye; calls a parent 'mama' or 'dada'; understands 'no'.", checked: true },
+  { id: "cdc-12m-3", domain: "cognition_executive_function", ageGroup: "12 months", title: "Finds hidden things", description: "Puts something in a container; looks for things they see you hide.", checked: true },
+  { id: "cdc-12m-4", domain: "sensory_motor_patterns", ageGroup: "12 months", title: "Pulls to stand", description: "Pulls up to stand; walks holding on to furniture (cruising).", checked: true },
+  // 15 months (CDC-2022 added checkpoint)
+  { id: "cdc-15m-1", domain: "social_development", ageGroup: "15 months", title: "Copies other children", description: "Copies other children while playing; claps when excited.", checked: true },
+  { id: "cdc-15m-2", domain: "language_communication", ageGroup: "15 months", title: "Says a few words", description: "Tries to say one or two words besides mama/dada; looks at a familiar object when named.", checked: true },
+  { id: "cdc-15m-3", domain: "cognition_executive_function", ageGroup: "15 months", title: "Uses objects the right way", description: "Tries to use things the right way (a phone, cup or book); stacks at least two small objects.", checked: true },
+  { id: "cdc-15m-4", domain: "sensory_motor_patterns", ageGroup: "15 months", title: "Takes first steps", description: "Takes a few steps on their own; uses fingers to feed themselves.", checked: true },
+  // 18 months
+  { id: "cdc-18m-1", domain: "social_development", ageGroup: "18 months", title: "Points to show you things", description: "Points to show you something interesting; moves away but checks you are close.", checked: true },
+  { id: "cdc-18m-2", domain: "language_communication", ageGroup: "18 months", title: "Says three or more words", description: "Tries to say three or more words besides mama/dada; follows one-step directions.", checked: true },
+  { id: "cdc-18m-3", domain: "independence_adaptive_skills", ageGroup: "18 months", title: "Tries a spoon and cup", description: "Drinks from an open cup; tries to use a spoon; helps with getting dressed.", checked: true },
+  { id: "cdc-18m-4", domain: "sensory_motor_patterns", ageGroup: "18 months", title: "Walks independently", description: "Walks without holding on; climbs on and off a low couch or chair.", checked: true },
+  // 2 years
+  { id: "cdc-2y-1", domain: "social_development", ageGroup: "2 years", title: "Notices others' feelings", description: "Notices when others are hurt or upset; looks at your face to see how to react.", checked: true },
+  { id: "cdc-2y-2", domain: "language_communication", ageGroup: "2 years", title: "Two-word phrases", description: "Says at least two words together ('more milk'); points to things in a book.", checked: true },
+  { id: "cdc-2y-3", domain: "cognition_executive_function", ageGroup: "2 years", title: "Uses both hands together", description: "Holds something in one hand while using the other; tries switches, knobs and buttons.", checked: true },
+  { id: "cdc-2y-4", domain: "sensory_motor_patterns", ageGroup: "2 years", title: "Kicks and runs", description: "Kicks a ball; runs; walks up a few stairs with or without help.", checked: true },
+  // 30 months (CDC-2022 added checkpoint)
+  { id: "cdc-30m-1", domain: "social_development", ageGroup: "30 months", title: "Plays alongside others", description: "Plays next to, and sometimes with, other children; follows simple routines.", checked: true },
+  { id: "cdc-30m-2", domain: "language_communication", ageGroup: "30 months", title: "Says about 50 words", description: "Says around 50 words; uses two-or-more-word phrases with an action word ('doggie run').", checked: true },
+  { id: "cdc-30m-3", domain: "cognition_executive_function", ageGroup: "30 months", title: "Pretend play", description: "Uses things to pretend, like feeding a doll; shows simple problem-solving.", checked: true },
+  { id: "cdc-30m-4", domain: "sensory_motor_patterns", ageGroup: "30 months", title: "Jumps with both feet", description: "Jumps off the ground with both feet; twists things like doorknobs and lids.", checked: true },
+  // 3 years
+  { id: "cdc-3y-1", domain: "attachment_regulation", ageGroup: "3 years", title: "Calms after goodbyes", description: "Calms within about 10 minutes after you leave, e.g. at a daycare drop-off.", checked: true },
+  { id: "cdc-3y-2", domain: "language_communication", ageGroup: "3 years", title: "Understandable speech", description: "Talks well enough for others to understand most of the time; asks 'who/what/where/why'.", checked: true },
+  { id: "cdc-3y-3", domain: "cognition_executive_function", ageGroup: "3 years", title: "Draws a circle", description: "Draws a circle when shown how; avoids touching hot things when warned.", checked: true },
+  { id: "cdc-3y-4", domain: "independence_adaptive_skills", ageGroup: "3 years", title: "Dresses and feeds with a fork", description: "Puts on some clothes by themselves; eats with a fork; strings large beads.", checked: true },
+
   // Age 4-5 Milestones
   { id: "m-1", domain: "attachment_regulation", ageGroup: "Age 4-5", title: "Regulates with Prompting", description: "Can calm down within 15 minutes with warm adult co-regulation.", checked: true },
   { id: "m-2", domain: "language_communication", ageGroup: "Age 4-5", title: "Uses Full Sentences", description: "Speaks in sentences of 5-6 words, sharing clear thoughts on what they did during the day.", checked: true },
