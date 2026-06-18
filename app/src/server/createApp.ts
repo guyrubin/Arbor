@@ -7,6 +7,7 @@ import { createModelProvider } from "../ai/modelRouter.js";
 import { LocalMemoryStore } from "../memory/localMemoryStore.js";
 import { FirestoreMemoryStore } from "../memory/firestoreMemoryStore.js";
 import { LocalShareStore, FirestoreShareStore } from "../sharing/shares.js";
+import { LocalConsentStore, FirestoreConsentStore } from "../sharing/consent.js";
 import { loadFramework } from "../services/framework.js";
 import { createApiRouter } from "../routes/api.js";
 import { createAuthMiddleware } from "./authMiddleware.js";
@@ -65,6 +66,9 @@ export const createApp = (config: ArborConfig) => {
   const shareStore = config.memoryAdapter === "firestore"
     ? new FirestoreShareStore(config)
     : new LocalShareStore();
+  const consentStore = config.memoryAdapter === "firestore"
+    ? new FirestoreConsentStore(config)
+    : new LocalConsentStore();
   // COST-1: shared usage counters (Firestore in prod) back both the hourly AI
   // quota and the free-tier coach meter, so caps hold across Cloud Run instances.
   const counters = createCounterStore(config);
@@ -122,7 +126,7 @@ export const createApp = (config: ArborConfig) => {
   app.use(["/api/chat", "/api/council"], createCoachMeter(entitlementStore, counters));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, counters, consultStore, adminMetrics }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, counters, consultStore, adminMetrics }));
 
   return app;
 };

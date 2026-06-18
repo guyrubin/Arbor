@@ -17,6 +17,8 @@ import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../
 import { screenModelOutput, renderBlockedOutputMarkdown } from "../safety/outputScreen.js";
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
+import { requireConsent } from "../server/requireConsent.js";
+import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
 import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
@@ -31,6 +33,7 @@ type ApiDeps = {
   modelProvider: ModelProvider;
   memoryStore: MemoryStore;
   shareStore: ShareStore;
+  consentStore: ConsentStore;
   framework: FrameworkDefinition;
   entitlementStore: EntitlementStore;
   counters: UsageCounterStore;
@@ -69,12 +72,36 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, counters, consultStore, adminMetrics }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, counters, consultStore, adminMetrics }: ApiDeps) => {
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
+
+  // ── COPPA-2026 consent ledger ──────────────────────────────────────────────
+  const VALID_PURPOSES: ConsentPurpose[] = ["face_processing", "voice_processing", "ai_training"];
+  // Grant / update a purpose-scoped consent for a child (parent-owner only).
+  router.post("/consent", requireOwnership, async (req, res) => {
+    const { childId, purpose, granted } = req.body ?? {};
+    if (!childId || !VALID_PURPOSES.includes(purpose)) {
+      res.status(400).json({ error: "childId and a valid purpose are required" });
+      return;
+    }
+    const uid = (req as any).user?.uid || "local-sandbox";
+    const grant = await consentStore.set(buildConsent({ childId: String(childId), purpose, granted: granted !== false, actorUid: uid }));
+    res.json({ grant });
+  });
+  // List a child's consent records (parent-owner only).
+  router.get("/consent/:childId", requireOwnership, async (req, res) => {
+    res.json({ grants: await consentStore.list(req.params.childId) });
+  });
+  // Revoke a single consent grant.
+  router.delete("/consent/:id", async (req, res) => {
+    const grant = await consentStore.revoke(req.params.id);
+    if (!grant) { res.status(404).json({ error: "Consent grant not found" }); return; }
+    res.json({ grant });
+  });
 
   router.get("/memory/:childId", requireOwnership, async (req, res) => {
     try {
@@ -727,7 +754,7 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     res.json({ configured: childAsrConfigured(config), provider: config.childAsrProvider });
   });
 
-  router.post("/score-utterance", async (req, res) => {
+  router.post("/score-utterance", requireConsent(consentStore, "voice_processing", (req) => childAsrConfigured(config) && !!req.body?.audio), async (req, res) => {
     const { target, sound, level, audio } = req.body ?? {};
     if (!childAsrConfigured(config)) { res.json({ configured: false }); return; }
     if (!target || typeof target !== "string") { res.status(400).json({ error: "target is required" }); return; }
@@ -768,7 +795,7 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     comichero: "a friendly child superhero in a modern cel-shaded comic-book style: bold clean ink linework, bright primary colors, a small cape and a stylized hero suit with a leaf emblem, a big confident smile, dynamic but never scary or violent — wholesome and age-appropriate for young children"
   };
 
-  router.post("/generate-avatar", async (req, res) => {
+  router.post("/generate-avatar", requireConsent(consentStore, "face_processing", (req) => !!req.body?.photo), async (req, res) => {
     const { descriptors, photo, style } = req.body ?? {};
     const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.storybook;
 
@@ -1586,8 +1613,9 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
     try {
       const memoryEvents = await memoryStore.eraseChild(childId);
       const shares = await shareStore.eraseByChild(uid, childId);
-      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares });
-      res.json({ erased: { memoryEvents, shares }, childId, erasedAt: new Date().toISOString() });
+      const consents = await consentStore.eraseByChild(childId);
+      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents });
+      res.json({ erased: { memoryEvents, shares, consents }, childId, erasedAt: new Date().toISOString() });
     } catch (error: any) {
       logger.error("Arbor Privacy Erasure Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to erase server-side data", details: error.message });
