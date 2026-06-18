@@ -36,6 +36,7 @@ const config: CapacitorConfig = {
       splashImmersive: false,
     },
     StatusBar: {
+      // Style.Dark = dark icons (light "Soft Daylight" canvas). Must match native.ts StatusBar.setStyle.
       style: "DARK", // dark icons on Arbor's light "Soft Daylight" canvas
       backgroundColor: "#eef2efff",
       overlaysWebView: false,

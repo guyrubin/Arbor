@@ -16,6 +16,7 @@ import SearchModal from "../search/SearchModal";
 import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
 import { refreshEntitlement } from "../../hooks/useEntitlement";
+import { selectionHaptic } from "../../lib/native";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -236,7 +237,7 @@ export default function Shell() {
                     key={it.tab}
                     role="tab"
                     aria-selected={on}
-                    onClick={() => setActiveTab(it.tab)}
+                    onClick={() => { void selectionHaptic(); setActiveTab(it.tab); }}
                     className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
                     style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", boxShadow: "inset 0 0 0 1px rgba(52,178,119,0.18)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                   >

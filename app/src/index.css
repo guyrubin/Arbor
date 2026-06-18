@@ -416,3 +416,11 @@ body {
 .is-native .fixed.top-0 {
   padding-top: env(safe-area-inset-top);
 }
+/* The mobile brand header is the topmost in-flow content; lift it below the
+   status bar / notch (it is neither sticky nor fixed, so the rules above miss it). */
+.is-native main > .md\:hidden:first-child {
+  margin-top: env(safe-area-inset-top);
+}
+/* Native-grade scroll polish (proves is-native / is-ios hooks are live). */
+.is-native .arbor-app { overscroll-behavior-y: none; }   /* kill rubber-band bounce on the app frame */
+.is-ios main { -webkit-overflow-scrolling: touch; }       /* momentum scroll in the scroll container */

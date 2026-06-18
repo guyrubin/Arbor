@@ -12,8 +12,8 @@ export async function initNativeShell(): Promise<void> {
 
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
-    // Dark icons over Arbor's light "Soft Daylight" canvas.
-    await StatusBar.setStyle({ style: Style.Light });
+    // Style.Dark = dark icons (light "Soft Daylight" canvas). Must match capacitor.config.ts StatusBar.style.
+    await StatusBar.setStyle({ style: Style.Dark });
     if (nativePlatform === "android") {
       await StatusBar.setBackgroundColor({ color: "#eef2ef" });
     }
@@ -34,5 +34,33 @@ export async function initNativeShell(): Promise<void> {
     await SplashScreen.hide();
   } catch {
     /* splash plugin unavailable — non-fatal */
+  }
+
+  // Android hardware/gesture back → previous tab (hash history), exit at root.
+  // iOS interactive edge-swipe-back is the webview system default and is left
+  // unblocked (no left-edge gesture handlers anywhere). Non-fatal if absent.
+  try {
+    const { App } = await import("@capacitor/app");
+    void App.addListener("backButton", ({ canGoBack }) => {
+      if (window.history.length > 1 && canGoBack) window.history.back();
+      else void App.exitApp();
+    });
+  } catch {
+    /* app plugin unavailable — non-fatal */
+  }
+}
+
+/**
+ * Light selection haptic for tactile feedback on tab/section changes. No-op on
+ * web (gated on isNativePlatform; dynamic import keeps native code out of the
+ * web bundle). Haptics ≠ motion, so prefers-reduced-motion does not gate this.
+ */
+export async function selectionHaptic(): Promise<void> {
+  if (!isNativePlatform) return;
+  try {
+    const { Haptics, ImpactStyle } = await import("@capacitor/haptics");
+    await Haptics.impact({ style: ImpactStyle.Light });
+  } catch {
+    /* haptics unavailable — non-fatal */
   }
 }

@@ -2,6 +2,7 @@ import React from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
+import { selectionHaptic } from "../../lib/native";
 
 /** Bottom tab bar shown on mobile (< md) — the six primary sections. */
 export default function MobileNav() {
@@ -20,7 +21,7 @@ export default function MobileNav() {
         return (
           <button
             key={sec.id}
-            onClick={() => setActiveTab(primaryTabOf(sec))}
+            onClick={() => { void selectionHaptic(); setActiveTab(primaryTabOf(sec)); }}
             className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9.5px] font-bold transition"
             style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
           >

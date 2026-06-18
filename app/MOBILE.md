@@ -89,3 +89,8 @@ Both build the web bundle, `npx cap sync`, then the native build. The Firebase `
 - `src/lib/native.ts` — runtime status bar / keyboard / splash-hide, gated to native
   only (dynamic imports, no-op on web). Adds `is-native` / `is-ios` / `is-android`
   classes + `data-platform` to `<html>` for any platform-specific CSS.
+- **Native-polish layer:** safe-area `env(safe-area-inset-*)` rules (scoped to
+  `.is-native` / `.is-ios` in `src/index.css`), a light `selectionHaptic()` on tab/
+  section taps (`@capacitor/haptics`), and an `@capacitor/app` `backButton` listener
+  (Android back → previous tab via hash history, exit at root; iOS edge-swipe-back
+  left unblocked) together make the chrome native-grade. All no-ops on web.
