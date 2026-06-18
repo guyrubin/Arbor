@@ -182,6 +182,15 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </Row>
         )}
 
+        {/* P0-5: attribution + UTM funnel dashboard (operator-only) */}
+        {entitlement.isAdmin && (
+          <Row icon={<BarChart3 className="w-4 h-4" />} title="Attribution & funnel" sub="Install → activation → paid, by channel and market">
+            <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+              Open
+            </button>
+          </Row>
+        )}
+
         {firebaseEnabled && user && (
           <div className="pt-4" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
             <div className="flex items-center justify-between gap-3">

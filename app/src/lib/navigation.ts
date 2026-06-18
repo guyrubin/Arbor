@@ -122,6 +122,10 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   reports: "care",
   handoff: "care",
   "find-pro": "care",
+  // Internal/admin (P0-5): the attribution dashboard is reached by deep link or
+  // the admin-gated Settings entry, never the parent sidebar. Map it to a section
+  // only so highlighting resolves cleanly when it is open.
+  attribution: "care",
 };
 
 export function sectionForTab(tab: ActiveTab): NavSection {

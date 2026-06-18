@@ -153,7 +153,7 @@ h2{font-size:clamp(2.05rem,1.25rem + 2.6vw,3.6rem);line-height:1.08}
       <a href="arbor-marketing-landing-page-nl.html">Nederlands</a>
       <a href="arbor-marketing-landing-page-fr.html">Français</a>
     </div>
-    <a class="btn btn-primary" href="#join">Build your child's Arbor</a>
+    <a class="btn btn-primary" data-cta="app" href="https://arborprd-westeu.web.app/">Build your child's Arbor</a>
   </div>
 </nav>
 <span id="top"></span>
@@ -164,7 +164,7 @@ h2{font-size:clamp(2.05rem,1.25rem + 2.6vw,3.6rem);line-height:1.08}
       <h1>Raise your child with more confidence, less guessing.</h1>
       <p class="lede">Arbor brings together what parents actually need around their child: expert developmental guidance, a living memory, daily play, practice, story journeys where the child is the hero, and a professional-ready brief when real help is needed.</p>
       <div class="actions">
-        <a class="btn btn-primary" href="#join">Build your child's Arbor</a>
+        <a class="btn btn-primary" data-cta="app" href="https://arborprd-westeu.web.app/">Build your child's Arbor</a>
         <a class="btn btn-ghost" href="#capabilities">See what Arbor does</a>
       </div>
       <div class="trust">
@@ -292,7 +292,7 @@ h2{font-size:clamp(2.05rem,1.25rem + 2.6vw,3.6rem);line-height:1.08}
     <span class="tag"><span class="dot"></span>Private beta · limited founding spots</span>
     <h2>Give your child a system that grows with them.</h2>
     <p>Arbor connects experts, memory, play, stories, practice, and care so parents know what to do today and what to watch over time.</p>
-    <div class="actions"><a class="btn btn-primary" href="#" onclick="return false">Join the Arbor beta</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-he.html">עברית</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-de.html">Deutsch</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-nl.html">Nederlands</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-fr.html">Français</a></div>
+    <div class="actions"><a class="btn btn-primary" data-cta="app" href="https://arborprd-westeu.web.app/">Join the Arbor beta</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-he.html">עברית</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-de.html">Deutsch</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-nl.html">Nederlands</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-fr.html">Français</a></div>
   </div>
 </section>
 <footer>
@@ -343,6 +343,24 @@ h2{font-size:clamp(2.05rem,1.25rem + 2.6vw,3.6rem);line-height:1.08}
   window.addEventListener("resize",updateNavOffset,{passive:true});
   updateNavOffset();
   if(window.location.hash) setTimeout(function(){scrollToHash(window.location.hash,false);},80);
+
+  /* P0-5 attribution handoff: forward incoming UTM/ref to the app, with a
+     landing default; incoming params always win (first-touch parity). The static
+     href in markup is the no-JS fallback (never a dead CTA). See utm-scheme.md. */
+  var APP_URL="https://arborprd-westeu.web.app/";
+  function appHandoffHref(){
+    var incoming=new URLSearchParams(location.search);
+    var out=new URLSearchParams({utm_source:"landing",utm_medium:"organic",utm_campaign:"evergreen"});
+    incoming.forEach(function(v,k){ if(/^utm_|^ref$|^referral$/.test(k)) out.set(k,v); });
+    return APP_URL+"?"+out.toString();
+  }
+  document.querySelectorAll('a[data-cta="app"]').forEach(function(a){
+    a.setAttribute("href",appHandoffHref());
+    a.setAttribute("rel","noopener");
+    a.addEventListener("click",function(){
+      try{ sessionStorage.setItem("arbor.landing_click",new Date().toISOString()); }catch(e){}
+    });
+  });
 })();
 </script>
 </body>

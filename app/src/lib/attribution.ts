@@ -28,6 +28,15 @@ export type Attribution = {
 
 const LS_ATTRIBUTION = "arbor.attribution";
 
+/**
+ * Canonical UTM parameter keys (P0-5). Single source of truth shared by the
+ * attribution capture above and the internal Attribution dashboard, so the
+ * funnel reader and the writer never drift. Values are lowercase snake_case per
+ * the UTM scheme documented in app/public/marketing/utm-scheme.md.
+ */
+export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
+export type UtmKey = (typeof UTM_KEYS)[number];
+
 const MARKET_PATHS: Record<string, Market> = { il: "il", nl: "nl", be: "be", ie: "ie", uk: "uk" };
 
 /** Market from the URL path prefix (/il, /nl, …), falling back to UI language, then "intl". */

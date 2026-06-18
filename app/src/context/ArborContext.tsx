@@ -90,7 +90,11 @@ export type ActiveTab =
   | "development"    // My Child › Development (merges copilot+profile+milestones+journey)
   | "daily-play"     // Grow › Daily Play (household-item activity library)
   | "practice"       // Grow › Practice (hub over speech+mimic+feelings+adventures)
-  | "consult";       // Care › Consult (merges reports+handoff+find-pro)
+  | "consult"        // Care › Consult (merges reports+handoff+find-pro)
+  // Internal / admin-only (P0-5): attribution + UTM funnel dashboard. Reachable
+  // by deep link (#/attribution) and from the admin-gated Settings entry; never
+  // surfaced in the parent-facing sidebar. The view itself enforces admin gating.
+  | "attribution";
 
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
 // working browser back/forward button.
@@ -99,6 +103,7 @@ const VALID_TABS = new Set<string>([
   "profile", "memory", "strengths", "screening", "timeline", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family", "comics",
   "speech", "mimic", "feelings", "missions", "journey", "adventures", "copilot",
   "development", "daily-play", "practice", "consult",
+  "attribution",
 ]);
 function tabFromHash(): ActiveTab | null {
   try {

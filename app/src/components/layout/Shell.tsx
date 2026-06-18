@@ -61,6 +61,9 @@ const DailyPlayTab = lazy(() => import("../tabs/DailyPlayTab"));
 const PracticeHubTab = lazy(() => import("../practice/PracticeHubTab"));
 const ConsultTab = lazy(() => import("../tabs/ConsultTab"));
 
+// P0-5: internal attribution + UTM funnel dashboard (admin-gated inside the view).
+const AttributionTab = lazy(() => import("../tabs/AttributionTab"));
+
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
   coach: CoachTab,
@@ -97,6 +100,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   "daily-play": DailyPlayTab,
   practice: PracticeHubTab,
   consult: ConsultTab,
+  attribution: AttributionTab,
 };
 
 export default function Shell() {
