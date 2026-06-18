@@ -76,6 +76,13 @@ export interface ShareGrant {
   revokedAt: string | null;
 }
 
+/** M9: proof-of-deletion receipt returned by a full child-data erase. */
+export interface DeletionReceipt {
+  childId: string;
+  erasedAt: string;
+  counts: { memoryEvents: number; shares: number };
+}
+
 export interface CouncilTake {
   scholarId: string;
   name: string;

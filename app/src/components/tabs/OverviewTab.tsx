@@ -46,6 +46,10 @@ export default function OverviewTab() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [quickLog, setQuickLog] = useState(false);
+  // iOS-adaptable Today: the heavy "daily tools" dashboard (check-in, goals,
+  // reminders, trends chart) is collapsed on phones by default and revealed on
+  // tap; desktop (lg+) always shows it. Keeps Today scannable, not a wall.
+  const [showTools, setShowTools] = useState(false);
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const photoUrl = childProfile.photoUrl;
   const { hasHero } = useHeroAvatar();
@@ -165,7 +169,7 @@ export default function OverviewTab() {
     <motion.div
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="space-y-7 relative max-w-[1080px]"
+      className="space-y-5 md:space-y-7 relative max-w-[1080px]"
     >
       {/* ── Decision hero: status → recommendation → one primary action ──── */}
       <section
@@ -425,16 +429,28 @@ export default function OverviewTab() {
         </button>
       </section>
 
-      {/* ── Your daily tools (secondary, kept) ──────────────────────────── */}
+      {/* ── Your daily tools (secondary) — collapsed on phones, open on desktop ── */}
       <section className="pt-1">
-        <h2 className="text-[11px] font-extrabold uppercase tracking-wider mb-3" style={{ color: "var(--arbor-faint)" }}>{t("ov.dailyTools")}</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <DailyCheckinCard />
-          <GoalsCard />
-        </div>
-        <div className="mt-4 space-y-4">
-          <RemindersCard />
-          <TrendsChart logs={behaviorLogs} milestonesPercent={milestonesPercent} />
+        <button
+          onClick={() => setShowTools((v) => !v)}
+          className="lg:pointer-events-none w-full flex items-center justify-between mb-3"
+          aria-expanded={showTools}
+        >
+          <h2 className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>{t("ov.dailyTools")}</h2>
+          <span className="lg:hidden inline-flex items-center gap-1 text-xs font-bold" style={{ color: GREEN }}>
+            {showTools ? t("ov.tools.hide") : t("ov.tools.show")}
+            <ChevronRight className={`w-4 h-4 transition-transform ${showTools ? "rotate-90" : ""}`} />
+          </span>
+        </button>
+        <div className={`${showTools ? "" : "hidden"} lg:block`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <DailyCheckinCard />
+            <GoalsCard />
+          </div>
+          <div className="mt-4 space-y-4">
+            <RemindersCard />
+            <TrendsChart logs={behaviorLogs} milestonesPercent={milestonesPercent} />
+          </div>
         </div>
       </section>
 
