@@ -128,6 +128,8 @@ export default function OverviewTab() {
     return top;
   }, [behaviorLogs]);
 
+  // TODO(m5): wire ErrorState into the Today-focus well once useTodaysFocus surfaces an error field
+  // (deferred to p4-operational-hardening — must not mutate the hook in this mission).
   const { focus, loading: focusLoading, regenerate } = useTodaysFocus(childProfile, {
     count: recentCount, avg: weekAvg, topTrigger, milestonesPercent,
   });

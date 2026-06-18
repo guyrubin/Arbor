@@ -6,6 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import type { ShareGrant, ShareRole } from "../../types";
 import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey } from "../ui/kit";
+import { ErrorState } from "../ui/ErrorState";
 
 const ROLE_META: Record<ShareRole, { label: string; tone: PastelKey }> = {
   co_parent: { label: "Co-parent", tone: "mint" },
@@ -26,16 +27,25 @@ export default function CareTeam() {
   const [mine, setMine] = useState<ShareGrant[]>([]);
   const [inbound, setInbound] = useState<ShareGrant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(false);
+    // Track each call independently: a partial failure still renders what loaded,
+    // but a total failure surfaces a real error/retry instead of a false "empty" team.
+    let aFailed = false;
+    let bFailed = false;
     try {
       const [a, b] = await Promise.all([
-        api.listShares(childProfile.id).catch(() => ({ shares: [] })),
-        api.sharedWithMe().catch(() => ({ shares: [] })),
+        api.listShares(childProfile.id).catch(() => { aFailed = true; return { shares: [] }; }),
+        api.sharedWithMe().catch(() => { bFailed = true; return { shares: [] }; }),
       ]);
       setMine((a.shares || []).filter((g) => !g.revokedAt));
       setInbound((b.shares || []).filter((g) => !g.revokedAt));
+      if (aFailed && bFailed) setError(true);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -65,6 +75,14 @@ export default function CareTeam() {
         <div className={`${cardCls} p-6 flex items-center gap-2 text-sm`} style={{ color: "var(--arbor-muted)" }}>
           <RefreshCw className="w-4 h-4 animate-spin" /> Loading your care team…
         </div>
+      ) : error ? (
+        <ErrorState
+          headline={t("err.careTeam.title")}
+          body={t("err.careTeam.body", { name: first })}
+          onRetry={() => void load()}
+          retryLabel={t("err.retry")}
+          retrying={loading}
+        />
       ) : mine.length === 0 && inbound.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>
           <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>

@@ -189,7 +189,7 @@ export default function Shell() {
                 onClick={() => setSearchOpen(true)}
                 aria-label={t("top.search")}
                 title="Search (Ctrl/Cmd+K)"
-                className="flex items-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl text-[11px] font-bold transition bg-white"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-bold transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 <Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t("top.search")}</span>
@@ -197,7 +197,7 @@ export default function Shell() {
               {!showAiRail && (
                 <button
                   onClick={() => setShowAiRail(true)}
-                  className="hidden xl:flex items-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
+                  className="hidden xl:flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
                   style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                 >
                   <ShieldCheck className="w-3.5 h-3.5" /> {t("top.howHelps")}
@@ -207,7 +207,7 @@ export default function Shell() {
                 onClick={() => setSettingsOpen(true)}
                 aria-label="Settings"
                 title="Settings"
-                className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl transition bg-white"
+                className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 <SettingsIcon className="w-4 h-4" />
@@ -217,7 +217,7 @@ export default function Shell() {
                   onClick={() => void signOut()}
                   aria-label="Sign out"
                   title="Sign out"
-                  className="md:hidden flex items-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl text-[11px] font-bold transition bg-white"
+                  className="md:hidden flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-bold transition bg-white"
                   style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
                   <LogOut className="w-3.5 h-3.5" /> Sign out
