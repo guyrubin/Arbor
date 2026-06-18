@@ -30,6 +30,17 @@ export class FamilyService {
     });
   }
 
+  /** Authorization: does `uid` belong to the family that owns `childId`?
+   *  Fails closed — an unknown child or a missing membership returns false. */
+  async ownsChild(uid: string, childId: string): Promise<boolean> {
+    if (!uid || !childId) return false;
+    const childSnap = await this.db.collection("children").doc(childId).get();
+    const familyId = childSnap.exists ? (childSnap.data()?.familyId as string | undefined) : undefined;
+    if (!familyId) return false;
+    const memberSnap = await this.db.collection("families").doc(familyId).collection("members").doc(uid).get();
+    return memberSnap.exists;
+  }
+
   async ensureChild(familyId: string, childId: string, profileSeed: Record<string, unknown> = {}) {
     const now = new Date().toISOString();
     await this.db.runTransaction(async (transaction) => {

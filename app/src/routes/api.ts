@@ -16,6 +16,7 @@ import { Type } from "@google/genai";
 import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../server/redaction.js";
 import { screenModelOutput, renderBlockedOutputMarkdown } from "../safety/outputScreen.js";
 import { logger, requestIdOf } from "../server/logger.js";
+import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
@@ -72,8 +73,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
+  // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
+  const requireOwnership = requireChildOwnership(memoryStore);
 
-  router.get("/memory/:childId", async (req, res) => {
+  router.get("/memory/:childId", requireOwnership, async (req, res) => {
     try {
       let items = foldMemoryEvents(await memoryStore.listEvents(req.params.childId), req.params.childId);
       const status = req.query.status ? String(req.query.status) : undefined;
@@ -1552,7 +1555,7 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
 
   // CMP-2 (GDPR Art. 15/20): server-side data export for one child. The client
   // merges this with its own Firestore export into a single download.
-  router.get("/privacy/export/:childId", async (req, res) => {
+  router.get("/privacy/export/:childId", requireOwnership, async (req, res) => {
     const { uid } = actorOf(req);
     try {
       const childId = req.params.childId;
@@ -1573,7 +1576,7 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
   // CMP-2 (GDPR Art. 17): REAL server-side erasure — replaces the former
   // "processed server-side" placeholder. Hard-deletes the child's memory-event
   // ledger + child doc and every share grant the caller created for the child.
-  router.post("/privacy/erase", async (req, res) => {
+  router.post("/privacy/erase", requireOwnership, async (req, res) => {
     const { uid } = actorOf(req);
     const { childId } = req.body;
     if (!childId || typeof childId !== "string") {
