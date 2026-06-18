@@ -4,7 +4,7 @@ import { Camera, CameraOff, ChevronLeft, ChevronRight, ShieldCheck, Smile, Star 
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
-import { PlayShell, PlayHeader, PlayButton } from "../ui/playkit";
+import { PlayShell, PlayHeader, PlayButton, ProgressPips, Celebrate } from "../ui/playkit";
 import { MIMIC_PACKS, type MimicPack } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
 import MimicMatch from "./MimicMatch";
@@ -61,6 +61,9 @@ export default function MimicStudioTab() {
 
   // ---- Rating + pack progress (feature 5) ----
   const [justRated, setJustRated] = useState<number | null>(null);
+  // Fire the pack-complete Celebrate once per pack per mount (no nag loop).
+  const [celebratedPacks, setCelebratedPacks] = useState<Set<string>>(new Set());
+  const [wonPackId, setWonPackId] = useState<string | null>(null);
   const ratedPromptIds = useMemo(() => {
     const ids = new Set<string>();
     for (const s of data.mimic.items) if (s.packId === pack.id) ids.add(s.promptId);
@@ -78,6 +81,15 @@ export default function MimicStudioTab() {
     void data.mimic.upsert(session);
     setJustRated(rating);
     track("mimic_round", { pack: pack.id, prompt: prompt.id, rating });
+    // Did this rating complete the pack? Include the just-rated prompt since the
+    // stored items won't have updated synchronously yet.
+    const doneIds = new Set(data.mimic.items.filter((s) => s.packId === pack.id).map((s) => s.promptId));
+    doneIds.add(prompt.id);
+    const completedNow = pack.prompts.every((x) => doneIds.has(x.id));
+    if (completedNow && !celebratedPacks.has(pack.id)) {
+      setCelebratedPacks((prev) => new Set(prev).add(pack.id));
+      setWonPackId(pack.id);
+    }
     window.setTimeout(() => {
       setJustRated(null);
       setPromptIdx((i) => (i + 1) % pack.prompts.length);
@@ -114,10 +126,8 @@ export default function MimicStudioTab() {
               <span className="text-2xl">{p.emoji}</span>
               <p className="text-sm font-extrabold mt-1.5" style={{ color: "var(--arbor-ink)" }}>{p.title}</p>
               <p className="text-[10.5px] mt-0.5 leading-snug" style={{ color: "var(--arbor-muted)" }}>{p.blurb}</p>
-              <div className="flex items-center gap-1 mt-2">
-                {p.prompts.map((_, i) => (
-                  <span key={i} className="w-2 h-2 rounded-full" style={{ background: i < done ? "var(--arbor-clay)" : "rgba(41,51,63,0.12)" }} />
-                ))}
+              <div className="flex items-center gap-1.5 mt-2">
+                <ProgressPips total={p.prompts.length} current={done - 1} tone="clay" />
                 {done === p.prompts.length && <Star className="w-3.5 h-3.5 ml-1" style={{ color: "var(--arbor-yellow)", fill: "var(--arbor-yellow)" }} />}
               </div>
             </button>
@@ -194,6 +204,28 @@ export default function MimicStudioTab() {
           Every attempt counts — in video-modeling practice, the imitation effort matters more than a perfect copy.
         </p>
       </SectionCard>
+
+      {/* Pack-complete win beat — fires once per pack per mount. */}
+      {wonPackId && (() => {
+        const wonPack = MIMIC_PACKS.find((p) => p.id === wonPackId) ?? pack;
+        return (
+          <Celebrate
+            title={t("prac.mimic.packWin.title")}
+            subtitle={t("prac.mimic.packWin.sub", { name: first, pack: wonPack.title })}
+            stars={wonPack.prompts.length}
+            starsTotal={wonPack.prompts.length}
+          >
+            {MIMIC_PACKS.filter((p) => p.id !== wonPackId).slice(0, 1).map((p) => (
+              <PlayButton key={p.id} onClick={() => { setPackId(p.id); setWonPackId(null); }} tone="clay" size="md">
+                {p.emoji} Play {p.title}
+              </PlayButton>
+            ))}
+            <PlayButton onClick={() => setWonPackId(null)} variant="soft" tone="lav" size="md">
+              Stay here
+            </PlayButton>
+          </Celebrate>
+        );
+      })()}
 
       {/* On-device MediaPipe expression mimicry (geometry only, nothing leaves the device) */}
       <MimicMatch childId={childProfile.id} name={first} />

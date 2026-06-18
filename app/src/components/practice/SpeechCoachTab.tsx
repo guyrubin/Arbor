@@ -3,7 +3,7 @@ import { AudioLines, BookOpen, Check, ChevronRight, Ear, Languages, MessageCircl
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
-import { PlayShell, PlayHeader, PlayButton } from "../ui/playkit";
+import { PlayShell, PlayHeader, PlayButton, ChoiceTile, ProgressPips, Celebrate } from "../ui/playkit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
 import { matchResult, speechDose, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
@@ -65,8 +65,16 @@ export default function SpeechCoachTab() {
   const [categoryPick, setCategoryPick] = useState<number | null>(null);
   const [expressIdx, setExpressIdx] = useState(0);
   const [languageSaved, setLanguageSaved] = useState<string | null>(null);
+  // Fire the daily-dose Celebrate once per session, only on the transition into "met".
+  const [doseCelebrated, setDoseCelebrated] = useState(false);
+  const doseMetPrev = useRef(false);
 
   useEffect(() => { setItemIdx(0); }, [soundId, level]);
+
+  useEffect(() => {
+    if (dose.sessionMetToday && !doseMetPrev.current && !doseCelebrated) setDoseCelebrated(true);
+    doseMetPrev.current = dose.sessionMetToday;
+  }, [dose.sessionMetToday, doseCelebrated]);
 
   const items = level === "word" ? sound.words : level === "sentence" ? sound.sentences : [sound.storyPrompt];
   const target = items[Math.min(itemIdx, items.length - 1)];
@@ -275,6 +283,18 @@ export default function SpeechCoachTab() {
         </p>
       </div>
 
+      {/* Daily-dose win beat — fires once per session when the dose is first met. */}
+      {doseCelebrated && (
+        <Celebrate
+          title={t("prac.speech.doseWin.title")}
+          subtitle={t("prac.speech.doseWin.sub", { name: first, target: dose.perSessionTarget })}
+        >
+          <PlayButton onClick={() => setDoseCelebrated(false)} variant="soft" tone="mint" size="md">
+            Keep going
+          </PlayButton>
+        </Celebrate>
+      )}
+
       {/* Sound Studio (feature 1): age-banded sound picker */}
       <SectionCard title="Pick today's sound" icon={<AudioLines className="w-5 h-5" />} tone="mint">
         <div className="space-y-4">
@@ -452,21 +472,32 @@ export default function SpeechCoachTab() {
               </div>
               <Chip tone="sky">{categoryIdx + 1} of {CATEGORY_ROUNDS.length}</Chip>
             </div>
-            <p className="text-sm font-extrabold mb-3" style={{ color: "var(--arbor-ink)" }}>{categoryRound.question}</p>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{categoryRound.question}</p>
+              <ProgressPips total={CATEGORY_ROUNDS.length} current={categoryIdx % CATEGORY_ROUNDS.length} tone="sky" />
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {categoryRound.options.map((option, idx) => {
                 const picked = categoryPick === idx;
+                // idle before a pick; after a pick: picked → correct/wrong,
+                // the right answer → correct (reveal), everything else → dim.
+                const state: "idle" | "correct" | "wrong" | "dim" =
+                  categoryPick === null
+                    ? "idle"
+                    : picked
+                      ? option.correct ? "correct" : "wrong"
+                      : option.correct
+                        ? "correct"
+                        : "dim";
                 return (
-                  <button
+                  <ChoiceTile
                     key={`${categoryRound.id}-${option.word}`}
+                    emoji={option.emoji}
+                    label={option.word}
                     onClick={() => chooseCategory(idx)}
                     disabled={categoryPick !== null}
-                    className={`${cardCls} p-3 text-center transition`}
-                    style={{ border: picked ? `2px solid ${option.correct ? "var(--arbor-clay)" : "var(--arbor-pink-ink)"}` : "1px solid rgba(41,51,63,0.06)" }}
-                  >
-                    <span className="text-3xl block">{option.emoji}</span>
-                    <span className="text-[11px] font-bold block mt-1" style={{ color: "var(--arbor-ink)" }}>{option.word}</span>
-                  </button>
+                    state={state}
+                  />
                 );
               })}
             </div>

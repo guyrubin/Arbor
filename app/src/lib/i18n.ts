@@ -324,6 +324,11 @@ const en: Dict = {
   "prac.speech.sub": "Playful articulation practice for {name}: how single sounds and words are formed, one sound at a time. For building more than one language, that's Language & Communication.",
   "prac.mimic.title": "Mimic Studio",
   "prac.mimic.sub": "\"Can you do what I do?\" — face, mouth and sound imitation games for {name}. You model it, {name} mirrors it.",
+  // mimic studio + speech coach — celebratory win beats (PlayKit Celebrate)
+  "prac.mimic.packWin.title": "Pack complete!",
+  "prac.mimic.packWin.sub": "{name} played every round in {pack}. Pick another, or come back tomorrow.",
+  "prac.speech.doseWin.title": "Today's dose done!",
+  "prac.speech.doseWin.sub": "{name} hit {target} reps. Little and often beats long and rare.",
   // mimic studio — on-device face match (geometry scoring only, never emotion or diagnosis)
   "prac.mimic.face.title": "Face Match",
   "prac.mimic.face.sub": "Copy the face — {name}'s camera scores the shape, right on the device.",
@@ -953,6 +958,11 @@ const he: Dict = {
   "prac.speech.sub": "תרגול הגייה משחקי ל־{name}: כיצד נוצרים צלילים ומילים בודדים, צליל אחד בכל פעם. לבניית יותר משפה אחת, זה בשפה ותקשורת.",
   "prac.mimic.title": "סטודיו חיקוי",
   "prac.mimic.sub": "\"אפשר לעשות כמוני?\" — משחקי חיקוי של פנים, פה וצלילים ל־{name}. אתם מדגימים, {name} מחקה.",
+  // סטודיו חיקוי + מאמן דיבור — רגעי ניצחון חגיגיים (Celebrate של PlayKit)
+  "prac.mimic.packWin.title": "החבילה הושלמה!",
+  "prac.mimic.packWin.sub": "{name} שיחק/ה את כל הסבבים ב{pack}. בחרו עוד אחת, או חזרו מחר.",
+  "prac.speech.doseWin.title": "המנה היומית הושלמה!",
+  "prac.speech.doseWin.sub": "{name} השלים/ה {target} חזרות. מעט ולעיתים קרובות עדיף מהרבה ולעיתים רחוקות.",
   // סטודיו חיקוי — התאמת פנים על המכשיר (ניקוד צורה בלבד, לעולם לא רגש או אבחון)
   "prac.mimic.face.title": "התאמת פנים",
   "prac.mimic.face.sub": "חקו את הפרצוף — המצלמה של {name} מנקדת את הצורה, ישירות על המכשיר.",
