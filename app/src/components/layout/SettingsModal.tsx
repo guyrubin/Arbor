@@ -8,6 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import { api } from "../../lib/api";
+import { T } from "../../lib/tokens";
 
 /** Lightweight app settings — wired to real app state (AI language, AI Engines
  *  panel, account). Replaces the previously dead "Settings" sidebar button. */
@@ -84,10 +85,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     <Modal open={open} onClose={onClose} title={t("set.title")}>
       <div className="space-y-5 text-sm">
         {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
+        {/* m3-hex-sweep: #eef6f1 insight-wash start has no m2 token yet; left as-is
+            per spec (would become --gradient-insight if m2 adds it). */}
         <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
               <div className="min-w-0">
                 <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>
                   {t("set.plan.your", { plan: planLabel })}
@@ -130,16 +133,16 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <div className="flex items-center gap-1 rounded-xl p-1 mt-3 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 {(["monthly", "annual"] as const).map((c) => (
                   <button key={c} onClick={() => setCadence(c)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
-                    style={cadence === c ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}>
+                    style={cadence === c ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}>
                     {t(c === "monthly" ? "set.plan.monthly" : "set.plan.annual")}
                   </button>
                 ))}
               </div>
               <div className="flex flex-wrap gap-2 mt-2.5">
-                <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
+                <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                   {t("set.plan.upgradePlus")}
                 </button>
-                <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-green-ink)", color: "#fff" }}>
+                <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-green-ink)", color: T.onAccent }}>
                   {t("set.plan.upgradeFamily")}
                 </button>
               </div>
@@ -152,7 +155,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
               <button key={k} onClick={() => setAiLang(k)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
-                style={aiLang === k ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}>
+                style={aiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}>
                 {label}
               </button>
             ))}
@@ -176,7 +179,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         {/* ADM-1: founder-only single-pane dashboard (users, paying, token spend) */}
         {entitlement.isAdmin && (
           <Row icon={<BarChart3 className="w-4 h-4" />} title="Founder dashboard" sub="Users, paying plans, and AI spend today">
-            <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
+            <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
               Open
             </button>
           </Row>

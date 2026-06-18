@@ -41,21 +41,13 @@ import type {
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { EmptyState } from "../ui/EmptyState";
 import { cardCls } from "../ui/kit";
+import { T, PACK_VARS, METRIC_VARS, tintVar } from "../../lib/tokens";
 
-const PACK_COLORS: Record<HeroPackId, string> = {
-  courage: "#e2562d",
-  responsibility: "#d7aa55",
-  growth: "#6f9e6f",
-  wisdom: "#68B4FF",
-};
+// Category colors are tokenized (var() strings). Tinted backgrounds/borders use
+// `tintVar` (color-mix) instead of the old `${hex}22`/`55` alpha-suffix concat.
+const PACK_COLORS: Record<HeroPackId, string> = PACK_VARS;
 
-const METRIC_COLORS: Record<DevelopmentMetricId, string> = {
-  courage: "#e2562d",
-  responsibility: "#d7aa55",
-  resilience: "#A07AF8",
-  empathy: "#38C8F0",
-  wisdom: "#68B4FF",
-};
+const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;
 
 export default function HeroJourneyTab() {
   const { childProfile } = useArbor();
@@ -281,7 +273,7 @@ export default function HeroJourneyTab() {
           <button
             onClick={() => setPackFilter("all")}
             className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition"
-            style={packFilter === "all" ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+            style={packFilter === "all" ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
           >
             All packs
           </button>
@@ -290,7 +282,7 @@ export default function HeroJourneyTab() {
               key={p.id}
               onClick={() => setPackFilter(p.id)}
               className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition"
-              style={packFilter === p.id ? { background: `${PACK_COLORS[p.id]}22`, color: "var(--arbor-ink)", border: `1px solid ${PACK_COLORS[p.id]}55` } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              style={packFilter === p.id ? { background: tintVar(PACK_COLORS[p.id], 13), color: "var(--arbor-ink)", border: `1px solid ${tintVar(PACK_COLORS[p.id], 33)}` } : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
               {p.title}
             </button>
@@ -310,7 +302,7 @@ export default function HeroJourneyTab() {
                 <div className="flex items-center justify-between">
                   <span
                     className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md"
-                    style={{ background: `${color}22`, color }}
+                    style={{ background: tintVar(color, 13), color }}
                   >
                     {story.pack}
                   </span>
@@ -329,7 +321,7 @@ export default function HeroJourneyTab() {
                   onClick={() => startJourney(story)}
                   disabled={!!loadingId}
                   className="mt-1 w-full py-2.5 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
-                  style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+                  style={{ background: T.gradientCta }}
                 >
                   {isLoading ? (
                     <>
@@ -447,7 +439,7 @@ export default function HeroJourneyTab() {
             <button
               onClick={finishJourney}
               className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
-              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+              style={{ background: T.gradientCta }}
             >
               <Trophy className="w-4 h-4" /> Finish & save {childProfile.name}'s development
             </button>

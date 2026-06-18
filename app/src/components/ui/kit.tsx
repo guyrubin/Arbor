@@ -8,7 +8,7 @@ import React from "react";
 // so existing `import { PASTEL, cardCls } from "../ui/kit"` call sites are unchanged.
 export { PASTEL, cardCls } from "../../lib/tokens";
 export type { PastelKey } from "../../lib/tokens";
-import { PASTEL, cardCls } from "../../lib/tokens";
+import { PASTEL, cardCls, T } from "../../lib/tokens";
 import type { PastelKey } from "../../lib/tokens";
 
 export function Chip({ tone = "mint", icon, children }: { tone?: PastelKey; icon?: React.ReactNode; children: React.ReactNode }) {
@@ -74,7 +74,7 @@ export function TrustSafetyBar({ risk = "Low", note, onEscalate }: { risk?: "Low
       <span style={{ color: "var(--arbor-muted)" }}>Escalation available</span>
       {note && <span style={{ color: "var(--arbor-muted)" }}>· {note}</span>}
       {elevated && onEscalate && (
-        <button onClick={onEscalate} className="ml-auto inline-flex items-center gap-1 font-extrabold rounded-full px-3 py-1" style={{ background: PASTEL[tone].ink, color: "#fff" }}>
+        <button onClick={onEscalate} className="ml-auto inline-flex items-center gap-1 font-extrabold rounded-full px-3 py-1" style={{ background: PASTEL[tone].ink, color: T.onAccent }}>
           Talk to a professional →
         </button>
       )}
@@ -85,7 +85,7 @@ export function TrustSafetyBar({ risk = "Low", note, onEscalate }: { risk?: "Low
 /** Lightweight scaffold marker for early-implementation capabilities. */
 export function ComingSoon({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#eef1f0", color: "#69747f" }}>
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: T.paperDeep, color: T.faint }}>
       {label}
     </span>
   );

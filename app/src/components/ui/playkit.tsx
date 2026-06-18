@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import confetti from "canvas-confetti";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
 import { HeroAvatar } from "./HeroAvatar";
-import { BRAND_CONFETTI, TONE_INK, TONE_SOFT, type PlayTone } from "../../lib/tokens";
+import { BRAND_CONFETTI, TONE_INK, TONE_SOFT, T, type PlayTone } from "../../lib/tokens";
 
 /* ════════════════════════════════════════════════════════════════════════════
    PlayKit — the child-facing primitive set for Practice Studio.
@@ -127,7 +127,7 @@ export function PlayButton({
   const pad = size === "lg" ? "px-7 min-h-[54px] text-[16px]" : "px-5 min-h-[46px] text-[14px]";
   const style: React.CSSProperties =
     variant === "primary"
-      ? { background: TONE_INK[tone], color: "#fff" }
+      ? { background: TONE_INK[tone], color: T.onAccent }
       : variant === "soft"
         ? { background: TONE_SOFT[tone], color: TONE_INK[tone] }
         : { background: "transparent", color: "var(--arbor-muted)" };
@@ -165,7 +165,7 @@ export function ChoiceTile({
         ? "var(--arbor-pink-ink)"
         : "rgba(41,51,63,0.08)";
   const bg =
-    state === "correct" ? "var(--arbor-green-soft)" : state === "wrong" ? "var(--arbor-pink-soft)" : "#fff";
+    state === "correct" ? "var(--arbor-green-soft)" : state === "wrong" ? "var(--arbor-pink-soft)" : T.paperElevated;
   return (
     <button
       onClick={onClick}
@@ -268,7 +268,7 @@ export function PlayPanel({
   return (
     <section
       className={`rounded-[var(--play-radius-lg)] p-5 sm:p-6 bg-white shadow-[0_4px_20px_rgba(41,51,63,0.06)] ${className}`}
-      style={tone ? { background: `color-mix(in oklab, ${TONE_SOFT[tone]} 45%, #fff)` } : undefined}
+      style={tone ? { background: `color-mix(in oklab, ${TONE_SOFT[tone]} 45%, ${T.paperElevated})` } : undefined}
     >
       {children}
     </section>

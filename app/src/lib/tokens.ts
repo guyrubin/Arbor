@@ -57,6 +57,12 @@ export const CSS_VARS = {
   ochre: "var(--arbor-ochre)",
   danger: "var(--arbor-danger)",
 
+  // m3-hex-sweep additions (m2 contract: defined in index.css :root)
+  onAccent: "var(--arbor-on-accent)",
+  camStage: "var(--arbor-cam-stage)",
+  onDarkMuted: "var(--arbor-on-dark-muted)",
+  gradientCta: "var(--gradient-cta)",
+
   // Type families
   fontDisplay: "var(--font-display)",
   fontSans: "var(--font-sans)",
@@ -91,6 +97,29 @@ export type TokenName = keyof typeof CSS_VARS;
 
 /** Short alias for inline styles: `style={{ color: T.ink }}`. */
 export const T = CSS_VARS;
+
+/* Category palette — Story-pack + development-metric semantic colors, as var()
+   strings (m3-hex-sweep). Render fine in inline `style`; use the color-mix
+   helpers below for the tinted-background / border opacity variants. */
+export const PACK_VARS = {
+  courage: "var(--arbor-pack-courage)",
+  responsibility: "var(--arbor-pack-responsibility)",
+  growth: "var(--arbor-pack-growth)",
+  wisdom: "var(--arbor-pack-wisdom)",
+} as const;
+
+export const METRIC_VARS = {
+  courage: "var(--arbor-pack-courage)",
+  responsibility: "var(--arbor-pack-responsibility)",
+  resilience: "var(--arbor-metric-resilience)",
+  empathy: "var(--arbor-metric-empathy)",
+  wisdom: "var(--arbor-pack-wisdom)",
+} as const;
+
+/** A translucent tint of a category var() — replaces the old `${hex}22`/`55`
+    alpha-suffix concat. `13%` ≈ hex `22`, `33%` ≈ hex `55`. */
+export const tintVar = (varStr: string, pct: number): string =>
+  `color-mix(in oklab, ${varStr} ${pct}%, transparent)`;
 
 /* TONES — the single shared tone table. Each tone declares its `soft`, `ink`,
    and (where the accent has a saturated fill) `solid` var() string, plus its

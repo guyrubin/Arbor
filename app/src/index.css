@@ -43,6 +43,22 @@
   --arbor-ochre:      #c2882a;
   --arbor-danger:     #d6566f;
 
+  /* ── m3-hex-sweep tokens (m2 contract: fold these into the m2 token mirror).
+     Added here by m3 because m2 landed without them; values are the literals
+     m3 replaced, so the sweep is pixel-identical. ─────────────────────────── */
+  --arbor-on-accent:    #ffffff;   /* text/icon ink that sits on a saturated accent fill */
+  --arbor-cam-stage:    #1c222b;   /* dark media surface (camera stage) */
+  --arbor-on-dark-muted:#a8a093;   /* muted text on the dark cam stage */
+  /* The single most-repeated CTA gradient — collapses the inline #3cc081 stop. */
+  --gradient-cta: linear-gradient(135deg, #3cc081, var(--arbor-clay) 60%, var(--arbor-clay-deep));
+  /* Category palette — Story-pack + development-metric semantic colors. */
+  --arbor-pack-courage:         #e2562d;
+  --arbor-pack-responsibility:  #d7aa55;
+  --arbor-pack-growth:          #6f9e6f;
+  --arbor-pack-wisdom:          #68b4ff;
+  --arbor-metric-resilience:    #a07af8;
+  --arbor-metric-empathy:       #38c8f0;
+
   --font-display: 'Fraunces', 'Nunito', Georgia, 'Times New Roman', serif;
   --font-sans:    'Nunito', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 

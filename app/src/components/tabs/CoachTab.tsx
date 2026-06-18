@@ -11,6 +11,7 @@ import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
 import { TrustSafetyBar, cardCls } from "../ui/kit";
+import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import ArborVision from "../coach/ArborVision";
 import { api, streamVoice, getAiLanguage } from "../../lib/api";
@@ -249,14 +250,14 @@ export default function CoachTab() {
             <button
               onClick={() => setAiLang("en")}
               className="px-2.5 py-1 rounded-lg text-xs font-bold transition"
-              style={aiLang === "en" ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}
+              style={aiLang === "en" ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
             >
               EN
             </button>
             <button
               onClick={() => setAiLang("he")}
               className="px-2.5 py-1 rounded-lg text-xs font-bold transition"
-              style={aiLang === "he" ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}
+              style={aiLang === "he" ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
             >
               עב
             </button>
@@ -271,7 +272,7 @@ export default function CoachTab() {
               className="px-3 py-2 rounded-xl text-xs font-bold transition"
               style={selectedLens === "Integrated Balanced"
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
               Integrated Balanced
             </button>
@@ -284,9 +285,9 @@ export default function CoachTab() {
                   className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
                   style={on
                     ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                    : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                    : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
-                  <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? "#fff" : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}>
+                  <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? T.paperElevated : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}>
                     {s.initial}
                   </span>
                   {s.name} ({s.concept})
@@ -319,7 +320,7 @@ export default function CoachTab() {
                 onClick={() => handleChatSend(s.prompt)}
                 disabled={isChatLoading}
                 className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold bg-white transition hover:-translate-y-0.5 disabled:opacity-60"
-                style={{ color: "#29333f", border: "1px solid rgba(207,111,55,0.28)" }}
+                style={{ color: T.ink, border: "1px solid rgba(207,111,55,0.28)" }}
               >
                 <span aria-hidden>{s.emoji}</span> {s.label}
               </button>
@@ -343,7 +344,7 @@ export default function CoachTab() {
             <div
               key={c.id}
               className="flex-shrink-0 flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1 transition"
-              style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
+              style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, border: "1px solid var(--arbor-rule)" }}
             >
               <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
                 <MessageSquare className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{c.title}</span>
@@ -493,7 +494,7 @@ export default function CoachTab() {
                   type="button"
                   onClick={handleCancelChat}
                   className="px-2 py-1 rounded-lg font-bold flex items-center gap-1"
-                  style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+                  style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 >
                   <X className="w-3 h-3" /> {t("coach.stop")}
                 </button>
@@ -511,7 +512,7 @@ export default function CoachTab() {
               type="button"
               onClick={() => setVisionMode("observe")}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
-              style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
               <Camera className="w-3.5 h-3.5" /> {t("coach.photo")}
             </button>
@@ -519,7 +520,7 @@ export default function CoachTab() {
               type="button"
               onClick={() => setVisionMode("document")}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
-              style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
               <FileText className="w-3.5 h-3.5" /> {t("coach.document")}
             </button>
@@ -530,7 +531,7 @@ export default function CoachTab() {
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
               style={voicePhase !== "off"
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
               {voicePhase === "off" ? <Mic className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />} {voiceLabel}
               {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} />}
@@ -545,13 +546,13 @@ export default function CoachTab() {
               disabled={isChatLoading}
               placeholder={t("coach.placeholder", { name: childFirst })}
               className="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none transition"
-              style={{ background: "#fff", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
             />
             <button
               onClick={() => handleChatSend()}
               disabled={isChatLoading}
               className="text-white font-extrabold text-sm px-5 py-3 rounded-xl transition flex items-center gap-2 disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+              style={{ background: T.gradientCta }}
             >
               {t("coach.send")}
             </button>
@@ -560,7 +561,7 @@ export default function CoachTab() {
               disabled={isChatLoading}
               title="Convene 3 scholars — each weighs in, then Arbor synthesizes"
               className="font-extrabold text-sm px-4 py-3 rounded-xl transition flex items-center gap-2 disabled:opacity-50"
-              style={{ background: "#fff", border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }}
+              style={{ background: T.paperElevated, border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }}
             >
               <Users className="w-4 h-4" /> {t("coach.council")}
             </button>
@@ -571,7 +572,7 @@ export default function CoachTab() {
               onClick={() => handleChatSend(`${childProfile.name.split(" ")[0]} screams and hides behind the couch during shoe departures.`)}
               disabled={isChatLoading}
               className="px-2 py-0.5 rounded transition"
-              style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
               Shoe departure tantrum
             </button>
@@ -579,7 +580,7 @@ export default function CoachTab() {
               onClick={() => handleChatSend("Suggestions for switching Hebrew and English language routines.")}
               disabled={isChatLoading}
               className="px-2 py-0.5 rounded transition"
-              style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
               Bilingual balance routine
             </button>
@@ -650,7 +651,7 @@ export default function CoachTab() {
                         onClick={() => handleMemoryDecision(item.memoryId, "rejected")}
                         disabled={isMemoryUpdating === item.memoryId}
                         className="flex-1 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+                        style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                       >
                         <Trash2 className="w-3.5 h-3.5" /> {t("coach.reject")}
                       </button>
@@ -661,7 +662,7 @@ export default function CoachTab() {
                       onClick={() => handleMemoryDecision(item.memoryId, "deleted")}
                       disabled={isMemoryUpdating === item.memoryId}
                       className="w-full font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+                      style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                     >
                       <Trash2 className="w-3.5 h-3.5" /> {t("coach.deleteActive")}
                     </button>

@@ -101,7 +101,7 @@ describe("tokens — TONES superset stays consistent with derived maps", () => {
 describe("tokens — no CSS drift vs index.css :root", () => {
   // Collect every custom property declared in any :root-style block.
   const declared = new Set<string>();
-  for (const m of indexCss.matchAll(/(--arbor-[a-z0-9-]+|--font-[a-z-]+|--t-[a-z0-9]+|--r(?:-[a-z]+)?|--shadow-[a-z]+|--ring|--play-[a-z-]+)\s*:/gi)) {
+  for (const m of indexCss.matchAll(/(--arbor-[a-z0-9-]+|--gradient-[a-z0-9-]+|--font-[a-z-]+|--t-[a-z0-9]+|--r(?:-[a-z]+)?|--shadow-[a-z]+|--ring|--play-[a-z-]+)\s*:/gi)) {
     declared.add(m[1]);
   }
 

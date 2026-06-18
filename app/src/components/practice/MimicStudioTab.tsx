@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { PlayShell, PlayHeader, PlayButton, ProgressPips, Celebrate } from "../ui/playkit";
+import { T } from "../../lib/tokens";
 import { MIMIC_PACKS, type MimicPack } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
 import MimicMatch from "./MimicMatch";
@@ -122,7 +123,7 @@ export default function MimicStudioTab() {
           return (
             <button key={p.id} onClick={() => setPackId(p.id)}
               className={`${cardCls} p-4 text-left transition`}
-              style={on ? { border: "1px solid var(--arbor-clay)", background: "#f3faf6" } : undefined}>
+              style={on ? { border: "1px solid var(--arbor-clay)", background: T.paperDeep } : undefined}>
               <span className="text-2xl">{p.emoji}</span>
               <p className="text-sm font-extrabold mt-1.5" style={{ color: "var(--arbor-ink)" }}>{p.title}</p>
               <p className="text-[10.5px] mt-0.5 leading-snug" style={{ color: "var(--arbor-muted)" }}>{p.blurb}</p>
@@ -148,11 +149,11 @@ export default function MimicStudioTab() {
             <Chip tone="coral" icon={<Smile className="w-3 h-3" />}>{prompt.focus}</Chip>
             <div className="flex gap-2 mt-4">
               <button onClick={() => setPromptIdx((i) => (i - 1 + pack.prompts.length) % pack.prompts.length)} aria-label="Previous round"
-                className="p-2 rounded-xl" style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
+                className="p-2 rounded-xl" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button onClick={() => setPromptIdx((i) => (i + 1) % pack.prompts.length)} aria-label="Next round"
-                className="p-2 rounded-xl" style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
+                className="p-2 rounded-xl" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -160,18 +161,18 @@ export default function MimicStudioTab() {
           </div>
 
           {/* Mirror — the child watches themselves try it */}
-          <div className={`${cardCls} overflow-hidden relative flex items-center justify-center`} style={{ minHeight: 260, background: "#1c222b" }}>
+          <div className={`${cardCls} overflow-hidden relative flex items-center justify-center`} style={{ minHeight: 260, background: T.camStage }}>
             <video ref={videoRef} muted playsInline className="w-full h-full object-cover absolute inset-0" style={{ transform: "scaleX(-1)", display: mirrorOn ? "block" : "none" }} />
             {!mirrorOn && (
               <div className="text-center p-6 relative z-10">
-                <Camera className="w-8 h-8 mx-auto mb-3" style={{ color: "#a8a093" }} />
-                <p className="text-xs mb-4 max-w-[260px] mx-auto" style={{ color: "#a8a093" }}>
+                <Camera className="w-8 h-8 mx-auto mb-3" style={{ color: T.onDarkMuted }} />
+                <p className="text-xs mb-4 max-w-[260px] mx-auto" style={{ color: T.onDarkMuted }}>
                   Turn on the mirror so {first} can watch their own mouth while copying you. Local-only — never recorded.
                 </p>
                 <PlayButton onClick={() => void startMirror()} tone="clay" size="md">
                   <Camera className="w-4 h-4" /> Turn on mirror
                 </PlayButton>
-                {camError && <p className="text-[11px] mt-3" style={{ color: "#e9a0b6" }}>{camError}</p>}
+                {camError && <p className="text-[11px] mt-3" style={{ color: "var(--arbor-pink)" }}>{camError}</p>}
               </div>
             )}
             {mirrorOn && (

@@ -8,6 +8,7 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Sparkline } from "../ui/Sparkline";
 import { Skeleton } from "../ui/Skeleton";
 import { PageHeader, cardCls } from "../ui/kit";
+import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { authHeaders } from "../../lib/api";
@@ -190,6 +191,8 @@ export default function BehaviorsTab() {
           `<tr><td>${new Date(l.timestamp).toLocaleString()}</td><td>${escapeHtml(l.behaviorType)}</td><td>${l.context || ""}</td><td>${l.intensity}/5</td><td>${l.durationMinutes}m</td><td>${l.resolved ? "Resolved" : "Open"}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response)}</td></tr>`
       )
       .join("");
+    // print stylesheet — intentional literals (printed report has its own static
+    // palette; design tokens don't apply to the export window, m3-hex-sweep skip).
     const html = `<!doctype html><html><head><title>Arbor Behavior Summary</title>
       <style>body{font-family:Georgia,serif;color:#14160f;padding:32px} h1{font-size:20px} table{width:100%;border-collapse:collapse;font-size:11px;margin-top:16px} th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top} th{background:#f0ece0}</style>
       </head><body>
@@ -365,11 +368,11 @@ export default function BehaviorsTab() {
           </div>
 
           <div className="flex gap-2">
-            <button type="submit" className="flex-1 py-3 transition text-white font-extrabold text-xs rounded-xl active:scale-[0.98]" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}>
+            <button type="submit" className="flex-1 py-3 transition text-white font-extrabold text-xs rounded-xl active:scale-[0.98]" style={{ background: T.gradientCta }}>
               {editingLogId ? t("beh.update") : t("beh.save")}
             </button>
             {editingLogId && (
-              <button type="button" onClick={cancelEditLog} className="px-4 py-3 font-bold text-xs rounded-xl transition" style={{ background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
+              <button type="button" onClick={cancelEditLog} className="px-4 py-3 font-bold text-xs rounded-xl transition" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
                 {t("beh.cancel")}
               </button>
             )}
@@ -406,7 +409,7 @@ export default function BehaviorsTab() {
                 <button onClick={exportPdf} className="font-bold text-xs px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
                   <Download className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
                 </button>
-                <button onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} className="text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
+                <button onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} className="text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60" style={{ background: T.gradientCta }}>
                   {isAnalyzingBehavior ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("beh.synthesizing")}</>) : (<><Brain className="w-3.5 h-3.5" /> {t("beh.analyze")}</>)}
                 </button>
               </div>
@@ -432,6 +435,8 @@ export default function BehaviorsTab() {
             </div>
 
             {behaviorAnalysis && (
+              // m3-hex-sweep: #eef6f1 insight-wash start has no m2 token yet; left
+              // as-is per spec (would become --gradient-insight if m2 adds it).
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
                 <h4 className="text-sm font-extrabold flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>What the pattern shows</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -485,13 +490,13 @@ export default function BehaviorsTab() {
                                   <p className="text-[10px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{new Date(log.timestamp).toLocaleString()}</p>
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                                  {log.context && <span className="px-2 py-0.5 rounded font-bold" style={{ background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{log.context}</span>}
+                                  {log.context && <span className="px-2 py-0.5 rounded font-bold" style={{ background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{log.context}</span>}
                                   <span className="px-2 py-0.5 rounded font-extrabold" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>Level {log.intensity}/5</span>
                                   <span className="px-2 py-0.5 rounded font-bold" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>{log.durationMinutes}m</span>
                                   <button
                                     onClick={() => toggleLogResolved(log.id)}
                                     className="px-2 py-0.5 rounded font-bold flex items-center gap-1 transition"
-                                    style={log.resolved ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                                    style={log.resolved ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                                   >
                                     <Check className="w-3 h-3" /> {log.resolved ? t("beh.resolved") : t("beh.markResolved")}
                                   </button>
