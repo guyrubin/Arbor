@@ -50,6 +50,8 @@ export default function OverviewTab() {
   // reminders, trends chart) is collapsed on phones by default and revealed on
   // tap; desktop (lg+) always shows it. Keeps Today scannable, not a wall.
   const [showTools, setShowTools] = useState(false);
+  // Today's focus can come back long; keep it to a glance with a Read-more.
+  const [focusOpen, setFocusOpen] = useState(false);
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const photoUrl = childProfile.photoUrl;
   const { hasHero } = useHeroAvatar();
@@ -213,7 +215,14 @@ export default function OverviewTab() {
               {focusLoading && !focus ? (
                 <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
               ) : focus ? (
-                <p className="text-[17px] leading-relaxed font-medium" style={{ color: INK, textWrap: "pretty" } as React.CSSProperties}>{focus.text}</p>
+                <div>
+                  <p className={`text-[17px] leading-relaxed font-medium ${focusOpen ? "" : "line-clamp-3"}`} style={{ color: INK, textWrap: "pretty" } as React.CSSProperties}>{focus.text}</p>
+                  {focus.text.length > 160 && (
+                    <button onClick={() => setFocusOpen((v) => !v)} className="text-[13px] font-bold mt-1.5" style={{ color: GREEN }}>
+                      {focusOpen ? t("ov.focus.less") : t("ov.focus.more")}
+                    </button>
+                  )}
+                </div>
               ) : recentCount > 0 ? (
                 <p className="text-[17px] leading-relaxed" style={{ color: MUTED }}>{t("ov.recoLoading", { name: firstName })}</p>
               ) : (
