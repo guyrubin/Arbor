@@ -42,8 +42,9 @@ export type ArborConfig = {
   /** MON-2: customer self-service portal (Stripe Billing portal) for web subs. */
   billingManageUrl?: string;
   /** Child articulation ASR provider. Parent voice stays on Gemini Live — this is
-   *  ONLY for scoring the child's pronunciation. "none" = on-device fallback only. */
-  childAsrProvider: "none" | "soapbox" | "whisper";
+   *  ONLY for scoring the child's pronunciation. "gemini" = Vertex multimodal audio
+   *  (no vendor/secrets); "none" = on-device Web Speech fallback only. */
+  childAsrProvider: "none" | "gemini" | "soapbox" | "whisper";
   /** Hosted (OpenAI-compatible) Whisper transcription endpoint for child ASR fallback. */
   whisperApiUrl?: string;
   whisperApiKey?: string;
@@ -129,7 +130,7 @@ export const loadConfig = (): ArborConfig => {
     billingManageUrl: process.env.BILLING_MANAGE_URL,
     childAsrProvider: (() => {
       const v = (process.env.CHILD_ASR_PROVIDER || "none").toLowerCase();
-      return v === "soapbox" || v === "whisper" ? v : "none";
+      return v === "gemini" || v === "soapbox" || v === "whisper" ? v : "none";
     })(),
     whisperApiUrl: process.env.WHISPER_API_URL,
     whisperApiKey: process.env.WHISPER_API_KEY,

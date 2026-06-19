@@ -46,7 +46,7 @@ steps:
       # `^@^` switches the gcloud delimiter to @ so CORS_ORIGINS can hold a
       # comma-separated origin list. Without CORS_ORIGINS the API defaulted to
       # localhost and rejected every browser request from the hosting domain.
-      - ^@^ARBOR_ENV=prod@MODEL_PROVIDER=vertex@MEMORY_ADAPTER=firestore@ENABLE_LOCAL_MEMORY_ADAPTER=false@ENABLE_HIGH_RISK_REVIEW_QUEUE=true@REQUIRE_AUTH=true@ENFORCE_ENTITLEMENTS=true@FREE_COACH_MESSAGES_PER_DAY=10@GCP_PROJECT_ID=$PROJECT_ID@FIREBASE_PROJECT_ID=$PROJECT_ID@GCP_REGION=${_REGION}@VERTEX_LOCATION=${_REGION}@VERTEX_MODEL_CHAT=gemini-2.5-flash@VERTEX_MODEL_IMAGE=gemini-2.5-flash-image@MAX_OUTPUT_TOKENS=8192@MEMORY_PROMPT_MAX_FACTS=40@CORS_ORIGINS=https://$PROJECT_ID.web.app,https://$PROJECT_ID.firebaseapp.com@APP_URL=https://$PROJECT_ID.web.app
+      - ^@^ARBOR_ENV=prod@MODEL_PROVIDER=vertex@MEMORY_ADAPTER=firestore@ENABLE_LOCAL_MEMORY_ADAPTER=false@ENABLE_HIGH_RISK_REVIEW_QUEUE=true@REQUIRE_AUTH=true@ENFORCE_ENTITLEMENTS=true@FREE_COACH_MESSAGES_PER_DAY=10@GCP_PROJECT_ID=$PROJECT_ID@FIREBASE_PROJECT_ID=$PROJECT_ID@GCP_REGION=${_REGION}@VERTEX_LOCATION=${_REGION}@VERTEX_MODEL_CHAT=gemini-2.5-flash@VERTEX_MODEL_IMAGE=gemini-2.5-flash-image@CHILD_ASR_PROVIDER=gemini@MAX_OUTPUT_TOKENS=8192@MEMORY_PROMPT_MAX_FACTS=40@CORS_ORIGINS=https://$PROJECT_ID.web.app,https://$PROJECT_ID.firebaseapp.com@APP_URL=https://$PROJECT_ID.web.app
 substitutions:
   _REGION: europe-west4
   # _TAG is supplied at submit time (git short SHA). Defaults to "latest" so the

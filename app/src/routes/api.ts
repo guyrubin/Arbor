@@ -769,7 +769,7 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     if (Math.floor((dataB64.length * 3) / 4) > 8 * 1024 * 1024) { res.status(413).json({ error: "Audio too large" }); return; }
 
     try {
-      const result = await scoreChildUtterance(config, {
+      const result = await scoreChildUtterance(config, modelProvider, {
         target,
         sound: String(sound ?? ""),
         level: String(level ?? "word"),
