@@ -5,16 +5,15 @@ import { StoryIllustration } from "./StoryIllustration";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { api, type AvatarStyle } from "../../lib/api";
 import { runInstrumented } from "../../hooks/useAsyncAction";
+import { dedupeScene, getScene } from "../../lib/sceneCache";
 import type { HeroSceneRender } from "../../types";
 
 /**
- * AVA-3: scene-art cache. Generated scene images are large data URLs, so we keep a
- * per-session in-memory cache (keyed by story-beat + avatar) plus an in-flight map to
- * dedupe concurrent requests when the parent flips between beats.
+ * AVA-3 / I5: scene-art cache now lives in lib/sceneCache — a PERSISTENT,
+ * quota-safe LRU (localStorage) shared across surfaces, so generated story beats
+ * survive reloads and never re-pay the image-gen cost. dedupeScene also collapses
+ * concurrent requests when the parent flips between beats.
  */
-const sceneArtCache = new Map<string, string>();
-const sceneArtInFlight = new Map<string, Promise<string>>();
-
 const shortHash = (s: string): string => {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
@@ -68,7 +67,7 @@ export function HeroScenePlayer({
     if (!heroAvatarUrl || !scene.imagePrompt) return;
     // v2 key: panels now carry SFX + a speech bubble, so don't reuse pre-v2 art.
     const key = `comic2|${seed}|${shortHash(heroAvatarUrl)}`;
-    const cached = sceneArtCache.get(key);
+    const cached = getScene(key);
     if (cached) { setSceneArt(cached); return; }
 
     let active = true;
@@ -76,8 +75,9 @@ export function HeroScenePlayer({
     // M4: scene art is generated lazily and degrades gracefully (the catch below
     // keeps the fallback illustration). runInstrumented adds start/success/error
     // analytics ("scene_art_*") so silent generation failures are observable.
-    const run =
-      sceneArtInFlight.get(key) ??
+    // I5: dedupeScene caches the result persistently (survives reload) + dedupes
+    // concurrent requests for the same (avatar × beat) key.
+    dedupeScene(key, () =>
       runInstrumented("scene_art", () =>
         api.generateComic({
           avatar: { dataUrl: heroAvatarUrl },
@@ -88,11 +88,8 @@ export function HeroScenePlayer({
           dialogue: scene.dialogue,
           style: (heroAvatarStyle ?? "comichero"),
         }),
-      )
-        .then((r) => { sceneArtCache.set(key, r.dataUrl); return r.dataUrl; })
-        .finally(() => sceneArtInFlight.delete(key));
-    sceneArtInFlight.set(key, run);
-    run
+      ).then((r) => r.dataUrl),
+    )
       .then((url) => { if (active) setSceneArt(url); })
       .catch(() => { /* graceful: keep the fallback illustration */ })
       .finally(() => { if (active) setArtLoading(false); });
