@@ -21,7 +21,11 @@ on:
 
 jobs:
   ios:
-    runs-on: macos-14
+    # Capacitor 8 plugins ship a binary xcframework whose API is gated behind a
+    # Swift 6.2 feature, so they only compile under Xcode 26 (Swift 6.2). The
+    # older macos-14 image (Xcode 15.4 / Swift 5.10) strips those members and the
+    # @capacitor/status-bar compile fails. See ionic-team/capacitor#8333.
+    runs-on: macos-26
     defaults:
       run:
         working-directory: app
@@ -40,6 +44,8 @@ jobs:
       IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'app.arbor.family' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Select Xcode 26 (Swift 6.2 — required by Capacitor 8)
+        run: sudo xcode-select -switch /Applications/Xcode_26.app
       - uses: actions/setup-node@v4
         with:
           node-version: 22
