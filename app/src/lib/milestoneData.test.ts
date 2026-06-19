@@ -146,4 +146,13 @@ describe("age-band grouping", () => {
   it("seeds CDC items UNobserved (honest empty state, no fixed-age auto-check)", () => {
     expect(CDC_MILESTONES.every((m) => m.checked === false)).toBe(true);
   });
+
+  it("seeds EVERY non-custom milestone UNobserved (no silent Development Score inflation)", () => {
+    // CDC + ASHA + Arbor-extended all seed false: a brand-new child observes
+    // nothing until the parent marks it. Custom (parent-authored) rows are exempt.
+    for (const m of ALL_MILESTONES) {
+      if (m.custom) continue;
+      expect(m.checked).toBe(false);
+    }
+  });
 });

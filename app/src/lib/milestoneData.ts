@@ -207,7 +207,7 @@ export const ASHA_MILESTONES: Milestone[] = [
     title: "Eats mashed and soft table foods",
     description: "ASHA feeding: moves from purées to thicker mashed and soft, dissolvable table foods; begins munching.",
     skillLooksLike: "Manages lumpier textures and gums soft pieces instead of only smooth purée.",
-    checked: true,
+    checked: false,
   },
   {
     id: "asha-feed-12m",
@@ -217,7 +217,7 @@ export const ASHA_MILESTONES: Milestone[] = [
     title: "Finger-feeds and sips from a cup",
     description: "ASHA feeding: feeds self soft finger foods; takes sips from an open or straw cup with help.",
     skillLooksLike: "Picks up small soft pieces to self-feed and drinks from a cup, weaning off the bottle.",
-    checked: true,
+    checked: false,
   },
   {
     id: "asha-comm-24m",
@@ -227,7 +227,7 @@ export const ASHA_MILESTONES: Milestone[] = [
     title: "About half of speech is understandable",
     description: "ASHA articulation: a 2-year-old is understood by familiar listeners roughly 50% of the time.",
     skillLooksLike: "You catch about half of what they say; strangers catch less, and that's expected.",
-    checked: true,
+    checked: false,
   },
   {
     id: "asha-feed-24m",
@@ -237,7 +237,7 @@ export const ASHA_MILESTONES: Milestone[] = [
     title: "Eats a wide range of textures",
     description: "ASHA feeding: chews a variety of foods and textures; drinks from an open cup with less spilling.",
     skillLooksLike: "Handles most family foods, chewing rather than just mashing, with fewer spills."  ,
-    checked: true,
+    checked: false,
   },
   {
     id: "asha-comm-36m",
@@ -247,7 +247,7 @@ export const ASHA_MILESTONES: Milestone[] = [
     title: "Speech is about 75% understandable",
     description: "ASHA articulation: a 3-year-old is understood by most listeners about 75% of the time.",
     skillLooksLike: "Most people, even those who don't know them, follow three-quarters of their speech.",
-    checked: true,
+    checked: false,
   },
   {
     id: "asha-comm-48m",
@@ -265,19 +265,21 @@ export const ASHA_MILESTONES: Milestone[] = [
  * Arbor's own 4–6y surveillance items — the bilingual, regulation, and sensory
  * cues that the CDC set doesn't cover but the product cares about. Kept from the
  * original demo so the default profile (a 5-year-old in language transition)
- * still has relevant, editable open milestones.
+ * still has relevant, editable open milestones. Like the CDC/ASHA rows these
+ * seed UNobserved (`checked:false`) — nothing is "observed" until the parent
+ * marks it, so a brand-new child never gets a silently inflated Development Score.
  */
 export const ARBOR_EXTENDED_MILESTONES: Milestone[] = [
-  { id: "m-1", domain: "attachment_regulation", ageMonths: 54, ageGroup: "Age 4-5", title: "Regulates with Prompting", description: "Can calm down within 15 minutes with warm adult co-regulation.", skillLooksLike: "After a meltdown, a calm adult presence helps them settle within a quarter of an hour.", checked: true },
-  { id: "m-2", domain: "language_communication", ageMonths: 54, ageGroup: "Age 4-5", title: "Uses Full Sentences", description: "Speaks in sentences of 5-6 words, sharing clear thoughts on what they did during the day.", skillLooksLike: "Recaps their day in proper sentences you can easily follow.", checked: true },
-  { id: "m-3", domain: "social_development", ageMonths: 54, ageGroup: "Age 4-5", title: "Imaginative Cooperative Play", description: "Plays 'makeup' games with other children, successfully negotiating simple rules.", skillLooksLike: "Invents a pretend game with friends and agrees on who plays what.", checked: true },
-  { id: "m-4", domain: "independence_adaptive_skills", ageMonths: 54, ageGroup: "Age 4-5", title: "Dresses Independently", description: "Can button shirts, pull up pants, and arrange shoes with minimal direction.", skillLooksLike: "Gets dressed start-to-finish with only the odd reminder.", checked: true },
-  { id: "m-5", domain: "sensory_motor_patterns", ageMonths: 54, ageGroup: "Age 4-5", title: "Hops on One Foot", description: "Balances and hops comfortably on one foot for 3-4 consecutive bounds.", skillLooksLike: "Hops several times on one foot without toppling over.", checked: true },
+  { id: "m-1", domain: "attachment_regulation", ageMonths: 54, ageGroup: "Age 4-5", title: "Regulates with Prompting", description: "Can calm down within 15 minutes with warm adult co-regulation.", skillLooksLike: "After a meltdown, a calm adult presence helps them settle within a quarter of an hour.", checked: false },
+  { id: "m-2", domain: "language_communication", ageMonths: 54, ageGroup: "Age 4-5", title: "Uses Full Sentences", description: "Speaks in sentences of 5-6 words, sharing clear thoughts on what they did during the day.", skillLooksLike: "Recaps their day in proper sentences you can easily follow.", checked: false },
+  { id: "m-3", domain: "social_development", ageMonths: 54, ageGroup: "Age 4-5", title: "Imaginative Cooperative Play", description: "Plays 'makeup' games with other children, successfully negotiating simple rules.", skillLooksLike: "Invents a pretend game with friends and agrees on who plays what.", checked: false },
+  { id: "m-4", domain: "independence_adaptive_skills", ageMonths: 54, ageGroup: "Age 4-5", title: "Dresses Independently", description: "Can button shirts, pull up pants, and arrange shoes with minimal direction.", skillLooksLike: "Gets dressed start-to-finish with only the odd reminder.", checked: false },
+  { id: "m-5", domain: "sensory_motor_patterns", ageMonths: 54, ageGroup: "Age 4-5", title: "Hops on One Foot", description: "Balances and hops comfortably on one foot for 3-4 consecutive bounds.", skillLooksLike: "Hops several times on one foot without toppling over.", checked: false },
 
   { id: "m-6", domain: "attachment_regulation", ageMonths: 66, ageGroup: "Age 5-6", title: "Articulates Specific Feelings", description: "Can verbally name complex feelings: e.g., 'I am lonely,' 'I feel disappointed.'", skillLooksLike: "Names a nuanced feeling instead of just 'mad' or 'sad'.", checked: false },
   { id: "m-7", domain: "language_communication", ageMonths: 66, ageGroup: "Age 5-6", title: "Handles Code-Switching", description: "Can comfortably shift phrases between Hebrew and English depending on the listener.", skillLooksLike: "Switches language to match who they're talking to, without getting stuck.", checked: false },
   { id: "m-8", domain: "social_development", ageMonths: 66, ageGroup: "Age 5-6", title: "Conflict Resolution Process", description: "Suggests simple compromises when a toy dispute arises ('You play 5 mins, then me').", skillLooksLike: "Offers a fair trade or turn-taking idea to settle a squabble.", checked: false },
-  { id: "m-9", domain: "cognition_executive_function", ageMonths: 66, ageGroup: "Age 5-6", title: "Time Sequencing", description: "Correctly sequences days, understand 'tomorrow vs yesterday', and basic morning schedule.", skillLooksLike: "Talks accurately about yesterday, today, and tomorrow and the day's order.", checked: true },
+  { id: "m-9", domain: "cognition_executive_function", ageMonths: 66, ageGroup: "Age 5-6", title: "Time Sequencing", description: "Correctly sequences days, understand 'tomorrow vs yesterday', and basic morning schedule.", skillLooksLike: "Talks accurately about yesterday, today, and tomorrow and the day's order.", checked: false },
   { id: "m-10", domain: "sensory_motor_patterns", ageMonths: 66, ageGroup: "Age 5-6", title: "Manages Senses Pre-emptively", description: "Can say 'It is too loud here' and requests headphones or leaving space.", skillLooksLike: "Notices sensory overload coming and asks for a break or quiet.", checked: false },
 ];
 
