@@ -22,9 +22,12 @@ import GoalsCard from "../overview/GoalsCard";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import RhythmStrip from "../overview/RhythmStrip";
 import DailyPlayCard from "../overview/DailyPlayCard";
+import QuickCaptureBar from "../overview/QuickCaptureBar";
+import TodaysMissionCard from "../overview/TodaysMissionCard";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
+import { dayPartFor, type DayPart } from "../../lib/timeOfDay";
 
 const card = cardCls;
 const DAY = 86_400_000;
@@ -98,11 +101,16 @@ export default function OverviewTab() {
     toast(`Nice. Added to ${firstName}'s day.`, "success");
   };
 
-  const hour = new Date().getHours();
+  // ── Living, time-aware Today: the device-local day-part drives the greeting,
+  //    the hero eyebrow, and the order of spine slots 2–5 (never hides anything;
+  //    everything stays reachable by scrolling — no dark pattern). ──
+  const dayPart: DayPart = dayPartFor(new Date().getHours());
   const greeting =
-    hour < 12 ? { text: t("ov.greeting.morning"), icon: <Sunrise className="w-4 h-4" /> }
-    : hour < 18 ? { text: t("ov.greeting.afternoon"), icon: <Sun className="w-4 h-4" /> }
+    dayPart === "morning" ? { text: t("ov.greeting.morning"), icon: <Sunrise className="w-4 h-4" /> }
+    : dayPart === "afternoon" ? { text: t("ov.greeting.afternoon"), icon: <Sun className="w-4 h-4" /> }
     : { text: t("ov.greeting.evening"), icon: <Moon className="w-4 h-4" /> };
+  const heroEyebrow = t(`today.part.${dayPart}.eyebrow`, { name: firstName });
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const recentCount = useMemo(
     () => behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= Date.now() - 7 * DAY).length,
@@ -167,12 +175,85 @@ export default function OverviewTab() {
     { tone: "lav", icon: <BookOpen className="w-5 h-5" />, title: t("ov.reco.story.title"), desc: t("ov.reco.story.desc"), tab: "stories" },
   ];
 
+  // ── Time-aware spine (slots 2–5) ──────────────────────────────────────────
+  // The host owns ORDER only. Tenants (rhythm = c1, daily-play = c2) keep their
+  // existing prop contracts unchanged; b1 just relocates them. The memory nudge
+  // is a read of the moat (promoted in the evening), the mission is a folded,
+  // read-only deep link. Same set of slots in every day-part — only re-ranked.
+  const hasPendingMemory = pendingMemoryItems.length > 0;
+  type SlotKey = "rhythm" | "play" | "memory" | "mission";
+  // Lower number = higher on the screen. Slots not rendered (e.g. no play pick)
+  // are simply filtered out; nothing is hidden by the ordering itself.
+  const SLOT_ORDER: Record<DayPart, Record<SlotKey, number>> = {
+    morning:   { rhythm: 1, play: 2, memory: 3, mission: 4 },
+    afternoon: { rhythm: 2, play: 1, memory: 3, mission: 4 },
+    // evening: review the day — memory nudge promoted above play.
+    evening:   { rhythm: 1, memory: 2, play: 3, mission: 4 },
+  };
+
+  type Slot = { key: SlotKey; node: React.ReactNode };
+  const spineSlots: Slot[] = ([
+    {
+      key: "rhythm" as SlotKey,
+      // TENANT: rhythm (c1) — b1 owns placement only; do not change props here.
+      node: <RhythmStrip prediction={rhythm} childName={firstName} onPrepWindow={prepWindow} />,
+    },
+    dailyPlay
+      ? {
+          key: "play" as SlotKey,
+          // TENANT: daily-play (c2) — b1 owns placement only; do not change props here.
+          node: (
+            <DailyPlayCard
+              pick={dailyPlay}
+              childName={firstName}
+              done={donePlayIds.includes(dailyPlay.activity.id)}
+              onDid={markPlayDone}
+              onCoach={coachOnPlay}
+            />
+          ),
+        }
+      : null,
+    hasPendingMemory
+      ? {
+          key: "memory" as SlotKey,
+          // Memory nudge — moat READ only (write-back lives in the memory tab).
+          node: (
+            <button
+              onClick={() => setActiveTab("memory")}
+              className={`${card} w-full text-left p-5 md:p-6 flex items-center gap-4 transition hover:-translate-y-0.5`}
+            >
+              <span className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: PASTEL.yellow.soft, color: PASTEL.yellow.ink }}>
+                <BookMarked className="w-6 h-6" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-extrabold" style={{ color: INK }}>{t("today.memory.evening.title")}</span>
+                <span className="block text-[13px] mt-0.5 leading-snug" style={{ color: MUTED }}>{t("today.memory.evening.body", { n: pendingMemoryItems.length })}</span>
+              </span>
+              <ArrowRight className="w-4 h-4 flex-shrink-0" style={{ color: PASTEL.yellow.ink }} />
+            </button>
+          ),
+        }
+      : null,
+    {
+      key: "mission" as SlotKey,
+      // FOLDED: mission (ia-b1) — read-only summary + deep link to the missions tab.
+      node: <TodaysMissionCard childName={firstName} dateISO={todayISO} onOpen={() => setActiveTab("missions")} />,
+    },
+  ] as (Slot | null)[]).filter((s): s is Slot => s !== null);
+
+  const orderedSpine = [...spineSlots].sort(
+    (a, b) => SLOT_ORDER[dayPart][a.key] - SLOT_ORDER[dayPart][b.key]
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       className="space-y-5 md:space-y-7 relative max-w-[1080px]"
     >
+      {/* ── Quick Capture — first in tab order so capture is always reachable ─ */}
+      <QuickCaptureBar childName={firstName} onCapture={() => setQuickLog(true)} />
+
       {/* ── Decision hero: status → recommendation → one primary action ──── */}
       <section
         className="rounded-[24px] overflow-hidden"
@@ -209,7 +290,7 @@ export default function OverviewTab() {
         <div className="px-6 md:px-7 pb-6 md:pb-7">
           <div className="rounded-2xl p-5 md:p-6" style={{ background: "var(--arbor-paper-deep)", border: `1px solid ${RULE}` }}>
             <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-              <Sparkles className="w-3.5 h-3.5" /> {t("ov.todayFor", { name: firstName })}
+              <Sparkles className="w-3.5 h-3.5" /> {heroEyebrow}
             </span>
             <div className="mt-2 min-h-[2.25rem]">
               {focusLoading && !focus ? (
@@ -320,19 +401,13 @@ export default function OverviewTab() {
         )}
       </section>
 
-      {/* ── Today: predicted rhythm + a play idea (the daily-return surface) ─ */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <RhythmStrip prediction={rhythm} childName={firstName} onPrepWindow={prepWindow} />
-        {dailyPlay && (
-          <DailyPlayCard
-            pick={dailyPlay}
-            childName={firstName}
-            done={donePlayIds.includes(dailyPlay.activity.id)}
-            onDid={markPlayDone}
-            onCoach={coachOnPlay}
-          />
-        )}
-      </section>
+      {/* ── Time-aware spine: rhythm (c1) · daily-play (c2) · memory nudge ·
+             folded mission — order re-ranks by day-part, computed once. ───── */}
+      <div className="space-y-4">
+        {orderedSpine.map((s) => (
+          <React.Fragment key={s.key}>{s.node}</React.Fragment>
+        ))}
+      </div>
 
       {/* ── How your child is doing (the picture, with the moat folded in) ─ */}
       <section className={`${card} overflow-hidden`}>

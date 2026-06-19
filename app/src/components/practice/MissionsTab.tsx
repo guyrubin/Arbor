@@ -6,6 +6,7 @@ import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { PlayShell, PlayHeader } from "../ui/playkit";
 import ProgressRing from "../ui/ProgressRing";
 import { DOMAIN_META, MISSION_CYCLE, fillTemplate, type MissionTemplate } from "../../practice/content";
+import { cycleDayFor } from "../../practice/missionToday";
 import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
 import { weeklyMissionPlan } from "../../practice/signals";
 import type { MissionRecord } from "../../types";
@@ -24,13 +25,10 @@ export default function MissionsTab() {
   const first = childProfile.name.split(" ")[0];
   const vars = { name: first, age: childProfile.age, lang: childProfile.languages?.[1] };
 
-  // Day in the 5-day cycle, anchored to the calendar so the whole family sees the same mission.
-  const cycleDay = useMemo(() => {
-    const d = new Date(`${data.today}T12:00:00`);
-    const start = new Date(d.getFullYear(), 0, 0);
-    const dayOfYear = Math.floor((d.getTime() - start.getTime()) / 86400000);
-    return dayOfYear % MISSION_CYCLE.length;
-  }, [data.today]);
+  // Day in the 5-day cycle, anchored to the calendar so the whole family — and
+  // the folded card on Today — sees the same mission. Shared helper keeps the
+  // Today loop and the Missions tab in agreement.
+  const cycleDay = useMemo(() => cycleDayFor(data.today), [data.today]);
 
   const todaysMission = MISSION_CYCLE[cycleDay];
   const recommendedMission = MISSION_CYCLE.find((m) => m.id === recommendation.missionId) ?? todaysMission;
