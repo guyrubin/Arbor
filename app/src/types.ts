@@ -191,19 +191,22 @@ export type DevelopmentMetricId =
   | 'responsibility'
   | 'resilience'
   | 'empathy'
-  | 'wisdom';
+  | 'wisdom'
+  | 'truth';
 
 export type DevelopmentMetrics = Record<DevelopmentMetricId, number>;
 
-export type HeroPackId = 'courage' | 'responsibility' | 'growth' | 'wisdom';
+export type HeroPackId = 'courage' | 'responsibility' | 'growth' | 'wisdom' | 'truth';
 
 /** A choice offered at the Decision beat. Selecting it moves the child's metrics. */
 export interface HeroChoice {
   id: string; // 'a' | 'b' | 'c'
   /** Fallback label (English); the AI personalizes the rendered label. */
   label: string;
+  labelHe?: string;
   /** Short consequence cue the AI expands into the Consequence beat. */
   outcomeHint: string;
+  outcomeHintHe?: string;
   metricDeltas: Partial<DevelopmentMetrics>;
 }
 
@@ -221,8 +224,10 @@ export type HeroBeatId =
 export interface HeroBeat {
   id: HeroBeatId;
   title: string;
+  titleHe?: string;
   /** Canonical one-line beat summary the AI must follow (English). */
   spine: string;
+  spineHe?: string;
   choices?: HeroChoice[];
 }
 
@@ -236,11 +241,19 @@ export interface HeroStorySpec {
   origin: 'biblical' | 'original';
   ageRange: [number, number];
   primaryMetric: DevelopmentMetricId;
+  /** What kind of dilemma the Decision beat poses — so the "hero move" isn't
+   *  always the bravest-sounding option (prudence/repair/patience/truth differ). */
+  dilemmaType?: 'courage' | 'prudence' | 'repair' | 'patience' | 'truth';
   /** Base metric points awarded for completing the journey (before the choice). */
   baseReward: Partial<DevelopmentMetrics>;
   beats: HeroBeat[];
   learningObjective: string;
-  parentReflection: { practiced: string[]; questions: string[] };
+  learningObjectiveHe?: string;
+  themeHe?: string;
+  parentReflection: { practiced: string[]; questions: string[]; practicedHe?: string[]; questionsHe?: string[] };
+  /** Parent-facing archetypal ("why this story") reading, shown on the reflection
+   *  beat. Calm senior-advisor voice; bilingual. */
+  parentInsight?: { en: string; he: string };
 }
 
 /** AI-personalized rendering of one beat for a specific child. */

@@ -106,6 +106,7 @@ export const PACK_VARS = {
   responsibility: "var(--arbor-pack-responsibility)",
   growth: "var(--arbor-pack-growth)",
   wisdom: "var(--arbor-pack-wisdom)",
+  truth: "var(--arbor-pack-truth)",
 } as const;
 
 export const METRIC_VARS = {
@@ -114,6 +115,7 @@ export const METRIC_VARS = {
   resilience: "var(--arbor-metric-resilience)",
   empathy: "var(--arbor-metric-empathy)",
   wisdom: "var(--arbor-pack-wisdom)",
+  truth: "var(--arbor-metric-truth)",
 } as const;
 
 /** A translucent tint of a category var() — replaces the old `${hex}22`/`55`

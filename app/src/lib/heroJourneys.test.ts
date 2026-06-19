@@ -26,18 +26,19 @@ const isMetricKey = (k: string): k is DevelopmentMetricId =>
   (METRIC_IDS as string[]).includes(k);
 
 describe("hero journey catalog", () => {
-  it("contains exactly 10 stories with unique ids", () => {
-    expect(HERO_STORIES).toHaveLength(10);
+  it("contains exactly 16 stories with unique ids", () => {
+    expect(HERO_STORIES).toHaveLength(16);
     const ids = HERO_STORIES.map((s) => s.id);
-    expect(new Set(ids).size).toBe(10);
+    expect(new Set(ids).size).toBe(16);
   });
 
-  it("covers all 4 packs (3 / 3 / 3 / 1)", () => {
-    expect(PACKS).toHaveLength(4);
-    expect(storiesInPack("courage")).toHaveLength(3);
-    expect(storiesInPack("responsibility")).toHaveLength(3);
+  it("covers all 5 packs (courage 4 / responsibility 4 / growth 3 / wisdom 3 / truth 2)", () => {
+    expect(PACKS).toHaveLength(5);
+    expect(storiesInPack("courage")).toHaveLength(4);
+    expect(storiesInPack("responsibility")).toHaveLength(4);
     expect(storiesInPack("growth")).toHaveLength(3);
-    expect(storiesInPack("wisdom")).toHaveLength(1);
+    expect(storiesInPack("wisdom")).toHaveLength(3);
+    expect(storiesInPack("truth")).toHaveLength(2);
   });
 
   it("every story follows the fixed 8-beat spine in order", () => {
@@ -72,8 +73,8 @@ describe("hero journey catalog", () => {
       }
       const decision = story.beats.find((b) => b.id === "decision");
       for (const choice of decision!.choices!) {
-        const keys = Object.keys(choice.metricDeltas);
-        expect(keys.length).toBeGreaterThan(0);
+        // Peterson scoring: the avoidant choice MAY award nothing (empty deltas);
+        // any present delta must still use a valid metric key with positive points.
         for (const [k, v] of Object.entries(choice.metricDeltas)) {
           expect(isMetricKey(k)).toBe(true);
           expect(v).toBeGreaterThan(0);
@@ -87,10 +88,20 @@ describe("hero journey catalog", () => {
       expect(story.baseReward[story.primaryMetric] ?? 0).toBeGreaterThan(0);
     }
   });
+
+  it("the avoidant choice 'a' never rewards the story's primary virtue (Peterson: avoidance is not virtue)", () => {
+    for (const story of HERO_STORIES) {
+      const decision = story.beats.find((b) => b.id === "decision");
+      const avoidant = decision!.choices!.find((c) => c.id === "a")!;
+      // retreat must not pay out courage/responsibility/wisdom/resilience-as-the-primary
+      expect((avoidant.metricDeltas[story.primaryMetric] ?? 0)).toBe(0);
+      expect((avoidant.metricDeltas.courage ?? 0)).toBe(0);
+    }
+  });
 });
 
 describe("metric helpers", () => {
-  it("emptyMetrics has all five metrics at zero", () => {
+  it("emptyMetrics has all metrics at zero", () => {
     const m = emptyMetrics();
     expect(Object.keys(m).sort()).toEqual([...METRIC_IDS].sort());
     expect(METRIC_IDS.every((id) => m[id] === 0)).toBe(true);

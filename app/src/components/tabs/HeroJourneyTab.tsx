@@ -51,6 +51,7 @@ const PACK_WORLD: Record<HeroPackId, { bg: string; ink: string; label: string; l
   responsibility: { bg: "var(--arbor-yellow)", ink: "var(--arbor-yellow-ink)", label: "Responsibility", labelHe: "אחריות" },
   growth: { bg: "var(--arbor-clay)", ink: "var(--arbor-clay-deep)", label: "Growth", labelHe: "צמיחה" },
   wisdom: { bg: "var(--arbor-sky)", ink: "var(--arbor-sky-ink)", label: "Wisdom", labelHe: "חוכמה" },
+  truth: { bg: "var(--arbor-pack-truth)", ink: "var(--arbor-pack-truth)", label: "Truth", labelHe: "אמת" },
 };
 
 /** Per-story scene motif: a big emoji prop + a comic SFX burst (EN/HE), so every
@@ -66,6 +67,12 @@ const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> =
   "jacob-wrestling-the-angel": { emoji: "🌅", sfx: "HOLD ON!", sfxHe: "חזק!" },
   "the-garden-of-forgotten-seeds": { emoji: "🌻", sfx: "BLOOM!", sfxHe: "פריחה!" },
   "king-solomons-choice": { emoji: "⚖️", sfx: "AHA!", sfxHe: "אהה!" },
+  "the-broken-music-box": { emoji: "🎵", sfx: "TING!", sfxHe: "טינג!" },
+  "the-found-acorn-crown": { emoji: "🌰", sfx: "SHINE!", sfxHe: "נצנוץ!" },
+  "the-two-gifts": { emoji: "🎁", sfx: "KNOCK!", sfxHe: "טוק!" },
+  "leave-the-tent": { emoji: "⛺", sfx: "WHOOSH!", sfxHe: "ואוש!" },
+  "the-two-paths-through-the-meadow": { emoji: "🌿", sfx: "HMM!", sfxHe: "המ!" },
+  "the-two-mothers-and-the-quiet-judge": { emoji: "🤝", sfx: "SHH…", sfxHe: "ששש…" },
 };
 
 const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;
@@ -76,6 +83,7 @@ const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
   resilience: "💪",
   empathy: "💛",
   wisdom: "🦉",
+  truth: "🕯️",
 };
 
 export default function HeroJourneyTab() {
@@ -461,8 +469,18 @@ export default function HeroJourneyTab() {
       {/* Reflection / completion */}
       {isReflection && (
         <div className="w-full max-w-xl mx-auto space-y-4">
+          {activeStory.parentInsight && (
+            <div className="rounded-2xl p-4 space-y-1.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
+                {aiLang === "he" ? "למבוגרים · למה הסיפור הזה" : "For grown-ups · Why this story"}
+              </p>
+              <p dir="auto" className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
+                {aiLang === "he" ? activeStory.parentInsight.he : activeStory.parentInsight.en}
+              </p>
+            </div>
+          )}
           <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>Today we practiced</p>
+            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "מה תרגלנו היום" : "Today we practiced"}</p>
             <div className="flex flex-wrap gap-2">
               {render.reflection.practiced.map((p, i) => (
                 <span
@@ -477,7 +495,7 @@ export default function HeroJourneyTab() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>Talk about it together</p>
+            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "דברו על זה יחד" : "Talk about it together"}</p>
             {render.reflection.questions.map((q, i) => (
               <button
                 key={i}
@@ -506,11 +524,11 @@ export default function HeroJourneyTab() {
               className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
               style={{ background: T.gradientCta }}
             >
-              <Trophy className="w-4 h-4" /> Finish & save {childProfile.name}'s development
+              <Trophy className="w-4 h-4" /> {aiLang === "he" ? `סיימו ושמרו את ההתפתחות של ${childProfile.name}` : `Finish & save ${childProfile.name}'s development`}
             </button>
           ) : (
             <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
-              <Check className="w-4 h-4" /> Saved to {childProfile.name}'s development
+              <Check className="w-4 h-4" /> {aiLang === "he" ? `נשמר להתפתחות של ${childProfile.name}` : `Saved to ${childProfile.name}'s development`}
             </div>
           )}
         </div>
