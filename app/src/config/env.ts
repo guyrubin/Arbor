@@ -34,7 +34,10 @@ export type ArborConfig = {
   memoryPromptMaxFacts: number;
   /** MON-2: shared secret RevenueCat sends as the webhook Authorization header. */
   revenueCatWebhookAuth?: string;
-  /** MON-2: hosted-checkout links keyed `${plan}_${cadence}` (e.g. plus_monthly). */
+  /** MON-2: RevenueCat Web Purchase Link base (`https://pay.rev.cat/<token>`). When
+   *  set, the uid is appended as a path segment and the plan via `?package_id`. */
+  billingWebPurchaseLink?: string;
+  /** MON-2: per-plan hosted-checkout links keyed `${plan}_${cadence}` (Stripe fallback). */
   billingCheckoutUrls: Record<string, string>;
   /** MON-2: customer self-service portal (Stripe Billing portal) for web subs. */
   billingManageUrl?: string;
@@ -116,6 +119,7 @@ export const loadConfig = (): ArborConfig => {
     maxOutputTokens: Number(process.env.MAX_OUTPUT_TOKENS || 8192),
     memoryPromptMaxFacts: Number(process.env.MEMORY_PROMPT_MAX_FACTS || 40),
     revenueCatWebhookAuth: process.env.REVENUECAT_WEBHOOK_AUTH,
+    billingWebPurchaseLink: process.env.BILLING_WEB_PURCHASE_LINK,
     billingCheckoutUrls: {
       ...(process.env.BILLING_URL_PLUS_MONTHLY ? { plus_monthly: process.env.BILLING_URL_PLUS_MONTHLY } : {}),
       ...(process.env.BILLING_URL_PLUS_ANNUAL ? { plus_annual: process.env.BILLING_URL_PLUS_ANNUAL } : {}),
