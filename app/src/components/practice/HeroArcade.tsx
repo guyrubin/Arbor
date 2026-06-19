@@ -21,6 +21,7 @@ const SpeechCoachTab = lazy(() => import("./SpeechCoachTab"));
 const MimicStudioTab = lazy(() => import("./MimicStudioTab"));
 const FeelingsLabTab = lazy(() => import("./FeelingsLabTab"));
 const AdventuresTab = lazy(() => import("./AdventuresTab"));
+import WorldScene from "./WorldScene";
 const MindVaultWorld = lazy(() => import("./MindVaultWorld"));
 const SpellForgeWorld = lazy(() => import("./SpellForgeWorld"));
 const BeatKeeperWorld = lazy(() => import("./BeatKeeperWorld"));
@@ -37,6 +38,8 @@ interface World {
   tag: string;
   icon: LucideIcon;
   color: WorldColor;
+  /** Scene description for the illustrated card — the hero is composited in (I1). */
+  imagePrompt: string;
   Comp?: React.ComponentType;
   count?: (d: ReturnType<typeof usePracticeData>) => number;
   isNew?: boolean;
@@ -52,15 +55,15 @@ const COLOR: Record<WorldColor, { bg: string; ink: string }> = {
 };
 
 const WORLDS: World[] = [
-  { id: "speech", name: "Sound Lab", tag: "Speech", icon: Mic, color: "sky", Comp: SpeechCoachTab, count: (d) => d.speech.items.length },
-  { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: HeartPulse, color: "lav", Comp: FeelingsLabTab, count: (d) => d.events.items.length },
-  { id: "adventures", name: "Story Quest", tag: "Adventure", icon: MapIcon, color: "peach", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
-  { id: "mimic", name: "Mimic Studio", tag: "Mimic", icon: Smile, color: "clay", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
-  { id: "memory", name: "Mind Vault", tag: "Memory", icon: Brain, color: "pink", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
-  { id: "reading", name: "Spell Forge", tag: "Reading", icon: BookOpen, color: "yellow", Comp: SpellForgeWorld, count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
-  { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: Music, color: "clay", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
-  { id: "pose", name: "Hero Pose", tag: "Move", icon: PersonStanding, color: "sky", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
-  { id: "pattern", name: "Pattern Power", tag: "Logic", icon: Shapes, color: "lav", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
+  { id: "speech", name: "Sound Lab", tag: "Speech", icon: Mic, color: "sky", imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes", Comp: SpeechCoachTab, count: (d) => d.speech.items.length },
+  { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: HeartPulse, color: "lav", imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky", Comp: FeelingsLabTab, count: (d) => d.events.items.length },
+  { id: "adventures", name: "Story Quest", tag: "Adventure", icon: MapIcon, color: "peach", imagePrompt: "an adventurous storybook landscape, holding a treasure map with a compass on a cliff", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
+  { id: "mimic", name: "Mimic Studio", tag: "Mimic", icon: Smile, color: "clay", imagePrompt: "a playful mirror studio making a silly happy face, sparkles around", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
+  { id: "memory", name: "Mind Vault", tag: "Memory", icon: Brain, color: "pink", imagePrompt: "opening a glowing memory vault full of colorful matching cards", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
+  { id: "reading", name: "Spell Forge", tag: "Reading", icon: BookOpen, color: "yellow", imagePrompt: "a magical letter forge where glowing letters become words", Comp: SpellForgeWorld, count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
+  { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: Music, color: "clay", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
+  { id: "pose", name: "Hero Pose", tag: "Move", icon: PersonStanding, color: "sky", imagePrompt: "a dynamic superhero action pose with bold motion lines", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
+  { id: "pattern", name: "Pattern Power", tag: "Logic", icon: Shapes, color: "lav", imagePrompt: "a puzzle world of glowing shapes arranged in patterns", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
 ];
 
 function Stars({ n }: { n: number }) {
@@ -176,8 +179,10 @@ export default function HeroArcade() {
                   <span className="absolute top-0 left-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
                     style={{ background: "var(--arbor-pink)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}>NEW</span>
                 )}
-                <div className="comic-halftone grid place-items-center" style={{ height: 96, background: c.bg, borderBottom: "var(--comic-line)" }}>
-                  <Icon className="w-12 h-12" style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} strokeWidth={2.5} aria-hidden="true" />
+                <div className="comic-halftone relative overflow-hidden" style={{ height: 120, background: c.bg, borderBottom: "var(--comic-line)" }}>
+                  <WorldScene worldId={w.id} imagePrompt={w.imagePrompt} heroUrl={hero.url ?? undefined}>
+                    <Icon className="w-12 h-12" style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} strokeWidth={2.5} aria-hidden="true" />
+                  </WorldScene>
                 </div>
                 <div className="p-3">
                   <p className="font-black text-[16px] leading-none mb-2" style={{ fontFamily: "var(--font-display)" }}>{w.name}</p>
