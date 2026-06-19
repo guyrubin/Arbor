@@ -7,7 +7,14 @@
 import type { ChildProfile, BehaviorLog, ActionPlan } from "../types";
 
 export type ReportSection = { heading: string; body: string | string[] };
-export type ReportDoc = { title: string; subtitle?: string; sections: ReportSection[] };
+export type ReportDoc = {
+  title: string;
+  subtitle?: string;
+  sections: ReportSection[];
+  /** Optional stylized hero portrait (data: or https URL) shown in the brand
+   *  lockup. Only the privacy-safe descriptor avatar should ever be passed here. */
+  heroImageUrl?: string;
+};
 
 export type ReportContext = {
   child: ChildProfile;
@@ -16,6 +23,9 @@ export type ReportContext = {
   milestonesPercent: number;
   checkedMilestones: number;
   totalMilestones: number;
+  /** Optional stylized hero portrait to anchor the printed document to the child.
+   *  Callers pass this ONLY for the descriptor (stylized) avatar — never a real photo. */
+  heroImageUrl?: string;
 };
 
 export type ReportType =
@@ -41,6 +51,10 @@ function topTrigger(logs: BehaviorLog[]) {
 }
 
 export function buildReport(type: ReportType, ctx: ReportContext): ReportDoc {
+  return { ...buildReportBody(type, ctx), heroImageUrl: ctx.heroImageUrl };
+}
+
+function buildReportBody(type: ReportType, ctx: ReportContext): ReportDoc {
   const { child, logs, plans, milestonesPercent, checkedMilestones, totalMilestones } = ctx;
   const wk = recentLogs(logs, 7);
   const mo = recentLogs(logs, 28);
@@ -134,6 +148,7 @@ export function openPrintableReport(doc: ReportDoc, childName: string) {
     body { font-family: 'Nunito', -apple-system, system-ui, sans-serif; color: #29333f; max-width: 720px; margin: 0 auto; padding: 32px 24px; }
     .brand { display:flex; align-items:center; gap:10px; margin-bottom: 4px; }
     .brand .dot { width:24px; height:24px; border-radius:7px; background:#e4f4ec; display:inline-flex; align-items:center; justify-content:center; color:#2a9c66; font-weight:800; }
+    .brand .hero { width:34px; height:34px; border-radius:50%; object-fit:cover; border:2px solid #e4f4ec; background:#fff; }
     .brand b { font-size: 15px; }
     h1 { font-size: 26px; margin: 12px 0 2px; }
     .sub { color:#69747f; font-size: 13px; margin: 0 0 6px; }
@@ -146,7 +161,9 @@ export function openPrintableReport(doc: ReportDoc, childName: string) {
     .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #e8edea; color:#69747f; font-size: 11px; }
     @media print { .noprint { display:none; } }
   </style></head><body>
-  <div class="brand"><span class="dot">A</span><b>Arbor — Development Fieldbook</b></div>
+  <div class="brand">${doc.heroImageUrl
+    ? `<img class="hero" src="${doc.heroImageUrl}" alt="" referrerpolicy="no-referrer" />`
+    : `<span class="dot">A</span>`}<b>Arbor — Development Fieldbook</b></div>
   <h1>${esc(doc.title)}</h1>
   ${doc.subtitle ? `<p class="sub">${esc(doc.subtitle)}</p>` : ""}
   <p class="meta">Generated ${new Date().toLocaleDateString()} · Parent-prepared · Non-diagnostic</p>

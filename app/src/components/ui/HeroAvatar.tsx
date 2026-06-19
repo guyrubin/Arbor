@@ -14,9 +14,13 @@ import { ArborMascot, type MascotMood } from "./ArborMascot";
  */
 export function useHeroAvatar() {
   const { childProfile } = useArbor();
-  // The generated/uploaded avatar image lives in `photoUrl`; `avatar` is metadata.
-  const url = childProfile.photoUrl || null;
-  const isGenerated = childProfile.avatar?.source != null;
+  // Resolution order: prefer the generated stylized comic hero, then any uploaded
+  // photo. `avatar` is metadata; `comicAvatarUrl` (when present) is the AI-generated
+  // privacy-safe hero. Return shape is unchanged so existing consumers keep working.
+  const url = (childProfile as { comicAvatarUrl?: string }).comicAvatarUrl || childProfile.photoUrl || null;
+  // `isGenerated` = a stylized, privacy-safe hero (descriptor) — safe to embed in
+  // shareable/clinical documents; a real `photo` avatar is never auto-embedded.
+  const isGenerated = childProfile.avatar?.source === "descriptor";
   return { url, isGenerated, hasHero: !!url, name: childProfile.name?.split(" ")[0] || "your child" };
 }
 
@@ -25,12 +29,16 @@ export function HeroAvatar({
   mood = "wave",
   animate = true,
   ring = true,
+  decorative = false,
   className = "",
 }: {
   size?: number;
   mood?: MascotMood;
   animate?: boolean;
   ring?: boolean;
+  /** When true the portrait is purely decorative (the child's name is already
+   *  adjacent) — `alt=""` + `aria-hidden` so screen readers don't double-announce. */
+  decorative?: boolean;
   className?: string;
 }) {
   const { url, name } = useHeroAvatar();
@@ -57,7 +65,8 @@ export function HeroAvatar({
       >
         <img
           src={url}
-          alt={`${name}, the hero`}
+          alt={decorative ? "" : `${name}, the hero`}
+          aria-hidden={decorative || undefined}
           referrerPolicy="no-referrer"
           className="w-full h-full rounded-full object-cover"
           style={{ background: "#fff" }}

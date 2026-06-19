@@ -9,6 +9,7 @@ import { PageHeader, cardCls } from "../ui/kit";
 import PlanKanban from "../plans/PlanKanban";
 import RoutinesCard from "../plans/RoutinesCard";
 import { planProgress, suggestedChallenges } from "../../lib/plans";
+import { HeroAvatar } from "../ui/HeroAvatar";
 
 export default function PlansTab() {
   const {
@@ -35,11 +36,17 @@ export default function PlansTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
-      <PageHeader
-        eyebrow="Growth Plans"
-        title={t("plan.title")}
-        subtitle={t("plan.subtitle")}
-      />
+      <div className="flex items-center gap-4">
+        {/* This child's plan — anchored by their own hero. */}
+        <HeroAvatar size={56} mood="happy" ring className="flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <PageHeader
+            eyebrow="Growth Plans"
+            title={t("plan.title")}
+            subtitle={t("plan.subtitle")}
+          />
+        </div>
+      </div>
 
       <div className={`${cardCls} p-6 space-y-4`}>
         <span className="text-xs font-extrabold tracking-wider uppercase block" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.create")}</span>

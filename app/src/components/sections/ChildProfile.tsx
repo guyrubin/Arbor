@@ -7,6 +7,7 @@ import {
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, Chip, IconBadge, cardCls, PASTEL } from "../ui/kit";
+import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -23,6 +24,7 @@ export default function ChildProfile() {
     behaviorLogs, actionPlans, approvedMemoryItems, pendingMemoryItems, setActiveTab,
   } = useArbor();
   const { t } = useLanguage();
+  const { hasHero, name: heroName } = useHeroAvatar();
   const first = childProfile.name.split(" ")[0];
 
   // Chapter 2 — what this week actually looked like, from the real log.
@@ -55,6 +57,22 @@ export default function ChildProfile() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
+      {/* The child as the hero of their own profile — the same character everywhere
+          in Arbor. When no hero exists yet, offer the create-hero affordance. */}
+      <div className="flex items-center gap-4">
+        <HeroAvatar size={72} mood="wave" ring />
+        {!hasHero && (
+          <button
+            onClick={() => setActiveTab("profile")}
+            className="text-left"
+          >
+            <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
+              <Sparkles className="w-4 h-4 inline-block mr-1 -mt-0.5" /> Create {heroName}'s hero
+            </span>
+            <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>One character — everywhere in Arbor.</span>
+          </button>
+        )}
+      </div>
       <PageHeader
         eyebrow="My Child"
         title={t("cp.title", { name: first })}

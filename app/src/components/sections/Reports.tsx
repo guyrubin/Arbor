@@ -5,6 +5,7 @@ import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildReport, openPrintableReport, ReportType } from "../../lib/reportExport";
+import { useHeroAvatar } from "../ui/HeroAvatar";
 
 /** The 8 clinical PDF report types. Exported so the single Consult export menu
  *  (b3) consumes the same list — there is exactly one report definition source. */
@@ -24,6 +25,10 @@ export const REPORTS: { title: string; desc: string; tone: PastelKey; type: Repo
  *  no second export engine is introduced. */
 export function useReportExport() {
   const { childProfile, behaviorLogs, actionPlans, milestonesPercent, checkedMilestones, totalMilestones } = useArbor();
+  // The child's hero anchors the printed handoff to *this* child. Privacy gate:
+  // embed ONLY the stylized descriptor hero (isGenerated) — never a real photo —
+  // into a document the parent may forward to a clinician.
+  const { url: heroUrl, isGenerated } = useHeroAvatar();
   return (type: ReportType) => {
     const doc = buildReport(type, {
       child: childProfile,
@@ -32,6 +37,7 @@ export function useReportExport() {
       milestonesPercent,
       checkedMilestones,
       totalMilestones,
+      heroImageUrl: isGenerated && heroUrl ? heroUrl : undefined,
     });
     openPrintableReport(doc, childProfile.name);
   };
