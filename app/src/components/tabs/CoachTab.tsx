@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, Plus, MessageSquare, Camera, FileText, Mic, Square, Users } from "lucide-react";
+import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, Plus, MessageSquare, Camera, FileText, Mic, Square, Users, Stethoscope, ChevronRight, ChevronLeft } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -87,7 +87,7 @@ export default function CoachTab() {
     deleteConversation,
   } = useArbor();
   const { toast } = useToast();
-  const { aiLang, setAiLang, t } = useLanguage();
+  const { aiLang, setAiLang, t, uiLang } = useLanguage();
   const { user } = useAuth();
   const childFirst = (childProfile.name || "").split(" ")[0];
 
@@ -604,6 +604,24 @@ export default function CoachTab() {
               style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
               Bilingual balance routine
+            </button>
+          </div>
+          {/* ia-b6: persistent Ask-pillar door into the Ask-a-Specialist warm handoff.
+              Navigation only — stays enabled while a coach answer is streaming. */}
+          <div className="pt-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+            <button
+              type="button"
+              onClick={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}
+              aria-label={t("coach.specialist.aria")}
+              className="inline-flex items-center gap-1.5 min-h-[44px] py-2 text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              <Stethoscope className="w-3.5 h-3.5" aria-hidden style={{ color: "var(--arbor-green-ink)" }} />
+              <span>{t("coach.specialist.lead")}</span>
+              <span style={{ color: "var(--arbor-green-ink)" }}>{t("coach.specialist.cta")}</span>
+              {uiLang === "he"
+                ? <ChevronLeft className="w-3.5 h-3.5" aria-hidden style={{ color: "var(--arbor-green-ink)" }} />
+                : <ChevronRight className="w-3.5 h-3.5" aria-hidden style={{ color: "var(--arbor-green-ink)" }} />}
             </button>
           </div>
         </div>

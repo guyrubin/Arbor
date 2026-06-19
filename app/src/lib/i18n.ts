@@ -194,6 +194,11 @@ const en: Dict = {
   "coach.reject": "Reject",
   "coach.memEmpty": "Ask the coach a question to generate reviewable observations. Nothing is active memory yet.",
   "coach.deleteActive": "Delete from active memory",
+  // ia-b6: Ask-a-Specialist door from the Ask pillar
+  "coach.specialist.cta": "Ask a specialist",
+  "coach.specialist.lead": "Want a human?",
+  "coach.specialist.toast": "Opening the specialist handoff — you choose what to share.",
+  "coach.specialist.aria": "Ask a human specialist — open the consult handoff",
   // behaviors / moments
   "beh.subtitle": "Log the hard moments with {name} to see patterns, what sets them off, and what actually helps over time.",
   "beh.logMoment": "Log a moment",
@@ -903,6 +908,11 @@ const he: Dict = {
   "coach.reject": "דחייה",
   "coach.memEmpty": "שאלו את המאמן שאלה כדי לייצר תצפיות לסקירה. אין עדיין זיכרון פעיל.",
   "coach.deleteActive": "מחיקה מהזיכרון הפעיל",
+  // ia-b6: Ask-a-Specialist door from the Ask pillar
+  "coach.specialist.cta": "שאל מומחה",
+  "coach.specialist.lead": "רוצה לדבר עם איש מקצוע?",
+  "coach.specialist.toast": "פותח את ההעברה למומחה — אתה בוחר מה לשתף.",
+  "coach.specialist.aria": "פנייה לאיש מקצוע — פתיחת ההעברה לייעוץ",
   "beh.subtitle": "תעדו את הרגעים הקשים עם {name} כדי לראות דפוסים, מה מעורר אותם ומה באמת עוזר לאורך זמן.",
   "beh.logMoment": "תעדו רגע",
   "beh.editMoment": "עריכת הרגע",
