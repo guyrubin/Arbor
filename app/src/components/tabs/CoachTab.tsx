@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, Plus, MessageSquare, Camera, FileText, Mic, Square, Users, Stethoscope, ChevronRight, ChevronLeft } from "lucide-react";
+import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, ArrowLeft, Plus, MessageSquare, Camera, FileText, Mic, Square, Users, Stethoscope, ChevronRight, ChevronLeft, AlertTriangle } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -20,6 +20,7 @@ import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
+import { usePrefersReducedMotion } from "../ui/playkit";
 
 type Risk = "Low" | "Moderate" | "High";
 
@@ -37,19 +38,23 @@ function parseRisk(text: string): Risk {
   return riskFromLevel(m?.[1]);
 }
 
-const FOLLOW_UPS = [
-  "What should I avoid saying in that moment?",
-  "How do I repair the connection afterwards?",
-  "Give me a 1-minute calming routine to try.",
+// Follow-ups: the visible label is translated (labelKey); the `prompt` sent to
+// the model stays English on purpose (the model replies in aiLang).
+const FOLLOW_UPS: { labelKey: string; prompt: string }[] = [
+  { labelKey: "coach.followup.avoid", prompt: "What should I avoid saying in that moment?" },
+  { labelKey: "coach.followup.repair", prompt: "How do I repair the connection afterwards?" },
+  { labelKey: "coach.followup.calm", prompt: "Give me a 1-minute calming routine to try." },
 ];
 
 // IA-2: fast-start scenarios — the most common hard moments, one tap away.
-const SCENARIOS: { emoji: string; label: string; prompt: string }[] = [
-  { emoji: "🌅", label: "Morning refusal", prompt: "My child refuses to get dressed and leave the house in the morning. What may be happening and what do I do today?" },
-  { emoji: "📱", label: "iPad dispute", prompt: "Turning off the iPad ends in a meltdown. Give me what may be happening, an exact script, and what to avoid." },
-  { emoji: "🧒", label: "Sibling clash", prompt: "My children keep fighting over toys. Help me understand it and give me a calm script to use in the moment." },
-  { emoji: "🌙", label: "Bedtime battle", prompt: "Bedtime takes over an hour with lots of resistance. What's a calm wind-down plan and script?" },
-  { emoji: "🏫", label: "School dropoff", prompt: "My child cries and clings at school dropoff. What may be happening and exactly what do I say?" },
+// `labelKey` is translated UI chrome; `prompt` is an AI-input string kept English
+// (the model localizes its reply via getAiLanguage()) — do not translate prompts.
+const SCENARIOS: { emoji: string; labelKey: string; prompt: string }[] = [
+  { emoji: "🌅", labelKey: "coach.scenario.morning", prompt: "My child refuses to get dressed and leave the house in the morning. What may be happening and what do I do today?" },
+  { emoji: "📱", labelKey: "coach.scenario.ipad", prompt: "Turning off the iPad ends in a meltdown. Give me what may be happening, an exact script, and what to avoid." },
+  { emoji: "🧒", labelKey: "coach.scenario.sibling", prompt: "My children keep fighting over toys. Help me understand it and give me a calm script to use in the moment." },
+  { emoji: "🌙", labelKey: "coach.scenario.bedtime", prompt: "Bedtime takes over an hour with lots of resistance. What's a calm wind-down plan and script?" },
+  { emoji: "🏫", labelKey: "coach.scenario.dropoff", prompt: "My child cries and clings at school dropoff. What may be happening and exactly what do I say?" },
 ];
 
 export default function CoachTab() {
@@ -85,11 +90,16 @@ export default function CoachTab() {
     newConversation,
     openConversation,
     deleteConversation,
+    apiError,
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, setAiLang, t, uiLang } = useLanguage();
   const { user } = useAuth();
   const childFirst = (childProfile.name || "").split(" ")[0];
+  const reducedMotion = usePrefersReducedMotion();
+
+  // Last thing the parent asked — used to power the error-state Retry button.
+  const lastUserText = [...chatMessages].reverse().find((m) => m.sender === "user")?.text;
 
   // Animate (typewriter) only AI messages that arrive after mount, not restored history.
   const revealedRef = useRef<number | null>(null);
@@ -236,10 +246,10 @@ export default function CoachTab() {
   // Stop any audio/recognition on unmount.
   useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
 
-  const voiceLabel = voicePhase === "listening" ? "Listening…" : voicePhase === "thinking" ? "Thinking…" : voicePhase === "speaking" ? "Speaking…" : liveAvail ? "Talk (HD)" : "Talk";
+  const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       {/* Header section with lens selector */}
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
@@ -247,60 +257,107 @@ export default function CoachTab() {
             <h2 className="text-2xl md:text-[2rem] leading-[1.12]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("nav.tab.coach")}</h2>
             <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
           </div>
-          <div className="flex items-center gap-1 rounded-xl p-1 flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} title="Language for AI responses">
-            <button
-              onClick={() => setAiLang("en")}
-              className="px-2.5 py-1 rounded-lg text-xs font-bold transition"
-              style={aiLang === "en" ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
-            >
-              EN
-            </button>
-            <button
-              onClick={() => setAiLang("he")}
-              className="px-2.5 py-1 rounded-lg text-xs font-bold transition"
-              style={aiLang === "he" ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
-            >
-              עב
-            </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline" style={{ color: "var(--arbor-muted)" }}>{t("coach.aiLang.label")}</span>
+            <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              <button
+                onClick={() => setAiLang("en")}
+                aria-pressed={aiLang === "en"}
+                aria-label={t("coach.aiLang.en")}
+                className="min-w-[44px] min-h-[44px] px-2.5 rounded-lg text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={aiLang === "en" ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setAiLang("he")}
+                aria-pressed={aiLang === "he"}
+                aria-label={t("coach.aiLang.he")}
+                className="min-w-[44px] min-h-[44px] px-2.5 rounded-lg text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={aiLang === "he" ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+              >
+                עב
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="space-y-2">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.lens")}</span>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.lens")}</span>
+            {/* IA: the inline picker selects between lenses; the library browses/learns them. */}
             <button
-              onClick={() => setSelectedLens("Integrated Balanced")}
-              className="px-3 py-2 rounded-xl text-xs font-bold transition"
-              style={selectedLens === "Integrated Balanced"
-                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              type="button"
+              onClick={() => setActiveTab("scholar")}
+              className="inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+              style={{ color: "var(--arbor-muted)" }}
             >
-              Integrated Balanced
+              <span>{t("coach.lens.browseAll")}</span>
+              {uiLang === "he"
+                ? <ChevronLeft className="w-3.5 h-3.5" aria-hidden />
+                : <ChevronRight className="w-3.5 h-3.5" aria-hidden />}
             </button>
-            {scholarsInfo.map((s, idx) => {
-              const on = selectedLens === s.name;
-              return (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedLens(s.name)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
-                  style={on
-                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                    : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                >
-                  <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? T.paperElevated : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}>
-                    {s.initial}
-                  </span>
-                  {s.name} ({s.concept})
-                </button>
-              );
-            })}
           </div>
+          {(() => {
+            // Single-select lens control with proper radiogroup a11y + arrow-key nav.
+            const lensNames = ["Integrated Balanced", ...scholarsInfo.map((s) => s.name)];
+            const moveLens = (dir: 1 | -1) => {
+              const cur = lensNames.indexOf(selectedLens);
+              const next = ((cur < 0 ? 0 : cur) + dir + lensNames.length) % lensNames.length;
+              setSelectedLens(lensNames[next]);
+            };
+            const onKeyDown = (e: React.KeyboardEvent) => {
+              if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); moveLens(1); }
+              else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); moveLens(-1); }
+            };
+            return (
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("coach.lens")} onKeyDown={onKeyDown}>
+                {(() => {
+                  const on = selectedLens === "Integrated Balanced";
+                  return (
+                    <button
+                      role="radio"
+                      aria-checked={on}
+                      tabIndex={on ? 0 : -1}
+                      onClick={() => setSelectedLens("Integrated Balanced")}
+                      className="px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                      style={on
+                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
+                        : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                    >
+                      {t("coach.lens.integrated")}
+                    </button>
+                  );
+                })()}
+                {scholarsInfo.map((s, idx) => {
+                  const on = selectedLens === s.name;
+                  return (
+                    <button
+                      key={idx}
+                      role="radio"
+                      aria-checked={on}
+                      tabIndex={on ? 0 : -1}
+                      onClick={() => setSelectedLens(s.name)}
+                      className="px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                      style={on
+                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
+                        : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                    >
+                      <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? T.paperElevated : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }} aria-hidden>
+                        {s.initial}
+                      </span>
+                      {s.name} ({s.concept})
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
           {/* "Use this lens when…" — makes the lens choice practical, not academic */}
           {(() => {
             const active = scholarsInfo.find((s) => s.name === selectedLens);
             const hint = active?.useWhen
-              || (selectedLens === "Integrated Balanced" ? "The default: connection first, then the next achievable step, then the environment. Pick a named lens when one angle should lead." : null);
+              || (selectedLens === "Integrated Balanced" ? t("coach.lens.integratedHint") : null);
             return hint ? (
               <p className="text-[11px] leading-relaxed rounded-lg p-2.5 mt-1" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                 {hint}
@@ -317,13 +374,13 @@ export default function CoachTab() {
           <div className="flex flex-wrap gap-2 mt-2.5">
             {SCENARIOS.map((s) => (
               <button
-                key={s.label}
+                key={s.labelKey}
                 onClick={() => handleChatSend(s.prompt)}
                 disabled={isChatLoading}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold bg-white transition hover:-translate-y-0.5 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                 style={{ color: T.ink, border: "1px solid rgba(207,111,55,0.28)" }}
               >
-                <span aria-hidden>{s.emoji}</span> {s.label}
+                <span aria-hidden>{s.emoji}</span> {t(s.labelKey)}
               </button>
             ))}
           </div>
@@ -363,14 +420,24 @@ export default function CoachTab() {
         <div className="px-4 py-2 text-xs flex items-center justify-between" style={{ background: "var(--arbor-paper-deep)", borderBottom: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
           <span>{t("coach.frame")} <strong style={{ color: "var(--arbor-ink)" }}>{t("coach.activeContext")}</strong></span>
           <span className="font-bold flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} />}
-            Lens: {selectedLens}
+            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
+            {t("coach.lensLabel")}: {selectedLens}
           </span>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+          {/* Empty state — orient a first-run parent on what Ask Arbor does. */}
+          {chatMessages.length <= 1 && !isChatLoading && (
+            <div className="flex flex-col items-center justify-center text-center gap-3 py-10 px-4">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden" style={{ background: "var(--arbor-green-soft)" }} aria-hidden>
+                <ArborMascot size={52} />
+              </div>
+              <p className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("coach.empty.title", { name: childFirst })}</p>
+              <p className="text-sm max-w-md leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.empty.body")}</p>
+            </div>
+          )}
           {chatMessages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-3 max-w-[85%] group ${msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"}`}>
+            <div key={idx} className={`flex gap-3 max-w-[85%] group ${msg.sender === "user" ? "ms-auto flex-row-reverse" : "me-auto"}`}>
               {msg.sender === "user" ? (
                 <Avatar name={user?.displayName} photoURL={user?.photoURL} size={32} />
               ) : (
@@ -378,13 +445,13 @@ export default function CoachTab() {
                   <ArborMascot size={30} />
                 </div>
               )}
-              <div className="p-4 rounded-2xl text-sm"
+              <div dir="auto" className="p-4 rounded-2xl text-sm"
                 style={msg.sender === "user"
                   ? { background: "var(--arbor-sky-soft)", color: "var(--arbor-ink)" }
                   : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-                    Aligned with {msg.lens}
+                    {t("coach.alignedWith", { lens: msg.lens })}
                   </span>
                 )}
                 {msg.sender === "ai" ? (
@@ -428,7 +495,7 @@ export default function CoachTab() {
                   ) : (
                     <TypewriterMarkdown
                       text={msg.text}
-                      enabled={idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
+                      enabled={!reducedMotion && idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
                       onDone={() => {
                         revealedRef.current = idx;
                       }}
@@ -439,9 +506,14 @@ export default function CoachTab() {
                 )}
 
                 {msg.sender === "ai" && !msg.contract && (
-                  <div className="flex items-center gap-3 mt-3 pt-2 opacity-0 group-hover:opacity-100 transition" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                    <button onClick={() => navigator.clipboard?.writeText(msg.text)} className="text-[10px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
-                      <Copy className="w-3 h-3" /> Copy
+                  // Touch: always visible. Desktop: calm hover reveal. Keyboard: focus reveals.
+                  <div className="flex items-center gap-3 mt-3 pt-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                    <button
+                      onClick={async () => { await navigator.clipboard?.writeText(msg.text); toast(t("coach.copied"), "success"); }}
+                      aria-label={t("coach.action.copy")}
+                      className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
+                    >
+                      <Copy className="w-3 h-3" aria-hidden /> {t("coach.action.copy")}
                     </button>
                     <button
                       onClick={() => {
@@ -449,9 +521,10 @@ export default function CoachTab() {
                         setActiveTab("behaviors");
                         toast("Pre-filled a log from this guidance — review and save", "info");
                       }}
-                      className="text-[10px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}
+                      aria-label={t("coach.action.log")}
+                      className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
                     >
-                      <ClipboardList className="w-3 h-3" /> Log this
+                      <ClipboardList className="w-3 h-3" aria-hidden /> {t("coach.action.log")}
                     </button>
                     <button
                       onClick={() => {
@@ -459,9 +532,10 @@ export default function CoachTab() {
                         setActiveTab("plans");
                         toast("Seeded the plan generator — tap Generate", "info");
                       }}
-                      className="text-[10px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}
+                      aria-label={t("coach.action.plan")}
+                      className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
                     >
-                      <ListPlus className="w-3 h-3" /> Save to Action Plan
+                      <ListPlus className="w-3 h-3" aria-hidden /> {t("coach.action.plan")}
                     </button>
                     {/* mk-p0-3: 1-tap branded share of a settled answer (not while streaming). */}
                     {idx > (revealedRef.current ?? -1) ? null : (
@@ -490,27 +564,30 @@ export default function CoachTab() {
           ))}
 
           {showFollowUps && (
-            <div className="flex flex-wrap gap-2 mr-auto max-w-[85%] pl-11">
+            <div className="flex flex-wrap gap-2 me-auto max-w-[85%] ps-11">
               {FOLLOW_UPS.map((q) => (
                 <button
-                  key={q}
-                  onClick={() => handleChatSend(q)}
-                  className="text-[11px] px-3 py-1.5 rounded-full transition flex items-center gap-1.5 font-bold"
+                  key={q.labelKey}
+                  onClick={() => handleChatSend(q.prompt)}
+                  className="text-[11px] px-3 py-1.5 min-h-[44px] rounded-full transition flex items-center gap-1.5 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                 >
-                  {q} <ArrowRight className="w-3 h-3" />
+                  {t(q.labelKey)}
+                  {uiLang === "he"
+                    ? <ArrowLeft className="w-3 h-3" aria-hidden />
+                    : <ArrowRight className="w-3 h-3" aria-hidden />}
                 </button>
               ))}
             </div>
           )}
 
           {isChatLoading && (
-            <div className="flex gap-3 max-w-[85%] mr-auto">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold animate-spin" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach)" }}>
+            <div className="flex gap-3 max-w-[85%] me-auto">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold animate-spin" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach)" }} aria-hidden>
                 <RefreshCw className="w-4 h-4" />
               </div>
               <div className="p-4 rounded-2xl text-xs flex items-center gap-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                <span className="animate-pulse">{chatStreamStatus || t("coach.loading")}</span>
+                <span className="animate-pulse" aria-live="polite">{chatStreamStatus || t("coach.loading")}</span>
                 <button
                   type="button"
                   onClick={handleCancelChat}
@@ -519,6 +596,30 @@ export default function CoachTab() {
                 >
                   <X className="w-3 h-3" /> {t("coach.stop")}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Error state — the previously-missing recovery affordance on the pillar. */}
+          {apiError && !isChatLoading && (
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-2xl p-4 me-auto max-w-[85%]"
+              style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
+            >
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden />
+              <div className="space-y-2">
+                <p className="text-xs leading-relaxed font-bold">{t("coach.error")}</p>
+                {lastUserText && (
+                  <button
+                    type="button"
+                    onClick={() => handleChatSend(lastUserText)}
+                    className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-xs font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                    style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" aria-hidden /> {t("coach.retry")}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -549,13 +650,14 @@ export default function CoachTab() {
               type="button"
               onClick={toggleVoice}
               aria-pressed={voicePhase !== "off"}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
+              aria-label={voiceLabel}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
               style={voicePhase !== "off"
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
                 : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
-              {voicePhase === "off" ? <Mic className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />} {voiceLabel}
-              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} />}
+              {voicePhase === "off" ? <Mic className="w-3.5 h-3.5" aria-hidden /> : <Square className="w-3.5 h-3.5" aria-hidden />} {voiceLabel}
+              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
             </button>
           </div>
           <div className="flex gap-2">
@@ -580,22 +682,24 @@ export default function CoachTab() {
             <button
               onClick={() => handleCouncilSend()}
               disabled={isChatLoading}
-              title="Convene 3 scholars — each weighs in, then Arbor synthesizes"
+              title={t("coach.councilHint")}
+              aria-label={t("coach.councilHint")}
               className="font-extrabold text-sm px-4 py-3 rounded-xl transition flex items-center gap-2 disabled:opacity-50"
               style={{ background: T.paperElevated, border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }}
             >
-              <Users className="w-4 h-4" /> {t("coach.council")}
+              <Users className="w-4 h-4" aria-hidden /> {t("coach.council")}
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--arbor-muted)" }}>
             <span className="font-bold">{t("coach.suggested")}</span>
+            {/* Visible label is translated; the prompt sent to the model stays English. */}
             <button
               onClick={() => handleChatSend(`${childProfile.name.split(" ")[0]} screams and hides behind the couch during shoe departures.`)}
               disabled={isChatLoading}
               className="px-2 py-0.5 rounded transition"
               style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
-              Shoe departure tantrum
+              {t("coach.suggest.shoe")}
             </button>
             <button
               onClick={() => handleChatSend("Suggestions for switching Hebrew and English language routines.")}
@@ -603,7 +707,7 @@ export default function CoachTab() {
               className="px-2 py-0.5 rounded transition"
               style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
-              Bilingual balance routine
+              {t("coach.suggest.bilingual")}
             </button>
           </div>
           {/* ia-b6: persistent Ask-pillar door into the Ask-a-Specialist warm handoff.
@@ -672,9 +776,9 @@ export default function CoachTab() {
                   </div>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{item.fact}</p>
                   <div className="text-[10px] space-y-1" style={{ color: "var(--arbor-muted)" }}>
-                    <p><strong style={{ color: "var(--arbor-ink)" }}>Source:</strong> {item.source}</p>
-                    <p><strong style={{ color: "var(--arbor-ink)" }}>Retention:</strong> {item.retention}</p>
-                    {item.frameRouting?.aim && <p><strong style={{ color: "var(--arbor-ink)" }}>Frame:</strong> {item.frameRouting.aim}</p>}
+                    <p><strong style={{ color: "var(--arbor-ink)" }}>{t("coach.mem.source")}:</strong> {item.source}</p>
+                    <p><strong style={{ color: "var(--arbor-ink)" }}>{t("coach.mem.retention")}:</strong> {item.retention}</p>
+                    {item.frameRouting?.aim && <p><strong style={{ color: "var(--arbor-ink)" }}>{t("coach.mem.frame")}:</strong> {item.frameRouting.aim}</p>}
                   </div>
                   {item.status === "pending" && (
                     <div className="flex gap-2 pt-1">
