@@ -65,7 +65,7 @@ export default function ChildMemory() {
   );
 }
 
-function MemoryRow({ m, busy, onApprove, onReject, onForget }: {
+export function MemoryRow({ m, busy, onApprove, onReject, onForget }: {
   m: MemoryReviewItem;
   busy?: boolean;
   onApprove?: () => void;

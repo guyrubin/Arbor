@@ -21,11 +21,10 @@ const ANSWERS: { key: ScreenAnswer; label: string }[] = [
 /** Child Intelligence › Development Check — non-diagnostic, age-banded screener
  *  that surfaces "worth a professional conversation" areas and routes to care. */
 export default function Screening() {
-  const { childProfile, behaviorLogs, milestones, setActiveTab } = useArbor();
+  const { childProfile, behaviorLogs, milestones } = useArbor();
   const { toast } = useToast();
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
-  const band = useMemo(() => bandForAge(childProfile.age), [childProfile.age]);
 
   // Passive developmental-monitoring layer (Mission M8): derived from the child's
   // own milestones + behavior logs, surfaced as calm, non-diagnostic watch notes.
@@ -39,27 +38,6 @@ export default function Screening() {
     openPrintableReport(doc, childProfile.name);
     toast("Opening a provider-ready summary to print or save as PDF", "info");
   };
-
-  const col = useChildCollection<SavedScreening>(childProfile.id, "screenings");
-  const last = useMemo(
-    () => [...col.items].sort((a, b) => (a.answeredAt < b.answeredAt ? 1 : -1))[0],
-    [col.items]
-  );
-
-  const [phase, setPhase] = useState<"intro" | "questions" | "result">("intro");
-  const [answers, setAnswers] = useState<Record<string, ScreenAnswer>>({});
-  const [result, setResult] = useState<ScreeningResult | null>(null);
-
-  const allAnswered = band.items.every((it) => answers[it.id]);
-
-  const submit = () => {
-    const r = scoreScreening(band.items, answers);
-    setResult(r);
-    setPhase("result");
-    void col.upsert({ ...r, id: `screen-${Date.now()}` });
-  };
-
-  const restart = () => { setAnswers({}); setResult(null); setPhase("questions"); };
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[920px]">
@@ -111,6 +89,46 @@ export default function Screening() {
         )}
       </SectionCard>
 
+      <ScreeningFlow />
+    </motion.div>
+  );
+}
+
+/** The screener phase machine (intro → questions → result), extracted so it can
+ *  run as a full page OR inside an inline sheet (b2 My Child story spine). The
+ *  optional `onClose` lets the sheet dismiss itself before routing to Care. */
+export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
+  const { childProfile, setActiveTab } = useArbor();
+  const { toast } = useToast();
+  const first = childProfile.name.split(" ")[0];
+  const band = useMemo(() => bandForAge(childProfile.age), [childProfile.age]);
+
+  const col = useChildCollection<SavedScreening>(childProfile.id, "screenings");
+  const last = useMemo(
+    () => [...col.items].sort((a, b) => (a.answeredAt < b.answeredAt ? 1 : -1))[0],
+    [col.items]
+  );
+
+  const [phase, setPhase] = useState<"intro" | "questions" | "result">("intro");
+  const [answers, setAnswers] = useState<Record<string, ScreenAnswer>>({});
+  const [result, setResult] = useState<ScreeningResult | null>(null);
+
+  const allAnswered = band.items.every((it) => answers[it.id]);
+
+  const submit = () => {
+    const r = scoreScreening(band.items, answers);
+    setResult(r);
+    setPhase("result");
+    void col.upsert({ ...r, id: `screen-${Date.now()}` });
+  };
+
+  const restart = () => { setAnswers({}); setResult(null); setPhase("questions"); };
+
+  // From the sheet, close first then route so the parent lands on the Care surface.
+  const routeTo = (tab: "reports" | "find-pro") => { onClose?.(); setActiveTab(tab); };
+
+  return (
+    <div className="space-y-4">
       {phase === "intro" && (
         <SectionCard title={`Check for ${first} · ${band.label}`} icon={<ClipboardCheck className="w-5 h-5" />} tone="mint">
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
@@ -222,10 +240,10 @@ export default function Screening() {
               <div className="flex flex-wrap gap-2">
                 {result.elevated && (
                   <>
-                    <button onClick={() => { setActiveTab("reports"); toast("Build a handoff to share this with a professional", "info"); }} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
+                    <button onClick={() => { routeTo("reports"); toast("Build a handoff to share this with a professional", "info"); }} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
                       <FileText className="w-4 h-4" /> Prepare a professional summary
                     </button>
-                    <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
+                    <button onClick={() => routeTo("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
                       <Search className="w-4 h-4" /> Find a professional
                     </button>
                   </>
@@ -244,6 +262,6 @@ export default function Screening() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

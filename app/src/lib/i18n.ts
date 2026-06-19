@@ -109,6 +109,12 @@ const en: Dict = {
   "hub.milestones": "Milestones",
   "hub.profile": "Profile",
   "hub.journey": "Journey",
+  // My Child story spine (b2): inline Memory review + inline Development check
+  "mychild.quickcheck.cta": "Quick development check",
+  "mychild.quickcheck.short": "Quick check",
+  "mychild.memoryreview.title": "{count} new facts to review",
+  "mychild.memoryreview.all": "Review all ({count})",
+  "mychild.screening.sheettitle": "Development check",
   // Development Score (C4)
   "devscore.eyebrow": "Development picture",
   "devscore.overall": "Overall",
@@ -762,6 +768,12 @@ const he: Dict = {
   "hub.milestones": "אבני דרך",
   "hub.profile": "פרופיל",
   "hub.journey": "מסע",
+  // My Child story spine (b2): inline Memory review + inline Development check
+  "mychild.quickcheck.cta": "בדיקת התפתחות מהירה",
+  "mychild.quickcheck.short": "בדיקה מהירה",
+  "mychild.memoryreview.title": "{count} עובדות חדשות לבדיקה",
+  "mychild.memoryreview.all": "לבדוק הכל ({count})",
+  "mychild.screening.sheettitle": "בדיקת התפתחות",
   // Development Score (C4)
   "devscore.eyebrow": "תמונת ההתפתחות",
   "devscore.overall": "כללי",

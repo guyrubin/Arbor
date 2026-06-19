@@ -107,6 +107,9 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   milestones: "child",
   strengths: "child",
   journey: "child",
+  // b2: screening + memory are now INLINE BEHAVIORS (Quick-check sheet + Story
+  // memory-review card), no longer visible leaves — but they remain valid,
+  // deep-linkable full-page routes. DO NOT prune these fallbacks (e.g. in b5).
   screening: "child",
   memory: "child",
   weekly: "child",

@@ -3,13 +3,17 @@ import { motion } from "motion/react";
 import {
   Activity, CheckCircle2, Sprout, BookMarked, MessageSquare,
   ArrowUpRight, ArrowDownRight, Minus, Sparkles, Camera, TrendingDown, TrendingUp, BarChart2,
+  ShieldCheck, ClipboardCheck,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import {
   buildTimeline, computeMomentum, deriveNextStep, groupByDay,
   type SignalKind, type SignalTone, type TimelineSignal,
 } from "../../lib/signalTimeline";
-import { PageHeader, PASTEL, IconBadge, Chip, cardCls, type PastelKey } from "../ui/kit";
+import { PageHeader, PASTEL, IconBadge, Chip, SectionCard, cardCls, type PastelKey } from "../ui/kit";
+import { MemoryRow } from "../sections/ChildMemory";
+import ScreeningSheet from "../sections/ScreeningSheet";
 
 const KIND_ICON: Record<SignalKind, React.ComponentType<{ className?: string }>> = {
   moment: Activity,
@@ -94,8 +98,11 @@ export default function StoryTimelineTab() {
   const {
     behaviorLogs, milestones, actionPlans, conversations, memoryReviewItems,
     childProfile, setActiveTab, setChatInput,
+    pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
   } = useArbor();
+  const { t } = useLanguage();
   const [filter, setFilter] = useState<SignalKind | "all">("all");
+  const [checkOpen, setCheckOpen] = useState(false);
 
   const signals = useMemo(
     () => buildTimeline({ behaviorLogs, milestones, plans: actionPlans, memory: memoryReviewItems, conversations }),
@@ -127,7 +134,14 @@ export default function StoryTimelineTab() {
         title={`${firstName}'s Story`}
         subtitle="Every moment, milestone, plan and insight — one living timeline. Each entry feeds the next step Arbor suggests."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setCheckOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
+              style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
+            >
+              <ClipboardCheck className="w-4 h-4" /> {t("mychild.quickcheck.short")}
+            </button>
             <button
               onClick={() => setActiveTab("weekly")}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
@@ -197,6 +211,39 @@ export default function StoryTimelineTab() {
         </div>
       )}
 
+      {/* Inline Memory review (b2): a contextual action queue, present only when
+          there are pending facts. Reuses MemoryRow verbatim — single source of
+          truth with the full ChildMemory page (deep-link "manage all" survives).
+          Reads + writes the memory moat: provenance chips are preserved. */}
+      {pendingMemoryItems.length > 0 && (
+        <SectionCard
+          title={t("mychild.memoryreview.title", { count: pendingMemoryItems.length })}
+          icon={<ShieldCheck className="w-5 h-5" />}
+          tone="yellow"
+        >
+          <div className="space-y-3">
+            {pendingMemoryItems.slice(0, 3).map((m) => (
+              <MemoryRow
+                key={m.memoryId}
+                m={m}
+                busy={isMemoryUpdating === m.memoryId}
+                onApprove={() => handleMemoryDecision(m.memoryId, "approved")}
+                onReject={() => handleMemoryDecision(m.memoryId, "rejected")}
+              />
+            ))}
+          </div>
+          {pendingMemoryItems.length > 3 && (
+            <button
+              onClick={() => setActiveTab("memory")}
+              className="mt-3 text-xs font-bold"
+              style={{ color: "var(--arbor-green-ink)" }}
+            >
+              {t("mychild.memoryreview.all", { count: pendingMemoryItems.length })}
+            </button>
+          )}
+        </SectionCard>
+      )}
+
       {/* Filters */}
       {signals.length > 0 && (
         <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
@@ -253,6 +300,8 @@ export default function StoryTimelineTab() {
           ))}
         </div>
       )}
+
+      <ScreeningSheet open={checkOpen} onClose={() => setCheckOpen(false)} />
     </motion.div>
   );
 }
