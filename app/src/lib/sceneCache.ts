@@ -93,18 +93,36 @@ export function setScene(key: string, url: string): void {
   persist();
 }
 
-/** Cost guard: return the cached image, an in-flight promise, or generate once. */
+// Throttle concurrent generations: many cards mounting at once would otherwise
+// fire a dozen image-gen calls in parallel — choking the renderer and the cost
+// budget. A small queue runs at most MAX_CONCURRENT at a time; the rest wait.
+const MAX_CONCURRENT = 2;
+let activeGens = 0;
+const genQueue: Array<() => void> = [];
+function pump(): void {
+  while (activeGens < MAX_CONCURRENT && genQueue.length) {
+    const job = genQueue.shift()!;
+    activeGens++;
+    job();
+  }
+}
+
+/** Cost guard: return the cached image, an in-flight promise, or queue a
+ *  throttled generation (≤MAX_CONCURRENT at once) that caches its result. */
 export function dedupeScene(key: string, generate: () => Promise<string>): Promise<string> {
   const cached = getScene(key);
   if (cached !== undefined) return Promise.resolve(cached);
   const existing = inFlight.get(key);
   if (existing) return existing;
-  const p = generate()
-    .then((url) => {
-      setScene(key, url);
-      return url;
-    })
-    .finally(() => inFlight.delete(key));
+  const p = new Promise<string>((resolve, reject) => {
+    genQueue.push(() => {
+      generate()
+        .then((url) => { setScene(key, url); resolve(url); })
+        .catch(reject)
+        .finally(() => { activeGens--; pump(); });
+    });
+    pump();
+  }).finally(() => { inFlight.delete(key); });
   inFlight.set(key, p);
   return p;
 }
@@ -113,6 +131,8 @@ export function dedupeScene(key: string, generate: () => Promise<string>): Promi
 export function _resetSceneCache(): void {
   mem.clear();
   inFlight.clear();
+  genQueue.length = 0;
+  activeGens = 0;
   hydrated = false;
   try {
     localStorage.removeItem(NS);

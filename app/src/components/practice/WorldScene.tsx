@@ -16,6 +16,26 @@ const shortHash = (s: string): string => {
   return Math.abs(h).toString(36);
 };
 
+/* The generators want the avatar as a data URL reference. If the stored hero is
+   an https Storage URL, fetch + convert it once (memoized across all cards so a
+   whole grid shares a single fetch). Data URLs pass straight through. */
+const avatarDataCache = new Map<string, Promise<string>>();
+function toAvatarDataUrl(url: string): Promise<string> {
+  if (url.startsWith("data:")) return Promise.resolve(url);
+  const cached = avatarDataCache.get(url);
+  if (cached) return cached;
+  const p = fetch(url)
+    .then((r) => r.blob())
+    .then((blob) => new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result as string);
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(blob);
+    }));
+  avatarDataCache.set(url, p);
+  return p;
+}
+
 export default function WorldScene({
   worldId,
   imagePrompt,
@@ -46,13 +66,15 @@ export default function WorldScene({
 
     const generate = () => {
       dedupeScene(key, () =>
-        runInstrumented("world_scene", () =>
-          api.generateScene({
-            imagePrompt: `${imagePrompt} — bright, bold kids' comic-book illustration, the child as the cheerful hero`,
-            avatar: { dataUrl: heroUrl },
-            style: heroStyle ?? "comichero",
-          }),
-        ).then((r) => r.dataUrl),
+        toAvatarDataUrl(heroUrl).then((ref) =>
+          runInstrumented("world_scene", () =>
+            api.generateScene({
+              imagePrompt: `${imagePrompt} — bright, bold kids' comic-book illustration, the child as the cheerful hero`,
+              avatar: { dataUrl: ref },
+              style: heroStyle ?? "comichero",
+            }),
+          ).then((r) => r.dataUrl),
+        ),
       )
         .then((url) => { if (active) setArt(url); })
         .catch(() => { /* graceful: keep the icon fallback */ });
