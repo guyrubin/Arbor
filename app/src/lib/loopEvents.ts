@@ -20,6 +20,7 @@ export const LoopEvent = {
   InviteActivated: "invite_activated",
   TrialStart: "trial_start",
   Paid: "paid",
+  PlayCompleted: "play_completed",
 } as const;
 
 export type LoopArtifact = "avatar" | "story" | "answer_card" | "growth_card";
@@ -80,3 +81,9 @@ export const trackTrialStart = (tier: string): void => track(LoopEvent.TrialStar
 // wired by: lib/billingTransition.recordBillingTransition() (App BillingReturnWatcher),
 // on the transition into active on a real paid plan (provider ≠ comp/none, enforced).
 export const trackPaid = (tier: string): void => track(LoopEvent.Paid, { tier });
+
+// wired by: c2-daily-play (ArborContext.logPlayCompletion) on a genuine activity
+// completion — the highest-intent "this worked today" moment, fired once per
+// activity per day (the caller dedupes via the idempotent PlayLog id).
+export const trackPlayCompleted = (domain: string, reason: string, source: string): void =>
+  track(LoopEvent.PlayCompleted, { domain, reason, source });

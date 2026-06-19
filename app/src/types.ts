@@ -1,3 +1,5 @@
+import type { PlayDomain } from "./playbank/content";
+
 export interface ChildProfile {
   id: string;
   name: string;
@@ -133,6 +135,20 @@ export interface BehaviorLog {
   resolved?: boolean;
   resolutionNotes?: string;
   photoAttachment?: string;
+}
+
+/** A completed Daily Play activity — a positive, lightweight "win" written to
+ *  the moat (synced per child) so it shows in the Story timeline and survives a
+ *  device switch. Deliberately NOT a BehaviorLog (incident-shaped) so it never
+ *  pollutes concern-domain ranking. id is idempotent per activity per day. */
+export interface PlayLog {
+  id: string; // = `${activityId}.${YYYY-MM-DD}` — idempotent per day
+  activityId: string;
+  title: string; // denormalized for timeline display without re-lookup
+  domain: PlayDomain;
+  reason: "concern-match" | "stage-match";
+  source: "today" | "library" | "course";
+  timestamp: string; // ISO
 }
 
 export interface Milestone {

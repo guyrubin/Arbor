@@ -8,22 +8,17 @@ import DailyPlayCard from "../overview/DailyPlayCard";
 import CourseCard from "../overview/CourseCard";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
 import { recommendCourse, READINESS_COURSES, localizeCourse } from "../../playbank/courses";
-import { type PlayActivity } from "../../playbank/content";
+import { type PlayActivity, playDomainLabel } from "../../playbank/content";
 
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
    matched to their band and recently-logged concerns. The single hero pick also
    appears on Today; here the parent can browse a few ideas for the day. */
 
 export default function DailyPlayTab() {
-  const { behaviorLogs, childProfile, setChatInput, setActiveTab } = useArbor();
+  const { behaviorLogs, childProfile, setChatInput, setActiveTab, donePlayIds, logPlayCompletion } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
-
-  const [doneIds, setDoneIds] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(`arbor.play.done.${childProfile.id}`) || "[]"); }
-    catch { return []; }
-  });
 
   const concernDomains = useMemo(
     () => concernDomainsFromLogs(
@@ -37,10 +32,10 @@ export default function DailyPlayTab() {
     () => selectDailyPlay({
       ageYears: childProfile.age,
       concernDomains,
-      recentlyDoneIds: doneIds,
+      recentlyDoneIds: donePlayIds,
       daySeed: daySeedFor(Date.now()),
     }, 4),
-    [concernDomains, childProfile.age, doneIds]
+    [concernDomains, childProfile.age, donePlayIds]
   );
 
   // Recommended course — matched to the child's top logged concern (the moat).
@@ -69,11 +64,7 @@ export default function DailyPlayTab() {
   };
 
   const markDone = (p: ScoredActivity) => {
-    setDoneIds((prev) => {
-      const next = prev.includes(p.activity.id) ? prev : [p.activity.id, ...prev].slice(0, 30);
-      try { localStorage.setItem(`arbor.play.done.${childProfile.id}`, JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
+    logPlayCompletion(p, "library"); // writes to the moat (synced) — single source of truth
     toast(`Nice. Added to ${firstName}'s day.`, "success");
   };
   const coach = (p: ScoredActivity) => {
@@ -148,9 +139,10 @@ export default function DailyPlayTab() {
             key={p.activity.id}
             pick={p}
             childName={firstName}
-            done={doneIds.includes(p.activity.id)}
+            done={donePlayIds.includes(p.activity.id)}
             onDid={markDone}
             onCoach={coach}
+            concernLabel={p.reason === "concern-match" ? playDomainLabel(p.activity.domain, uiLang) : undefined}
           />
         ))}
       </div>

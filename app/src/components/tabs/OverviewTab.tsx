@@ -28,6 +28,7 @@ import TodaysMissionCard from "../overview/TodaysMissionCard";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
+import { playDomainLabel } from "../../playbank/content";
 import { dayPartFor, type DayPart } from "../../lib/timeOfDay";
 import { track } from "../../lib/analytics";
 
@@ -47,9 +48,10 @@ export default function OverviewTab() {
     behaviorLogs, childProfile, setChatInput,
     pendingMemoryItems, approvedMemoryItems,
     proposeMemory,
+    donePlayIds, logPlayCompletion,
   } = useArbor();
 
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const [quickLog, setQuickLog] = useState(false);
   // iOS-adaptable Today: the heavy "daily tools" dashboard (check-in, goals,
@@ -71,10 +73,6 @@ export default function OverviewTab() {
     ),
     [behaviorLogs, childProfile.age]
   );
-  const [donePlayIds, setDonePlayIds] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(`arbor.play.done.${childProfile.id}`) || "[]"); }
-    catch { return []; }
-  });
   const dailyPlay: ScoredActivity | null = useMemo(() => {
     const concernDomains = concernDomainsFromLogs(
       behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, timestamp: l.timestamp })),
@@ -133,11 +131,7 @@ export default function OverviewTab() {
     setActiveTab("coach");
   };
   const markPlayDone = (p: ScoredActivity) => {
-    setDonePlayIds((prev) => {
-      const next = prev.includes(p.activity.id) ? prev : [p.activity.id, ...prev].slice(0, 30);
-      try { localStorage.setItem(`arbor.play.done.${childProfile.id}`, JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
+    logPlayCompletion(p, "today"); // writes to the moat (synced) — single source of truth
     toast(`Nice. Added to ${firstName}'s day.`, "success");
   };
 
@@ -259,6 +253,7 @@ export default function OverviewTab() {
               done={donePlayIds.includes(dailyPlay.activity.id)}
               onDid={markPlayDone}
               onCoach={coachOnPlay}
+              concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined}
             />
           ),
         }

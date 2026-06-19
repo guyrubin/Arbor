@@ -3,6 +3,8 @@ import { Sprout, Check, MessageSquare, ChevronDown, Clock } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity } from "../../playbank/content";
 import type { ScoredActivity } from "../../playbank/select";
+import { ShareButton } from "../ui/ShareButton";
+import type { ShareCardOpts } from "../../lib/shareCard";
 
 /* Daily Play — one stage-appropriate, household-item activity for today,
    matched to what the child has been working through. "Did this" writes a
@@ -20,22 +22,29 @@ export default function DailyPlayCard({
   done,
   onDid,
   onCoach,
+  concernLabel,
 }: {
   pick: ScoredActivity;
   childName: string;
   done: boolean;
   onDid: (a: ScoredActivity) => void;
   onCoach: (a: ScoredActivity) => void;
+  /** Localized domain word driving a concern-match (e.g. "settling big feelings"). */
+  concernLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const { t, uiLang } = useLanguage();
   const { reason } = pick;
   const activity = localizeActivity(pick.activity, uiLang);
 
+  // Name the driver when we know it — makes the longitudinal-memory moat legible
+  // ("because settling big feelings has come up a lot"), not just asserted.
   const why =
-    reason === "concern-match"
-      ? t("play.whyConcern", { name: childName })
-      : t("play.whyStage", { name: childName });
+    reason === "concern-match" && concernLabel
+      ? t("play.whyConcernNamed", { area: concernLabel, name: childName })
+      : reason === "concern-match"
+        ? t("play.whyConcern", { name: childName })
+        : t("play.whyStage", { name: childName });
 
   return (
     <section
@@ -96,7 +105,7 @@ export default function DailyPlayCard({
         )}
 
         {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2.5 mt-5">
+        <div className="flex flex-wrap items-center gap-2.5 mt-5" aria-live="polite">
           <button
             onClick={() => onDid(pick)}
             disabled={done}
@@ -117,6 +126,24 @@ export default function DailyPlayCard({
         </div>
 
         <p className="text-[12px] mt-3.5" style={{ color: "var(--arbor-faint)" }}>{why}</p>
+
+        {/* Honest, optional share moment — only after a genuine completion. No
+            auto-prompt, no streak, no nag; it simply appears and can be ignored. */}
+        {done && (
+          <div className="mt-3">
+            <ShareButton
+              artifact="growth_card"
+              surface="daily_play"
+              childName={childName}
+              label={t("play.shareWin", { name: childName })}
+              getCardOpts={(): ShareCardOpts => ({
+                name: childName,
+                headline: `${childName} played: ${activity.title}`,
+                sub: activity.whatItBuilds,
+              })}
+            />
+          </div>
+        )}
       </div>
     </section>
   );

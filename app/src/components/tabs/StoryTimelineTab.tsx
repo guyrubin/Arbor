@@ -21,6 +21,7 @@ const KIND_ICON: Record<SignalKind, React.ComponentType<{ className?: string }>>
   plan: Sprout,
   memory: BookMarked,
   coach: MessageSquare,
+  play: Sprout,
 };
 
 const KIND_LABEL: Record<SignalKind, string> = {
@@ -29,6 +30,7 @@ const KIND_LABEL: Record<SignalKind, string> = {
   plan: "Plan",
   memory: "Memory",
   coach: "Coach",
+  play: "Play",
 };
 
 const FILTERS: { key: SignalKind | "all"; label: string }[] = [
@@ -36,6 +38,7 @@ const FILTERS: { key: SignalKind | "all"; label: string }[] = [
   { key: "moment", label: "Moments" },
   { key: "milestone", label: "Milestones" },
   { key: "plan", label: "Plans" },
+  { key: "play", label: "Play" },
   { key: "memory", label: "Memory" },
   { key: "coach", label: "Coach" },
 ];
@@ -99,14 +102,15 @@ export default function StoryTimelineTab() {
     behaviorLogs, milestones, actionPlans, conversations, memoryReviewItems,
     childProfile, setActiveTab, setChatInput,
     pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
+    playLogs,
   } = useArbor();
   const { t } = useLanguage();
   const [filter, setFilter] = useState<SignalKind | "all">("all");
   const [checkOpen, setCheckOpen] = useState(false);
 
   const signals = useMemo(
-    () => buildTimeline({ behaviorLogs, milestones, plans: actionPlans, memory: memoryReviewItems, conversations }),
-    [behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations],
+    () => buildTimeline({ behaviorLogs, milestones, plans: actionPlans, memory: memoryReviewItems, conversations, play: playLogs }),
+    [behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs],
   );
   const momentum = useMemo(
     () => computeMomentum(behaviorLogs, actionPlans, milestones),

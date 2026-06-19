@@ -1,4 +1,4 @@
-import type { BehaviorLog, Milestone, ActionPlan, MemoryReviewItem } from "../types";
+import type { BehaviorLog, Milestone, ActionPlan, MemoryReviewItem, PlayLog } from "../types";
 
 /**
  * The Signal Timeline — Arbor's unified developmental activity stream.
@@ -12,7 +12,7 @@ import type { BehaviorLog, Milestone, ActionPlan, MemoryReviewItem } from "../ty
  * Soft-Daylight PASTEL keys in `ui/kit` without importing React.
  */
 
-export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach";
+export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach" | "play";
 export type SignalTone = "mint" | "coral" | "lav" | "yellow" | "pink" | "sky";
 
 export interface TimelineSignal {
@@ -36,6 +36,7 @@ export interface TimelineSources {
   plans?: ActionPlan[];
   memory?: MemoryReviewItem[];
   conversations?: { id: string; title: string; updatedAt: string }[];
+  play?: PlayLog[];
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -140,6 +141,18 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       title: "Coach session",
       detail: c.title,
       tone: "pink",
+    });
+  }
+
+  for (const p of sources.play || []) {
+    signals.push({
+      id: `play-${p.id}`,
+      kind: "play",
+      at: p.timestamp || null,
+      title: `Played: ${p.title}`,
+      detail: `Builds ${p.domain}`,
+      tone: "mint",
+      meta: p.reason === "concern-match" ? "matched to a recent pattern" : undefined,
     });
   }
 

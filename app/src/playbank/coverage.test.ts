@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildCoverage, coverageGaps, coverageSummary, activityStages, PLAY_DOMAINS } from "./coverage";
 import { STAGES } from "./stages";
+import { PLAY_ACTIVITIES, PLAY_ACTIVITIES_HE, PLAY_BANDS } from "./content";
 import type { PlayActivity } from "./content";
 
 const mk = (over: Partial<PlayActivity>): PlayActivity => ({
@@ -39,6 +40,31 @@ describe("content coverage", () => {
     expect(s.emptyCells).toBe(s.totalCells - 1);
     expect(s.thinnestStages.length).toBe(5);
     expect(s.thinnestStages[0].domainsCovered).toBe(0); // a fully-empty stage is thinnest
+  });
+
+  it("the seed bank meets the reviewed 40–60 target (c2 gate)", () => {
+    expect(PLAY_ACTIVITIES.length).toBeGreaterThanOrEqual(40);
+    expect(PLAY_ACTIVITIES.length).toBeLessThanOrEqual(60);
+  });
+
+  it("every populated band×domain cell holds at least 2 activities (engine can't regress below playable)", () => {
+    const counts = new Map<string, number>();
+    for (const a of PLAY_ACTIVITIES) {
+      for (const band of a.bands) counts.set(`${band}|${a.domain}`, (counts.get(`${band}|${a.domain}`) ?? 0) + 1);
+    }
+    const thin: string[] = [];
+    for (const { band } of PLAY_BANDS) {
+      for (const domain of PLAY_DOMAINS) {
+        const n = counts.get(`${band}|${domain}`) ?? 0;
+        if (n === 1) thin.push(`${band}×${domain}`); // populated (≥1) but below the floor of 2
+      }
+    }
+    expect(thin).toEqual([]);
+  });
+
+  it("every activity has a matching Hebrew translation (parity)", () => {
+    const missing = PLAY_ACTIVITIES.filter((a) => !PLAY_ACTIVITIES_HE[a.id]).map((a) => a.id);
+    expect(missing).toEqual([]);
   });
 
   it("the real bank leaves the 0–12 month stages largely empty (the known gap)", () => {

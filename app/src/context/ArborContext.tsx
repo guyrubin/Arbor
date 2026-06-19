@@ -12,7 +12,9 @@ import {
   DevelopmentalDomainId,
   CoachContract,
   CouncilTake,
+  PlayLog,
 } from "../types";
+import type { ScoredActivity } from "../playbank/select";
 import {
   sampleBehaviorLogs,
   initialMilestones,
@@ -24,7 +26,7 @@ import { api, authHeaders, getAiLanguage, PaywallError } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 import { track } from "../lib/analytics";
 import { runInstrumented } from "../hooks/useAsyncAction";
-import { trackFirstPlan, trackInviteActivated } from "../lib/loopEvents";
+import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 
@@ -169,6 +171,13 @@ function useArborState() {
     sandboxSeed: initialMilestones,
   });
   const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: defaultActionPlans });
+  // c2 — Daily Play completions: a positive, synced "win" record (NOT a
+  // BehaviorLog) that closes the moat loop into the Story timeline.
+  const playLogCol = useChildCollection<PlayLog>(childProfile.id, "playLogs", {
+    orderByField: "timestamp",
+    orderDir: "desc",
+    max: 200,
+  });
 
   const behaviorLogs = useMemo(
     () => [...logsCol.items].sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1)),
@@ -186,6 +195,31 @@ function useArborState() {
     };
     return [...plansCol.items].sort((a, b) => ts(b.id) - ts(a.id));
   }, [plansCol.items]);
+
+  // c2 — single source of truth for Daily Play completions. Both Today and
+  // Grow read `donePlayIds`; both write through `logPlayCompletion`.
+  const playLogs = useMemo(
+    () => [...playLogCol.items].sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1)),
+    [playLogCol.items]
+  );
+  const donePlayIds = useMemo(() => playLogs.map((p) => p.activityId), [playLogs]);
+  const logPlayCompletion = (a: ScoredActivity, source: PlayLog["source"]) => {
+    const day = new Date().toISOString().slice(0, 10);
+    const id = `${a.activity.id}.${day}`;
+    // Idempotent per activity per day: skip the loop event on a repeat tap.
+    const alreadyDone = playLogCol.items.some((p) => p.id === id);
+    const rec: PlayLog = {
+      id,
+      activityId: a.activity.id,
+      title: a.activity.title,
+      domain: a.activity.domain,
+      reason: a.reason,
+      source,
+      timestamp: new Date().toISOString(),
+    };
+    void playLogCol.upsert(rec); // fire-and-forget, optimistic + local-first
+    if (!alreadyDone) trackPlayCompleted(a.activity.domain, a.reason, source);
+  };
 
   const [currentStory, setCurrentStory] = useState<BedtimeStory>(sampleBedtimeStory);
 
@@ -921,6 +955,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     milestones,
     actionPlans,
     plansLoaded: plansCol.loaded,
+    // c2 — Daily Play completion moat (single source of truth)
+    playLogs,
+    donePlayIds,
+    logPlayCompletion,
     currentStory,
     setCurrentStory,
     selectedLens,
