@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Sparkles, Wand2, Download, RefreshCw, ShieldCheck, BookOpen, Layers, Check } from "lucide-react";
+import { Sparkles, Wand2, Download, RefreshCw, ShieldCheck, Layers, Check } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api, PaywallError } from "../../lib/api";
@@ -8,7 +8,7 @@ import { runInstrumented } from "../../hooks/useAsyncAction";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 import type { HeroPackId } from "../../types";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel } from "../ui/playkit";
-import { useHeroAvatar } from "../ui/HeroAvatar";
+import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 
 /**
  * Hero Comics (Academy) — the child is the STAR of their own comic book for every
@@ -87,11 +87,26 @@ const STORY_COMIC: Record<string, ComicCopy> = {
   },
 };
 
-const PACK_COLORS: Record<HeroPackId, string> = {
-  courage: "#e2562d",
-  responsibility: "#d7aa55",
-  growth: "#6f9e6f",
-  wisdom: "#68B4FF",
+/** Comic-world skin per pack (matches HeroJourneyTab + the Hero Arcade layer). */
+const PACK_WORLD: Record<HeroPackId, { bg: string; ink: string; label: string; labelHe: string }> = {
+  courage: { bg: "var(--arbor-peach)", ink: "var(--arbor-peach-ink)", label: "Courage", labelHe: "אומץ" },
+  responsibility: { bg: "var(--arbor-yellow)", ink: "var(--arbor-yellow-ink)", label: "Responsibility", labelHe: "אחריות" },
+  growth: { bg: "var(--arbor-clay)", ink: "var(--arbor-clay-deep)", label: "Growth", labelHe: "צמיחה" },
+  wisdom: { bg: "var(--arbor-sky)", ink: "var(--arbor-sky-ink)", label: "Wisdom", labelHe: "חוכמה" },
+};
+
+/** Per-story scene prop, so an un-generated card still shows the hero in-world. */
+const STORY_EMOJI: Record<string, string> = {
+  "david-and-goliath": "🛡️",
+  "moses-and-pharaoh": "👑",
+  "the-lion-who-was-afraid": "🦁",
+  "noahs-ark": "🌈",
+  "jonah-and-the-great-fish": "🐋",
+  "the-dragon-of-responsibility": "🐉",
+  "joseph-and-his-brothers": "🧥",
+  "jacob-wrestling-the-angel": "🌅",
+  "the-garden-of-forgotten-seeds": "🌻",
+  "king-solomons-choice": "⚖️",
 };
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -103,7 +118,6 @@ export default function HeroComicsTab() {
 
   // storyId → generated comic data URL (session-only; large data URLs aren't persisted)
   const [comics, setComics] = useState<Record<string, string>>({});
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [batch, setBatch] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,7 +163,6 @@ export default function HeroComicsTab() {
 
   const makeOne = async (storyId: string) => {
     setError(null);
-    setActiveId(storyId);
     setBusyId(storyId);
     await generate(storyId);
     setBusyId(null);
@@ -164,7 +177,6 @@ export default function HeroComicsTab() {
     track("hero_comic_batch_started", { count: todo.length });
     let made = 0;
     for (let i = 0; i < todo.length; i++) {
-      setActiveId(todo[i].id);
       setBusyId(todo[i].id);
       const status = await generate(todo[i].id);
       setBusyId(null);
@@ -254,57 +266,69 @@ export default function HeroComicsTab() {
       </PlayPanel>
 
       {/* Story grid — each canon Academy story as a hero comic */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
         {stories.map((s) => {
-          const color = PACK_COLORS[s.pack];
+          const w = PACK_WORLD[s.pack];
+          const emoji = STORY_EMOJI[s.id] ?? "⭐";
           const comic = comics[s.id];
           const isBusy = busyId === s.id;
           return (
-            <div
-              key={s.id}
-              className="rounded-[var(--play-radius)] p-3.5 bg-white shadow-[0_4px_16px_rgba(41,51,63,0.06)] space-y-3"
-              style={{ border: activeId === s.id ? `2.5px solid ${color}` : "2.5px solid transparent" }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>
-                  {he ? s.titleHe : s.title}
-                </span>
-                <span className="text-[9.5px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md" style={{ background: `${color}22`, color }}>
-                  {s.pack}
-                </span>
-              </div>
-
-              {/* Comic stage */}
-              <div className="relative aspect-[3/2] rounded-[14px] overflow-hidden" style={{ background: "var(--arbor-paper-deep)", border: "3px solid var(--arbor-ink)" }}>
+            <div key={s.id} className="comic-panel overflow-hidden">
+              {/* Comic stage: the generated page, or the hero waiting in this world */}
+              <div className="relative" style={{ aspectRatio: "3 / 2", borderBottom: "var(--comic-line)" }}>
                 {comic ? (
                   <img src={comic} alt={`${name}'s ${he ? s.titleHe : s.title} comic`} className="w-full h-full object-cover" />
                 ) : isBusy ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                    <Wand2 className="w-8 h-8 animate-pulse" style={{ color }} />
-                    <p className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>Drawing {name}…</p>
+                  <div className="comic-halftone absolute inset-0 flex flex-col items-center justify-center gap-2" style={{ background: w.bg }}>
+                    <Wand2 className="w-9 h-9 animate-pulse" style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} />
+                    <p className="text-[12.5px] font-black" style={{ color: "#fff" }} dir="auto">{he ? `מצייר את ${name}…` : `Drawing ${name}…`}</p>
                   </div>
                 ) : (
-                  <button onClick={() => makeOne(s.id)} disabled={busy} className="absolute inset-0 flex flex-col items-center justify-center gap-2 disabled:opacity-60">
-                    <BookOpen className="w-8 h-8" style={{ color }} />
-                    <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>Make this comic</span>
+                  <button
+                    onClick={() => makeOne(s.id)}
+                    disabled={busy}
+                    aria-label={he ? `צרו קומיקס: ${s.titleHe}` : `Make comic: ${s.title}`}
+                    className="comic-halftone absolute inset-0 grid place-items-center disabled:opacity-60"
+                    style={{ background: w.bg }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <HeroAvatar size={74} ring animate={false} />
+                      <span style={{ fontSize: 42, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">{emoji}</span>
+                    </div>
+                    <span
+                      className="absolute bottom-2 inline-flex items-center gap-1 text-[12px] font-black rounded-full px-3 py-1"
+                      style={{ insetInlineStart: 8, background: "#fff", border: "var(--comic-line)", color: "var(--arbor-ink)" }}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> {he ? "צרו קומיקס" : "Make comic"}
+                    </span>
                   </button>
                 )}
               </div>
 
-              {/* Actions */}
-              {comic && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <PlayButton tone="clay" variant="soft" onClick={() => makeOne(s.id)} disabled={busy}>
-                    <RefreshCw className="w-3.5 h-3.5" /> Redraw
-                  </PlayButton>
-                  <PlayButton tone="clay" variant="soft" onClick={() => download(s.id, he ? s.titleHe : s.title)} disabled={busy}>
-                    <Download className="w-3.5 h-3.5" /> Save
-                  </PlayButton>
-                  <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-                    <Check className="w-3.5 h-3.5" /> Made
+              {/* Caption + actions */}
+              <div className="p-3.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-[15px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+                    {he ? s.titleHe : s.title}
+                  </span>
+                  <span className="ms-auto inline-block text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: w.ink }}>
+                    {he ? w.labelHe : w.label}
                   </span>
                 </div>
-              )}
+                {comic && (
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <PlayButton tone="clay" variant="soft" onClick={() => makeOne(s.id)} disabled={busy}>
+                      <RefreshCw className="w-3.5 h-3.5" /> {he ? "צייר שוב" : "Redraw"}
+                    </PlayButton>
+                    <PlayButton tone="clay" variant="soft" onClick={() => download(s.id, he ? s.titleHe : s.title)} disabled={busy}>
+                      <Download className="w-3.5 h-3.5" /> {he ? "שמור" : "Save"}
+                    </PlayButton>
+                    <span className="ms-auto inline-flex items-center gap-1 text-[11px] font-black" style={{ color: "var(--arbor-green-ink)" }}>
+                      <Check className="w-3.5 h-3.5" /> {he ? "מוכן" : "Made"}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
