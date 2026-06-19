@@ -654,6 +654,17 @@ const en: Dict = {
   "attr.market.be": "Belgium",
   "attr.market.ie": "Ireland",
   "attr.market.uk": "United Kingdom",
+  // mk-p0-3 — branded share/export
+  "share.cta.avatar": "Share hero card",
+  "share.cta.story": "Share this story",
+  "share.cta.answer": "Share this answer",
+  "share.cta.growth": "Share progress",
+  "share.preparing": "Preparing…",
+  "share.error": "Couldn't prepare that — try again.",
+  "share.caption.avatar": "Meet {name}, an Arbor hero. {url}",
+  "share.caption.answer": "What Arbor told me about {name}: {url}",
+  "share.caption.story": "{name}'s story, made with Arbor. {url}",
+  "share.caption.growth": "{name}'s progress this month — Arbor. {url}",
 };
 
 const he: Dict = {
@@ -1278,6 +1289,17 @@ const he: Dict = {
   "ov.attention.title": "{n} סומנו לבדיקת איש מקצוע",
   "ov.attention.body": "מקרים בעדיפות גבוהה ודחופה צריכים מעורבות של אדם. סקרו אותם בציר הזמן.",
   "ov.attention.review": "סקירה",
+  // mk-p0-3 — branded share/export
+  "share.cta.avatar": "שתפו כרטיס גיבור",
+  "share.cta.story": "שתפו את הסיפור",
+  "share.cta.answer": "שתפו את התשובה",
+  "share.cta.growth": "שתפו התקדמות",
+  "share.preparing": "מכינים…",
+  "share.error": "לא הצלחנו להכין — נסו שוב.",
+  "share.caption.avatar": "הכירו את {name}, גיבור/ת Arbor. {url}",
+  "share.caption.answer": "מה ש‑Arbor אמרה לי על {name}: {url}",
+  "share.caption.story": "הסיפור של {name}, נוצר עם Arbor. {url}",
+  "share.caption.growth": "ההתקדמות של {name} החודש — Arbor. {url}",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

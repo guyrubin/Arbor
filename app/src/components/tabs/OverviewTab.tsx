@@ -12,7 +12,7 @@ import { ProgressRing } from "../ui/ProgressRing";
 import { Skeleton } from "../ui/Skeleton";
 import { ParentChildIllustration } from "../ui/ParentChildIllustration";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
-import { downloadHeroCard } from "../../lib/heroCard";
+import { ShareButton } from "../ui/ShareButton";
 import { nextNudge } from "../../lib/jitai";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import QuickLogModal from "../overview/QuickLogModal";
@@ -382,13 +382,13 @@ export default function OverviewTab() {
             >
               <Sparkles className="w-5 h-5" /> {t("ov.play.cta")}
             </button>
-            <button
-              onClick={() => { void downloadHeroCard({ imageUrl: childProfile.photoUrl!, name: firstName, age: childProfile.age }); }}
-              className="inline-flex items-center justify-center gap-1.5 font-bold text-[13px] rounded-full px-4 min-h-[40px] transition"
-              style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: `1px solid ${RULE}` }}
-            >
-              ★ {t("ov.hero.card")}
-            </button>
+            <ShareButton
+              artifact="avatar"
+              surface="today"
+              childName={firstName}
+              getCardOpts={() => ({ imageUrl: childProfile.photoUrl!, name: firstName, age: childProfile.age })}
+              label={t("share.cta.avatar")}
+            />
           </div>
         ) : (
           <button

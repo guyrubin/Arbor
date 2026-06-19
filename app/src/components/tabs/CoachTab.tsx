@@ -13,6 +13,7 @@ import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
 import { TrustSafetyBar, cardCls } from "../ui/kit";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
+import { ShareButton } from "../ui/ShareButton";
 import ArborVision from "../coach/ArborVision";
 import { api, streamVoice, getAiLanguage } from "../../lib/api";
 import type { BehaviorContext } from "../../types";
@@ -462,6 +463,26 @@ export default function CoachTab() {
                     >
                       <ListPlus className="w-3 h-3" /> Save to Action Plan
                     </button>
+                    {/* mk-p0-3: 1-tap branded share of a settled answer (not while streaming). */}
+                    {idx > (revealedRef.current ?? -1) ? null : (
+                      <ShareButton
+                        artifact="answer_card"
+                        surface="ask"
+                        childName={childFirst}
+                        getCardOpts={() => {
+                          const prior = chatMessages[idx - 1];
+                          const question = prior?.sender === "user" ? prior.text : "";
+                          return {
+                            question: question.replace(/[#*]/g, "").trim().slice(0, 160),
+                            takeaway: msg.text.replace(/[#*]/g, "").trim().slice(0, 220),
+                            imageUrl: childProfile.photoUrl,
+                            name: childFirst,
+                          };
+                        }}
+                        label={t("share.cta.answer")}
+                        variant="ghost"
+                      />
+                    )}
                   </div>
                 )}
               </div>

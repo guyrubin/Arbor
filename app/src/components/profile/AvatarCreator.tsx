@@ -8,6 +8,7 @@ import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
+import { ShareButton } from "../ui/ShareButton";
 
 /**
  * AVA-1 / AVA-2 — the Avatar Creator. Turns descriptors (default, no face) or an
@@ -219,6 +220,17 @@ export default function AvatarCreator({
                 </button>
               )}
             </div>
+            {result && (
+              <div className="mt-2 flex justify-center">
+                <ShareButton
+                  artifact="avatar"
+                  surface="avatar"
+                  childName={childName}
+                  getCardOpts={() => ({ imageUrl: result, name: childName })}
+                  label={t("share.cta.avatar")}
+                />
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}
