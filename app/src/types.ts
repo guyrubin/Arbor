@@ -370,7 +370,10 @@ export type PracticeEventKind =
   | 'expressive'        // open question / scene description / story starter
   | 'phonics'           // matched a letter to its sound (early reading)
   | 'sight-word'        // read/recognized a high-frequency sight word
-  | 'letter-trace';     // traced a letter path in the tracing mini-game
+  | 'letter-trace'      // traced a letter path in the tracing mini-game
+  | 'rhythm'            // kept the beat in Beat Keeper (regulation/timing)
+  | 'pattern'           // continued a sequence in Pattern Power (logic)
+  | 'pose';             // copied a hero action pose in Hero Pose (body imitation)
 
 export interface PracticeEvent {
   id: string;

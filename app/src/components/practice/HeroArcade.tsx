@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useMemo, useState } from "react";
 import {
-  Mic, Smile, Map as MapIcon, Brain, BookOpen, Music, PersonStanding, Shapes, Wind,
+  Mic, Smile, HeartPulse, Map as MapIcon, Brain, BookOpen, Music, PersonStanding, Shapes,
   ArrowLeft, Star, Flame, Lock, Camera, type LucideIcon,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
@@ -23,6 +23,9 @@ const FeelingsLabTab = lazy(() => import("./FeelingsLabTab"));
 const AdventuresTab = lazy(() => import("./AdventuresTab"));
 const MindVaultWorld = lazy(() => import("./MindVaultWorld"));
 const SpellForgeWorld = lazy(() => import("./SpellForgeWorld"));
+const BeatKeeperWorld = lazy(() => import("./BeatKeeperWorld"));
+const HeroPoseWorld = lazy(() => import("./HeroPoseWorld"));
+const PatternPowerWorld = lazy(() => import("./PatternPowerWorld"));
 
 const READING_KINDS = new Set(["phonics", "sight-word", "letter-trace"]);
 
@@ -50,14 +53,14 @@ const COLOR: Record<WorldColor, { bg: string; ink: string }> = {
 
 const WORLDS: World[] = [
   { id: "speech", name: "Sound Lab", tag: "Speech", icon: Mic, color: "sky", Comp: SpeechCoachTab, count: (d) => d.speech.items.length },
-  { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: Smile, color: "lav", Comp: FeelingsLabTab, count: (d) => d.events.items.length },
+  { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: HeartPulse, color: "lav", Comp: FeelingsLabTab, count: (d) => d.events.items.length },
   { id: "adventures", name: "Story Quest", tag: "Adventure", icon: MapIcon, color: "peach", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
-  { id: "mimic", name: "Mimic Studio", tag: "Move", icon: PersonStanding, color: "clay", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
+  { id: "mimic", name: "Mimic Studio", tag: "Mimic", icon: Smile, color: "clay", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
   { id: "memory", name: "Mind Vault", tag: "Memory", icon: Brain, color: "pink", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
   { id: "reading", name: "Spell Forge", tag: "Reading", icon: BookOpen, color: "yellow", Comp: SpellForgeWorld, count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
-  { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: Music, color: "clay", isNew: true },
-  { id: "pattern", name: "Pattern Power", tag: "Logic", icon: Shapes, color: "lav", isNew: true },
-  { id: "breath", name: "Breath Boss", tag: "Calm", icon: Wind, color: "sky" },
+  { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: Music, color: "clay", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
+  { id: "pose", name: "Hero Pose", tag: "Move", icon: PersonStanding, color: "sky", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
+  { id: "pattern", name: "Pattern Power", tag: "Logic", icon: Shapes, color: "lav", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
 ];
 
 function Stars({ n }: { n: number }) {
