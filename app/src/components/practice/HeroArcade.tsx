@@ -21,6 +21,10 @@ const SpeechCoachTab = lazy(() => import("./SpeechCoachTab"));
 const MimicStudioTab = lazy(() => import("./MimicStudioTab"));
 const FeelingsLabTab = lazy(() => import("./FeelingsLabTab"));
 const AdventuresTab = lazy(() => import("./AdventuresTab"));
+const MindVaultWorld = lazy(() => import("./MindVaultWorld"));
+const SpellForgeWorld = lazy(() => import("./SpellForgeWorld"));
+
+const READING_KINDS = new Set(["phonics", "sight-word", "letter-trace"]);
 
 type WorldColor = "sky" | "lav" | "pink" | "peach" | "yellow" | "clay";
 
@@ -49,8 +53,8 @@ const WORLDS: World[] = [
   { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: Smile, color: "lav", Comp: FeelingsLabTab, count: (d) => d.events.items.length },
   { id: "adventures", name: "Story Quest", tag: "Adventure", icon: MapIcon, color: "peach", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
   { id: "mimic", name: "Mimic Studio", tag: "Move", icon: PersonStanding, color: "clay", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
-  { id: "memory", name: "Mind Vault", tag: "Memory", icon: Brain, color: "pink" },
-  { id: "reading", name: "Spell Forge", tag: "Reading", icon: BookOpen, color: "yellow" },
+  { id: "memory", name: "Mind Vault", tag: "Memory", icon: Brain, color: "pink", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
+  { id: "reading", name: "Spell Forge", tag: "Reading", icon: BookOpen, color: "yellow", Comp: SpellForgeWorld, count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
   { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: Music, color: "clay", isNew: true },
   { id: "pattern", name: "Pattern Power", tag: "Logic", icon: Shapes, color: "lav", isNew: true },
   { id: "breath", name: "Breath Boss", tag: "Calm", icon: Wind, color: "sky" },
