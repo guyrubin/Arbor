@@ -123,6 +123,10 @@ const en: Dict = {
   "devscore.focus": "Worth nurturing next: {domain}",
   "devscore.coach": "Get ideas",
   "devscore.note": "A non-diagnostic snapshot from the milestones you've noticed — a starting point, not a verdict.",
+  "devscore.todayLine": "Worth nurturing next: {focus}",
+  "devscore.todayLineSteady": "Tracking steadily across domains",
+  "devscore.today.aria": "Development picture: {score} out of 100. Tap to open.",
+  "devscore.bar.aria": "{domain}: {score} out of 100, trend {trend}",
   // Care › Consult
   "consult.ask": "Ask a specialist",
   "consult.brief": "AI handoff brief",
@@ -808,6 +812,10 @@ const he: Dict = {
   "devscore.focus": "כדאי לטפח עכשיו: {domain}",
   "devscore.coach": "רעיונות",
   "devscore.note": "תמונת מצב לא־אבחנתית מאבני הדרך ששמתם לב אליהן — נקודת התחלה, לא פסק דין.",
+  "devscore.todayLine": "כדאי לטפח עכשיו: {focus}",
+  "devscore.todayLineSteady": "התקדמות יציבה בכל התחומים",
+  "devscore.today.aria": "תמונת התפתחות: {score} מתוך 100. הקישו לפתיחה.",
+  "devscore.bar.aria": "{domain}: {score} מתוך 100, מגמה {trend}",
   // Care › Consult
   "consult.ask": "שאל מומחה",
   "consult.brief": "סיכום העברה",

@@ -400,3 +400,22 @@ export interface JourneyObjective {
   done: boolean;
   createdAt: string;
 }
+
+/**
+ * Weekly snapshot of the Longitudinal Development Score (moat artifact, PRD C4).
+ * The canonical shape lives in `growth/devScore.ts` (kept dependency-free); this
+ * re-export makes the moat artifact discoverable alongside the other typed records.
+ */
+export type { DevScoreSnapshot } from "./growth/devScore";
+
+/**
+ * A `DevScoreSnapshot` as persisted in the child collection — adds the `id`
+ * (ISO week key, e.g. "2026-W24") so it is idempotent per week and survives
+ * device changes. Only `DevScoreCard` writes these; the Today strip is read-only.
+ */
+export interface StoredDevScoreSnapshot {
+  id: string;            // ISO week key, e.g. "2026-W24"
+  takenMs: number;
+  overall: number;
+  byDomain: Record<string, number>;
+}

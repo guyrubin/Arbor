@@ -22,6 +22,7 @@ import GoalsCard from "../overview/GoalsCard";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import RhythmStrip from "../overview/RhythmStrip";
 import DailyPlayCard from "../overview/DailyPlayCard";
+import DevScoreStrip from "../overview/DevScoreStrip";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import TodaysMissionCard from "../overview/TodaysMissionCard";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
@@ -417,6 +418,11 @@ export default function OverviewTab() {
           <React.Fragment key={s.key}>{s.node}</React.Fragment>
         ))}
       </div>
+
+      {/* ── Development picture (PRD C4): a glanceable, read-only pointer into
+             My Child › Development. Renders nothing until there is something
+             honest to show. The full card (and the snapshot write) live there. ─ */}
+      <DevScoreStrip />
 
       {/* ── How your child is doing (the picture, with the moat folded in) ─ */}
       <section className={`${card} overflow-hidden`}>

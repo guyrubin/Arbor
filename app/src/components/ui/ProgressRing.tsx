@@ -8,6 +8,7 @@ export function ProgressRing({
   className = "",
   trackColor = "rgba(41,51,63,0.08)",
   color = "var(--arbor-clay)",
+  animate = true,
   children,
 }: {
   value: number;
@@ -16,6 +17,8 @@ export function ProgressRing({
   className?: string;
   trackColor?: string;
   color?: string;
+  /** Sweep the ring to its value (default). Pass false to snap (e.g. reduced motion). */
+  animate?: boolean;
   children?: React.ReactNode;
 }) {
   const radius = (size - stroke) / 2;
@@ -37,7 +40,7 @@ export function ProgressRing({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-700 ease-out"
+          className={animate ? "transition-[stroke-dashoffset] duration-700 ease-out" : ""}
         />
       </svg>
       {children && <div className="absolute inset-0 flex items-center justify-center">{children}</div>}

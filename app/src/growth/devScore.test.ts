@@ -56,6 +56,19 @@ describe("computeDevScore", () => {
     const high = computeDevScore(Array.from({ length: 8 }, () => ms("Motor", true)));
     expect(high.domains[0].confidence).toBe("high");
   });
+
+  it("passes domain ids through unchanged (label resolution is a view concern)", () => {
+    // Compute must never rewrite ids to human labels — the card resolves
+    // social_development → "Social development" at render time, not here.
+    const s = computeDevScore([
+      ms("social_development", true), ms("social_development", false),
+      ms("language_communication", true),
+    ]);
+    expect(s.domains.map((d) => d.domain).sort()).toEqual([
+      "language_communication", "social_development",
+    ]);
+    expect(s.focusDomain).toBe("social_development");
+  });
 });
 
 describe("snapshots", () => {
