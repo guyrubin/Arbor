@@ -5,6 +5,7 @@ import { PageHeader, cardCls, Chip, PASTEL } from "../ui/kit";
 import { Modal } from "../ui/Modal";
 import type { Professional } from "../../services/professionals";
 import { api, authHeaders } from "../../lib/api";
+import { track } from "../../lib/analytics";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -91,6 +92,9 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
   const submitConsult = async () => {
     if (!consultPro) return;
     setConsultBusy(true);
+    // Loop conversion (c3): highest-intent action in Care. Raw track() strings,
+    // not the LoopEvent enum (that contract is owned by mk-p0-4).
+    track("consult_send_initiated", { proRole: consultPro.role, mode: consultMode, fromPacket: !!incomingNote?.trim() });
     try {
       const { request, mailto } = await api.requestConsult({
         professionalId: consultPro.id,
@@ -99,6 +103,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
         preferredMode: consultMode,
       });
       setConsultDone({ id: request.id, mailto });
+      track("consult_send_completed", { proRole: consultPro.role, mode: consultMode });
       toast(`Consultation request sent for ${consultPro.name}.`, "success");
     } catch (err: any) {
       toast(err.message || "Couldn't record the request — please try again.", "error");

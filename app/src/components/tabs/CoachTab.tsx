@@ -614,7 +614,7 @@ export default function CoachTab() {
         <TrustSafetyBar
           risk={lastMessage.contract ? riskFromLevel(lastMessage.contract.riskLevel) : parseRisk(lastMessage.text)}
           note="Arbor's read of this answer"
-          onEscalate={() => setActiveTab("find-pro")}
+          onEscalate={() => setActiveTab("consult")}
         />
       )}
 
