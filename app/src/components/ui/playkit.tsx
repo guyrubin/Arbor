@@ -274,3 +274,109 @@ export function PlayPanel({
     </section>
   );
 }
+
+/** Tracks the user's reduced-motion preference (live). Append-only helper used
+ *  by ComicPage so the page-flip collapses to a cross-fade when motion is off. */
+export function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
+  return reduced;
+}
+
+/**
+ * ComicPage — the framed, page-turning comic panel shared by the Comic Reader
+ * and Story Journeys (p1-comic-reader). Bold comic-book frame, a page-number
+ * badge, and a `rotateY` page-flip that mirrors for RTL and collapses to an
+ * opacity cross-fade under prefers-reduced-motion. Renders its own loading
+ * ("Drawing the next page…") and per-page error (retry) states so one smudged
+ * page never blocks the rest of the book.
+ */
+export function ComicPage({
+  src,
+  alt,
+  pageNumber,
+  loading = false,
+  error = false,
+  rtl = false,
+  onRetry,
+  retryLabel = "Redraw page",
+  errorLabel = "This page got a bit smudged.",
+  loadingLabel = "Drawing the next page…",
+}: {
+  src?: string;
+  alt: string;
+  pageNumber?: number;
+  loading?: boolean;
+  error?: boolean;
+  rtl?: boolean;
+  onRetry?: () => void;
+  retryLabel?: string;
+  errorLabel?: string;
+  loadingLabel?: string;
+}) {
+  const reduced = usePrefersReducedMotion();
+  // RTL mirrors the flip; reduced-motion swaps the flip for a plain cross-fade.
+  const enter = reduced
+    ? { opacity: 0 }
+    : { opacity: 0, rotateY: rtl ? 22 : -22, x: rtl ? -36 : 36 };
+  const center = reduced ? { opacity: 1 } : { opacity: 1, rotateY: 0, x: 0 };
+  const leave = reduced
+    ? { opacity: 0 }
+    : { opacity: 0, rotateY: rtl ? -16 : 16, x: rtl ? 28 : -28 };
+  const origin = rtl ? "right center" : "left center";
+
+  return (
+    <div className="relative w-full max-w-3xl mx-auto" style={{ perspective: reduced ? undefined : 1600 }}>
+      <motion.div
+        key={`${pageNumber}-${src ? "art" : error ? "err" : "load"}`}
+        initial={enter}
+        animate={center}
+        exit={leave}
+        transition={{ duration: reduced ? 0.2 : 0.42, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full rounded-[20px] overflow-hidden"
+        style={{
+          aspectRatio: "3 / 2",
+          border: "3px solid var(--arbor-ink)",
+          boxShadow: "0 12px 36px rgba(41,51,63,0.22)",
+          background: "var(--arbor-paper-deep)",
+          transformOrigin: origin,
+        }}
+      >
+        {src ? (
+          <img src={src} alt={alt} className="w-full h-full object-cover" />
+        ) : error ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center" style={{ background: "var(--arbor-pink-soft)" }}>
+            <span className="text-3xl" aria-hidden="true">🖍️</span>
+            <p className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{errorLabel}</p>
+            {onRetry && (
+              <PlayButton tone="clay" size="md" onClick={onRetry}>
+                {retryLabel}
+              </PlayButton>
+            )}
+          </div>
+        ) : loading ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 animate-pulse" style={{ background: "rgba(52,178,119,0.10)" }} aria-busy="true">
+            <span className="text-3xl" aria-hidden="true">✏️</span>
+            <span className="text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>{loadingLabel}</span>
+          </div>
+        ) : null}
+        {typeof pageNumber === "number" && pageNumber > 0 && (
+          <span
+            className="absolute bottom-2 grid place-items-center rounded-full text-white text-[12px] font-extrabold"
+            style={{ [rtl ? "left" : "right"]: 8, width: 26, height: 26, background: "var(--arbor-ink)" }}
+            aria-hidden="true"
+          >
+            {pageNumber}
+          </span>
+        )}
+      </motion.div>
+    </div>
+  );
+}

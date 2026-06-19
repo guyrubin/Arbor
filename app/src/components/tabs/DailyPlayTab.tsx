@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Sprout } from "lucide-react";
+import { Sprout, BookOpen } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -146,6 +146,15 @@ export default function DailyPlayTab() {
           />
         ))}
       </div>
+
+      {/* p1-comic-reader: deep-link into the Comic Studio from today's practice. */}
+      <button
+        onClick={() => setActiveTab("comics")}
+        className="inline-flex items-center gap-2 text-[13px] font-bold rounded-full px-4 py-2.5"
+        style={{ background: "var(--arbor-clay)", color: "#fff", minHeight: 44 }}
+      >
+        <BookOpen className="w-4 h-4" /> Turn today&apos;s practice into a comic →
+      </button>
     </motion.div>
   );
 }

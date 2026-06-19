@@ -1,25 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { Volume2, VolumeX, Download } from "lucide-react";
 import { StoryIllustration } from "./StoryIllustration";
+import { ComicPage } from "../ui/playkit";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { api, type AvatarStyle } from "../../lib/api";
+import { comicKey } from "../../lib/heroComics";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 import type { HeroSceneRender } from "../../types";
 
 /**
  * AVA-3: scene-art cache. Generated scene images are large data URLs, so we keep a
  * per-session in-memory cache (keyed by story-beat + avatar) plus an in-flight map to
- * dedupe concurrent requests when the parent flips between beats.
+ * dedupe concurrent requests when the parent flips between beats. The key uses the
+ * shared `comicKey` helper so Story-Journey panels and Comic Reader pages share hits.
  */
 const sceneArtCache = new Map<string, string>();
 const sceneArtInFlight = new Map<string, Promise<string>>();
-
-const shortHash = (s: string): string => {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h).toString(36);
-};
 
 /**
  * The cinematic scene card for one beat of a Hero Journey: a generated scene that
@@ -66,8 +63,9 @@ export function HeroScenePlayer({
   useEffect(() => {
     setSceneArt(undefined);
     if (!heroAvatarUrl || !scene.imagePrompt) return;
-    // v2 key: panels now carry SFX + a speech bubble, so don't reuse pre-v2 art.
-    const key = `comic2|${seed}|${shortHash(heroAvatarUrl)}`;
+    // Shared key format (comicKey) so Story-Journey beats and Comic Reader pages
+    // reuse the same cached art; `seed` already encodes story+beat+child.
+    const key = comicKey(heroAvatarUrl, seed, "en", beatNumber);
     const cached = sceneArtCache.get(key);
     if (cached) { setSceneArt(cached); return; }
 
@@ -146,33 +144,16 @@ export function HeroScenePlayer({
 
       {(sceneArt || artLoading) ? (
         // The comic panel — full-width, bold comic-book frame, turning like a page
-        // each beat. This is the story rendered AS a comic, starring the child's hero.
-        <div className="relative w-full max-w-3xl" style={{ perspective: 1600 }}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={scene.beatId}
-              initial={{ opacity: 0, rotateY: -22, x: 36 }}
-              animate={{ opacity: 1, rotateY: 0, x: 0 }}
-              exit={{ opacity: 0, rotateY: 16, x: -28 }}
-              transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full rounded-[20px] overflow-hidden"
-              style={{ aspectRatio: "3 / 2", border: "3px solid var(--arbor-ink)", boxShadow: "0 12px 36px rgba(41,51,63,0.22)", background: "var(--arbor-paper-deep)", transformOrigin: "left center" }}
-            >
-              {sceneArt ? (
-                <img src={sceneArt} alt={scene.title} className="w-full h-full object-cover" />
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 animate-pulse" style={{ background: "rgba(52,178,119,0.10)" }}>
-                  <span className="text-3xl">✏️</span>
-                  <span className="text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>Drawing the next page…</span>
-                </div>
-              )}
-              {/* Comic page-number badge */}
-              <span className="absolute bottom-2 right-2 grid place-items-center rounded-full text-white text-[12px] font-extrabold" style={{ width: 26, height: 26, background: "var(--arbor-ink)" }}>
-                {beatNumber}
-              </span>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+        // each beat. Shared ComicPage primitive (page-flip + reduced-motion fade).
+        <AnimatePresence mode="wait">
+          <ComicPage
+            key={scene.beatId}
+            src={sceneArt}
+            alt={`Page ${beatNumber}: ${scene.title}`}
+            pageNumber={beatNumber}
+            loading={!sceneArt && artLoading}
+          />
+        </AnimatePresence>
       ) : (
         <div className={`relative ${artSize} rounded-3xl overflow-hidden shadow-2xl`} style={{ outline: "1px solid var(--arbor-rule)" }}>
           {photoUrl ? (

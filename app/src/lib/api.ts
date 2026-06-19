@@ -162,6 +162,10 @@ export const api = {
     sfx?: string[];
     setting?: string;
     style?: AvatarStyle;
+    /** p1-comic-reader: 0 = cover, 1..N = a beat page (additive; backend tolerant). */
+    pageIndex?: number;
+    /** p1-comic-reader: render a dramatic title cover (no speech bubble). */
+    cover?: boolean;
   }) => post<{ dataUrl: string }>("/api/generate-comic", payload),
   // Generative Cognitive Adventure personalized to the child (AdventureScenario shape).
   generateAdventure: (payload: { childProfile: ChildProfile; focusSkill?: string }) =>
