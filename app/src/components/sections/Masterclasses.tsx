@@ -4,6 +4,8 @@ import { GraduationCap, Clock, ArrowLeft, Check, MessageSquareQuote, MoonStar } 
 import { PageHeader, cardCls, IconBadge, type PastelKey } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
 import { MASTERCLASSES, FRAME_LABELS, type FrameId, type Masterclass } from "../../lib/masterclasses";
+import { loadCharter, aimVirtues } from "../../lib/becoming";
+import type { DevelopmentMetricId } from "../../types";
 
 const FRAME_TONE: Record<FrameId, PastelKey> = {
   aim: "sky",
@@ -12,6 +14,14 @@ const FRAME_TONE: Record<FrameId, PastelKey> = {
   shadow: "coral",
   marriage: "pink",
   shepherd: "yellow",
+};
+
+/** Which virtues each masterclass builds — used to recommend by the Family Charter. */
+const MASTERCLASS_VIRTUES: Record<string, DevelopmentMetricId[]> = {
+  "holding-the-line-without-anger": ["wisdom", "responsibility"],
+  "building-responsibility-by-age": ["responsibility"],
+  "repair-after-conflict": ["empathy", "truth"],
+  "raising-courage-without-harshness": ["courage", "resilience"],
 };
 
 const DONE_KEY = "arbor.masterclasses.done";
@@ -39,6 +49,12 @@ export default function Masterclasses() {
   const open = openId ? MASTERCLASSES.find((m) => m.id === openId) ?? null : null;
   const frameLabel = (f: FrameId) => (he ? FRAME_LABELS[f].he : FRAME_LABELS[f].en);
 
+  // D3: recommend the masterclasses that build the family's chosen virtues.
+  const aims = aimVirtues(loadCharter());
+  const recommended = aims.length
+    ? MASTERCLASSES.filter((m) => (MASTERCLASS_VIRTUES[m.id] || []).some((v) => aims.includes(v)))
+    : [];
+
   // ── Reader ───────────────────────────────────────────────────────────────
   if (open) return <Reader m={open} he={he} isDone={!!done[open.id]} onDone={() => markDone(open.id)} onBack={() => setOpenId(null)} frameLabel={frameLabel(open.frame)} tone={FRAME_TONE[open.frame]} />;
 
@@ -46,6 +62,27 @@ export default function Masterclasses() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader title={t("sec.master.title")} subtitle={t("sec.master.sub")} />
+      {recommended.length > 0 && (
+        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
+          <p className="text-[11px] uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
+            {he ? "מומלץ למשפחה שלכם" : "Recommended for your family"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {recommended.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setOpenId(c.id)}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition hover:-translate-y-0.5"
+                dir="auto"
+                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+              >
+                {he ? c.titleHe : c.title}
+                {done[c.id] && <Check className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {MASTERCLASSES.map((c) => (
           <button
