@@ -47,5 +47,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Arbor uses the camera only when you choose to take a photo to create your child's avatar. Photos are processed to generate a stylized character and are never shared.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Arbor accesses your photo library only when you pick a photo to create your child's avatar.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Arbor saves your child's hero card to your photos only when you tap Save.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Arbor uses the microphone only during speech practice activities to give your child gentle pronunciation feedback. Audio is processed for scoring and not stored.</string>
 </dict>
 </plist>

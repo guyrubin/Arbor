@@ -29,11 +29,13 @@ type Result = { dataUrl: string; style: AvatarStyle; source: "descriptor" | "pho
 
 export default function AvatarCreator({
   open,
+  childId,
   childName,
   onClose,
   onCreated
 }: {
   open: boolean;
+  childId: string;
   childName: string;
   onClose: () => void;
   onCreated: (result: Result) => void;
@@ -52,11 +54,18 @@ export default function AvatarCreator({
   // A 402 opens the paywall (conversion moment) instead of an inline error.
   const avatar = useAsyncAction(
     "avatar_create",
-    (input: { style: AvatarStyle; mode: "describe" | "photo"; refPhoto?: string; descriptors: AvatarDescriptors }) =>
-      api.generateAvatar({
+    async (input: { style: AvatarStyle; mode: "describe" | "photo"; refPhoto?: string; descriptors: AvatarDescriptors }) => {
+      // COPPA: the photo path processes a face, so record the parent's
+      // face_processing consent BEFORE the server runs the gated generation.
+      if (input.mode === "photo" && input.refPhoto) {
+        await api.grantConsent({ childId, purpose: "face_processing" });
+      }
+      return api.generateAvatar({
+        childId,
         style: input.style,
         ...(input.mode === "photo" && input.refPhoto ? { photo: { dataUrl: input.refPhoto } } : { descriptors: input.descriptors }),
-      }),
+      });
+    },
     {
       fallbackError: t("gen.avatar.fail"),
       onPaywall: (err) => openPaywall(err.feature || "avatarGenerate", err.plan),

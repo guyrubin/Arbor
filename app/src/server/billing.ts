@@ -204,20 +204,56 @@ export const createBillingWebhookRouter = (config: ArborConfig, store: Entitleme
 };
 
 /**
- * Build the hosted-checkout URL for a plan + cadence from configured links
- * (RevenueCat Web Billing paywall or Stripe Payment Link). The Firebase uid is
+ * Plan+cadence → RevenueCat package identifier. These MUST match the package
+ * identifiers configured in the RevenueCat offering (one offering holds all four
+ * packages); the Web Purchase Link pre-selects the plan the parent clicked via
+ * `?package_id`. Keep in sync with the dashboard.
+ */
+export const WEB_PACKAGE_IDS: Record<string, string> = {
+  plus_monthly: "plus_monthly",
+  plus_annual: "plus_annual",
+  family_monthly: "family_monthly",
+  family_annual: "family_annual",
+};
+
+/**
+ * Build the hosted-checkout URL for a plan + cadence. The Firebase uid is
  * forwarded so the resulting purchase's webhook lands on the right account.
+ *
+ * Preferred: a RevenueCat **Web Purchase Link** (`BILLING_WEB_PURCHASE_LINK` =
+ * `https://pay.rev.cat/<token>`). RevenueCat requires the URL-encoded App User ID
+ * as a PATH segment and pre-selects the product via `?package_id`:
+ *   https://pay.rev.cat/<token>/<uid>?package_id=<pkg>&email=<email>
+ * Fallback: per-plan hosted links (e.g. Stripe Payment Links) where the uid is a
+ * `client_reference_id` query param.
  */
 export const billingCheckoutUrl = (
   config: ArborConfig,
   opts: { plan: "plus" | "family"; cadence: "monthly" | "annual"; uid: string; email: string | null },
 ): string | null => {
-  const base = config.billingCheckoutUrls[`${opts.plan}_${opts.cadence}`];
+  const key = `${opts.plan}_${opts.cadence}`;
+
+  if (config.billingWebPurchaseLink) {
+    try {
+      const base = config.billingWebPurchaseLink.replace(/\/+$/, "");
+      const target = `${base}/${encodeURIComponent(opts.uid)}`;
+      const params = new URLSearchParams();
+      const pkg = WEB_PACKAGE_IDS[key];
+      if (pkg) params.set("package_id", pkg);
+      if (opts.email) params.set("email", opts.email);
+      const qs = params.toString();
+      return qs ? `${target}?${qs}` : target;
+    } catch (error) {
+      logger.error("Invalid BILLING_WEB_PURCHASE_LINK in config", error, { plan: opts.plan, cadence: opts.cadence });
+      return null;
+    }
+  }
+
+  const base = config.billingCheckoutUrls[key];
   if (!base) return null;
   try {
     const url = new URL(base);
     url.searchParams.set("client_reference_id", opts.uid);
-    url.searchParams.set("app_user_id", opts.uid);
     if (opts.email) url.searchParams.set("prefilled_email", opts.email);
     return url.toString();
   } catch (error) {

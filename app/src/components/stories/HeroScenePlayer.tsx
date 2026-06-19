@@ -61,12 +61,13 @@ export function HeroScenePlayer({
 
   // The story IS a comic: when the child has a stylized hero and the beat has an
   // illustrator prompt, render (or reuse a cached) COMIC PANEL that stars their
-  // character. The narration below is the caption, so the panel carries no speech
-  // bubble (dialogue omitted) — just art + comic SFX energy.
+  // character — with the hero's name on the suit, this beat's punchy SFX, and a
+  // short speech bubble. The narration below stays as the storyteller caption.
   useEffect(() => {
     setSceneArt(undefined);
     if (!heroAvatarUrl || !scene.imagePrompt) return;
-    const key = `comic|${seed}|${shortHash(heroAvatarUrl)}`;
+    // v2 key: panels now carry SFX + a speech bubble, so don't reuse pre-v2 art.
+    const key = `comic2|${seed}|${shortHash(heroAvatarUrl)}`;
     const cached = sceneArtCache.get(key);
     if (cached) { setSceneArt(cached); return; }
 
@@ -82,7 +83,9 @@ export function HeroScenePlayer({
           avatar: { dataUrl: heroAvatarUrl },
           heroName,
           theme: scene.imagePrompt,
-          // dialogue omitted → no speech bubble; the narration caption carries the words
+          sfx: scene.sfx,
+          // the hero's own short line for this beat → comic speech bubble
+          dialogue: scene.dialogue,
           style: (heroAvatarStyle ?? "comichero"),
         }),
       )

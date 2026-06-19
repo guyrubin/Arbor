@@ -1,4 +1,4 @@
-import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole } from "../types";
+import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole, ConsentGrant, ConsentPurpose, DeletionReceipt } from "../types";
 import type { AdventureScenario } from "../practice/content";
 
 /**
@@ -147,7 +147,7 @@ export const api = {
     post<VisionResult>("/api/vision", payload),
   // AVA-1: generate a stylized character avatar from descriptors (default) or an
   // optional reference photo. The photo is never stored server-side.
-  generateAvatar: (payload: { descriptors?: AvatarDescriptors; photo?: { dataUrl: string }; style?: AvatarStyle }) =>
+  generateAvatar: (payload: { childId?: string; descriptors?: AvatarDescriptors; photo?: { dataUrl: string }; style?: AvatarStyle }) =>
     post<{ dataUrl: string; style: string; source: "descriptor" | "photo" }>("/api/generate-avatar", payload),
   // AVA-3: render a story-beat scene featuring the child's generated character.
   generateScene: (payload: { imagePrompt: string; avatar?: { dataUrl: string }; style?: AvatarStyle }) =>
@@ -179,6 +179,12 @@ export const api = {
     get<{ shares: ShareGrant[] }>(`/api/shares${childId ? `?childId=${encodeURIComponent(childId)}` : ""}`),
   revokeShare: (id: string) => del<ShareGrant>(`/api/shares/${encodeURIComponent(id)}`),
   sharedWithMe: () => get<{ shares: ShareGrant[] }>("/api/shared-with-me"),
+  // COPPA-2026 consent: grant/list/revoke purpose-scoped parental consent.
+  grantConsent: (payload: { childId: string; purpose: ConsentPurpose; granted?: boolean }) =>
+    post<{ grant: ConsentGrant }>("/api/consent", payload),
+  listConsent: (childId: string) =>
+    get<{ grants: ConsentGrant[] }>(`/api/consent/${encodeURIComponent(childId)}`),
+  revokeConsent: (id: string) => del<{ grant: ConsentGrant }>(`/api/consent/${encodeURIComponent(id)}`),
   // Gemini Live: mint an ephemeral token for a direct browser Live session.
   liveToken: () => post<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string }>("/api/live/token", {}),
   // MON-1: plan + limits + usage for the signed-in parent.
@@ -197,7 +203,7 @@ export const api = {
   privacyExport: (childId: string) =>
     get<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`),
   privacyErase: (childId: string) =>
-    post<{ erased: { memoryEvents: number; shares: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
+    post<{ erased: { memoryEvents: number; shares: number; consents?: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
   // MON-3 v1: durable consultation request (email-based transaction).
   requestConsult: (payload: { professionalId: string; childId?: string; note?: string; preferredMode?: string }) =>
     post<{ request: { id: string; professionalName: string; status: string; createdAt: string }; mailto: string | null }>("/api/consult-requests", payload),

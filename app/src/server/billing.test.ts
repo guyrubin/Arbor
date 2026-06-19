@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { planFromRevenueCat, recordFromRevenueCat } from "./billing.js";
+import { planFromRevenueCat, recordFromRevenueCat, billingCheckoutUrl } from "./billing.js";
+import type { ArborConfig } from "../config/env.js";
+
+const cfg = (over: Partial<ArborConfig>): ArborConfig =>
+  ({ billingCheckoutUrls: {}, ...over } as ArborConfig);
 
 describe("RevenueCat → entitlement mapping (MON-2)", () => {
   it("maps a Family product to the family plan, others to plus", () => {
@@ -81,5 +85,40 @@ describe("RevenueCat → entitlement mapping (MON-2)", () => {
     });
     expect(out!.record.lastEventId).toBe("evt_123");
     expect(out!.record.lastEventTs).toBe(1750000000000);
+  });
+});
+
+describe("billingCheckoutUrl (MON-2 web purchase link)", () => {
+  it("builds a RevenueCat Web Purchase Link: uid as path segment + package_id", () => {
+    const url = billingCheckoutUrl(cfg({ billingWebPurchaseLink: "https://pay.rev.cat/tok" }), {
+      plan: "family", cadence: "annual", uid: "firebaseUid1", email: null,
+    });
+    expect(url).toBe("https://pay.rev.cat/tok/firebaseUid1?package_id=family_annual");
+  });
+
+  it("trims a trailing slash and appends the prefilled email", () => {
+    const url = billingCheckoutUrl(cfg({ billingWebPurchaseLink: "https://pay.rev.cat/tok/" }), {
+      plan: "plus", cadence: "monthly", uid: "u1", email: "parent@example.com",
+    });
+    expect(url).toBe("https://pay.rev.cat/tok/u1?package_id=plus_monthly&email=parent%40example.com");
+  });
+
+  it("URL-encodes a uid containing reserved characters in the path", () => {
+    const url = billingCheckoutUrl(cfg({ billingWebPurchaseLink: "https://pay.rev.cat/tok" }), {
+      plan: "plus", cadence: "annual", uid: "a/b c", email: null,
+    });
+    expect(url).toBe("https://pay.rev.cat/tok/a%2Fb%20c?package_id=plus_annual");
+  });
+
+  it("falls back to a per-plan Stripe link (uid as client_reference_id) when no web link", () => {
+    const url = billingCheckoutUrl(cfg({ billingCheckoutUrls: { plus_monthly: "https://buy.stripe.com/test_123" } }), {
+      plan: "plus", cadence: "monthly", uid: "u1", email: null,
+    });
+    expect(url).toContain("https://buy.stripe.com/test_123");
+    expect(url).toContain("client_reference_id=u1");
+  });
+
+  it("returns null when nothing is configured for the plan", () => {
+    expect(billingCheckoutUrl(cfg({}), { plan: "plus", cadence: "monthly", uid: "u1", email: null })).toBeNull();
   });
 });

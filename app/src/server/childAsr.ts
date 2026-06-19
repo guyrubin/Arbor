@@ -1,12 +1,15 @@
 import type { ArborConfig } from "../config/env.js";
+import type { ModelProvider } from "../ai/modelRouter.js";
 import { matchResult } from "../practice/signals.js";
 
 /**
  * Child-articulation ASR — the CHILD's voice only (parent voice stays on Gemini
  * Live). A pluggable provider seam so the scorer can be swapped by config with no
  * app-code change:
+ *   - "gemini":  Vertex Gemini multimodal audio — reuses Arbor's existing model
+ *                stack (no vendor, no secrets); encouraging got/almost/missed. DEFAULT cloud scorer.
  *   - "soapbox": SoapBox Labs kid-tuned, phoneme-level (primary when licensed).
- *   - "whisper": hosted, OpenAI-compatible Whisper transcription (working fallback).
+ *   - "whisper": hosted, OpenAI-compatible Whisper transcription (self-host upgrade).
  *   - "none":   not configured → callers fall back to the on-device Web Speech scorer.
  *
  * COPPA-2026: a child voiceprint is biometric PII. Audio is forwarded for scoring
@@ -37,6 +40,7 @@ export class NotConfiguredError extends Error {
 }
 
 export const childAsrConfigured = (config: ArborConfig): boolean => {
+  if (config.childAsrProvider === "gemini") return true; // always available — uses the Vertex stack
   if (config.childAsrProvider === "whisper") return !!config.whisperApiUrl;
   if (config.childAsrProvider === "soapbox") return !!config.soapboxApiUrl && !!config.soapboxApiKey;
   return false;
@@ -94,8 +98,32 @@ async function scoreSoapbox(config: ArborConfig, input: ChildScoreInput): Promis
   return { result, heard: json.transcript, confidence: score, provider: "soapbox" };
 }
 
-export async function scoreChildUtterance(config: ArborConfig, input: ChildScoreInput): Promise<ChildScoreResult> {
+/** Gemini audio (Vertex) — reuses Arbor's existing model stack: no vendor, no
+ *  secrets. Sends the child's utterance to Gemini and asks for an encouraging,
+ *  lenient got/almost/missed judgment of the target + a best-effort transcript.
+ *  The audio rides as an inline `images` part (the provider sends it as inlineData;
+ *  Gemini accepts audio mime types) and routes to the Gemini analysis model. */
+async function scoreGemini(modelProvider: ModelProvider, input: ChildScoreInput): Promise<ChildScoreResult> {
+  const prompt = `You are scoring a young child's pronunciation in a gentle speech-practice game. Be ENCOURAGING and lenient — this is play, not a clinical assessment.
+The child was asked to say the target: "${input.target}" (focus sound: ${input.sound || "n/a"}, level: ${input.level}).
+Listen to the attached audio and judge whether the child said the target:
+- "got": clearly recognizable as the target.
+- "almost": a close, partial, or mildly distorted attempt at the target.
+- "missed": silent, unintelligible, or unrelated.
+Reply with ONLY compact JSON: {"result":"got"|"almost"|"missed","heard":"<best transcription of what was said, or empty string>"}`;
+  const raw = (await modelProvider.generateJson({
+    route: "analysis_structured",
+    prompt,
+    temperature: 0,
+    images: [{ data: input.audio.data, mimeType: input.audio.mimeType }],
+  })) as { result?: unknown; heard?: unknown };
+  const result: SpeechResult = raw?.result === "got" || raw?.result === "missed" ? raw.result : "almost";
+  return { result, heard: typeof raw?.heard === "string" ? raw.heard : undefined, provider: "gemini" };
+}
+
+export async function scoreChildUtterance(config: ArborConfig, modelProvider: ModelProvider, input: ChildScoreInput): Promise<ChildScoreResult> {
   switch (config.childAsrProvider) {
+    case "gemini": return scoreGemini(modelProvider, input);
     case "whisper": return scoreWhisper(config, input);
     case "soapbox": return scoreSoapbox(config, input);
     default: throw new NotConfiguredError();

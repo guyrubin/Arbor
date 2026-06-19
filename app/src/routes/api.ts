@@ -16,6 +16,9 @@ import { Type } from "@google/genai";
 import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../server/redaction.js";
 import { screenModelOutput, renderBlockedOutputMarkdown } from "../safety/outputScreen.js";
 import { logger, requestIdOf } from "../server/logger.js";
+import { requireChildOwnership } from "../server/requireChildOwnership.js";
+import { requireConsent } from "../server/requireConsent.js";
+import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
 import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
@@ -31,6 +34,7 @@ type ApiDeps = {
   modelProvider: ModelProvider;
   memoryStore: MemoryStore;
   shareStore: ShareStore;
+  consentStore: ConsentStore;
   framework: FrameworkDefinition;
   entitlementStore: EntitlementStore;
   referralStore: ReferralStore;
@@ -70,12 +74,38 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics }: ApiDeps) => {
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
+  // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
+  const requireOwnership = requireChildOwnership(memoryStore);
 
-  router.get("/memory/:childId", async (req, res) => {
+  // ── COPPA-2026 consent ledger ──────────────────────────────────────────────
+  const VALID_PURPOSES: ConsentPurpose[] = ["face_processing", "voice_processing", "ai_training"];
+  // Grant / update a purpose-scoped consent for a child (parent-owner only).
+  router.post("/consent", requireOwnership, async (req, res) => {
+    const { childId, purpose, granted } = req.body ?? {};
+    if (!childId || !VALID_PURPOSES.includes(purpose)) {
+      res.status(400).json({ error: "childId and a valid purpose are required" });
+      return;
+    }
+    const uid = (req as any).user?.uid || "local-sandbox";
+    const grant = await consentStore.set(buildConsent({ childId: String(childId), purpose, granted: granted !== false, actorUid: uid }));
+    res.json({ grant });
+  });
+  // List a child's consent records (parent-owner only).
+  router.get("/consent/:childId", requireOwnership, async (req, res) => {
+    res.json({ grants: await consentStore.list(req.params.childId) });
+  });
+  // Revoke a single consent grant.
+  router.delete("/consent/:id", async (req, res) => {
+    const grant = await consentStore.revoke(req.params.id);
+    if (!grant) { res.status(404).json({ error: "Consent grant not found" }); return; }
+    res.json({ grant });
+  });
+
+  router.get("/memory/:childId", requireOwnership, async (req, res) => {
     try {
       let items = foldMemoryEvents(await memoryStore.listEvents(req.params.childId), req.params.childId);
       const status = req.query.status ? String(req.query.status) : undefined;
@@ -726,7 +756,7 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     res.json({ configured: childAsrConfigured(config), provider: config.childAsrProvider });
   });
 
-  router.post("/score-utterance", async (req, res) => {
+  router.post("/score-utterance", requireConsent(consentStore, "voice_processing", (req) => childAsrConfigured(config) && !!req.body?.audio), async (req, res) => {
     const { target, sound, level, audio } = req.body ?? {};
     if (!childAsrConfigured(config)) { res.json({ configured: false }); return; }
     if (!target || typeof target !== "string") { res.status(400).json({ error: "target is required" }); return; }
@@ -741,7 +771,7 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     if (Math.floor((dataB64.length * 3) / 4) > 8 * 1024 * 1024) { res.status(413).json({ error: "Audio too large" }); return; }
 
     try {
-      const result = await scoreChildUtterance(config, {
+      const result = await scoreChildUtterance(config, modelProvider, {
         target,
         sound: String(sound ?? ""),
         level: String(level ?? "word"),
@@ -764,10 +794,10 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     soft3d: "a soft rounded 3D-rendered character, friendly and approachable, soft studio lighting",
     watercolor: "a soft watercolor children's-book character with loose painterly edges",
     flat: "a clean flat vector character illustration with simple rounded shapes and a cheerful palette",
-    comichero: "a friendly child superhero in a modern cel-shaded comic-book style: bold clean ink linework, bright primary colors, a small cape and a stylized hero suit with a leaf emblem, a big confident smile, dynamic but never scary or violent — wholesome and age-appropriate for young children"
+    comichero: "a friendly child superhero in a bold, modern cel-shaded comic-book style: thick confident ink outlines, super-saturated primary colors (hero red + sky blue + sunshine yellow), halftone dot shading, an explosive radial action burst behind the hero, a flowing cape and a sleek fitted hero suit with a round chest emblem, a huge joyful grin and a dynamic mid-action pose — high-energy and exciting but always wholesome, never scary or violent, age-appropriate for young children"
   };
 
-  router.post("/generate-avatar", async (req, res) => {
+  router.post("/generate-avatar", requireConsent(consentStore, "face_processing", (req) => !!req.body?.photo), async (req, res) => {
     const { descriptors, photo, style } = req.body ?? {};
     const stylePrompt = AVATAR_STYLES[style as string] ?? AVATAR_STYLES.storybook;
 
@@ -888,7 +918,7 @@ Gentle, non-scary, age-appropriate for ages 4-8. Calm, soft palette. No text, wo
   // one dialogue line — wholesome and age-appropriate. Powered by the image model
   // (Nano Banana), which auto-applies SynthID + C2PA provenance.
   router.post("/generate-comic", async (req, res) => {
-    const { avatar, heroName, sidekickName, theme, dialogue, sfx, setting, style } = req.body ?? {};
+    const { avatar, heroName, sidekickName, theme, dialogue, sfx, setting, style, nameOnSuit } = req.body ?? {};
     const safeName = String(heroName ?? "the hero").slice(0, 40);
     const themeText = String(theme ?? "a brave, kind everyday adventure").slice(0, 200);
 
@@ -919,17 +949,21 @@ Gentle, non-scary, age-appropriate for ages 4-8. Calm, soft palette. No text, wo
     // panels omit it (the narration caption carries the words) so text isn't doubled.
     const dialogueLine = dialogue === undefined || dialogue === null ? "" : String(dialogue).slice(0, 120);
 
-    const prompt = `Create a SINGLE dynamic full-page comic-book panel in a modern, premium cel-shaded comic/manga art style: bold clean ink linework, bright primary colors, strong radial action and speed lines, tiny glowing sparkle effects, energetic and heroic.
+    // The hero's name on the chest emblem is what makes the panel feel like it's
+    // truly THEIR comic (the viral hook). On by default for the comichero style.
+    const showNameOnSuit = nameOnSuit !== false && safeName !== "the hero";
+    const prompt = `Create a SINGLE dynamic full-page comic-book panel in a bold, premium cel-shaded comic art style: thick confident ink outlines, super-saturated primary colors, halftone dot shading, an EXPLOSIVE radial action burst and dramatic speed lines behind the hero, glowing sparkle effects — high-energy, eye-catching, and heroic, the kind of vivid panel a 5-8 year old would be thrilled to see themselves in.
 Hero: ${stylePrompt}. Name: ${safeName}.
 ${referenceImage
-  ? "The attached character is the HERO — feature this exact stylized character as the main, central figure, kept recognizable and consistent with the reference (same face, hair, suit)."
-  : "Feature a single friendly child superhero as the central figure."}
+  ? "The attached character is the HERO — feature this exact stylized character as the main, central figure in a confident mid-action pose, kept recognizable and consistent with the reference (same face, hair, suit)."
+  : "Feature a single friendly child superhero as the central, large, mid-action figure."}
+${showNameOnSuit ? `Write the hero's name "${safeName}" boldly and legibly across the round chest emblem of the suit.` : ""}
 ${sidekickName ? `Include a friendly younger sidekick named ${String(sidekickName).slice(0, 40)} in a matching hero suit beside them.` : ""}
 Scene/theme: ${themeText}.
 Setting: ${String(setting ?? "a cozy, lived-in family home interior").slice(0, 160)}.
-Include comic sound-effects as stylized layered text floating in the scene: ${sfxLine}.
-${dialogueLine ? `Include ONE white speech bubble with the short, legible, friendly line: "${dialogueLine}".` : "Do not draw any speech bubbles or sentences — only the short sound-effect words."}
-Wholesome and age-appropriate for young children: confident and exciting, but NO real violence, weapons, blood, fear, or scary imagery. Keep all text short and clearly legible.`;
+Include 2-3 BIG, bold, stylized comic sound-effect words bursting in the scene with thick outlines and bright fills: ${sfxLine}.
+${dialogueLine ? `Include ONE clean white speech bubble with a bold tail, containing the short, legible, friendly line: "${dialogueLine}".` : "Do not draw any speech bubbles or sentences — only the short sound-effect words."}
+Wholesome and age-appropriate for young children: confident, joyful and exciting, but NO real violence, weapons, blood, fear, or scary imagery. Keep all text short, correctly spelled, and clearly legible.`;
 
     try {
       const image = await modelProvider.generateImage({
@@ -1242,7 +1276,10 @@ RULES:
 - 2 to 4 short sentences per beat. Gentle and non-graphic: no real violence, blood, death, or frightening detail. Conflict stays emotional/symbolic and always resolves kindly.
 - For the 'decision' beat narration, end by inviting the child to choose — do NOT say which option is best.
 - Personalize each of the ${choiceCount} choices: rewrite "label" as a short first-person action, and write a 1-2 sentence "consequence" expanding its cue. Keep every consequence kind — no choice is harshly punished.
-- Give a one-line "imagePrompt" per beat for an illustrator (storybook style, no text in the image).
+- This story is rendered as a COMIC BOOK starring ${heroName}. For each beat also return:
+  • "imagePrompt": a one-line description of a dynamic, exciting comic-book ACTION panel for this beat (vivid pose, setting, emotion) — describe only the scene, no text/words drawn in it.
+  • "sfx": an array of 2-3 SHORT, punchy comic sound-effect words that fit this exact beat (e.g. ["WHOOSH!","BOOM!"]; for a calm beat ["AHH…","TWINKLE!"]). Vary them per beat — never reuse the same set.
+  • "dialogue": ONE very short, exciting first-person hero line ${heroName} would shout or say in this beat (max ~8 words), for a comic speech bubble. Keep it kid-friendly and energetic.
 - Keep the reflection's practiced[] and questions[] close to those provided, lightly personalized to ${heroName}.
 
 SPINE (8 beats — return one scene per beat, same order, with matching beatId):
@@ -1269,12 +1306,14 @@ ${languageDirective}`;
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
-                required: ["beatId", "title", "narration", "imagePrompt"],
+                required: ["beatId", "title", "narration", "imagePrompt", "sfx", "dialogue"],
                 properties: {
                   beatId: { type: Type.STRING },
                   title: { type: Type.STRING },
                   narration: { type: Type.STRING },
-                  imagePrompt: { type: Type.STRING }
+                  imagePrompt: { type: Type.STRING },
+                  sfx: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  dialogue: { type: Type.STRING }
                 }
               }
             },
@@ -1606,7 +1645,7 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
 
   // CMP-2 (GDPR Art. 15/20): server-side data export for one child. The client
   // merges this with its own Firestore export into a single download.
-  router.get("/privacy/export/:childId", async (req, res) => {
+  router.get("/privacy/export/:childId", requireOwnership, async (req, res) => {
     const { uid } = actorOf(req);
     try {
       const childId = req.params.childId;
@@ -1627,7 +1666,7 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
   // CMP-2 (GDPR Art. 17): REAL server-side erasure — replaces the former
   // "processed server-side" placeholder. Hard-deletes the child's memory-event
   // ledger + child doc and every share grant the caller created for the child.
-  router.post("/privacy/erase", async (req, res) => {
+  router.post("/privacy/erase", requireOwnership, async (req, res) => {
     const { uid } = actorOf(req);
     const { childId } = req.body;
     if (!childId || typeof childId !== "string") {
@@ -1637,8 +1676,9 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
     try {
       const memoryEvents = await memoryStore.eraseChild(childId);
       const shares = await shareStore.eraseByChild(uid, childId);
-      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares });
-      res.json({ erased: { memoryEvents, shares }, childId, erasedAt: new Date().toISOString() });
+      const consents = await consentStore.eraseByChild(childId);
+      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents });
+      res.json({ erased: { memoryEvents, shares, consents }, childId, erasedAt: new Date().toISOString() });
     } catch (error: any) {
       logger.error("Arbor Privacy Erasure Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to erase server-side data", details: error.message });

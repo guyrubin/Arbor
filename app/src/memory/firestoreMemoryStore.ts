@@ -48,6 +48,11 @@ export class FirestoreMemoryStore implements MemoryStore {
     await this.families.ensureChild(input.familyId, input.childId, input.childProfile);
   }
 
+  /** Authorization: is `uid` a member of the family that owns `childId`? */
+  ownsChild(uid: string, childId: string): Promise<boolean> {
+    return this.families.ownsChild(uid, childId);
+  }
+
   /** GDPR erasure: hard-delete the child's memory event subcollection and child doc. */
   async eraseChild(childId: string) {
     const childRef = this.db.collection("children").doc(childId);

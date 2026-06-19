@@ -33,4 +33,7 @@ export type MemoryStore = {
   }): Promise<void>;
   /** GDPR erasure: permanently delete every memory event (and the child doc) for a child. Returns the number of events removed. */
   eraseChild(childId: string): Promise<number>;
+  /** Authorization: does `uid` belong to the family that owns `childId`? Optional —
+   *  single-tenant (local) stores omit it, and the ownership middleware then no-ops. */
+  ownsChild?(uid: string, childId: string): Promise<boolean>;
 };

@@ -49,8 +49,14 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
       });
       if (!res.ok) throw new Error("focus generation failed");
       const data = await res.json();
+      // /api/chat returns the FULL structured coach response; the Today card only
+      // wants a glanceable focus, so keep the first few sentences (the UI also
+      // clamps + offers Read-more as a safety net for any cached long text).
+      const cleaned = String(data.text || "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim();
+      const short = cleaned.split(/(?<=[.!?])\s+/).slice(0, 3).join(" ");
+      const text = short.length > 360 ? `${short.slice(0, 357).trimEnd()}…` : short || cleaned.slice(0, 240);
       const next: Focus = {
-        text: String(data.text || "").replace(/[#*]/g, "").trim(),
+        text,
         generatedAt: new Date().toISOString(),
         dateKey: todayKey(),
       };

@@ -80,7 +80,21 @@ export interface ShareGrant {
 export interface DeletionReceipt {
   childId: string;
   erasedAt: string;
-  counts: { memoryEvents: number; shares: number };
+  counts: { memoryEvents: number; shares: number; consents?: number };
+}
+
+/** COPPA-2026 consent purposes + grant record (client mirror of sharing/consent.ts). */
+export type ConsentPurpose = "face_processing" | "voice_processing" | "ai_training";
+export interface ConsentGrant {
+  id: string;
+  childId: string;
+  purpose: ConsentPurpose;
+  granted: boolean;
+  policyVersion: string;
+  actorUid: string;
+  grantedAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
 }
 
 export interface CouncilTake {
@@ -235,6 +249,10 @@ export interface HeroSceneRender {
   title: string;
   narration: string;
   imagePrompt: string;
+  /** 2-3 punchy comic sound-effect words for THIS beat (e.g. ["BOOM!","WHOOSH!"]). */
+  sfx?: string[];
+  /** One short hero line for a speech bubble on this beat's comic panel. */
+  dialogue?: string;
 }
 
 /** The personalized choice text the model returns for the Decision beat. */

@@ -241,6 +241,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
           </motion.div>
           <AvatarCreator
             open={showCreator}
+            childId={activeChild.id}
             childName={name || activeChild.name}
             onClose={() => setShowCreator(false)}
             onCreated={({ dataUrl, style, source }) => {

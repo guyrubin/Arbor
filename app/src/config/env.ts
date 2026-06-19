@@ -34,13 +34,17 @@ export type ArborConfig = {
   memoryPromptMaxFacts: number;
   /** MON-2: shared secret RevenueCat sends as the webhook Authorization header. */
   revenueCatWebhookAuth?: string;
-  /** MON-2: hosted-checkout links keyed `${plan}_${cadence}` (e.g. plus_monthly). */
+  /** MON-2: RevenueCat Web Purchase Link base (`https://pay.rev.cat/<token>`). When
+   *  set, the uid is appended as a path segment and the plan via `?package_id`. */
+  billingWebPurchaseLink?: string;
+  /** MON-2: per-plan hosted-checkout links keyed `${plan}_${cadence}` (Stripe fallback). */
   billingCheckoutUrls: Record<string, string>;
   /** MON-2: customer self-service portal (Stripe Billing portal) for web subs. */
   billingManageUrl?: string;
   /** Child articulation ASR provider. Parent voice stays on Gemini Live — this is
-   *  ONLY for scoring the child's pronunciation. "none" = on-device fallback only. */
-  childAsrProvider: "none" | "soapbox" | "whisper";
+   *  ONLY for scoring the child's pronunciation. "gemini" = Vertex multimodal audio
+   *  (no vendor/secrets); "none" = on-device Web Speech fallback only. */
+  childAsrProvider: "none" | "gemini" | "soapbox" | "whisper";
   /** Hosted (OpenAI-compatible) Whisper transcription endpoint for child ASR fallback. */
   whisperApiUrl?: string;
   whisperApiKey?: string;
@@ -120,6 +124,7 @@ export const loadConfig = (): ArborConfig => {
     maxOutputTokens: Number(process.env.MAX_OUTPUT_TOKENS || 8192),
     memoryPromptMaxFacts: Number(process.env.MEMORY_PROMPT_MAX_FACTS || 40),
     revenueCatWebhookAuth: process.env.REVENUECAT_WEBHOOK_AUTH,
+    billingWebPurchaseLink: process.env.BILLING_WEB_PURCHASE_LINK,
     billingCheckoutUrls: {
       ...(process.env.BILLING_URL_PLUS_MONTHLY ? { plus_monthly: process.env.BILLING_URL_PLUS_MONTHLY } : {}),
       ...(process.env.BILLING_URL_PLUS_ANNUAL ? { plus_annual: process.env.BILLING_URL_PLUS_ANNUAL } : {}),
@@ -129,7 +134,7 @@ export const loadConfig = (): ArborConfig => {
     billingManageUrl: process.env.BILLING_MANAGE_URL,
     childAsrProvider: (() => {
       const v = (process.env.CHILD_ASR_PROVIDER || "none").toLowerCase();
-      return v === "soapbox" || v === "whisper" ? v : "none";
+      return v === "gemini" || v === "soapbox" || v === "whisper" ? v : "none";
     })(),
     whisperApiUrl: process.env.WHISPER_API_URL,
     whisperApiKey: process.env.WHISPER_API_KEY,
