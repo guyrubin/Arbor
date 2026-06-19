@@ -71,11 +71,16 @@ jobs:
         if: env.ASC_KEY_ID == ''
         working-directory: app/ios/App
         run: |
+          # Capacitor 8 uses Swift Package Manager, so the project builds from
+          # App.xcodeproj directly (there is no CocoaPods .xcworkspace). Resolve
+          # the SPM packages first, then archive without signing.
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
           xcodebuild \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             archive \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO

@@ -26,7 +26,7 @@ platform :ios do
     sigh(api_key: api_key, app_identifier: app_identifier, force: true)
 
     build_app(
-      workspace: "App.xcworkspace",
+      project: "App.xcodeproj",
       scheme: "App",
       export_method: "app-store",
       api_key: api_key,
