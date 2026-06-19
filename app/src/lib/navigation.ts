@@ -85,9 +85,11 @@ export const SECTIONS: NavSection[] = [
     label: "Arbor Academy",
     icon: GraduationCap,
     items: [
-      // Story Journeys now render AS personalized comics starring the child's hero
-      // (the comic capability is embedded in the stories, not a separate subtab).
+      // Story Journeys render AS personalized comics starring the child's hero,
+      // beat by beat. Hero Comics is the batch studio: generate the whole story
+      // catalog as shareable hero-comic pages in one tap (the viral surface).
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
+      { tab: "comics", label: "Hero Comics", icon: Sparkles },
       { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
       { tab: "family", label: "Family Formation", icon: Heart },
     ],
