@@ -95,6 +95,17 @@ first submission and re-run `npx cap sync`.)
 phone + 7"/10" tablet (Play). Capture Today, Practice & Play, a hero comic, Academy.
 *(Screenshots are the one asset CI can't generate — take them from the running app.)*
 
+> **The listing text above is already wired for automation.** The same copy lives in
+> `ios/App/fastlane/metadata/en-US/` (Apple `deliver`) and
+> `android/fastlane/metadata/android/en-US/` (Play `supply`). Once your secrets exist:
+> - iOS: `bundle exec fastlane release` builds the IPA and uploads the binary **plus**
+>   all listing text (name, subtitle, description, keywords, privacy URL, release notes)
+>   to App Store Connect — no manual pasting. It does **not** auto-submit; you add
+>   screenshots and press Submit in App Store Connect.
+> - Android: `fastlane supply` (with a Play service-account JSON) uploads the AAB +
+>   title/short/full description + changelog. Or just paste the same text in the console.
+> Only **screenshots** remain a manual asset.
+
 ---
 
 ## 4. Data-safety / privacy labels (pre-filled answers)
