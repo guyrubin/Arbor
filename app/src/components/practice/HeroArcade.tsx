@@ -75,11 +75,10 @@ function Stars({ n }: { n: number }) {
 }
 
 export default function HeroArcade() {
-  const { childProfile } = useArbor();
+  const { childProfile, setActiveTab } = useArbor();
   const data = usePracticeData(childProfile.id);
   const hero = useHeroAvatar();
   const [openId, setOpenId] = useState<string | null>(null);
-  const [comicNote, setComicNote] = useState(false);
 
   const stats: CosmeticStats = useMemo(() => ({
     totalSessions:
@@ -228,14 +227,15 @@ export default function HeroArcade() {
           Make {hero.name === "your child" ? "your" : `${hero.name}'s`} comic!
         </h3>
         <p className="font-bold text-[14px] mb-4 opacity-95 max-w-[44ch] mx-auto">
-          Turn today&apos;s wins into a comic page starring your hero, ready to share.
+          {hero.hasHero
+            ? "Turn your hero into a comic page, ready to share with the family."
+            : `Create ${hero.name === "your child" ? "your child's" : `${hero.name}'s`} hero, then star them in a shareable comic.`}
         </p>
-        <button onClick={() => setComicNote(true)}
+        <button onClick={() => setActiveTab("comics")}
           className="play-pressable inline-flex items-center gap-2 rounded-full px-6 py-3 font-black text-[16px]"
           style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", boxShadow: "0 6px 0 0 var(--comic-ink)", fontFamily: "var(--font-display)" }}>
-          <Camera className="w-5 h-5" /> Create comic page
+          <Camera className="w-5 h-5" /> {hero.hasHero ? "Create comic page" : "Create my hero"}
         </button>
-        {comicNote && <p className="text-[12.5px] font-bold mt-3 opacity-95">Coming soon — comic maker arrives with the next update ✨</p>}
       </section>
     </div>
   );
