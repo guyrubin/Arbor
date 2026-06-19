@@ -74,6 +74,8 @@ const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> =
   "leave-the-tent": { emoji: "⛺", sfx: "WHOOSH!", sfxHe: "ואוש!" },
   "the-two-paths-through-the-meadow": { emoji: "🌿", sfx: "HMM!", sfxHe: "המ!" },
   "the-two-mothers-and-the-quiet-judge": { emoji: "🤝", sfx: "SHH…", sfxHe: "ששש…" },
+  "the-tyrant-and-the-town": { emoji: "📢", sfx: "STOP!", sfxHe: "די!" },
+  "the-friendly-monster": { emoji: "👾", sfx: "GRRAH!", sfxHe: "גראח!" },
 };
 
 const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;

@@ -26,17 +26,17 @@ const isMetricKey = (k: string): k is DevelopmentMetricId =>
   (METRIC_IDS as string[]).includes(k);
 
 describe("hero journey catalog", () => {
-  it("contains exactly 16 stories with unique ids", () => {
-    expect(HERO_STORIES).toHaveLength(16);
+  it("contains exactly 18 stories with unique ids", () => {
+    expect(HERO_STORIES).toHaveLength(18);
     const ids = HERO_STORIES.map((s) => s.id);
-    expect(new Set(ids).size).toBe(16);
+    expect(new Set(ids).size).toBe(18);
   });
 
-  it("covers all 5 packs (courage 4 / responsibility 4 / growth 3 / wisdom 3 / truth 2)", () => {
+  it("covers all 5 packs (courage 5 / responsibility 4 / growth 4 / wisdom 3 / truth 2)", () => {
     expect(PACKS).toHaveLength(5);
-    expect(storiesInPack("courage")).toHaveLength(4);
+    expect(storiesInPack("courage")).toHaveLength(5);
     expect(storiesInPack("responsibility")).toHaveLength(4);
-    expect(storiesInPack("growth")).toHaveLength(3);
+    expect(storiesInPack("growth")).toHaveLength(4);
     expect(storiesInPack("wisdom")).toHaveLength(3);
     expect(storiesInPack("truth")).toHaveLength(2);
   });
