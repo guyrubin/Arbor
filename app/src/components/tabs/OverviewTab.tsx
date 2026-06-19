@@ -29,6 +29,7 @@ import { PASTEL, PastelKey, cardCls } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
 import { dayPartFor, type DayPart } from "../../lib/timeOfDay";
+import { track } from "../../lib/analytics";
 
 const card = cardCls;
 const DAY = 86_400_000;
@@ -45,6 +46,7 @@ export default function OverviewTab() {
     setActiveTab, milestonesPercent, checkedMilestones, totalMilestones,
     behaviorLogs, childProfile, setChatInput,
     pendingMemoryItems, approvedMemoryItems,
+    proposeMemory,
   } = useArbor();
 
   const { t } = useLanguage();
@@ -88,8 +90,43 @@ export default function OverviewTab() {
   }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds]);
 
   const prepWindow = (hour: number) => {
+    track("rhythm_prep_opened", { hour });
     setChatInput(`${firstName} tends to have a harder time around ${hourLabel(hour)}. Give me one short, calm script I can use to get ahead of it today.`);
     setActiveTab("coach");
+  };
+  // Wind-down: no dedicated reminder store on Today yet — fall back to a Coach
+  // prompt prepping a one-tap wind-down routine (honest, ships-visible).
+  const setWindDownReminder = (hour: number) => {
+    setChatInput(`Help me set up a calm wind-down for ${firstName} starting around ${hourLabel(hour)}. Give me one short routine and a gentle reminder I can use today.`);
+    setActiveTab("coach");
+  };
+  // Calm window: route to today's play (Daily Play lives on this same Today tab,
+  // below the strip) and nudge the parent to use the calm window for it.
+  const useCalmWindow = (startHour: number, endHour: number) => {
+    toast(`Good time to play with ${firstName}: ${hourLabel(startHour)}–${hourLabel(endHour)}.`, "success");
+  };
+  // c1 moat-write: per child+hour dismiss so the confirm row never nags.
+  const rhythmDismissKey = (hour: number) => `arbor.rhythm.remember.${childProfile.id}.${hour}`;
+  const peakHour = rhythm.frictionPeak?.hour;
+  const [rhythmRemembered, setRhythmRemembered] = useState<boolean>(() => {
+    if (peakHour == null) return false;
+    try { return localStorage.getItem(rhythmDismissKey(peakHour)) === "1"; }
+    catch { return false; }
+  });
+  const rememberPattern = async (hour: number) => {
+    track("rhythm_remember_proposed", { hour });
+    try {
+      await proposeMemory(`${firstName} often has a harder time around ${hourLabel(hour)}.`, {
+        source: "rhythm",
+        retention: "3 months",
+        prompt: "rhythm:pattern",
+      });
+      try { localStorage.setItem(rhythmDismissKey(hour), "1"); } catch { /* ignore */ }
+      setRhythmRemembered(true);
+      toast(t("rhythm.remembered", { name: firstName }), "success");
+    } catch {
+      toast(t("rhythm.rememberError"), "error");
+    }
   };
   const coachOnPlay = (p: ScoredActivity) => {
     setChatInput(`We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`);
@@ -199,7 +236,17 @@ export default function OverviewTab() {
     {
       key: "rhythm" as SlotKey,
       // TENANT: rhythm (c1) — b1 owns placement only; do not change props here.
-      node: <RhythmStrip prediction={rhythm} childName={firstName} onPrepWindow={prepWindow} />,
+      node: (
+        <RhythmStrip
+          prediction={rhythm}
+          childName={firstName}
+          onPrepWindow={prepWindow}
+          onSetWindDownReminder={setWindDownReminder}
+          onUseCalmWindow={useCalmWindow}
+          onRememberPattern={rememberPattern}
+          alreadyRemembered={rhythmRemembered}
+        />
+      ),
     },
     dailyPlay
       ? {

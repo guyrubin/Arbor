@@ -487,6 +487,31 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     }
   };
 
+  // c1-rhythm: propose a PENDING, parent-owned memory from a Today surface.
+  // Mirrors the fetch shape of refreshMemoryReview/handleMemoryDecision so the
+  // native api-base shim + auth headers are reused. Throws on failure so the
+  // caller (OverviewTab) can revert its button and toast honestly.
+  const proposeMemory = async (
+    fact: string,
+    opts?: { source?: string; retention?: string; prompt?: string }
+  ): Promise<void> => {
+    const res = await fetch(`/api/memory/${encodeURIComponent(childProfile.id)}/propose`, {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        fact,
+        source: opts?.source ?? "rhythm",
+        retention: opts?.retention ?? "3 months",
+        prompt: opts?.prompt ?? "rhythm:pattern",
+        familyId: (childProfile as any).familyId,
+        childId: childProfile.id,
+      }),
+    });
+    if (!res.ok) throw new Error("Memory proposal failed");
+    const data = await res.json();
+    setMemoryReviewItems(data.items || []);
+  };
+
   const readStreamingChatResponse = async (res: Response): Promise<ChatResponsePayload> => {
     const reader = res.body?.getReader();
     if (!reader) throw new Error("Streaming response body unavailable");
@@ -973,6 +998,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     pendingMemoryItems,
     approvedMemoryItems,
     handleMemoryDecision,
+    proposeMemory,
     handleCancelChat,
     handleChatSend,
     handleCouncilSend,

@@ -117,6 +117,30 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     }
   });
 
+  // Propose a PENDING, parent-owned memory from a Today surface (e.g. Rhythm's
+  // repeated friction peak). Reuses appendMemoryProposals so dedupe + ledger
+  // semantics match coach-originated proposals. Nothing enters AI context until
+  // the parent approves it in My Child › Memory.
+  router.post("/memory/:childId/propose", requireOwnership, async (req, res) => {
+    try {
+      const { fact, source, retention, prompt, familyId } = req.body ?? {};
+      if (typeof fact !== "string" || !fact.trim()) {
+        res.status(400).json({ error: "A non-empty memory fact is required" });
+        return;
+      }
+      const items = await appendMemoryProposals(
+        memoryStore,
+        req.params.childId,
+        [{ fact: fact.trim(), source: source || "rhythm", retention: retention || "3 months" }],
+        { familyId: familyId || "default-family", prompt: prompt || "rhythm:pattern", frameRouting: null }
+      );
+      res.json({ items });
+    } catch (error: any) {
+      logger.error("Memory Propose Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to propose Arbor memory item", details: error.message });
+    }
+  });
+
   router.patch("/memory/:memoryId", async (req, res) => {
     try {
       const { status, fact, retention, source } = req.body;
