@@ -261,7 +261,7 @@ export default function WeeklyTab() {
             <button
               onClick={() => {
                 handleGenerateBrief();
-                setActiveTab("handoff");
+                setActiveTab("consult");
               }}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
               style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}

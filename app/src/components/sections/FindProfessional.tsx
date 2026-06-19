@@ -47,7 +47,18 @@ function matchesFilter(p: Professional, f: string): boolean {
 
 /** Care Network › Find a Professional (curated, verified directory — fetched from
  *  the Arbor professionals API, never "marketplace" in parent UI). */
-export default function FindProfessional() {
+/** Optional incoming context handed in from the Consult flow's "Send to a
+ *  professional" action: the parent-selected packet text prefills the consult
+ *  note so the request starts from the redacted summary, not a hardcoded line. */
+export interface FindProfessionalProps {
+  /** Prefill text for the consult-request note (e.g. the selected packet). */
+  incomingNote?: string;
+  /** When true, FindProfessional is rendered inside a host modal (Consult send
+   *  flow) — used to avoid steering parents back to a route that no longer exists. */
+  embedded?: boolean;
+}
+
+export default function FindProfessional({ incomingNote, embedded }: FindProfessionalProps = {}) {
   const { childProfile, setActiveTab } = useArbor();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -65,7 +76,14 @@ export default function FindProfessional() {
 
   const openConsult = (p: Professional) => {
     setConsultPro(p);
-    setConsultNote(childProfile.challenges[0] ? `We're working on ${childProfile.challenges[0].toLowerCase()} with ${first} (age ${childProfile.age}).` : "");
+    // Prefill from the Consult packet when handed in; otherwise a gentle default.
+    setConsultNote(
+      incomingNote?.trim()
+        ? incomingNote.trim()
+        : childProfile.challenges[0]
+        ? `We're working on ${childProfile.challenges[0].toLowerCase()} with ${first} (age ${childProfile.age}).`
+        : ""
+    );
     setConsultMode("either");
     setConsultDone(null);
   };
@@ -114,7 +132,9 @@ export default function FindProfessional() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader eyebrow="Care Network" title={t("sec.findpro.title")} subtitle={t("sec.findpro.sub", { name: childProfile.name.split(" ")[0] })} />
+      {!embedded && (
+        <PageHeader eyebrow="Care Network" title={t("sec.findpro.title")} subtitle={t("sec.findpro.sub", { name: childProfile.name.split(" ")[0] })} />
+      )}
 
       {/* Search + filters */}
       <div className={`${cardCls} p-5 space-y-4`}>
@@ -191,7 +211,7 @@ export default function FindProfessional() {
                   <Send className="w-3.5 h-3.5" /> Request consultation
                 </button>
                 <button
-                  onClick={() => { toast("Build a shareable summary in Reports & Handoffs.", "info"); setActiveTab("reports"); }}
+                  onClick={() => { toast("Build a shareable summary in Consult.", "info"); setActiveTab("consult"); }}
                   className="inline-flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl px-3 py-2.5 bg-white"
                   style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
                 >
@@ -223,7 +243,7 @@ export default function FindProfessional() {
                   <Mail className="w-3.5 h-3.5" /> Send the intro email
                 </a>
               )}
-              <button onClick={() => { setConsultPro(null); setActiveTab("reports"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
+              <button onClick={() => { setConsultPro(null); setActiveTab("consult"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
                 <FileText className="w-3.5 h-3.5" /> Prepare a shareable summary
               </button>
               <button onClick={() => { setConsultPro(null); setActiveTab("appointments"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>

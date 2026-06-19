@@ -28,7 +28,6 @@ const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
 const WeeklyTab = lazy(() => import("../tabs/WeeklyTab"));
 const ScholarTab = lazy(() => import("../tabs/ScholarTab"));
 const LanguageLabTab = lazy(() => import("../tabs/LanguageLabTab"));
-const HandoffTab = lazy(() => import("../tabs/HandoffTab"));
 const SafetyTab = lazy(() => import("../tabs/SafetyTab"));
 
 // New capability views (IA refactor).
@@ -73,7 +72,10 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   weekly: WeeklyTab,
   scholar: ScholarTab,
   language: LanguageLabTab,
-  handoff: HandoffTab,
+  // b3: the standalone handoff door is retired — deep-links to #/handoff now
+  // resolve into the single Consult flow (its AI-brief job is covered by the
+  // teacher/therapist/pediatrician report types in the Consult export menu).
+  handoff: ConsultTab,
   safety: SafetyTab,
   profile: ChildProfile,
   memory: ChildMemory,

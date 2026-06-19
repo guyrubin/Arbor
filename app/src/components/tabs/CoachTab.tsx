@@ -421,8 +421,8 @@ export default function CoachTab() {
                         }
                       }}
                       onAddToHandoff={() => {
-                        setActiveTab("handoff");
-                        toast("Teacher note copied — paste it into the handoff", "info");
+                        setActiveTab("consult");
+                        toast("Teacher note copied — paste it into your Consult summary", "info");
                       }}
                     />
                   ) : (
@@ -701,7 +701,7 @@ export default function CoachTab() {
         onClose={() => setVisionMode(null)}
         childProfile={childProfile}
         onSeedCoach={(prompt) => { setChatInput(prompt); }}
-        onGoHandoff={() => { setActiveTab("handoff"); toast("Note copied — paste it into the handoff", "info"); }}
+        onGoHandoff={() => { setActiveTab("consult"); toast("Note copied — paste it into your Consult summary", "info"); }}
         onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); setActiveTab("behaviors"); toast("Captured from the photo — review and save", "info"); }}
       />
     </motion.div>

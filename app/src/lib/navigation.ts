@@ -121,7 +121,11 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   mimic: "grow",
   feelings: "grow",
   adventures: "grow",
-  // Care — the former handoff doors now live inside Consult.
+  // Care — the former handoff doors now live inside Consult. The standalone
+  // `handoff` door is retired (b3): #/handoff now resolves to the Consult flow
+  // (Shell remaps it to ConsultTab) and is no longer a primary nav item, but the
+  // route stays valid and deep-linkable — keep its fallback so the sidebar still
+  // highlights Care when it is opened. `reports`/`find-pro` likewise stay routable.
   reports: "care",
   handoff: "care",
   "find-pro": "care",

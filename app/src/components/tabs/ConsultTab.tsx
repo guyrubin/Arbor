@@ -1,27 +1,15 @@
-import React, { lazy } from "react";
-import { Stethoscope, FileBarChart, Search } from "lucide-react";
-import { useLanguage } from "../../context/LanguageContext";
-import HubTabs from "../ui/HubTabs";
+import React from "react";
+import AskSpecialist from "../sections/AskSpecialist";
 
-/* Care › Consult — one verb for "get expert input". Collapses the former doors
-   (Reports & Handoffs, Find a Professional) into a single flow, led by the warm
-   handoff: a parent-redacted packet from the child's record they can export to
-   their own professional (Phase 1) or, later, send to a vetted Arbor expert. */
-
-const AskSpecialist = lazy(() => import("../sections/AskSpecialist"));
-const Reports = lazy(() => import("../sections/Reports"));
-const FindProfessional = lazy(() => import("../sections/FindProfessional"));
+/* Care › Consult — one verb for "get expert input". The former three facets
+   (Ask a specialist / AI handoff brief / Find a professional) and the hidden
+   handoff door are collapsed into a single linear flow (b3): a parent-redacted
+   packet from the child's record with one action bar — Copy / Download /
+   Export as PDF / Send to a professional. The flow itself lives in
+   AskSpecialist (the warm-handoff spine); reports and the directory fold in as
+   actions, not separate doors. Shell already lazy-loads + Suspense-wraps this
+   tab, so it renders the spine directly with no HubTabs sub-nav. */
 
 export default function ConsultTab() {
-  const { t } = useLanguage();
-  return (
-    <HubTabs
-      ariaLabel="Consult steps"
-      panels={[
-        { id: "ask", label: t("consult.ask"), icon: Stethoscope, Comp: AskSpecialist },
-        { id: "brief", label: t("consult.brief"), icon: FileBarChart, Comp: Reports },
-        { id: "find", label: t("consult.find"), icon: Search, Comp: FindProfessional },
-      ]}
-    />
-  );
+  return <AskSpecialist />;
 }
