@@ -48,6 +48,10 @@ export type ArborConfig = {
   /** SoapBox Labs kid-ASR endpoint + key (phoneme-level; primary when licensed). */
   soapboxApiUrl?: string;
   soapboxApiKey?: string;
+  /** mk-p0-2 referral loop: secret salt for the per-user HMAC referral code, and
+   *  the max number of referral months a single referrer can ever earn. */
+  referralSecret: string;
+  referralMaxGrants: number;
 };
 
 const boolFromEnv = (value: string | undefined, fallback: boolean) => {
@@ -132,6 +136,9 @@ export const loadConfig = (): ArborConfig => {
     whisperModel: process.env.WHISPER_MODEL || "whisper-1",
     soapboxApiUrl: process.env.SOAPBOX_API_URL,
     soapboxApiKey: process.env.SOAPBOX_API_KEY,
+    // No PII goes into the code; the salt only makes the code non-enumerable.
+    referralSecret: process.env.REFERRAL_SECRET || "arbor-referral-dev-salt",
+    referralMaxGrants: Number(process.env.REFERRAL_MAX_GRANTS || 5),
   };
 
   if (config.arborEnv === "prod") {

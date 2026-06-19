@@ -258,6 +258,23 @@ export const createCoachMeter = (
   next();
 };
 
+/**
+ * mk-p0-2 referral loop: build the comp Plus record granted on a successful
+ * referral activation. Kept here so server/referral.ts and its tests share one
+ * shape. A `comp` + `willRenew:false` record lapses to Free at `currentPeriodEnd`
+ * via `recordStillEntitles` above — exactly "one free month", no billing rails.
+ * Written out-of-band by server/referral.ts (NOT by the RevenueCat webhook).
+ */
+export const buildReferralGrant = (currentPeriodEndIso: string): EntitlementRecord => ({
+  plan: "plus",
+  status: "active",
+  provider: "comp",
+  productId: "referral_month",
+  willRenew: false,
+  currentPeriodEnd: currentPeriodEndIso,
+  rcOriginalAppUserId: null,
+});
+
 /** Middleware for Plus-only endpoints (professional reports / handoffs). */
 export const requirePlusFeature = (
   store: EntitlementStore,

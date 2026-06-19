@@ -67,6 +67,12 @@ export const trackShareCompleted = (artifact: LoopArtifact, channel?: string): v
 export const trackInviteSent = (channel?: string): void =>
   track(LoopEvent.InviteSent, channel ? { channel } : {});
 
+// wired by: mk-p0-2-referral-loop. Fired on the REFERRED side after
+// /api/referral/activate succeeds (role:"referred"); the referrer's grant is a
+// server-side event. Reuses the stable LoopEvent.InviteActivated name.
+export const trackInviteActivated = (role: "referrer" | "referred"): void =>
+  track(LoopEvent.InviteActivated, { role });
+
 // wired by: lib/billingTransition.recordBillingTransition() (App BillingReturnWatcher),
 // on the free/beta → in_trial entitlement transition. Beta/comp excluded.
 export const trackTrialStart = (tier: string): void => track(LoopEvent.TrialStart, { tier });

@@ -111,6 +111,14 @@ export function loadAttribution(): Attribution | null {
 }
 
 /**
+ * mk-p0-2 referral loop: the captured first-touch referral code, if any. One read
+ * path so the activation call (fired with first-plan) doesn't re-parse the URL.
+ */
+export function consumeReferralCode(): string | undefined {
+  return loadAttribution()?.referralCode || undefined;
+}
+
+/**
  * Capture + persist attribution first-touch. If a prior visit is already stored,
  * it wins and is returned unchanged; otherwise the current URL/referrer is parsed,
  * stored, and returned. Browser-only; safe to call once at startup.

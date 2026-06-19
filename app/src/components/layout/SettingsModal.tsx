@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3 } from "lucide-react";
+import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
+import InviteCard from "../referral/InviteCard";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
@@ -148,6 +149,14 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               </div>
             </>
           )}
+        </div>
+
+        {/* mk-p0-2 referral loop: invite a parent, both earn a free Plus month */}
+        <div>
+          <Row icon={<Gift className="w-4 h-4" />} title={t("set.referral.title")} sub={t("set.referral.sub")}>
+            <span />
+          </Row>
+          <InviteCard />
         </div>
 
         {/* AI response language */}

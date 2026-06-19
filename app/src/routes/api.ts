@@ -19,6 +19,7 @@ import { logger, requestIdOf } from "../server/logger.js";
 import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
+import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { isAdmin } from "../server/admin.js";
@@ -32,6 +33,7 @@ type ApiDeps = {
   shareStore: ShareStore;
   framework: FrameworkDefinition;
   entitlementStore: EntitlementStore;
+  referralStore: ReferralStore;
   counters: UsageCounterStore;
   consultStore: ConsultStore;
   adminMetrics: AdminMetricsStore;
@@ -68,7 +70,7 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, counters, consultStore, adminMetrics }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics }: ApiDeps) => {
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
@@ -1487,6 +1489,58 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
   // MON-2: customer self-service portal link (manage / cancel web subscriptions).
   router.get("/billing/portal", (_req, res) => {
     res.json({ url: config.billingManageUrl ?? null });
+  });
+
+  // mk-p0-2 referral loop: the signed-in parent's stable invite code + link +
+  // earned-months counter. Anonymous/sandbox callers get no code (UI shows the
+  // "sign in to get your link" state instead).
+  router.get("/referral/code", async (req, res) => {
+    try {
+      const actor = actorOf(req);
+      if (!actor.uid || actor.uid === "local-sandbox") {
+        res.json({ code: null, link: null, earnedMonths: 0, maxed: false });
+        return;
+      }
+      const code = await referralStore.codeForUid(actor.uid);
+      const earnedMonths = await referralStore.earnedMonths(actor.uid);
+      const base = (config.appUrl || "").replace(/\/+$/, "");
+      res.json({
+        code,
+        link: `${base}/?ref=${encodeURIComponent(code)}`,
+        earnedMonths,
+        maxed: earnedMonths >= config.referralMaxGrants,
+      });
+    } catch (error: any) {
+      logger.error("Arbor Referral Code Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to load referral code", details: error.message });
+    }
+  });
+
+  // mk-p0-2: redeem a referral on the referred parent's activation. Grants one
+  // comp Plus month to both parties (guards enforced server-side); idempotent.
+  router.post("/referral/activate", async (req, res) => {
+    try {
+      const actor = actorOf(req);
+      if (!actor.uid || actor.uid === "local-sandbox") {
+        res.status(401).json({ error: "Sign in required" });
+        return;
+      }
+      const code = String(req.body?.code ?? "").trim();
+      if (!code) {
+        res.status(400).json({ error: "Missing referral code" });
+        return;
+      }
+      const result = await referralStore.activateReferral({ code, redeemerUid: actor.uid });
+      if (!result.ok) {
+        // Soft-fail: an unknown/self code is not an error the parent should see.
+        res.json(result);
+        return;
+      }
+      res.json(result);
+    } catch (error: any) {
+      logger.error("Arbor Referral Activate Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to activate referral", details: error.message });
+    }
   });
 
   // ADM-1: founder dashboard — total users, paying-by-plan, today's token spend.

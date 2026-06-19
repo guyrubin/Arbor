@@ -16,6 +16,11 @@
  * Auth: RevenueCat sends the shared secret configured in its dashboard as the
  * `Authorization` header. We compare it to REVENUECAT_WEBHOOK_AUTH and fail
  * closed when unset (503) or mismatched (401).
+ *
+ * NOTE (mk-p0-2): `comp` / `productId:"referral_month"` records are the one
+ * exception to "RevenueCat is the sole writer" — they are written out-of-band by
+ * server/referral.ts via setEntitlement, never by this webhook. They carry
+ * willRenew:false and lapse to Free on their own (no billing rails involved).
  */
 import express from "express";
 import type { ArborConfig } from "../config/env.js";

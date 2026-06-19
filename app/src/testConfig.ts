@@ -28,5 +28,7 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   billingCheckoutUrls: {},
   childAsrProvider: "none",
   whisperModel: "whisper-1",
+  referralSecret: "test-referral-salt",
+  referralMaxGrants: 5,
   ...overrides
 });

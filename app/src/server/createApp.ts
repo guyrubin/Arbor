@@ -13,6 +13,7 @@ import { createAuthMiddleware } from "./authMiddleware.js";
 import { createAiQuota } from "./aiQuota.js";
 import { createCounterStore } from "./quotaStore.js";
 import { createEntitlementStore, createCoachMeter, requirePlusFeature } from "./entitlements.js";
+import { createReferralStore } from "./referral.js";
 import { createBillingWebhookRouter } from "./billing.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
 import { initUsageRollup } from "./usageRollup.js";
@@ -69,6 +70,8 @@ export const createApp = (config: ArborConfig) => {
   // quota and the free-tier coach meter, so caps hold across Cloud Run instances.
   const counters = createCounterStore(config);
   const entitlementStore = createEntitlementStore(config);
+  // mk-p0-2: referral store writes comp Plus grants through the entitlement seam.
+  const referralStore = createReferralStore(config, entitlementStore);
   const consultStore = createConsultStore(config);
   // ADM-1 / COST-3: founder metrics read-side + the daily token-usage rollup writer.
   const adminMetrics = createAdminMetricsStore(config);
@@ -122,7 +125,7 @@ export const createApp = (config: ArborConfig) => {
   app.use(["/api/chat", "/api/council"], createCoachMeter(entitlementStore, counters));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, counters, consultStore, adminMetrics }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics }));
 
   return app;
 };

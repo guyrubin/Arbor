@@ -24,7 +24,9 @@ import { api, authHeaders, getAiLanguage, PaywallError } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 import { track } from "../lib/analytics";
 import { runInstrumented } from "../hooks/useAsyncAction";
-import { trackFirstPlan } from "../lib/loopEvents";
+import { trackFirstPlan, trackInviteActivated } from "../lib/loopEvents";
+import { consumeReferralCode } from "../lib/attribution";
+import { refreshEntitlement } from "../hooks/useEntitlement";
 
 const readLS = (key: string): string | null => {
   try {
@@ -773,6 +775,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       await plansCol.upsert(planData);
       track("plan_generated", { title: planData.title });
       trackFirstPlan({ title: planData.title }); // activation: only the family's first plan
+      void maybeActivateReferral(); // mk-p0-2: a referred parent's activation closes the loop
       alert(`Action Plan successfully woven: "${planData.title}"`);
     } catch (err: any) {
       console.error(err);
@@ -983,6 +986,36 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     handleTogglePlanStep,
     setPlanStepStatus,
   };
+}
+
+const LS_REFERRAL_ACTIVATED = "arbor.referralActivated";
+
+/**
+ * mk-p0-2 referral loop (referred side). Fired alongside the family's first
+ * generated plan: if a referral code was captured first-touch and we haven't
+ * redeemed yet on this device, POST it once. On a real grant we announce the
+ * activation event and refresh the entitlement so the Plan badge flips to Plus.
+ * Best-effort and fully guarded — never blocks plan creation.
+ */
+async function maybeActivateReferral(): Promise<void> {
+  const code = consumeReferralCode();
+  if (!code) return;
+  try {
+    if (localStorage.getItem(LS_REFERRAL_ACTIVATED)) return;
+    localStorage.setItem(LS_REFERRAL_ACTIVATED, new Date().toISOString());
+  } catch {
+    /* storage blocked — proceed (server still dedupes per uid) */
+  }
+  try {
+    const result = await api.referralActivate(code);
+    if (result.ok && result.status === "granted") {
+      trackInviteActivated("referred");
+      void refreshEntitlement();
+    }
+  } catch {
+    // Roll back the device guard so a transient failure can retry next time.
+    try { localStorage.removeItem(LS_REFERRAL_ACTIVATED); } catch { /* ignore */ }
+  }
 }
 
 type ArborContextValue = ReturnType<typeof useArborState>;

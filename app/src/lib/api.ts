@@ -201,7 +201,27 @@ export const api = {
   // MON-3 v1: durable consultation request (email-based transaction).
   requestConsult: (payload: { professionalId: string; childId?: string; note?: string; preferredMode?: string }) =>
     post<{ request: { id: string; professionalName: string; status: string; createdAt: string }; mailto: string | null }>("/api/consult-requests", payload),
+  // mk-p0-2: the signed-in parent's stable invite code + shareable link + earned months.
+  referralCode: () => get<ReferralCodeInfo>("/api/referral/code"),
+  // mk-p0-2: redeem a captured referral code on the referred parent's activation.
+  referralActivate: (code: string) =>
+    post<ReferralActivateResult>("/api/referral/activate", { code }),
 };
+
+/** mk-p0-2: GET /api/referral/code response. `code`/`link` are null when anon. */
+export type ReferralCodeInfo = {
+  code: string | null;
+  link: string | null;
+  earnedMonths: number;
+  maxed: boolean;
+};
+
+/** mk-p0-2: POST /api/referral/activate result (mirrors server ActivationResult). */
+export type ReferralActivateResult =
+  | { ok: true; status: "granted"; earnedMonths: number; periodEnd: string }
+  | { ok: true; status: "maxed"; earnedMonths: number }
+  | { ok: true; status: "already_activated" }
+  | { ok: false; status: "self_referral" | "unknown_code" };
 
 export type EntitlementInfo = {
   plan: "free" | "plus" | "family";
