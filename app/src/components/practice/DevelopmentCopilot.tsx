@@ -181,8 +181,8 @@ export default function DevelopmentCopilot() {
       {/* Feature 10a: the weekly recommendation */}
       <SectionCard title="This week's focus" icon={<Compass className="w-5 h-5" />} tone="coral"
         action={
-          <button onClick={() => setActiveTab("missions")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl text-white transition" style={{ background: "var(--arbor-peach-ink)" }}>
-            Open this week's mission →
+          <button onClick={() => setActiveTab("overview")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl text-white transition" style={{ background: "var(--arbor-peach-ink)" }}>
+            Today&apos;s mission →
           </button>
         }>
         <div className="flex items-start gap-4">

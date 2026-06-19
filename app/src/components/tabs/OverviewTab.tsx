@@ -24,7 +24,7 @@ import RhythmStrip from "../overview/RhythmStrip";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import DevScoreStrip from "../overview/DevScoreStrip";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
-import TodaysMissionCard from "../overview/TodaysMissionCard";
+import { MissionsPanel } from "../practice/MissionsTab";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
@@ -144,7 +144,6 @@ export default function OverviewTab() {
     : dayPart === "afternoon" ? { text: t("ov.greeting.afternoon"), icon: <Sun className="w-4 h-4" /> }
     : { text: t("ov.greeting.evening"), icon: <Moon className="w-4 h-4" /> };
   const heroEyebrow = t(`today.part.${dayPart}.eyebrow`, { name: firstName });
-  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const recentCount = useMemo(
     () => behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= Date.now() - 7 * DAY).length,
@@ -281,8 +280,11 @@ export default function OverviewTab() {
       : null,
     {
       key: "mission" as SlotKey,
-      // FOLDED: mission (ia-b1) — read-only summary + deep link to the missions tab.
-      node: <TodaysMissionCard childName={firstName} dateISO={todayISO} onOpen={() => setActiveTab("missions")} />,
+      // FOLDED: mission (ia-b1) — the real daily loop (today's mission card +
+      // streak pill + completion toggle + moat write-back). The standalone
+      // Missions tab was retired; Today is now the mission home. "See this
+      // week's rotation" deep-links into My Child › Development.
+      node: <MissionsPanel variant="today" />,
     },
   ] as (Slot | null)[]).filter((s): s is Slot => s !== null);
 

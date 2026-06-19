@@ -115,12 +115,12 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   weekly: "child",
   // Ask — scholar lens lives inside the coach.
   scholar: "ask",
-  // Grow — drills reached via the Practice hub; missions folded into Today loop.
+  // Grow — drills reached via the Practice hub. (ia-b1: missions fully folded
+  // into the Today daily loop and retired as a route — no fallback needed.)
   speech: "grow",
   mimic: "grow",
   feelings: "grow",
   adventures: "grow",
-  missions: "grow",
   // Care — the former handoff doors now live inside Consult.
   reports: "care",
   handoff: "care",

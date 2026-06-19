@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { CalendarCheck, Check, Compass, Flame, MessageSquare, Sparkles, Target } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { useToast } from "../../context/ToastContext";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { PlayShell, PlayHeader } from "../ui/playkit";
 import ProgressRing from "../ui/ProgressRing";
@@ -13,13 +14,84 @@ import type { MissionRecord } from "../../types";
 import { track } from "../../lib/analytics";
 
 /**
+ * Mission card — one mission from the 5-day rotation. Shared between the full
+ * studio (5-day grid + Development Score) and the folded Today loop. Promoted
+ * the title to a real <h3> so the Today section keeps a clean heading outline
+ * under its section <h2>; hit areas are >=44px for touch.
+ */
+export function MissionCard({
+  m,
+  featured,
+  done,
+  onToggle,
+  onCoach,
+}: {
+  m: MissionTemplate;
+  featured?: boolean;
+  done: boolean;
+  onToggle: (m: MissionTemplate) => void;
+  onCoach: (m: MissionTemplate) => void;
+}) {
+  const vars = useMissionVars();
+  const meta = DOMAIN_META[m.domain];
+  return (
+    <div className={`${cardCls} p-5 space-y-3 relative`} style={featured ? { border: `1px solid ${meta.color}` } : undefined}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2.5">
+          <span className="text-2xl" aria-hidden="true">{m.emoji}</span>
+          <span>
+            <h3 className="block text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{m.title}</h3>
+            <Chip tone={m.domain === "speech" ? "mint" : m.domain === "language" ? "sky" : m.domain === "cognition" ? "lav" : m.domain === "social" ? "yellow" : "pink"}>{meta.label}</Chip>
+          </span>
+        </span>
+        <button
+          onClick={() => onToggle(m)}
+          aria-pressed={done}
+          className="inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-3.5 min-h-[44px] rounded-xl transition flex-shrink-0 active:scale-[0.98]"
+          style={done ? { background: "var(--arbor-clay)", color: "#fff" } : { background: meta.soft, color: meta.color }}
+        >
+          <Check className="w-3.5 h-3.5" aria-hidden="true" /> {done ? "Done!" : "Mark done"}
+        </button>
+      </div>
+      <ol className="space-y-1.5 text-xs list-decimal list-inside" style={{ color: "var(--arbor-ink)" }}>
+        {m.steps.map((s, i) => (
+          <li key={i} className="leading-relaxed">{fillTemplate(s, vars)}</li>
+        ))}
+      </ol>
+      <button onClick={() => onCoach(m)} className="inline-flex items-center gap-1 text-[11px] font-bold min-h-[44px] transition" style={{ color: "var(--arbor-muted)" }}>
+        <MessageSquare className="w-3 h-3" aria-hidden="true" /> Coach me through this
+      </button>
+    </div>
+  );
+}
+
+// Template vars (child first name / age / second language) used to fill mission
+// step + coach-prompt placeholders. Hook keeps MissionCard self-contained.
+function useMissionVars() {
+  const { childProfile } = useArbor();
+  return {
+    name: childProfile.name.split(" ")[0],
+    age: childProfile.age,
+    lang: childProfile.languages?.[1],
+  };
+}
+
+/**
  * Development Missions — Otsimo-style daily skill play, one mission a day on a
  * 5-day rotation, plus the Fitbit-style Development Score. The score measures
  * PRACTICE CONSISTENCY (volume, days, breadth) — never child ability.
+ *
+ * `variant`:
+ *  - "full"  (default): the whole studio — score grid, weekly focus, rotation.
+ *    Wrapped in the child playful register (PlayShell/PlayHeader).
+ *  - "today": a single focused block for the parent calm register on Today —
+ *    today's mission card + streak pill + a quiet link to the weekly rotation.
+ *    No PlayShell, no score grid (that density belongs to Development).
  */
-export default function MissionsTab() {
+export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full" }) {
   const { childProfile, milestones, setChatInput, setActiveTab } = useArbor();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const data = usePracticeData(childProfile.id);
   const { recommendation } = useCopilot(milestones, data, childProfile.id);
   const first = childProfile.name.split(" ")[0];
@@ -27,7 +99,7 @@ export default function MissionsTab() {
 
   // Day in the 5-day cycle, anchored to the calendar so the whole family — and
   // the folded card on Today — sees the same mission. Shared helper keeps the
-  // Today loop and the Missions tab in agreement.
+  // Today loop and the full studio in agreement.
   const cycleDay = useMemo(() => cycleDayFor(data.today), [data.today]);
 
   const todaysMission = MISSION_CYCLE[cycleDay];
@@ -49,6 +121,7 @@ export default function MissionsTab() {
 
   const toggleMission = (m: MissionTemplate) => {
     const existing = recordFor(m);
+    const willComplete = !(existing?.completed ?? false);
     const rec: MissionRecord = existing
       ? { ...existing, completed: !existing.completed, timestamp: new Date().toISOString() }
       : {
@@ -59,7 +132,15 @@ export default function MissionsTab() {
           completed: true,
           timestamp: new Date().toISOString(),
         };
-    void data.missions.upsert(rec);
+    // Optimistic + fire-and-forget; a save failure must not block the UI. On the
+    // Today loop, surface a quiet success/error toast (moat write-back).
+    void Promise.resolve(data.missions.upsert(rec))
+      .then(() => {
+        if (variant === "today" && willComplete) toast(t("ov.mission.toastDone", { name: first }), "success");
+      })
+      .catch(() => {
+        if (variant === "today") toast(t("ov.mission.toastErr"), "error");
+      });
     if (rec.completed) track("mission_done", { mission: m.id, domain: m.domain });
   };
 
@@ -72,40 +153,43 @@ export default function MissionsTab() {
     (r) => r.completed && r.date > new Date(new Date(`${data.today}T12:00:00`).getTime() - 7 * 86400000).toISOString().slice(0, 10)
   ).length;
 
-  const MissionCard = ({ m, featured }: { m: MissionTemplate; featured?: boolean }) => {
-    const meta = DOMAIN_META[m.domain];
-    const done = recordFor(m)?.completed ?? false;
+  // ── Today variant: single focused block, parent calm register ──────────────
+  if (variant === "today") {
     return (
-      <div className={`${cardCls} p-5 space-y-3 relative`} style={featured ? { border: `1px solid ${meta.color}` } : undefined}>
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2.5">
-            <span className="text-2xl">{m.emoji}</span>
-            <span>
-              <b className="block text-sm" style={{ color: "var(--arbor-ink)" }}>{m.title}</b>
-              <Chip tone={m.domain === "speech" ? "mint" : m.domain === "language" ? "sky" : m.domain === "cognition" ? "lav" : m.domain === "social" ? "yellow" : "pink"}>{meta.label}</Chip>
-            </span>
+      <section
+        className="rounded-[22px] p-5 md:p-6"
+        style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}
+      >
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+            <Target className="w-3.5 h-3.5" aria-hidden="true" /> {t("ov.mission.title")}
           </span>
-          <button
-            onClick={() => toggleMission(m)}
-            aria-pressed={done}
-            className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3.5 py-2 rounded-xl transition flex-shrink-0"
-            style={done ? { background: "var(--arbor-clay)", color: "#fff" } : { background: meta.soft, color: meta.color }}
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold flex-shrink-0"
+            style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}
+            aria-label={t("ov.mission.streakA11y", { n: data.streak })}
           >
-            <Check className="w-3.5 h-3.5" /> {done ? "Done!" : "Mark done"}
-          </button>
+            🔥 {data.streak}
+          </span>
         </div>
-        <ol className="space-y-1.5 text-xs list-decimal list-inside" style={{ color: "var(--arbor-ink)" }}>
-          {m.steps.map((s, i) => (
-            <li key={i} className="leading-relaxed">{fillTemplate(s, vars)}</li>
-          ))}
-        </ol>
-        <button onClick={() => askCoach(m)} className="inline-flex items-center gap-1 text-[11px] font-bold transition" style={{ color: "var(--arbor-muted)" }}>
-          <MessageSquare className="w-3 h-3" /> Coach me through this
+        <MissionCard
+          m={todaysMission}
+          done={recordFor(todaysMission)?.completed ?? false}
+          onToggle={toggleMission}
+          onCoach={askCoach}
+        />
+        <button
+          onClick={() => setActiveTab("development")}
+          className="inline-flex items-center gap-1.5 text-[13px] font-bold mt-3 min-h-[44px] transition"
+          style={{ color: "var(--arbor-green-ink)" }}
+        >
+          {t("ov.mission.more")} →
         </button>
-      </div>
+      </section>
     );
-  };
+  }
 
+  // ── Full variant: the whole studio (child playful register) ────────────────
   return (
     <PlayShell>
       <PlayHeader
@@ -171,7 +255,7 @@ export default function MissionsTab() {
                       <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{focus.reason}</span>
                     </div>
                   )}
-                  <MissionCard m={mission} featured />
+                  <MissionCard m={mission} featured done={recordFor(mission)?.completed ?? false} onToggle={toggleMission} onCoach={askCoach} />
                 </div>
               );
             })}
@@ -195,7 +279,7 @@ export default function MissionsTab() {
       {/* Today's mission (feature 6) */}
       <SectionCard title="Today's mission" icon={<Target className="w-5 h-5" />} tone="mint"
         action={<Chip tone="mint" icon={<Sparkles className="w-3 h-3" />}>Day {cycleDay + 1} of 5</Chip>}>
-        <MissionCard m={todaysMission} featured />
+        <MissionCard m={todaysMission} featured done={recordFor(todaysMission)?.completed ?? false} onToggle={toggleMission} onCoach={askCoach} />
       </SectionCard>
 
       {/* Full cycle — do extra missions any day; recommended one highlighted */}
@@ -205,7 +289,7 @@ export default function MissionsTab() {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {MISSION_CYCLE.filter((m) => m.id !== todaysMission.id).map((m) => (
-            <MissionCard key={m.id} m={m} featured={m.id === recommendedMission.id} />
+            <MissionCard key={m.id} m={m} featured={m.id === recommendedMission.id} done={recordFor(m)?.completed ?? false} onToggle={toggleMission} onCoach={askCoach} />
           ))}
         </div>
       </SectionCard>

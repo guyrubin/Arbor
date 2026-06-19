@@ -86,7 +86,8 @@ export type ActiveTab =
   | "speech"         // Practice Studio › Speech Coach (articulation)
   | "mimic"          // Practice Studio › Mimic Studio (imitation play)
   | "feelings"       // Practice Studio › Feelings Lab (emotion coaching)
-  | "missions"       // Practice Studio › Daily Missions + Development Score
+  // (ia-b1) "missions" retired as a standalone route — the daily mission loop is
+  // now folded into Today (OverviewTab). Mission DATA still lives in usePracticeData.
   | "journey"        // Practice Studio › Development Journey
   | "adventures"     // Practice Studio › Cognitive Adventures
   | "copilot"        // My Child › Development Dashboard (Copilot)
@@ -105,7 +106,7 @@ export type ActiveTab =
 const VALID_TABS = new Set<string>([
   "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
   "profile", "memory", "strengths", "screening", "timeline", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family", "comics",
-  "speech", "mimic", "feelings", "missions", "journey", "adventures", "copilot",
+  "speech", "mimic", "feelings", "journey", "adventures", "copilot",
   "development", "daily-play", "practice", "consult",
   "attribution",
 ]);
