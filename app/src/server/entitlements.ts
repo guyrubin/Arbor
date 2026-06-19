@@ -8,8 +8,10 @@
  *  - ENFORCE_ENTITLEMENTS=false: everyone resolves to "plus", so a private beta
  *    can keep full access. Production defaults to enforced even if the env var
  *    is missing, so an omitted Cloud Run flag cannot leak Plus.
- *  - ARBOR_PLUS_UIDS / ARBOR_PLUS_EMAILS env lists grant Plus manually
- *    (founder accounts, comped testers) without touching Firestore.
+ *  - ARBOR_FAMILY_* / ARBOR_PLUS_* (UIDS|EMAILS) env lists grant Family / Plus
+ *    manually (founder + example/demo accounts, comped testers) without touching
+ *    Firestore. Family wins (it's the superset). Pair with ARBOR_ADMIN_EMAILS to
+ *    also unlock the founder dashboard.
  *
  * Free meters the coach and keeps single-child; Plus adds unlimited coaching,
  * professional reports/handoffs, advanced plans, and multi-child.
@@ -202,6 +204,11 @@ export const resolveEntitlement = async (
   }
   const uid = actor.uid.toLowerCase();
   const email = (actor.email || "").toLowerCase();
+  // Comp lists grant a plan without billing (founders, example/demo accounts).
+  // Family is the superset (everything in Plus + a co-parent seat), so it wins.
+  if (envList("ARBOR_FAMILY_UIDS").includes(uid) || (email && envList("ARBOR_FAMILY_EMAILS").includes(email))) {
+    return { plan: "family", limits: PLAN_LIMITS.family, source: "env", enforced: true, status: "active", provider: "comp" };
+  }
   if (envList("ARBOR_PLUS_UIDS").includes(uid) || (email && envList("ARBOR_PLUS_EMAILS").includes(email))) {
     return { plan: "plus", limits: PLAN_LIMITS.plus, source: "env", enforced: true, status: "active", provider: "comp" };
   }

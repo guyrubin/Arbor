@@ -249,6 +249,10 @@ export interface HeroSceneRender {
   title: string;
   narration: string;
   imagePrompt: string;
+  /** 2-3 punchy comic sound-effect words for THIS beat (e.g. ["BOOM!","WHOOSH!"]). */
+  sfx?: string[];
+  /** One short hero line for a speech bubble on this beat's comic panel. */
+  dialogue?: string;
 }
 
 /** The personalized choice text the model returns for the Decision beat. */

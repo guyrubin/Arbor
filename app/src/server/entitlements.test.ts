@@ -4,7 +4,7 @@ import { PLAN_LIMITS, entitlementsEnforced, resolveEntitlement, type Entitlement
 const nullStore: EntitlementStore = { async getPlan() { return null; } };
 const plusStore: EntitlementStore = { async getPlan() { return "plus"; } };
 
-const ENV_KEYS = ["ARBOR_ENV", "ENFORCE_ENTITLEMENTS", "ARBOR_PLUS_UIDS", "ARBOR_PLUS_EMAILS"];
+const ENV_KEYS = ["ARBOR_ENV", "ENFORCE_ENTITLEMENTS", "ARBOR_PLUS_UIDS", "ARBOR_PLUS_EMAILS", "ARBOR_FAMILY_UIDS", "ARBOR_FAMILY_EMAILS"];
 
 afterEach(() => {
   for (const k of ENV_KEYS) delete process.env[k];
@@ -36,6 +36,18 @@ describe("entitlement layer (MON-1)", () => {
     expect(e.limits.maxChildren).toBe(1);
     expect(e.limits.professionalReports).toBe(false);
     expect(typeof e.limits.coachMessagesPerDay).toBe("number");
+  });
+
+  it("enforced: the Family comp list grants the full Family plan (superset), winning over Plus", async () => {
+    process.env.ENFORCE_ENTITLEMENTS = "true";
+    process.env.ARBOR_FAMILY_EMAILS = "bguy.rubin@gmail.com";
+    process.env.ARBOR_PLUS_EMAILS = "bguy.rubin@gmail.com"; // on both lists → Family wins
+    const e = await resolveEntitlement(nullStore, { uid: "x", email: "BGuy.Rubin@Gmail.com" });
+    expect(e.plan).toBe("family");
+    expect(e.source).toBe("env");
+    expect(e.provider).toBe("comp");
+    expect(e.limits.coParentSeats).toBe(1);
+    expect(e.limits.professionalReports).toBe(true);
   });
 
   it("enforced: env allowlists grant Plus by uid or email", async () => {

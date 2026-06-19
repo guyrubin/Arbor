@@ -1,74 +1,200 @@
-import React, { useState } from "react";
-import { Sparkles, Wand2, Download, RefreshCw, ShieldCheck, BookOpen } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Sparkles, Wand2, Download, RefreshCw, ShieldCheck, BookOpen, Layers, Check } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { api } from "../../lib/api";
+import { api, PaywallError } from "../../lib/api";
 import { track } from "../../lib/analytics";
-import { useAsyncAction } from "../../hooks/useAsyncAction";
+import { runInstrumented } from "../../hooks/useAsyncAction";
+import { HERO_STORIES } from "../../lib/heroJourneys";
+import type { HeroPackId } from "../../types";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel } from "../ui/playkit";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 
 /**
- * Hero Comics (Academy) — the child is the star of their own comic-book page.
- * Pick an adventure, and the child's saved hero avatar is rendered as the
- * protagonist of a dynamic cel-shaded comic panel via /api/generate-comic.
- * Falls back to a "create your hero" state when no avatar exists yet.
+ * Hero Comics (Academy) — the child is the STAR of their own comic book for every
+ * Academy story. Each of the canon Hero-Journey stories is rendered as a dynamic,
+ * viral cel-shaded comic panel via /api/generate-comic, featuring the child's saved
+ * hero avatar (name on the suit, big SFX, a speech bubble). Parents can generate one
+ * story at a time, or tap "Generate all" to make the whole set and save/share them.
+ *
+ * Comic images are large data URLs, so they live in component state for the session
+ * and are saved to disk on demand (the share/viral loop) — never persisted to the
+ * per-child Firestore doc.
  */
-const ADVENTURES: { id: string; emoji: string; title: string; theme: string; dialogue: (n: string) => string; sfx: string[] }[] = [
-  { id: "rescue", emoji: "🦸", title: "The big rescue", theme: "a brave superhero rescue — saving a beloved stuffed animal who got lost", dialogue: (n) => `Don't worry — ${n} is on the case!`, sfx: ["KA-POW!", "WHOOSH!", "ZAP!"] },
-  { id: "kind", emoji: "💛", title: "Super kindness", theme: "using super-kindness powers to help a friend who feels sad", dialogue: (n) => `${n} is here to help!`, sfx: ["AWW!", "TA-DA!", "ZING!"] },
-  { id: "brave", emoji: "🌙", title: "Brave at bedtime", theme: "being brave in a cozy bedroom at night, turning shadows into friendly shapes", dialogue: (n) => `${n} is brave and strong!`, sfx: ["WHOOSH!", "TWINKLE!", "POOF!"] },
-  { id: "team", emoji: "🤝", title: "Teamwork time", theme: "teaming up to build the most amazing fort and save the day together", dialogue: (n) => `Teamwork, go!`, sfx: ["BOOM!", "CLICK!", "HOORAY!"] },
-  { id: "explorer", emoji: "🗺️", title: "Brave explorer", theme: "a daring explorer discovering a hidden world in the back garden", dialogue: (n) => `Adventure awaits, ${n}!`, sfx: ["WHOOSH!", "AHA!", "SPLASH!"] },
-  { id: "calm", emoji: "🧘", title: "Calm-down hero", theme: "using calm-breathing super-powers to turn a big stormy feeling into sunshine", dialogue: (n) => `Breathe in… ${n} has this!`, sfx: ["WHOOSH…", "AHH…", "SHINE!"] },
-];
+
+/** Per-story viral comic copy (bilingual): the heroic panel cue, a shout, and SFX. */
+type ComicCopy = { theme: string; themeHe: string; dialogue: string; dialogueHe: string; sfx: string[]; sfxHe: string[] };
+const STORY_COMIC: Record<string, ComicCopy> = {
+  "david-and-goliath": {
+    theme: "a small but mighty young hero standing fearlessly before a towering giant, slingshot raised high, glowing with courage",
+    themeHe: "גיבור קטן ואדיר עומד ללא פחד מול ענק מתנשא, רוגטקה מורמת גבוה, זוהר באומץ",
+    dialogue: "I'm small but I'm brave!", dialogueHe: "אני קטן אבל אמיץ!",
+    sfx: ["BOOM!", "WHOOSH!", "ZING!"], sfxHe: ["בום!", "ואוש!", "זינג!"],
+  },
+  "moses-and-pharaoh": {
+    theme: "a brave young hero standing tall before a mighty king's golden throne, speaking up boldly and bright",
+    themeHe: "גיבור צעיר ואמיץ עומד זקוף מול כס המלך המוזהב, מדבר באומץ ובביטחון",
+    dialogue: "Let my people go!", dialogueHe: "שלח את עמי!",
+    sfx: ["BOOM!", "ECHO!", "WHAM!"], sfxHe: ["בום!", "הד!", "טראח!"],
+  },
+  "the-lion-who-was-afraid": {
+    theme: "a brave child hero with a glowing friendly lion taking one bold step into a magical starry night",
+    themeHe: "גיבור ילד אמיץ עם אריה זוהר וידידותי צועד צעד אמיץ אל תוך לילה קסום וזרוע כוכבים",
+    dialogue: "One brave step!", dialogueHe: "צעד אמיץ אחד!",
+    sfx: ["ROAR!", "WHOOSH!", "TWINKLE!"], sfxHe: ["שאגה!", "ואוש!", "נצנוץ!"],
+  },
+  "noahs-ark": {
+    theme: "a determined young hero building a giant ark with cheerful animals as the first rain falls and a rainbow rises",
+    themeHe: "גיבור צעיר ונחוש בונה תיבה ענקית עם חיות עליזות כשהגשם הראשון יורד וקשת עולה",
+    dialogue: "Everyone's safe with me!", dialogueHe: "כולם בטוחים איתי!",
+    sfx: ["BANG!", "SPLASH!", "HOORAY!"], sfxHe: ["באנג!", "שלאמפ!", "הידד!"],
+  },
+  "jonah-and-the-great-fish": {
+    theme: "a brave hero riding a friendly giant fish through sparkling ocean waves, turning back to do what's right",
+    themeHe: "גיבור אמיץ רוכב על דג ענק וידידותי בין גלי ים נוצצים, חוזר לעשות את הדבר הנכון",
+    dialogue: "I'm turning back!", dialogueHe: "אני חוזר!",
+    sfx: ["SPLASH!", "WHOOSH!", "GULP!"], sfxHe: ["שלאמפ!", "ואוש!", "גלופ!"],
+  },
+  "the-dragon-of-responsibility": {
+    theme: "a caring young hero feeding a tiny friendly dragon's flame to light up a cozy village glowing at night",
+    themeHe: "גיבור צעיר ואכפתי מזין את להבת הדרקון הקטן והחמוד ומאיר כפר נעים וזוהר בלילה",
+    dialogue: "Job first, then play!", dialogueHe: "קודם עבודה, אחר כך משחק!",
+    sfx: ["FWOOSH!", "SPARKLE!", "TA-DA!"], sfxHe: ["פוווש!", "ניצוץ!", "טה-דה!"],
+  },
+  "joseph-and-his-brothers": {
+    theme: "a hopeful hero in a colorful coat opening their arms wide to forgive, warm golden light bursting all around",
+    themeHe: "גיבור מלא תקווה במעיל צבעוני פותח את זרועותיו לסליחה, אור זהוב וחמים מתפרץ מסביב",
+    dialogue: "I forgive you!", dialogueHe: "אני סולח לך!",
+    sfx: ["GLOW!", "HUG!", "SHINE!"], sfxHe: ["זוהר!", "חיבוק!", "ברק!"],
+  },
+  "jacob-wrestling-the-angel": {
+    theme: "a determined hero holding on with all their might through the night until a glowing sunrise breaks the sky",
+    themeHe: "גיבור נחוש שאוחז בכל כוחו לאורך הלילה עד שזריחה זוהרת בוקעת בשמיים",
+    dialogue: "I won't give up!", dialogueHe: "אני לא מוותר!",
+    sfx: ["WHAM!", "HOLD!", "DAWN!"], sfxHe: ["טראח!", "חזק!", "זריחה!"],
+  },
+  "the-garden-of-forgotten-seeds": {
+    theme: "a patient young hero watering a magical garden that bursts into giant colorful flowers and sparkles",
+    themeHe: "גיבור צעיר וסבלני משקה גן קסום שמתפוצץ בפרחים ענקיים וצבעוניים ובניצוצות",
+    dialogue: "Look — it's growing!", dialogueHe: "תראו — זה גדל!",
+    sfx: ["POP!", "BLOOM!", "SPARKLE!"], sfxHe: ["פופ!", "פריחה!", "ניצוץ!"],
+  },
+  "king-solomons-choice": {
+    theme: "a wise young hero-king on a golden throne glowing with clever ideas, making a fair and kind choice",
+    themeHe: "גיבור-מלך צעיר וחכם על כס זהב, זוהר ברעיונות נבונים, מקבל החלטה הוגנת וטובה",
+    dialogue: "I know what's fair!", dialogueHe: "אני יודע מה הוגן!",
+    sfx: ["AHA!", "DING!", "SHINE!"], sfxHe: ["אהה!", "דינג!", "ברק!"],
+  },
+};
+
+const PACK_COLORS: Record<HeroPackId, string> = {
+  courage: "#e2562d",
+  responsibility: "#d7aa55",
+  growth: "#6f9e6f",
+  wisdom: "#68B4FF",
+};
+
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 export default function HeroComicsTab() {
   const { childProfile, setActiveTab, openPaywall } = useArbor();
-  const { t } = useLanguage();
+  const { aiLang } = useLanguage();
   const { url: heroUrl, hasHero, name } = useHeroAvatar();
+
+  // storyId → generated comic data URL (session-only; large data URLs aren't persisted)
+  const [comics, setComics] = useState<Record<string, string>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [comic, setComic] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [batch, setBatch] = useState<{ done: number; total: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // M4: loading + friendly error + start/success/error analytics ("hero_comic_*").
-  // A 402 opens the paywall (conversion moment) instead of an inline error.
-  const comicGen = useAsyncAction(
-    "hero_comic",
-    (adv: (typeof ADVENTURES)[number]) =>
-      api.generateComic({
-        ...(heroUrl && heroUrl.startsWith("data:") ? { avatar: { dataUrl: heroUrl } } : {}),
-        heroName: name,
-        theme: adv.theme,
-        dialogue: adv.dialogue(name),
-        sfx: adv.sfx,
-        style: "comichero",
-      }),
-    {
-      fallbackError: t("gen.comic.fail"),
-      onPaywall: (err) => openPaywall(err.feature || "heroComic", err.plan),
-    },
+  const he = aiLang === "he";
+  const heroDataUrl = heroUrl && heroUrl.startsWith("data:") ? heroUrl : undefined;
+
+  const stories = useMemo(
+    () => HERO_STORIES.filter((s) => STORY_COMIC[s.id]),
+    [],
   );
-  const loading = comicGen.loading;
-  const error = comicGen.error;
+  const madeCount = Object.keys(comics).length;
 
-  const make = async (adventureId: string) => {
-    const adv = ADVENTURES.find((a) => a.id === adventureId);
-    if (!adv) return;
-    setActiveId(adventureId);
-    setComic(null);
-    const res = await comicGen.run(adv);
-    if (!res) return;
-    setComic(res.dataUrl);
-    track("hero_comic_generated", { adventure: adventureId });
+  /** Core generator: one story → a viral hero comic. Returns an explicit status so
+   *  a batch run can stop cleanly on a paywall or a hard error (no stale-state guess). */
+  const generate = async (storyId: string): Promise<"ok" | "paywall" | "error"> => {
+    const copy = STORY_COMIC[storyId];
+    if (!copy) return "error";
+    try {
+      const res = await runInstrumented("hero_comic", () =>
+        api.generateComic({
+          ...(heroDataUrl ? { avatar: { dataUrl: heroDataUrl } } : {}),
+          heroName: name,
+          theme: he ? copy.themeHe : copy.theme,
+          dialogue: he ? copy.dialogueHe : copy.dialogue,
+          sfx: he ? copy.sfxHe : copy.sfx,
+          style: "comichero",
+        }),
+      );
+      setComics((c) => ({ ...c, [storyId]: res.dataUrl }));
+      track("hero_comic_generated", { story: storyId });
+      return "ok";
+    } catch (err) {
+      if (err instanceof PaywallError) {
+        openPaywall(err.feature || "heroComic", err.plan);
+        return "paywall";
+      }
+      const msg = err instanceof Error && err.message ? err.message : "Couldn't create that comic — please try again.";
+      setError(msg);
+      return "error";
+    }
   };
 
-  const download = () => {
-    if (!comic) return;
+  const makeOne = async (storyId: string) => {
+    setError(null);
+    setActiveId(storyId);
+    setBusyId(storyId);
+    await generate(storyId);
+    setBusyId(null);
+  };
+
+  // Generate ALL stories the child hasn't made yet, in order, with live progress.
+  const makeAll = async () => {
+    setError(null);
+    const todo = stories.filter((s) => !comics[s.id]);
+    if (todo.length === 0) return;
+    setBatch({ done: 0, total: todo.length });
+    track("hero_comic_batch_started", { count: todo.length });
+    let made = 0;
+    for (let i = 0; i < todo.length; i++) {
+      setActiveId(todo[i].id);
+      setBusyId(todo[i].id);
+      const status = await generate(todo[i].id);
+      setBusyId(null);
+      setBatch({ done: i + 1, total: todo.length });
+      if (status === "ok") made += 1;
+      // A paywall or hard error stops the run so we don't hammer the API.
+      else break;
+    }
+    setBatch(null);
+    track("hero_comic_batch_finished", { made });
+  };
+
+  const download = (storyId: string, title: string) => {
+    const url = comics[storyId];
+    if (!url) return;
     const a = document.createElement("a");
-    a.href = comic;
-    a.download = `${name}-hero-comic.png`;
+    a.href = url;
+    a.download = `${slug(name)}-${slug(title)}-hero-comic.png`;
     a.click();
   };
+
+  const downloadAll = () => {
+    stories.forEach((s, i) => {
+      if (!comics[s.id]) return;
+      // Stagger so the browser doesn't drop simultaneous downloads.
+      setTimeout(() => download(s.id, he ? s.titleHe : s.title), i * 350);
+    });
+  };
+
+  const busy = busyId != null || batch != null;
 
   // No hero yet → invite the parent to create one (cross-domain entry point).
   if (!hasHero) {
@@ -80,7 +206,7 @@ export default function HeroComicsTab() {
             First, create {name}&apos;s hero
           </p>
           <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }}>
-            Make {name} into their own comic superhero — then they star in every comic, story and adventure across Arbor.
+            Make {name} into their own comic superhero — then they star in every Academy story, comic and adventure across Arbor.
           </p>
           <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
             <Sparkles className="w-4 h-4" /> Create {name}&apos;s hero
@@ -92,58 +218,99 @@ export default function HeroComicsTab() {
 
   return (
     <PlayShell>
-      <PlayHeader title="Hero Comics" say={`Pick an adventure — ${name} stars in it!`} mood="cheer" />
+      <PlayHeader title="Hero Comics" say={`Every Academy story — starring ${name}!`} mood="cheer" />
 
-      {/* Adventure picker */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {ADVENTURES.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => make(a.id)}
-            disabled={loading}
-            className={`play-pressable rounded-[var(--play-radius)] p-4 text-center bg-white shadow-[0_4px_16px_rgba(41,51,63,0.06)] disabled:opacity-60 ${activeId === a.id ? "ring-2" : ""}`}
-            style={{ border: activeId === a.id ? "2.5px solid var(--arbor-lav-ink)" : "2.5px solid transparent" }}
-          >
-            <span className="text-4xl block">{a.emoji}</span>
-            <span className="text-[13px] font-extrabold block mt-2 leading-tight" style={{ color: "var(--arbor-ink)" }}>{a.title}</span>
-          </button>
-        ))}
+      {/* Generate-all hero bar */}
+      <PlayPanel tone="clay">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              {name}&apos;s hero comic collection
+            </p>
+            <p className="text-[12.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>
+              {madeCount} of {stories.length} stories made
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <PlayButton tone="clay" onClick={makeAll} disabled={busy || madeCount >= stories.length}>
+              {batch ? (
+                <><RefreshCw className="w-4 h-4 animate-spin" /> Drawing {batch.done}/{batch.total}…</>
+              ) : (
+                <><Layers className="w-4 h-4" /> Generate all {stories.length}</>
+              )}
+            </PlayButton>
+            {madeCount > 1 && (
+              <PlayButton variant="soft" tone="clay" onClick={downloadAll} disabled={busy}>
+                <Download className="w-4 h-4" /> Save all
+              </PlayButton>
+            )}
+          </div>
+        </div>
+        {batch && (
+          <div className="mt-3 h-2 w-full rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(batch.done / batch.total) * 100}%`, background: "var(--arbor-clay)" }} />
+          </div>
+        )}
+      </PlayPanel>
+
+      {/* Story grid — each canon Academy story as a hero comic */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {stories.map((s) => {
+          const color = PACK_COLORS[s.pack];
+          const comic = comics[s.id];
+          const isBusy = busyId === s.id;
+          return (
+            <div
+              key={s.id}
+              className="rounded-[var(--play-radius)] p-3.5 bg-white shadow-[0_4px_16px_rgba(41,51,63,0.06)] space-y-3"
+              style={{ border: activeId === s.id ? `2.5px solid ${color}` : "2.5px solid transparent" }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>
+                  {he ? s.titleHe : s.title}
+                </span>
+                <span className="text-[9.5px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md" style={{ background: `${color}22`, color }}>
+                  {s.pack}
+                </span>
+              </div>
+
+              {/* Comic stage */}
+              <div className="relative aspect-[3/2] rounded-[14px] overflow-hidden" style={{ background: "var(--arbor-paper-deep)", border: "3px solid var(--arbor-ink)" }}>
+                {comic ? (
+                  <img src={comic} alt={`${name}'s ${he ? s.titleHe : s.title} comic`} className="w-full h-full object-cover" />
+                ) : isBusy ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                    <Wand2 className="w-8 h-8 animate-pulse" style={{ color }} />
+                    <p className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>Drawing {name}…</p>
+                  </div>
+                ) : (
+                  <button onClick={() => makeOne(s.id)} disabled={busy} className="absolute inset-0 flex flex-col items-center justify-center gap-2 disabled:opacity-60">
+                    <BookOpen className="w-8 h-8" style={{ color }} />
+                    <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>Make this comic</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Actions */}
+              {comic && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <PlayButton tone="clay" variant="soft" onClick={() => makeOne(s.id)} disabled={busy}>
+                    <RefreshCw className="w-3.5 h-3.5" /> Redraw
+                  </PlayButton>
+                  <PlayButton tone="clay" variant="soft" onClick={() => download(s.id, he ? s.titleHe : s.title)} disabled={busy}>
+                    <Download className="w-3.5 h-3.5" /> Save
+                  </PlayButton>
+                  <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+                    <Check className="w-3.5 h-3.5" /> Made
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Comic stage */}
-      <PlayPanel>
-        {loading && (
-          <div className="aspect-[3/2] rounded-[var(--play-radius)] flex flex-col items-center justify-center gap-3" style={{ background: "var(--arbor-paper-deep)" }}>
-            <Wand2 className="w-9 h-9 animate-pulse" style={{ color: "var(--arbor-lav-ink)" }} />
-            <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Drawing {name}&apos;s comic…</p>
-            <p className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>This takes a few seconds — superhero work is hard!</p>
-          </div>
-        )}
-
-        {!loading && comic && (
-          <div>
-            <img src={comic} alt={`${name}'s hero comic`} className="w-full rounded-[var(--play-radius)] shadow-[0_8px_28px_rgba(41,51,63,0.16)]" style={{ border: "3px solid var(--arbor-ink)" }} />
-            <div className="flex flex-wrap items-center gap-2.5 mt-4">
-              <PlayButton tone="lav" onClick={() => activeId && make(activeId)}>
-                <RefreshCw className="w-4 h-4" /> Make another
-              </PlayButton>
-              <PlayButton variant="soft" tone="clay" onClick={download}>
-                <Download className="w-4 h-4" /> Save comic
-              </PlayButton>
-            </div>
-          </div>
-        )}
-
-        {!loading && !comic && (
-          <div className="aspect-[3/2] rounded-[var(--play-radius)] flex flex-col items-center justify-center gap-2 text-center px-6" style={{ background: "var(--arbor-paper-deep)" }}>
-            <BookOpen className="w-9 h-9" style={{ color: "var(--arbor-lav-ink)" }} />
-            <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Pick an adventure above</p>
-            <p className="text-[12px] max-w-sm" style={{ color: "var(--arbor-muted)" }}>{name} will become the comic-book hero of the story you choose.</p>
-          </div>
-        )}
-
-        {error && <p className="text-[13px] font-semibold mt-3" style={{ color: "var(--arbor-pink-ink)" }}>{error}</p>}
-      </PlayPanel>
+      {error && <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{error}</p>}
 
       <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
         <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><ShieldCheck className="w-4 h-4" /> Safe &amp; private</span>
