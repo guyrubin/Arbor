@@ -7,6 +7,7 @@ import { useArbor } from "../../context/ArborContext";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { evaluateCosmetics, type CosmeticStats } from "../../practice/cosmetics";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
+import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import { TabSkeleton } from "../ui/Skeleton";
 
@@ -81,7 +82,9 @@ export default function HeroArcade() {
     domainsTouched: data.week.domainsTouched.length,
   }), [data]);
 
-  const { unlocked, next } = useMemo(() => evaluateCosmetics(stats), [stats]);
+  const { unlocked, next, activeFrame } = useMemo(() => evaluateCosmetics(stats), [stats]);
+  const badges = useMemo(() => unlocked.filter((c) => c.kind === "badge"), [unlocked]);
+  const title = useMemo(() => unlocked.filter((c) => c.kind === "title").slice(-1)[0] ?? null, [unlocked]);
   const level = 1 + Math.floor(stats.totalSessions / 5);
   const powerPct = Math.round(((stats.totalSessions % 5) / 5) * 100);
 
@@ -104,12 +107,21 @@ export default function HeroArcade() {
     <div className="arbor-play space-y-6">
       {/* HERO PANEL */}
       <section className="comic-panel p-5 sm:p-6 flex items-center gap-4 sm:gap-6" aria-label="Your hero">
-        <HeroAvatar size={104} mood="cheer" />
+        <HeroCrest size={104} frame={activeFrame} badges={badges}>
+          <HeroAvatar size={104} mood="cheer" />
+        </HeroCrest>
         <div className="flex-1 min-w-0">
-          <div className="inline-flex items-center gap-2 mb-1">
+          <div className="inline-flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-[12px] font-black text-white rounded-full px-2.5 py-0.5"
               style={{ background: "var(--arbor-lav)", border: "var(--comic-line)" }}>LVL {level}</span>
-            <span className="text-[13px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>Hero of the week</span>
+            {title ? (
+              <span className="text-[12px] font-black rounded-full px-2.5 py-0.5"
+                style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)", border: "var(--comic-line)" }}>
+                <span aria-hidden="true">{title.emoji}</span> {title.label}
+              </span>
+            ) : (
+              <span className="text-[13px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>Hero of the week</span>
+            )}
           </div>
           <h1 className="font-black leading-none truncate" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(24px,5vw,40px)" }}>
             {hero.name === "your child" ? "Your hero" : `${hero.name} the Brave`}
