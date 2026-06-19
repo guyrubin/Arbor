@@ -38,6 +38,7 @@ import type {
   HeroSceneRender,
   HeroStorySpec,
 } from "../../types";
+import { loadCharter, aimVirtues } from "../../lib/becoming";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { EmptyState } from "../ui/EmptyState";
 import { HeroAvatar } from "../ui/HeroAvatar";
@@ -268,6 +269,14 @@ export default function HeroJourneyTab() {
   if (!activeStory || !render) {
     const he = aiLang === "he";
     const name = childProfile.name?.split(" ")[0] || (he ? "הגיבור" : "your hero");
+    // "Aim at the highest good": the family's Charter values steer which stories
+    // surface first, and the aim is made visible to the child + parent.
+    const charter = loadCharter();
+    const aims = aimVirtues(charter);
+    const isAimed = (s: HeroStorySpec) => aims.includes(s.primaryMetric);
+    const orderedStories = aims.length
+      ? [...visibleStories].sort((a, b) => (isAimed(b) ? 1 : 0) - (isAimed(a) ? 1 : 0))
+      : visibleStories;
     return (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -287,6 +296,11 @@ export default function HeroJourneyTab() {
             <h1 className="font-black leading-none truncate" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(22px,5vw,38px)" }} dir="auto">
               {he ? `מסעות הגיבור של ${name}` : `${name}'s Story Quests`}
             </h1>
+            {charter.length > 0 && (
+              <p className="text-[12.5px] font-bold mt-1.5" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
+                {he ? `מגדלים את ${name} לקראת: ${charter.join(" · ")}` : `Raising ${name} toward: ${charter.join(" · ")}`}
+              </p>
+            )}
             <div className="flex flex-wrap gap-1.5 mt-3">
               {METRIC_IDS.map((m) => (
                 <span
@@ -341,7 +355,7 @@ export default function HeroJourneyTab() {
             {he ? "בחרו את הסיפור שלכם" : "Choose your story"}
           </h2>
           <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-            {visibleStories.map((story) => {
+            {orderedStories.map((story) => {
               const w = PACK_WORLD[story.pack];
               const art = STORY_ART[story.id] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
               const isLoading = loadingId === story.id;
@@ -353,14 +367,21 @@ export default function HeroJourneyTab() {
                   aria-label={`${he ? story.titleHe : story.title} — ${he ? w.labelHe : w.label}`}
                   onClick={() => !loadingId && startJourney(story)}
                 >
-                  {story.origin === "original" && (
+                  {isAimed(story) ? (
+                    <span
+                      className="absolute top-0 left-0 z-[2] text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
+                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}
+                    >
+                      ★ {he ? "המטרה שלכם" : "Your aim"}
+                    </span>
+                  ) : story.origin === "original" ? (
                     <span
                       className="absolute top-0 left-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
                       style={{ background: "var(--arbor-pink)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}
                     >
                       {he ? "מקורי" : "ORIGINAL"}
                     </span>
-                  )}
+                  ) : null}
                   {/* Scene: the hero standing in this story's world */}
                   <div className="comic-halftone relative grid place-items-center" style={{ height: 150, background: w.bg, borderBottom: "var(--comic-line)" }}>
                     <span
