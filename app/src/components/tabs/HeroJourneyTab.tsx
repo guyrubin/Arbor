@@ -43,6 +43,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
+import WorldScene from "../practice/WorldScene";
 
 /** Comic-world skin per pack — bg + ink token + bilingual label (matches the
  *  Hero Arcade design layer so the Academy reads as the same comic universe). */
@@ -362,22 +363,27 @@ export default function HeroJourneyTab() {
                     </span>
                   )}
                   {/* Scene: the hero standing in this story's world */}
-                  <div className="comic-halftone relative grid place-items-center" style={{ height: 150, background: w.bg, borderBottom: "var(--comic-line)" }}>
+                  <div className="comic-halftone relative overflow-hidden" style={{ height: 150, background: w.bg, borderBottom: "var(--comic-line)" }}>
+                    {/* The story's world, with the child's hero generated into the scene
+                        (same pipeline as the Practice world-cards). Falls back to the
+                        hero + emoji motif while loading / with no hero / on error. */}
+                    <WorldScene worldId={`story-${story.id}`} imagePrompt={`${story.title} — ${story.theme}`} heroUrl={photoUrl}>
+                      <div className="flex items-center gap-1.5">
+                        <HeroAvatar size={80} ring animate={false} />
+                        <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">
+                          {art.emoji}
+                        </span>
+                      </div>
+                    </WorldScene>
                     <span
-                      className="absolute top-2 z-[2] text-[10.5px] font-black rounded-full px-2 py-0.5"
+                      className="absolute top-2 z-[3] text-[10.5px] font-black rounded-full px-2 py-0.5"
                       style={{ insetInlineEnd: 8, background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
                     >
                       {he ? "גיל" : "Age"} {story.ageRange[0]}–{story.ageRange[1]}
                     </span>
-                    <span className="comic-sfx absolute bottom-1 text-[24px] -rotate-6" style={{ insetInlineStart: 8 }} aria-hidden="true">
+                    <span className="comic-sfx absolute bottom-1 z-[3] text-[24px] -rotate-6" style={{ insetInlineStart: 8 }} aria-hidden="true">
                       {he ? art.sfxHe : art.sfx}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <HeroAvatar size={80} ring animate={false} />
-                      <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">
-                        {art.emoji}
-                      </span>
-                    </div>
                   </div>
                   {/* Caption */}
                   <div className="p-3.5">
