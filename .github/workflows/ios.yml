@@ -45,7 +45,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode 26 (Swift 6.2 — required by Capacitor 8)
-        run: sudo xcode-select -switch /Applications/Xcode_26.app
+        run: |
+          # The runner names it Xcode_26.0.app etc.; pick the highest 26.x if present.
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XC" ]; then sudo xcode-select -switch "$XC"; fi
+          xcodebuild -version
       - uses: actions/setup-node@v4
         with:
           node-version: 22
