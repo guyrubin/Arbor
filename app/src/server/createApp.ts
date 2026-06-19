@@ -112,6 +112,10 @@ export const createApp = (config: ArborConfig) => {
   }));
   // Vision/document images need a larger body than the default API limit.
   app.use("/api/vision", express.json({ limit: "12mb" }));
+  // Avatar/scene/comic generation POST a reference image (the hero avatar) as a
+  // data URL — well over the default limit. Without this they 413 (the cause of
+  // "image gen not working": generate-scene was returning 413 in prod).
+  app.use(["/api/generate-avatar", "/api/generate-scene", "/api/generate-comic"], express.json({ limit: "12mb" }));
   app.use(express.json({ limit: "250kb" }));
   app.use("/api", createAuthMiddleware(config));
   // COST-2: now that auth has resolved, stamp the uid onto the active usage context.
