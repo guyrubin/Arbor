@@ -10,9 +10,9 @@ import {
   X,
   Check,
   Library,
-  Mountain,
   Trophy,
   ArrowLeft,
+  Play,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -38,16 +38,54 @@ import type {
   HeroSceneRender,
   HeroStorySpec,
 } from "../../types";
+import { loadCharter, aimVirtues } from "../../lib/becoming";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { EmptyState } from "../ui/EmptyState";
-import { cardCls } from "../ui/kit";
-import { T, PACK_VARS, METRIC_VARS, tintVar } from "../../lib/tokens";
+import { HeroAvatar } from "../ui/HeroAvatar";
+import { ArborMascot } from "../ui/ArborMascot";
+import { T, METRIC_VARS } from "../../lib/tokens";
 
-// Category colors are tokenized (var() strings). Tinted backgrounds/borders use
-// `tintVar` (color-mix) instead of the old `${hex}22`/`55` alpha-suffix concat.
-const PACK_COLORS: Record<HeroPackId, string> = PACK_VARS;
+/** Comic-world skin per pack — bg + ink token + bilingual label (matches the
+ *  Hero Arcade design layer so the Academy reads as the same comic universe). */
+const PACK_WORLD: Record<HeroPackId, { bg: string; ink: string; label: string; labelHe: string }> = {
+  courage: { bg: "var(--arbor-peach)", ink: "var(--arbor-peach-ink)", label: "Courage", labelHe: "אומץ" },
+  responsibility: { bg: "var(--arbor-yellow)", ink: "var(--arbor-yellow-ink)", label: "Responsibility", labelHe: "אחריות" },
+  growth: { bg: "var(--arbor-clay)", ink: "var(--arbor-clay-deep)", label: "Growth", labelHe: "צמיחה" },
+  wisdom: { bg: "var(--arbor-sky)", ink: "var(--arbor-sky-ink)", label: "Wisdom", labelHe: "חוכמה" },
+  truth: { bg: "var(--arbor-pack-truth)", ink: "var(--arbor-pack-truth)", label: "Truth", labelHe: "אמת" },
+};
+
+/** Per-story scene motif: a big emoji prop + a comic SFX burst (EN/HE), so every
+ *  card is its own illustrated world with the child's hero standing inside it. */
+const STORY_ART: Record<string, { emoji: string; sfx: string; sfxHe: string }> = {
+  "david-and-goliath": { emoji: "🛡️", sfx: "BOOM!", sfxHe: "בום!" },
+  "moses-and-pharaoh": { emoji: "👑", sfx: "ECHO!", sfxHe: "הד!" },
+  "the-lion-who-was-afraid": { emoji: "🦁", sfx: "ROAR!", sfxHe: "שאגה!" },
+  "noahs-ark": { emoji: "🌈", sfx: "SPLASH!", sfxHe: "שלאמפ!" },
+  "jonah-and-the-great-fish": { emoji: "🐋", sfx: "GULP!", sfxHe: "גלופ!" },
+  "the-dragon-of-responsibility": { emoji: "🐉", sfx: "FWOOSH!", sfxHe: "פוווש!" },
+  "joseph-and-his-brothers": { emoji: "🧥", sfx: "SHINE!", sfxHe: "ברק!" },
+  "jacob-wrestling-the-angel": { emoji: "🌅", sfx: "HOLD ON!", sfxHe: "חזק!" },
+  "the-garden-of-forgotten-seeds": { emoji: "🌻", sfx: "BLOOM!", sfxHe: "פריחה!" },
+  "king-solomons-choice": { emoji: "⚖️", sfx: "AHA!", sfxHe: "אהה!" },
+  "the-broken-music-box": { emoji: "🎵", sfx: "TING!", sfxHe: "טינג!" },
+  "the-found-acorn-crown": { emoji: "🌰", sfx: "SHINE!", sfxHe: "נצנוץ!" },
+  "the-two-gifts": { emoji: "🎁", sfx: "KNOCK!", sfxHe: "טוק!" },
+  "leave-the-tent": { emoji: "⛺", sfx: "WHOOSH!", sfxHe: "ואוש!" },
+  "the-two-paths-through-the-meadow": { emoji: "🌿", sfx: "HMM!", sfxHe: "המ!" },
+  "the-two-mothers-and-the-quiet-judge": { emoji: "🤝", sfx: "SHH…", sfxHe: "ששש…" },
+};
 
 const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;
+
+const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
+  courage: "🦁",
+  responsibility: "🛡️",
+  resilience: "💪",
+  empathy: "💛",
+  wisdom: "🦉",
+  truth: "🕯️",
+};
 
 export default function HeroJourneyTab() {
   const { childProfile } = useArbor();
@@ -66,7 +104,6 @@ export default function HeroJourneyTab() {
     () => runs.reduce((acc, r) => addMetrics(acc, r.metricsEarned ?? {}), emptyMetrics()),
     [runs]
   );
-  const metricMax = Math.max(1, ...METRIC_IDS.map((m) => totalMetrics[m]));
 
   const [packFilter, setPackFilter] = useState<HeroPackId | "all">("all");
   const [activeStory, setActiveStory] = useState<HeroStorySpec | null>(null);
@@ -228,145 +265,202 @@ export default function HeroJourneyTab() {
     </div>
   );
 
-  // ── Catalog view ───────────────────────────────────────────────────────────
+  // ── Catalog view (comic "story worlds" — the child is the hero of each) ──────
   if (!activeStory || !render) {
+    const he = aiLang === "he";
+    const name = childProfile.name?.split(" ")[0] || (he ? "הגיבור" : "your hero");
+    // "Aim at the highest good": the family's Charter values steer which stories
+    // surface first, and the aim is made visible to the child + parent.
+    const charter = loadCharter();
+    const aims = aimVirtues(charter);
+    const isAimed = (s: HeroStorySpec) => aims.includes(s.primaryMetric);
+    const orderedStories = aims.length
+      ? [...visibleStories].sort((a, b) => (isAimed(b) ? 1 : 0) - (isAimed(a) ? 1 : 0))
+      : visibleStories;
     return (
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-        <div>
-          <h2 className="text-2xl md:text-[2rem] leading-[1.1] tracking-tight flex items-center gap-2.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            <Mountain className="w-6 h-6" style={{ color: "var(--arbor-green-ink)" }} /> Story Journeys
-          </h2>
-          <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
-            {childProfile.name} becomes the hero of timeless stories that build courage, responsibility,
-            resilience, empathy, and wisdom.
-          </p>
-        </div>
-
-        {/* Development metrics */}
-        <div className={`${cardCls} p-5 space-y-4`}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-              <Trophy className="w-3.5 h-3.5" /> {childProfile.name}'s development
-            </span>
-            <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{runs.length} journeys completed</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-            {METRIC_IDS.map((m) => (
-              <div key={m} className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-bold" style={{ color: "var(--arbor-muted)" }}>{METRIC_LABELS[m]}</span>
-                  <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{totalMetrics[m]}</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${(totalMetrics[m] / metricMax) * 100}%`, background: METRIC_COLORS[m] }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Pack filter */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setPackFilter("all")}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition"
-            style={packFilter === "all" ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-          >
-            All packs
-          </button>
-          {PACKS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPackFilter(p.id)}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition"
-              style={packFilter === p.id ? { background: tintVar(PACK_COLORS[p.id], 13), color: "var(--arbor-ink)", border: `1px solid ${tintVar(PACK_COLORS[p.id], 33)}` } : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="arbor-play space-y-6"
+      >
+        {/* HERO BANNER — the child fronts their own story academy */}
+        <section className="comic-panel p-5 sm:p-6 flex items-center gap-4 sm:gap-5" aria-label={he ? "הגיבור שלך" : "Your hero"}>
+          <HeroAvatar size={92} mood="cheer" />
+          <div className="flex-1 min-w-0">
+            <span
+              className="inline-block text-[12px] font-black rounded-full px-2.5 py-0.5 mb-1.5"
+              style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)", border: "var(--comic-line)" }}
             >
-              {p.title}
-            </button>
-          ))}
+              {he ? `${runs.length} סיפורים הושלמו` : `${runs.length} stories done`}
+            </span>
+            <h1 className="font-black leading-none truncate" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(22px,5vw,38px)" }} dir="auto">
+              {he ? `מסעות הגיבור של ${name}` : `${name}'s Story Quests`}
+            </h1>
+            {charter.length > 0 && (
+              <p className="text-[12.5px] font-bold mt-1.5" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
+                {he ? `מגדלים את ${name} לקראת: ${charter.join(" · ")}` : `Raising ${name} toward: ${charter.join(" · ")}`}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {METRIC_IDS.map((m) => (
+                <span
+                  key={m}
+                  title={METRIC_LABELS[m]}
+                  className="inline-flex items-center gap-1 text-[12px] font-black rounded-full px-2.5 py-1"
+                  style={{ background: "#fff", border: "var(--comic-line)" }}
+                >
+                  <span aria-hidden="true">{METRIC_EMOJI[m]}</span>
+                  <b style={{ color: METRIC_COLORS[m] }}>{totalMetrics[m]}</b>
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* SPROUT COACH BUBBLE */}
+        <div className="flex items-end gap-3">
+          <ArborMascot size={50} mood="wave" animate className="flex-shrink-0" />
+          <div className="comic-panel px-4 py-3 text-[14px] font-extrabold" dir="auto">
+            {he ? `${name}, הפכו לגיבור של כל סיפור!` : `Pick a story, hero — ${name} stars in every one!`}
+          </div>
         </div>
 
-        {/* Story cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {visibleStories.map((story) => {
-            const color = PACK_COLORS[story.pack];
-            const isLoading = loadingId === story.id;
+        {/* PACK FILTER — comic chips */}
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label={he ? "סינון לפי כוח" : "Filter by power"}>
+          {[{ id: "all" as const, label: he ? "הכול" : "All" }, ...PACKS.map((p) => ({ id: p.id, label: he ? p.titleHe : p.title }))].map((p) => {
+            const active = packFilter === p.id;
+            const w = p.id === "all" ? null : PACK_WORLD[p.id as HeroPackId];
             return (
-              <div
-                key={story.id}
-                className={`${cardCls} p-5 flex flex-col gap-3 transition hover:-translate-y-0.5`}
+              <button
+                key={p.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setPackFilter(p.id as HeroPackId | "all")}
+                className="px-3.5 py-1.5 rounded-full text-[13px] font-black transition"
+                style={
+                  active
+                    ? { background: w ? w.bg : "var(--arbor-clay)", color: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }
+                    : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "var(--comic-line)" }
+                }
               >
-                <div className="flex items-center justify-between">
-                  <span
-                    className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md"
-                    style={{ background: tintVar(color, 13), color }}
-                  >
-                    {story.pack}
-                  </span>
-                  {story.origin === "original" && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>Original</span>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>
-                    {aiLang === "he" ? story.titleHe : story.title}
-                  </h3>
-                  <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{story.theme}</p>
-                </div>
-                <p className="text-[11px] leading-relaxed flex-1" style={{ color: "var(--arbor-muted)" }}>{story.learningObjective}</p>
-                <button
-                  onClick={() => startJourney(story)}
-                  disabled={!!loadingId}
-                  className="mt-1 w-full py-2.5 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
-                  style={{ background: T.gradientCta }}
-                >
-                  {isLoading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> Weaving your journey…
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" /> Start journey
-                    </>
-                  )}
-                </button>
-              </div>
+                {p.label}
+              </button>
             );
           })}
         </div>
 
-        {/* Library */}
-        <div className={`${cardCls} p-5 space-y-4`}>
-          <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-            <Library className="w-3.5 h-3.5" /> Journey library ({runs.length})
-          </span>
-          {!runsCol.loaded ? (
-            <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>Loading…</p>
-          ) : runs.length === 0 ? (
-            <EmptyState
-              headline="No journeys yet"
-              body="Pick a story above and start your first hero journey. Completed journeys and the development they build are saved here."
-            />
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {runs.map((run) => (
+        {/* STORY WORLDS — each card is an illustrated world starring the hero */}
+        <div>
+          <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
+            {he ? "בחרו את הסיפור שלכם" : "Choose your story"}
+          </h2>
+          <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+            {orderedStories.map((story) => {
+              const w = PACK_WORLD[story.pack];
+              const art = STORY_ART[story.id] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
+              const isLoading = loadingId === story.id;
+              return (
                 <button
-                  key={run.id}
-                  onClick={() => replay(run)}
-                  className="text-left rounded-2xl p-3 transition group space-y-1"
-                  style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
+                  key={story.id}
+                  className="world-tile text-left relative"
+                  aria-disabled={!!loadingId}
+                  aria-label={`${he ? story.titleHe : story.title} — ${he ? w.labelHe : w.label}`}
+                  onClick={() => !loadingId && startJourney(story)}
                 >
-                  <span className="text-xs font-bold block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }}>
-                    {run.title}
-                  </span>
-                  <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>
-                    {run.completedAt ? new Date(run.completedAt).toLocaleDateString() : "In progress"}
-                  </span>
+                  {isAimed(story) ? (
+                    <span
+                      className="absolute top-0 left-0 z-[2] text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
+                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}
+                    >
+                      ★ {he ? "המטרה שלכם" : "Your aim"}
+                    </span>
+                  ) : story.origin === "original" ? (
+                    <span
+                      className="absolute top-0 left-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
+                      style={{ background: "var(--arbor-pink)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}
+                    >
+                      {he ? "מקורי" : "ORIGINAL"}
+                    </span>
+                  ) : null}
+                  {/* Scene: the hero standing in this story's world */}
+                  <div className="comic-halftone relative grid place-items-center" style={{ height: 150, background: w.bg, borderBottom: "var(--comic-line)" }}>
+                    <span
+                      className="absolute top-2 z-[2] text-[10.5px] font-black rounded-full px-2 py-0.5"
+                      style={{ insetInlineEnd: 8, background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
+                    >
+                      {he ? "גיל" : "Age"} {story.ageRange[0]}–{story.ageRange[1]}
+                    </span>
+                    <span className="comic-sfx absolute bottom-1 text-[24px] -rotate-6" style={{ insetInlineStart: 8 }} aria-hidden="true">
+                      {he ? art.sfxHe : art.sfx}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <HeroAvatar size={80} ring animate={false} />
+                      <span style={{ fontSize: 46, filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} aria-hidden="true">
+                        {art.emoji}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Caption */}
+                  <div className="p-3.5">
+                    <p className="font-black text-[16.5px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+                      {he ? story.titleHe : story.title}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span
+                        className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
+                        style={{ border: "2px solid var(--comic-ink)", color: w.ink }}
+                      >
+                        {he ? w.labelHe : w.label}
+                      </span>
+                      <span className="ms-auto inline-flex items-center gap-1 text-[13px] font-black" style={{ color: w.ink }}>
+                        {isLoading ? (
+                          <><RefreshCw className="w-4 h-4 animate-spin" /> {he ? "טוען…" : "Loading…"}</>
+                        ) : (
+                          <>{he ? "שחקו" : "Play"} <Play className="w-4 h-4" fill="currentColor" /></>
+                        )}
+                      </span>
+                    </div>
+                  </div>
                 </button>
-              ))}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* JOURNEY LIBRARY */}
+        <div>
+          <h2 className="font-black mb-3 inline-flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
+            <Library className="w-5 h-5" /> {he ? `הספרייה (${runs.length})` : `Library (${runs.length})`}
+          </h2>
+          {!runsCol.loaded ? (
+            <p className="text-[13px] font-bold" style={{ color: "var(--arbor-muted)" }}>{he ? "טוען…" : "Loading…"}</p>
+          ) : runs.length === 0 ? (
+            <div className="comic-panel p-5">
+              <EmptyState
+                headline={he ? "עדיין אין מסעות" : "No quests yet"}
+                body={he ? "בחרו סיפור למעלה והתחילו את המסע הראשון. כל מסע שהושלם נשמר כאן." : "Pick a story above and start your first quest. Completed quests are saved here."}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
+              {runs.map((run) => {
+                const spec = getStorySpec(run.storyId);
+                const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
+                const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
+                return (
+                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-left" aria-label={run.title}>
+                    <div className="comic-halftone grid place-items-center" style={{ height: 72, background: w.bg, borderBottom: "var(--comic-line)" }}>
+                      <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>
+                    </div>
+                    <div className="p-2.5">
+                      <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{run.title}</span>
+                      <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                        {run.completedAt ? new Date(run.completedAt).toLocaleDateString() : he ? "בתהליך" : "In progress"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -396,8 +490,18 @@ export default function HeroJourneyTab() {
       {/* Reflection / completion */}
       {isReflection && (
         <div className="w-full max-w-xl mx-auto space-y-4">
+          {activeStory.parentInsight && (
+            <div className="rounded-2xl p-4 space-y-1.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
+                {aiLang === "he" ? "למבוגרים · למה הסיפור הזה" : "For grown-ups · Why this story"}
+              </p>
+              <p dir="auto" className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
+                {aiLang === "he" ? activeStory.parentInsight.he : activeStory.parentInsight.en}
+              </p>
+            </div>
+          )}
           <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>Today we practiced</p>
+            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "מה תרגלנו היום" : "Today we practiced"}</p>
             <div className="flex flex-wrap gap-2">
               {render.reflection.practiced.map((p, i) => (
                 <span
@@ -412,7 +516,7 @@ export default function HeroJourneyTab() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>Talk about it together</p>
+            <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "דברו על זה יחד" : "Talk about it together"}</p>
             {render.reflection.questions.map((q, i) => (
               <button
                 key={i}
@@ -441,11 +545,11 @@ export default function HeroJourneyTab() {
               className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
               style={{ background: T.gradientCta }}
             >
-              <Trophy className="w-4 h-4" /> Finish & save {childProfile.name}'s development
+              <Trophy className="w-4 h-4" /> {aiLang === "he" ? `סיימו ושמרו את ההתפתחות של ${childProfile.name}` : `Finish & save ${childProfile.name}'s development`}
             </button>
           ) : (
             <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
-              <Check className="w-4 h-4" /> Saved to {childProfile.name}'s development
+              <Check className="w-4 h-4" /> {aiLang === "he" ? `נשמר להתפתחות של ${childProfile.name}` : `Saved to ${childProfile.name}'s development`}
             </div>
           )}
         </div>

@@ -1297,7 +1297,7 @@ Story: "${story.title}" — theme: ${story.theme}. Learning objective: ${story.l
 RULES:
 - Follow the spine EXACTLY, beat by beat, in order. Do not add, remove, reorder, or change the plot.
 - Make ${heroName} the hero, by name. Warm, present, vivid but simple words for ages 4-8.
-- 2 to 4 short sentences per beat. Gentle and non-graphic: no real violence, blood, death, or frightening detail. Conflict stays emotional/symbolic and always resolves kindly.
+- 2 to 4 short sentences per beat. Gentle and non-graphic: no real violence, blood, death, or frightening detail. BUT the stakes must feel REAL: in the 'fear' beat let the challenge genuinely loom (the giant truly is big, the dark truly is unknown), and let the brave path cost something real. The conflict stays emotional/symbolic and resolves with hope, not by pretending the fear was never there.
 - For the 'decision' beat narration, end by inviting the child to choose — do NOT say which option is best.
 - Personalize each of the ${choiceCount} choices: rewrite "label" as a short first-person action, and write a 1-2 sentence "consequence" expanding its cue. Keep every consequence kind — no choice is harshly punished.
 - This story is rendered as a COMIC BOOK starring ${heroName}. For each beat also return:
