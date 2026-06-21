@@ -116,6 +116,15 @@ export const createApp = (config: ArborConfig) => {
   }));
   // Vision/document images need a larger body than the default API limit.
   app.use("/api/vision", express.json({ limit: "12mb" }));
+  // Image-generation endpoints receive the child's generated avatar (a ~1-2MB
+  // data URL) as a style reference, which blows the 250kb default → 413 and a
+  // blank card. Give them the same headroom as vision (handlers still enforce a
+  // 6MB per-image cap). This is the fix for the "Academy/Playbank cards have no
+  // images" regression.
+  app.use(
+    ["/api/generate-scene", "/api/generate-comic", "/api/generate-avatar"],
+    express.json({ limit: "12mb" }),
+  );
   app.use(express.json({ limit: "250kb" }));
   app.use("/api", createAuthMiddleware(config));
   // COST-2: now that auth has resolved, stamp the uid onto the active usage context.
