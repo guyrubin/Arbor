@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { Languages, Sparkles, MessageSquare, Mic } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, cardCls, Chip, PastelKey } from "../ui/kit";
 
 /**
@@ -11,13 +12,14 @@ import { PageHeader, SectionCard, cardCls, Chip, PastelKey } from "../ui/kit";
  */
 export default function LanguageLabTab() {
   const { childProfile, setChatInput, setSelectedLens, setActiveTab } = useArbor();
+  const { t } = useLanguage();
   const name = childProfile.name;
   const first = name.split(" ")[0];
   const langs = (childProfile.languages ?? []).map((l) => l.trim()).filter(Boolean);
   const home = langs[0];
   const second = langs[1];
   const others = langs.slice(2);
-  const target = second || "their second language";
+  const target = second || t("lang.theirSecondLang");
 
   const askCoach = (prompt: string) => {
     setSelectedLens("Lev Vygotsky");
@@ -27,68 +29,68 @@ export default function LanguageLabTab() {
 
   const profileCards = [
     home && {
-      label: "Home language",
+      label: t("lang.homeLabel"),
       value: home,
-      note: "Dominant language — full fluency in familiar domains. Keep it rich; it anchors everything else.",
-      tag: "Native",
+      note: t("lang.homeNote"),
+      tag: t("lang.homeTag"),
       tone: "mint" as PastelKey,
     },
     second && {
-      label: "Second language",
+      label: t("lang.secondLabel"),
       value: second,
-      note: "Developing — likely understands more than they produce. Build confidence with low-pressure, daily practice.",
-      tag: "Emerging",
+      note: t("lang.secondNote"),
+      tag: t("lang.secondTag"),
       tone: "yellow" as PastelKey,
     },
     ...others.map((o) => ({
-      label: "Additional language",
+      label: t("lang.otherLabel"),
       value: o,
-      note: "Early exposure — keep it playful and optional. No pressure to produce yet.",
-      tag: "Exposure",
+      note: t("lang.otherNote"),
+      tag: t("lang.otherTag"),
       tone: "sky" as PastelKey,
     })),
   ].filter(Boolean) as { label: string; value: string; note: string; tag: string; tone: PastelKey }[];
 
   const activities = [
     {
-      title: "Morning phrase card",
+      title: t("lang.act.phrase.title"),
       time: "2 min",
-      desc: `One short ${target} sentence ${first} can actually use today. Practice it together at breakfast.`,
-      example: '"Can I play with you?" · "Where do I put my bag?" · "I need help, please."',
-      lens: "Vygotsky · ZPD",
+      desc: t("lang.act.phrase.desc", { target, first }),
+      example: t("lang.act.phrase.example"),
+      lens: t("lang.act.phrase.lens"),
     },
     {
-      title: "Translator game",
+      title: t("lang.act.translate.title"),
       time: "5 min",
-      desc: `Say a sentence in ${home || "the home language"}; ${first} translates it into ${target}. Celebrate attempts, not perfection.`,
-      example: "Start with feelings: angry, scared, hungry, tired, happy. Body words first, then school words.",
-      lens: "Vygotsky · Piaget",
+      desc: t("lang.act.translate.desc", { home: home || t("lang.theHomeLang"), first, target }),
+      example: t("lang.act.translate.example"),
+      lens: t("lang.act.translate.lens"),
     },
     {
-      title: `Bedtime story in ${target}`,
+      title: t("lang.act.story.title", { target }),
       time: "10 min",
-      desc: `Read one book in ${target}. Narrate slowly, point at pictures, and ask one open question after.`,
-      example: '"What do you think happened just before the story started?"',
-      lens: "Serve & Return",
+      desc: t("lang.act.story.desc", { target }),
+      example: t("lang.act.story.example"),
+      lens: t("lang.act.story.lens"),
     },
     {
-      title: "Serve & return",
+      title: t("lang.act.serve.title"),
       time: "Daily",
-      desc: `Follow ${first}'s lead on any ${target} bid — if they offer one word, extend it into a sentence back. Don't correct, expand.`,
-      example: `${first}: "car" → you: "yes — the red car is going really fast!"`,
-      lens: "Harvard Center · S&R",
+      desc: t("lang.act.serve.desc", { first, target }),
+      example: t("lang.act.serve.example", { name: first }),
+      lens: t("lang.act.serve.lens"),
     },
   ];
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
-        eyebrow="My Child"
-        title="Language & Communication"
-        subtitle={`Growing the languages ${first} speaks at home, with calm daily practice. For practicing how specific sounds are formed, that's Speech Coach.`}
+        eyebrow={t("lang.eyebrow")}
+        title={t("lang.title")}
+        subtitle={t("lang.subtitle", { first })}
         action={
           <button onClick={() => setActiveTab("speech")} className="inline-flex items-center gap-1.5 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
-            <Mic className="w-3.5 h-3.5" /> Sound practice? Speech Coach
+            <Mic className="w-3.5 h-3.5" /> {t("lang.soundPractice")}
           </button>
         }
       />
@@ -96,21 +98,20 @@ export default function LanguageLabTab() {
       {langs.length === 0 ? (
         <div className={`${cardCls} p-8 text-center space-y-3`}>
           <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>
-            No languages set for {first} yet. Add the languages spoken at home in their profile, and the daily practice
-            below will personalize to them.
+            {t("lang.noLangs", { first })}
           </p>
           <button
             onClick={() => setActiveTab("profile")}
             className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
             style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
           >
-            Edit {first}&apos;s profile
+            {t("lang.editProfile", { first })}
           </button>
         </div>
       ) : (
         <>
           {/* Language profile */}
-          <SectionCard title={`Language profile — ${first} · Age ${childProfile.age}`} icon={<Languages className="w-5 h-5" />} tone="sky">
+          <SectionCard title={t("lang.profileTitle", { first, age: childProfile.age })} icon={<Languages className="w-5 h-5" />} tone="sky">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
               {profileCards.map((c, i) => (
                 <div key={i} className={`${cardCls} p-4 space-y-2`}>
@@ -123,15 +124,14 @@ export default function LanguageLabTab() {
             </div>
             {!second && (
               <p className="text-[11px] italic mt-4" style={{ color: "var(--arbor-muted)" }}>
-                Only one language is set for {first}. Add a second language in their profile to unlock the bilingual
-                practice routines below.
+                {t("lang.onlyOne", { first })}
               </p>
             )}
           </SectionCard>
 
           {/* Daily practice */}
           <SectionCard
-            title={`${target} activation routines`}
+            title={t("lang.routinesTitle", { target })}
             icon={<Sparkles className="w-5 h-5" />}
             tone="mint"
             action={
@@ -144,11 +144,11 @@ export default function LanguageLabTab() {
                 className="inline-flex items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
               >
-                <Sparkles className="w-3.5 h-3.5" /> Ask for a week plan
+                <Sparkles className="w-3.5 h-3.5" /> {t("lang.weekPlanCta")}
               </button>
             }
           >
-            <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-green-ink)" }}>Daily practice · Vygotsky ZPD</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-green-ink)" }}>{t("lang.dailyPractice")}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               {activities.map((item) => (
                 <div key={item.title} className={`${cardCls} p-4 space-y-2`}>
@@ -171,7 +171,7 @@ export default function LanguageLabTab() {
                       className="inline-flex items-center gap-1 text-[10px] font-bold transition"
                       style={{ color: "var(--arbor-muted)" }}
                     >
-                      <MessageSquare className="w-3 h-3" /> Coach me
+                      <MessageSquare className="w-3 h-3" /> {t("lang.coachMe")}
                     </button>
                   </div>
                 </div>

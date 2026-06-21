@@ -100,14 +100,14 @@ export default function BehaviorsTab() {
         if (p.trigger) setNewLogTrigger(p.trigger);
         if (p.response) setNewLogResponse(p.response);
         if (p.notes) setNewLogNotes(p.notes);
-        toast("Voice note parsed into the form — review and save", "success");
+        toast(t("beh.toast.voiceParsed"), "success");
         return;
       }
       throw new Error("no json");
     } catch {
       // Fallback: keep the raw transcript so nothing is lost.
       setNewLogTrigger(text);
-      toast("Captured your note into the trigger field", "info");
+      toast(t("beh.toast.voiceFallback"), "info");
     } finally {
       setParsing(false);
     }
@@ -119,13 +119,13 @@ export default function BehaviorsTab() {
       return;
     }
     if (!speechSupported()) {
-      toast("Voice capture isn't supported in this browser", "error");
+      toast(t("beh.toast.voiceUnsupported"), "error");
       return;
     }
     setListening(true);
     stopRef.current = startDictation({
       onResult: (text) => void parseVoice(text),
-      onError: () => toast("Couldn't hear that — try again", "error"),
+      onError: () => toast(t("beh.toast.voiceError"), "error"),
       onEnd: () => {
         setListening(false);
         stopRef.current = null;
@@ -220,12 +220,12 @@ export default function BehaviorsTab() {
   const submitLog = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLogTrigger.trim() || !newLogResponse.trim()) {
-      toast("Fill in both “What triggered this?” and “What was your response?” to save.", "error");
+      toast(t("beh.toast.fillBoth"), "error");
       return;
     }
     const wasEditing = !!editingLogId;
     handleAddLog(e);
-    toast(wasEditing ? "Log updated." : "Moment logged — it's in your history below.", "success");
+    toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
   };
 
   return (
@@ -248,7 +248,7 @@ export default function BehaviorsTab() {
               type="button"
               onClick={toggleVoice}
               disabled={parsing}
-              title="Speak to log"
+              title={t("beh.speakToLog")}
               className={`flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg transition ${listening ? "animate-pulse" : ""}`}
               style={listening
                 ? { background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)", border: "1px solid rgba(189,79,116,0.40)" }
@@ -265,21 +265,21 @@ export default function BehaviorsTab() {
               {t("beh.quickFill")}
             </span>
             <div className="flex flex-wrap gap-1">
-              <button type="button" onClick={() => autofillLogTemplate("morning")} className="px-2 py-1 rounded text-[10px] font-bold transition cursor-pointer bg-white" style={{ color: "var(--arbor-ink)" }}>Morning Refusal</button>
-              <button type="button" onClick={() => autofillLogTemplate("screen")} className="px-2 py-1 rounded text-[10px] font-bold transition cursor-pointer bg-white" style={{ color: "var(--arbor-ink)" }}>iPad Dispute</button>
-              <button type="button" onClick={() => autofillLogTemplate("sibling")} className="px-2 py-1 rounded text-[10px] font-bold transition cursor-pointer bg-white" style={{ color: "var(--arbor-ink)" }}>Sibling Clash</button>
+              <button type="button" onClick={() => autofillLogTemplate("morning")} className="px-2 py-1 rounded text-[10px] font-bold transition cursor-pointer bg-white" style={{ color: "var(--arbor-ink)" }}>{t("beh.qf.morning")}</button>
+              <button type="button" onClick={() => autofillLogTemplate("screen")} className="px-2 py-1 rounded text-[10px] font-bold transition cursor-pointer bg-white" style={{ color: "var(--arbor-ink)" }}>{t("beh.qf.screen")}</button>
+              <button type="button" onClick={() => autofillLogTemplate("sibling")} className="px-2 py-1 rounded text-[10px] font-bold transition cursor-pointer bg-white" style={{ color: "var(--arbor-ink)" }}>{t("beh.qf.sibling")}</button>
             </div>
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.typeLabel")}</label>
             <select value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-              <option value="Transition Refusal">Departure Refusal (Mornings / Leaving home)</option>
-              <option value="Sensory Overload">Sensory Overload Meltdown (Loud / Overcrowded spaces)</option>
-              <option value="Screentime Dispute">Screen-time Switchoff (Tablet boundary refusal)</option>
-              <option value="Sibling Conflict">Sibling Tugging / Dispute</option>
-              <option value="Food Refusal">Selective Eating Resistance</option>
-              <option value="Sleep Meltdown">Bedtime Resistance / Hiding</option>
+              <option value="Transition Refusal">{t("beh.type.transition")}</option>
+              <option value="Sensory Overload">{t("beh.type.sensory")}</option>
+              <option value="Screentime Dispute">{t("beh.type.screen")}</option>
+              <option value="Sibling Conflict">{t("beh.type.sibling")}</option>
+              <option value="Food Refusal">{t("beh.type.food")}</option>
+              <option value="Sleep Meltdown">{t("beh.type.sleep")}</option>
             </select>
           </div>
 
@@ -314,17 +314,17 @@ export default function BehaviorsTab() {
 
           <div className="space-y-1">
             <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.trigger")} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
-            <input type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder="e.g. Dressing shoe sequence, being told tablet goes off" className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+            <input type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder={t("beh.triggerPlaceholder")} className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.response")} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
-            <input type="text" value={newLogResponse} onChange={(e) => setNewLogResponse(e.target.value)} placeholder="e.g. Lowered voice height, used transitional object" className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+            <input type="text" value={newLogResponse} onChange={(e) => setNewLogResponse(e.target.value)} placeholder={t("beh.responsePlaceholder")} className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.notes")}</label>
-            <textarea value={newLogNotes} onChange={(e) => setNewLogNotes(e.target.value)} rows={2} placeholder="Notes on calming down time, physical behavior..." className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+            <textarea value={newLogNotes} onChange={(e) => setNewLogNotes(e.target.value)} rows={2} placeholder={t("beh.notesPlaceholder")} className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
           </div>
 
           <div className="space-y-1">
@@ -348,7 +348,7 @@ export default function BehaviorsTab() {
                     try {
                       thumb = await fileToThumbnail(f);
                     } catch {
-                      toast("Couldn't process that image", "error");
+                      toast(t("beh.toast.imageError"), "error");
                       return;
                     }
                     // Prefer Firebase Storage; fall back to inlining if it's unavailable.
@@ -387,7 +387,7 @@ export default function BehaviorsTab() {
           {/* Per-type intensity sparklines */}
           {sparkSeries.length > 0 && (
             <div className={`${cardCls} p-5 space-y-3`}>
-              <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>Intensity trend by type (30 days)</span>
+              <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.trendLabel")}</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {sparkSeries.map(({ type, series }) => (
                   <div key={type} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -438,17 +438,17 @@ export default function BehaviorsTab() {
               // m3-hex-sweep: #eef6f1 insight-wash start has no m2 token yet; left
               // as-is per spec (would become --gradient-insight if m2 adds it).
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
-                <h4 className="text-sm font-extrabold flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>What the pattern shows</h4>
+                <h4 className="text-sm font-extrabold flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.patternShows")}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>Parent Response Evaluation:</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.effectivenessRating}</p></div>
-                  <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>Developmental Recommendation:</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.actionPlanSuggestion}</p></div>
+                  <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("beh.responseEval")}</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.effectivenessRating}</p></div>
+                  <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("beh.devRec")}</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.actionPlanSuggestion}</p></div>
                 </div>
                 <div className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                  <span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>Expert Insights:</span>
+                  <span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("beh.expertInsights")}</span>
                   <div className="space-y-2">
                     {behaviorAnalysis.expertInsights.map((ins, i) => (
                       <div key={i} className="p-2.5 rounded-xl bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider block" style={{ color: "var(--arbor-green-ink)" }}>{ins.scholarLens || "Development theory"}</span>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider block" style={{ color: "var(--arbor-green-ink)" }}>{ins.scholarLens || t("beh.theoryFallback")}</span>
                         <strong className="font-bold block mt-1" style={{ color: "var(--arbor-ink)" }}>{ins.heading}</strong>
                         <p className="mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{ins.text}</p>
                       </div>
@@ -491,7 +491,7 @@ export default function BehaviorsTab() {
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap justify-end">
                                   {log.context && <span className="px-2 py-0.5 rounded font-bold" style={{ background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{log.context}</span>}
-                                  <span className="px-2 py-0.5 rounded font-extrabold" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>Level {log.intensity}/5</span>
+                                  <span className="px-2 py-0.5 rounded font-extrabold" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>{t("beh.level", { n: log.intensity })}</span>
                                   <span className="px-2 py-0.5 rounded font-bold" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>{log.durationMinutes}m</span>
                                   <button
                                     onClick={() => toggleLogResolved(log.id)}
@@ -509,7 +509,7 @@ export default function BehaviorsTab() {
                                     <Pencil className="w-3 h-3" />
                                   </button>
                                   <button
-                                    onClick={() => { if (window.confirm("Delete this log?")) deleteLog(log.id); }}
+                                    onClick={() => { if (window.confirm(t("beh.deleteConfirm"))) deleteLog(log.id); }}
                                     aria-label="Delete log"
                                     className="px-1.5 py-0.5 rounded transition"
                                     style={{ color: "var(--arbor-muted)" }}

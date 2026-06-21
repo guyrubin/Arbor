@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { RefreshCw, Sparkles, Trophy, ClipboardList, GraduationCap, Send, History, ArrowLeft } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Skeleton } from "../ui/Skeleton";
 import { scholarsInfo } from "../../initialData";
@@ -32,6 +33,7 @@ type WeeklyReport = {
 
 export default function WeeklyTab() {
   const { behaviorLogs, milestones, actionPlans, childProfile, setActiveTab, handleGenerateBrief } = useArbor();
+  const { t } = useLanguage();
   const reportsCol = useChildCollection<WeeklyReport>(childProfile.id, "weeklyReports");
 
   const [generating, setGenerating] = useState(false);
@@ -39,7 +41,7 @@ export default function WeeklyTab() {
   const triedAuto = useRef<string | null>(null);
 
   const currentId = weekId();
-  const currentLabel = `Week of ${new Date().toLocaleDateString(undefined, { month: "long", day: "numeric" })}`;
+  const currentLabel = `${t("wk.weekOf")} ${new Date().toLocaleDateString(undefined, { month: "long", day: "numeric" })}`;
 
   const reports = useMemo(
     () => [...reportsCol.items].sort((a, b) => (a.id < b.id ? 1 : -1)),
@@ -129,11 +131,11 @@ export default function WeeklyTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <button onClick={() => setActiveTab("timeline")} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <ArrowLeft className="w-4 h-4" /> {first}'s Story
+        <ArrowLeft className="w-4 h-4" /> {t("wk.backStory", { first })}
       </button>
       <PageHeader
         eyebrow="My Child"
-        title={`${first}'s week`}
+        title={t("wk.title", { first })}
         subtitle={selected ? `${selected.weekLabel} · ${selected.id}` : `${currentLabel} · ${currentId}`}
         action={
           <button
@@ -142,7 +144,7 @@ export default function WeeklyTab() {
             className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
             style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
           >
-            {generating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Generating…</>) : (<><Sparkles className="w-4 h-4" /> {reports.some((r) => r.id === currentId) ? "Regenerate this week" : "Generate this week"}</>)}
+            {generating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> {t("wk.generating")}</>) : (<><Sparkles className="w-4 h-4" /> {reports.some((r) => r.id === currentId) ? t("wk.regenerate") : t("wk.generate")}</>)}
           </button>
         }
       />
@@ -173,30 +175,30 @@ export default function WeeklyTab() {
         </div>
       ) : !selected ? (
         <div className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
-          No reports yet. Log a few moments this week, then generate your first report.
+          {t("wk.noReports")}
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className={`${cardCls} p-5`}>
-              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Behavior events</span>
+              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.behaviorEvents")}</span>
               <div className="text-3xl font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{selected.summary.count}</div>
-              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>avg intensity {selected.summary.avg.toFixed(1)}/5</p>
+              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("wk.avgIntensity", { avg: selected.summary.avg.toFixed(1) })}</p>
             </div>
             <div className={`${cardCls} p-5`}>
-              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Top trigger</span>
+              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.topTrigger")}</span>
               <div className="text-sm font-bold mt-2 leading-snug" style={{ color: "var(--arbor-ink)" }}>{selected.summary.topTrigger}</div>
             </div>
             <div className={`${cardCls} p-5`}>
-              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Action steps</span>
+              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.actionSteps")}</span>
               <div className="text-3xl font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{selected.planProgress.done}<span className="text-lg" style={{ color: "var(--arbor-muted)" }}>/{selected.planProgress.total}</span></div>
-              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>steps complete</p>
+              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("wk.stepsComplete")}</p>
             </div>
           </div>
 
           <div className="rounded-[22px] p-6 space-y-3" style={{ background: "var(--arbor-green-soft)" }}>
             <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-              <Sparkles className="w-3.5 h-3.5" /> {selected.digest ? selected.digest.title : "AI insight"}
+              <Sparkles className="w-3.5 h-3.5" /> {selected.digest ? selected.digest.title : t("wk.aiInsight")}
             </span>
             {selected.digest ? (
               <>
@@ -210,12 +212,12 @@ export default function WeeklyTab() {
                 )}
                 {selected.digest.watchFor.length > 0 && (
                   <p className="text-xs leading-relaxed" style={{ color: "#9a5a2a" }}>
-                    <strong>Worth watching:</strong> {selected.digest.watchFor.join(" ")}
+                    <strong>{t("wk.watchFor")}</strong> {selected.digest.watchFor.join(" ")}
                   </p>
                 )}
                 {selected.digest.tryThisWeek && (
                   <div className="rounded-xl p-3 text-sm bg-white" style={{ color: "var(--arbor-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
-                    <strong style={{ color: "var(--arbor-green-ink)" }}>Try this week:</strong> {selected.digest.tryThisWeek}
+                    <strong style={{ color: "var(--arbor-green-ink)" }}>{t("wk.tryThisWeek")}</strong> {selected.digest.tryThisWeek}
                   </div>
                 )}
               </>
@@ -225,7 +227,7 @@ export default function WeeklyTab() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <SectionCard title={`Milestone wins (${selected.milestoneWins.length})`} icon={<Trophy className="w-5 h-5" />} tone="mint">
+            <SectionCard title={t("wk.milestoneWins", { n: selected.milestoneWins.length })} icon={<Trophy className="w-5 h-5" />} tone="mint">
               {selected.milestoneWins.length ? (
                 <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
                   {selected.milestoneWins.slice(0, 8).map((m, i) => (
@@ -233,20 +235,20 @@ export default function WeeklyTab() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>No milestones checked in this report.</p>
+                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("wk.noMilestones")}</p>
               )}
               <button onClick={() => setActiveTab("milestones")} className="text-[11px] font-bold flex items-center gap-1 mt-3" style={{ color: "var(--arbor-green-ink)" }}>
-                <ClipboardList className="w-3 h-3" /> Review milestones →
+                <ClipboardList className="w-3 h-3" /> {t("wk.reviewMilestones")}
               </button>
             </SectionCard>
 
-            <SectionCard title="Scholar spotlight" icon={<GraduationCap className="w-5 h-5" />} tone="lav">
+            <SectionCard title={t("wk.scholarSpotlight")} icon={<GraduationCap className="w-5 h-5" />} tone="lav">
               <div className="flex items-baseline gap-2">
                 <strong className="text-sm" style={{ color: "var(--arbor-ink)" }}>{selected.spotlight.name}</strong>
                 <span className="text-[10px] uppercase font-bold" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.concept}</span>
               </div>
               <p className="text-xs leading-relaxed mt-2" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.value}</p>
-              <button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3" style={{ color: "var(--arbor-lav-ink)" }}>Explore Scholar Frameworks →</button>
+              <button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3" style={{ color: "var(--arbor-lav-ink)" }}>{t("wk.scholarExplore")}</button>
             </SectionCard>
           </div>
 
@@ -254,8 +256,8 @@ export default function WeeklyTab() {
             <div className="flex items-center gap-3">
               <IconBadge tone="sky"><Send className="w-5 h-5" /></IconBadge>
               <div>
-                <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Ready to share</h3>
-                <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>Compile a professional brief from this week for school or clinicians.</p>
+                <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("wk.readyToShare")}</h3>
+                <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("wk.compileBrief")}</p>
               </div>
             </div>
             <button
@@ -266,7 +268,7 @@ export default function WeeklyTab() {
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
               style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}
             >
-              <Send className="w-4 h-4" /> Generate school brief for {first}
+              <Send className="w-4 h-4" /> {t("wk.brief", { first })}
             </button>
           </div>
         </>
