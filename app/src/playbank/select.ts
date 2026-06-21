@@ -5,6 +5,9 @@
  * with in their log. Deterministic given a daySeed, so "today's pick" is stable
  * across a day and varies day to day. Falls back to band-only when logs are
  * sparse — never a cold-start failure.
+ *
+ * Scope: Daily Play = the everyday activity library (one pick pushed to Today).
+ * It is NOT the deliberate-drill engine — that is Practice (components/practice/*).
  */
 
 import {

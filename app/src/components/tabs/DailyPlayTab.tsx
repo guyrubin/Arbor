@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Sprout, BookOpen } from "lucide-react";
+import { Sprout, BookOpen, Target, ArrowRight } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -146,6 +146,15 @@ export default function DailyPlayTab() {
           />
         ))}
       </div>
+
+      {/* B4 reciprocal cross-link: point to Practice instead of duplicating drills. */}
+      <button
+        onClick={() => setActiveTab("practice")}
+        className="inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-[13.5px] font-bold transition active:scale-[0.99] min-h-[44px]"
+        style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
+      >
+        <Target className="w-4 h-4" /> {t("play.toPractice")} <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+      </button>
 
       {/* p1-comic-reader: deep-link into the Comic Studio from today's practice. */}
       <button
