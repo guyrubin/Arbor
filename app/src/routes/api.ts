@@ -28,6 +28,7 @@ import { billingCheckoutUrl } from "../server/billing.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
+import { buildWaitlistEntry, isValidEmail, type WaitlistStore } from "../server/waitlist.js";
 
 type ApiDeps = {
   config: ArborConfig;
@@ -41,6 +42,7 @@ type ApiDeps = {
   counters: UsageCounterStore;
   consultStore: ConsultStore;
   adminMetrics: AdminMetricsStore;
+  waitlistStore: WaitlistStore;
 };
 
 /** Redact PII from a profile object by round-tripping its JSON through the redactor. */
@@ -74,7 +76,7 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore }: ApiDeps) => {
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
@@ -1814,6 +1816,43 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
       loadedFrom: knowledge.loadedFrom,
       cardIds: knowledge.cards.map((card) => card.id)
     });
+  });
+
+  // B2: pre-auth email/waitlist capture — no account required.
+  //
+  // Accepts: { email, source?, market?, consent: true }
+  // - email      required; RFC 5321 basic validation; max 320 chars.
+  // - consent    must be the boolean true — explicit, never pre-filled.
+  // - source     optional; landing page identifier (e.g. "landing-en").
+  // - market     optional; ISO market code (e.g. "il", "nl").
+  //
+  // Privacy: stores ONLY email + consentAt + source + market. No name, no child
+  // data, no UID (caller is not authenticated). The existing IP-level rate limiter
+  // (30 req/min/IP on /api) provides the abuse backstop — no separate middleware.
+  //
+  // Idempotent: duplicate email → 200 { ok: true, duplicate: true }.
+  router.post("/waitlist", async (req, res) => {
+    const { email, source, market, consent } = req.body ?? {};
+
+    if (consent !== true) {
+      res.status(400).json({ error: "Explicit consent is required to join the waitlist" });
+      return;
+    }
+    if (!isValidEmail(email)) {
+      res.status(400).json({ error: "A valid email address is required" });
+      return;
+    }
+
+    try {
+      const isDuplicate = await waitlistStore.has(email);
+      if (!isDuplicate) {
+        await waitlistStore.add(buildWaitlistEntry({ email, source, market }));
+      }
+      res.json({ ok: true, duplicate: isDuplicate });
+    } catch (error: any) {
+      logger.error("Arbor Waitlist Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to record waitlist entry" });
+    }
   });
 
   return router;

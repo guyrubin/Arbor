@@ -20,6 +20,7 @@ import { createBillingWebhookRouter } from "./billing.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
 import { initUsageRollup } from "./usageRollup.js";
 import { createConsultStore } from "./consultRequests.js";
+import { createWaitlistStore } from "./waitlist.js";
 import { requestObservability } from "./logger.js";
 import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
 
@@ -78,6 +79,8 @@ export const createApp = (config: ArborConfig) => {
   // mk-p0-2: referral store writes comp Plus grants through the entitlement seam.
   const referralStore = createReferralStore(config, entitlementStore);
   const consultStore = createConsultStore(config);
+  // B2: pre-auth waitlist capture — no AI, no entitlement dependency.
+  const waitlistStore = createWaitlistStore(config);
   // ADM-1 / COST-3: founder metrics read-side + the daily token-usage rollup writer.
   const adminMetrics = createAdminMetricsStore(config);
   initUsageRollup(config);
@@ -170,7 +173,7 @@ export const createApp = (config: ArborConfig) => {
   app.use(["/api/chat", "/api/council"], createCoachMeter(entitlementStore, counters));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore }));
 
   return app;
 };

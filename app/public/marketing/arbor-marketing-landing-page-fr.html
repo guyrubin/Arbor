@@ -276,6 +276,49 @@
     <div class="actions"><a class="btn btn-primary" data-cta="app" href="https://arborprd-westeu.web.app/">Rejoindre la beta Arbor</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-en.html">English</a></div>
   </div>
 </section>
+<section id="waitlist" style="padding:clamp(3rem,6vw,5.5rem) 0;border-top:1px solid var(--line);background:var(--bg-2)">
+  <div class="wrap" style="max-width:640px">
+    <h2 style="font-size:clamp(1.6rem,1.1rem + 1.8vw,2.4rem);margin-bottom:.75rem">Pas encore prêt à vous inscrire ?</h2>
+    <p style="color:var(--ink-2);margin-bottom:1.8rem">Laissez votre adresse e-mail et nous vous informerons quand les fonctionnalités qui vous intéressent seront disponibles.</p>
+    <form id="waitlist-form-fr" novalidate style="display:flex;flex-direction:column;gap:1rem">
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+        <input id="waitlist-email-fr" type="email" name="email" placeholder="Votre adresse e-mail" autocomplete="email"
+          style="flex:1;min-width:0;padding:.82rem 1rem;border:1px solid var(--line);border-radius:12px;font-size:1rem;font-family:inherit;background:var(--card);color:var(--ink);outline:none" required />
+        <button type="submit"
+          style="padding:.82rem 1.4rem;background:linear-gradient(135deg,var(--blue),var(--blue-2));color:white;border:none;border-radius:12px;font-size:1rem;font-weight:750;font-family:inherit;cursor:pointer;white-space:nowrap">
+          Me notifier
+        </button>
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:.6rem;font-size:.88rem;color:var(--ink-2);cursor:pointer">
+        <input id="waitlist-consent-fr" type="checkbox" name="consent" style="margin-top:.18rem;flex-shrink:0;width:16px;height:16px;cursor:pointer" required />
+        <span>J'accepte qu'Arbor m'envoie des actualités produit par e-mail. Pas de spam. Désinscription à tout moment. Voir notre <a href="/privacy.html" style="color:var(--blue);text-decoration:underline">politique de confidentialité</a>.</span>
+      </label>
+      <p id="waitlist-msg-fr" role="status" aria-live="polite" style="font-size:.9rem;margin:0;min-height:1.4em"></p>
+    </form>
+  </div>
+</section>
+<script>
+(function(){
+  var form=document.getElementById("waitlist-form-fr");
+  if(!form) return;
+  form.addEventListener("submit",function(e){
+    e.preventDefault();
+    var email=(document.getElementById("waitlist-email-fr").value||"").trim();
+    var consent=document.getElementById("waitlist-consent-fr").checked;
+    var msg=document.getElementById("waitlist-msg-fr");
+    if(!email){msg.style.color="var(--coral)";msg.textContent="Veuillez saisir votre adresse e-mail.";return;}
+    if(!consent){msg.style.color="var(--coral)";msg.textContent="Veuillez cocher la case de consentement pour continuer.";return;}
+    msg.style.color="var(--muted)";msg.textContent="Envoi en cours…";
+    fetch("/api/waitlist",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email,consent:true,source:"landing-fr",market:"fr"})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.ok){msg.style.color="var(--blue)";msg.textContent="Vous êtes sur la liste. Nous vous contacterons.";form.reset();}
+        else{msg.style.color="var(--coral)";msg.textContent=d.error||"Une erreur est survenue. Veuillez réessayer.";}
+      })
+      .catch(function(){msg.style.color="var(--coral)";msg.textContent="Une erreur est survenue. Veuillez réessayer.";});
+  });
+})();
+</script>
 <footer>
   <div class="wrap">
     <p>© <span id="yr">2026</span> Arbor. Conçu à Amsterdam et Tel Aviv.</p>

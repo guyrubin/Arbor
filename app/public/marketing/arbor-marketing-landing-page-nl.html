@@ -276,6 +276,49 @@
     <div class="actions"><a class="btn btn-primary" data-cta="app" href="https://arborprd-westeu.web.app/">Doe mee met de Arbor beta</a><a class="btn btn-ghost" href="arbor-marketing-landing-page-en.html">English</a></div>
   </div>
 </section>
+<section id="waitlist" style="padding:clamp(3rem,6vw,5.5rem) 0;border-top:1px solid var(--line);background:var(--bg-2)">
+  <div class="wrap" style="max-width:640px">
+    <h2 style="font-size:clamp(1.6rem,1.1rem + 1.8vw,2.4rem);margin-bottom:.75rem">Nog niet klaar om je aan te melden?</h2>
+    <p style="color:var(--ink-2);margin-bottom:1.8rem">Laat je e-mailadres achter en we laten je weten wanneer de functies die je interesseren beschikbaar zijn.</p>
+    <form id="waitlist-form-nl" novalidate style="display:flex;flex-direction:column;gap:1rem">
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+        <input id="waitlist-email-nl" type="email" name="email" placeholder="Je e-mailadres" autocomplete="email"
+          style="flex:1;min-width:0;padding:.82rem 1rem;border:1px solid var(--line);border-radius:12px;font-size:1rem;font-family:inherit;background:var(--card);color:var(--ink);outline:none" required />
+        <button type="submit"
+          style="padding:.82rem 1.4rem;background:linear-gradient(135deg,var(--blue),var(--blue-2));color:white;border:none;border-radius:12px;font-size:1rem;font-weight:750;font-family:inherit;cursor:pointer;white-space:nowrap">
+          Meld me aan
+        </button>
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:.6rem;font-size:.88rem;color:var(--ink-2);cursor:pointer">
+        <input id="waitlist-consent-nl" type="checkbox" name="consent" style="margin-top:.18rem;flex-shrink:0;width:16px;height:16px;cursor:pointer" required />
+        <span>Ik ga akkoord dat Arbor me productupdates per e-mail stuurt. Geen spam. Uitschrijven kan altijd. Zie ons <a href="/privacy.html" style="color:var(--blue);text-decoration:underline">privacybeleid</a>.</span>
+      </label>
+      <p id="waitlist-msg-nl" role="status" aria-live="polite" style="font-size:.9rem;margin:0;min-height:1.4em"></p>
+    </form>
+  </div>
+</section>
+<script>
+(function(){
+  var form=document.getElementById("waitlist-form-nl");
+  if(!form) return;
+  form.addEventListener("submit",function(e){
+    e.preventDefault();
+    var email=(document.getElementById("waitlist-email-nl").value||"").trim();
+    var consent=document.getElementById("waitlist-consent-nl").checked;
+    var msg=document.getElementById("waitlist-msg-nl");
+    if(!email){msg.style.color="var(--coral)";msg.textContent="Voer je e-mailadres in.";return;}
+    if(!consent){msg.style.color="var(--coral)";msg.textContent="Vink het toestemmingsvakje aan om door te gaan.";return;}
+    msg.style.color="var(--muted)";msg.textContent="Verzenden…";
+    fetch("/api/waitlist",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email,consent:true,source:"landing-nl",market:"nl"})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.ok){msg.style.color="var(--blue)";msg.textContent="Je staat op de lijst. We nemen contact op.";form.reset();}
+        else{msg.style.color="var(--coral)";msg.textContent=d.error||"Er is iets misgegaan. Probeer opnieuw.";}
+      })
+      .catch(function(){msg.style.color="var(--coral)";msg.textContent="Er is iets misgegaan. Probeer opnieuw.";});
+  });
+})();
+</script>
 <footer>
   <div class="wrap">
     <p>© <span id="yr">2026</span> Arbor. Gebouwd in Amsterdam en Tel Aviv.</p>
