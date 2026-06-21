@@ -58,7 +58,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
     if (!dataUrl) return;
     setLoading(true); setError(null); setResult(null);
     try {
-      const r = await api.vision({ image: { dataUrl }, mode, note: note.trim() || undefined, childProfile });
+      const r = await api.vision({ childId: childProfile.id, image: { dataUrl }, mode, note: note.trim() || undefined, childProfile });
       setResult(r);
     } catch (e: any) {
       setError(e?.message || "Arbor could not analyze this image.");

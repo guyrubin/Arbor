@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { RefreshCw, Moon, HeartHandshake, MessageCircle, Utensils, Sparkles, Pencil } from "lucide-react";
+import { RefreshCw, Moon, HeartHandshake, MessageCircle, Utensils, Sparkles, Pencil, ShieldCheck } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
+import { api } from "../../lib/api";
 
 const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
@@ -37,17 +38,22 @@ export default function OnboardingFlow() {
   const [languages, setLanguages] = useState<string[]>(["English"]);
   const [showLangs, setShowLangs] = useState(false);
   const [saving, setSaving] = useState(false);
+  // GDPR/COPPA consent (A3): the parent is the named data controller and must
+  // affirm consent before any child data is processed. Photo/vision is a
+  // separate, biometric-adjacent opt-in that gates /api/vision server-side.
+  const [controllerConsent, setControllerConsent] = useState(false);
+  const [photoConsent, setPhotoConsent] = useState(false);
 
   const toggleLang = (l: string) => setLanguages((p) => (p.includes(l) ? p.filter((x) => x !== l) : [...p, l]));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !controllerConsent) return;
     setSaving(true);
     const picked = CONCERNS.find((c) => c.id === concern);
     const challenge = concern === "other" ? otherText.trim() : (picked?.challenge || "");
     try {
-      await addChild({
+      const child = await addChild({
         name: name.trim(),
         age,
         languages: languages.length ? languages : ["English"],
@@ -56,6 +62,16 @@ export default function OnboardingFlow() {
         challenges: challenge ? [challenge] : [],
         riskLevel: "Low",
       });
+      // Record the explicit photo/vision consent against the new child so the
+      // server's COPPA gate (requireConsent on /api/vision + /api/generate-avatar)
+      // has a real, parent-granted face_processing grant to check. The parent
+      // can change this later in My Child › Privacy. Failure here must not block
+      // setup — the gate simply stays closed (fail-closed) until consent exists.
+      if (photoConsent && child?.id) {
+        try {
+          await api.grantConsent({ childId: child.id, purpose: "face_processing", granted: true });
+        } catch { /* non-blocking; /vision stays gated until consent is recorded */ }
+      }
       // Seed the coach with the concern: OnboardingFlow renders outside the
       // ArborProvider, so the bridge is storage — the provider picks this up on
       // its first mount and pre-fills the Ask Arbor composer.
@@ -135,7 +151,21 @@ export default function OnboardingFlow() {
             </div>
           )}
 
-          <button type="submit" disabled={saving || !name.trim()} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}>
+          <div className="space-y-2.5 rounded-2xl p-3.5" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
+              <ShieldCheck className="w-3.5 h-3.5" /> {t("ob.consent.heading")}
+            </span>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={controllerConsent} onChange={(e) => setControllerConsent(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-green-ink)" }} />
+              <span className="text-[12px] leading-snug" style={{ color: "var(--arbor-ink)" }}>{t("ob.consent.controller")}</span>
+            </label>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={photoConsent} onChange={(e) => setPhotoConsent(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-green-ink)" }} />
+              <span className="text-[12px] leading-snug" style={{ color: "var(--arbor-ink)" }}>{t("ob.consent.photo")}</span>
+            </label>
+          </div>
+
+          <button type="submit" disabled={saving || !name.trim() || !controllerConsent} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}>
             {saving && <RefreshCw className="w-4 h-4 animate-spin" />}
             {saving ? t("ob.settingUp") : name.trim() ? t("ob.startWith", { name: name.trim() }) : t("ob.start")}
           </button>

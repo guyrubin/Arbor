@@ -684,7 +684,13 @@ Return only JSON matching the schema.`;
     return { mimeType: m[1], data: m[2] };
   };
 
-  router.post("/vision", async (req, res) => {
+  // COPPA gate (A2): /vision sends a photo of the child / their environment to a
+  // multimodal model. It is biometric-adjacent child-image processing, so it
+  // requires the same `face_processing` parental consent as avatar generation,
+  // captured at onboarding (A3). The gate applies whenever an image is present
+  // and fails CLOSED (451) without an active grant — and, because requireConsent
+  // reads `childId` from the body, the client MUST send childId or every call 451s.
+  router.post("/vision", requireConsent(consentStore, "face_processing", (req) => !!req.body?.image), async (req, res) => {
     const { image, mode = "observe", note, childProfile } = req.body;
     const parsed = parseDataUrl(image?.dataUrl ?? image);
     if (!parsed) {

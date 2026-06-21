@@ -143,7 +143,10 @@ export const api = {
     post<SchoolBrief>("/api/generate-handoff", payload),
   extractLog: (payload: { message: string; childProfile: ChildProfile }) =>
     post<{ behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string }>("/api/extract-log", payload),
-  vision: (payload: { image: { dataUrl: string }; mode: "observe" | "document"; note?: string; childProfile: ChildProfile }) =>
+  // childId is REQUIRED by the server's COPPA gate (requireConsent reads it from
+  // the body); without it /api/vision fails closed with 451. The caller passes the
+  // active child's id.
+  vision: (payload: { childId: string; image: { dataUrl: string }; mode: "observe" | "document"; note?: string; childProfile: ChildProfile }) =>
     post<VisionResult>("/api/vision", payload),
   // AVA-1: generate a stylized character avatar from descriptors (default) or an
   // optional reference photo. The photo is never stored server-side.
