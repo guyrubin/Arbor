@@ -444,3 +444,67 @@ body {
 /* Native-grade scroll polish (proves is-native / is-ios hooks are live). */
 .is-native .arbor-app { overscroll-behavior-y: none; }   /* kill rubber-band bounce on the app frame */
 .is-ios main { -webkit-overflow-scrolling: touch; }       /* momentum scroll in the scroll container */
+
+/* ──────────────────────────────────────────────────────────────────────────
+   D2 — HERO ARCADE / comic-book register (RESTORED). These classes are
+   referenced by HeroJourneyTab / HeroComicsTab / Practice world-cards but were
+   dropped from `main` in a merge, so the cards rendered flat ("icon AI"). Ported
+   from claude/hero-arcade. Scoped under `.arbor-play` so calm parent surfaces are
+   untouched; all tokens (--play-radius, --arbor-paper-elevated, --font-display,
+   --arbor-clay*) exist on main. Append-only (index.css merge-lock convention).
+   ────────────────────────────────────────────────────────────────────────── */
+.arbor-play {
+  --comic-ink: #171b22;
+  --comic-line: 3px solid var(--comic-ink);
+  --comic-pop: 6px 6px 0 0 var(--comic-ink);
+}
+/* A comic panel: thick ink border + hard offset shadow (no blur). */
+.comic-panel {
+  border: var(--comic-line);
+  border-radius: var(--play-radius);
+  box-shadow: var(--comic-pop);
+  background: var(--arbor-paper-elevated);
+}
+/* Halftone dot field for colored scenes. */
+.comic-halftone {
+  background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.34) 2px, transparent 2.4px);
+  background-size: 14px 14px;
+}
+/* World tile — a tappable comic panel that lifts and tilts on hover. */
+.world-tile {
+  border: var(--comic-line);
+  border-radius: var(--play-radius);
+  box-shadow: var(--comic-pop);
+  overflow: hidden;
+  background: var(--arbor-paper-elevated);
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 160ms ease;
+}
+.world-tile:hover, .world-tile:focus-visible {
+  transform: translate(-2px, -4px) rotate(-0.6deg);
+  box-shadow: 9px 11px 0 0 var(--comic-ink);
+  outline: none;
+}
+.world-tile:active { transform: translate(2px, 3px); box-shadow: 2px 2px 0 0 var(--comic-ink); }
+.world-tile[aria-disabled="true"] { opacity: 0.62; filter: grayscale(0.35); cursor: default; }
+.world-tile[aria-disabled="true"]:hover { transform: none; box-shadow: var(--comic-pop); }
+/* Comic SFX burst — short caps label with an ink outline. Decorative only. */
+.comic-sfx {
+  font-family: var(--font-display);
+  font-weight: 900;
+  color: #fff;
+  -webkit-text-stroke: 3px var(--comic-ink);
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+/* The striped power meter fill. */
+@keyframes power-fill { from { width: 0; } }
+.power-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: repeating-linear-gradient(45deg, var(--arbor-clay) 0 12px, var(--arbor-clay-deep) 12px 24px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-tile { transition: none; }
+  .world-tile:hover, .world-tile:focus-visible { transform: none; }
+}
