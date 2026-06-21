@@ -448,3 +448,27 @@ export interface StoredDevScoreSnapshot {
   overall: number;
   byDomain: Record<string, number>;
 }
+
+/**
+ * C4 — Physical growth entry: a parent-logged measurement at a point in time.
+ * Stored in the append-only "growthEntries" child collection (Firestore when
+ * signed-in, localStorage in sandbox). All three measurements are optional so
+ * parents can log whatever their pediatrician measured that visit. At least one
+ * must be present (enforced by `isValidEntry` in growth/growthEntries.ts).
+ *
+ * NO percentile is computed — Arbor does not embed a WHO/CDC reference table,
+ * so we show the raw longitudinal trajectory only and invite discussion with
+ * the pediatrician. Parent-controlled data about their own child; no new
+ * consent surface required.
+ */
+export interface GrowthEntry {
+  id: string;
+  childId: string;
+  /** ISO-8601 date the measurement was taken, e.g. "2026-06-21". */
+  date: string;
+  heightCm?: number;
+  weightKg?: number;
+  headCircumferenceCm?: number;
+  /** Optional free-text note (e.g. "at 18-month check-up"). */
+  note?: string;
+}

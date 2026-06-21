@@ -13,6 +13,8 @@ export const CHILD_SUBCOLLECTIONS = [
   "weeklyReports",
   "briefs",
   "insights",
+  // C4: parent-logged physical measurements (append-only longitudinal record).
+  "growthEntries",
 ];
 
 const remoteActive = (uid?: string) =>

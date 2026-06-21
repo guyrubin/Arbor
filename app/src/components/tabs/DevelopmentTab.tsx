@@ -4,6 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import HubTabs from "../ui/HubTabs";
 import DevScoreCard from "../sections/DevScoreCard";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
+import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
 
 /* My Child › Development — the four confusable "Development *" leaves
@@ -26,6 +27,9 @@ export default function DevelopmentTab() {
       {/* C1 — Arbor Noticed: weekly in-app monitoring card, grounded in the
           child's own logged milestones and moments. Non-diagnostic. */}
       <ArborNoticedCard />
+      {/* C4 — Physical growth: parent-logged measurements → longitudinal
+          trajectory. Raw data only; pediatrician holds the reference charts. */}
+      <PhysicalGrowthCard />
       <div>
         <button
           onClick={() => setCheckOpen(true)}
