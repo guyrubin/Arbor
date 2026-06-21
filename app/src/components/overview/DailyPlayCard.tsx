@@ -83,10 +83,11 @@ export default function DailyPlayCard({
         </div>
 
         {/* Steps (collapsible to keep the card calm) */}
+        {/* VIS-2: text-only tap area was ~20px tall — add min-h-[44px] + side padding */}
         <button
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="inline-flex items-center gap-1 text-[13px] font-bold mt-4 transition"
+          className="inline-flex items-center gap-1 text-[13px] font-bold mt-4 transition min-h-[44px] px-1"
           style={{ color: GREEN }}
         >
           {open ? t("play.hide") : t("play.how")}

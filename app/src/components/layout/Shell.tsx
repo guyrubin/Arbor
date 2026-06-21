@@ -177,12 +177,15 @@ export default function Shell() {
             </span>
             <div className="flex items-center gap-2">
               {/* Whole-app language switch (UI + AI). Hebrew flips the app to RTL. */}
+              {/* VIS-2: language switcher — min 44px hit area via min-h/padding; visual stays compact */}
               <div className="flex items-center rounded-xl p-0.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} title={t("top.language")}>
                 {(["en", "he"] as const).map((l) => (
                   <button
                     key={l}
                     onClick={() => setUiLang(l)}
-                    className="px-2 py-1 rounded-lg text-[11px] font-extrabold transition"
+                    aria-label={l === "en" ? "Switch to English" : "Switch to Hebrew"}
+                    aria-pressed={uiLang === l}
+                    className="px-3 min-h-[44px] min-w-[44px] rounded-lg text-[11px] font-extrabold transition inline-flex items-center justify-center"
                     style={uiLang === l ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}
                   >
                     {l === "en" ? "EN" : "עב"}
@@ -242,7 +245,7 @@ export default function Shell() {
                     role="tab"
                     aria-selected={on}
                     onClick={() => { void selectionHaptic(); setActiveTab(it.tab); }}
-                    className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
+                    className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-[var(--t-sm)] font-bold whitespace-nowrap transition flex-shrink-0"
                     style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", boxShadow: "inset 0 0 0 1px rgba(52,178,119,0.18)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                   >
                     <Icon className="w-3.5 h-3.5" /> {t("nav.tab." + it.tab)}

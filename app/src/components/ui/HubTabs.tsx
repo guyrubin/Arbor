@@ -30,7 +30,7 @@ export default function HubTabs({ panels, ariaLabel }: { panels: HubPanel[]; ari
               role="tab"
               aria-selected={on}
               onClick={() => setActive(p.id)}
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-[var(--t-sm)] font-bold whitespace-nowrap transition flex-shrink-0"
               style={on
                 ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "var(--shadow-sm)" }
                 : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}

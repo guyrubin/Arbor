@@ -14,7 +14,7 @@ import type { PastelKey } from "../../lib/tokens";
 export function Chip({ tone = "mint", icon, children }: { tone?: PastelKey; icon?: React.ReactNode; children: React.ReactNode }) {
   const p = PASTEL[tone];
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: p.soft, color: p.ink }}>
+    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[var(--t-xs)] font-bold" style={{ background: p.soft, color: p.ink }}>
       {icon}{children}
     </span>
   );
@@ -68,7 +68,7 @@ export function TrustSafetyBar({ risk = "Low", note, onEscalate }: { risk?: "Low
   const tone: PastelKey = risk === "High" ? "pink" : risk === "Moderate" ? "yellow" : "mint";
   const elevated = risk !== "Low";
   return (
-    <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]" style={{ background: PASTEL[tone].soft, color: "var(--arbor-ink)" }}>
+    <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[var(--t-sm)]" style={{ background: PASTEL[tone].soft, color: "var(--arbor-ink)" }}>
       <span className="font-extrabold" style={{ color: PASTEL[tone].ink }}>Risk: {risk}</span>
       <span style={{ color: "var(--arbor-muted)" }}>Non-diagnostic guidance</span>
       <span style={{ color: "var(--arbor-muted)" }}>Escalation available</span>
@@ -85,7 +85,7 @@ export function TrustSafetyBar({ risk = "Low", note, onEscalate }: { risk?: "Low
 /** Lightweight scaffold marker for early-implementation capabilities. */
 export function ComingSoon({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: T.paperDeep, color: T.faint }}>
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[var(--t-xs)] font-bold" style={{ background: T.paperDeep, color: T.faint }}>
       {label}
     </span>
   );

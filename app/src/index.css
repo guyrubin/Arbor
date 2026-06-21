@@ -64,9 +64,20 @@
   --font-display: 'Fraunces', 'Nunito', Georgia, 'Times New Roman', serif;
   --font-sans:    'Nunito', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
-  /* Type scale (rem, product-fixed) */
+  /* Type scale (rem, product-fixed; root = 15px → px equivalents shown as comment)
+     Step  Token      rem        ~px    Replaces ad-hoc values
+     xs    --t-xs     0.75rem    11.25  10px / 10.5px / 11px / 11.5px
+     sm    --t-sm     0.8125rem  12.19  11.5px / 12px / 12.5px / 13px
+     base  --t-base   0.9375rem  14.06  13.5px / 14px / 15px
+     md    --t-md     1.0625rem  15.94  15.2px / 16px / 17px
+     lg    --t-lg     1.1875rem  17.81  17px / 18px
+     xl    --t-xl     1.4375rem  21.56  20px / 21.6px / 22px
+     2xl   --t-2xl    1.75rem    26.25  24px / 25.6px / 26px               */
   --t-xs: 0.75rem; --t-sm: 0.8125rem; --t-base: 0.9375rem; --t-md: 1.0625rem;
   --t-lg: 1.1875rem; --t-xl: 1.4375rem; --t-2xl: 1.75rem;
+
+  /* Touch-target floor (WCAG 2.5.5 + Apple HIG ≥ 44px) */
+  --touch-min: 44px;
 
   /* Radii */
   --r-sm: 10px; --r: 14px; --r-lg: 18px; --r-xl: 22px;
@@ -303,6 +314,40 @@ body {
   border-radius: 0.75rem;
 }
 .arbor-app .arbor-skeleton { animation: pulse 1.6s cubic-bezier(0.4,0,0.6,1) infinite; }
+
+/* ─── VIS-1: Type-scale utility aliases ─────────────────────────────────────
+   CSS classes that bind directly to the 7-step token scale. Use these (or the
+   matching Tailwind text-[var(--t-*)] form) when authoring new components;
+   migrate existing arbitrary-px classes to the nearest scale step over time.
+   Mapping summary (approximate at 15 px root):
+     .t-xs   ≈ 11–12 px   replaces text-[10.5px] text-[11px] text-[11.5px]
+     .t-sm   ≈ 12–13 px   replaces text-[12px] text-[12.5px] text-[13px]
+     .t-base ≈ 14–15 px   replaces text-[13.5px] text-[14px] text-[15px]
+     .t-md   ≈ 16–17 px   replaces text-[15.2px] text-[16px] text-[17px]
+     .t-lg   ≈ 18 px      replaces text-[18px]
+     .t-xl   ≈ 22 px      replaces text-[21.6px] text-[22px]
+     .t-2xl  ≈ 26 px      replaces text-[25.6px] text-[26px]              */
+.t-xs   { font-size: var(--t-xs); }
+.t-sm   { font-size: var(--t-sm); }
+.t-base { font-size: var(--t-base); }
+.t-md   { font-size: var(--t-md); }
+.t-lg   { font-size: var(--t-lg); }
+.t-xl   { font-size: var(--t-xl); }
+.t-2xl  { font-size: var(--t-2xl); }
+
+/* ─── VIS-2: Touch-target floor ─────────────────────────────────────────────
+   Inline icon-only controls (those carrying only an SVG and no label text)
+   need a minimum 44×44 hit area so they are reachable on mobile without
+   precision tapping. Centralize the pattern here; per-component padding
+   and min-h/min-w values are set at the call site; this class is the explicit
+   opt-in that confirms the author thought about the touch target.             */
+.touch-target {
+  min-height: var(--touch-min);
+  min-width:  var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ─── Accessibility: keyboard focus ring ──────────────────────────────────── */
 .arbor-app a:focus-visible,
