@@ -75,12 +75,17 @@
   --mint:#e4f4ec;
   --mint-2:#d3ecde;
 
-  /* warm accents — used to MEAN something, calm not loud */
-  --peach:#d9763f;  --peach-bg:#fbede3;
-  --lavender:#7a6bd8; --lavender-bg:#ece9fb;
-  --ochre:#c2882a;  --ochre-bg:#f7eed8;
-  --pink:#d65f87;   --pink-bg:#fbe6ee;
-  --sky:#3f8cc9;    --sky-bg:#e4eff8;
+  /* DISCIPLINE: emerald is the brand. ONE warm accent (ember) for the 2am/emotional
+     signal, and a memory-gold reserved for the growth-ring signature motif. No rainbow. */
+  --ember:#c0552a;  --ember-bg:#f6e6dc;  --ember-ink:#9a4420;
+  --gold:#a8823c;   --gold-bg:#f1e7d2;
+  /* legacy accent tokens collapsed onto the disciplined palette (kills the 6-hue spread).
+     Foregrounds use the deep ink variants so tinted labels clear AA. */
+  --peach:var(--ember-ink);  --peach-bg:var(--ember-bg);
+  --lavender:#15613e;        --lavender-bg:var(--mint);
+  --ochre:#6f5526;           --ochre-bg:var(--gold-bg);
+  --pink:var(--ember-ink);   --pink-bg:var(--ember-bg);
+  --sky:#15613e;             --sky-bg:var(--mint);
 
   --line:#dde6e0;
   --line-2:#e8efe9;
@@ -130,22 +135,21 @@ strong,b{color:var(--ink);font-weight:700}
 
 /* ---------- type scale ---------- */
 .serif{font-family:var(--serif)}
-.h-xl{font-family:var(--serif);font-weight:900;font-size:clamp(2.5rem,1.4rem + 4.4vw,5rem);
-  line-height:1.02;letter-spacing:-.02em;color:var(--ink);margin:0;text-wrap:balance}
-.h-lg{font-family:var(--serif);font-weight:700;font-size:clamp(1.9rem,1.2rem + 2.6vw,3.05rem);
-  line-height:1.1;letter-spacing:-.014em;color:var(--ink);margin:0;text-wrap:balance}
+.h-xl{font-family:var(--serif);font-weight:900;font-size:clamp(2.9rem,1.5rem + 5.4vw,5.75rem);
+  line-height:1.0;letter-spacing:-.03em;color:var(--ink);margin:0;text-wrap:balance}
+.h-lg{font-family:var(--serif);font-weight:700;font-size:clamp(2.1rem,1.3rem + 3vw,3.5rem);
+  line-height:1.06;letter-spacing:-.02em;color:var(--ink);margin:0;text-wrap:balance}
 .h-md{font-family:var(--serif);font-weight:700;font-size:clamp(1.35rem,1rem + 1.2vw,1.85rem);
   line-height:1.18;color:var(--ink);margin:0}
 .accent-ink{color:var(--green-ink)}
 .lede{font-size:clamp(1.06rem,1rem + .35vw,1.3rem);line-height:1.62;color:var(--ink-2);
   max-width:62ch;text-wrap:pretty}
-.eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;font-size:.86rem;
-  color:var(--green-ink);background:var(--mint);border:1px solid var(--mint-2);
-  padding:.34rem .8rem;border-radius:var(--r-pill)}
-.eyebrow.peach{color:var(--peach);background:var(--peach-bg);border-color:#f1d8c6}
-.eyebrow.lav{color:var(--lavender);background:var(--lavender-bg);border-color:#ddd6f6}
-.eyebrow.sky{color:var(--sky);background:var(--sky-bg);border-color:#cfe0f1}
-.eyebrow.pink{color:var(--pink);background:var(--pink-bg);border-color:#f5d2e0}
+.eyebrow{display:inline-flex;align-items:center;gap:.6rem;font-weight:700;font-size:.82rem;letter-spacing:.04em;
+  color:var(--green-ink);background:none;border:0;padding:0;margin-bottom:.4rem}
+.eyebrow::before{content:"";width:1.6rem;height:2px;border-radius:2px;background:currentColor;opacity:.85}
+.eyebrow.peach,.eyebrow.pink{color:var(--ember-ink)}
+.eyebrow.lav,.eyebrow.sky{color:var(--green-ink)}
+.eyebrow.gold{color:var(--gold)}
 
 /* ---------- buttons ---------- */
 .btn{display:inline-flex;align-items:center;gap:.55rem;font-weight:700;font-size:1.02rem;
@@ -195,14 +199,27 @@ strong,b{color:var(--ink);font-weight:700}
 .tint-mint{background:linear-gradient(180deg,#fff,var(--well));border-block:1px solid var(--line-2)}
 .tint-paper{background:var(--paper-2);border-block:1px solid var(--line-2)}
 
-/* ---------- hero ---------- */
-.hero{position:relative;padding:clamp(2.4rem,1rem + 5vw,4.6rem) 0 clamp(2.4rem,1rem + 4vw,4rem);overflow:clip}
-.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(2rem,1rem + 3vw,4rem);align-items:center}
-.hero-tag{display:inline-flex;align-items:center;gap:.5rem;font-weight:600;font-size:.92rem;color:var(--green-ink);
-  background:var(--card);border:1px solid var(--mint-2);padding:.4rem .9rem;border-radius:var(--r-pill);box-shadow:var(--shadow-sm)}
-.hero-tag .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(52,178,119,.2)}
-.hero h1{margin:1.1rem 0 1.1rem}
-.hero .lede{margin-bottom:1.7rem}
+/* ---------- hero (deep "2am" world) ---------- */
+.hero{position:relative;padding:clamp(3rem,1rem + 6vw,5.4rem) 0 clamp(3rem,1rem + 5vw,5rem);overflow:clip;color:#fff;
+  background:radial-gradient(120% 90% at 82% 8%, #1f7d52 0%, transparent 55%),
+             radial-gradient(90% 80% at 8% 100%, #15402c 0%, transparent 60%),
+             linear-gradient(168deg, #0f3324 0%, #0c2a1f 60%, #0a2419 100%)}
+/* growth-ring signature motif */
+.hero::before{content:"";position:absolute;z-index:0;top:-30%;inset-inline-start:-12%;width:65%;aspect-ratio:1;pointer-events:none;
+  border-radius:50%;opacity:.5;
+  background:repeating-radial-gradient(circle at center, transparent 0 38px, rgba(168,130,60,.16) 38px 40px)}
+.hero::after{content:"";position:absolute;z-index:0;bottom:-40%;inset-inline-end:-16%;width:70%;aspect-ratio:1;pointer-events:none;
+  border-radius:50%;opacity:.45;
+  background:repeating-radial-gradient(circle at center, transparent 0 46px, rgba(191,240,212,.12) 46px 48px)}
+.hero .wrap{position:relative;z-index:2;display:grid;grid-template-columns:1.08fr .92fr;gap:clamp(2rem,1rem + 3vw,4.2rem);align-items:center}
+.hero h1{margin:1.2rem 0 1.2rem;color:#fff}
+.hero .accent-ink{color:#bdeccf}
+.hero .lede{margin-bottom:1.9rem;color:rgba(234,250,241,.82);max-width:54ch}
+.hero-tag{display:inline-flex;align-items:center;gap:.55rem;font-weight:600;font-size:.9rem;color:#eafaf1;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);padding:.42rem .95rem;border-radius:var(--r-pill)}
+.hero-tag .dot{width:9px;height:9px;border-radius:50%;background:var(--ember);box-shadow:0 0 0 4px rgba(192,85,42,.28)}
+.hero .hero-trust{color:rgba(234,250,241,.78)}
+.hero .hero-trust svg,.hero .hero-trust svg *{color:#bdeccf;stroke:#bdeccf}
 .hero-actions{display:flex;flex-wrap:wrap;gap:.8rem;margin-bottom:1.5rem}
 .hero-trust{display:flex;flex-wrap:wrap;gap:1.1rem;color:var(--ink-2);font-size:.92rem;font-weight:500}
 .hero-trust span{display:inline-flex;align-items:center;gap:.45rem}
@@ -301,8 +318,9 @@ strong,b{color:var(--ink);font-weight:700}
 /* ---------- moat (drenched emerald) ---------- */
 .moat{position:relative;color:var(--on-green-soft);overflow:clip;
   background:radial-gradient(80% 90% at 80% 0%,#1f7d52,transparent 60%),linear-gradient(165deg,var(--green-800) 0%,var(--green-900) 100%)}
-.moat::before{content:"";position:absolute;inset:0;opacity:.5;pointer-events:none;
-  background:radial-gradient(40% 50% at 12% 90%,rgba(122,107,216,.22),transparent 70%)}
+.moat::before{content:"";position:absolute;inset:0;opacity:.6;pointer-events:none;
+  background:repeating-radial-gradient(circle at 86% 14%, transparent 0 44px, rgba(168,130,60,.15) 44px 46px),
+            radial-gradient(38% 50% at 8% 96%, rgba(47,174,116,.28), transparent 70%)}
 .moat .wrap{position:relative;z-index:2}
 .moat .eyebrow{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.22)}
 .moat h2{color:#fff}
@@ -385,8 +403,8 @@ strong,b{color:var(--ink);font-weight:700}
   padding:clamp(2.6rem,1.4rem+3vw,4.4rem) 0}
 .feat + .feat{border-top:1px solid var(--line-2)}
 .feat.flip .feat-copy{order:2}
-.feat-copy .ftag{display:inline-flex;align-items:center;gap:.45rem;font-weight:700;font-size:.84rem;
-  padding:.32rem .75rem;border-radius:var(--r-pill);margin-bottom:.9rem}
+.feat-copy .ftag{display:inline-flex;align-items:center;gap:.45rem;font-weight:700;font-size:.9rem;
+  padding:.36rem .85rem;border-radius:var(--r-pill);margin-bottom:.9rem}
 .feat-copy h3{font-family:var(--serif);font-size:clamp(1.5rem,1.1rem+1.4vw,2.1rem);line-height:1.15;color:var(--ink);margin:0 0 .7rem}
 .feat-copy p{color:var(--ink-2);font-size:1.04rem;max-width:46ch}
 .feat-copy .fpts{list-style:none;margin:1.1rem 0 0;padding:0;display:grid;gap:.55rem}
@@ -417,14 +435,15 @@ strong,b{color:var(--ink);font-weight:700}
 /* generic mini-tiles for play/practice */
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
 .tile{border-radius:var(--r-lg);padding:.95rem;border:1px solid var(--line-2);background:var(--card-2);display:flex;gap:.6rem;align-items:flex-start}
-.tile .te{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:none;font-size:1.2rem}
+.tile .te{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:none}
+.tile .te svg{width:21px;height:21px}
 .tile b{display:block;font-family:var(--serif);color:var(--ink);font-size:.98rem;margin-bottom:.1rem}
 .tile span{font-size:.82rem;color:var(--ink-2);line-height:1.4}
 
 /* story panel (academy) */
 .story{border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--line);
   background:linear-gradient(160deg,#f3effb,#fff)}
-.story-cover{padding:1.4rem;background:linear-gradient(150deg,var(--lavender),#9a8ee6);color:#fff;position:relative;min-height:140px}
+.story-cover{padding:1.4rem;background:radial-gradient(120% 100% at 85% 0%,#2a9c66,transparent 60%),linear-gradient(150deg,#1f8a5a,#14513a);color:#fff;position:relative;min-height:140px}
 .story-cover .hero-pill{position:absolute;top:1rem;inset-inline-end:1rem;background:rgba(255,255,255,.2);font-size:.74rem;font-weight:700;padding:.25rem .6rem;border-radius:var(--r-pill)}
 .story-cover .st-t{font-family:var(--serif);font-weight:900;font-size:1.5rem;line-height:1.1;max-width:18ch;margin-top:1.6rem}
 .story-cover .st-s{font-size:.86rem;opacity:.9;margin-top:.4rem}
@@ -449,7 +468,7 @@ strong,b{color:var(--ink);font-weight:700}
 
 /* ---------- hero comic (PlayKit viral world) ---------- */
 .comic{position:relative;color:#fff;overflow:clip;
-  background:radial-gradient(70% 80% at 80% 10%,#3a2d6b,transparent 60%),linear-gradient(165deg,#221a44,#14102b)}
+  background:radial-gradient(70% 80% at 80% 10%,#1f7d52,transparent 55%),linear-gradient(165deg,#0f3324,#0a2419)}
 .comic .wrap{position:relative;z-index:2}
 .comic .eyebrow{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.24)}
 .comic h2{color:#fff}
@@ -460,12 +479,13 @@ strong,b{color:var(--ink);font-weight:700}
   background-size:cover;background-position:center}
 .cpanel .cap{position:absolute;inset-inline-start:8px;bottom:8px;background:#ffd23f;color:#1a1330;font-weight:800;
   font-size:.82rem;padding:.2rem .55rem;border-radius:7px;transform:rotate(-2deg);box-shadow:2px 2px 0 #0c0a1c}
-.cpanel.p1{grid-row:span 2;background:linear-gradient(160deg,#ff7eb6,#ff5e93)}
-.cpanel.p2{background:linear-gradient(160deg,#5ad1ff,#3f8cc9)}
-.cpanel.p3{background:linear-gradient(160deg,#ffd23f,#f0a500)}
+.cpanel.p1{grid-row:span 2;background:linear-gradient(160deg,#2fae74,#1f8a5a)}
+.cpanel.p2{background:linear-gradient(160deg,#d8743f,#c0552a)}
+.cpanel.p3{background:linear-gradient(160deg,#d9b25a,#a8823c)}
 .cpanel .pow{position:absolute;top:10px;inset-inline-end:10px;font-family:var(--serif);font-weight:900;font-size:1.4rem;color:#fff;
   text-shadow:2px 2px 0 #0c0a1c;transform:rotate(6deg)}
-.cpanel .hglyph{position:absolute;inset:0;display:grid;place-items:center;font-size:3.4rem;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3))}
+.cpanel .hglyph{position:absolute;inset:0;display:grid;place-items:center;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3))}
+.cpanel .hglyph svg{width:66px;height:66px}.cpanel .hglyph svg *{stroke:#fff}
 .comic-share{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.4rem}
 .share-chip{display:inline-flex;align-items:center;gap:.45rem;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
   color:#fff;border-radius:var(--r-pill);padding:.5rem .9rem;font-weight:600;font-size:.9rem}
@@ -602,8 +622,8 @@ table.ctable{border-collapse:collapse;width:100%;min-width:640px;font-size:.94re
   padding:clamp(2.6rem,1.4rem+4vw,4.6rem) clamp(1.4rem,1rem+2vw,3rem);
   background:radial-gradient(80% 120% at 50% -10%,#2a9c66,transparent 60%),linear-gradient(160deg,var(--green-800),var(--green-900));
   box-shadow:var(--shadow-lg)}
-.cta-final::before{content:"";position:absolute;inset:0;opacity:.4;pointer-events:none;
-  background:radial-gradient(40% 60% at 12% 100%,rgba(122,107,216,.4),transparent 60%)}
+.cta-final::before{content:"";position:absolute;inset:0;opacity:.55;pointer-events:none;
+  background:repeating-radial-gradient(circle at 12% 0%, transparent 0 40px, rgba(168,130,60,.16) 40px 42px)}
 .cta-final>*{position:relative;z-index:2}
 .cta-final h2{color:#fff;margin:1rem auto 0;max-width:20ch}
 .cta-final p{color:rgba(234,250,241,.86);max-width:52ch;margin:1rem auto 0}
@@ -673,8 +693,8 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
   <div class="wrap">
     <div class="hero-copy reveal">
       <span class="hero-tag"><span class="dot"></span>מערכת ההפעלה להתפתחות הילד</span>
-      <h1 class="h-xl">לדעת מה קורה עם הילד שלכם<span class="accent-ink"> — ומה לעשות הערב.</span></h1>
-      <p class="lede">בשתיים בלילה, כשגוגל רק מגביר את הדאגה, Arbor נותנת קריאה רגועה של מה שקורה, תוכנית מעשית להערב, וזיכרון שמכיר את הילד שלכם וגדל איתו. הכוונה מבוססת מומחי התפתחות, בלי אבחון ובלי דרמה, והנתונים נשארים שלכם.</p>
+      <h1 class="h-xl">בשתיים בלילה, גוגל רק מפחיד.<span class="accent-ink"> Arbor כבר מכירה את הילד שלך.</span></h1>
+      <p class="lede">קריאה רגועה של מה שקורה, תוכנית מעשית להערב, וזיכרון פרטי שמכיר את הילד שלכם וגדל איתו. מבוסס מומחי התפתחות, בלי אבחון ובלי דרמה. הנתונים נשארים שלכם.</p>
       <div class="hero-actions">
         <a class="btn btn-primary" data-cta="app" href="https://arborprd-westeu.web.app/">להתחיל עכשיו — חינם
           <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -763,7 +783,7 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
   <div class="wrap">
     <div class="sec-head reveal">
       <span class="eyebrow">מה השתנה</span>
-      <h2 class="h-lg" style="margin-top:.9rem">מאפליקציה שמתעדת — למערכת שמכירה את הילד.</h2>
+      <h2 class="h-lg" style="margin-top:.9rem">לא עוד אפליקציה שמתעדת. מערכת שמכירה את הילד.</h2>
       <p class="lede">רוב האפליקציות יודעות לרשום. הן לא זוכרות, לא מחברות, ולא יודעות להגיד מה לעשות מחר. Arbor בנויה הפוך: הזיכרון בא קודם, וכל השאר נשען עליו.</p>
     </div>
     <div class="shift-grid">
@@ -860,7 +880,7 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
     <div class="feat" id="feat-today">
       <div class="feat-copy reveal">
         <span class="ftag" style="background:var(--sky-bg);color:var(--sky)">Today · קצב היום</span>
-        <h3>לדעת מראש מתי יהיה קשה — ומתי הרגע הנכון.</h3>
+        <h3>לדעת מראש מתי יהיה קשה, ומתי הרגע הנכון.</h3>
         <p>במקום לגלות את ההתפרקות של חמש אחר הצהריים בדיעבד, Arbor לומדת את הדפוסים של הילד שלכם ומראה את חלונות החיכוך, הרוגע והריכוז של היום — כדי שתתכננו סביבם.</p>
         <ul class="fpts">
           <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>חיזוי של היום כולו — לא רק שינה</li>
@@ -901,10 +921,10 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
         <div class="panel">
           <div class="panel-h"><span class="pt">הפעילות של היום</span><span class="pmeta">5 דק׳</span></div>
           <div class="tiles">
-            <div class="tile"><span class="te acc-green">🧺</span><div><b>מיון לפי צבע</b><span>סל כביסה + 3 צעצועים. מפתח קשב וקטלוג.</span></div></div>
-            <div class="tile"><span class="te acc-sky">💧</span><div><b>שפיכה מבוקרת</b><span>שתי כוסות מים. שליטה עדינה במוטוריקה.</span></div></div>
-            <div class="tile"><span class="te acc-peach">🗣️</span><div><b>שם וספר</b><span>שיום חפצים בזמן הסידור. אוצר מילים.</span></div></div>
-            <div class="tile"><span class="te acc-lav">🫆</span><div><b>תור שלי, תורך</b><span>משחק תורות קצר. ויסות וסבלנות.</span></div></div>
+            <div class="tile"><span class="te acc-green"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6" stroke-width="1.7"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" stroke-width="1.7"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" stroke-width="1.7"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" stroke-width="1.7"/></svg></span><div><b>מיון לפי צבע</b><span>סל כביסה ושלושה צעצועים. מפתח קשב וקטלוג.</span></div></div>
+            <div class="tile"><span class="te acc-green"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3s6 6.3 6 10a6 6 0 0 1-12 0c0-3.7 6-10 6-10Z" stroke-width="1.7" stroke-linejoin="round"/></svg></span><div><b>שפיכה מבוקרת</b><span>שתי כוסות מים. שליטה עדינה במוטוריקה.</span></div></div>
+            <div class="tile"><span class="te acc-green"><svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" stroke-width="1.7" stroke-linejoin="round"/></svg></span><div><b>שם וספר</b><span>שיום חפצים בזמן הסידור. אוצר מילים.</span></div></div>
+            <div class="tile"><span class="te acc-green"><svg viewBox="0 0 24 24" fill="none"><path d="M4 8l3-3 3 3M20 16l-3 3-3-3M7 5h8a4 4 0 0 1 0 8M17 19H9a4 4 0 0 1 0-8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><b>תור שלי, תורך</b><span>משחק תורות קצר. ויסות וסבלנות.</span></div></div>
           </div>
           <div class="day-note" style="margin-top:.7rem">נבחר היום כי מאיה אוהבת סדר ומיון, ותיעדתם שמשחקי תורות עוזרים לה במעברים.</div>
         </div>
@@ -927,10 +947,10 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
         <div class="panel">
           <div class="panel-h"><span class="pt">אולפן התרגול</span><span class="pmeta">PlayKit</span></div>
           <div class="tiles">
-            <div class="tile"><span class="te acc-peach">🦊</span><div><b>מאמן דיבור</b><span>חזרה על צלילים עם ספרוט.</span></div></div>
-            <div class="tile"><span class="te acc-pink">😮</span><div><b>אולפן חיקוי</b><span>חיקוי הבעות מול המצלמה.</span></div></div>
-            <div class="tile"><span class="te acc-lav">💛</span><div><b>מעבדת רגשות</b><span>זיהוי ושיום רגשות.</span></div></div>
-            <div class="tile"><span class="te acc-sky">🔤</span><div><b>עקיבת אותיות</b><span>כתיבה ראשונית בכיף.</span></div></div>
+            <div class="tile"><span class="te acc-peach"><svg viewBox="0 0 24 24" fill="none"><path d="M4 10v4M8 6v12M12 8.5v7M16 5v14M20 10v4" stroke-width="1.8" stroke-linecap="round"/></svg></span><div><b>מאמן דיבור</b><span>חזרה על צלילים עם ספרוט.</span></div></div>
+            <div class="tile"><span class="te acc-peach"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke-width="1.7"/><path d="M9 10h.01M15 10h.01M8.5 14.5a4.5 4.5 0 0 0 7 0" stroke-width="1.7" stroke-linecap="round"/></svg></span><div><b>אולפן חיקוי</b><span>חיקוי הבעות מול המצלמה.</span></div></div>
+            <div class="tile"><span class="te acc-peach"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.3-7-9.3A3.7 3.7 0 0 1 12 7a3.7 3.7 0 0 1 7 3.4C19 15.7 12 20 12 20Z" stroke-width="1.7" stroke-linejoin="round"/></svg></span><div><b>מעבדת רגשות</b><span>זיהוי ושיום רגשות.</span></div></div>
+            <div class="tile"><span class="te acc-peach"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19l1-4L16 5l3 3L9 18l-4 1Z" stroke-width="1.7" stroke-linejoin="round"/></svg></span><div><b>עקיבת אותיות</b><span>כתיבה ראשונית בכיף.</span></div></div>
           </div>
           <div class="miles" style="margin-top:.7rem">
             <div class="mile"><span class="ml">דיוק צליל ׳ר׳</span><span class="pct">72%</span><span class="bar"><i style="width:72%"></i></span></div>
@@ -967,7 +987,7 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
     <div class="feat" id="feat-care">
       <div class="feat-copy reveal">
         <span class="ftag" style="background:var(--ochre-bg);color:var(--ochre)">Care · שאלה למומחה</span>
-        <h3>כשצריך אדם — הוא כבר מכיר את הסיפור.</h3>
+        <h3>כשצריך אדם, הוא כבר מכיר את הסיפור.</h3>
         <p>Cleo ו-Maven נותנים מומחה אמיתי, אבל הוא מתחיל את השיחה קר. ב-Arbor, כשאתם פונים לאיש מקצוע, הוא מקבל חבילת הקשר מסודרת על הילד — דפוסים, מה ניסיתם, ומה עבד. פחות "ספרו לי הכל מההתחלה".</p>
         <ul class="fpts">
           <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>חבילת הקשר באישור הורה בלבד</li>
@@ -1035,9 +1055,9 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
       </div>
       <div class="reveal d2">
         <div class="comic-board" aria-label="פאנלים של קומיקס גיבור-על עם הילד כדמות">
-          <div class="cpanel p1"><span class="hglyph">🦸</span><span class="pow">!זאפ</span><span class="cap">מאיה — גיבורת הגן</span></div>
-          <div class="cpanel p2"><span class="hglyph">⚡</span><span class="cap">כוח האומץ</span></div>
-          <div class="cpanel p3"><span class="hglyph">🌟</span><span class="cap">היא הצליחה!</span></div>
+          <div class="cpanel p1"><span class="hglyph"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6" r="2.6" stroke-width="1.6"/><path d="M12 8.6V17M12 11l-4.5 2M12 11l4.5 2M9.5 22l2.5-5 2.5 5M6 9l-2 3.5M18 9l2 3.5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="pow">!זאפ</span><span class="cap">מאיה, גיבורת הגן</span></div>
+          <div class="cpanel p2"><span class="hglyph"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke-width="1.6" stroke-linejoin="round"/></svg></span><span class="cap">כוח האומץ</span></div>
+          <div class="cpanel p3"><span class="hglyph"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.6 5.6L20 9.3l-4 4 1 6-5-3-5 3 1-6-4-4 5.4-.7L12 3Z" stroke-width="1.6" stroke-linejoin="round"/></svg></span><span class="cap">היא הצליחה!</span></div>
         </div>
       </div>
     </div>
@@ -1298,7 +1318,7 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
   <div class="wrap">
     <div class="cta-final reveal">
       <span class="hero-tag"><span class="dot"></span>בטא פרטית · מספר מקומות מוגבל</span>
-      <h2 class="h-lg">בפעם הבאה שתדאגו — תהיה לכם תשובה רגועה.</h2>
+      <h2 class="h-lg">בפעם הבאה שתדאגו, תהיה לכם תשובה רגועה.</h2>
       <p>במקום עוד חיפוש מלחיץ בגוגל: קריאה רגועה של מה שקורה, תוכנית מעשית להערב, וזיכרון שמכיר את הילד שלכם וגדל איתו.</p>
       <div class="hero-actions">
         <a class="btn btn-primary" data-cta="app" href="https://arborprd-westeu.web.app/">להתחיל עכשיו — חינם
@@ -1343,9 +1363,9 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
         </a>
         <p>מערכת ההפעלה להתפתחות הילד: הכוונה ממומחים, זיכרון חי, משחק מותאם, סיפורים אישיים ותמיכה מקצועית כשצריך.</p>
         <div class="market-switch" aria-label="בחירת שוק ושפה">
-          <a href="/marketing/arbor-il.html" aria-current="true" hreflang="he-IL">🇮🇱 ישראל · עברית</a>
-          <a href="/marketing/arbor-nl.html" hreflang="nl-NL">🇳🇱 Nederland · Nederlands</a>
-          <a href="/marketing/arbor-marketing-landing-page-en.html" hreflang="en">🌐 English</a>
+          <a href="/marketing/arbor-il.html" aria-current="true" hreflang="he-IL">ישראל · עברית</a>
+          <a href="/marketing/arbor-nl.html" hreflang="nl-NL">Nederland · Nederlands</a>
+          <a href="/marketing/arbor-marketing-landing-page-en.html" hreflang="en">International · English</a>
         </div>
       </div>
       <div class="foot-cols">
