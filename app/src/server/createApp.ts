@@ -12,6 +12,7 @@ import { loadFramework } from "../services/framework.js";
 import { createApiRouter } from "../routes/api.js";
 import { createAuthMiddleware } from "./authMiddleware.js";
 import { createAiQuota } from "./aiQuota.js";
+import { createImageQuota } from "./imageQuota.js";
 import { createCounterStore } from "./quotaStore.js";
 import { createEntitlementStore, createCoachMeter, requirePlusFeature } from "./entitlements.js";
 import { createReferralStore } from "./referral.js";
@@ -119,10 +120,19 @@ export const createApp = (config: ArborConfig) => {
   app.use("/api", createAuthMiddleware(config));
   // COST-2: now that auth has resolved, stamp the uid onto the active usage context.
   app.use("/api", bindUidToContext);
-  // Per-user hourly cap on the AI-generating endpoints (cost guardrail).
+  // Per-user hourly cap on the AI-generating endpoints (cost guardrail). The
+  // image-gen endpoints are included here for the hourly abuse cap AND get a
+  // tighter daily image cap below (S2 — image generation is a pricier SKU).
   app.use(
-    ["/api/chat", "/api/council", "/api/vision", "/api/generate-plan", "/api/generate-story", "/api/analyze-behavior", "/api/generate-handoff", "/api/digest"],
+    ["/api/chat", "/api/council", "/api/vision", "/api/generate-plan", "/api/generate-story", "/api/analyze-behavior", "/api/generate-handoff", "/api/digest", "/api/generate-avatar", "/api/generate-scene", "/api/generate-comic"],
     createAiQuota(counters)
+  );
+  // S2: per-user DAILY image-generation cap + global circuit breaker. Closes the
+  // unbounded-cost leak on the three image endpoints (avatar / scene / comic),
+  // which previously had no quota at all.
+  app.use(
+    ["/api/generate-avatar", "/api/generate-scene", "/api/generate-comic"],
+    createImageQuota(counters)
   );
   // MON-1: free-tier coach meter + Plus-only feature gates. Production enforces
   // by default; local beta can still opt out with ENFORCE_ENTITLEMENTS=false.
