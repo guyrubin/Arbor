@@ -886,6 +886,8 @@ export const en: Dict = {
   "growth.latest.as_of": "as of {date}",
   "growth.note": "Share this trajectory with your pediatrician — they have the reference charts.",
   "growth.delete.confirm": "Remove this measurement?",
+  "push.optin.label": "Moment reminders",
+  "push.optin.sublabel": "A well-timed nudge when Arbor spots a good moment — no noise, you stay in control.",
 };
 
 export const he: Dict = {
@@ -1742,6 +1744,8 @@ export const he: Dict = {
   "growth.latest.as_of": "נכון ל-{date}",
   "growth.note": "שתפו את המסלול הזה עם רופא הילדים — אצלם יש את לוחות הייחוס.",
   "growth.delete.confirm": "להסיר מדידה זו?",
+  "push.optin.label": "תזכורות לרגעים",
+  "push.optin.sublabel": "תזכורת ממוקדת כשארבור מזהה רגע טוב — ללא רעש, אתם שולטים.",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

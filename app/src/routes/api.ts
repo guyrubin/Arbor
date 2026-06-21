@@ -43,6 +43,8 @@ type ApiDeps = {
   consultStore: ConsultStore;
   adminMetrics: AdminMetricsStore;
   waitlistStore: WaitlistStore;
+  /** C2: push token store (FCM). Off-by-default client-side via VITE_FIREBASE_VAPID_KEY. */
+  pushTokenStore?: import("../server/pushTokens.js").PushTokenStore;
 };
 
 /** Redact PII from a profile object by round-tripping its JSON through the redactor. */
@@ -76,7 +78,7 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, pushTokenStore }: ApiDeps) => {
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
@@ -1854,6 +1856,56 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
       res.status(500).json({ error: "Failed to record waitlist entry" });
     }
   });
+
+  // C2 — Background push (FCM) opt-in / opt-out + smoke-test send.
+  // OFF BY DEFAULT: routes only mounted when pushTokenStore is present; no VAPID
+  // key in the Vite build = pushCapable() false client-side = these are never called.
+  // AADC: no guilt/streak/child-data push. Parent channel only; explicit opt-in.
+  if (pushTokenStore) {
+    router.post("/push/register", async (req, res) => {
+      const { uid } = actorOf(req);
+      const { token } = req.body ?? {};
+      if (typeof token !== "string" || token.length < 10) {
+        res.status(400).json({ error: "A valid FCM registration token is required" });
+        return;
+      }
+      try {
+        await pushTokenStore.upsert(uid, token);
+        res.json({ ok: true });
+      } catch (err) {
+        logger.error("Push register error", err as Error, { requestId: requestIdOf(req) });
+        res.status(500).json({ error: "Failed to register push token" });
+      }
+    });
+
+    router.delete("/push/register", async (req, res) => {
+      const { uid } = actorOf(req);
+      try {
+        await pushTokenStore.remove(uid);
+        res.json({ ok: true });
+      } catch (err) {
+        logger.error("Push unregister error", err as Error, { requestId: requestIdOf(req) });
+        res.status(500).json({ error: "Failed to unregister push token" });
+      }
+    });
+
+    // Self-only FCM path proof (before Cloud Scheduler is provisioned).
+    router.post("/push/test-send", async (req, res) => {
+      const { uid } = actorOf(req);
+      try {
+        const { sendNudgePush } = await import("../server/pushTokens.js");
+        const result = await sendNudgePush(uid, pushTokenStore);
+        if (result === "no-token") {
+          res.status(404).json({ error: "No push token for this user — enable push notifications first" });
+          return;
+        }
+        res.json({ ok: true, result });
+      } catch (err) {
+        logger.error("Push test-send error", err as Error, { requestId: requestIdOf(req) });
+        res.status(500).json({ error: "Push test-send failed" });
+      }
+    });
+  }
 
   return router;
 };
