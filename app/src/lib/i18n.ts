@@ -11,7 +11,7 @@ export type UiLang = "en" | "he";
 
 type Dict = Record<string, string>;
 
-const en: Dict = {
+export const en: Dict = {
   // chrome / nav
   "nav.tagline": "Development Fieldbook",
   "nav.home": "Home",
@@ -841,7 +841,7 @@ const en: Dict = {
   "wk.brief": "Generate school brief for {first}",
 };
 
-const he: Dict = {
+export const he: Dict = {
   "nav.tagline": "יומן התפתחות",
   // P0-5 attribution dashboard (internal/admin)
   "attr.title": "ייחוס ומשפך",
