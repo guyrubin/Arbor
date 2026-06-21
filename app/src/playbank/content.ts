@@ -14,6 +14,18 @@ export type PlayDomain = "regulation" | "language" | "motor" | "cognitive" | "so
 /** Coarse developmental bands (avoid "developmental age" numbers per the clinical stance). */
 export type PlayBand = "infant" | "toddler" | "preschool" | "early-school";
 
+/** An expert or research source that grounds the activity's mechanism.
+ *  Attach ONLY when the match is unambiguous and the URL is a real, stable page.
+ *  kind: "guideline" = clinical/professional guidance body;
+ *        "framework" = an evidence-based parenting programme;
+ *        "research"  = a named researcher or peer-reviewed work. */
+export interface ActivitySource {
+  name: string;  // display name, e.g. "CDC Learn the Signs. Act Early."
+  org: string;   // short org label shown in the credit chip, e.g. "CDC"
+  url: string;   // real, stable landing page — no fabricated URLs
+  kind: "guideline" | "framework" | "research";
+}
+
 export interface PlayActivity {
   id: string;
   title: string;
@@ -26,6 +38,9 @@ export interface PlayActivity {
   whatItBuilds: string;
   steps: string[];
   durationMin: number;
+  /** Optional expert/research attribution. Hidden in the UI when absent.
+   *  Must be a real, verified source — never fabricated. */
+  source?: ActivitySource;
 }
 
 export const PLAY_BANDS: { band: PlayBand; label: string; minYears: number; maxYears: number }[] = [
@@ -72,6 +87,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Check again at bedtime and notice if the weather changed.",
     ],
     durationMin: 8,
+    source: {
+      name: "The Whole-Brain Child",
+      org: "Siegel & Bryson",
+      url: "https://www.drdansiegel.com/book/the-whole-brain-child/",
+      kind: "research",
+    },
   },
   {
     id: "transition-countdown",
@@ -136,6 +157,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Answer whatever they offer as if it were a full sentence.",
     ],
     durationMin: 5,
+    source: {
+      name: "Serve and Return",
+      org: "Harvard Center on the Developing Child",
+      url: "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
+      kind: "research",
+    },
   },
   {
     id: "story-swap",
@@ -232,6 +259,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let them lead a face for you to copy.",
     ],
     durationMin: 5,
+    source: {
+      name: "Serve and Return",
+      org: "Harvard Center on the Developing Child",
+      url: "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
+      kind: "research",
+    },
   },
 
   // ── 12–30 month window (the thin band) + early infant ──────────────────
@@ -250,6 +283,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Name it each time: 'my turn... your turn'.",
     ],
     durationMin: 6,
+    source: {
+      name: "Serve and Return",
+      org: "Harvard Center on the Developing Child",
+      url: "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
+      kind: "research",
+    },
   },
   {
     id: "point-and-name",
@@ -266,6 +305,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Repeat their sound or word back, a little fuller.",
     ],
     durationMin: 5,
+    source: {
+      name: "Serve and Return",
+      org: "Harvard Center on the Developing Child",
+      url: "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
+      kind: "research",
+    },
   },
   {
     id: "in-and-out",
@@ -298,6 +343,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Once it passes, name what helped: 'a hug helped.'",
     ],
     durationMin: 5,
+    source: {
+      name: "The Whole-Brain Child",
+      org: "Siegel & Bryson",
+      url: "https://www.drdansiegel.com/book/the-whole-brain-child/",
+      kind: "research",
+    },
   },
   {
     id: "bubble-chase",
@@ -362,6 +413,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let them pull the cloth off themselves.",
     ],
     durationMin: 5,
+    source: {
+      name: "Learn the Signs. Act Early.",
+      org: "CDC",
+      url: "https://www.cdc.gov/act-early/index.html",
+      kind: "guideline",
+    },
   },
 
   // ── Batch 1: coverage-gap fillers (≥2 per populated band×domain cell) ──
@@ -382,6 +439,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Stay until the body softens — they borrow your calm.",
     ],
     durationMin: 6,
+    source: {
+      name: "The Whole-Brain Child",
+      org: "Siegel & Bryson",
+      url: "https://www.drdansiegel.com/book/the-whole-brain-child/",
+      kind: "research",
+    },
   },
   {
     id: "warm-bath-calm",
@@ -416,6 +479,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Hand it back and let the happy cycle repeat.",
     ],
     durationMin: 6,
+    source: {
+      name: "Learn the Signs. Act Early.",
+      org: "CDC",
+      url: "https://www.cdc.gov/act-early/index.html",
+      kind: "guideline",
+    },
   },
   {
     id: "texture-tray",
@@ -450,6 +519,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Pause and smile, leaving space for a coo back.",
     ],
     durationMin: 5,
+    source: {
+      name: "Serve and Return",
+      org: "Harvard Center on the Developing Child",
+      url: "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
+      kind: "research",
+    },
   },
   {
     id: "copy-the-coo",
@@ -466,6 +541,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Add one new gentle sound and see if they try it.",
     ],
     durationMin: 5,
+    source: {
+      name: "Serve and Return",
+      org: "Harvard Center on the Developing Child",
+      url: "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
+      kind: "research",
+    },
   },
 
   // infant × motor (was 1)
@@ -484,6 +565,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Keep it short and happy; stop before it's a struggle.",
     ],
     durationMin: 5,
+    source: {
+      name: "Learn the Signs. Act Early.",
+      org: "CDC",
+      url: "https://www.cdc.gov/act-early/index.html",
+      kind: "guideline",
+    },
   },
 
   // toddler × cognitive (was 2 → add depth)
@@ -626,6 +713,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "End on what each of you is looking forward to.",
     ],
     durationMin: 8,
+    source: {
+      name: "The Whole-Brain Child",
+      org: "Siegel & Bryson",
+      url: "https://www.drdansiegel.com/book/the-whole-brain-child/",
+      kind: "research",
+    },
   },
 
   // early-school × regulation (was 2 → depth)
@@ -710,6 +803,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Keep it warm and silly — no wrong guesses.",
     ],
     durationMin: 8,
+    source: {
+      name: "The Whole-Brain Child",
+      org: "Siegel & Bryson",
+      url: "https://www.drdansiegel.com/book/the-whole-brain-child/",
+      kind: "research",
+    },
   },
   {
     id: "rhyme-time",
@@ -758,6 +857,12 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Notice out loud: 'you helped teddy calm down.'",
     ],
     durationMin: 7,
+    source: {
+      name: "The Whole-Brain Child",
+      org: "Siegel & Bryson",
+      url: "https://www.drdansiegel.com/book/the-whole-brain-child/",
+      kind: "research",
+    },
   },
 ];
 

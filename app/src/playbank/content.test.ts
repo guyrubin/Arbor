@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { PLAY_ACTIVITIES, PLAY_ACTIVITIES_HE, localizeActivity } from "./content";
+import type { ActivitySource } from "./content";
 
 describe("Daily Play content", () => {
   it("every activity has a Hebrew translation", () => {
@@ -33,5 +34,23 @@ describe("Daily Play content", () => {
   it("localizeActivity passes through unchanged for en", () => {
     const a = PLAY_ACTIVITIES[0];
     expect(localizeActivity(a, "en")).toBe(a);
+  });
+
+  it("every present source has non-empty name, org, and url", () => {
+    const activitiesWithSource = PLAY_ACTIVITIES.filter((a) => a.source !== undefined);
+    expect(activitiesWithSource.length).toBeGreaterThan(0);
+    for (const a of activitiesWithSource) {
+      const src = a.source as ActivitySource;
+      expect(src.name.trim().length, `source.name empty on ${a.id}`).toBeGreaterThan(0);
+      expect(src.org.trim().length, `source.org empty on ${a.id}`).toBeGreaterThan(0);
+      expect(src.url.trim().length, `source.url empty on ${a.id}`).toBeGreaterThan(0);
+      expect(src.url, `source.url not https on ${a.id}`).toMatch(/^https:\/\//);
+      expect(["guideline", "framework", "research"], `source.kind invalid on ${a.id}`).toContain(src.kind);
+    }
+  });
+
+  it("source field is optional — activities without it are valid", () => {
+    const uncited = PLAY_ACTIVITIES.filter((a) => a.source === undefined);
+    expect(uncited.length).toBeGreaterThan(0);
   });
 });

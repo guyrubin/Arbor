@@ -72,6 +72,22 @@ export default function DailyPlayCard({
           <span style={{ color: GREEN, fontWeight: 700 }}>{t("play.builds")} </span>{activity.whatItBuilds}
         </p>
 
+        {/* Expert attribution — shown only when a verified source is present.
+            Parent-facing; calm-clinical register; mechanism/attribution only (no outcome claims). */}
+        {activity.source && (
+          <p className="mt-1.5" style={{ fontSize: "var(--t-xs)", color: "var(--arbor-muted)", lineHeight: 1.4 }}>
+            Based on{" "}
+            <a
+              href={activity.source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--arbor-muted)", textDecorationColor: "var(--arbor-rule-strong)", textUnderlineOffset: "2px" }}
+            >
+              {activity.source.org}
+            </a>
+          </p>
+        )}
+
         {/* Household items */}
         <div className="flex flex-wrap gap-1.5 mt-4">
           {activity.householdItems.map((it) => (
