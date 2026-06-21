@@ -24,6 +24,8 @@ import RhythmStrip from "../overview/RhythmStrip";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import DevScoreStrip from "../overview/DevScoreStrip";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
+import { StreakChip } from "../overview/StreakChip";
+import { computeStreak } from "../../lib/streak";
 import { MissionsPanel } from "../practice/MissionsTab";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
@@ -48,7 +50,7 @@ export default function OverviewTab() {
     behaviorLogs, childProfile, setChatInput,
     pendingMemoryItems, approvedMemoryItems,
     proposeMemory,
-    donePlayIds, logPlayCompletion,
+    donePlayIds, logPlayCompletion, playLogs,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -86,6 +88,17 @@ export default function OverviewTab() {
     }, 1);
     return picks[0] ?? null;
   }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds]);
+
+  // V4: gentle "days of moments" streak off any logged moment (a behaviour log
+  // or a Daily Play completion). AADC-hardened in lib/streak — no loss/guilt,
+  // one-day grace; the chip only shows once a calm rhythm exists (>= 2 days).
+  const streak = useMemo(
+    () => computeStreak(
+      [...behaviorLogs.map((l) => l.timestamp), ...playLogs.map((p) => p.timestamp)],
+      Date.now(),
+    ),
+    [behaviorLogs, playLogs],
+  );
 
   const prepWindow = (hour: number) => {
     track("rhythm_prep_opened", { hour });
@@ -327,6 +340,7 @@ export default function OverviewTab() {
             <p className="text-sm mt-1.5" style={{ color: MUTED }}>
               {firstName}, age {childProfile.age}{childProfile.schoolContext ? ` · ${childProfile.schoolContext}` : ""}
             </p>
+            <StreakChip days={streak.current} lang={uiLang === "he" ? "he" : "en"} />
           </div>
           <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold flex-shrink-0" style={{ background: PASTEL[trendTone].soft, color: PASTEL[trendTone].ink }}>
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: PASTEL[trendTone].ink }} /> {trendWord}
