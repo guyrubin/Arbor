@@ -129,11 +129,33 @@ export const createApp = (config: ArborConfig) => {
   app.use("/api", createAuthMiddleware(config));
   // COST-2: now that auth has resolved, stamp the uid onto the active usage context.
   app.use("/api", bindUidToContext);
-  // Per-user hourly cap on the AI-generating endpoints (cost guardrail). The
-  // image-gen endpoints are included here for the hourly abuse cap AND get a
+  // A1/A2 (CIL-bugs-imagegen-quota-missing): per-user hourly cap on EVERY
+  // route that calls a paid model or mints a paid token. The original allow-list
+  // was missing /voice, /extract-log, /generate-adventure, /generate-hero-journey,
+  // and /live/token — all of which call the model and previously had only the
+  // ~30/min IP backstop (no per-user ceiling). Added here without touching any
+  // route handler or consent/billing middleware.
+  // The image-gen endpoints are also included for the hourly abuse cap AND get a
   // tighter daily image cap below (S2 — image generation is a pricier SKU).
   app.use(
-    ["/api/chat", "/api/council", "/api/vision", "/api/generate-plan", "/api/generate-story", "/api/analyze-behavior", "/api/generate-handoff", "/api/digest", "/api/generate-avatar", "/api/generate-scene", "/api/generate-comic"],
+    [
+      "/api/chat",
+      "/api/council",
+      "/api/voice",
+      "/api/extract-log",
+      "/api/vision",
+      "/api/generate-plan",
+      "/api/generate-story",
+      "/api/generate-adventure",
+      "/api/generate-hero-journey",
+      "/api/analyze-behavior",
+      "/api/generate-handoff",
+      "/api/digest",
+      "/api/generate-avatar",
+      "/api/generate-scene",
+      "/api/generate-comic",
+      "/api/live/token",
+    ],
     createAiQuota(counters)
   );
   // S2: per-user DAILY image-generation cap + global circuit breaker. Closes the
