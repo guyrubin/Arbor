@@ -12,6 +12,7 @@
  */
 import { api } from "./api";
 import { HERO_STORIES } from "./heroJourneys";
+import { resolveScene } from "./sceneCache";
 import type { HeroStorySpec } from "../types";
 
 /** Per-story viral comic copy (bilingual): the heroic panel cue, a shout, and SFX. */
@@ -218,38 +219,35 @@ export interface GeneratePageArgs {
   beatPrompt?: string;
 }
 
-const inFlight = new Map<string, Promise<string>>();
-
 /** Generate (or reuse a cached/in-flight) panel for one page. Resolves to a
  *  data-URL or rejects. The cover uses a title-card theme; beats use the beat
- *  prompt. Concurrent identical requests are deduped via the in-flight map. */
+ *  prompt. Results are cached + concurrent identical requests deduped via the
+ *  shared persistent scene cache (lib/sceneCache). */
 export async function generatePage(args: GeneratePageArgs): Promise<string> {
   const { adventure, lang, heroName, heroDataUrl, page, beatPrompt } = args;
   const he = lang === "he";
   const baseTheme = he ? adventure.copy.themeHe : adventure.copy.theme;
   const key = comicKey(heroDataUrl || "no-hero", adventure.id, lang, page.index);
-  const existing = inFlight.get(key);
-  if (existing) return existing;
 
   const theme = page.cover
     ? `${baseTheme} — dramatic comic-book COVER with the title, no panels`
     : beatPrompt || baseTheme;
 
-  const run = api
-    .generateComic({
-      ...(heroDataUrl ? { avatar: { dataUrl: heroDataUrl } } : {}),
-      heroName,
-      theme,
-      ...(page.cover ? { cover: true } : { dialogue: he ? adventure.copy.dialogueHe : adventure.copy.dialogue }),
-      sfx: he ? adventure.copy.sfxHe : adventure.copy.sfx,
-      style: "comichero",
-      pageIndex: page.index,
-    })
-    .then((r) => r.dataUrl)
-    .finally(() => inFlight.delete(key));
-
-  inFlight.set(key, run);
-  return run;
+  // S3: persist generated pages (and dedupe concurrent identical requests) via
+  // the shared scene cache, so re-opening a book never re-pays generation.
+  return resolveScene(key, () =>
+    api
+      .generateComic({
+        ...(heroDataUrl ? { avatar: { dataUrl: heroDataUrl } } : {}),
+        heroName,
+        theme,
+        ...(page.cover ? { cover: true } : { dialogue: he ? adventure.copy.dialogueHe : adventure.copy.dialogue }),
+        sfx: he ? adventure.copy.sfxHe : adventure.copy.sfx,
+        style: "comichero",
+        pageIndex: page.index,
+      })
+      .then((r) => r.dataUrl),
+  );
 }
 
 /** Build a whole book by generating pages sequentially, reporting each as it

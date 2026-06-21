@@ -20,11 +20,15 @@ import {
   buildComicBook,
   type ComicPageData,
 } from "./heroComics";
+import { _resetSceneCache } from "./sceneCache";
 
 const adventure = ADVENTURES[0];
 
 beforeEach(() => {
   generateComic.mockReset();
+  // generatePage now persists results through the shared scene cache; clear it
+  // between cases so each test regenerates from its own mocked resolver.
+  _resetSceneCache();
 });
 
 describe("catalog", () => {

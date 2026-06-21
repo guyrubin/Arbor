@@ -6,17 +6,16 @@ import { ComicPage } from "../ui/playkit";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { api, type AvatarStyle } from "../../lib/api";
 import { comicKey } from "../../lib/heroComics";
+import { getScene, resolveScene } from "../../lib/sceneCache";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 import type { HeroSceneRender } from "../../types";
 
 /**
- * AVA-3: scene-art cache. Generated scene images are large data URLs, so we keep a
- * per-session in-memory cache (keyed by story-beat + avatar) plus an in-flight map to
- * dedupe concurrent requests when the parent flips between beats. The key uses the
- * shared `comicKey` helper so Story-Journey panels and Comic Reader pages share hits.
+ * AVA-3 / S3: scene-art cache. Generated scene images are large data URLs, so they
+ * are cached via `lib/sceneCache` — a persistent (localStorage), quota-safe LRU
+ * with in-flight dedupe — keyed by the shared `comicKey` helper so Story-Journey
+ * panels and Comic Reader pages share hits AND survive a reload (no re-pay).
  */
-const sceneArtCache = new Map<string, string>();
-const sceneArtInFlight = new Map<string, Promise<string>>();
 
 /**
  * The cinematic scene card for one beat of a Hero Journey: a generated scene that
@@ -66,7 +65,7 @@ export function HeroScenePlayer({
     // Shared key format (comicKey) so Story-Journey beats and Comic Reader pages
     // reuse the same cached art; `seed` already encodes story+beat+child.
     const key = comicKey(heroAvatarUrl, seed, "en", beatNumber);
-    const cached = sceneArtCache.get(key);
+    const cached = getScene(key);
     if (cached) { setSceneArt(cached); return; }
 
     let active = true;
@@ -74,8 +73,8 @@ export function HeroScenePlayer({
     // M4: scene art is generated lazily and degrades gracefully (the catch below
     // keeps the fallback illustration). runInstrumented adds start/success/error
     // analytics ("scene_art_*") so silent generation failures are observable.
-    const run =
-      sceneArtInFlight.get(key) ??
+    // resolveScene persists the result + dedupes concurrent identical requests.
+    resolveScene(key, () =>
       runInstrumented("scene_art", () =>
         api.generateComic({
           avatar: { dataUrl: heroAvatarUrl },
@@ -86,11 +85,8 @@ export function HeroScenePlayer({
           dialogue: scene.dialogue,
           style: (heroAvatarStyle ?? "comichero"),
         }),
-      )
-        .then((r) => { sceneArtCache.set(key, r.dataUrl); return r.dataUrl; })
-        .finally(() => sceneArtInFlight.delete(key));
-    sceneArtInFlight.set(key, run);
-    run
+      ).then((r) => r.dataUrl),
+    )
       .then((url) => { if (active) setSceneArt(url); })
       .catch(() => { /* graceful: keep the fallback illustration */ })
       .finally(() => { if (active) setArtLoading(false); });
