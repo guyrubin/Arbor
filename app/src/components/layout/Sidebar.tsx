@@ -74,13 +74,13 @@ export default function Sidebar() {
               {user.email && <p className="text-[10px] truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
             </div>
             {firebaseEnabled && (
-              <button onClick={() => void signOut()} title={t("nav.signout")} aria-label={t("nav.signout")} className="flex-shrink-0 p-1.5 rounded-lg transition" style={{ color: "var(--arbor-muted)" }}>
+              <button onClick={() => void signOut()} title={t("nav.signout")} aria-label={t("nav.signout")} className="flex-shrink-0 rounded-lg transition touch-target" style={{ color: "var(--arbor-muted)" }}>
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
         )}
-        <button onClick={() => setShowSettings(true)} className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition" style={{ color: "var(--arbor-muted)" }}
+        <button onClick={() => setShowSettings(true)} className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-semibold transition" style={{ color: "var(--arbor-muted)" }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
           <Settings className="w-[18px] h-[18px]" /> {t("nav.settings")}
