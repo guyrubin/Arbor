@@ -8,6 +8,7 @@ import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
+import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { ShareButton } from "../ui/ShareButton";
 
 /**
@@ -48,7 +49,7 @@ export default function AvatarCreator({
   const [result, setResult] = useState<string | undefined>();
   const [photoError, setPhotoError] = useState<string | undefined>();
   const { openPaywall } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
 
   // M4: loading + error + start/success/error analytics for the generation call.
   // A 402 opens the paywall (conversion moment) instead of an inline error.
@@ -207,7 +208,10 @@ export default function AvatarCreator({
             {result && (
               <div className="flex items-center gap-4 p-3 mb-4 rounded-2xl" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 <Avatar name={childName} photoURL={result} size={72} ring />
-                <div className="text-xs" style={{ color: "var(--arbor-muted)" }}>Here&apos;s a character. Use it, or generate another.</div>
+                <div className="text-xs" style={{ color: "var(--arbor-muted)" }}>
+                  Here&apos;s a character. Use it, or generate another.
+                  <span className="block mt-1.5"><ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} /></span>
+                </div>
               </div>
             )}
 

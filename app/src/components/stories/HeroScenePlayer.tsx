@@ -8,6 +8,8 @@ import { api, type AvatarStyle } from "../../lib/api";
 import { comicKey } from "../../lib/heroComics";
 import { getScene, resolveScene } from "../../lib/sceneCache";
 import { runInstrumented } from "../../hooks/useAsyncAction";
+import { ProvenanceBadge } from "../ui/ProvenanceBadge";
+import { useLanguage } from "../../context/LanguageContext";
 import type { HeroSceneRender } from "../../types";
 
 /**
@@ -47,6 +49,7 @@ export function HeroScenePlayer({
   const [speaking, setSpeaking] = useState(false);
   const [sceneArt, setSceneArt] = useState<string | undefined>();
   const [artLoading, setArtLoading] = useState(false);
+  const { uiLang } = useLanguage();
 
   // Stop speech whenever the scene changes or the card unmounts.
   useEffect(() => {
@@ -159,6 +162,9 @@ export function HeroScenePlayer({
           )}
         </div>
       )}
+
+      {/* S4: make the model's SynthID + C2PA provenance visible on generated art. */}
+      {sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="-mt-2" />}
 
       <h3 className={`font-extrabold tracking-tight ${immersive ? "text-lg" : "text-base"}`} style={{ color: "var(--arbor-ink)" }}>
         {scene.title}
