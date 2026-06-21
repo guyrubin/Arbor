@@ -12,7 +12,7 @@
     "lint": "tsc --noEmit",
     "test": "vitest run --config scripts/vitest.config.mjs",
     "test:coverage": "vitest run --config scripts/vitest.config.mjs --coverage",
-    "eval:safety": "node scripts/safety-eval.mjs",
+    "eval:safety": "tsx scripts/safety-eval.mts",
     "check:framework": "node scripts/framework-check.mjs"
   },
   "dependencies": {

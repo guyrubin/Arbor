@@ -557,17 +557,46 @@ Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
 The parent just said: "${message}"
 Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
 
-      // SEC/CMP P0: redacted prompt in; aliases restored incrementally on the way out.
+      // SAFE-V1: the output-safety screen (AI-2) MUST gate /voice the same way it
+      // gates /chat and /council. /voice feeds TTS, so a token-by-token relay would
+      // speak a diagnosis or a medication dose aloud before any screen could run.
+      // We therefore BUFFER the full assembled (alias-restored) reply, run the SAME
+      // screenModelOutput function, and only THEN speak it. Safety beats the few
+      // hundred ms of streaming latency for a non-diagnostic children's product.
+      // SEC/CMP P0: redacted prompt in; aliases restored on the way out.
       const restorer = privacy.createStreamRestorer();
-      let any = false;
+      let assembled = "";
       for await (const chunk of modelProvider.streamText({ route: "analysis_structured", prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6 })) {
         if (abortController.signal.aborted) { res.end(); return; }
-        const restored = restorer.push(chunk || "");
-        if (restored) { any = true; writeSse(res, "delta", { text: restored }); }
+        assembled += restorer.push(chunk || "");
       }
-      const tail = restorer.flush();
-      if (tail) { any = true; writeSse(res, "delta", { text: tail }); }
-      if (!any) writeSse(res, "delta", { text: "Let's take this one step at a time — tell me a little more about what's happening." });
+      assembled += restorer.flush();
+      assembled = assembled.trim();
+      if (abortController.signal.aborted) { res.end(); return; }
+
+      // Screen the assembled text BEFORE it is sent to TTS / streamed to the client.
+      if (assembled) {
+        const outputVerdict = await screenModelOutput(modelProvider, assembled);
+        if (outputVerdict.flagged) {
+          logger.warn("Voice output blocked by output safety screen", {
+            requestId: requestIdOf(req),
+            category: outputVerdict.category,
+            reason: outputVerdict.reason,
+          });
+          // Never speak the flagged draft. Speak a calm, non-diagnostic spoken
+          // fallback that mirrors the /chat blocked behavior (handoff to a real
+          // professional) instead.
+          writeSse(res, "delta", {
+            text: "I want to be careful here. That's something best looked at with a professional who can see your child in person — like your pediatrician or family health centre. I can help you write down what you're noticing so that conversation is easier.",
+          });
+          writeSse(res, "done", { outputBlocked: true, blockedCategory: outputVerdict.category });
+          res.end();
+          return;
+        }
+      }
+
+      const spoken = assembled || "Let's take this one step at a time — tell me a little more about what's happening.";
+      writeSse(res, "delta", { text: spoken });
       writeSse(res, "done", {});
       res.end();
     } catch (error: any) {
