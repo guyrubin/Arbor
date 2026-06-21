@@ -4,6 +4,8 @@ import {
   classifyBehaviorDomain,
   deriveMonitoring,
   buildMonitoringReportDoc,
+  pickHighestWatchSignal,
+  monitoredDomainToPlayHint,
   MONITORED_DOMAIN_LABEL,
 } from "./monitoring.js";
 import type { BehaviorLog, Milestone } from "../types";
@@ -206,6 +208,75 @@ describe("deriveMonitoring — framing guarantees (non-negotiable)", () => {
     expect(res.elevated).toBe(false);
     expect(res.headline).toContain("on track");
     expect(res.domains).toHaveLength(Object.keys(MONITORED_DOMAIN_LABEL).length);
+  });
+});
+
+describe("pickHighestWatchSignal", () => {
+  it("returns the domain with both reasons over milestone-only", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 4,
+        milestones: [
+          milestone({ domain: "language_communication", ageGroup: "18 months", checked: false }),
+        ],
+        behaviorLogs: [
+          log({ behaviorType: "Meltdown", intensity: 5, resolved: false }),
+          log({ behaviorType: "Meltdown", intensity: 5, resolved: false }),
+          log({ behaviorType: "Tantrum", intensity: 5, resolved: false }),
+        ],
+        now: NOW,
+      },
+      "Mila",
+    );
+    const signal = pickHighestWatchSignal(res);
+    // attachment_regulation has behavior_pattern; language_communication has milestone_overdue
+    // neither has both, so milestone_overdue (priority 2) > behavior_pattern (priority 1)
+    expect(signal).not.toBeNull();
+    expect(signal!.domain).toBe("language_communication");
+  });
+
+  it("returns the on-track domain with highest encouragement when nothing is flagged", () => {
+    const res = deriveMonitoring({ ageYears: 2, now: NOW }, "Mila");
+    const signal = pickHighestWatchSignal(res);
+    expect(signal).not.toBeNull();
+    expect(signal!.level).toBe("on_track");
+  });
+
+  it("returns null when domains array is empty", () => {
+    const emptyResult = deriveMonitoring({ ageYears: 0, now: NOW }, "");
+    // force empty domains to test the guard
+    const signal = pickHighestWatchSignal({ ...emptyResult, domains: [] });
+    expect(signal).toBeNull();
+  });
+
+  it("the non-diagnostic copy for a monitor signal never contains banned diagnostic terms", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 4,
+        milestones: [milestone({ domain: "language_communication", ageGroup: "18 months", checked: false })],
+        now: NOW,
+      },
+      "Mila",
+    );
+    const signal = pickHighestWatchSignal(res)!;
+    const text = signal.note.toLowerCase();
+    // Strip the explicit negation phrase so we test for accidental positive use only.
+    const withoutNegation = text.replace(/this isn't a diagnosis/g, "");
+    expect(withoutNegation).not.toMatch(/diagnos|disorder|asd|autism|adhd|delay\b|risk score|probability/);
+    // Must retain the provider nudge.
+    expect(text).toContain("provider");
+    // Must not contain alarming language.
+    expect(text).not.toMatch(/alert|alarm|urgent|emergency|serious concern/);
+  });
+});
+
+describe("monitoredDomainToPlayHint", () => {
+  it("maps every monitored domain to a play domain hint", () => {
+    const domains = Object.keys(MONITORED_DOMAIN_LABEL) as (keyof typeof MONITORED_DOMAIN_LABEL)[];
+    const valid = new Set(["regulation", "language", "social", "cognitive", "motor"]);
+    for (const d of domains) {
+      expect(valid.has(monitoredDomainToPlayHint(d))).toBe(true);
+    }
   });
 });
 

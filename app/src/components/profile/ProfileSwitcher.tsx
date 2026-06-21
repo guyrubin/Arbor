@@ -5,6 +5,7 @@ import { useProfile } from "../../context/ProfileContext";
 import AddChildModal from "./AddChildModal";
 import ProfileEditDrawer from "./ProfileEditDrawer";
 import { Avatar } from "../ui/Avatar";
+import FamilyGlanceCard from "./FamilyGlanceCard";
 
 export default function ProfileSwitcher() {
   const { profiles, activeChild, setActiveChild } = useProfile();
@@ -81,6 +82,10 @@ export default function ProfileSwitcher() {
           </>
         )}
       </AnimatePresence>
+
+      {/* C3 — Family glance: shown below the switcher for 2+ child households.
+          Reads only the existing DevScore snapshot per child — no new data. */}
+      <FamilyGlanceCard />
 
       <AddChildModal open={showAdd} onClose={() => setShowAdd(false)} />
       <ProfileEditDrawer open={showEdit} onClose={() => setShowEdit(false)} />

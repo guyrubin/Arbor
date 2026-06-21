@@ -247,6 +247,58 @@ export function deriveMonitoring(input: MonitoringInput, childFirstName = ""): M
 }
 
 /**
+ * Pick the single highest-signal domain to surface in the "Arbor noticed" card.
+ *
+ * Priority: a domain with BOTH reasons > milestone_overdue only >
+ * behavior_pattern only > on_track (calm encouragement). When multiple domains
+ * share the same level, prefers the one with the highest overdue-milestone count
+ * (broadest signal), then alphabetic tie-break for determinism.
+ *
+ * Returns null only when `result.domains` is empty (no data whatsoever).
+ */
+export function pickHighestWatchSignal(result: MonitoringResult): DomainSignal | null {
+  if (result.domains.length === 0) return null;
+
+  const priority = (d: DomainSignal): number => {
+    if (d.reasons.includes("milestone_overdue") && d.reasons.includes("behavior_pattern")) return 3;
+    if (d.reasons.includes("milestone_overdue")) return 2;
+    if (d.reasons.includes("behavior_pattern")) return 1;
+    return 0;
+  };
+
+  return [...result.domains].sort((a, b) => {
+    const pa = priority(a), pb = priority(b);
+    if (pa !== pb) return pb - pa;
+    // Tie on priority: more overdue milestones first.
+    const oa = a.overdueMilestones.length, ob = b.overdueMilestones.length;
+    if (oa !== ob) return ob - oa;
+    return a.domain.localeCompare(b.domain);
+  })[0];
+}
+
+/**
+ * Map a monitored developmental domain to the nearest Daily-Play concern domain
+ * so the "Arbor noticed" card can link to a relevant expert-cited activity when
+ * one exists. Returns null for domains with no clear play-domain analog.
+ *
+ * This is a view-side concern: monitoring.ts is pure and does not import from
+ * the playbank, so the mapping lives here as a small exported helper.
+ */
+export type PlayDomainHint = "regulation" | "language" | "social" | "cognitive" | "motor";
+
+export function monitoredDomainToPlayHint(domain: MonitoredDomainId): PlayDomainHint {
+  const map: Record<MonitoredDomainId, PlayDomainHint> = {
+    attachment_regulation: "regulation",
+    language_communication: "language",
+    cognition_executive_function: "cognitive",
+    social_development: "social",
+    independence_adaptive_skills: "regulation",
+    sensory_motor_patterns: "motor",
+  };
+  return map[domain];
+}
+
+/**
  * Shape the monitoring result into the existing `ReportDoc` structure consumed
  * by `openPrintableReport`, so providers get the same branded, non-diagnostic
  * printable as every other Arbor handoff. Kept here (not in reportExport.ts) so

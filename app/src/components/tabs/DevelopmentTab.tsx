@@ -3,6 +3,7 @@ import { Gauge, CheckCircle2, UserCircle, CalendarDays, ClipboardCheck } from "l
 import { useLanguage } from "../../context/LanguageContext";
 import HubTabs from "../ui/HubTabs";
 import DevScoreCard from "../sections/DevScoreCard";
+import ArborNoticedCard from "../sections/ArborNoticedCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
 
 /* My Child › Development — the four confusable "Development *" leaves
@@ -22,6 +23,9 @@ export default function DevelopmentTab() {
   return (
     <div className="space-y-5">
       <DevScoreCard />
+      {/* C1 — Arbor Noticed: weekly in-app monitoring card, grounded in the
+          child's own logged milestones and moments. Non-diagnostic. */}
+      <ArborNoticedCard />
       <div>
         <button
           onClick={() => setCheckOpen(true)}
