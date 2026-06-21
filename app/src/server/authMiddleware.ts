@@ -36,15 +36,24 @@ const ensureAdminApp = (config: ArborConfig) => {
  * attaches the decoded identity to `req.user`; otherwise it decodes opportunistically
  * (if a token is present) and always calls next().
  */
+/**
+ * Public API paths that must work for logged-OUT visitors even when REQUIRE_AUTH
+ * is on (e.g. the pre-account waitlist capture on the marketing pages). These are
+ * still protected by the /api IP rate-limit + per-route validation. Paths are
+ * relative to the "/api" mount point.
+ */
+const PUBLIC_API_PATHS = new Set(["/waitlist"]);
+
 export const createAuthMiddleware = (config: ArborConfig): RequestHandler => {
   const required = authRequired();
 
   return async (req, res, next) => {
     const header = req.headers.authorization || "";
     const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+    const isPublic = PUBLIC_API_PATHS.has(req.path);
 
     if (!token) {
-      if (required) {
+      if (required && !isPublic) {
         res.status(401).json({ error: "Unauthorized", details: "Missing Authorization bearer token." });
         return;
       }
