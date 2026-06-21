@@ -886,6 +886,48 @@ export const en: Dict = {
   "growth.latest.as_of": "as of {date}",
   "growth.note": "Share this trajectory with your pediatrician — they have the reference charts.",
   "growth.delete.confirm": "Remove this measurement?",
+  // C2 — Push opt-in (Development tab settings toggle)
+  "push.toggle.label": "Timely nudges",
+  "push.toggle.desc": "Arbor lets you know when a calm moment is about to pass — no guilt, no streaks, just a quiet heads-up.",
+  "push.enable.cta": "Turn on nudges",
+  "push.disable.cta": "Turn off nudges",
+  "push.enabled.toast": "Nudges on — Arbor will let you know when the timing is right.",
+  "push.denied.toast": "Notifications are blocked in your browser settings. Enable them there first.",
+  "push.error.toast": "Couldn't set up nudges right now — try again.",
+  "push.unsupported.toast": "Background nudges aren't supported in this browser.",
+  // B0 — Onboarding age picker (months-precise for under-3s)
+  "ob.ageMonths.label": "Age",
+  "ob.ageMonths.years": "Years",
+  "ob.ageMonths.months": "Months",
+  "ob.ageMonths.display": "{years} yr {months} mo",
+  "ob.ageMonths.displayMonthsOnly": "{months} months",
+  "ob.ageMonths.displayYearOnly": "{years} year",
+  "ob.ageMonths.displayYearsOnly": "{years} years",
+  // B0 — Factual age label (non-diagnostic, display only)
+  "age.months": "{n} month{plural}",
+  "age.year": "1 year",
+  "age.years": "{n} years",
+  "age.yearMonths": "1 year {m} month{mplural}",
+  "age.yearsMonths": "{n} years {m} month{mplural}",
+  // cite.* — coach answer citation / source grounding
+  "cite.badge": "Cited",
+  "cite.drawer.header": "Grounded in {n} source{plural}",
+  "cite.drawer.header.one": "Grounded in 1 source",
+  "cite.based": "Based on: {source}",
+  "cite.toggle.open": "Show sources",
+  "cite.toggle.close": "Hide sources",
+  // R3 — Pride Moment (arbor-growth): in-app celebration + shareable card
+  // Non-diagnostic, positive-only (AADC), claim-free, face-safe (first name only, no score number)
+  "pride.title": "A new milestone for {name}",
+  "pride.titleGeneric": "A new milestone",
+  "pride.subtitle": "Worth celebrating. Keep going.",
+  "pride.shareCard": "Share",
+  "pride.shareCardPreparing": "Preparing…",
+  "pride.shareCardError": "Couldn't prepare the card — try again.",
+  "pride.dismiss": "Close",
+  "pride.reducedMotion.title": "A new milestone reached",
+  "pride.reducedMotion.body": "{name} reached a new milestone. Keep going.",
+  "pride.shareCaption": "{name} reached a new milestone — tracked with Arbor. {url}",
 };
 
 export const he: Dict = {
@@ -1742,6 +1784,47 @@ export const he: Dict = {
   "growth.latest.as_of": "נכון ל-{date}",
   "growth.note": "שתפו את המסלול הזה עם רופא הילדים — אצלם יש את לוחות הייחוס.",
   "growth.delete.confirm": "להסיר מדידה זו?",
+  // C2 — Push opt-in (Development tab settings toggle)
+  "push.toggle.label": "תזכורות בזמן הנכון",
+  "push.toggle.desc": "ארבור יודיע לכם כשרגע רגוע עומד לעבור — בלי אשמה, בלי רצפות, רק רמז שקט.",
+  "push.enable.cta": "הפעלת התראות",
+  "push.disable.cta": "כיבוי התראות",
+  "push.enabled.toast": "התראות פעילות — ארבור יודיע כשהתזמון מתאים.",
+  "push.denied.toast": "התראות חסומות בהגדרות הדפדפן. אפשרו אותן שם תחילה.",
+  "push.error.toast": "לא הצלחנו להגדיר התראות כרגע — נסו שוב.",
+  "push.unsupported.toast": "התראות ברקע אינן נתמכות בדפדפן זה.",
+  // B0 — Onboarding age picker (months-precise for under-3s)
+  "ob.ageMonths.label": "גיל",
+  "ob.ageMonths.years": "שנים",
+  "ob.ageMonths.months": "חודשים",
+  "ob.ageMonths.display": "{years} ש׳ {months} ח׳",
+  "ob.ageMonths.displayMonthsOnly": "{months} חודשים",
+  "ob.ageMonths.displayYearOnly": "שנה אחת",
+  "ob.ageMonths.displayYearsOnly": "{years} שנים",
+  // B0 — Factual age label (non-diagnostic, display only)
+  "age.months": "{n} חודש{plural}",
+  "age.year": "שנה אחת",
+  "age.years": "{n} שנים",
+  "age.yearMonths": "שנה אחת {m} חודש{mplural}",
+  "age.yearsMonths": "{n} שנים {m} חודש{mplural}",
+  // cite.* — coach answer citation / source grounding
+  "cite.badge": "מקורות",
+  "cite.drawer.header": "מבוסס על {n} מקור{plural}",
+  "cite.drawer.header.one": "מבוסס על מקור אחד",
+  "cite.based": "בהתבסס על: {source}",
+  "cite.toggle.open": "הצג מקורות",
+  "cite.toggle.close": "הסתר מקורות",
+  // pride.* — milestone pride moment (R3)
+  "pride.title": "אבן דרך חדשה ל{name}",
+  "pride.titleGeneric": "אבן דרך חדשה",
+  "pride.subtitle": "שווה לחגוג. ממשיכים.",
+  "pride.shareCard": "שיתוף",
+  "pride.shareCardPreparing": "מכינים…",
+  "pride.shareCardError": "לא הצלחנו להכין את הכרטיס — נסו שוב.",
+  "pride.dismiss": "סגירה",
+  "pride.reducedMotion.title": "הושגה אבן דרך חדשה",
+  "pride.reducedMotion.body": "{name} הגיע/ה לאבן דרך חדשה. ממשיכים.",
+  "pride.shareCaption": "{name} הגיע/ה לאבן דרך חדשה — מתועד עם Arbor. {url}",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

@@ -2,10 +2,24 @@ import React, { useState } from "react";
 import {
   Lightbulb, ListChecks, MessageSquareQuote, Ban, Eye, AlertTriangle,
   Volume2, Square, Copy, ListPlus, ClipboardList, Send, Compass, Check, Users,
+  BookOpen, ChevronDown, ChevronUp,
 } from "lucide-react";
 import type { CoachContract, CouncilTake } from "../../types";
+import type { UiLang } from "../../lib/i18n";
+import { translate } from "../../lib/i18n";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
+
+/**
+ * Pure helper: returns the G2-safe disclosure header for N sources.
+ * "Grounded in N sources" — mechanism/source only, never an outcome claim.
+ * Exported so tests can cover it without mounting the full component.
+ */
+export function sourcesLabel(n: number, lang: UiLang = "en"): string {
+  if (n <= 0) return "";
+  if (n === 1) return translate(lang, "cite.drawer.header.one");
+  return translate(lang, "cite.drawer.header", { n, plural: lang === "he" ? "ות" : "s" });
+}
 
 /**
  * Generative answer surface (v6 UX-3 / v5 GUI-1·2·3). Renders the coach's real
@@ -45,10 +59,11 @@ function Panel({ icon, title, tint, children, action }: {
   );
 }
 
-export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan, onCreateLog, onAddToHandoff }: {
+export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff }: {
   contract: CoachContract;
   lens?: string;
   council?: CouncilTake[];
+  lang?: UiLang;
   onSaveToPlan: (topic: string) => void;
   onCreateLog: () => void;
   onAddToHandoff: (note: string) => void;
@@ -56,6 +71,11 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
   const [done, setDone] = useState<Record<number, boolean>>({});
   const [speaking, setSpeaking] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [citationsOpen, setCitationsOpen] = useState(false);
+
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
+  const sources = contract.sourceCardsUsed ?? [];
+  const hasSources = sources.length > 0;
 
   const risk = RISK_TONE[(contract.riskLevel || "low").toLowerCase()] || RISK_TONE.low;
   const showLens = lens && lens !== "Integrated Balanced";
@@ -210,6 +230,59 @@ export default function CoachAnswerCards({ contract, lens, council, onSaveToPlan
             ))}
           </div>
         </Panel>
+      )}
+
+      {/* Citation panel (R1) — visible grounding; badge + disclosure drawer.
+          G2 gate: copy states mechanism/source only — never an outcome claim.
+          Hidden when no sources present; no empty-state clutter. */}
+      {hasSources && (
+        <div className="rounded-xl" style={{ border: "1px solid var(--arbor-rule)", overflow: "hidden" }}>
+          {/* Toggle row — 44px min tap target, reduced-motion respected */}
+          <button
+            onClick={() => setCitationsOpen((o) => !o)}
+            aria-expanded={citationsOpen}
+            className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 min-h-[44px] transition"
+            style={{ background: "var(--arbor-paper-deep)" }}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              {/* Calm "Cited" badge */}
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold"
+                style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+              >
+                <BookOpen className="w-3 h-3" aria-hidden />
+                {t("cite.badge")}
+              </span>
+              <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                {sourcesLabel(sources.length, lang)}
+              </span>
+            </span>
+            <span className="text-[10px] font-bold inline-flex items-center gap-0.5" style={{ color: "var(--arbor-muted)" }}>
+              {citationsOpen
+                ? <><ChevronUp className="w-3.5 h-3.5" aria-hidden />{t("cite.toggle.close")}</>
+                : <><ChevronDown className="w-3.5 h-3.5" aria-hidden />{t("cite.toggle.open")}</>}
+            </span>
+          </button>
+
+          {/* Disclosure drawer — list of source chips */}
+          {citationsOpen && (
+            <div
+              className="px-3.5 pb-3 pt-2 space-y-1.5"
+              style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}
+              dir={lang === "he" ? "rtl" : "ltr"}
+            >
+              {sources.map((src) => (
+                <div
+                  key={src}
+                  className="rounded-lg px-2.5 py-1.5 text-[11.5px] leading-snug"
+                  style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                >
+                  {t("cite.based", { source: src.replace(/-/g, " ") })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Structured actions — the answer feeds the rest of the app (ECO-3) */}

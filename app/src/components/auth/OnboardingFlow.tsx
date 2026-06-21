@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 import { api } from "../../lib/api";
+import { birthDateFromAgeMonths } from "../../lib/childAge";
 
 const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
@@ -25,6 +26,18 @@ function ArborMark() {
   return <ArborMarkIcon size={56} />;
 }
 
+/**
+ * Derive a human-readable age string from a total months value.
+ * Used for the localStorage coach-bridge seed so it reads "9 months" not "age 0".
+ */
+function ageString(totalMonths: number): string {
+  if (totalMonths < 12) return `${totalMonths} month${totalMonths !== 1 ? "s" : ""}`;
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+  if (months === 0) return `${years} year${years !== 1 ? "s" : ""}`;
+  return `${years} year${years !== 1 ? "s" : ""} ${months} month${months !== 1 ? "s" : ""}`;
+}
+
 /** First-run setup for a new account: name + age + one concern. Kept short so the
  *  parent reaches a personalized Home (their first win) in under a minute. */
 export default function OnboardingFlow() {
@@ -32,7 +45,21 @@ export default function OnboardingFlow() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const [name, setName] = useState("");
-  const [age, setAge] = useState(4);
+
+  // B0 — months-precise age state.
+  // ageYears + ageMonthsPart together form the precise age for under-3s.
+  // For 3+, ageYears is all that matters (ageMonthsPart stays 0).
+  const [ageYears, setAgeYears] = useState(0);
+  const [ageMonthsPart, setAgeMonthsPart] = useState(0);
+
+  // Derived total months — the canonical value used to compute birthDate.
+  const totalAgeMonths = ageYears * 12 + ageMonthsPart;
+  // Legacy back-compat: whole-year equivalent stored alongside the precise value.
+  const ageLegacyYears = Math.floor(totalAgeMonths / 12);
+
+  // Whether we are in the "under 3 years" mode (months precision matters most).
+  const isUnder3 = ageYears < 3;
+
   const [concern, setConcern] = useState<string>("");
   const [otherText, setOtherText] = useState("");
   const [languages, setLanguages] = useState<string[]>(["English"]);
@@ -46,16 +73,32 @@ export default function OnboardingFlow() {
 
   const toggleLang = (l: string) => setLanguages((p) => (p.includes(l) ? p.filter((x) => x !== l) : [...p, l]));
 
+  // Reset the months part to 0 when the parent switches to 3+ years (no months picker shown).
+  const handleYearsChange = (years: number) => {
+    setAgeYears(years);
+    if (years >= 3) setAgeMonthsPart(0);
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !controllerConsent) return;
     setSaving(true);
     const picked = CONCERNS.find((c) => c.id === concern);
     const challenge = concern === "other" ? otherText.trim() : (picked?.challenge || "");
+
+    // B0 — derive a birthDate from the entered age so downstream months-precision
+    // logic (childAge.ts) always has a precise date to work from.
+    const birthDate = birthDateFromAgeMonths(totalAgeMonths);
+
     try {
       const child = await addChild({
         name: name.trim(),
-        age,
+        // Keep legacy `age` (whole years) for back-compat with all existing `.age` readers.
+        age: ageLegacyYears,
+        // B0 — also store the precise fields so the 0–2 milestone/dev-score path gets
+        // months precision immediately, without waiting for a profile edit.
+        birthDate,
+        ageMonths: totalAgeMonths,
         languages: languages.length ? languages : ["English"],
         schoolContext: "",
         strengths: [],
@@ -72,14 +115,14 @@ export default function OnboardingFlow() {
           await api.grantConsent({ childId: child.id, purpose: "face_processing", granted: true });
         } catch { /* non-blocking; /vision stays gated until consent is recorded */ }
       }
-      // Seed the coach with the concern: OnboardingFlow renders outside the
-      // ArborProvider, so the bridge is storage — the provider picks this up on
-      // its first mount and pre-fills the Ask Arbor composer.
+      // B0 — seed the coach with a months-aware label for under-2s so the bridge
+      // reads "9 months" not "age 0". The provider picks this up on its first
+      // mount and pre-fills the Ask Arbor composer.
       if (challenge) {
         try {
           localStorage.setItem(
             "arbor.coachSeed",
-            `${challenge} is on my mind with ${name.trim()} (age ${age}). Where should I start?`
+            `${challenge} is on my mind with ${name.trim()} (${ageString(totalAgeMonths)}). Where should I start?`
           );
         } catch { /* ignore */ }
       }
@@ -91,6 +134,18 @@ export default function OnboardingFlow() {
   };
 
   const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" };
+
+  // ── Age display label ──────────────────────────────────────────────────────
+  // Used in the label badge. Calm factual copy; not a diagnostic claim.
+  const ageDisplayLabel = totalAgeMonths === 0
+    ? "newborn"
+    : isUnder3
+      ? ageYears === 0
+        ? `${ageMonthsPart} month${ageMonthsPart !== 1 ? "s" : ""}`
+        : ageMonthsPart === 0
+          ? `${ageYears} year${ageYears !== 1 ? "s" : ""}`
+          : `${ageYears}y ${ageMonthsPart}m`
+      : `${ageYears} year${ageYears !== 1 ? "s" : ""}`;
 
   return (
     <div className="arbor-app min-h-screen flex items-center justify-center px-6 py-10 antialiased text-sans">
@@ -108,14 +163,51 @@ export default function OnboardingFlow() {
         </div>
 
         <form onSubmit={submit} className="space-y-5">
+          {/* Name + age picker row */}
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-start">
             <div className="space-y-1.5">
               <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.name")}</label>
               <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t("ob.namePlaceholder")} className="w-full rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
             </div>
-            <div className="space-y-1.5 sm:w-[150px]">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.age")} <span style={{ color: "var(--arbor-green-ink)" }}>{age}</span></label>
-              <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full mt-3" style={{ accentColor: "var(--arbor-clay)" }} />
+
+            {/* B0 — months-precise age picker for under-3, year-steps for 3+ */}
+            <div className="space-y-1.5 sm:w-[170px]">
+              <label className="text-xs font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
+                {t("ob.ageMonths.label")}
+                <span className="font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{ageDisplayLabel}</span>
+              </label>
+
+              {/* Years slider — 0–18, always visible */}
+              <div className="space-y-0.5">
+                <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ob.ageMonths.years")}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={18}
+                  value={ageYears}
+                  onChange={(e) => handleYearsChange(parseInt(e.target.value))}
+                  className="w-full"
+                  style={{ accentColor: "var(--arbor-clay)", minHeight: 44 }}
+                  aria-label={t("ob.ageMonths.years")}
+                />
+              </div>
+
+              {/* Months slider — 0–11, shown only when under 3 years */}
+              {isUnder3 && (
+                <div className="space-y-0.5 mt-1">
+                  <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ob.ageMonths.months")}</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={11}
+                    value={ageMonthsPart}
+                    onChange={(e) => setAgeMonthsPart(parseInt(e.target.value))}
+                    className="w-full"
+                    style={{ accentColor: "var(--arbor-clay)", minHeight: 44 }}
+                    aria-label={t("ob.ageMonths.months")}
+                  />
+                </div>
+              )}
             </div>
           </div>
 

@@ -21,6 +21,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { deriveMonitoring, pickHighestWatchSignal, monitoredDomainToPlayHint } from "../../lib/monitoring";
 import { PLAY_ACTIVITIES } from "../../playbank/content";
 import type { MonitoredDomainId } from "../../lib/monitoring";
+// B0 — months-precise age: prefer birthDate/ageMonths over the legacy whole-year
+import { ageMonthsFromProfile } from "../../lib/childAge";
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
@@ -47,7 +49,16 @@ export default function ArborNoticedCard() {
   const { t } = useLanguage();
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
-  const ageYears = childProfile.age ?? 0;
+
+  // B0 — use months-precise age when available (birthDate or ageMonths field),
+  // then divide back to fractional years for `deriveMonitoring` which still takes
+  // ageYears. This preserves the monitoring.ts interface while feeding it an
+  // accurate value: a 9-month-old passes 0.75 instead of the legacy 0.
+  const ageMonthsPrecise = ageMonthsFromProfile(childProfile);
+  const ageYears =
+    ageMonthsPrecise !== null
+      ? ageMonthsPrecise / 12
+      : (childProfile.age ?? 0);
 
   const monitoring = useMemo(
     () =>

@@ -26,6 +26,7 @@ import DevScoreStrip from "../overview/DevScoreStrip";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import { StreakChip } from "../overview/StreakChip";
 import { computeStreak } from "../../lib/streak";
+import { trackInviteSent } from "../../lib/loopEvents";
 import { MissionsPanel } from "../practice/MissionsTab";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
@@ -146,6 +147,12 @@ export default function OverviewTab() {
   const markPlayDone = (p: ScoredActivity) => {
     logPlayCompletion(p, "today"); // writes to the moat (synced) — single source of truth
     toast(`Nice. Added to ${firstName}'s day.`, "success");
+  };
+  // V0: the second-guardian invite loop routes to the existing Trusted-Sharing
+  // flow; instrument it so the loop is measurable (installs-per-sharing-parent).
+  const inviteGuardian = (channel: string) => {
+    trackInviteSent(channel);
+    setActiveTab("sharing");
   };
 
   // ── Living, time-aware Today: the device-local day-part drives the greeting,
@@ -360,7 +367,7 @@ export default function OverviewTab() {
                 <div>
                   <p className={`text-[17px] leading-relaxed font-medium ${focusOpen ? "" : "line-clamp-3"}`} style={{ color: INK, textWrap: "pretty" } as React.CSSProperties}>{focus.text}</p>
                   {focus.text.length > 160 && (
-                    <button onClick={() => setFocusOpen((v) => !v)} className="text-[13px] font-bold mt-1.5" style={{ color: GREEN }}>
+                    <button onClick={() => setFocusOpen((v) => !v)} className="text-[13px] font-bold mt-1.5 inline-flex items-center min-h-[44px] px-1" style={{ color: GREEN }}>
                       {focusOpen ? t("ov.focus.less") : t("ov.focus.more")}
                     </button>
                   )}
@@ -395,7 +402,7 @@ export default function OverviewTab() {
                   disabled={focusLoading}
                   title="Suggest another focus"
                   aria-label="Suggest another focus"
-                  className="inline-flex items-center justify-center w-10 h-10 rounded-2xl transition disabled:opacity-50"
+                  className="inline-flex items-center justify-center w-11 h-11 rounded-2xl transition disabled:opacity-50"
                   style={{ background: "var(--arbor-paper-sunk)", color: GREEN }}
                 >
                   <RefreshCw className={`w-4 h-4 ${focusLoading ? "animate-spin" : ""}`} />
@@ -561,7 +568,7 @@ export default function OverviewTab() {
 
       {/* ── Loop in your circle + check-in (trust + B2B2C entry) ────────── */}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button onClick={() => setActiveTab("sharing")} className={`${card} p-5 text-left flex items-center gap-4 transition hover:-translate-y-0.5`}>
+        <button onClick={() => inviteGuardian("circle")} className={`${card} p-5 text-left flex items-center gap-4 transition hover:-translate-y-0.5`}>
           <span className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: GREEN_SOFT, color: GREEN }}><Share2 className="w-5 h-5" /></span>
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-extrabold" style={{ color: INK }}>{t("ov.share.title")}</span>

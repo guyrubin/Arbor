@@ -10,6 +10,8 @@ import { cardCls } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import { bandForAgeMonths, comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
+// B0 — months-precise age spine
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import framework from "../../framework.json";
 import { DevelopmentalDomainId, Milestone } from "../../types";
@@ -50,10 +52,9 @@ export default function MilestonesTab() {
   const [explaining, setExplaining] = useState<Record<string, boolean>>({});
 
   // ── Corrected age (preterm) ──────────────────────────────────────────────
-  // The child's age comes in years; milestones are anchored in months. For a
-  // preterm child we compare against corrected age (AAP) until ~24 months, so an
-  // early arrival is never flagged as "behind".
-  const chronoMonths = Math.round((childProfile.age || 0) * 12);
+  // B0: prefer months-precise value from birthDate/ageMonths over the legacy
+  // whole-year field so a 9-month-old isn't compared against the 0-month band.
+  const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
   const gestationalWeeks = childProfile.preterm?.gestationalWeeks;
   const corrected = correctedAge(chronoMonths, gestationalWeeks);
   const comparisonMonths = comparisonAgeMonths(chronoMonths, gestationalWeeks);

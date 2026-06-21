@@ -28,6 +28,24 @@ export interface ChildProfile {
   preterm?: {
     gestationalWeeks: number;
   };
+  /**
+   * B0 — months-precise age spine.
+   *
+   * Preferred: ISO date string (YYYY-MM-DD) of the child's birth. When present,
+   * `lib/childAge.ts` computes exact months from today so a 9-month-old is never
+   * stored or shown as age 0.
+   *
+   * Fallback 1: `ageMonths` — an explicit months value the parent confirmed during
+   * onboarding (used when the parent entered an approximate age rather than a DOB).
+   *
+   * Fallback 2: `age` (whole years, already present) — multiplied by 12 for
+   * screens that need months precision but were created before B0. The `age` field
+   * MUST stay populated for back-compat with all existing `.age` readers.
+   *
+   * Append-only: never reorder or remove existing ChildProfile members.
+   */
+  birthDate?: string;
+  ageMonths?: number;
 }
 
 export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';
@@ -120,6 +138,8 @@ export interface CoachContract {
   frameRouting: FrameRouting;
   memoryProposals: { fact: string; source: string; retention: string }[];
   handoffNotes: { teacher: string; professional: string };
+  /** Knowledge-card IDs used to ground this answer (populated by the server). */
+  sourceCardsUsed?: string[];
 }
 
 export interface BehaviorLog {
