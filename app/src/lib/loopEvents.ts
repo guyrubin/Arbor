@@ -67,6 +67,12 @@ export const trackShareCompleted = (artifact: LoopArtifact, channel?: string): v
 export const trackInviteSent = (channel?: string): void =>
   track(LoopEvent.InviteSent, channel ? { channel } : {});
 
+// wired by: mk-p0-2-referral-loop (reward grant owner). Fires when a referred
+// user ACTIVATES (child profile + first coach interaction) and the reward is
+// granted — the abuse-resistant trigger, never at registration.
+export const trackInviteActivated = (props: Record<string, unknown> = {}): void =>
+  track(LoopEvent.InviteActivated, props);
+
 // wired by: lib/billingTransition.recordBillingTransition() (App BillingReturnWatcher),
 // on the free/beta → in_trial entitlement transition. Beta/comp excluded.
 export const trackTrialStart = (tier: string): void => track(LoopEvent.TrialStart, { tier });
