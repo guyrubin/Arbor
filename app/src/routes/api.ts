@@ -1302,8 +1302,8 @@ RULES:
 - Personalize each of the ${choiceCount} choices: rewrite "label" as a short first-person action, and write a 1-2 sentence "consequence" expanding its cue. Keep every consequence kind — no choice is harshly punished.
 - This story is rendered as a COMIC BOOK starring ${heroName}. For each beat also return:
   • "imagePrompt": a one-line description of a dynamic, exciting comic-book ACTION panel for this beat (vivid pose, setting, emotion) — describe only the scene, no text/words drawn in it.
-  • "sfx": an array of 2-3 SHORT, punchy comic sound-effect words that fit this exact beat (e.g. ["WHOOSH!","BOOM!"]; for a calm beat ["AHH…","TWINKLE!"]). Vary them per beat — never reuse the same set.
-  • "dialogue": ONE very short, exciting first-person hero line ${heroName} would shout or say in this beat (max ~8 words), for a comic speech bubble. Keep it kid-friendly and energetic.
+  • "sfx": an array of 2-3 SHORT, punchy comic sound-effect words IN THE SAME LANGUAGE AS THE STORY that fit this exact beat (${language === "he" ? 'Hebrew, e.g. ["ואוש!","בום!"]; for a calm beat ["אהה…","נצנוץ!"]' : 'English, e.g. ["WHOOSH!","BOOM!"]; for a calm beat ["AHH…","TWINKLE!"]'}). Vary them per beat — never reuse the same set.
+  • "dialogue": ONE very short, exciting first-person hero line ${heroName} would shout or say in this beat (max ~8 words), IN THE SAME LANGUAGE AS THE STORY, for a comic speech bubble. Keep it kid-friendly and energetic.
 - Keep the reflection's practiced[] and questions[] close to those provided, lightly personalized to ${heroName}.
 
 SPINE (8 beats — return one scene per beat, same order, with matching beatId):
