@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import {
   Activity, CheckCircle2, Sprout, BookMarked, MessageSquare,
   ArrowUpRight, ArrowDownRight, Minus, Sparkles, Camera, TrendingDown, TrendingUp, BarChart2,
-  ShieldCheck, ClipboardCheck,
+  ShieldCheck, ClipboardCheck, Feather, Download,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -14,6 +14,8 @@ import {
 import { PageHeader, PASTEL, IconBadge, Chip, SectionCard, cardCls, type PastelKey } from "../ui/kit";
 import { MemoryRow } from "../sections/ChildMemory";
 import ScreeningSheet from "../sections/ScreeningSheet";
+import { composeChildStory, childStoryToText } from "../../lib/childStory";
+import { track } from "../../lib/analytics";
 
 const KIND_ICON: Record<SignalKind, React.ComponentType<{ className?: string }>> = {
   moment: Activity,
@@ -118,6 +120,40 @@ export default function StoryTimelineTab() {
   );
   const nextStep = useMemo(() => deriveNextStep(momentum, childProfile.name), [momentum, childProfile.name]);
 
+  // T4: narrate the moat into "The Story of {child}" — deterministic + grounded
+  // only in parent-approved facts + the momentum signals (no model call, G2-safe).
+  const story = useMemo(
+    () => composeChildStory({
+      name: childProfile.name,
+      ageYears: childProfile.age,
+      approvedFacts: memoryReviewItems
+        .filter((m) => m.status === "approved")
+        .map((m) => ({ fact: m.fact, source: m.source })),
+      milestonesObserved: momentum.milestones.observed,
+      milestonesTotal: momentum.milestones.total,
+      momentsThisWeek: momentum.momentsThisWeek,
+      momentsPrevWeek: momentum.momentsPrevWeek,
+      intensityTrend: momentum.intensityTrend,
+      planWins: momentum.winsThisWeek,
+    }),
+    [childProfile.name, childProfile.age, memoryReviewItems, momentum],
+  );
+
+  const saveStory = () => {
+    try {
+      const blob = new Blob([childStoryToText(story)], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${firstName.toLowerCase()}-story.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      track("child_story_saved", { facts: story.factCount });
+    } catch {
+      /* export is best-effort; never break the page */
+    }
+  };
+
   const shown = filter === "all" ? signals : signals.filter((s) => s.kind === filter);
   const groups = useMemo(() => groupByDay(shown), [shown]);
 
@@ -163,6 +199,41 @@ export default function StoryTimelineTab() {
           </div>
         }
       />
+
+      {/* T4 — "The Story of {child}": the moat, narrated. Reads only approved
+          facts + momentum; parent-owned, exportable as plain text. */}
+      <SectionCard
+        title={story.title}
+        icon={<Feather className="w-5 h-5" />}
+        tone="lav"
+        action={!story.empty && (
+          <button
+            onClick={saveStory}
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-bold transition bg-white"
+            style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}
+          >
+            <Download className="w-4 h-4" /> Save story
+          </button>
+        )}
+      >
+        <div className="space-y-3">
+          {story.paragraphs.map((p, idx) => (
+            <p
+              key={idx}
+              dir="auto"
+              className="text-[14.5px] leading-relaxed"
+              style={{ color: "var(--arbor-ink-soft)", ...(idx === 0 ? { fontFamily: "var(--font-display), Georgia, serif" } : {}) }}
+            >
+              {p}
+            </p>
+          ))}
+          {!story.empty && (
+            <p className="text-[11px] font-semibold pt-1" style={{ color: "var(--arbor-muted)" }}>
+              Built from {story.factCount} approved {story.factCount === 1 ? "memory" : "memories"} — only what you chose to keep.
+            </p>
+          )}
+        </div>
+      </SectionCard>
 
       {/* Momentum strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
