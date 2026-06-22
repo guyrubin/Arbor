@@ -155,3 +155,46 @@ Escalate now. Category: **${match.category}**.
 
 ### Get help now
 ${match.resources}`;
+
+/* CI-05 — escalation currency hook (fail-loud on stale crisis numbers).
+ *
+ * The helpline literals above are life-safety-critical and drift over time
+ * (numbers and services change). This declares WHEN they were last verified
+ * against the live national registries and lets a periodic arbor-safety check
+ * FAIL LOUD when that review is overdue — so a stale crisis number can never sit
+ * silently in prod. The verification itself is a human action (open each
+ * national registry and confirm the number); this module only tracks the review
+ * date + the staleness tripwire and does NOT call registries at runtime. The
+ * real-time fail-loud belongs in the scheduled arbor-safety job (it passes the
+ * real `now`); the unit suite below verifies the mechanism deterministically. */
+
+/** ISO date the crisis numbers above were last verified against live national
+ * registries. Update this (and the numbers) on each arbor-safety re-review. */
+export const HELPLINES_REVIEWED_ON = "2026-06-21";
+
+/** Re-review cadence — crisis numbers must be re-verified at least this often. */
+export const HELPLINE_REVIEW_INTERVAL_DAYS = 180;
+
+/** Literals that must always be present in the escalation copy — a completeness
+ * tripwire so an edit can't silently drop a crisis number. */
+export const CRITICAL_HELPLINE_LITERALS = ["112", "988", "0800-0113", "101", "911"] as const;
+
+export type HelplineReviewStatus = { reviewedOn: string; daysSince: number; stale: boolean };
+
+/** Pure: is the crisis-number review overdue as of `nowMs`? Fail-loud callers
+ * (the periodic arbor-safety check) treat `stale: true` as a hard failure. */
+export function helplineReviewStatus(
+  nowMs: number,
+  reviewedOn: string = HELPLINES_REVIEWED_ON,
+  intervalDays: number = HELPLINE_REVIEW_INTERVAL_DAYS,
+): HelplineReviewStatus {
+  const daysSince = Math.floor((nowMs - Date.parse(reviewedOn)) / 86_400_000);
+  return { reviewedOn, daysSince, stale: daysSince > intervalDays };
+}
+
+/** Every critical literal still present in the live escalation copy? `false`
+ * means a crisis number was dropped — the second fail-loud tripwire. */
+export function escalationLiteralsIntact(): boolean {
+  const all = escalationCategories.map((c) => c.resources).join("\n") + EMERGENCY;
+  return CRITICAL_HELPLINE_LITERALS.every((lit) => all.includes(lit));
+}
