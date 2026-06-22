@@ -272,6 +272,23 @@ export default function MilestonesTab() {
         </div>
       </div>
 
+      {/* B1 — Baby/toddler lead: name the current developmental stage, reassurance-first.
+          Only for under-2s, where "is my baby on track?" is the whole question. */}
+      {comparisonMonths < 24 && (
+        <div className={`${cardCls} p-5`} style={{ background: "var(--arbor-green-soft)" }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
+            <span className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{currentBand.label}</span>
+            {corrected.applied && (
+              <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "#fff" }}>
+                {t("ms.correctedBadge")} · {corrected.correctedMonths}m
+              </span>
+            )}
+          </div>
+          <p className="text-[13px] leading-relaxed mt-1.5 max-w-xl" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
+        </div>
+      )}
+
       {/* Corrected-age (preterm) control + badge */}
       <div className={`${cardCls} p-4`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
