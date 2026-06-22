@@ -15,9 +15,13 @@ export type NudgeKind = "prep" | "calm" | "log" | "practice";
 
 export interface Nudge {
   kind: NudgeKind;
-  headline: string;
-  body: string;
-  cta: string;
+  /** i18n keys (resolved via t() at the render site) — never raw copy, so HE
+   *  users see HE on the #1 retention surface. AP-005. */
+  headlineKey: string;
+  bodyKey: string;
+  ctaKey: string;
+  /** Interpolation vars for the keys above (e.g. {name}, {hour}). */
+  vars?: Record<string, string | number>;
   /** Where the CTA goes: an ActiveTab id, or "log" to open the quick-log. */
   action: string;
   tone: "coral" | "sky" | "mint" | "lav";
@@ -51,9 +55,10 @@ export function nextNudge(inp: JitaiInputs): Nudge | null {
     if (hour >= peak - 2 && hour <= peak) {
       return {
         kind: "prep",
-        headline: `Get ahead of ${hourLabel(peak)}`,
-        body: `Around ${hourLabel(peak)} tends to be a harder stretch for ${name}. A calm move now usually softens it.`,
-        cta: "Get a 1-line script",
+        headlineKey: "nudge.prep.headline",
+        bodyKey: "nudge.prep.body",
+        ctaKey: "nudge.prep.cta",
+        vars: { name, hour: hourLabel(peak) },
         action: "coach",
         tone: "coral",
       };
@@ -64,9 +69,10 @@ export function nextNudge(inp: JitaiInputs): Nudge | null {
   if (dependable && rhythm.windDownHour != null && hour === rhythm.windDownHour) {
     return {
       kind: "calm",
-      headline: "Time to start winding down",
-      body: `Evenings go smoother when the wind-down starts before everyone is tired. Try a calm-down routine with ${name}.`,
-      cta: "Open a calm-down",
+      headlineKey: "nudge.calm.headline",
+      bodyKey: "nudge.calm.body",
+      ctaKey: "nudge.calm.cta",
+      vars: { name },
       action: "feelings",
       tone: "sky",
     };
@@ -76,9 +82,10 @@ export function nextNudge(inp: JitaiInputs): Nudge | null {
   if (inp.loggedToday === 0 && hour >= 15) {
     return {
       kind: "log",
-      headline: `Capture a moment from ${name}'s day`,
-      body: "One quick note keeps the picture growing — and makes every tip sharper.",
-      cta: "Log a moment",
+      headlineKey: "nudge.log.headline",
+      bodyKey: "nudge.log.body",
+      ctaKey: "nudge.log.cta",
+      vars: { name },
       action: "log",
       tone: "mint",
     };
@@ -88,9 +95,10 @@ export function nextNudge(inp: JitaiInputs): Nudge | null {
   if (inp.recent7d < 3 && hour >= 8 && hour <= 19) {
     return {
       kind: "practice",
-      headline: `A quick win for ${name}`,
-      body: "Two minutes of playful practice today keeps the momentum going.",
-      cta: "Practice & Play",
+      headlineKey: "nudge.practice.headline",
+      bodyKey: "nudge.practice.body",
+      ctaKey: "nudge.practice.cta",
+      vars: { name },
       action: "practice",
       tone: "lav",
     };

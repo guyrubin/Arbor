@@ -425,11 +425,11 @@ export default function OverviewTab() {
             {nudge.kind === "calm" ? <Moon className="w-5 h-5" /> : nudge.kind === "log" ? <Plus className="w-5 h-5" /> : nudge.kind === "practice" ? <Heart className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
           </span>
           <div className="flex-1 min-w-[200px]">
-            <p className="text-[15px] font-extrabold" style={{ color: INK }}>{nudge.headline}</p>
-            <p className="text-[13px] mt-0.5 leading-snug" style={{ color: MUTED }}>{nudge.body}</p>
+            <p className="text-[15px] font-extrabold" style={{ color: INK }}>{t(nudge.headlineKey, nudge.vars)}</p>
+            <p className="text-[13px] mt-0.5 leading-snug" style={{ color: MUTED }}>{t(nudge.bodyKey, nudge.vars)}</p>
           </div>
           <button onClick={onNudge} className="inline-flex items-center justify-center gap-1.5 font-bold text-sm rounded-full px-4 min-h-[44px] flex-shrink-0 text-white transition active:scale-[0.98]" style={{ background: PASTEL[nudge.tone].ink }}>
-            {nudge.cta} <ArrowRight className="w-4 h-4" />
+            {t(nudge.ctaKey, nudge.vars)} <ArrowRight className="w-4 h-4" />
           </button>
         </section>
       )}

@@ -12,6 +12,19 @@ export type UiLang = "en" | "he";
 type Dict = Record<string, string>;
 
 export const en: Dict = {
+  // AP-005 — JITAI home-nudge strings (were hardcoded EN on the #1 retention surface).
+  "nudge.prep.headline": "Get ahead of {hour}",
+  "nudge.prep.body": "Around {hour} tends to be a harder stretch for {name}. A calm move now usually softens it.",
+  "nudge.prep.cta": "Get a 1-line script",
+  "nudge.calm.headline": "Time to start winding down",
+  "nudge.calm.body": "Evenings go smoother when the wind-down starts before everyone is tired. Try a calm-down routine with {name}.",
+  "nudge.calm.cta": "Open a calm-down",
+  "nudge.log.headline": "Capture a moment from {name}'s day",
+  "nudge.log.body": "One quick note keeps the picture growing, and makes every tip sharper.",
+  "nudge.log.cta": "Log a moment",
+  "nudge.practice.headline": "A quick win for {name}",
+  "nudge.practice.body": "Two minutes of playful practice today keeps the momentum going.",
+  "nudge.practice.cta": "Practice & Play",
   // CI-08 — the ONE canonical non-diagnostic honesty line every developmental
   // surface inherits (clinical board, 2026-06-21). Never "clinically validated".
   "honesty.signal": "A signal to discuss with your provider — not a diagnosis.",
@@ -945,6 +958,19 @@ export const en: Dict = {
 };
 
 export const he: Dict = {
+  // AP-005 — JITAI home-nudge strings (HE; were hardcoded EN). Flagged for arbor-localization native review.
+  "nudge.prep.headline": "להתכונן ל{hour}",
+  "nudge.prep.body": "סביב {hour} נוטה להיות קטע מאתגר יותר עבור {name}. צעד מרגיע עכשיו בדרך כלל מרכך אותו.",
+  "nudge.prep.cta": "קבלו משפט פתיחה",
+  "nudge.calm.headline": "זמן להתחיל להירגע",
+  "nudge.calm.body": "הערבים עוברים חלק יותר כשמתחילים את ההירגעות לפני שכולם עייפים. נסו שגרת הרגעה עם {name}.",
+  "nudge.calm.cta": "פתחו הרגעה",
+  "nudge.log.headline": "תיעדו רגע מהיום של {name}",
+  "nudge.log.body": "פתק קצר אחד שומר על התמונה מתעדכנת, ומחדד כל טיפ.",
+  "nudge.log.cta": "תיעדו רגע",
+  "nudge.practice.headline": "ניצחון קטן ומהיר עבור {name}",
+  "nudge.practice.body": "שתי דקות של תרגול שובב היום שומרות על המומנטום.",
+  "nudge.practice.cta": "תרגול ומשחק",
   // CI-08 canonical honesty line (HE draft — flagged for native clinical review).
   "honesty.signal": "סימן לשיחה עם איש המקצוע שלך — לא אבחנה.",
   "honesty.grounded": "מבוסס על התפתחות — נשען על הנחיות CDC, AAP ו-ASHA.",
