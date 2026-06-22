@@ -161,6 +161,10 @@ export default function DevScoreCard() {
         )}
 
         <p className="text-[11.5px] mt-3.5" style={{ color: "var(--arbor-faint)" }}>{t("devscore.note")}</p>
+        {/* CI-08 / CLM-004 — the provenance hedge (board-substantiated, Guy-approved 2026-06-22).
+            Truth-before-avoidance: show the parent the basis. Pure provenance, never an outcome
+            or "clinically validated" claim (CHARTER §3 p11). */}
+        <p className="text-[11.5px] mt-1.5" style={{ color: "var(--arbor-faint)" }}>{t("honesty.grounded")}</p>
       </div>
     </section>
   );
