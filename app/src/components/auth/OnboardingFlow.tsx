@@ -172,7 +172,7 @@ export default function OnboardingFlow() {
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-start">
             <div className="space-y-1.5">
               <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.name")}</label>
-              <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t("ob.namePlaceholder")} className="w-full rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
+              <input dir="auto" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t("ob.namePlaceholder")} className="w-full rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
             </div>
 
             {/* B0 — months-precise age picker for under-3, year-steps for 3+ */}
@@ -253,7 +253,7 @@ export default function OnboardingFlow() {
               })}
             </div>
             {concern === "other" && (
-              <input value={otherText} onChange={(e) => setOtherText(e.target.value)} autoFocus placeholder={t("ob.otherPlaceholder")} className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none mt-1" style={inputStyle} />
+              <input dir="auto" value={otherText} onChange={(e) => setOtherText(e.target.value)} autoFocus placeholder={t("ob.otherPlaceholder")} className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none mt-1" style={inputStyle} />
             )}
           </div>
 

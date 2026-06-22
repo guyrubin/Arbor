@@ -175,7 +175,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Name</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
+                <input dir="auto" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
@@ -208,22 +208,22 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>School context</label>
-                <input value={schoolContext} onChange={(e) => setSchoolContext(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
+                <input dir="auto" value={schoolContext} onChange={(e) => setSchoolContext(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Languages <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(comma separated)</span></label>
-                <input value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
+                <input dir="auto" value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Strengths <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(one per line)</span></label>
-                <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
+                <textarea dir="auto" value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Challenges <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(one per line)</span></label>
-                <textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
+                <textarea dir="auto" value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               <div className="space-y-1.5">
