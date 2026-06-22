@@ -3,6 +3,7 @@ import { Sparkles, X } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { prefersReducedMotion } from "../../lib/devscore";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
+import { ShareButton } from "../ui/ShareButton";
 
 /**
  * PrideMomentCard (R3) — a calm, positive-only celebration on Today when the child
@@ -36,14 +37,14 @@ export default function PrideMomentCard() {
       >
         <X className="w-4 h-4" />
       </button>
-      <div className="flex items-center gap-3 pe-9">
+      <div className="flex items-start gap-3 pe-9">
         <span
           className="flex items-center justify-center flex-shrink-0 rounded-2xl"
           style={{ width: 44, height: 44, background: "#fff", color: "var(--arbor-green-ink)" }}
         >
           <Sparkles className="w-5 h-5" />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p
             className="text-[15px] font-extrabold leading-tight"
             style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
@@ -53,6 +54,18 @@ export default function PrideMomentCard() {
           <p className="text-[12.5px] mt-0.5" style={{ color: "var(--arbor-green-ink)" }}>
             {t("pride.subtitle")}
           </p>
+          {/* The shareable artifact — reuses the branded growth_card renderer
+              (name + text, no photo, no score number → face-safe + G2-safe). */}
+          <div className="mt-2.5">
+            <ShareButton
+              artifact="growth_card"
+              surface="pride_moment"
+              variant="solid"
+              childName={firstName}
+              label={t("pride.shareCard")}
+              getCardOpts={() => ({ name: firstName, headline: title, sub: t("pride.subtitle") })}
+            />
+          </div>
         </div>
       </div>
     </motion.div>
