@@ -120,7 +120,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
               onClick={analyze}
               disabled={loading}
               className="w-full text-white font-extrabold text-sm py-3 rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+              style={{ background: "var(--gradient-cta)" }}
             >
               {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Arbor is looking…</> : <><Sparkles className="w-4 h-4" /> {isDoc ? "Read this document" : "Ask Arbor to look"}</>}
             </button>

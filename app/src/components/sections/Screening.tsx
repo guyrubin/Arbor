@@ -151,7 +151,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
           <button
             onClick={() => setPhase("questions")}
             className="mt-4 inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3"
-            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+            style={{ background: "var(--gradient-cta)" }}
           >
             <ClipboardCheck className="w-4 h-4" /> Start the check
           </button>

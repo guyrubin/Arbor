@@ -151,7 +151,7 @@ export default function AskSpecialist() {
           <button
             onClick={() => setActiveTab("behaviors")}
             className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 mt-4"
-            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+            style={{ background: "var(--gradient-cta)", boxShadow: "var(--shadow-green)" }}
           >
             {t("consult.empty.cta")}
           </button>
@@ -205,7 +205,7 @@ export default function AskSpecialist() {
             </button>
             <button onClick={download} disabled={noneSelected}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}>
+              style={{ background: "var(--gradient-cta)", boxShadow: "var(--shadow-green)" }}>
               <Download className="w-4 h-4" /> {t("consult.download")}
             </button>
 

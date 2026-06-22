@@ -78,7 +78,7 @@ export default function ChildProfile() {
         title={t("cp.title", { name: first })}
         subtitle={t("cp.subtitle", { name: first })}
         action={
-          <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}>
+          <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--gradient-cta)", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}>
             <Sparkles className="w-4 h-4" /> {t("cp.askAbout", { name: first })}
           </button>
         }

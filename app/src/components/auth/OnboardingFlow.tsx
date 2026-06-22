@@ -257,7 +257,7 @@ export default function OnboardingFlow() {
             </label>
           </div>
 
-          <button type="submit" disabled={saving || !name.trim() || !controllerConsent} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}>
+          <button type="submit" disabled={saving || !name.trim() || !controllerConsent} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: "var(--gradient-cta)", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}>
             {saving && <RefreshCw className="w-4 h-4 animate-spin" />}
             {saving ? t("ob.settingUp") : name.trim() ? t("ob.startWith", { name: name.trim() }) : t("ob.start")}
           </button>

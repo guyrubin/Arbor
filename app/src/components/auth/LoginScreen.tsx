@@ -82,7 +82,7 @@ export default function LoginScreen() {
           onClick={handleGoogle}
           disabled={busy !== null}
           className="w-full text-white font-extrabold text-sm px-5 py-3.5 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}
+          style={{ background: "var(--gradient-cta)", boxShadow: "0 8px 20px rgba(52,178,119,0.28)" }}
         >
           {busy === "google" ? (
             <RefreshCw className="w-4 h-4 animate-spin" />
@@ -139,7 +139,7 @@ export default function LoginScreen() {
               type="submit"
               disabled={busy !== null}
               className="w-full text-white font-extrabold text-sm px-5 py-3 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+              style={{ background: "var(--gradient-cta)" }}
             >
               {busy === "email" ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
               {t("auth.signIn")}

@@ -115,7 +115,7 @@ export default function CourseCard({
                       <button
                         onClick={() => onToggle(a.id)}
                         className="inline-flex items-center justify-center gap-2 font-bold text-[13px] rounded-xl px-4 py-2.5 transition active:scale-[0.98]"
-                        style={done ? { background: GREEN_SOFT, color: GREEN } : { background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", color: "#fff", boxShadow: "var(--shadow-green)" }}
+                        style={done ? { background: GREEN_SOFT, color: GREEN } : { background: "var(--gradient-cta)", color: "#fff", boxShadow: "var(--shadow-green)" }}
                       >
                         <Check className="w-4 h-4" /> {done ? t("play.added", { name: childName }) : t("play.did")}
                       </button>

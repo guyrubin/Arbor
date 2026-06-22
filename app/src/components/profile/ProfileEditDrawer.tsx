@@ -219,7 +219,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                 onClick={save}
                 disabled={saving}
                 className="w-full mt-2 py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-60"
-                style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+                style={{ background: "var(--gradient-cta)" }}
               >
                 {saving ? "Saving…" : "Save changes"}
               </button>

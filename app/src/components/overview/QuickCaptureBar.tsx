@@ -38,7 +38,7 @@ export default function QuickCaptureBar({
         className="w-full inline-flex items-center justify-center gap-2 text-white font-bold text-[15px] rounded-2xl px-5 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
         style={{
           minHeight: 48,
-          background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))",
+          background: "var(--gradient-cta)",
           boxShadow: "var(--shadow-green)",
           border: `1px solid ${RULE}`,
           ["--tw-ring-color" as string]: GREEN,

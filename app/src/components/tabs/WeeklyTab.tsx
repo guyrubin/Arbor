@@ -142,7 +142,7 @@ export default function WeeklyTab() {
             onClick={() => void generate()}
             disabled={generating}
             className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+            style={{ background: "var(--gradient-cta)" }}
           >
             {generating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> {t("wk.generating")}</>) : (<><Sparkles className="w-4 h-4" /> {reports.some((r) => r.id === currentId) ? t("wk.regenerate") : t("wk.generate")}</>)}
           </button>

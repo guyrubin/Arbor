@@ -390,7 +390,7 @@ export default function OverviewTab() {
               <button
                 onClick={() => setQuickLog(true)}
                 className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+                style={{ background: "var(--gradient-cta)", boxShadow: "var(--shadow-green)" }}
               >
                 <Plus className="w-4 h-4" /> {t("ov.logMoment")}
               </button>
