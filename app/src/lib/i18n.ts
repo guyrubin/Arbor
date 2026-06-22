@@ -822,6 +822,12 @@ export const en: Dict = {
   "share.caption.growth": "{name}'s progress this month — Arbor. {url}",
   // C1 — Arbor Noticed card (in-app developmental monitoring card, Development tab)
   "noticed.eyebrow": "Arbor noticed",
+  "noticed.domain.attachment_regulation": "attachment & regulation",
+  "noticed.domain.language_communication": "language & communication",
+  "noticed.domain.cognition_executive_function": "thinking & attention",
+  "noticed.domain.social_development": "social development",
+  "noticed.domain.independence_adaptive_skills": "independence & daily skills",
+  "noticed.domain.sensory_motor_patterns": "sensory & movement",
   "noticed.calm.title": "{name} is on track",
   "noticed.calm.body": "Everything looks good across the areas Arbor is quietly watching. Keep logging — the picture grows with every moment.",
   "noticed.monitor.title": "Worth keeping an eye on",
@@ -930,6 +936,8 @@ export const en: Dict = {
   "pride.reducedMotion.title": "A new milestone reached",
   "pride.reducedMotion.body": "{name} reached a new milestone. Keep going.",
   "pride.shareCaption": "{name} reached a new milestone — tracked with Arbor. {url}",
+  "push.optin.label": "Moment reminders",
+  "push.optin.sublabel": "A well-timed nudge when Arbor spots a good moment — no noise, you stay in control.",
 };
 
 export const he: Dict = {
@@ -1711,6 +1719,12 @@ export const he: Dict = {
   "ov.attention.review": "סקירה",
   // C1 — Arbor Noticed card
   "noticed.eyebrow": "ארבור שם לב",
+  "noticed.domain.attachment_regulation": "התקשרות וויסות",
+  "noticed.domain.language_communication": "שפה ותקשורת",
+  "noticed.domain.cognition_executive_function": "חשיבה וקשב",
+  "noticed.domain.social_development": "התפתחות חברתית",
+  "noticed.domain.independence_adaptive_skills": "עצמאות ומיומנויות יום-יום",
+  "noticed.domain.sensory_motor_patterns": "חישה ותנועה",
   "noticed.calm.title": "{name} בקצב טוב",
   "noticed.calm.body": "הכל נראה תקין בתחומים שארבור עוקב אחריהם בשקט. המשיכו לתעד — התמונה גדלה עם כל רגע.",
   "noticed.monitor.title": "שווה לשים לב",
@@ -1829,6 +1843,8 @@ export const he: Dict = {
   "pride.reducedMotion.title": "הושגה אבן דרך חדשה",
   "pride.reducedMotion.body": "{name} הגיע/ה לאבן דרך חדשה. ממשיכים.",
   "pride.shareCaption": "{name} הגיע/ה לאבן דרך חדשה — מתועד עם Arbor. {url}",
+  "push.optin.label": "תזכורות לרגעים",
+  "push.optin.sublabel": "תזכורת ממוקדת כשארבור מזהה רגע טוב — ללא רעש, אתם שולטים.",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

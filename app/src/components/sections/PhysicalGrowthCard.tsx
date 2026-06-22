@@ -55,6 +55,7 @@ function TrajectoryChart({
   label: string;
   unit: string;
 }) {
+  const { uiLang } = useLanguage();
   if (data.length < 2) {
     return null;
   }
@@ -80,7 +81,7 @@ function TrajectoryChart({
   // Format a date string "YYYY-MM-DD" into a short human label "Jun '26".
   const shortDate = (iso: string) => {
     const d = new Date(iso + "T00:00:00");
-    return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+    return d.toLocaleDateString(uiLang === "he" ? "he-IL" : "en-US", { month: "short", year: "2-digit" });
   };
 
   return (
@@ -359,9 +360,9 @@ function AddForm({
 // ---- Latest measurement summary -----------------------------------------
 
 function LatestSummary({ entry }: { entry: GrowthEntry }) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const shortDate = (iso: string) =>
-    new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+    new Date(iso + "T00:00:00").toLocaleDateString(uiLang === "he" ? "he-IL" : "en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",

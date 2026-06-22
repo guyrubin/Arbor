@@ -84,7 +84,7 @@ export default function ArborNoticedCard() {
   // Build the body copy for the monitor state using the translation keys.
   function buildMonitorBody(): string {
     if (isCalm) return t("noticed.calm.body", { name: firstName });
-    const area = signal!.label.toLowerCase();
+    const area = t("noticed.domain." + signal!.domain);
     const hasMilestone = signal!.reasons.includes("milestone_overdue");
     const hasPattern = signal!.reasons.includes("behavior_pattern");
     if (hasMilestone && hasPattern) {
@@ -143,7 +143,7 @@ export default function ArborNoticedCard() {
             color: accentColor,
             border: `1px solid ${RULE}`,
           }}
-          aria-label={t("noticed.activity.aria", { area: signal!.label.toLowerCase() })}
+          aria-label={t("noticed.activity.aria", { area: t("noticed.domain." + signal!.domain) })}
         >
           <ExternalLink className="w-3 h-3" aria-hidden="true" />
           {t("noticed.activity.cta")}
