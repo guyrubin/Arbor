@@ -42,6 +42,12 @@ steps:
       - --platform
       - managed
       - --allow-unauthenticated
+      # OPS-A3 (REL-ARBOR-001): deploy a 0%-traffic CANDIDATE revision tagged
+      # `candidate` — no blind 100% cutover. The gated `promote` job in
+      # arbor-deploy.yml shifts traffic to it only AFTER the post-deploy smoke passes.
+      - --no-traffic
+      - --tag
+      - candidate
       - --set-env-vars
       # `^|^` switches the gcloud delimiter to | so CORS_ORIGINS can hold a
       # comma-separated origin list AND comp-email vars (ARBOR_*_EMAILS) can

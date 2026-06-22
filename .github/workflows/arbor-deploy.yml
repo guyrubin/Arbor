@@ -19,7 +19,18 @@
 # Optional vars: VITE_FIREBASE_AUTH_DOMAIN / _PROJECT_ID / _STORAGE_BUCKET
 # default to <project>.firebaseapp.com / <project> / <project>.firebasestorage.app
 #
-# Gated behind the same quality checks as CI; only runs on main.
+# RELEASE PIPELINE (REL-ARBOR-001 — ROS-BACKLOG Theme O):
+#   No more blind 100%-to-prod. On push to main:
+#     job `deploy-candidate` (auto) → FULL green-gate (OPS-B3: tsc+test+framework+safety)
+#       → build+push API → deploy a 0%-traffic CANDIDATE revision (OPS-A3, see
+#       cloudbuild.prod.yaml --no-traffic --tag candidate) → smoke /healthz on the
+#       candidate tag URL (OPS-A2, scripts/post-deploy-smoke.mjs).
+#     job `promote` (GUY-GATED) → shifts 100% traffic to the proven candidate AND
+#       deploys hosting+firestore in the SAME job (no API/hosting split-brain).
+#   ►► THE GATE: configure Required Reviewers (= Guy) on the `production` GitHub
+#      Environment. The `promote` job then PAUSES for human approval before any live
+#      change. Until that is set, promote runs automatically — set it before relying
+#      on this as the prod gate. (CoS holds the Level-3 prod-promotion sign-off.)
 name: Arbor Deploy
 
 on:
@@ -31,7 +42,9 @@ on:
 
 concurrency:
   group: arbor-deploy
-  cancel-in-progress: true
+  # Do NOT cancel an in-flight release (a running promote must finish, not be killed
+  # mid-traffic-shift by the next push). Serialize instead.
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -39,7 +52,77 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  # Stages 3–6: full green-gate, build, deploy a 0%-traffic CANDIDATE, smoke it.
+  # No live traffic changes happen here — safe to run automatically on every push.
+  deploy-candidate:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # FULL green-gate — parity with CI (OPS-B3). Was lint+test only; the two
+      # safety-specific checks (framework + safety eval) now gate the prod path too.
+      - run: npm ci
+        working-directory: app
+      - run: npm run lint
+        working-directory: app
+      - run: npm test
+        working-directory: app
+      - run: npm run check:framework
+        working-directory: app
+      - run: npm run eval:safety
+        working-directory: app
+
+      # Keyless auth via Workload Identity Federation (preferred — no stored key).
+      - id: auth-wif
+        if: vars.GCP_WIF_PROVIDER != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      # Fallback: long-lived SA key. Retire by setting GCP_WIF_PROVIDER + GCP_DEPLOY_SA
+      # vars (see docs/ops/wif-migration.md), then DELETE the GCP_SA_KEY secret + key.
+      - id: auth-key
+        if: vars.GCP_WIF_PROVIDER == ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # OPS-A3: build + deploy the API as a 0%-traffic CANDIDATE revision (tag `candidate`).
+      - name: Deploy API candidate (Cloud Run, no traffic)
+        run: |
+          gcloud builds submit \
+            --config cloudbuild.prod.yaml \
+            --substitutions=_REGION=europe-west4,_TAG=${GITHUB_SHA::7} \
+            --default-buckets-behavior=regional-user-owned-bucket \
+            --project "$PROJECT_ID"
+
+      # OPS-A2: smoke the candidate tag URL; fail the run (and block promote) if unhealthy.
+      - name: Smoke candidate
+        working-directory: app
+        run: |
+          CANDIDATE_URL=$(gcloud run services describe arbor-api \
+            --region europe-west4 --project "$PROJECT_ID" --format=json \
+            | jq -r '.status.traffic[] | select(.tag=="candidate") | .url' | head -n1)
+          echo "candidate URL: $CANDIDATE_URL"
+          test -n "$CANDIDATE_URL"
+          node scripts/post-deploy-smoke.mjs "$CANDIDATE_URL" "${GITHUB_SHA::7}"
+
+  # Stage 7: GUY-GATED prod promotion. The `production` Environment is where the human
+  # gate lives — set Required Reviewers (= Guy) so this job pauses for approval.
+  # Promotes traffic AND deploys hosting together (atomic — no new-client/old-API split).
+  promote:
+    needs: deploy-candidate
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -53,15 +136,9 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
-      # Quality gates (fail the deploy if these fail).
       - run: npm ci
         working-directory: app
-      - run: npm run lint
-        working-directory: app
-      - run: npm test
-        working-directory: app
 
-      # Keyless auth via Workload Identity Federation (preferred — no stored key).
       - id: auth-wif
         if: vars.GCP_WIF_PROVIDER != ''
         uses: google-github-actions/auth@v2
@@ -69,9 +146,6 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SA }}
 
-      # Fallback: long-lived SA key. Retire this path by setting GCP_WIF_PROVIDER
-      # + GCP_DEPLOY_SA vars (see docs/ops/wif-migration.md), then DELETE the
-      # GCP_SA_KEY secret and the key itself in IAM.
       - id: auth-key
         if: vars.GCP_WIF_PROVIDER == ''
         uses: google-github-actions/auth@v2
@@ -80,16 +154,15 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      # 1) Build + deploy the API (Cloud Run) via Cloud Build.
-      - name: Deploy API (Cloud Run)
+      # OPS-A3 promote: shift 100% traffic to the smoke-proven candidate (= latest revision).
+      # Rollback = re-run `update-traffic --to-revisions=<prev>=100` (prior revision held
+      # 100% until this step, so it is the live rollback target).
+      - name: Promote candidate to 100%
         run: |
-          gcloud builds submit \
-            --config cloudbuild.prod.yaml \
-            --substitutions=_REGION=europe-west4,_TAG=${GITHUB_SHA::7} \
-            --default-buckets-behavior=regional-user-owned-bucket \
-            --project "$PROJECT_ID"
+          gcloud run services update-traffic arbor-api \
+            --region europe-west4 --project "$PROJECT_ID" --to-latest=100
 
-      # 2) Build the client with the Firebase web config baked in.
+      # Build + deploy hosting in the SAME gated job (avoids new-client / old-API split-brain).
       - name: Build client
         working-directory: app
         env:
@@ -103,7 +176,6 @@ jobs:
           npm run build
           rm -f dist/server.cjs dist/server.cjs.map
 
-      # 3) Deploy Hosting + Firestore rules/indexes.
       - name: Deploy Hosting + Firestore
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth-wif.outputs.credentials_file_path || steps.auth-key.outputs.credentials_file_path }}
