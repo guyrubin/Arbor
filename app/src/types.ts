@@ -46,6 +46,13 @@ export interface ChildProfile {
    */
   birthDate?: string;
   ageMonths?: number;
+  /**
+   * Optional child gender, captured during onboarding (and editable in the
+   * profile drawer). Purely a personalization cue (pronouns, story framing);
+   * never a developmental signal. Defaults to "unspecified" so it is fully
+   * non-blocking. Append-only: never reorder or remove existing members.
+   */
+  gender?: "boy" | "girl" | "unspecified";
 }
 
 export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';

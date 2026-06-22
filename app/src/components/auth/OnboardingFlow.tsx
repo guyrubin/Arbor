@@ -60,6 +60,10 @@ export default function OnboardingFlow() {
   // Whether we are in the "under 3 years" mode (months precision matters most).
   const isUnder3 = ageYears < 3;
 
+  // Optional gender — a personalization cue (pronouns, story framing), never a
+  // developmental signal. Defaults to unspecified so it never blocks setup.
+  const [gender, setGender] = useState<"boy" | "girl" | "unspecified">("unspecified");
+
   const [concern, setConcern] = useState<string>("");
   const [otherText, setOtherText] = useState("");
   const [languages, setLanguages] = useState<string[]>(["English"]);
@@ -99,6 +103,7 @@ export default function OnboardingFlow() {
         // months precision immediately, without waiting for a profile edit.
         birthDate,
         ageMonths: totalAgeMonths,
+        gender,
         languages: languages.length ? languages : ["English"],
         schoolContext: "",
         strengths: [],
@@ -208,6 +213,30 @@ export default function OnboardingFlow() {
                   />
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Optional gender toggle — a two-option personalization cue. */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.gender.label")}</label>
+            <div className="flex gap-2">
+              {(["boy", "girl"] as const).map((g) => {
+                const on = gender === g;
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGender((p) => (p === g ? "unspecified" : g))}
+                    aria-pressed={on}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold transition"
+                    style={on
+                      ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
+                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                  >
+                    {t("ob.gender." + g)}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

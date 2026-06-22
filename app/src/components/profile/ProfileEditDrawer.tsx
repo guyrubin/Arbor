@@ -5,6 +5,7 @@ import { X, Download, Trash2, Camera, Sparkles } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { exportChildData, downloadJson } from "../../lib/childData";
 import { ChildProfile } from "../../types";
 import { Avatar } from "../ui/Avatar";
@@ -19,9 +20,11 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const { activeChild, updateChild, deleteChild, profiles } = useProfile();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(activeChild.name);
   const [age, setAge] = useState(activeChild.age);
+  const [gender, setGender] = useState<NonNullable<ChildProfile["gender"]>>(activeChild.gender ?? "unspecified");
   const [schoolContext, setSchoolContext] = useState(activeChild.schoolContext);
   const [languages, setLanguages] = useState(activeChild.languages.join(", "));
   const [strengths, setStrengths] = useState(activeChild.strengths.join("\n"));
@@ -64,6 +67,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     if (!open) return;
     setName(activeChild.name);
     setAge(activeChild.age);
+    setGender(activeChild.gender ?? "unspecified");
     setSchoolContext(activeChild.schoolContext);
     setLanguages(activeChild.languages.join(", "));
     setStrengths(activeChild.strengths.join("\n"));
@@ -106,6 +110,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
       await updateChild(activeChild.id, {
         name: name.trim() || activeChild.name,
         age,
+        gender,
         schoolContext,
         languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
         strengths: strengths.split("\n").map((s) => s.trim()).filter(Boolean),
@@ -176,6 +181,29 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Age: <span style={{ color: "var(--arbor-green-ink)" }}>{age}</span></label>
                 <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.gender.label")}</label>
+                <div className="flex gap-2">
+                  {(["boy", "girl"] as const).map((g) => {
+                    const on = gender === g;
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setGender((p) => (p === g ? "unspecified" : g))}
+                        aria-pressed={on}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold transition"
+                        style={on
+                          ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
+                          : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                      >
+                        {t("ob.gender." + g)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-1.5">

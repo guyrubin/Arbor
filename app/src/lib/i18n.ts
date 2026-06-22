@@ -911,6 +911,10 @@ export const en: Dict = {
   "ob.ageMonths.displayMonthsOnly": "{months} months",
   "ob.ageMonths.displayYearOnly": "{years} year",
   "ob.ageMonths.displayYearsOnly": "{years} years",
+  // Optional gender (personalization cue only — never a developmental signal)
+  "ob.gender.label": "Boy or girl? (optional)",
+  "ob.gender.boy": "Boy",
+  "ob.gender.girl": "Girl",
   // B0 — Factual age label (non-diagnostic, display only)
   "age.months": "{n} month{plural}",
   "age.year": "1 year",
@@ -1819,6 +1823,10 @@ export const he: Dict = {
   "ob.ageMonths.displayMonthsOnly": "{months} חודשים",
   "ob.ageMonths.displayYearOnly": "שנה אחת",
   "ob.ageMonths.displayYearsOnly": "{years} שנים",
+  // Optional gender (personalization cue only — never a developmental signal)
+  "ob.gender.label": "ילד או ילדה? (לא חובה)",
+  "ob.gender.boy": "ילד",
+  "ob.gender.girl": "ילדה",
   // B0 — Factual age label (non-diagnostic, display only)
   "age.months": "{n} חודש{plural}",
   "age.year": "שנה אחת",
