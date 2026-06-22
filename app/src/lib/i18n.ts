@@ -12,6 +12,10 @@ export type UiLang = "en" | "he";
 type Dict = Record<string, string>;
 
 export const en: Dict = {
+  // CI-08 — the ONE canonical non-diagnostic honesty line every developmental
+  // surface inherits (clinical board, 2026-06-21). Never "clinically validated".
+  "honesty.signal": "A signal to discuss with your provider — not a diagnosis.",
+  "honesty.grounded": "Developmentally informed — grounded in CDC, AAP & ASHA guidance.",
   // chrome / nav
   "nav.tagline": "Development Fieldbook",
   "nav.home": "Home",
@@ -941,6 +945,9 @@ export const en: Dict = {
 };
 
 export const he: Dict = {
+  // CI-08 canonical honesty line (HE draft — flagged for native clinical review).
+  "honesty.signal": "סימן לשיחה עם איש המקצוע שלך — לא אבחנה.",
+  "honesty.grounded": "מבוסס על התפתחות — נשען על הנחיות CDC, AAP ו-ASHA.",
   "nav.tagline": "יומן התפתחות",
   // P0-5 attribution dashboard (internal/admin)
   "attr.title": "ייחוס ומשפך",

@@ -4,6 +4,58 @@ import type { SoundStats } from "./signals";
 /* Achievements (Epic 10) — milestones of EFFORT, not ability. Every badge is
    earnable by any child through practice volume and variety. */
 
+/* CI-12 / PHI-04 — cosmetics-earned-by-development invariant.
+ *
+ * The product rule: a cosmetic / badge unlock may fire ONLY from a logged
+ * development action, NEVER from an engagement metric (streak-as-login,
+ * app-open, time-in-app, session count), a purchase, or an entitlement change.
+ * That is meaning-over-engagement made enforceable in code rather than left to
+ * intent — a doc principle backslides the first time a growth experiment wants a
+ * streak reward; a typed chokepoint + a red test hold the line.
+ *
+ * These two `as const` arrays are the single authoritative declaration of the
+ * rule. `cosmeticUnlockEligible(eventType)` is the chokepoint any future
+ * unlock path must pass through.
+ *
+ * NOTE on the streak badges in computeAchievements: their `streak` is
+ * `streakDays(missions)` — consecutive DAYS the child completed a practice
+ * mission, i.e. an aggregate over logged development actions, NOT a login or
+ * app-open streak. The trigger that earns the badge is the practice event
+ * ("mission-completed"); the day-count is only how many such actions are
+ * required. The guard below names the allowed trigger categories so a future
+ * caller cannot quietly substitute a login/time-in-app counter for the
+ * practice signal.
+ */
+export const DEVELOPMENT_ACTION_TRIGGERS = [
+  "speech-attempt",
+  "mimic-session",
+  "mission-completed",
+  "adventure-result",
+  "practice-event",
+] as const;
+
+export const FORBIDDEN_TRIGGERS = [
+  "streak-count",
+  "login-count",
+  "time-in-app",
+  "purchase",
+  "entitlement-change",
+] as const;
+
+export type DevelopmentActionTrigger = (typeof DEVELOPMENT_ACTION_TRIGGERS)[number];
+export type ForbiddenTrigger = (typeof FORBIDDEN_TRIGGERS)[number];
+
+const DEVELOPMENT_ACTION_SET: ReadonlySet<string> = new Set(DEVELOPMENT_ACTION_TRIGGERS);
+
+/**
+ * The cosmetic-unlock eligibility chokepoint. Returns `true` ONLY for the named
+ * logged-development-action triggers; `false` for every forbidden engagement /
+ * purchase trigger AND for any unknown / aliased / mis-cased string (fail-closed).
+ */
+export function cosmeticUnlockEligible(eventType: string): boolean {
+  return DEVELOPMENT_ACTION_SET.has(eventType);
+}
+
 export interface Achievement {
   id: string;
   emoji: string;

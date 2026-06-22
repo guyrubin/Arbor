@@ -1440,7 +1440,7 @@ Behavior Logs: ${JSON.stringify(logs)}
 Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectivenessRating, expertInsights, actionPlanSuggestion.
 `;
       const privacy = createRedaction(childProfile?.name);
-      res.json(privacy.restoreDeep(await modelProvider.generateJson({
+      const analysis = privacy.restoreDeep(await modelProvider.generateJson({
         route: "analysis_structured",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: {
@@ -1476,7 +1476,38 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
             actionPlanSuggestion: { type: Type.STRING }
           }
         }
-      })));
+      })) as Record<string, any>;
+
+      // AI-2 / CI-13: output-side safety screen for the model-authored free-text
+      // fields. effectivenessRating, expertInsights[].heading/.text, and
+      // actionPlanSuggestion are the diagnostic-label-leak surfaces here; the
+      // numeric/structured fields are kept regardless. Mirror the /chat and /voice
+      // blocked behavior — log a warn with requestId+category and DO NOT leak the
+      // flagged text; swap the free-text fields for a safe, non-diagnostic fallback.
+      const insights = Array.isArray(analysis.expertInsights) ? analysis.expertInsights : [];
+      const screenable = [
+        analysis.effectivenessRating,
+        ...insights.flatMap((i: any) => [i?.heading, i?.text]),
+        analysis.actionPlanSuggestion,
+      ].filter((s: unknown): s is string => typeof s === "string" && s.length > 0).join("\n");
+      const outputVerdict = await screenModelOutput(modelProvider, screenable);
+      if (outputVerdict.flagged) {
+        logger.warn("Behavior analysis output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        analysis.effectivenessRating = "Arbor can't summarize how well the strategies are working here.";
+        analysis.expertInsights = [{
+          heading: "Let's pause on the interpretation",
+          text: "Part of what Arbor drafted stepped outside what an AI parenting coach should say — it sounded diagnostic or medical. Arbor only offers observations, never a diagnosis. If you're worried about a possible condition, bring these notes to your pediatrician or family health centre; you can generate a professional handoff brief from Reports & Handoffs to make that conversation easier.",
+        }];
+        analysis.actionPlanSuggestion = "Share these logs with a qualified professional who can assess your child in person before acting on a specific plan.";
+        analysis.outputBlocked = true;
+        analysis.blockedCategory = outputVerdict.category;
+      }
+
+      res.json(analysis);
     } catch (error: any) {
       logger.error("Arbor Behavior Analysis Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to analyze Arbor behavior logs", details: error.message });
