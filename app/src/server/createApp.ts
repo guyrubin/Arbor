@@ -24,6 +24,7 @@ import { createWaitlistStore } from "./waitlist.js";
 import { createPushTokenStore } from "./pushTokens.js";
 import { requestObservability } from "./logger.js";
 import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
+import { healthzHandler } from "./healthz.js";
 
 /**
  * SEC-2: tightened Content-Security-Policy (was disabled). Allows exactly what
@@ -93,6 +94,10 @@ export const createApp = (config: ArborConfig) => {
   app.use(requestObservability);
   // COST-2: carry request id + uid through the async chain for token-usage attribution.
   app.use(requestContextMiddleware);
+
+  // OPS-A1: unauthenticated liveness + version probe, mounted before the /api auth
+  // chain so deploys can be verified from outside (CI smoke / uptime / curl).
+  app.get("/healthz", healthzHandler);
 
   app.use(helmet({
     contentSecurityPolicy: config.arborEnv === "local" ? false : { directives: cspDirectives() },
