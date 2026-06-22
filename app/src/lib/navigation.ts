@@ -51,10 +51,12 @@ export const SECTIONS: NavSection[] = [
     icon: Brain,
     badge: "milestone",
     items: [
-      { tab: "timeline", label: "Story", icon: Waypoints },
+      // Story (the longitudinal timeline) sits LAST — it reads back over
+      // everything the other leaves capture, so it belongs at the end of the set.
       { tab: "development", label: "Development", icon: Gauge },
       { tab: "behaviors", label: "Moments", icon: Activity },
       { tab: "language", label: "Language & Communication", icon: Languages },
+      { tab: "timeline", label: "Story", icon: Waypoints },
     ],
   },
   {

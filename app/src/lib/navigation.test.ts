@@ -11,10 +11,12 @@ describe("navigation IA", () => {
     expect(SECTIONS.map((s) => s.id)).toEqual(["today", "ask", "child", "grow", "care", "academy"]);
   });
 
-  it("My Child collapses the development leaves into one Development hub", () => {
+  it("My Child collapses the development leaves into one Development hub, with Story last", () => {
     const child = SECTIONS.find((s) => s.id === "child");
     const tabs = child?.items.map((i) => i.tab) ?? [];
-    expect(tabs).toEqual(["timeline", "development", "behaviors", "language"]);
+    // Story (the longitudinal timeline) reads back over the other leaves, so it
+    // sits LAST in the set.
+    expect(tabs).toEqual(["development", "behaviors", "language", "timeline"]);
   });
 
   it("Grow holds Daily Play, the Practice hub, and Growth Plans", () => {
