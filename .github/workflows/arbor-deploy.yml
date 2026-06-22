@@ -119,12 +119,17 @@ jobs:
           node scripts/post-deploy-smoke.mjs "$CANDIDATE_URL" "${GITHUB_SHA::7}"
 
   # Stage 7: GUY-GATED prod promotion. The `production` Environment is where the human
-  # gate lives — set Required Reviewers (= Guy) so this job pauses for approval.
+  # AUTO-PROMOTE by default: after canary+smoke pass, traffic shifts to 100% with NO manual
+  # approval ("automatically build up — it goes to production"). The safety is the full gate +
+  # canary + smoke, not a human click; your involvement is at the epic level (what gets merged),
+  # not per-deploy. ►► TO REQUIRE MANUAL APPROVAL instead: uncomment `environment: production`
+  # below + add a Required Reviewer in repo Settings → Environments, then approve each run in the
+  # Actions tab. Either mode still runs the full canary→smoke→promote cycle.
   # Promotes traffic AND deploys hosting together (atomic — no new-client/old-API split).
   promote:
     needs: deploy-candidate
     runs-on: ubuntu-latest
-    environment: production
+    # environment: production   # ← uncomment this line for manual-approve mode
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
     steps:
