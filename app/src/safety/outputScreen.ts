@@ -29,6 +29,12 @@ const DIAGNOSIS_PATTERNS = [
   new RegExp(`(?:\\b(?:your (?:child|son|daughter)|he|she|they)|\\[\\s*child\\s*\\])\\s+(?:has|have|is|are|suffers? from|shows? signs of having)\\s+(?:\\w+\\s){0,2}(?:${CONDITIONS})`, "i"),
   new RegExp(`\\bdiagnos(?:is|e|ed) (?:of|with|as)\\s+(?:\\w+\\s){0,2}(?:${CONDITIONS})`, "i"),
   new RegExp(`\\bthis (?:is|confirms|indicates)\\s+(?:\\w+\\s){0,1}(?:${CONDITIONS})`, "i"),
+  // Hedged / soft-inference phrasing the literal patterns above miss, e.g.
+  // "this looks like ADHD", "seems like autism", "sounds like she has OCD",
+  // "appears to be on the autism spectrum", "is likely ADHD", "points to anxiety disorder".
+  // A bare "appears to be" alone is fine — a CONDITION token within two words is required,
+  // so non-clinical phrasing ("the strategy appears to be working") never matches.
+  new RegExp(`(?:\\blooks? like|\\bseems? like|\\bsounds? like|\\bappears? to be|(?:\\bis|'s) (?:likely|probably)|\\bpoints? to|\\bsuggests?)\\s+(?:\\w+\\s){0,3}(?:${CONDITIONS})`, "i"),
 ];
 
 const MEDICATION_PATTERNS = [
