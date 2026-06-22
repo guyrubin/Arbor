@@ -915,6 +915,9 @@ export const en: Dict = {
   "ob.gender.label": "Boy or girl? (optional)",
   "ob.gender.boy": "Boy",
   "ob.gender.girl": "Girl",
+  // Exact age via date of birth (optional, takes precedence over the slider)
+  "ob.dob.label": "Know the exact date? (optional)",
+  "ob.dob.hint": "Date of birth — more precise than the slider",
   // B0 — Factual age label (non-diagnostic, display only)
   "age.months": "{n} month{plural}",
   "age.year": "1 year",
@@ -1827,6 +1830,9 @@ export const he: Dict = {
   "ob.gender.label": "ילד או ילדה? (לא חובה)",
   "ob.gender.boy": "ילד",
   "ob.gender.girl": "ילדה",
+  // Exact age via date of birth (optional, takes precedence over the slider)
+  "ob.dob.label": "יודעים את התאריך המדויק? (לא חובה)",
+  "ob.dob.hint": "תאריך לידה — מדויק יותר מהמחוון",
   // B0 — Factual age label (non-diagnostic, display only)
   "age.months": "{n} חודש{plural}",
   "age.year": "שנה אחת",

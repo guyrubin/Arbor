@@ -6,7 +6,10 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 import { api } from "../../lib/api";
-import { birthDateFromAgeMonths } from "../../lib/childAge";
+import { birthDateFromAgeMonths, chronologicalAgeMonths } from "../../lib/childAge";
+
+/** Today's date as an ISO YYYY-MM-DD string — the max selectable DOB. */
+const todayISO = (): string => new Date().toISOString().slice(0, 10);
 
 const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
@@ -52,10 +55,14 @@ export default function OnboardingFlow() {
   const [ageYears, setAgeYears] = useState(0);
   const [ageMonthsPart, setAgeMonthsPart] = useState(0);
 
-  // Derived total months — the canonical value used to compute birthDate.
+  // Derived total months — the canonical value used to compute birthDate when no
+  // exact DOB is given. (Legacy whole-year value is derived at submit time from
+  // the resolved months, so a DOB and the slider stay consistent.)
   const totalAgeMonths = ageYears * 12 + ageMonthsPart;
-  // Legacy back-compat: whole-year equivalent stored alongside the precise value.
-  const ageLegacyYears = Math.floor(totalAgeMonths / 12);
+
+  // Optional exact date of birth. When set, it takes precedence over the slider
+  // (a real DOB is more precise than an age derived from the slider).
+  const [dob, setDob] = useState("");
 
   // Whether we are in the "under 3 years" mode (months precision matters most).
   const isUnder3 = ageYears < 3;
@@ -92,17 +99,22 @@ export default function OnboardingFlow() {
 
     // B0 — derive a birthDate from the entered age so downstream months-precision
     // logic (childAge.ts) always has a precise date to work from.
-    const birthDate = birthDateFromAgeMonths(totalAgeMonths);
+    // A real DOB (when the parent set one) takes precedence over the slider —
+    // it is exact, so we feed it straight through and derive months/years FROM it
+    // so every reader (.birthDate, .ageMonths, .age) stays consistent.
+    const birthDate = dob || birthDateFromAgeMonths(totalAgeMonths);
+    const resolvedMonths = dob ? chronologicalAgeMonths(dob) : totalAgeMonths;
+    const resolvedYears = Math.floor(resolvedMonths / 12);
 
     try {
       const child = await addChild({
         name: name.trim(),
         // Keep legacy `age` (whole years) for back-compat with all existing `.age` readers.
-        age: ageLegacyYears,
+        age: resolvedYears,
         // B0 — also store the precise fields so the 0–2 milestone/dev-score path gets
         // months precision immediately, without waiting for a profile edit.
         birthDate,
-        ageMonths: totalAgeMonths,
+        ageMonths: resolvedMonths,
         gender,
         languages: languages.length ? languages : ["English"],
         schoolContext: "",
@@ -127,7 +139,7 @@ export default function OnboardingFlow() {
         try {
           localStorage.setItem(
             "arbor.coachSeed",
-            `${challenge} is on my mind with ${name.trim()} (${ageString(totalAgeMonths)}). Where should I start?`
+            `${challenge} is on my mind with ${name.trim()} (${ageString(resolvedMonths)}). Where should I start?`
           );
         } catch { /* ignore */ }
       }
@@ -214,6 +226,22 @@ export default function OnboardingFlow() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Optional exact date of birth — more precise than the slider, and
+              takes precedence when set (half a month matters for babies). */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.dob.label")}</label>
+            <input
+              type="date"
+              value={dob}
+              max={todayISO()}
+              onChange={(e) => setDob(e.target.value)}
+              className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none"
+              style={inputStyle}
+              aria-label={t("ob.dob.hint")}
+            />
+            <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ob.dob.hint")}</p>
           </div>
 
           {/* Optional gender toggle — a two-option personalization cue. */}
