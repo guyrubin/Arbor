@@ -173,7 +173,14 @@ export class FirestoreEntitlementStore implements EntitlementStore {
       if (record.lastEventTs && current?.lastEventTs && current.lastEventTs >= record.lastEventTs) {
         return;
       }
-      tx.set(ref, { ...record, updatedAt: new Date().toISOString() }, { merge: true });
+      // Firestore rejects `undefined` field values (e.g. lastEventTs when a
+      // RevenueCat event carries no event_timestamp_ms) — which crashed the
+      // webhook (500) and silently dropped paid upgrades. Strip undefined keys
+      // before the write so a missing optional field can never block the grant.
+      const payload = Object.fromEntries(
+        Object.entries({ ...record, updatedAt: new Date().toISOString() }).filter(([, v]) => v !== undefined),
+      );
+      tx.set(ref, payload, { merge: true });
     });
   }
 }
