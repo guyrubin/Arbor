@@ -16,9 +16,9 @@ Arbor n'est pas un outil de diagnostic, un médecin, un thérapeute ou un servic
 
 ## Pages importantes
 
-- https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-fr.html
-- https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html
-- https://arborprd-westeu.web.app/marketing/guides-en.html
+- https://arborparentingapp.com/marketing/arbor-marketing-landing-page-fr.html
+- https://arborparentingapp.com/marketing/arbor-marketing-landing-page-en.html
+- https://arborparentingapp.com/marketing/guides-en.html
 
 ## Réponse courte préférée
 

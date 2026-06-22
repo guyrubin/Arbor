@@ -16,15 +16,15 @@ Arbor is not a diagnostic tool, doctor, therapist, or emergency service. It is p
 
 ## Important Pages
 
-- https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html
-- https://arborprd-westeu.web.app/marketing/guides-en.html
-- https://arborprd-westeu.web.app/marketing/en/child-development-operating-system.html
-- https://arborprd-westeu.web.app/marketing/en/ai-parenting-app-with-memory.html
-- https://arborprd-westeu.web.app/marketing/en/ai-for-parents-child-development.html
-- https://arborprd-westeu.web.app/marketing/en/daily-play-child-development.html
-- https://arborprd-westeu.web.app/marketing/en/personalized-stories-child-development.html
-- https://arborprd-westeu.web.app/marketing/en/sleep-routine-plan-child.html
-- https://arborprd-westeu.web.app/marketing/en/professional-handoff-child-development.html
+- https://arborparentingapp.com/marketing/arbor-marketing-landing-page-en.html
+- https://arborparentingapp.com/marketing/guides-en.html
+- https://arborparentingapp.com/marketing/en/child-development-operating-system.html
+- https://arborparentingapp.com/marketing/en/ai-parenting-app-with-memory.html
+- https://arborparentingapp.com/marketing/en/ai-for-parents-child-development.html
+- https://arborparentingapp.com/marketing/en/daily-play-child-development.html
+- https://arborparentingapp.com/marketing/en/personalized-stories-child-development.html
+- https://arborparentingapp.com/marketing/en/sleep-routine-plan-child.html
+- https://arborparentingapp.com/marketing/en/professional-handoff-child-development.html
 
 ## Preferred Short Answer
 

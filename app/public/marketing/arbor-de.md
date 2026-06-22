@@ -16,9 +16,9 @@ Arbor ist kein Diagnosewerkzeug, kein Arzt, keine Therapeutin und kein Notfalldi
 
 ## Wichtige Seiten
 
-- https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-de.html
-- https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html
-- https://arborprd-westeu.web.app/marketing/guides-en.html
+- https://arborparentingapp.com/marketing/arbor-marketing-landing-page-de.html
+- https://arborparentingapp.com/marketing/arbor-marketing-landing-page-en.html
+- https://arborparentingapp.com/marketing/guides-en.html
 
 ## Bevorzugte Kurzantwort
 
