@@ -1,14 +1,19 @@
 import React from "react";
 
 /**
- * Deterministic warm geometric illustration derived from a seed string (story
- * title + page). No external image API — pure SVG patterns.
+ * Deterministic, on-brand storybook backdrop derived from a seed (story title + page).
+ * A soft illustrated landscape — layered sky, rolling hills and a gentle sun in the
+ * Arbor palette — NOT random geometry. No external image API. This is the branded
+ * fallback shown before/while a hero scene generates, so a card never reads as an
+ * abstract placeholder (D6 / kill the "free version" look).
  */
-const PALETTES: string[][] = [
-  ["#d7aa55", "#e2562d", "#6f9e6f"],
-  ["#68B4FF", "#A07AF8", "#18F0D2"],
-  ["#FFC07A", "#FF5822", "#f4d991"],
-  ["#9bbf5a", "#38C8F0", "#CCA8FF"],
+
+// Curated, harmonious scenes — each a calm time-of-day in brand-adjacent tones.
+const SCENES: { sky: [string, string]; hills: [string, string, string]; sun: string }[] = [
+  { sky: ["#fbeede", "#f6d9b8"], hills: ["#cfe0c2", "#9bbf8f", "#6f9e6f"], sun: "#f3b24d" }, // warm dawn
+  { sky: ["#e4f0fa", "#cfe6f6"], hills: ["#bcd9c6", "#8fc3a3", "#5fae86"], sun: "#fce39a" }, // soft day
+  { sky: ["#ece9fb", "#dcd6f4"], hills: ["#c7c0e8", "#a89cda", "#7a6bd8"], sun: "#f4d991" }, // dusk lavender
+  { sky: ["#fbe1ea", "#f6cdd9"], hills: ["#e7c6b6", "#d79f86", "#c2785f"], sun: "#f6b27a" }, // soft rose
 ];
 
 function hash(s: string): number {
@@ -22,25 +27,38 @@ function hash(s: string): number {
 
 export function StoryIllustration({ seed, className = "" }: { seed: string; className?: string }) {
   const h = hash(seed);
-  const pal = PALETTES[h % PALETTES.length];
-  const cx = 30 + (h % 40);
-  const cy = 30 + ((h >> 3) % 40);
-  const r = 18 + (h % 16);
-  const rot = h % 360;
+  const sc = SCENES[h % SCENES.length];
+  // Unique, valid gradient id per instance (useId can contain ":"/"," — strip them).
+  const gid = "arborsky-" + React.useId().replace(/[^a-zA-Z0-9]/g, "");
+
+  const sunX = 24 + (h % 56); // 24..79
+  const sunY = 22 + ((h >> 4) % 14); // 22..35
+  const far = 56 + (h % 8); // crest heights vary gently by seed
+  const mid = 66 + ((h >> 2) % 8);
+  const near = 78 + ((h >> 5) % 8);
 
   return (
-    <svg viewBox="0 0 100 100" className={className} role="img" aria-label="Story illustration" preserveAspectRatio="xMidYMid slice">
-      <rect width="100" height="100" fill={pal[0]} opacity="0.12" />
-      <circle cx={cx} cy={cy} r={r} fill={pal[1]} opacity="0.55" />
-      <g transform={`rotate(${rot} 50 50)`}>
-        <rect x="55" y="20" width="30" height="30" rx="6" fill={pal[2]} opacity="0.5" />
-      </g>
-      <polygon
-        points={`${20 + (h % 10)},80 ${50},${40 + (h % 20)} ${80 - (h % 10)},80`}
-        fill={pal[0]}
-        opacity="0.45"
-      />
-      <circle cx={70 + (h % 8)} cy={25} r={6} fill={pal[1]} opacity="0.8" />
+    <svg
+      viewBox="0 0 100 100"
+      className={className}
+      role="img"
+      aria-label="Story illustration"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={sc.sky[0]} />
+          <stop offset="1" stopColor={sc.sky[1]} />
+        </linearGradient>
+      </defs>
+      <rect width="100" height="100" fill={`url(#${gid})`} />
+      {/* gentle sun / moon with a soft halo */}
+      <circle cx={sunX} cy={sunY} r="15" fill={sc.sun} opacity="0.18" />
+      <circle cx={sunX} cy={sunY} r="9" fill={sc.sun} opacity="0.9" />
+      {/* three layered hills for depth (far → near) */}
+      <path d={`M0 ${far} Q 50 ${far - 12} 100 ${far} L100 100 0 100 Z`} fill={sc.hills[0]} />
+      <path d={`M0 ${mid} Q 35 ${mid - 14} 100 ${mid} L100 100 0 100 Z`} fill={sc.hills[1]} />
+      <path d={`M0 ${near} Q 60 ${near - 12} 100 ${near} L100 100 0 100 Z`} fill={sc.hills[2]} />
     </svg>
   );
 }
