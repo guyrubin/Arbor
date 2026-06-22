@@ -30,7 +30,7 @@ via `<html lang>`.
 ## Canonical example (Instagram bio, IL launch)
 
 ```
-https://arborprd-westeu.web.app/?utm_source=instagram&utm_medium=social&utm_campaign=launch_il&utm_content=bio_link
+https://arborparentingapp.com/?utm_source=instagram&utm_medium=social&utm_campaign=launch_il&utm_content=bio_link
 ```
 
 ## Landing-page handoff

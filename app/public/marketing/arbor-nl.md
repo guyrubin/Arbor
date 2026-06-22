@@ -16,9 +16,9 @@ Arbor is geen diagnostisch hulpmiddel, arts, therapeut of noodhulpdienst. Het is
 
 ## Belangrijke pagina's
 
-- https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-nl.html
-- https://arborprd-westeu.web.app/marketing/arbor-marketing-landing-page-en.html
-- https://arborprd-westeu.web.app/marketing/guides-en.html
+- https://arborparentingapp.com/marketing/arbor-marketing-landing-page-nl.html
+- https://arborparentingapp.com/marketing/arbor-marketing-landing-page-en.html
+- https://arborparentingapp.com/marketing/guides-en.html
 
 ## Voorkeursantwoord
 
