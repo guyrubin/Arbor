@@ -23,6 +23,7 @@ import DailyCheckinCard from "../overview/DailyCheckinCard";
 import RhythmStrip from "../overview/RhythmStrip";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import DevScoreStrip from "../overview/DevScoreStrip";
+import PrideMomentCard from "../overview/PrideMomentCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import { StreakChip } from "../overview/StreakChip";
 import { computeStreak } from "../../lib/streak";
@@ -320,6 +321,10 @@ export default function OverviewTab() {
     >
       {/* ── Quick Capture — first in tab order so capture is always reachable ─ */}
       <QuickCaptureBar childName={firstName} onCapture={() => setQuickLog(true)} />
+
+      {/* ── R3 — Milestone pride moment: a calm celebration on a new crossing
+             (renders nothing when there is none) ── */}
+      <PrideMomentCard />
 
       {/* ── Decision hero: status → recommendation → one primary action ──── */}
       <section
