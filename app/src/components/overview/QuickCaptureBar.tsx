@@ -28,23 +28,23 @@ export default function QuickCaptureBar({
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { duration: 0.16 }}
-      className="sticky z-20 lg:static"
+      className="sticky z-20 lg:static flex"
       style={{ bottom: "var(--safe-bottom, env(safe-area-inset-bottom, 0px))" }}
     >
       <button
         type="button"
         onClick={onCapture}
         aria-label={t("today.capture.aria", { name: childName })}
-        className="w-full inline-flex items-center justify-center gap-2 text-white font-bold text-[15px] rounded-2xl px-5 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
         style={{
-          minHeight: 48,
+          minHeight: 44,
           background: "var(--gradient-cta)",
           boxShadow: "var(--shadow-green)",
           border: `1px solid ${RULE}`,
           ["--tw-ring-color" as string]: GREEN,
         } as React.CSSProperties}
       >
-        <Plus className="w-5 h-5" aria-hidden="true" /> {t("today.capture.cta")}
+        <Plus className="w-4 h-4" aria-hidden="true" /> {t("today.capture.cta")}
       </button>
     </motion.div>
   );

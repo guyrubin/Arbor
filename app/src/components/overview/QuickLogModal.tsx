@@ -32,7 +32,7 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={t("ql.title")}>
+    <Modal open={open} onClose={onClose} title={t("ql.title")} closeAlignStart>
       <form onSubmit={submit} className="space-y-4 text-sm">
         <div className="space-y-1.5">
           <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.type")}</label>

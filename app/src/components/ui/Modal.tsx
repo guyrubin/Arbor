@@ -12,12 +12,17 @@ export function Modal({
   title,
   children,
   maxWidth = "max-w-lg",
+  closeAlignStart = false,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
   maxWidth?: string;
+  /** When true, the close (X) button sits at the inline-START of the header
+   *  (i.e. the left in LTR, the right is freed; flips to the right-hand side in
+   *  RTL). Default keeps the X at the inline-END (trailing) as before. */
+  closeAlignStart?: boolean;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -92,16 +97,16 @@ export function Modal({
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              {title && <h3 id={titleId} className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h3>}
+            <div className="flex items-center mb-4 gap-2">
               <button
                 onClick={onClose}
-                className="ml-auto p-1.5 rounded-lg transition"
+                className={`p-1.5 rounded-lg transition ${closeAlignStart ? "order-first" : "order-last ms-auto"}`}
                 style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
+              {title && <h3 id={titleId} className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h3>}
             </div>
             {children}
           </motion.div>
