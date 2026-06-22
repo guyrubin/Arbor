@@ -15,6 +15,7 @@ import { PageHeader, PASTEL, IconBadge, Chip, SectionCard, cardCls, type PastelK
 import { MemoryRow } from "../sections/ChildMemory";
 import ScreeningSheet from "../sections/ScreeningSheet";
 import { composeChildStory, childStoryToText } from "../../lib/childStory";
+import { ShareButton } from "../ui/ShareButton";
 import { track } from "../../lib/analytics";
 
 const KIND_ICON: Record<SignalKind, React.ComponentType<{ className?: string }>> = {
@@ -207,13 +208,23 @@ export default function StoryTimelineTab() {
         icon={<Feather className="w-5 h-5" />}
         tone="lav"
         action={!story.empty && (
-          <button
-            onClick={saveStory}
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-bold transition bg-white"
-            style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}
-          >
-            <Download className="w-4 h-4" /> Save story
-          </button>
+          <div className="flex items-center gap-2">
+            {/* R4 — share the narrated story as a branded card (title + teaser,
+                no photo, no score → face-safe + G2-safe), reusing the story artifact. */}
+            <ShareButton
+              artifact="story"
+              surface="story_timeline"
+              childName={firstName}
+              getCardOpts={() => ({ name: firstName, title: story.title, takeaway: story.paragraphs[0] })}
+            />
+            <button
+              onClick={saveStory}
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-bold transition bg-white"
+              style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}
+            >
+              <Download className="w-4 h-4" /> Save story
+            </button>
+          </div>
         )}
       >
         <div className="space-y-3">
