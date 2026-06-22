@@ -20,12 +20,40 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 const LS_AI = "arbor.aiLang";
 const LS_UI = "arbor.uiLang";
 
+const SUPPORTED: UiLang[] = ["en", "he"];
+
+/**
+ * QA-7: default the UI to the parent's locale when they have no stored choice.
+ * IL/Hebrew-locale parents were landing on an English login/app even though the
+ * Hebrew UI exists. We detect Hebrew from the browser locale (`he`, legacy `iw`)
+ * and default to `he`; everyone else stays on `en`. An explicit stored choice
+ * always wins, so changing the language in-app is sticky.
+ */
+const detectLang = (): UiLang => {
+  try {
+    const candidates = [
+      ...(navigator.languages ?? []),
+      navigator.language,
+    ].filter(Boolean) as string[];
+    for (const tag of candidates) {
+      const primary = tag.toLowerCase().split("-")[0];
+      if (primary === "he" || primary === "iw") return "he"; // "iw" = legacy Hebrew code
+      if (SUPPORTED.includes(primary as UiLang)) return primary as UiLang;
+    }
+  } catch {
+    /* navigator unavailable (SSR/tests) — fall through */
+  }
+  return "en";
+};
+
 const readLang = (key: string): UiLang => {
   try {
-    return (localStorage.getItem(key) as UiLang) || "en";
+    const stored = localStorage.getItem(key) as UiLang | null;
+    if (stored && SUPPORTED.includes(stored)) return stored; // explicit choice wins
   } catch {
-    return "en";
+    /* ignore unavailable storage */
   }
+  return detectLang();
 };
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
