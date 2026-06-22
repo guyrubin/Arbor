@@ -282,6 +282,35 @@ describe("ASHA speech age-gating + dosage", () => {
     expect(ageAppropriateSoundIds(lib, 6)).toEqual(["p", "k", "r"]);
   });
 
+  // QA-4 regression: switching the active child must change the age-appropriate
+  // target. The bug was a stale useState seed in SpeechCoachTab that pinned the
+  // selected sound to the first child's age; switching to a younger child kept
+  // showing the older child's target. The fix re-derives on a child switch — this
+  // test locks the precondition the fix depends on: the default-target candidate
+  // set genuinely differs by age, so a non-re-derived selection IS a regression.
+  it("derives a different age-appropriate target when the active child changes", () => {
+    const fullLib = [
+      { id: "p", band: "early" as const },   // appropriate from birth
+      { id: "k", band: "middle" as const },  // appropriate from age 3
+      { id: "r", band: "late" as const },    // appropriate from age 4
+    ];
+    // Reproduction ages: a 1-year-old (Lenny) vs a 5-year-old (Dylan).
+    const youngerTargets = ageAppropriateSoundIds(fullLib, 1);
+    const olderTargets = ageAppropriateSoundIds(fullLib, 5);
+
+    // The candidate pools must differ — the younger child gets only early sounds.
+    expect(youngerTargets).toEqual(["p"]);
+    expect(olderTargets).toEqual(["p", "k", "r"]);
+    expect(youngerTargets).not.toEqual(olderTargets);
+
+    // The DEFAULT target (first candidate) the studio seeds is identical only by
+    // coincidence here ("p"), but the full set a younger child may practice is a
+    // strict subset — so a stale selection that still offers "r"/"k" to a
+    // 1-year-old is age-inappropriate and a regression.
+    expect(olderTargets).toEqual(expect.arrayContaining(youngerTargets));
+    expect(youngerTargets.length).toBeLessThan(olderTargets.length);
+  });
+
   it("tracks dosage: trials today and sessions this week", () => {
     const today = "2026-06-17";
     const att = (date: string): SpeechAttempt => ({

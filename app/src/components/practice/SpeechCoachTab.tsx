@@ -71,6 +71,24 @@ export default function SpeechCoachTab() {
 
   useEffect(() => { setItemIdx(0); }, [soundId, level]);
 
+  // QA-4 fix: `soundId` is seeded from `defaultSound` via a useState initializer,
+  // which runs only once at first mount. Switching the active child (e.g. from a
+  // 5-year-old to a 1-year-old) recomputes `defaultSound` for the new age, but the
+  // selected sound stayed pinned to the prior child — so Speech Coach kept showing
+  // the previous child's age-appropriate target. Re-seed the per-child selection
+  // when the active child changes so the studio always reflects the active child.
+  // Keyed on child id (not age) so a parent's manual sound pick still persists
+  // within the same child's session.
+  const lastChildId = useRef(childProfile.id);
+  useEffect(() => {
+    if (lastChildId.current !== childProfile.id) {
+      lastChildId.current = childProfile.id;
+      setSoundId(defaultSound);
+      setLevel("word");
+      setItemIdx(0);
+    }
+  }, [childProfile.id, defaultSound]);
+
   useEffect(() => {
     if (dose.sessionMetToday && !doseMetPrev.current && !doseCelebrated) setDoseCelebrated(true);
     doseMetPrev.current = dose.sessionMetToday;
