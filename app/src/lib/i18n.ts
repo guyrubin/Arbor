@@ -1004,6 +1004,31 @@ export const en: Dict = {
   "hub.scholar.readMin": "{n} min read",
   "hub.scholar.topic": "Topic: {topic}",
   "hub.scholar.nodata": "Check off a few milestones to get a personalised weekly read matched to {name}'s Development Map.",
+  // AP-053 — Academy "For You" copilot + Learning Map (board-cleared copy, 2026-06-22).
+  // VERBATIM cleared strings: DO NOT paraphrase. See PRODUCT-BACKLOG AP-053.
+  // Safety gate: no warn/amber/red token on recommended card; no deficit framing;
+  // banned words: "low","weak","behind","delay","concern","deficit","lowest","needs work","score".
+  "foryou.eyebrow": "For You",
+  // Section header — VERBATIM
+  "foryou.header": "A good place to explore next",
+  // Recommendation line — VERBATIM (interpolates {domain})
+  "foryou.recLine": "Arbor suggests starting with {domain} — here's a gentle place to put your energy this week.",
+  // "Here's why" toggle label
+  "foryou.whyToggle": "Here's why",
+  // "Here's why" expansion body — LOAD-BEARING VERBATIM (board-cleared)
+  "foryou.whyBody": "This is simply an area you've logged less about so far, so Arbor has the least to go on here. Spending a little time here helps Arbor understand your child better — it's not a sign anything is wrong.",
+  // Course roll-up label — VERBATIM (interpolates {domain})
+  "foryou.coursesLabel": "Courses to explore for {domain}",
+  // Progress label — VERBATIM "[X] of [Y] explored" (NOT "% complete")
+  "foryou.progress": "{x} of {y} explored",
+  // All-domains section header
+  "foryou.allDomainsHeader": "Learning map",
+  // CTA
+  "foryou.cta": "Explore masterclasses",
+  // No-data state
+  "foryou.nodata": "Check off a few milestones and Arbor will suggest where to put your energy this week.",
+  // Provenance note — non-diagnostic
+  "foryou.provenance": "Based on the milestones you've logged — an editorial suggestion to explore, not a diagnostic signal.",
   // AP-059 — Weekly missions calendar strip (child-facing Learning Studio)
   "strip.title": "This week",
   "strip.countDone": "{n} of {total} days done",
@@ -2098,6 +2123,25 @@ export const he: Dict = {
   "sr.calm.label": "הפנו תזכורות לרגעים הרגועים יותר",
   "sr.calm.desc": "ארבור מפנה תזכורות לחלקים הרגועים יותר של היום שלכם — על בסיס הדפוסים שתיעדתם, לא שעון קבוע.",
   "sr.saved": "נשמר",
+  // AP-053 — Academy "For You" copilot + Learning Map — HE translations.
+  // Flagged for arbor-localization native review before wide release.
+  // Same invitational meaning as EN — "least-explored" framing, NOT deficit framing.
+  "foryou.eyebrow": "בשבילכם",
+  // "A good place to explore next" — invitational, not diagnostic
+  "foryou.header": "מקום טוב להתחיל לחקור",
+  // Recommendation line — same invitational register as EN
+  "foryou.recLine": "ארבור מציע להתחיל עם {domain} — כאן יש מקום עדין להשקיע קצת אנרגיה השבוע.",
+  "foryou.whyToggle": "למה דווקא כאן?",
+  // "Here's why" expansion — preserves the "logged less / not a sign anything is wrong" meaning
+  "foryou.whyBody": "פשוט תיעדתם פחות על תחום זה עד כה, ולכן לארבור יש פחות מידע לעבוד איתו כאן. קצת זמן בתחום זה עוזר לארבור להכיר את ילדכם טוב יותר — זה לא סימן שמשהו לא בסדר.",
+  // Course roll-up label
+  "foryou.coursesLabel": "שיעורים לחקור עבור {domain}",
+  // "[X] of [Y] explored" — NOT "% complete"
+  "foryou.progress": "{x} מתוך {y} נחקרו",
+  "foryou.allDomainsHeader": "מפת הלמידה",
+  "foryou.cta": "חקרו שיעורי הורים",
+  "foryou.nodata": "סמנו כמה אבני דרך וארבור יציע לאן כדאי להפנות אנרגיה השבוע.",
+  "foryou.provenance": "מבוסס על אבני הדרך שתיעדתם — הצעה עורכת לחקור, לא אות אבחנתי.",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };
