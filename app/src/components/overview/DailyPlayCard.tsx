@@ -20,12 +20,15 @@ export default function DailyPlayCard({
   done,
   onDid,
   onCoach,
+  goalLabel,
 }: {
   pick: ScoredActivity;
   childName: string;
   done: boolean;
   onDid: (a: ScoredActivity) => void;
   onCoach: (a: ScoredActivity) => void;
+  /** CI-28: label of the active goal that drove this pick (for "because" line). */
+  goalLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const { t, uiLang } = useLanguage();
@@ -33,7 +36,9 @@ export default function DailyPlayCard({
   const activity = localizeActivity(pick.activity, uiLang);
 
   const why =
-    reason === "concern-match"
+    reason === "goal-match" && goalLabel
+      ? t("play.whyGoal", { goal: goalLabel, name: childName })
+      : reason === "concern-match"
       ? t("play.whyConcern", { name: childName })
       : t("play.whyStage", { name: childName });
 

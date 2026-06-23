@@ -1,24 +1,36 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Sprout } from "lucide-react";
+import { Sprout, Target } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import CourseCard from "../overview/CourseCard";
+import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
 import { recommendCourse, READINESS_COURSES, localizeCourse } from "../../playbank/courses";
 import { type PlayActivity } from "../../playbank/content";
+import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
    matched to their band and recently-logged concerns. The single hero pick also
    appears on Today; here the parent can browse a few ideas for the day. */
 
 export default function DailyPlayTab() {
-  const { behaviorLogs, childProfile, setChatInput, setActiveTab } = useArbor();
+  const { behaviorLogs, childProfile, setChatInput, setActiveTab, updateChild } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
+
+  // CI-28: Goal Builder — Goals chip in the DailyPlay tab header.
+  const activeGoals: ActiveGoal[] = childProfile.activeGoals ?? [];
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const goalDomains = useMemo(() => activeGoalDomains(activeGoals), [activeGoals]);
+
+  const handleSaveGoals = async (goals: ActiveGoal[]) => {
+    await updateChild(childProfile.id, { activeGoals: goals });
+    toast("Focus set. Daily Play is now matched to what you're working on.", "success");
+  };
 
   const [doneIds, setDoneIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(`arbor.play.done.${childProfile.id}`) || "[]"); }
@@ -37,10 +49,12 @@ export default function DailyPlayTab() {
     () => selectDailyPlay({
       ageYears: childProfile.age,
       concernDomains,
+      // CI-28: inject goal domains at 1.6x weight.
+      goalDomains,
       recentlyDoneIds: doneIds,
       daySeed: daySeedFor(Date.now()),
     }, 4),
-    [concernDomains, childProfile.age, doneIds]
+    [concernDomains, goalDomains, childProfile.age, doneIds]
   );
 
   // Recommended course — matched to the child's top logged concern (the moat).
@@ -87,15 +101,33 @@ export default function DailyPlayTab() {
       className="space-y-5 max-w-[1080px]"
     >
       <header>
-        <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-          <Sprout className="w-3.5 h-3.5" /> {t("play.libEyebrow")}
-        </span>
-        <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-          {t("play.libTitle", { name: firstName })}
-        </h1>
-        <p className="text-sm mt-1.5" style={{ color: "var(--arbor-muted)" }}>
-          {t("play.libSubtitle", { name: firstName })}
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+              <Sprout className="w-3.5 h-3.5" /> {t("play.libEyebrow")}
+            </span>
+            <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              {t("play.libTitle", { name: firstName })}
+            </h1>
+            <p className="text-sm mt-1.5" style={{ color: "var(--arbor-muted)" }}>
+              {t("play.libSubtitle", { name: firstName })}
+            </p>
+          </div>
+          {/* CI-28: Goals chip — persistent entry to Goal Builder */}
+          <button
+            onClick={() => setGoalModalOpen(true)}
+            aria-label="Manage focus goals"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[12.5px] font-bold transition mt-1"
+            style={{
+              background: activeGoals.length > 0 ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",
+              color: activeGoals.length > 0 ? "var(--arbor-green-ink)" : "var(--arbor-muted)",
+              border: `1px solid ${activeGoals.length > 0 ? "rgba(52,178,119,0.35)" : "var(--arbor-rule)"}`,
+            }}
+          >
+            <Target className="w-3.5 h-3.5" />
+            {activeGoals.length > 0 ? `${activeGoals.length} goal${activeGoals.length !== 1 ? "s" : ""} active` : "Set a focus"}
+          </button>
+        </div>
       </header>
 
       <div className="max-w-[640px]">
@@ -151,9 +183,24 @@ export default function DailyPlayTab() {
             done={doneIds.includes(p.activity.id)}
             onDid={markDone}
             onCoach={coach}
+            goalLabel={
+              p.reason === "goal-match"
+                ? activeGoals.find((g) => g.domainId === p.activity.domain)?.label
+                : undefined
+            }
           />
         ))}
       </div>
+
+      {/* CI-28: Goal Builder modal — opened via Goals chip in the header */}
+      <GoalBuilderModal
+        open={goalModalOpen}
+        onClose={() => setGoalModalOpen(false)}
+        childName={firstName}
+        activeGoals={activeGoals}
+        onSave={handleSaveGoals}
+        behaviorLogs={behaviorLogs}
+      />
     </motion.div>
   );
 }

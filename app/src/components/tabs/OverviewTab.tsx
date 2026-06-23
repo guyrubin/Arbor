@@ -22,9 +22,12 @@ import GoalsCard from "../overview/GoalsCard";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import RhythmStrip from "../overview/RhythmStrip";
 import DailyPlayCard from "../overview/DailyPlayCard";
+import GoalBuilderPromptCard from "../practice/GoalBuilderPromptCard";
+import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
+import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 
 const card = cardCls;
 const DAY = 86_400_000;
@@ -40,7 +43,7 @@ export default function OverviewTab() {
   const {
     setActiveTab, milestonesPercent, checkedMilestones, totalMilestones,
     behaviorLogs, childProfile, setChatInput,
-    pendingMemoryItems, approvedMemoryItems,
+    pendingMemoryItems, approvedMemoryItems, updateChild,
   } = useArbor();
 
   const { t } = useLanguage();
@@ -52,6 +55,49 @@ export default function OverviewTab() {
   const [showTools, setShowTools] = useState(false);
   // Today's focus can come back long; keep it to a glance with a Read-more.
   const [focusOpen, setFocusOpen] = useState(false);
+
+  // CI-28: Goal Builder state.
+  // activeGoals is stored on ChildProfile (COPPA note: parent-expressed intent,
+  // not child assessment — gate §E arbor-safety review required before prod).
+  const activeGoals: ActiveGoal[] = childProfile.activeGoals ?? [];
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  // Dismissible once-per-session (sessionStorage, not localStorage, so it
+  // returns on next app open to encourage goal-setting on subsequent visits
+  // within the D3-D14 activation window).
+  const [goalPromptDismissed, setGoalPromptDismissed] = useState(() => {
+    try { return sessionStorage.getItem("arbor.ci28.promptDismissed") === "1"; }
+    catch { return false; }
+  });
+
+  const dismissGoalPrompt = () => {
+    setGoalPromptDismissed(true);
+    try { sessionStorage.setItem("arbor.ci28.promptDismissed", "1"); } catch { /* ignore */ }
+  };
+
+  const handleSaveGoals = async (goals: ActiveGoal[]) => {
+    // Gate §E: write activeGoals to ChildProfile via updateChild.
+    // This uses the same updateChild path used for avatars/profile — Firestore
+    // when authed, localStorage in sandbox. COPPA review gates prod deploy.
+    await updateChild(childProfile.id, { activeGoals: goals });
+    const n = goals.length;
+    toast(`Focus set. Daily Play is now matched to what you're working on.`, "success");
+    if (n > 0) {
+      // Ensure the prompt stays dismissed after saving.
+      setGoalPromptDismissed(true);
+      try { sessionStorage.setItem("arbor.ci28.promptDismissed", "1"); } catch { /* ignore */ }
+    }
+  };
+
+  // Derive the PlayDomains from active goals to inject 1.6x weighting.
+  const goalDomains = useMemo(() => activeGoalDomains(activeGoals), [activeGoals]);
+
+  // Onboarding concern id — used for tile pre-fill highlight (gate §D).
+  // The value is the concern id stored during onboarding (not the challenge text).
+  const onboardingConcernId = useMemo(() => {
+    try { return localStorage.getItem("arbor.ci28.concernId") ?? undefined; }
+    catch { return undefined; }
+  }, []);
+
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const photoUrl = childProfile.photoUrl;
   const { hasHero } = useHeroAvatar();
@@ -77,11 +123,14 @@ export default function OverviewTab() {
     const picks = selectDailyPlay({
       ageYears: childProfile.age,
       concernDomains,
+      // CI-28: inject goal domains at 1.6x weight so goal-linked activities
+      // surface first when the parent has set a focus.
+      goalDomains,
       recentlyDoneIds: donePlayIds,
       daySeed: daySeedFor(Date.now()),
     }, 1);
     return picks[0] ?? null;
-  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds]);
+  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains]);
 
   const prepWindow = (hour: number) => {
     setChatInput(`${firstName} tends to have a harder time around ${hourLabel(hour)}. Give me one short, calm script I can use to get ahead of it today.`);
@@ -337,9 +386,23 @@ export default function OverviewTab() {
             done={donePlayIds.includes(dailyPlay.activity.id)}
             onDid={markPlayDone}
             onCoach={coachOnPlay}
+            goalLabel={
+              dailyPlay.reason === "goal-match"
+                ? (activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label)
+                : undefined
+            }
           />
         )}
       </section>
+
+      {/* ── CI-28: Goal Builder prompt card (D3-D14 activation) ───────────── */}
+      {activeGoals.length === 0 && !goalPromptDismissed && (
+        <GoalBuilderPromptCard
+          childName={firstName}
+          onSetFocus={() => setGoalModalOpen(true)}
+          onDismiss={dismissGoalPrompt}
+        />
+      )}
 
       {/* ── How your child is doing (the picture, with the moat folded in) ─ */}
       <section className={`${card} overflow-hidden`}>
@@ -476,6 +539,17 @@ export default function OverviewTab() {
       </section>
 
       <QuickLogModal open={quickLog} onClose={() => setQuickLog(false)} />
+
+      {/* CI-28: Goal Builder modal — opened from prompt card or Goals chip */}
+      <GoalBuilderModal
+        open={goalModalOpen}
+        onClose={() => setGoalModalOpen(false)}
+        childName={firstName}
+        activeGoals={activeGoals}
+        concernId={onboardingConcernId}
+        onSave={handleSaveGoals}
+        behaviorLogs={behaviorLogs}
+      />
     </motion.div>
   );
 }

@@ -18,6 +18,15 @@ export interface ChildProfile {
     createdAt: string;
   };
   /**
+   * CI-28: Parent-selected developmental focus goals (1–3).
+   * Each entry is a curated goal from GOAL_TILES — never auto-assigned.
+   * Written only via explicit parent selection in GoalBuilderModal (gate §D).
+   * Feeds Daily Play selector at 1.6× weight on the matching domain.
+   * COPPA note: this field stores parent-expressed intent (not child assessment).
+   * Gate §E: arbor-safety COPPA review required before shipping to prod.
+   */
+  activeGoals?: import('./practice/goalBuilder').ActiveGoal[];
+  /**
    * Prematurity adjustment (AAP): for babies born preterm, developmental
    * milestones are compared against *corrected* (adjusted) age until ~2 years.
    * `gestationalWeeks` is the gestation at birth (e.g. 32). Term is 40 weeks;
