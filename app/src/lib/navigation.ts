@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Activity, Languages,
   Users, FileBarChart, Calendar,
   Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert,
-  Target, Map, Gauge,
+  Target, Map, Gauge, School,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -74,6 +74,7 @@ export const SECTIONS: NavSection[] = [
     icon: HeartHandshake,
     items: [
       { tab: "consult", label: "Consult", icon: FileBarChart },
+      { tab: "school-brief", label: "School Brief", icon: School },
       { tab: "care-team", label: "My Care Team", icon: Users },
       { tab: "sharing", label: "Trusted Sharing", icon: Share2 },
       { tab: "appointments", label: "Appointments", icon: Calendar },

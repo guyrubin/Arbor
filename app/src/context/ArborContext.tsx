@@ -108,7 +108,10 @@ export type ActiveTab =
   | "smart-reminders"
   // AP-060: "The Science" — parent-facing trust/source-transparency page.
   // Static editorial content — no child data read, captured, processed, or exported.
-  | "science";
+  | "science"
+  // AP-056: School Handoff Brief — parent-controlled, teacher-facing, curated,
+  // non-diagnostic 1-page export. DISTINCT from the clinician Consult packet.
+  | "school-brief";
 
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
 // working browser back/forward button.
@@ -121,6 +124,7 @@ const VALID_TABS = new Set<string>([
   "day-windows", // AP-051: Day Windows detail panel (read-only, from Today)
   "smart-reminders", // AP-058: Smart Reminders settings (parent prefs over existing JITAI)
   "science", // AP-060: The Science trust page (static editorial, no child data)
+  "school-brief", // AP-056: School Handoff Brief (parent-controlled, teacher-facing, curated)
 ]);
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this
