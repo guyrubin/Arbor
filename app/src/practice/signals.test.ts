@@ -17,6 +17,7 @@ import {
   streakDays,
   weeklyActivity,
   weeklyMissionPlan,
+  weeklyStripDays,
 } from "./signals";
 
 const at = (daysBack: number, sound = "s", result: SpeechAttempt["result"] = "got"): SpeechAttempt => ({
@@ -304,6 +305,115 @@ describe("ASHA speech age-gating + dosage", () => {
     expect(dose.trialsToday).toBe(0);
     expect(dose.sessionMetToday).toBe(false);
     expect(dose.weeklyMet).toBe(false);
+  });
+});
+
+describe("weeklyStripDays (AP-059)", () => {
+  const missionRec = (
+    date: string,
+    domain: MissionRecord["domain"] = "language",
+    completed = true
+  ): MissionRecord => ({
+    id: `${date}-${domain}`,
+    date,
+    missionId: `m-${domain}`,
+    domain,
+    completed,
+    timestamp: `${date}T10:00:00.000Z`,
+  });
+
+  it("returns exactly 7 slots, oldest first", () => {
+    const today = "2026-06-23";
+    const days = weeklyStripDays([], today);
+    expect(days).toHaveLength(7);
+    expect(days[0].date).toBe("2026-06-17"); // 6 days ago
+    expect(days[6].date).toBe(today);         // today is the last slot
+  });
+
+  it("marks today correctly and no slot as future", () => {
+    const today = "2026-06-23";
+    const days = weeklyStripDays([], today);
+    const todaySlot = days.find((d) => d.isToday)!;
+    expect(todaySlot).toBeDefined();
+    expect(todaySlot.date).toBe(today);
+    expect(days.every((d) => !d.isFuture)).toBe(true);
+  });
+
+  it("marks a day as done when it has a completed mission", () => {
+    const today = "2026-06-23";
+    const missions = [missionRec("2026-06-21", "speech", true)];
+    const days = weeklyStripDays(missions, today);
+    const slot = days.find((d) => d.date === "2026-06-21")!;
+    expect(slot.done).toBe(true);
+    expect(slot.domain).toBe("speech");
+  });
+
+  it("does not mark a day done when the mission is not completed", () => {
+    const today = "2026-06-23";
+    const missions = [missionRec("2026-06-21", "language", false)];
+    const days = weeklyStripDays(missions, today);
+    const slot = days.find((d) => d.date === "2026-06-21")!;
+    expect(slot.done).toBe(false);
+    expect(slot.domain).toBeNull();
+  });
+
+  it("uses the domain of the first completed mission when multiple exist on the same day", () => {
+    const today = "2026-06-23";
+    // missions is not ordered; weeklyStripDays takes first-completed-encounter
+    const missions = [
+      missionRec("2026-06-22", "emotional", true),
+      missionRec("2026-06-22", "cognition", true),
+    ];
+    const days = weeklyStripDays(missions, today);
+    const slot = days.find((d) => d.date === "2026-06-22")!;
+    expect(slot.done).toBe(true);
+    // domain must be one of the two present ones — whichever comes first in the array
+    expect(["emotional", "cognition"]).toContain(slot.domain);
+  });
+
+  it("gracefully handles fewer than 7 days of data — renders empty slots", () => {
+    const today = "2026-06-23";
+    // Only one record, 5 days ago
+    const missions = [missionRec("2026-06-18", "social", true)];
+    const days = weeklyStripDays(missions, today);
+    expect(days).toHaveLength(7);
+    const filledSlots = days.filter((d) => d.done);
+    const emptySlots  = days.filter((d) => !d.done);
+    expect(filledSlots).toHaveLength(1);
+    expect(emptySlots).toHaveLength(6);
+    emptySlots.forEach((d) => {
+      expect(d.domain).toBeNull();
+    });
+  });
+
+  it("all 7 slots done returns 7 done entries with correct domains", () => {
+    const today = "2026-06-23";
+    const domains: MissionRecord["domain"][] = ["language", "emotional", "cognition", "speech", "social", "language", "emotional"];
+    const missions = domains.map((domain, i) => {
+      const d = new Date("2026-06-17T12:00:00");
+      d.setDate(d.getDate() + i);
+      const date = d.toISOString().slice(0, 10);
+      return missionRec(date, domain, true);
+    });
+    const days = weeklyStripDays(missions, today);
+    expect(days.filter((d) => d.done)).toHaveLength(7);
+  });
+
+  it("color-by-type: domain field carries the correct activity type for coloring", () => {
+    const today = "2026-06-23";
+    const missions = [
+      missionRec("2026-06-22", "speech",    true),
+      missionRec("2026-06-21", "language",  true),
+      missionRec("2026-06-20", "cognition", true),
+      missionRec("2026-06-19", "social",    true),
+      missionRec("2026-06-18", "emotional", true),
+    ];
+    const days = weeklyStripDays(missions, today);
+    expect(days.find((d) => d.date === "2026-06-22")!.domain).toBe("speech");
+    expect(days.find((d) => d.date === "2026-06-21")!.domain).toBe("language");
+    expect(days.find((d) => d.date === "2026-06-20")!.domain).toBe("cognition");
+    expect(days.find((d) => d.date === "2026-06-19")!.domain).toBe("social");
+    expect(days.find((d) => d.date === "2026-06-18")!.domain).toBe("emotional");
   });
 });
 

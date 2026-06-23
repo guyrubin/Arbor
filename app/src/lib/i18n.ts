@@ -972,6 +972,21 @@ export const en: Dict = {
   "hub.scholar.readMin": "{n} min read",
   "hub.scholar.topic": "Topic: {topic}",
   "hub.scholar.nodata": "Check off a few milestones to get a personalised weekly read matched to {name}'s Development Map.",
+  // AP-059 — Weekly missions calendar strip (child-facing Learning Studio)
+  "strip.title": "This week",
+  "strip.countDone": "{n} of {total} days done",
+  "strip.today": "Today",
+  "strip.ariaLabel": "Weekly missions — 7-day progress strip",
+  "strip.legendLabel": "Activity types completed this week",
+  "strip.dayDone": "{day} — mission done ({domain})",
+  "strip.dayToday": "{day} — today",
+  "strip.dayFuture": "{day} — upcoming",
+  "strip.dayEmpty": "{day} — no mission logged",
+  "strip.domain.speech": "Speech",
+  "strip.domain.language": "Language",
+  "strip.domain.cognition": "Thinking",
+  "strip.domain.social": "Social",
+  "strip.domain.emotional": "Feelings",
 };
 
 export const he: Dict = {
@@ -1911,6 +1926,21 @@ export const he: Dict = {
   "hub.scholar.readMin": "קריאה של {n} דק׳",
   "hub.scholar.topic": "נושא: {topic}",
   "hub.scholar.nodata": "סמנו כמה אבני דרך כדי לקבל קריאה שבועית מותאמת אישית למפת ההתפתחות של {name}.",
+  // AP-059 — Weekly missions calendar strip (child-facing Learning Studio) — flagged for arbor-localization native review
+  "strip.title": "השבוע",
+  "strip.countDone": "{n} מתוך {total} ימים הושלמו",
+  "strip.today": "היום",
+  "strip.ariaLabel": "משימות שבועיות — רצועת התקדמות של 7 ימים",
+  "strip.legendLabel": "סוגי פעילויות שהושלמו השבוע",
+  "strip.dayDone": "{day} — משימה הושלמה ({domain})",
+  "strip.dayToday": "{day} — היום",
+  "strip.dayFuture": "{day} — עתידי",
+  "strip.dayEmpty": "{day} — לא נרשמה משימה",
+  "strip.domain.speech": "דיבור",
+  "strip.domain.language": "שפה",
+  "strip.domain.cognition": "חשיבה",
+  "strip.domain.social": "חברה",
+  "strip.domain.emotional": "רגשות",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

@@ -617,6 +617,64 @@ export function speechDose(
   };
 }
 
+/* ---------------- AP-059: Weekly missions calendar strip ---------------- */
+
+export interface DayMissionStatus {
+  /** YYYY-MM-DD of this slot. */
+  date: string;
+  /** True when date === today. */
+  isToday: boolean;
+  /** Whether the day is in the future (no data expected). */
+  isFuture: boolean;
+  /**
+   * Domain of the first completed mission logged for this day, or null when
+   * no completed mission exists (includes past days with no data).
+   */
+  domain: PracticeDomain | null;
+  /** True when at least one mission was completed on this day. */
+  done: boolean;
+}
+
+/**
+ * Build a 7-day progress strip ending on `today`.
+ *
+ * Day 0 = today, day 6 = 6 days ago. Each slot is keyed to the EXISTING
+ * `missionRecords` collection (MissionRecord[] from usePracticeData). No new
+ * write path — this is a pure READ aggregation.
+ *
+ * Domain colour is determined by the first completed mission logged that day
+ * (any domain is fine — we just need a colour). Future days are never shown as
+ * done. Past days with no completed mission show as empty/grey.
+ *
+ * Pure — pass `today` (YYYY-MM-DD), no Date.now() inside.
+ */
+export function weeklyStripDays(missions: MissionRecord[], today: string): DayMissionStatus[] {
+  // Build a set of YYYY-MM-DD → first completed domain for quick lookup.
+  const domainByDay = new Map<string, PracticeDomain>();
+  for (const m of missions) {
+    if (m.completed && !domainByDay.has(m.date)) {
+      domainByDay.set(m.date, m.domain);
+    }
+  }
+
+  const days: DayMissionStatus[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(`${today}T12:00:00`);
+    d.setDate(d.getDate() - i);
+    const date = dayKey(d);
+    const isFuture = date > today;
+    const domain = domainByDay.get(date) ?? null;
+    days.push({
+      date,
+      isToday: date === today,
+      isFuture,
+      domain,
+      done: !isFuture && domain !== null,
+    });
+  }
+  return days;
+}
+
 /* ---------------- Speech-recognition match (Record & Compare) ---------------- */
 
 /** Normalized Levenshtein similarity 0–1 between the target word and what was heard. */
