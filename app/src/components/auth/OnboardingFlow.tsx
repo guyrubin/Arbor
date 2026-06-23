@@ -385,11 +385,14 @@ function StepAvatar({
   childName,
   onAvatarCreated,
   onSkip,
+  replayMode,
 }: {
   childId: string;
   childName: string;
   onAvatarCreated: (result: AvatarResult) => void;
   onSkip: () => void;
+  /** When true this is a no-persist replay — AvatarCreator must NOT open. */
+  replayMode?: boolean;
 }) {
   const { t } = useLanguage();
   const [avatarOpen, setAvatarOpen] = useState(false);
@@ -405,9 +408,16 @@ function StepAvatar({
         </p>
       </div>
 
+      {/*
+       * DEMO-MODE GUARD (AP-049 AC-1 replay):
+       * In replayMode the "Continue" button advances to the next step without
+       * opening AvatarCreator, so zero face_processing/consent/generate calls
+       * can fire during a replay. The real first-run path (replayMode=false) is
+       * unchanged — clicking "Continue" opens AvatarCreator as before.
+       */}
       <button
         type="button"
-        onClick={() => setAvatarOpen(true)}
+        onClick={replayMode ? onSkip : () => setAvatarOpen(true)}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
         style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}
       >
@@ -430,17 +440,23 @@ function StepAvatar({
        * We do NOT add any new photo-upload path here. The consent is handled entirely inside AvatarCreator.
        * The reference photo is local-only: it is passed as a transient dataUrl and never written to
        * Firestore or Storage — only the stylized avatar result is retained by the caller.
+       *
+       * replayMode suppresses the modal entirely (avatarOpen stays false and the
+       * button above calls onSkip directly), so this component never renders
+       * with open=true during a replay.
        */}
-      <AvatarCreator
-        open={avatarOpen}
-        childId={childId}
-        childName={childName}
-        onClose={() => setAvatarOpen(false)}
-        onCreated={(result) => {
-          setAvatarOpen(false);
-          onAvatarCreated(result);
-        }}
-      />
+      {!replayMode && (
+        <AvatarCreator
+          open={avatarOpen}
+          childId={childId}
+          childName={childName}
+          onClose={() => setAvatarOpen(false)}
+          onCreated={(result) => {
+            setAvatarOpen(false);
+            onAvatarCreated(result);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -455,6 +471,7 @@ function StepReady({
   avatarResult,
   saving,
   onSubmit,
+  onReplay,
 }: {
   name: string;
   ageYears: number;
@@ -463,6 +480,8 @@ function StepReady({
   avatarResult: AvatarResult | null;
   saving: boolean;
   onSubmit: () => void;
+  /** Triggers a non-persisting replay of the full flow from Step 1. */
+  onReplay: () => void;
 }) {
   const { t } = useLanguage();
   const totalAgeMonths = ageYears * 12 + ageMonthsPart;
@@ -519,6 +538,18 @@ function StepReady({
         {saving && <RefreshCw className="w-4 h-4 animate-spin" />}
         {t("ob.step.ready.cta")}
       </button>
+
+      {/* AP-049 AC-1: re-launchable demo entry point */}
+      <button
+        type="button"
+        onClick={onReplay}
+        className="w-full text-xs font-bold py-2 flex items-center justify-center gap-1.5"
+        style={{ color: "var(--arbor-muted)", minHeight: 44 }}
+        aria-label={t("ob.demo.relaunch")}
+      >
+        <RefreshCw className="w-3.5 h-3.5" aria-hidden />
+        {t("ob.demo.relaunch")}
+      </button>
     </div>
   );
 }
@@ -536,6 +567,14 @@ export default function OnboardingFlow() {
 
   // Navigation
   const [step, setStep] = useState<Step>(1);
+
+  /**
+   * REPLAY / DEMO MODE (AP-049 AC-1):
+   * When replaying=true the flow is a preview-only pass. No profile writes,
+   * no consent calls, and no AvatarCreator modal can fire. The real first-run
+   * path (replaying=false, profile created once in handleStep2Next) is unchanged.
+   */
+  const [replaying, setReplaying] = useState(false);
 
   // Step 2 state (name + age + consent) — keep months-precise picker exactly
   const [name, setName] = useState("");
@@ -567,6 +606,13 @@ export default function OnboardingFlow() {
   // After step 2 confirmed: create the profile so we have a childId for AvatarCreator.
   const handleStep2Next = async () => {
     if (!name.trim() || !controllerConsent) return;
+
+    // DEMO-MODE GUARD: in replay mode skip all profile writes — just advance.
+    if (replaying) {
+      goNext();
+      return;
+    }
+
     // Create the child profile now so step 4 (AvatarCreator) has a real childId.
     const birthDate = birthDateFromAgeMonths(totalAgeMonths);
     try {
@@ -588,9 +634,19 @@ export default function OnboardingFlow() {
     }
   };
 
+  // ── Start a non-persisting replay of the flow from Step 1 ─────────────────
+
+  const startReplay = () => {
+    setReplaying(true);
+    setStep(1);
+  };
+
   // ── Final submit (step 5) ───────────────────────────────────────────────
 
   const submit = async () => {
+    // DEMO-MODE GUARD: replay pass — no profile writes, no updateChild call.
+    if (replaying) return;
+
     if (!createdChildId) return;
     setSaving(true);
     try {
@@ -694,15 +750,16 @@ export default function OnboardingFlow() {
               />
             )}
 
-            {step === 4 && createdChildId && (
+            {step === 4 && (createdChildId || replaying) && (
               <StepAvatar
-                childId={createdChildId}
+                childId={createdChildId ?? ""}
                 childName={name.trim()}
                 onAvatarCreated={(result) => {
                   setAvatarResult(result);
                   goNext();
                 }}
                 onSkip={goNext}
+                replayMode={replaying}
               />
             )}
 
@@ -715,6 +772,7 @@ export default function OnboardingFlow() {
                 avatarResult={avatarResult}
                 saving={saving}
                 onSubmit={submit}
+                onReplay={startReplay}
               />
             )}
           </motion.div>
