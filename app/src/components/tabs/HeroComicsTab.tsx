@@ -9,6 +9,7 @@ import { HERO_STORIES } from "../../lib/heroJourneys";
 import type { HeroPackId } from "../../types";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel } from "../ui/playkit";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
+import { downloadHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 
 /**
  * Hero Comics (Academy) — the child is the STAR of their own comic book for every
@@ -190,13 +191,18 @@ export default function HeroComicsTab() {
     track("hero_comic_batch_finished", { made });
   };
 
+  // AP-050: routes through the shared HeroAvatarCanvas module ("comic" template).
+  // comic → renderShareCard("story", opts) → renderStoryCard: output is identical
+  // to the pre-migration direct anchor-download of the raw API data URL, with the
+  // added Arbor brand card frame applied consistently with all other surfaces.
   const download = (storyId: string, title: string) => {
     const url = comics[storyId];
     if (!url) return;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${slug(name)}-${slug(title)}-hero-comic.png`;
-    a.click();
+    void downloadHeroAvatarCanvas(
+      "comic",
+      { imageUrl: url, name, title },
+      `${slug(name)}-${slug(title)}-hero-comic.png`,
+    );
   };
 
   const downloadAll = () => {

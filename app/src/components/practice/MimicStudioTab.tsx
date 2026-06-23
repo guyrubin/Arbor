@@ -5,12 +5,15 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { PlayShell, PlayHeader, PlayButton, ProgressPips, Celebrate } from "../ui/playkit";
+import { useHeroAvatar } from "../ui/HeroAvatar";
 import { T } from "../../lib/tokens";
 import { MIMIC_PACKS, type MimicPack } from "../../practice/content";
 import { usePracticeData } from "../../practice/usePracticeData";
 import MimicMatch from "./MimicMatch";
 import type { MimicSession } from "../../types";
 import { track } from "../../lib/analytics";
+// AP-050: practice_stamp surface — download a branded hero card on pack completion.
+import { downloadPracticeStampCanvas } from "../../lib/heroAvatarCanvas";
 
 /**
  * Mimic Studio — Speech Blubs-style imitation play ("can you do what I do?").
@@ -22,6 +25,10 @@ export default function MimicStudioTab() {
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
+  // AP-050: hero avatar URL for the practice_stamp canvas (data URL only; raw photo
+  // never embedded — same guard as HeroComicsTab).
+  const { url: heroUrl } = useHeroAvatar();
+  const heroDataUrl = heroUrl && heroUrl.startsWith("data:") ? heroUrl : undefined;
 
   const [packId, setPackId] = useState<string>(MIMIC_PACKS[0].id);
   const pack: MimicPack = MIMIC_PACKS.find((p) => p.id === packId) ?? MIMIC_PACKS[0];
@@ -221,6 +228,25 @@ export default function MimicStudioTab() {
                 {p.emoji} Play {p.title}
               </PlayButton>
             ))}
+            {/* AP-050: practice_stamp — save a branded hero card for this pack win.
+                Uses the already-saved avatar data URL (no new data capture). */}
+            <PlayButton
+              variant="soft"
+              tone="clay"
+              size="md"
+              onClick={() => {
+                void downloadPracticeStampCanvas(
+                  {
+                    imageUrl: heroDataUrl,
+                    name: first,
+                    headline: `${wonPack.title} complete!`,
+                    sub: `${first} finished all ${wonPack.prompts.length} rounds`,
+                  },
+                );
+              }}
+            >
+              Save stamp
+            </PlayButton>
             <PlayButton onClick={() => setWonPackId(null)} variant="soft" tone="lav" size="md">
               Stay here
             </PlayButton>

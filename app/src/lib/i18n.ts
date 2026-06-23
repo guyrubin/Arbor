@@ -961,6 +961,32 @@ export const en: Dict = {
   "pride.shareCaption": "{name} reached a new milestone — tracked with Arbor. {url}",
   "push.optin.label": "Moment reminders",
   "push.optin.sublabel": "A well-timed nudge when Arbor spots a good moment — no noise, you stay in control.",
+  // AP-055 — Scholar Hub (Academy weekly concept feed)
+  // CRITICAL FRAMING GATE: lowest domain = next OPPORTUNITY to nurture, never a deficit or weakness.
+  "hub.scholar.eyebrow": "Scholar Hub · This week's read",
+  "hub.scholar.domainLabel": "A great area to nurture this week: {domain}",
+  "hub.scholar.default.label": "This week's developmental read",
+  "hub.scholar.provenance": "This week's pick based on your Development Map — an editorial suggestion, not a diagnosis.",
+  "hub.scholar.read": "Read article",
+  "hub.scholar.close": "Close",
+  "hub.scholar.readMin": "{n} min read",
+  "hub.scholar.topic": "Topic: {topic}",
+  "hub.scholar.nodata": "Check off a few milestones to get a personalised weekly read matched to {name}'s Development Map.",
+  // AP-059 — Weekly missions calendar strip (child-facing Learning Studio)
+  "strip.title": "This week",
+  "strip.countDone": "{n} of {total} days done",
+  "strip.today": "Today",
+  "strip.ariaLabel": "Weekly missions — 7-day progress strip",
+  "strip.legendLabel": "Activity types completed this week",
+  "strip.dayDone": "{day} — mission done ({domain})",
+  "strip.dayToday": "{day} — today",
+  "strip.dayFuture": "{day} — upcoming",
+  "strip.dayEmpty": "{day} — no mission logged",
+  "strip.domain.speech": "Speech",
+  "strip.domain.language": "Language",
+  "strip.domain.cognition": "Thinking",
+  "strip.domain.social": "Social",
+  "strip.domain.emotional": "Feelings",
 };
 
 export const he: Dict = {
@@ -1890,6 +1916,31 @@ export const he: Dict = {
   "pride.shareCaption": "{name} הגיע/ה לאבן דרך חדשה — מתועד עם Arbor. {url}",
   "push.optin.label": "תזכורות לרגעים",
   "push.optin.sublabel": "תזכורת ממוקדת כשארבור מזהה רגע טוב — ללא רעש, אתם שולטים.",
+  // AP-055 — Scholar Hub (Hebrew chrome strings — flagged for native review before wide release)
+  "hub.scholar.eyebrow": "Scholar Hub · קריאת השבוע",
+  "hub.scholar.domainLabel": "תחום נהדר לטפח השבוע: {domain}",
+  "hub.scholar.default.label": "קריאה התפתחותית של השבוע",
+  "hub.scholar.provenance": "הבחירה של השבוע על בסיס מפת ההתפתחות שלכם — הצעה עורכת, לא אבחנה.",
+  "hub.scholar.read": "קראו את המאמר",
+  "hub.scholar.close": "סגירה",
+  "hub.scholar.readMin": "קריאה של {n} דק׳",
+  "hub.scholar.topic": "נושא: {topic}",
+  "hub.scholar.nodata": "סמנו כמה אבני דרך כדי לקבל קריאה שבועית מותאמת אישית למפת ההתפתחות של {name}.",
+  // AP-059 — Weekly missions calendar strip (child-facing Learning Studio) — flagged for arbor-localization native review
+  "strip.title": "השבוע",
+  "strip.countDone": "{n} מתוך {total} ימים הושלמו",
+  "strip.today": "היום",
+  "strip.ariaLabel": "משימות שבועיות — רצועת התקדמות של 7 ימים",
+  "strip.legendLabel": "סוגי פעילויות שהושלמו השבוע",
+  "strip.dayDone": "{day} — משימה הושלמה ({domain})",
+  "strip.dayToday": "{day} — היום",
+  "strip.dayFuture": "{day} — עתידי",
+  "strip.dayEmpty": "{day} — לא נרשמה משימה",
+  "strip.domain.speech": "דיבור",
+  "strip.domain.language": "שפה",
+  "strip.domain.cognition": "חשיבה",
+  "strip.domain.social": "חברה",
+  "strip.domain.emotional": "רגשות",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

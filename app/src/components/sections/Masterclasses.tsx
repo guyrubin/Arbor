@@ -6,6 +6,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { MASTERCLASSES, FRAME_LABELS, type FrameId, type Masterclass } from "../../lib/masterclasses";
 import { loadCharter, aimVirtues } from "../../lib/becoming";
 import type { DevelopmentMetricId } from "../../types";
+// AP-055: Scholar Hub weekly concept feed
+import ScholarHubCard from "./ScholarHubCard";
 
 const FRAME_TONE: Record<FrameId, PastelKey> = {
   aim: "sky",
@@ -62,6 +64,10 @@ export default function Masterclasses() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader title={t("sec.master.title")} subtitle={t("sec.master.sub")} />
+      {/* AP-055: Scholar Hub — one developmental concept per week, auto-matched
+          to the child's lowest-scoring domain from the Development Map.
+          Non-diagnostic, strengths-based framing, editorial content only. */}
+      <ScholarHubCard />
       {recommended.length > 0 && (
         <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
           <p className="text-[11px] uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
