@@ -49,8 +49,29 @@
   --arbor-on-accent:    #ffffff;   /* text/icon ink that sits on a saturated accent fill */
   --arbor-cam-stage:    #1c222b;   /* dark media surface (camera stage) */
   --arbor-on-dark-muted:#a8a093;   /* muted text on the dark cam stage */
-  /* The single most-repeated CTA gradient — collapses the inline #3cc081 stop. */
-  --gradient-cta: linear-gradient(135deg, #3cc081, var(--arbor-clay) 60%, var(--arbor-clay-deep));
+
+  /* ── AP-043 design-token sweep — high-traffic tsx/ts hex literals ────────
+     Each value below is byte-identical to the literal it names. These are
+     new CSS custom properties; they add zero visual change. Consumers that
+     previously held raw hex literals can now reference var(--arbor-*).      */
+
+  /* CTA gradient lighter-green start stop (33 occurrences across tsx/ts) */
+  --arbor-green-cta-start: #3cc081;
+
+  /* Mid-green highlight (11 occurrences — progress fills, success states) */
+  --arbor-green-mid: #5fce97;
+
+  /* Near-paper tinted well used in cards/wells that are not paperDeep (#eef6f1, 8 occurrences) */
+  --arbor-paper-tinted: #eef6f1;
+
+  /* Deep dark-green floor for cam/practice dark zones (6 occurrences) */
+  --arbor-cam-floor: #16352a;
+
+  /* Alternate muted slate (sits between muted and faint; 5 occurrences) */
+  --arbor-muted-alt: #69747f;
+
+  /* The single most-repeated CTA gradient — now references its own start token. */
+  --gradient-cta: linear-gradient(135deg, var(--arbor-green-cta-start), var(--arbor-clay) 60%, var(--arbor-clay-deep));
   /* Category palette — Story-pack + development-metric semantic colors. */
   --arbor-pack-courage:         #e2562d;
   --arbor-pack-responsibility:  #d7aa55;
@@ -396,7 +417,7 @@ body {
     radial-gradient(64% 56% at 98% 2%, color-mix(in oklab, var(--arbor-sky) 28%, transparent), transparent 72%),
     radial-gradient(70% 60% at 88% 102%, color-mix(in oklab, var(--arbor-clay) 26%, transparent), transparent 74%),
     radial-gradient(64% 56% at -2% 96%, color-mix(in oklab, var(--arbor-peach) 24%, transparent), transparent 72%),
-    linear-gradient(135deg, color-mix(in oklab, var(--arbor-green-soft) 70%, #fff), #ffffff 80%);
+    linear-gradient(135deg, color-mix(in oklab, var(--arbor-green-soft) 70%, var(--arbor-paper-elevated)), var(--arbor-paper-elevated) 80%);
   pointer-events: none;
 }
 

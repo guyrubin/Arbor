@@ -63,6 +63,13 @@ export const CSS_VARS = {
   onDarkMuted: "var(--arbor-on-dark-muted)",
   gradientCta: "var(--gradient-cta)",
 
+  // AP-043 design-token sweep additions (high-traffic tsx/ts literals)
+  greenCtaStart: "var(--arbor-green-cta-start)",  // #3cc081 — CTA gradient start stop
+  greenMid: "var(--arbor-green-mid)",              // #5fce97 — progress fills / success
+  paperTinted: "var(--arbor-paper-tinted)",        // #eef6f1 — near-paper tinted well
+  camFloor: "var(--arbor-cam-floor)",              // #16352a — dark cam/practice floor
+  mutedAlt: "var(--arbor-muted-alt)",              // #69747f — alternate muted slate
+
   // Type families
   fontDisplay: "var(--font-display)",
   fontSans: "var(--font-sans)",
@@ -181,11 +188,15 @@ export type PlayTone = keyof typeof TONE_INK;
     PDF/image export, SVG fill) where a `var()` string cannot be used. */
 export const BRAND_HEX = {
   green: "#34b277",
-  greenLight: "#5fce97",
+  greenCtaStart: "#3cc081",  // AP-043: CTA gradient lighter start stop
+  greenLight: "#5fce97",     // AP-043: mid-green highlight / progress fills
   peach: "#d9763f",
   sky: "#3f8cc9",
   lav: "#7a6bd8",
   ochre: "#c2882a",
+  paperTinted: "#eef6f1",    // AP-043: near-paper tinted well background
+  camFloor: "#16352a",       // AP-043: dark cam/practice floor
+  mutedAlt: "#69747f",       // AP-043: alternate muted slate
 } as const;
 
 /** Brand-colored confetti palette (canvas-confetti needs literals, not var()). */
