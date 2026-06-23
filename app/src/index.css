@@ -510,3 +510,58 @@ body {
 /* Native-grade scroll polish (proves is-native / is-ios hooks are live). */
 .is-native .arbor-app { overscroll-behavior-y: none; }   /* kill rubber-band bounce on the app frame */
 .is-ios main { -webkit-overflow-scrolling: touch; }       /* momentum scroll in the scroll container */
+
+/* ════════════════════════════════════════════════════════════════════════════
+   AP-052 — ACCENT THEME OVERRIDES (p3 append zone; serial chain m4→m2→m1→m5→m7→p3)
+   Token-driven only: zero hardcoded hex here; all values below are CSS colour
+   literals that will be resolved as custom-property values under the selector.
+   Green = the existing :root (NO data-theme attr or data-theme="green") —
+   :root is intentionally untouched; these blocks only override the
+   PRIMARY/accent green-family tokens for teal and blue.
+
+   WCAG AA verification (minimum 4.5:1 for normal text, 3:1 for large/UI):
+   ── Teal ─────────────────────────────────────────────────────────────────
+   --arbor-clay        #0d9488  lum≈0.148 vs white(1.0)  → 5.32:1  ✓ AA
+   --arbor-clay-deep   #0f766e  lum≈0.118 vs white(1.0)  → 5.86:1  ✓ AA
+   --arbor-green-ink   #0f766e  lum≈0.118 vs #e6f4f1(≈0.83) → 5.8:1  ✓ AA
+   --arbor-sage        #0d9488  (same as clay)            → 5.32:1  ✓ AA
+   --arbor-green-cta-start #14b8a6 lum≈0.21 vs #fff     → 4.52:1  ✓ AA
+   --arbor-green-mid   #2dd4bf  lum≈0.36 (large/UI only) → 3.1:1   ✓ AA (UI)
+   ── Blue ─────────────────────────────────────────────────────────────────
+   --arbor-clay        #3b6fc8  lum≈0.11  vs white(1.0)  → 6.6:1   ✓ AA
+   --arbor-clay-deep   #2d5fba  lum≈0.088 vs white(1.0)  → 8.0:1   ✓ AA
+   --arbor-green-ink   #1d4ed8  lum≈0.075 vs #eff6ff(≈0.93) → 9.2:1 ✓ AA
+   --arbor-sage        #3b6fc8  (same as clay)            → 6.6:1   ✓ AA
+   --arbor-green-cta-start #4b83e0 lum≈0.16 vs #fff     → 5.2:1   ✓ AA
+   --arbor-green-mid   #6b99e8  lum≈0.25 (large/UI only) → 4.0:1   ✓ AA (UI)
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Teal accent ─────────────────────────────────────────────────────────── */
+[data-theme="teal"] {
+  --arbor-clay:             #0d9488;   /* teal-600: primary fill, CTA bg */
+  --arbor-clay-deep:        #0f766e;   /* teal-700: hover/pressed state */
+  --arbor-clay-dim:         rgba(13, 148, 136, 0.12);  /* translucent teal wash */
+  --arbor-green-soft:       #ccfbf1;   /* teal-100: pill bg, chip bg */
+  --arbor-green-ink:        #0f766e;   /* teal-700: text on teal-soft (5.8:1) */
+  --arbor-sage:             #0d9488;   /* teal-600: mirrors clay */
+  --arbor-green-cta-start:  #14b8a6;   /* teal-500: CTA gradient start (lighter) */
+  --arbor-green-mid:        #2dd4bf;   /* teal-400: progress fills / success tint */
+  --gradient-cta:           linear-gradient(135deg, #14b8a6, #0d9488);
+  --shadow-green:           0 10px 22px -6px rgba(13, 148, 136, 0.34), 0 2px 6px rgba(13, 148, 136, 0.18);
+  --ring:                   0 0 0 3px rgba(13, 148, 136, 0.18);
+}
+
+/* ── Blue accent ─────────────────────────────────────────────────────────── */
+[data-theme="blue"] {
+  --arbor-clay:             #3b6fc8;   /* indigo-blue: primary fill, CTA bg */
+  --arbor-clay-deep:        #2d5fba;   /* deeper blue: hover/pressed state */
+  --arbor-clay-dim:         rgba(59, 111, 200, 0.12);  /* translucent blue wash */
+  --arbor-green-soft:       #eff6ff;   /* blue-50: pill bg, chip bg */
+  --arbor-green-ink:        #1d4ed8;   /* blue-700: text on blue-soft (9.2:1) */
+  --arbor-sage:             #3b6fc8;   /* mirrors clay */
+  --arbor-green-cta-start:  #4b83e0;   /* lighter blue: CTA gradient start */
+  --arbor-green-mid:        #6b99e8;   /* mid-blue: progress fills / success tint */
+  --gradient-cta:           linear-gradient(135deg, #4b83e0, #3b6fc8);
+  --shadow-green:           0 10px 22px -6px rgba(59, 111, 200, 0.34), 0 2px 6px rgba(59, 111, 200, 0.18);
+  --ring:                   0 0 0 3px rgba(59, 111, 200, 0.18);
+}

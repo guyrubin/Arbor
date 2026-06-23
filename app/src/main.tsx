@@ -7,6 +7,11 @@ import {captureAttribution, attributionProps} from './lib/attribution';
 import {trackAppStart} from './lib/loopEvents';
 import {installApiBaseShim} from './lib/runtime';
 import {initNativeShell} from './lib/native';
+import {restoreTheme} from './lib/theme';
+
+// AP-052: restore accent-theme preference before first render so there is no
+// flash-of-wrong-theme on load. Runs synchronously — no await needed.
+restoreTheme();
 
 // Native shells (iOS/Android) load the bundle from a local origin, so re-point
 // relative `/api/*` calls at the remote backend. No-op on the web. Must run
