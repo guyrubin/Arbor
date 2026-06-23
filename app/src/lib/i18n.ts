@@ -77,6 +77,7 @@ export const en: Dict = {
   "nav.tab.masterclasses": "Parent Masterclasses",
   "nav.tab.family": "Family Formation",
   "nav.tab.smart-reminders": "Smart Reminders",
+  "nav.tab.science": "The Science",
   // mobile bottom-nav short labels (keyed by section id)
   "nav.short.home": "Home",
   "nav.short.today": "Today",
@@ -1097,6 +1098,44 @@ export const en: Dict = {
   "sr.calm.desc": "Arbor routes nudges to the calmer stretches of your day — based on the patterns you've logged, not a fixed clock.",
   // Saved state
   "sr.saved": "Saved",
+  // AP-060 — "The Science" trust page.
+  // FIREWALL STRINGS — EN values are VERBATIM (board-cleared 2026-06-23).
+  // hero.line: VERBATIM — do NOT paraphrase. Space-constrained variant allowed per spec.
+  "sci.eyebrow": "The Science",
+  "sci.title": "How we built Arbor's milestones",
+  "sci.subtitle": "Where Arbor's guidance comes from, what it is and what it isn't, and who reviewed it.",
+  // VERBATIM — do NOT paraphrase
+  "sci.hero.line": "Developmentally informed — built on cited public guidance from the CDC, AAP, ASHA, and WHO.",
+  // VERBATIM — do NOT paraphrase. Must render above the fold.
+  "sci.disclaimer": "Arbor is not a diagnostic tool and does not replace professional care. It tracks development and surfaces things worth discussing — it does not diagnose, screen, or label your child. Milestones describe what most children do at a given age; every child develops on their own timeline. If you have a concern, or if Arbor flags one, talk to your pediatrician or a qualified professional.",
+  "sci.disclaimer.aria": "Important disclaimer about Arbor's scope",
+  // Stats — ALLOWED framing per spec
+  "sci.stat.milestones": "milestones across 7 developmental domains",
+  "sci.stat.domains": "developmental domains",
+  "sci.stat.sources": "cited public sources",
+  // CDC framing — ALLOWED per spec; 2022 revision; "most children" language; scoped to 2 months–5 years
+  "sci.cdc.framework": "Our milestones map to the CDC's \"Learn the Signs. Act Early.\" framework. They describe what most children do at a given age — not a deadline or a checklist.",
+  "sci.cdc.ltsae.note": "CDC LTSAE covers developmental expectations from 2 months through 5 years. Arbor does not imply CDC coverage for ages 6–12.",
+  // Sources section
+  "sci.sources.title": "Framework citations",
+  "sci.sources.aria": "Public framework citations",
+  // Citation notes
+  "sci.cdc.note": "The 2022 revision. Milestones describe what most children do — not what every child must do by a fixed date.",
+  "sci.siegel.note": "Arbor's coaching content is informed by the Whole-Brain Child framework (Siegel & Bryson). This is a named parenting/brain-science framework influence — not a clinical-validation source.",
+  "sci.gottman.note": "Arbor's behavior and emotion-coaching surface is informed by Gottman's Emotion Coaching approach. This is a named parenting framework influence — not a clinical-validation source.",
+  // ASQ-3 mention — CLEARED PHRASE ONLY; deep-link HELD per AP-060
+  // AP-060: ASQ-3 deep-link HELD pending legal/IP clearance — do not add an outbound link or reproduce any ASQ-3 items.
+  "sci.asq3.mention": "Arbor's milestone structure was also informed by the structure of validated screening tools such as the ASQ-3, which professionals use. We do not administer or reproduce any ASQ-3 items.",
+  // How we built it
+  "sci.howbuilt.title": "How Arbor's milestone set was built",
+  "sci.howbuilt.body": "Our team mapped 133 milestones across 7 developmental domains — motor, language & communication, cognitive, social, emotional, adaptive, and sensory — drawing from 40+ public sources including the CDC LTSAE 2022 revision, AAP developmental surveillance guidelines, and ASHA communication norms. Each milestone was cross-referenced against at least one public standard. We do not claim to administer the CDC's tool, the AAP's screening protocol, or any published assessment.",
+  // Board note — VERBATIM — do NOT paraphrase. "clinical" must NOT modify board/review/validation/approval.
+  "sci.board.title": "Who reviewed it",
+  "sci.board.note": "Reviewed by Arbor's internal developmental reviewers (backgrounds spanning child psychology, speech-language, and developmental pediatrics). They are not licensed clinicians and Arbor is not clinically validated; their role is to keep our content faithful to cited public guidance.",
+  // Settings entry label
+  "sci.settings.title": "The Science",
+  "sci.settings.sub": "Where Arbor's milestones come from and what they are.",
+  "sci.settings.open": "Read it",
 };
 
 export const he: Dict = {
@@ -1193,6 +1232,7 @@ export const he: Dict = {
   "nav.tab.masterclasses": "מאסטרקלאס להורים",
   "nav.tab.family": "בניית משפחה",
   "nav.tab.smart-reminders": "תזכורות חכמות",
+  "nav.tab.science": "המדע",
   "nav.short.home": "בית",
   "nav.short.today": "היום",
   "nav.short.ask": "שאל",
@@ -2142,6 +2182,39 @@ export const he: Dict = {
   "foryou.cta": "חקרו שיעורי הורים",
   "foryou.nodata": "סמנו כמה אבני דרך וארבור יציע לאן כדאי להפנות אנרגיה השבוע.",
   "foryou.provenance": "מבוסס על אבני הדרך שתיעדתם — הצעה עורכת לחקור, לא אות אבחנתי.",
+  // AP-060 — "The Science" trust page — HE translations.
+  // FIREWALL: hero.line and disclaimer must carry the SAME firewall-safe meaning as EN.
+  // The HE must NEVER say "clinically validated"/"clinician-reviewed"/"clinician-approved"/"clinical board".
+  // Flagged for arbor-localization native review before wide release.
+  "sci.eyebrow": "המדע",
+  "sci.title": "איך בנינו את אבני הדרך של ארבור",
+  "sci.subtitle": "מאיפה מגיע הידע שעליו מבוסס ארבור — מה הוא ומה הוא אינו — ומי בדק אותו.",
+  // VERBATIM meaning — developmentally informed, public guidance from named bodies; no clinical-validation claim
+  "sci.hero.line": "מבוסס על התפתחות — נשען על הנחיות ציבוריות מצוטטות ממרכז CDC, AAP, ASHA ו-WHO.",
+  // VERBATIM meaning — Arbor is not diagnostic; milestones describe most children; every child's own timeline
+  "sci.disclaimer": "ארבור אינו כלי אבחון ואינו מחליף טיפול מקצועי. הוא עוקב אחר התפתחות ומצביע על דברים שכדאי לדון בהם — הוא אינו מאבחן, אינו בודק ואינו מתייג את ילדכם. אבני הדרך מתארות מה רוב הילדים עושים בגיל מסוים; כל ילד מתפתח לפי הקצב שלו. אם יש לכם חשש, או אם ארבור מצביע על משהו, דברו עם רופא הילדים שלכם או עם איש מקצוע מוסמך.",
+  "sci.disclaimer.aria": "הצהרת חשיבות על גבולות השימוש בארבור",
+  "sci.stat.milestones": "אבני דרך ב-7 תחומי התפתחות",
+  "sci.stat.domains": "תחומי התפתחות",
+  "sci.stat.sources": "מקורות ציבוריים מצוטטים",
+  "sci.cdc.framework": "אבני הדרך שלנו ממופות לפי מסגרת \"למדו את הסימנים. פעלו מוקדם\" של ה-CDC. הן מתארות מה רוב הילדים עושים בגיל מסוים — לא מועד אחרון ולא רשימת חובה.",
+  "sci.cdc.ltsae.note": "מסגרת CDC LTSAE מכסה ציפיות התפתחותיות מגיל חודשיים עד 5 שנים. ארבור אינו מרמז על כיסוי CDC לגילאי 6–12.",
+  "sci.sources.title": "ציטוטי מסגרת",
+  "sci.sources.aria": "ציטוטי מסגרת ציבוריים",
+  "sci.cdc.note": "גרסת 2022. אבני הדרך מתארות מה רוב הילדים עושים — לא מה שכל ילד חייב לעשות עד תאריך קבוע.",
+  "sci.siegel.note": "תוכן האימון של ארבור מושפע ממסגרת The Whole-Brain Child (סיגל ובריסון). זוהי השפעה של מסגרת הורות — לא מקור לאימות של תוכן.",
+  "sci.gottman.note": "משטח האימוץ הרגשי וניהול ההתנהגות של ארבור מושפע מגישת Emotion Coaching של גוטמן. זוהי השפעה של מסגרת הורות — לא מקור לאימות של תוכן.",
+  // AP-060: ASQ-3 deep-link HELD pending legal/IP clearance — do not add an outbound link or reproduce any ASQ-3 items.
+  "sci.asq3.mention": "מבנה אבני הדרך של ארבור הושפע גם ממבנה כלי סינון מאומתים כגון ASQ-3, שבו משתמשים אנשי מקצוע. איננו מפעילים ואיננו משכפלים שאלות כלשהן מה-ASQ-3.",
+  "sci.howbuilt.title": "איך נבנה סט אבני הדרך של ארבור",
+  "sci.howbuilt.body": "הצוות שלנו מיפה 133 אבני דרך ב-7 תחומי התפתחות — מוטורי, שפה ותקשורת, קוגניטיבי, חברתי, רגשי, אדפטיבי וחישתי — מתוך למעלה מ-40 מקורות ציבוריים, כולל מסגרת CDC LTSAE 2022, הנחיות AAP למעקב התפתחותי, ונורמות תקשורת של ASHA. כל אבן דרך הוצלבה עם לפחות תקן ציבורי אחד. איננו טוענים שאנחנו מפעילים את כלי ה-CDC, פרוטוקול הסינון של ה-AAP, או הערכה מפורסמת כלשהי.",
+  // Board note — VERBATIM meaning — "developmental reviewers / not licensed clinicians"
+  // Must NOT say "clinical board"/"clinically validated"/"clinician-reviewed"
+  "sci.board.title": "מי בדק זאת",
+  "sci.board.note": "נבדק על ידי סוקרי ההתפתחות הפנימיים של ארבור (עם רקע בפסיכולוגיית ילדים, שפה ודיבור ורפואת ילדים התפתחותית). הם אינם קלינאים מורשים וארבור אינו מאומת קלינית; תפקידם לוודא שהתוכן שלנו נאמן להנחיות הציבוריות המצוטטות.",
+  "sci.settings.title": "המדע",
+  "sci.settings.sub": "מאיפה מגיות אבני הדרך של ארבור ומה הן.",
+  "sci.settings.open": "קרא",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

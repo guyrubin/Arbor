@@ -140,6 +140,9 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   // AP-058: Smart Reminders is a settings surface reachable from Ask Arbor or Settings.
   // Maps to the ask section (nearest semantic home for nudge/guidance settings).
   "smart-reminders": "ask",
+  // AP-060: The Science trust page — reached from Settings footer. Maps to the care section
+  // (nearest semantic home for trust/transparency content).
+  science: "care",
 };
 
 export function sectionForTab(tab: ActiveTab): NavSection {

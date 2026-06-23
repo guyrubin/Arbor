@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift, Palette, Bell } from "lucide-react";
+import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift, Palette, Bell, FlaskConical } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
 import InviteCard from "../referral/InviteCard";
@@ -211,6 +211,18 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             data-testid="settings-open-smart-reminders"
           >
             {t("set.data.open")}
+          </button>
+        </Row>
+
+        {/* AP-060: The Science — source-transparency page (static editorial, no child data) */}
+        <Row icon={<FlaskConical className="w-4 h-4" />} title={t("sci.settings.title")} sub={t("sci.settings.sub")}>
+          <button
+            onClick={() => { onClose(); setActiveTab("science"); }}
+            className="text-xs font-bold rounded-xl px-3 py-2"
+            style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+            data-testid="settings-open-science"
+          >
+            {t("sci.settings.open")}
           </button>
         </Row>
 
