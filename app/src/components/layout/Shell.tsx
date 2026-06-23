@@ -7,6 +7,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { sectionForTab } from "../../lib/navigation";
 import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
 import AiRail from "./AiRail";
 import MobileNav from "./MobileNav";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -161,7 +162,10 @@ export default function Shell() {
       >
         <Sidebar />
 
-        <main className="px-5 py-6 pb-24 md:px-6 md:py-8 md:pb-10 xl:px-12 xl:py-10 overflow-y-auto max-h-screen">
+        {/* AP-044: Right column — topbar placeholder (desktop) + scrollable content area */}
+        <div className="flex flex-col min-h-0 md:h-screen">
+          <Topbar />
+        <main className="px-5 py-6 pb-24 md:px-6 md:py-8 md:pb-10 xl:px-12 xl:py-10 overflow-y-auto flex-1 min-h-0">
           {/* Mobile brand header (sidebar is hidden below md, so the logo lives here) */}
           <div className="flex md:hidden items-center gap-2.5 mb-5">
             <ArborMark size={34} />
@@ -290,6 +294,7 @@ export default function Shell() {
             </AnimatePresence>
           </Suspense>
         </main>
+        </div>{/* end right column (AP-044: topbar + main) */}
 
         {showAiRail && <AiRail />}
       </div>

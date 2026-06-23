@@ -110,6 +110,10 @@ const VALID_TABS = new Set<string>([
   "development", "daily-play", "practice", "consult",
   "attribution",
 ]);
+/** Non-functional export — lets the F1 capability-floor harness import the
+ *  canonical tab list without re-deriving it. Zero behavior change: this
+ *  array is derived from VALID_TABS and is never read by any render path. */
+export const ALL_TABS: ActiveTab[] = [...VALID_TABS] as ActiveTab[];
 function tabFromHash(): ActiveTab | null {
   try {
     const h = window.location.hash.replace(/^#\/?/, "").trim();
