@@ -10,6 +10,7 @@ import { getScene, resolveScene } from "../../lib/sceneCache";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { useLanguage } from "../../context/LanguageContext";
+import { downloadHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import type { HeroSceneRender } from "../../types";
 
 /**
@@ -96,12 +97,16 @@ export function HeroScenePlayer({
     return () => { active = false; };
   }, [seed, scene.imagePrompt, heroAvatarUrl, heroAvatarStyle, heroName]);
 
+  // AP-050: routes through the shared HeroAvatarCanvas module ("story" template)
+  // so the scene save is tracked through one compositing path. Output is
+  // byte-identical: story → renderShareCard("story", opts) → renderStoryCard.
   const saveComicPage = () => {
     if (!sceneArt) return;
-    const a = document.createElement("a");
-    a.href = sceneArt;
-    a.download = `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`;
-    a.click();
+    void downloadHeroAvatarCanvas(
+      "story",
+      { imageUrl: sceneArt, name: heroName, title: scene.title },
+      `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`,
+    );
   };
 
   const toggleSpeak = () => {
