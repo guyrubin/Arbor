@@ -76,6 +76,9 @@ const SmartRemindersPanel = lazy(() => import("../sections/SmartRemindersPanel")
 const SciencePage = lazy(() => import("../tabs/SciencePage"));
 const SchoolBriefSection = lazy(() => import("../sections/SchoolBrief")); // AP-056
 
+// AP-057: Bedtime Stories — day-rooted, generate-and-discard, escalation-gated.
+const BedtimeStoriesTab = lazy(() => import("../tabs/BedtimeStoriesTab"));
+
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
   coach: CoachTab,
@@ -119,6 +122,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   "smart-reminders": SmartRemindersPanel, // AP-058: Smart Reminders parent settings
   science: SciencePage,              // AP-060: The Science trust page (static editorial, no child data)
   "school-brief": SchoolBriefSection, // AP-056: School Handoff Brief (parent-controlled, teacher-facing, curated)
+  "bedtime-stories": BedtimeStoriesTab, // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
 };
 
 export default function Shell() {

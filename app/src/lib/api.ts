@@ -137,6 +137,15 @@ export const api = {
     post<ActionPlan>("/api/generate-plan", payload),
   generateStory: (payload: { childName: string; age: number; topic: string; moral: string }) =>
     post<BedtimeStory>("/api/generate-story", payload),
+  // AP-057: Bedtime Stories — day-rooted, avatar-starring nightly story.
+  // Runs escalation screen + redaction on the server; generate-and-discard (no library persistence).
+  generateBedtimeStory: (payload: {
+    childName: string;
+    age: number;
+    dayEvents: { description: string; tone?: string }[];
+    avatarDescription?: string;
+    language?: "en" | "he";
+  }) => post<BedtimeStory>("/api/generate-bedtime-story", payload),
   generateHeroJourney: (payload: { storyId: string; childName: string; age: number; language: "en" | "he" }) =>
     post<HeroJourneyRender>("/api/generate-hero-journey", payload),
   generateBrief: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; audience: string }) =>
