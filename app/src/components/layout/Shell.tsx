@@ -18,6 +18,9 @@ import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
 import { refreshEntitlement } from "../../hooks/useEntitlement";
 import { selectionHaptic } from "../../lib/native";
+// AP-048: Kid Mode overlay + context provider
+import { KidModeProvider } from "../kidmode/KidModeContext";
+import KidModeOverlay from "../kidmode/KidModeOverlay";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -151,7 +154,10 @@ export default function Shell() {
   }, [toast, t]);
 
   return (
-    // select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility)
+    // AP-048: KidModeProvider wraps the shell so Topbar and KidModeOverlay share the same flag.
+    // KidModeProvider is pure UI state — no Firestore write, no child-data mutation.
+    <KidModeProvider>
+    {/* select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility) */}
     <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
       <div
         className={`grid grid-cols-1 md:grid-cols-[260px_1fr] ${
@@ -303,6 +309,11 @@ export default function Shell() {
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <PaywallModal />
+      {/* AP-048: Kid Mode full-screen overlay — rendered at z-70, above everything.
+          Desktop-only entry point (Topbar button is hidden md:flex). The overlay
+          itself is responsive; MobileNav is byte-unchanged. */}
+      <KidModeOverlay />
     </div>
+    </KidModeProvider>
   );
 }
