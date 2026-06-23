@@ -10,6 +10,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { ShareButton } from "../ui/ShareButton";
+import { runAvatarGeneration } from "./avatarGate";
 
 /**
  * AVA-1 / AVA-2 — the Avatar Creator. Turns descriptors (default, no face) or an
@@ -53,18 +54,13 @@ export default function AvatarCreator({
 
   // M4: loading + error + start/success/error analytics for the generation call.
   // A 402 opens the paywall (conversion moment) instead of an inline error.
+  // COPPA gate (F-NEW): consent-before-capture is enforced inside runAvatarGeneration.
   const avatar = useAsyncAction(
     "avatar_create",
     async (input: { style: AvatarStyle; mode: "describe" | "photo"; refPhoto?: string; descriptors: AvatarDescriptors }) => {
-      // COPPA: the photo path processes a face, so record the parent's
-      // face_processing consent BEFORE the server runs the gated generation.
-      if (input.mode === "photo" && input.refPhoto) {
-        await api.grantConsent({ childId, purpose: "face_processing" });
-      }
-      return api.generateAvatar({
-        childId,
-        style: input.style,
-        ...(input.mode === "photo" && input.refPhoto ? { photo: { dataUrl: input.refPhoto } } : { descriptors: input.descriptors }),
+      return runAvatarGeneration(childId, input, {
+        grantConsent: api.grantConsent,
+        generateAvatar: api.generateAvatar,
       });
     },
     {
