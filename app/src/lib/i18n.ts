@@ -76,6 +76,8 @@ export const en: Dict = {
   "nav.tab.comics": "Hero Comics",
   "nav.tab.masterclasses": "Parent Masterclasses",
   "nav.tab.family": "Family Formation",
+  "nav.tab.smart-reminders": "Smart Reminders",
+  "nav.tab.science": "The Science",
   // mobile bottom-nav short labels (keyed by section id)
   "nav.short.home": "Home",
   "nav.short.today": "Today",
@@ -173,6 +175,34 @@ export const en: Dict = {
   "consult.empty.title": "Nothing to summarise yet",
   "consult.empty.body": "Log a moment or check a milestone and Arbor will build a shareable summary here.",
   "consult.empty.cta": "Log a moment",
+  // AP-056 — School Handoff Brief (parent-controlled, teacher-facing). DISTINCT
+  // from the clinician consult packet above. Curated, non-diagnostic, <=1 page.
+  "schoolBrief.eyebrow": "Care Network",
+  "schoolBrief.title": "School Handoff Brief",
+  "schoolBrief.subtitle": "A short, warm note for {name}'s teacher — what calms {name}, words that help, and how home and school languages fit together. Non-diagnostic, and shared only when you approve it.",
+  "schoolBrief.distinct": "This is the parent-controlled teacher note. For a clinician or therapist, use Consult instead — they stay separate.",
+  "schoolBrief.generate": "Build {name}'s school note",
+  "schoolBrief.generating": "Writing the note…",
+  "schoolBrief.regenerate": "Rewrite",
+  "schoolBrief.empty.title": "No school note yet",
+  "schoolBrief.empty.body": "Arbor will draft a one-page, teacher-friendly note from {name}'s profile — calm strategies, transition phrases, and home/school language framing. You see it before anyone else does.",
+  "schoolBrief.section.overview": "About {name} at school",
+  "schoolBrief.section.calm": "What calms {name}",
+  "schoolBrief.section.transitions": "Transition phrases that help",
+  "schoolBrief.section.language": "Home & school language",
+  "schoolBrief.section.strategies": "Easy things a teacher can try",
+  "schoolBrief.bilingualNote": "Hebrew at home, English at school — bridge words ease the switch.",
+  "schoolBrief.nonDiagnostic": "This note describes what helps {name} — never a diagnosis or a developmental verdict.",
+  // Condition 1 — explicit per-export approval CTA (key referenced by schoolBrief.ts).
+  "schoolBrief.approveExport": "I've read this — approve & download",
+  "schoolBrief.reviewTitle": "Review before you share",
+  "schoolBrief.reviewBody": "This is exactly what {name}'s teacher will see. Read it, then approve to download the PDF. Nothing is sent until you do.",
+  "schoolBrief.cancel": "Not yet",
+  "schoolBrief.download": "Download PDF",
+  "schoolBrief.downloaded": "Downloaded. You choose when to hand it to the teacher.",
+  "schoolBrief.notApproved": "Approve the note first — nothing is shared until you do.",
+  // Condition 5 — outside-erase-reach notice (key referenced by schoolBrief.ts).
+  "schoolBrief.outsideEraseReach": "Once you share this, the teacher's copy is theirs — Arbor can't delete it. Deleting your data in Arbor won't un-send a brief you've already handed over.",
   // top bar
   "top.caringFor": "Caring for",
   "top.age": "Age",
@@ -380,6 +410,37 @@ export const en: Dict = {
   "lang.act.serve.desc": "Follow {first}'s lead on any {target} bid — if they offer one word, extend it into a sentence back. Don't correct, expand.",
   "lang.act.serve.example": "{name}: \"car\" → you: \"yes — the red car is going really fast!\"",
   "lang.act.serve.lens": "Harvard Center · S&R",
+  // AP-054 — Language Lab Vocab View (vl.*)
+  // BINDING SLP-CLEARED COPY (board-cleared per ASHA + Core et al. 2013).
+  // EN strings are VERBATIM per spec. HE strings carry the same non-screen
+  // meaning; flagged for arbor-localization native review before wide release.
+  "vl.sectionTitle": "Words you've logged",
+  "vl.totalLabel": "Total words logged",
+  "vl.totalCount": "{n} words across both languages",
+  "vl.totalCountOne": "1 word logged so far",
+  "vl.mixLabel": "Logged mix: Hebrew / English",
+  "vl.mixValue": "{hePct}% of the words you've logged so far are in Hebrew, {enPct}% in English.",
+  "vl.interpretCaption": "This shows the mix of what you've logged — not how much your child knows in each language. Children who hear two languages almost always log unevenly, and that's expected.",
+  "vl.provenance": "Based only on the phrases you've logged. Arbor doesn't listen to or score your child's speech — these are your observations, not a test or a measurement of your child's vocabulary.",
+  "vl.trendTitle": "Words logged over time",
+  "vl.trendEmpty": "Log a few more phrases and your trend will appear here.",
+  "vl.activitiesTitle": "Ideas for both languages",
+  "vl.activitySubLine": "These are ideas, not instructions. There's no right ratio between a child's languages.",
+  "vl.actHeTitle": "Want more Hebrew moments this week?",
+  "vl.actHeBody": "Try shared story-time in Hebrew.",
+  "vl.actEnTitle": "Want more English moments this week?",
+  "vl.actEnBody": "Try shared story-time in English.",
+  "vl.actGenTitle": "Want more {lang} moments this week?",
+  "vl.actGenBody": "Try shared story-time in {lang}.",
+  "vl.disclaimer": "A child's two languages almost never grow at the same rate, and one is usually stronger than the other. That's a normal feature of bilingual development, not a delay. What matters most is your child's total vocabulary across both languages combined — not how the two compare. If you ever have concerns about your child's language development, a speech-language pathologist who works with bilingual children is the right person to ask.",
+  "vl.disclaimerToggle": "About bilingual vocabulary",
+  "vl.disclaimerClose": "Got it",
+  "vl.logTitle": "Log a phrase",
+  "vl.logPlaceholder": "e.g. \"more please\", \"כלב\", \"where is it?\"",
+  "vl.logLangLabel": "Language",
+  "vl.logSave": "Add phrase",
+  "vl.logEmpty": "No phrases logged yet. Add the first one above.",
+  "vl.noLangs": "Add at least two languages to {first}'s profile to see the mix view.",
   // milestones
   "ms.title": "Development snapshot",
   "ms.subtitle": "Notice what you've seen so far across developmental domains. This is a parent observation tracker, not a diagnostic score, and children develop at their own pace.",
@@ -972,6 +1033,31 @@ export const en: Dict = {
   "hub.scholar.readMin": "{n} min read",
   "hub.scholar.topic": "Topic: {topic}",
   "hub.scholar.nodata": "Check off a few milestones to get a personalised weekly read matched to {name}'s Development Map.",
+  // AP-053 — Academy "For You" copilot + Learning Map (board-cleared copy, 2026-06-22).
+  // VERBATIM cleared strings: DO NOT paraphrase. See PRODUCT-BACKLOG AP-053.
+  // Safety gate: no warn/amber/red token on recommended card; no deficit framing;
+  // banned words: "low","weak","behind","delay","concern","deficit","lowest","needs work","score".
+  "foryou.eyebrow": "For You",
+  // Section header — VERBATIM
+  "foryou.header": "A good place to explore next",
+  // Recommendation line — VERBATIM (interpolates {domain})
+  "foryou.recLine": "Arbor suggests starting with {domain} — here's a gentle place to put your energy this week.",
+  // "Here's why" toggle label
+  "foryou.whyToggle": "Here's why",
+  // "Here's why" expansion body — LOAD-BEARING VERBATIM (board-cleared)
+  "foryou.whyBody": "This is simply an area you've logged less about so far, so Arbor has the least to go on here. Spending a little time here helps Arbor understand your child better — it's not a sign anything is wrong.",
+  // Course roll-up label — VERBATIM (interpolates {domain})
+  "foryou.coursesLabel": "Courses to explore for {domain}",
+  // Progress label — VERBATIM "[X] of [Y] explored" (NOT "% complete")
+  "foryou.progress": "{x} of {y} explored",
+  // All-domains section header
+  "foryou.allDomainsHeader": "Learning map",
+  // CTA
+  "foryou.cta": "Explore masterclasses",
+  // No-data state
+  "foryou.nodata": "Check off a few milestones and Arbor will suggest where to put your energy this week.",
+  // Provenance note — non-diagnostic
+  "foryou.provenance": "Based on the milestones you've logged — an editorial suggestion to explore, not a diagnostic signal.",
   // AP-059 — Weekly missions calendar strip (child-facing Learning Studio)
   "strip.title": "This week",
   "strip.countDone": "{n} of {total} days done",
@@ -987,6 +1073,140 @@ export const en: Dict = {
   "strip.domain.cognition": "Thinking",
   "strip.domain.social": "Social",
   "strip.domain.emotional": "Feelings",
+  // AP-051 — Day Windows panel (board-cleared copy, non-predictive)
+  // HARD RULE: NO string may contain "will be", "predicts", "predict",
+  // "prediction", "expect [child] to", or a confidence %.
+  "dw.title": "Your Day at a Glance",
+  "dw.subtitle": "Patterns Arbor has noticed from what you've logged — calmer stretches and the trickier ones.",
+  "dw.label.calmer": "Usually calmer",
+  "dw.label.trickier": "Often trickier",
+  // Pattern string: ALWAYS anchor the denominator to "the days you logged".
+  "dw.pattern": "{hardDays} of the last {daysLogged} days you logged showed a trickier stretch around {peakHour}.",
+  // Determinism guard — ALWAYS visible near the chart.
+  "dw.guard": "These are tendencies, not predictions — every day is different, and you know your child best.",
+  // Low-data state (<7 days logged).
+  "dw.lowData": "Keep logging and these patterns get clearer. Right now there's not quite enough to see a rhythm yet.",
+  // Accessibility
+  "dw.window.aria": "{label} window: {startHour} to {endHour}",
+  "dw.cta": "See your day's pattern",
+  "dw.back": "Back to Today",
+  "dw.daysLogged": "{n} days logged",
+  // AP-058 — Smart Reminders settings dashboard (board-cleared cadence copy).
+  // BINDING FRAMING: parent-control language only; no surveillance/monitoring copy;
+  // no "more reminders = better development" implication. Flagged for HE native review.
+  "sr.title": "Smart Reminders",
+  "sr.subtitle": "You're in control of when and how Arbor reaches out. These are gentle nudges, not a schedule for your child.",
+  "sr.back": "Back to Settings",
+  // Max-2 contract — MUST be visible to the parent at all times.
+  "sr.max2": "Arbor sends at most 2 nudges per day. Quiet hours and your type settings apply on top of that.",
+  // Next nudge
+  "sr.nextNudge.label": "Next nudge",
+  "sr.nextNudge.none": "Nothing scheduled right now.",
+  "sr.nextNudge.kind.prep": "Today's guidance",
+  "sr.nextNudge.kind.calm": "Calm-down prompt",
+  "sr.nextNudge.kind.log": "Moment reminder",
+  "sr.nextNudge.kind.practice": "Practice suggestion",
+  // Per-type toggles
+  "sr.types.heading": "Nudge types",
+  "sr.types.guidance.label": "Today's guidance",
+  "sr.types.guidance.desc": "A calm, well-timed prompt based on what you've logged.",
+  "sr.types.milestone.label": "Milestone moments",
+  "sr.types.milestone.desc": "A note when a new developmental milestone is worth celebrating.",
+  "sr.types.weekly.label": "Weekly report",
+  "sr.types.weekly.desc": "A brief summary of the week, ready to share or review.",
+  // Quiet hours
+  "sr.quiet.heading": "Quiet hours",
+  "sr.quiet.desc": "Your chosen window. Arbor won't send anything during these hours.",
+  "sr.quiet.start": "Start",
+  "sr.quiet.end": "End",
+  "sr.quiet.summary": "No nudges from {start} to {end}.",
+  // Calm-window scheduling
+  "sr.calm.heading": "Calm-window scheduling",
+  "sr.calm.label": "Route nudges to calmer stretches",
+  "sr.calm.desc": "Arbor routes nudges to the calmer stretches of your day — based on the patterns you've logged, not a fixed clock.",
+  // Saved state
+  "sr.saved": "Saved",
+  // AP-060 — "The Science" trust page.
+  // FIREWALL STRINGS — EN values are VERBATIM (board-cleared 2026-06-23).
+  // hero.line: VERBATIM — do NOT paraphrase. Space-constrained variant allowed per spec.
+  "sci.eyebrow": "The Science",
+  "sci.title": "How we built Arbor's milestones",
+  "sci.subtitle": "Where Arbor's guidance comes from, what it is and what it isn't, and who reviewed it.",
+  // VERBATIM — do NOT paraphrase
+  "sci.hero.line": "Developmentally informed — built on cited public guidance from the CDC, AAP, ASHA, and WHO.",
+  // VERBATIM — do NOT paraphrase. Must render above the fold.
+  "sci.disclaimer": "Arbor is not a diagnostic tool and does not replace professional care. It tracks development and surfaces things worth discussing — it does not diagnose, screen, or label your child. Milestones describe what most children do at a given age; every child develops on their own timeline. If you have a concern, or if Arbor flags one, talk to your pediatrician or a qualified professional.",
+  "sci.disclaimer.aria": "Important disclaimer about Arbor's scope",
+  // Stats — ALLOWED framing per spec
+  "sci.stat.milestones": "milestones across 7 developmental domains",
+  "sci.stat.domains": "developmental domains",
+  "sci.stat.sources": "cited public sources",
+  // CDC framing — ALLOWED per spec; 2022 revision; "most children" language; scoped to 2 months–5 years
+  "sci.cdc.framework": "Our milestones map to the CDC's \"Learn the Signs. Act Early.\" framework. They describe what most children do at a given age — not a deadline or a checklist.",
+  "sci.cdc.ltsae.note": "CDC LTSAE covers developmental expectations from 2 months through 5 years. Arbor does not imply CDC coverage for ages 6–12.",
+  // Sources section
+  "sci.sources.title": "Framework citations",
+  "sci.sources.aria": "Public framework citations",
+  // Citation notes
+  "sci.cdc.note": "The 2022 revision. Milestones describe what most children do — not what every child must do by a fixed date.",
+  "sci.siegel.note": "Arbor's coaching content is informed by the Whole-Brain Child framework (Siegel & Bryson). This is a named parenting/brain-science framework influence — not a clinical-validation source.",
+  "sci.gottman.note": "Arbor's behavior and emotion-coaching surface is informed by Gottman's Emotion Coaching approach. This is a named parenting framework influence — not a clinical-validation source.",
+  // ASQ-3 mention — CLEARED PHRASE ONLY; deep-link HELD per AP-060
+  // AP-060: ASQ-3 deep-link HELD pending legal/IP clearance — do not add an outbound link or reproduce any ASQ-3 items.
+  "sci.asq3.mention": "Arbor's milestone structure was also informed by the structure of validated screening tools such as the ASQ-3, which professionals use. We do not administer or reproduce any ASQ-3 items.",
+  // How we built it
+  "sci.howbuilt.title": "How Arbor's milestone set was built",
+  "sci.howbuilt.body": "Our team mapped 133 milestones across 7 developmental domains — motor, language & communication, cognitive, social, emotional, adaptive, and sensory — drawing from 40+ public sources including the CDC LTSAE 2022 revision, AAP developmental surveillance guidelines, and ASHA communication norms. Each milestone was cross-referenced against at least one public standard. We do not claim to administer the CDC's tool, the AAP's screening protocol, or any published assessment.",
+  // Board note — VERBATIM — do NOT paraphrase. "clinical" must NOT modify board/review/validation/approval.
+  "sci.board.title": "Who reviewed it",
+  "sci.board.note": "Reviewed by Arbor's internal developmental reviewers (backgrounds spanning child psychology, speech-language, and developmental pediatrics). They are not licensed clinicians and Arbor is not clinically validated; their role is to keep our content faithful to cited public guidance.",
+  // Settings entry label
+  "sci.settings.title": "The Science",
+  "sci.settings.sub": "Where Arbor's milestones come from and what they are.",
+  "sci.settings.open": "Read it",
+  // AP-049 — 5-step structured onboarding
+  "ob.step.welcome.title": "Welcome to Arbor",
+  "ob.step.welcome.subtitle": "A calm, personal space to support your child's growth — every step on their own timeline.",
+  "ob.step.welcome.cta": "Let's get started",
+  "ob.step.child.title": "Tell us about your child",
+  "ob.step.child.subtitle": "Two quick things, and Arbor starts personalizing right away.",
+  "ob.step.domains.title": "Where would you like to start?",
+  "ob.step.domains.subtitle": "Pick the areas you'd like Arbor to focus on first. Every child grows on their own timeline — this just tells Arbor what matters most to you right now. You can change it anytime.",
+  "ob.step.domains.multiHint": "Choose as many as you like.",
+  "ob.step.domains.skip": "Not sure yet? Skip — Arbor will keep all areas in view.",
+  "ob.step.domains.footer": "Arbor never grades your child. This is about your focus, not a test.",
+  "ob.step.domains.feelings": "Big Feelings",
+  "ob.step.domains.feelings.sub": "noticing, naming, and riding out strong emotions together.",
+  "ob.step.domains.language": "Language & Communication",
+  "ob.step.domains.language.sub": "building words, sentences, and confident expression.",
+  "ob.step.domains.social": "Social Skills",
+  "ob.step.domains.social.sub": "making friends, sharing, and reading the room.",
+  "ob.step.domains.sleep": "Sleep & Routines",
+  "ob.step.domains.sleep.sub": "calmer bedtimes and steadier daily rhythms.",
+  "ob.step.domains.focus": "Focus & Learning",
+  "ob.step.domains.focus.sub": "attention, curiosity, and staying with a task.",
+  "ob.step.domains.behavior": "Behavior & Transitions",
+  "ob.step.domains.behavior.sub": "handling changes, limits, and big moments gracefully.",
+  "ob.step.domains.eating": "Eating & Mealtime",
+  "ob.step.domains.eating.sub": "making mealtimes calmer and more enjoyable for everyone.",
+  "ob.step.avatar.title": "Give {name} a face",
+  "ob.step.avatar.subtitle": "Create a friendly character — not a real photo. Skip and add one later anytime.",
+  "ob.step.avatar.skip": "Skip for now",
+  "ob.step.ready.title": "Arbor is ready for {name}",
+  "ob.step.ready.subtitle": "Here's what you've set up.",
+  "ob.step.ready.labelName": "Name",
+  "ob.step.ready.labelAge": "Age",
+  "ob.step.ready.labelDomains": "Focus areas",
+  "ob.step.ready.labelAvatar": "Avatar",
+  "ob.step.ready.avatarSet": "Set",
+  "ob.step.ready.avatarSkipped": "Not set yet",
+  "ob.step.ready.noDomains": "All areas in view",
+  "ob.step.ready.cta": "Enter Arbor",
+  "ob.step.back": "Back",
+  "ob.step.continue": "Continue",
+  "ob.step.skip": "Skip",
+  // Demo re-launch
+  "ob.demo.relaunch": "Relaunch onboarding demo",
 };
 
 export const he: Dict = {
@@ -1082,6 +1302,8 @@ export const he: Dict = {
   "nav.tab.comics": "קומיקס גיבורים",
   "nav.tab.masterclasses": "מאסטרקלאס להורים",
   "nav.tab.family": "בניית משפחה",
+  "nav.tab.smart-reminders": "תזכורות חכמות",
+  "nav.tab.science": "המדע",
   "nav.short.home": "בית",
   "nav.short.today": "היום",
   "nav.short.ask": "שאל",
@@ -1381,6 +1603,36 @@ export const he: Dict = {
   "lang.act.serve.desc": "עקבו אחר הובלת {first} בכל פנייה ב{target} — אם הם מציעים מילה אחת, הרחיבו אותה למשפט חזרה. אל תתקנו, הרחיבו.",
   "lang.act.serve.example": "{name}: \"מכונית\" → אתם: \"כן — המכונית האדומה נוסעת מהר מאוד!\"",
   "lang.act.serve.lens": "מרכז הרווארד · ה&ח",
+  // AP-054 — Language Lab Vocab View — Hebrew (vl.*)
+  // Flagged for arbor-localization native review before wide release.
+  // Carries the same non-screen meaning as the EN strings; no clinical claims.
+  "vl.sectionTitle": "מילים שתיעדתם",
+  "vl.totalLabel": "סך המילים שתועדו",
+  "vl.totalCount": "{n} מילים בשתי השפות",
+  "vl.totalCountOne": "מילה אחת תועדה עד כה",
+  "vl.mixLabel": "תמהיל מתועד: עברית / אנגלית",
+  "vl.mixValue": "{hePct}% מהמילים שתיעדתם עד כה הן בעברית, {enPct}% באנגלית.",
+  "vl.interpretCaption": "זה מראה את התמהיל של מה שתיעדתם — לא כמה ילדכם יודע בכל שפה. ילדים השומעים שתי שפות כמעט תמיד מתועדים באופן לא שווה, וזה צפוי.",
+  "vl.provenance": "מבוסס רק על הביטויים שתיעדתם. ארבור לא מאזין לדיבור ילדכם ולא מדרג אותו — אלו תצפיות שלכם, לא מבחן ולא מדידה של אוצר המילים שלו.",
+  "vl.trendTitle": "מילים שתועדו לאורך זמן",
+  "vl.trendEmpty": "תעדו עוד כמה ביטויים והמגמה שלכם תופיע כאן.",
+  "vl.activitiesTitle": "רעיונות לשתי השפות",
+  "vl.activitySubLine": "אלו רעיונות, לא הוראות. אין יחס נכון בין שפות הילד.",
+  "vl.actHeTitle": "רוצים עוד רגעי עברית השבוע?",
+  "vl.actHeBody": "נסו שעת סיפורים משותפת בעברית.",
+  "vl.actEnTitle": "רוצים עוד רגעי אנגלית השבוע?",
+  "vl.actEnBody": "נסו שעת סיפורים משותפת באנגלית.",
+  "vl.actGenTitle": "רוצים עוד רגעי {lang} השבוע?",
+  "vl.actGenBody": "נסו שעת סיפורים משותפת ב{lang}.",
+  "vl.disclaimer": "שתי השפות של ילד כמעט לעולם לא מתפתחות באותו קצב, ואחת בדרך כלל חזקה יותר. זו תכונה רגילה של התפתחות דו-לשונית, לא עיכוב. החשוב ביותר הוא אוצר המילים הכולל של ילדכם בשתי השפות יחד — לא ההשוואה ביניהן. אם יש לכם חששות לגבי התפתחות השפה של ילדכם, פתולוג/ית שפה ותקשורת המתמחה בילדים דו-לשוניים הוא/היא האדם הנכון לפנות אליו/ה.",
+  "vl.disclaimerToggle": "על אוצר מילים דו-לשוני",
+  "vl.disclaimerClose": "הבנתי",
+  "vl.logTitle": "תיעוד ביטוי",
+  "vl.logPlaceholder": "למשל \"עוד בבקשה\", \"כלב\", \"where is it?\"",
+  "vl.logLangLabel": "שפה",
+  "vl.logSave": "הוספת ביטוי",
+  "vl.logEmpty": "עדיין לא תועדו ביטויים. הוסיפו את הראשון למעלה.",
+  "vl.noLangs": "הוסיפו לפחות שתי שפות לפרופיל של {first} כדי לראות את תמהיל השפות.",
   "ms.title": "תמונת מצב התפתחותית",
   "ms.subtitle": "שימו לב למה שראיתם עד כה על פני תחומי ההתפתחות. זהו כלי תיעוד הורי, לא ציון אבחנתי, וילדים מתפתחים בקצב שלהם.",
   "ms.observedSoFar": "נצפו עד כה",
@@ -1941,6 +2193,167 @@ export const he: Dict = {
   "strip.domain.cognition": "חשיבה",
   "strip.domain.social": "חברה",
   "strip.domain.emotional": "רגשות",
+  // AP-051 — Day Windows panel (HE — flagged for arbor-localization native review before wide release)
+  // Non-predictive framing preserved: "נטיות" = tendencies, "הימים שתיעדת" = the days you logged.
+  "dw.title": "היום שלכם במבט אחד",
+  "dw.subtitle": "תבניות שארבור הבחין בהן ממה שתיעדתם — רגועות יותר ומאתגרות יותר.",
+  "dw.label.calmer": "בדרך כלל רגוע",
+  "dw.label.trickier": "לעיתים מאתגר",
+  "dw.pattern": "{hardDays} מתוך {daysLogged} הימים שתיעדתם הראו קטע מאתגר יותר בסביבות {peakHour}.",
+  "dw.guard": "אלו נטיות, לא ידיעות ודאיות — כל יום שונה, ואתם מכירים את ילדכם הכי טוב.",
+  "dw.lowData": "המשיכו לתעד ותבניות אלו יתבהרו. כרגע אין מספיק נתונים לראות מקצב ברור.",
+  "dw.window.aria": "חלון {label}: {startHour} עד {endHour}",
+  "dw.cta": "ראו את תבנית היום שלכם",
+  "dw.back": "חזרה להיום",
+  "dw.daysLogged": "{n} ימים מתועדים",
+  // AP-058 — Smart Reminders (HE — flagged for arbor-localization native review before wide release).
+  // Framing: parent-control language; no surveillance/monitoring/child-watching copy.
+  "sr.title": "תזכורות חכמות",
+  "sr.subtitle": "אתם שולטים מתי ואיך ארבור מגיע אליכם. אלו הנחיות עדינות, לא לוח זמנים לילדכם.",
+  "sr.back": "חזרה להגדרות",
+  "sr.max2": "ארבור שולח לכל היותר 2 תזכורות ביום. שעות שקט והגדרות הסוג מתווספות על כך.",
+  "sr.nextNudge.label": "תזכורת הבאה",
+  "sr.nextNudge.none": "אין כרגע תזכורת מתוכננת.",
+  "sr.nextNudge.kind.prep": "הנחיית היום",
+  "sr.nextNudge.kind.calm": "הנחיית הרגעה",
+  "sr.nextNudge.kind.log": "תזכורת לתיעוד רגע",
+  "sr.nextNudge.kind.practice": "הצעת תרגול",
+  "sr.types.heading": "סוגי תזכורות",
+  "sr.types.guidance.label": "הנחיית היום",
+  "sr.types.guidance.desc": "הנחיה רגועה וממוקדת, על בסיס מה שתיעדתם.",
+  "sr.types.milestone.label": "רגעי אבן דרך",
+  "sr.types.milestone.desc": "הודעה כאשר יש אבן דרך התפתחותית חדשה שכדאי לחגוג.",
+  "sr.types.weekly.label": "דוח שבועי",
+  "sr.types.weekly.desc": "סיכום קצר של השבוע, מוכן לשיתוף או לסקירה.",
+  "sr.quiet.heading": "שעות שקט",
+  "sr.quiet.desc": "החלון שבחרתם. ארבור לא ישלח כלום בשעות אלו.",
+  "sr.quiet.start": "התחלה",
+  "sr.quiet.end": "סיום",
+  "sr.quiet.summary": "ללא תזכורות מ-{start} עד {end}.",
+  "sr.calm.heading": "תזמון חלון שקט",
+  "sr.calm.label": "הפנו תזכורות לרגעים הרגועים יותר",
+  "sr.calm.desc": "ארבור מפנה תזכורות לחלקים הרגועים יותר של היום שלכם — על בסיס הדפוסים שתיעדתם, לא שעון קבוע.",
+  "sr.saved": "נשמר",
+  // AP-053 — Academy "For You" copilot + Learning Map — HE translations.
+  // Flagged for arbor-localization native review before wide release.
+  // Same invitational meaning as EN — "least-explored" framing, NOT deficit framing.
+  "foryou.eyebrow": "בשבילכם",
+  // "A good place to explore next" — invitational, not diagnostic
+  "foryou.header": "מקום טוב להתחיל לחקור",
+  // Recommendation line — same invitational register as EN
+  "foryou.recLine": "ארבור מציע להתחיל עם {domain} — כאן יש מקום עדין להשקיע קצת אנרגיה השבוע.",
+  "foryou.whyToggle": "למה דווקא כאן?",
+  // "Here's why" expansion — preserves the "logged less / not a sign anything is wrong" meaning
+  "foryou.whyBody": "פשוט תיעדתם פחות על תחום זה עד כה, ולכן לארבור יש פחות מידע לעבוד איתו כאן. קצת זמן בתחום זה עוזר לארבור להכיר את ילדכם טוב יותר — זה לא סימן שמשהו לא בסדר.",
+  // Course roll-up label
+  "foryou.coursesLabel": "שיעורים לחקור עבור {domain}",
+  // "[X] of [Y] explored" — NOT "% complete"
+  "foryou.progress": "{x} מתוך {y} נחקרו",
+  "foryou.allDomainsHeader": "מפת הלמידה",
+  "foryou.cta": "חקרו שיעורי הורים",
+  "foryou.nodata": "סמנו כמה אבני דרך וארבור יציע לאן כדאי להפנות אנרגיה השבוע.",
+  "foryou.provenance": "מבוסס על אבני הדרך שתיעדתם — הצעה עורכת לחקור, לא אות אבחנתי.",
+  // AP-060 — "The Science" trust page — HE translations.
+  // FIREWALL: hero.line and disclaimer must carry the SAME firewall-safe meaning as EN.
+  // The HE must NEVER say "clinically validated"/"clinician-reviewed"/"clinician-approved"/"clinical board".
+  // Flagged for arbor-localization native review before wide release.
+  "sci.eyebrow": "המדע",
+  "sci.title": "איך בנינו את אבני הדרך של ארבור",
+  "sci.subtitle": "מאיפה מגיע הידע שעליו מבוסס ארבור — מה הוא ומה הוא אינו — ומי בדק אותו.",
+  // VERBATIM meaning — developmentally informed, public guidance from named bodies; no clinical-validation claim
+  "sci.hero.line": "מבוסס על התפתחות — נשען על הנחיות ציבוריות מצוטטות ממרכז CDC, AAP, ASHA ו-WHO.",
+  // VERBATIM meaning — Arbor is not diagnostic; milestones describe most children; every child's own timeline
+  "sci.disclaimer": "ארבור אינו כלי אבחון ואינו מחליף טיפול מקצועי. הוא עוקב אחר התפתחות ומצביע על דברים שכדאי לדון בהם — הוא אינו מאבחן, אינו בודק ואינו מתייג את ילדכם. אבני הדרך מתארות מה רוב הילדים עושים בגיל מסוים; כל ילד מתפתח לפי הקצב שלו. אם יש לכם חשש, או אם ארבור מצביע על משהו, דברו עם רופא הילדים שלכם או עם איש מקצוע מוסמך.",
+  "sci.disclaimer.aria": "הצהרת חשיבות על גבולות השימוש בארבור",
+  "sci.stat.milestones": "אבני דרך ב-7 תחומי התפתחות",
+  "sci.stat.domains": "תחומי התפתחות",
+  "sci.stat.sources": "מקורות ציבוריים מצוטטים",
+  "sci.cdc.framework": "אבני הדרך שלנו ממופות לפי מסגרת \"למדו את הסימנים. פעלו מוקדם\" של ה-CDC. הן מתארות מה רוב הילדים עושים בגיל מסוים — לא מועד אחרון ולא רשימת חובה.",
+  "sci.cdc.ltsae.note": "מסגרת CDC LTSAE מכסה ציפיות התפתחותיות מגיל חודשיים עד 5 שנים. ארבור אינו מרמז על כיסוי CDC לגילאי 6–12.",
+  "sci.sources.title": "ציטוטי מסגרת",
+  "sci.sources.aria": "ציטוטי מסגרת ציבוריים",
+  "sci.cdc.note": "גרסת 2022. אבני הדרך מתארות מה רוב הילדים עושים — לא מה שכל ילד חייב לעשות עד תאריך קבוע.",
+  "sci.siegel.note": "תוכן האימון של ארבור מושפע ממסגרת The Whole-Brain Child (סיגל ובריסון). זוהי השפעה של מסגרת הורות — לא מקור לאימות של תוכן.",
+  "sci.gottman.note": "משטח האימוץ הרגשי וניהול ההתנהגות של ארבור מושפע מגישת Emotion Coaching של גוטמן. זוהי השפעה של מסגרת הורות — לא מקור לאימות של תוכן.",
+  // AP-060: ASQ-3 deep-link HELD pending legal/IP clearance — do not add an outbound link or reproduce any ASQ-3 items.
+  "sci.asq3.mention": "מבנה אבני הדרך של ארבור הושפע גם ממבנה כלי סינון מאומתים כגון ASQ-3, שבו משתמשים אנשי מקצוע. איננו מפעילים ואיננו משכפלים שאלות כלשהן מה-ASQ-3.",
+  "sci.howbuilt.title": "איך נבנה סט אבני הדרך של ארבור",
+  "sci.howbuilt.body": "הצוות שלנו מיפה 133 אבני דרך ב-7 תחומי התפתחות — מוטורי, שפה ותקשורת, קוגניטיבי, חברתי, רגשי, אדפטיבי וחישתי — מתוך למעלה מ-40 מקורות ציבוריים, כולל מסגרת CDC LTSAE 2022, הנחיות AAP למעקב התפתחותי, ונורמות תקשורת של ASHA. כל אבן דרך הוצלבה עם לפחות תקן ציבורי אחד. איננו טוענים שאנחנו מפעילים את כלי ה-CDC, פרוטוקול הסינון של ה-AAP, או הערכה מפורסמת כלשהי.",
+  // Board note — VERBATIM meaning — "developmental reviewers / not licensed clinicians"
+  // Must NOT say "clinical board"/"clinically validated"/"clinician-reviewed"
+  "sci.board.title": "מי בדק זאת",
+  "sci.board.note": "נבדק על ידי סוקרי ההתפתחות הפנימיים של ארבור (עם רקע בפסיכולוגיית ילדים, שפה ודיבור ורפואת ילדים התפתחותית). הם אינם קלינאים מורשים וארבור אינו מאומת קלינית; תפקידם לוודא שהתוכן שלנו נאמן להנחיות הציבוריות המצוטטות.",
+  "sci.settings.title": "המדע",
+  "sci.settings.sub": "מאיפה מגיות אבני הדרך של ארבור ומה הן.",
+  "sci.settings.open": "קרא",
+  // AP-056 — School Handoff Brief (HE). Parent-controlled, teacher-facing, curated,
+  // non-diagnostic. Flagged for arbor-localization native review before wide release.
+  "schoolBrief.eyebrow": "רשת הטיפול",
+  "schoolBrief.title": "דף מסירה לגן/בית הספר",
+  "schoolBrief.subtitle": "פתק קצר וחם למחנכת של {name} — מה מרגיע את {name}, מילים שעוזרות, ואיך שפת הבית ושפת בית הספר משתלבות. לא אבחנתי, ומשותף רק לאחר אישור שלכם.",
+  "schoolBrief.distinct": "זהו הפתק למחנכת, בשליטת ההורה. עבור קלינאי או מטפל השתמשו ב\"התייעצות\" — הם נשארים נפרדים.",
+  "schoolBrief.generate": "הכינו פתק לבית הספר עבור {name}",
+  "schoolBrief.generating": "כותבים את הפתק…",
+  "schoolBrief.regenerate": "כתבו מחדש",
+  "schoolBrief.empty.title": "אין עדיין פתק לבית הספר",
+  "schoolBrief.empty.body": "ארבור ינסח פתק בן עמוד אחד, ידידותי למחנכת, מתוך הפרופיל של {name} — דרכים להרגעה, משפטי מעבר, ומסגור של שפת הבית ובית הספר. אתם רואים אותו לפני כל אחד אחר.",
+  "schoolBrief.section.overview": "על {name} בבית הספר",
+  "schoolBrief.section.calm": "מה מרגיע את {name}",
+  "schoolBrief.section.transitions": "משפטי מעבר שעוזרים",
+  "schoolBrief.section.language": "שפת בית ושפת בית הספר",
+  "schoolBrief.section.strategies": "דברים פשוטים שמחנכת יכולה לנסות",
+  "schoolBrief.bilingualNote": "עברית בבית, אנגלית בבית הספר — מילות גשר מקלות על המעבר.",
+  "schoolBrief.nonDiagnostic": "הפתק מתאר מה עוזר ל{name} — לעולם לא אבחנה או קביעה התפתחותית.",
+  "schoolBrief.approveExport": "קראתי את זה — אשרו והורידו",
+  "schoolBrief.reviewTitle": "סקירה לפני שיתוף",
+  "schoolBrief.reviewBody": "זה בדיוק מה שהמחנכת של {name} תראה. קראו, ואז אשרו כדי להוריד את ה-PDF. שום דבר לא נשלח עד שתעשו זאת.",
+  "schoolBrief.cancel": "עדיין לא",
+  "schoolBrief.download": "הורידו PDF",
+  "schoolBrief.downloaded": "הורד. אתם בוחרים מתי למסור אותו למחנכת.",
+  "schoolBrief.notApproved": "אשרו תחילה את הפתק — שום דבר לא משותף עד שתעשו זאת.",
+  "schoolBrief.outsideEraseReach": "ברגע שתשתפו את זה, העותק של המחנכת שייך לה — ארבור לא יכול למחוק אותו. מחיקת הנתונים שלכם בארבור לא תבטל מסירה של פתק שכבר העברתם.",
+  // AP-049 — 5-step structured onboarding (HE)
+  "ob.step.welcome.title": "ברוכים הבאים לארבור",
+  "ob.step.welcome.subtitle": "מרחב אישי ורגוע לתמיכה בצמיחת ילדכם — כל צעד בקצב שלהם.",
+  "ob.step.welcome.cta": "בואו נתחיל",
+  "ob.step.child.title": "ספרו לנו על ילדכם",
+  "ob.step.child.subtitle": "שני דברים מהירים, וארבור מתחיל להתאים אישית מיד.",
+  "ob.step.domains.title": "מאיפה תרצו להתחיל?",
+  "ob.step.domains.subtitle": "בחרו את התחומים שתרצו שארבור יתמקד בהם ראשונה. כל ילד גדל בקצב שלו — זה רק אומר לארבור מה חשוב לכם כרגע. תוכלו לשנות זאת בכל עת.",
+  "ob.step.domains.multiHint": "בחרו כמה שתרצו.",
+  "ob.step.domains.skip": "עדיין לא בטוחים? דלגו — ארבור ישמור את כל התחומים בתצוגה.",
+  "ob.step.domains.footer": "ארבור לעולם לא מדרג את ילדכם. זה על המיקוד שלכם, לא מבחן.",
+  "ob.step.domains.feelings": "רגשות גדולים",
+  "ob.step.domains.feelings.sub": "הבחנה, מתן שמות, ורכיבה יחד על רגשות חזקים.",
+  "ob.step.domains.language": "שפה ותקשורת",
+  "ob.step.domains.language.sub": "בניית מילים, משפטים, והבעה בטוחה.",
+  "ob.step.domains.social": "מיומנויות חברתיות",
+  "ob.step.domains.social.sub": "הכרת חברים, שיתוף, וקריאת הסביבה.",
+  "ob.step.domains.sleep": "שינה ושגרות",
+  "ob.step.domains.sleep.sub": "שעות שינה רגועות יותר וקצבי יום יציבים יותר.",
+  "ob.step.domains.focus": "ריכוז ולמידה",
+  "ob.step.domains.focus.sub": "קשב, סקרנות, והתמדה במשימה.",
+  "ob.step.domains.behavior": "התנהגות ומעברים",
+  "ob.step.domains.behavior.sub": "התמודדות עם שינויים, גבולות, ורגעים גדולים בחן.",
+  "ob.step.domains.eating": "אכילה וזמן ארוחה",
+  "ob.step.domains.eating.sub": "הפיכת ארוחות לרגועות ונעימות יותר לכולם.",
+  "ob.step.avatar.title": "תנו ל{name} פנים",
+  "ob.step.avatar.subtitle": "צרו דמות ידידותית — לא תמונה אמיתית. דלגו והוסיפו אחד מאוחר יותר בכל עת.",
+  "ob.step.avatar.skip": "דלג בינתיים",
+  "ob.step.ready.title": "ארבור מוכן עבור {name}",
+  "ob.step.ready.subtitle": "הנה מה שהגדרתם.",
+  "ob.step.ready.labelName": "שם",
+  "ob.step.ready.labelAge": "גיל",
+  "ob.step.ready.labelDomains": "תחומי מיקוד",
+  "ob.step.ready.labelAvatar": "דמות",
+  "ob.step.ready.avatarSet": "הוגדרה",
+  "ob.step.ready.avatarSkipped": "טרם הוגדרה",
+  "ob.step.ready.noDomains": "כל התחומים בתצוגה",
+  "ob.step.ready.cta": "כניסה לארבור",
+  "ob.step.back": "חזרה",
+  "ob.step.continue": "המשך",
+  "ob.step.skip": "דלג",
+  "ob.demo.relaunch": "הפעלה מחדש של הדגמת ה-onboarding",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

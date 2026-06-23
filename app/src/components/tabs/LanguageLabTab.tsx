@@ -4,6 +4,7 @@ import { Languages, Sparkles, MessageSquare, Mic } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, cardCls, Chip, PastelKey } from "../ui/kit";
+import LanguageLabVocabView from "./LanguageLabVocabView";
 
 /**
  * Language Lab — multilingual development support, driven by the child's own
@@ -110,6 +111,9 @@ export default function LanguageLabTab() {
         </div>
       ) : (
         <>
+          {/* AP-054 — Language Lab vocab view (combined-total-first, read-only over langObs) */}
+          <LanguageLabVocabView />
+
           {/* Language profile */}
           <SectionCard title={t("lang.profileTitle", { first, age: childProfile.age })} icon={<Languages className="w-5 h-5" />} tone="sky">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">

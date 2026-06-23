@@ -99,7 +99,23 @@ export type ActiveTab =
   // Internal / admin-only (P0-5): attribution + UTM funnel dashboard. Reachable
   // by deep link (#/attribution) and from the admin-gated Settings entry; never
   // surfaced in the parent-facing sidebar. The view itself enforces admin gating.
-  | "attribution";
+  | "attribution"
+  // AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI.
+  // Read-only detail view, reachable from Today/Overview; does NOT replace the inline nudge.
+  | "day-windows"
+  // AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI engine.
+  // Parent-only surface (no child data, no consent surface, no redaction implication).
+  | "smart-reminders"
+  // AP-060: "The Science" — parent-facing trust/source-transparency page.
+  // Static editorial content — no child data read, captured, processed, or exported.
+  | "science"
+  // AP-056: School Handoff Brief — parent-controlled, teacher-facing, curated,
+  // non-diagnostic 1-page export. DISTINCT from the clinician Consult packet.
+  | "school-brief"
+  // AP-057: Bedtime Stories — day-rooted AI-generated nightly story, avatar-starring,
+  // HE/EN read-aloud. Distinct from Hero Journeys (stories route). Generate-and-discard
+  // design (no persistent library); escalation screen + redaction enforced server-side.
+  | "bedtime-stories";
 
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
 // working browser back/forward button.
@@ -109,6 +125,11 @@ const VALID_TABS = new Set<string>([
   "speech", "mimic", "feelings", "journey", "adventures", "copilot",
   "development", "daily-play", "practice", "consult",
   "attribution",
+  "day-windows", // AP-051: Day Windows detail panel (read-only, from Today)
+  "smart-reminders", // AP-058: Smart Reminders settings (parent prefs over existing JITAI)
+  "science", // AP-060: The Science trust page (static editorial, no child data)
+  "school-brief", // AP-056: School Handoff Brief (parent-controlled, teacher-facing, curated)
+  "bedtime-stories", // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
 ]);
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this

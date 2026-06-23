@@ -8,6 +8,8 @@ import { loadCharter, aimVirtues } from "../../lib/becoming";
 import type { DevelopmentMetricId } from "../../types";
 // AP-055: Scholar Hub weekly concept feed
 import ScholarHubCard from "./ScholarHubCard";
+// AP-053: Academy "For You" — copilot focus + Learning Map join
+import AcademyForYou from "./AcademyForYou";
 
 const FRAME_TONE: Record<FrameId, PastelKey> = {
   aim: "sky",
@@ -64,8 +66,12 @@ export default function Masterclasses() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader title={t("sec.master.title")} subtitle={t("sec.master.sub")} />
+      {/* AP-053: Academy "For You" — joins copilot focus recommendation with
+          course-progress roll-up by domain. Pure frontend join; no new AI call;
+          no new Firestore read. Least-explored framing (board-cleared 2026-06-22). */}
+      <AcademyForYou onNavigateToMasterclasses={() => {}} />
       {/* AP-055: Scholar Hub — one developmental concept per week, auto-matched
-          to the child's lowest-scoring domain from the Development Map.
+          to the child's least-explored domain from the Development Map.
           Non-diagnostic, strengths-based framing, editorial content only. */}
       <ScholarHubCard />
       {recommended.length > 0 && (

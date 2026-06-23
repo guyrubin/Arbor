@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Activity, Languages,
   Users, FileBarChart, Calendar,
   Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert,
-  Target, Map, Gauge,
+  Target, Map, Gauge, School,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -74,6 +74,7 @@ export const SECTIONS: NavSection[] = [
     icon: HeartHandshake,
     items: [
       { tab: "consult", label: "Consult", icon: FileBarChart },
+      { tab: "school-brief", label: "School Brief", icon: School },
       { tab: "care-team", label: "My Care Team", icon: Users },
       { tab: "sharing", label: "Trusted Sharing", icon: Share2 },
       { tab: "appointments", label: "Appointments", icon: Calendar },
@@ -135,6 +136,14 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   // the admin-gated Settings entry, never the parent sidebar. Map it to a section
   // only so highlighting resolves cleanly when it is open.
   attribution: "care",
+  // AP-051: Day Windows detail panel is reached from Today; maps to today section.
+  "day-windows": "today",
+  // AP-058: Smart Reminders is a settings surface reachable from Ask Arbor or Settings.
+  // Maps to the ask section (nearest semantic home for nudge/guidance settings).
+  "smart-reminders": "ask",
+  // AP-060: The Science trust page — reached from Settings footer. Maps to the care section
+  // (nearest semantic home for trust/transparency content).
+  science: "care",
 };
 
 export function sectionForTab(tab: ActiveTab): NavSection {

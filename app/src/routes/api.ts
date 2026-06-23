@@ -1415,6 +1415,96 @@ ${languageDirective}`;
     }
   });
 
+  // AP-057: Bedtime Stories — day-rooted, avatar-starring nightly story.
+  // Distinct from /generate-story (topic/moral) and /generate-hero-journey (fixed spine).
+  // BINDING SAFETY CONDITIONS (all enforced here):
+  //   1. ESCALATION SCREEN on raw day-event text BEFORE generation (→ 409 if triggered).
+  //   2. REDACTION at the generation seam: createRedaction(childName) wraps the model call.
+  //   3. GENERATE-AND-DISCARD default: stories are NOT persisted, so no new child-data store.
+  //      GDPR reachability: no store to wire — the clearing approach is the clearance.
+  //   4. ai_training default-OFF: nothing written to any training pipeline.
+  //   5. NON-PATHOLOGIZING prompt: warmth, strengths-based, no deficit/diagnostic framing.
+  //   6. No new ConsentPurpose; avatar is the existing generated avatar (no new face capture).
+  router.post("/generate-bedtime-story", async (req, res) => {
+    const { childName, age, dayEvents, avatarDescription, language } = req.body;
+
+    // Validate day events array
+    if (!Array.isArray(dayEvents) || dayEvents.length === 0) {
+      res.status(400).json({ error: "dayEvents must be a non-empty array of day event objects" });
+      return;
+    }
+
+    // ── SAFETY CONDITION 1: ESCALATION SCREEN on the actual day-derived input ──
+    // Screen every event description. A logged injury / abuse disclosure /
+    // regression event MUST never seed a cheerful bedtime story — return 409 before
+    // any generation, matching the same non-diagnostic contract as /generate-story.
+    const { buildEscalationInput } = await import("../lib/bedtimeStories.js");
+    const escalationInput = buildEscalationInput(
+      dayEvents.map((e: Record<string, unknown>) => ({
+        description: typeof e.description === "string" ? e.description : String(e.description ?? ""),
+        tone: typeof e.tone === "string" ? e.tone : undefined,
+      }))
+    );
+    const escalationMatch = screenForImmediateEscalation(escalationInput);
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `Today's logged events may require professional or urgent assessment before Arbor generates a bedtime story. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category
+      });
+      return;
+    }
+
+    try {
+      // ── SAFETY CONDITION 2: REDACTION AT THE GENERATION SEAM ──
+      // createRedaction(childName) must wrap the model call: redact → model → restoreDeep.
+      const privacy = createRedaction(childName);
+
+      const { buildBedtimeStoryPrompt } = await import("../lib/bedtimeStories.js");
+      const rawPrompt = buildBedtimeStoryPrompt({
+        childName: childName ?? "your child",
+        age: age ?? 4,
+        dayEvents: dayEvents.map((e: Record<string, unknown>) => ({
+          description: typeof e.description === "string" ? e.description : String(e.description ?? ""),
+          tone: typeof e.tone === "string" ? e.tone : undefined,
+        })),
+        avatarDescription: typeof avatarDescription === "string" ? avatarDescription : undefined,
+        language: language === "he" ? "he" : "en",
+      });
+
+      // Prepend NON_DIAGNOSTIC_CONTRACT (same as /generate-story and /generate-hero-journey).
+      const fullPrompt = `${NON_DIAGNOSTIC_CONTRACT}\n\n${rawPrompt}`;
+
+      // Redact child PII, call model, restore PII in output.
+      const result = privacy.restoreDeep(await modelProvider.generateJson({
+        route: "creative_low_risk",
+        prompt: privacy.redact(fullPrompt) + REDACTION_DIRECTIVE,
+        schema: {
+          type: Type.OBJECT,
+          required: ["title", "pages", "illustrationPrompt", "discussionQuestions", "summary"],
+          properties: {
+            title: { type: Type.STRING },
+            pages: { type: Type.ARRAY, items: { type: Type.STRING } },
+            illustrationPrompt: { type: Type.STRING },
+            discussionQuestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+            summary: { type: Type.STRING }
+          }
+        },
+        temperature: 0.7
+      }));
+
+      // ── SAFETY CONDITION 3: GENERATE-AND-DISCARD ──
+      // The result is returned directly to the client and NOT persisted anywhere.
+      // No bedtimeStory store exists. GDPR export/erase have nothing to reach
+      // because generate-and-discard produces no new persistent child-data.
+      // ai_training is default-OFF: nothing written to a training pipeline here.
+      res.json(result);
+    } catch (error: any) {
+      logger.error("Arbor Bedtime Story Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to generate Arbor bedtime story", details: error.message });
+    }
+  });
+
   router.post("/analyze-behavior", async (req, res) => {
     const { logs, childProfile } = req.body;
     const safetyLogText = Array.isArray(logs)

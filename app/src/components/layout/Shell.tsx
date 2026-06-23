@@ -66,6 +66,19 @@ const ConsultTab = lazy(() => import("../tabs/ConsultTab"));
 // P0-5: internal attribution + UTM funnel dashboard (admin-gated inside the view).
 const AttributionTab = lazy(() => import("../tabs/AttributionTab"));
 
+// AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI (read-only).
+const DayWindowsPanel = lazy(() => import("../sections/DayWindowsPanel"));
+
+// AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI.
+const SmartRemindersPanel = lazy(() => import("../sections/SmartRemindersPanel"));
+
+// AP-060: The Science — parent-facing trust/source-transparency page (static editorial, no child data).
+const SciencePage = lazy(() => import("../tabs/SciencePage"));
+const SchoolBriefSection = lazy(() => import("../sections/SchoolBrief")); // AP-056
+
+// AP-057: Bedtime Stories — day-rooted, generate-and-discard, escalation-gated.
+const BedtimeStoriesTab = lazy(() => import("../tabs/BedtimeStoriesTab"));
+
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
   coach: CoachTab,
@@ -105,6 +118,11 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   practice: PracticeHubTab,
   consult: ConsultTab,
   attribution: AttributionTab,
+  "day-windows": DayWindowsPanel,   // AP-051: Day Windows (read-only, from Today)
+  "smart-reminders": SmartRemindersPanel, // AP-058: Smart Reminders parent settings
+  science: SciencePage,              // AP-060: The Science trust page (static editorial, no child data)
+  "school-brief": SchoolBriefSection, // AP-056: School Handoff Brief (parent-controlled, teacher-facing, curated)
+  "bedtime-stories": BedtimeStoriesTab, // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
 };
 
 export default function Shell() {
