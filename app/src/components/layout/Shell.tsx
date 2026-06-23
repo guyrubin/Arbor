@@ -66,6 +66,9 @@ const ConsultTab = lazy(() => import("../tabs/ConsultTab"));
 // P0-5: internal attribution + UTM funnel dashboard (admin-gated inside the view).
 const AttributionTab = lazy(() => import("../tabs/AttributionTab"));
 
+// AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI (read-only).
+const DayWindowsPanel = lazy(() => import("../sections/DayWindowsPanel"));
+
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
   coach: CoachTab,
@@ -105,6 +108,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   practice: PracticeHubTab,
   consult: ConsultTab,
   attribution: AttributionTab,
+  "day-windows": DayWindowsPanel,   // AP-051: Day Windows (read-only, from Today)
 };
 
 export default function Shell() {

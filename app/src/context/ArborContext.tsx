@@ -99,7 +99,10 @@ export type ActiveTab =
   // Internal / admin-only (P0-5): attribution + UTM funnel dashboard. Reachable
   // by deep link (#/attribution) and from the admin-gated Settings entry; never
   // surfaced in the parent-facing sidebar. The view itself enforces admin gating.
-  | "attribution";
+  | "attribution"
+  // AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI.
+  // Read-only detail view, reachable from Today/Overview; does NOT replace the inline nudge.
+  | "day-windows";
 
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
 // working browser back/forward button.
@@ -109,6 +112,7 @@ const VALID_TABS = new Set<string>([
   "speech", "mimic", "feelings", "journey", "adventures", "copilot",
   "development", "daily-play", "practice", "consult",
   "attribution",
+  "day-windows", // AP-051: Day Windows detail panel (read-only, from Today)
 ]);
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this

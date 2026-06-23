@@ -987,6 +987,24 @@ export const en: Dict = {
   "strip.domain.cognition": "Thinking",
   "strip.domain.social": "Social",
   "strip.domain.emotional": "Feelings",
+  // AP-051 — Day Windows panel (board-cleared copy, non-predictive)
+  // HARD RULE: NO string may contain "will be", "predicts", "predict",
+  // "prediction", "expect [child] to", or a confidence %.
+  "dw.title": "Your Day at a Glance",
+  "dw.subtitle": "Patterns Arbor has noticed from what you've logged — calmer stretches and the trickier ones.",
+  "dw.label.calmer": "Usually calmer",
+  "dw.label.trickier": "Often trickier",
+  // Pattern string: ALWAYS anchor the denominator to "the days you logged".
+  "dw.pattern": "{hardDays} of the last {daysLogged} days you logged showed a trickier stretch around {peakHour}.",
+  // Determinism guard — ALWAYS visible near the chart.
+  "dw.guard": "These are tendencies, not predictions — every day is different, and you know your child best.",
+  // Low-data state (<7 days logged).
+  "dw.lowData": "Keep logging and these patterns get clearer. Right now there's not quite enough to see a rhythm yet.",
+  // Accessibility
+  "dw.window.aria": "{label} window: {startHour} to {endHour}",
+  "dw.cta": "See your day's pattern",
+  "dw.back": "Back to Today",
+  "dw.daysLogged": "{n} days logged",
 };
 
 export const he: Dict = {
@@ -1941,6 +1959,19 @@ export const he: Dict = {
   "strip.domain.cognition": "חשיבה",
   "strip.domain.social": "חברה",
   "strip.domain.emotional": "רגשות",
+  // AP-051 — Day Windows panel (HE — flagged for arbor-localization native review before wide release)
+  // Non-predictive framing preserved: "נטיות" = tendencies, "הימים שתיעדת" = the days you logged.
+  "dw.title": "היום שלכם במבט אחד",
+  "dw.subtitle": "תבניות שארבור הבחין בהן ממה שתיעדתם — רגועות יותר ומאתגרות יותר.",
+  "dw.label.calmer": "בדרך כלל רגוע",
+  "dw.label.trickier": "לעיתים מאתגר",
+  "dw.pattern": "{hardDays} מתוך {daysLogged} הימים שתיעדתם הראו קטע מאתגר יותר בסביבות {peakHour}.",
+  "dw.guard": "אלו נטיות, לא ידיעות ודאיות — כל יום שונה, ואתם מכירים את ילדכם הכי טוב.",
+  "dw.lowData": "המשיכו לתעד ותבניות אלו יתבהרו. כרגע אין מספיק נתונים לראות מקצב ברור.",
+  "dw.window.aria": "חלון {label}: {startHour} עד {endHour}",
+  "dw.cta": "ראו את תבנית היום שלכם",
+  "dw.back": "חזרה להיום",
+  "dw.daysLogged": "{n} ימים מתועדים",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

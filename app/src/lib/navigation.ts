@@ -135,6 +135,8 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   // the admin-gated Settings entry, never the parent sidebar. Map it to a section
   // only so highlighting resolves cleanly when it is open.
   attribution: "care",
+  // AP-051: Day Windows detail panel is reached from Today; maps to today section.
+  "day-windows": "today",
 };
 
 export function sectionForTab(tab: ActiveTab): NavSection {

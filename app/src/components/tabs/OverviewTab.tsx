@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import {
   MessageSquare, Plus, RefreshCw, Sun, Sunrise, Moon, ArrowRight,
   Heart, BookOpen, Smile, Phone, ChevronRight, BookMarked,
-  Share2, Waypoints, ClipboardCheck, Sparkles,
+  Share2, Waypoints, ClipboardCheck, Sparkles, CalendarDays,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -548,6 +548,33 @@ export default function OverviewTab() {
           </button>
         </div>
       </section>
+
+      {/* ── AP-051: Day Windows entry — additional detail view (does NOT replace
+             the inline JITAI nudge above; that nudge remains unchanged). ─── */}
+      {rhythm.confidence !== "none" && (
+        <section>
+          <button
+            onClick={() => setActiveTab("day-windows")}
+            className="w-full text-left flex items-center gap-4 rounded-2xl p-4 transition hover:-translate-y-0.5"
+            style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
+            aria-label={t("dw.cta")}
+          >
+            <span
+              className="rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ width: 44, height: 44, background: GREEN_SOFT, color: GREEN }}
+            >
+              <CalendarDays className="w-5 h-5" aria-hidden="true" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[15px] font-extrabold" style={{ color: INK }}>{t("dw.cta")}</span>
+              <span className="block text-[12px] mt-0.5" style={{ color: MUTED }}>
+                {t("dw.subtitle")}
+              </span>
+            </span>
+            <ArrowRight className="w-4 h-4 flex-shrink-0" style={{ color: GREEN }} aria-hidden="true" />
+          </button>
+        </section>
+      )}
 
       {/* ── A few things to try ─────────────────────────────────────────── */}
       <section>
