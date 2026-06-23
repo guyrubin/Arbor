@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift } from "lucide-react";
+import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift, Palette } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
 import InviteCard from "../referral/InviteCard";
@@ -10,6 +10,7 @@ import { useToast } from "../../context/ToastContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import { api } from "../../lib/api";
 import { T } from "../../lib/tokens";
+import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
 
 /** Lightweight app settings — wired to real app state (AI language, AI Engines
  *  panel, account). Replaces the previously dead "Settings" sidebar button. */
@@ -25,6 +26,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
   const [adminOpen, setAdminOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [accentTheme, setAccentTheme] = useState<AccentTheme>(getSavedTheme);
 
   const planLabel = isBeta
     ? t("set.plan.beta")
@@ -54,6 +56,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     if (date) return t("set.plan.renews", { date });
     return null;
   })();
+
+  const handleThemeChange = (theme: AccentTheme) => {
+    setTheme(theme);
+    setAccentTheme(theme);
+  };
 
   const startCheckout = async (plan: "plus" | "family") => {
     if (busy) return;
@@ -166,6 +173,23 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <button key={k} onClick={() => setAiLang(k)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
                 style={aiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}>
                 {label}
+              </button>
+            ))}
+          </div>
+        </Row>
+
+        {/* AP-052: Accent theme picker */}
+        <Row icon={<Palette className="w-4 h-4" />} title={t("set.theme.title")} sub={t("set.theme.sub")}>
+          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+            {(ACCENT_THEMES as readonly AccentTheme[]).map((theme) => (
+              <button
+                key={theme}
+                onClick={() => handleThemeChange(theme)}
+                aria-pressed={accentTheme === theme}
+                className="px-3 py-1 rounded-lg text-xs font-bold transition"
+                style={accentTheme === theme ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+              >
+                {t(`set.theme.${theme}`)}
               </button>
             ))}
           </div>

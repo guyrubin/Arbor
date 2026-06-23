@@ -666,6 +666,12 @@ export const en: Dict = {
   "set.referral.shareText": "I use Arbor to understand my kid's development. Here's a free month of Plus 🌱",
   "set.signedIn": "Signed in",
   "set.signOut": "Sign out",
+  // AP-052 accent theme
+  "set.theme.title": "Accent color",
+  "set.theme.sub": "Choose your preferred app color scheme.",
+  "set.theme.green": "Green",
+  "set.theme.teal": "Teal",
+  "set.theme.blue": "Blue",
   // quick log modal
   "ql.title": "Quick log a moment",
   "ql.type": "Type of challenge",
@@ -1625,6 +1631,12 @@ export const he: Dict = {
   "set.referral.shareText": "אני משתמש ב-Arbor כדי להבין את ההתפתחות של הילד שלי. הנה חודש Plus חינם 🌱",
   "set.signedIn": "מחובר",
   "set.signOut": "התנתקות",
+  // AP-052 accent theme
+  "set.theme.title": "צבע הדגשה",
+  "set.theme.sub": "בחרו את ערכת הצבעים המועדפת עליכם.",
+  "set.theme.green": "ירוק",
+  "set.theme.teal": "טיל",
+  "set.theme.blue": "כחול",
   "ql.title": "תיעוד מהיר של רגע",
   "ql.type": "סוג האתגר",
   "ql.type.transition": "סירוב ליציאה",
