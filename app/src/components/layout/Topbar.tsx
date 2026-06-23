@@ -1,5 +1,6 @@
 import React from "react";
 import { ArborMark } from "../ui/ArborMark";
+import TopbarKidSwitcher from "./TopbarKidSwitcher";
 
 /**
  * AP-044: Desktop topbar placeholder bar.
@@ -38,7 +39,7 @@ export default function Topbar() {
       </div>
 
       {/* Right zone: Wave-2 placeholder slots (search / notifications / kid-switcher) */}
-      <div className="flex items-center gap-2.5" aria-hidden="true">
+      <div className="flex items-center gap-2.5">
         {/* Search slot */}
         <div
           className="flex items-center rounded-xl px-3 py-2"
@@ -61,16 +62,8 @@ export default function Topbar() {
             border: "1px solid var(--arbor-rule)",
           }}
         />
-        {/* Kid-switcher slot */}
-        <div
-          className="rounded-xl"
-          style={{
-            width: "40px",
-            height: "40px",
-            background: "var(--arbor-paper-elevated)",
-            border: "1px solid var(--arbor-rule)",
-          }}
-        />
+        {/* Kid-switcher slot — AP-047 */}
+        <TopbarKidSwitcher />
       </div>
     </header>
   );
