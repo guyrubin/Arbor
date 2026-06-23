@@ -137,6 +137,9 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   attribution: "care",
   // AP-051: Day Windows detail panel is reached from Today; maps to today section.
   "day-windows": "today",
+  // AP-058: Smart Reminders is a settings surface reachable from Ask Arbor or Settings.
+  // Maps to the ask section (nearest semantic home for nudge/guidance settings).
+  "smart-reminders": "ask",
 };
 
 export function sectionForTab(tab: ActiveTab): NavSection {

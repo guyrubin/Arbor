@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift, Palette } from "lucide-react";
+import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift, Palette, Bell } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
 import InviteCard from "../referral/InviteCard";
@@ -199,6 +199,18 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Row icon={<Sparkles className="w-4 h-4" />} title={t("set.rail.title")} sub={t("set.rail.sub")}>
           <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 h-6 rounded-full transition relative" style={{ background: showAiRail ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}>
             <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "left-[22px]" : "left-0.5"}`} />
+          </button>
+        </Row>
+
+        {/* AP-058: Smart Reminders — parent nudge preferences over existing JITAI */}
+        <Row icon={<Bell className="w-4 h-4" />} title={t("sr.title")} sub={t("sr.subtitle")}>
+          <button
+            onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
+            className="text-xs font-bold rounded-xl px-3 py-2"
+            style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+            data-testid="settings-open-smart-reminders"
+          >
+            {t("set.data.open")}
           </button>
         </Row>
 

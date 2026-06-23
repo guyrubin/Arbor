@@ -69,6 +69,9 @@ const AttributionTab = lazy(() => import("../tabs/AttributionTab"));
 // AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI (read-only).
 const DayWindowsPanel = lazy(() => import("../sections/DayWindowsPanel"));
 
+// AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI.
+const SmartRemindersPanel = lazy(() => import("../sections/SmartRemindersPanel"));
+
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
   coach: CoachTab,
@@ -109,6 +112,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   consult: ConsultTab,
   attribution: AttributionTab,
   "day-windows": DayWindowsPanel,   // AP-051: Day Windows (read-only, from Today)
+  "smart-reminders": SmartRemindersPanel, // AP-058: Smart Reminders parent settings
 };
 
 export default function Shell() {

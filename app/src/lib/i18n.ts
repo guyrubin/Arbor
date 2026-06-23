@@ -76,6 +76,7 @@ export const en: Dict = {
   "nav.tab.comics": "Hero Comics",
   "nav.tab.masterclasses": "Parent Masterclasses",
   "nav.tab.family": "Family Formation",
+  "nav.tab.smart-reminders": "Smart Reminders",
   // mobile bottom-nav short labels (keyed by section id)
   "nav.short.home": "Home",
   "nav.short.today": "Today",
@@ -1005,6 +1006,41 @@ export const en: Dict = {
   "dw.cta": "See your day's pattern",
   "dw.back": "Back to Today",
   "dw.daysLogged": "{n} days logged",
+  // AP-058 — Smart Reminders settings dashboard (board-cleared cadence copy).
+  // BINDING FRAMING: parent-control language only; no surveillance/monitoring copy;
+  // no "more reminders = better development" implication. Flagged for HE native review.
+  "sr.title": "Smart Reminders",
+  "sr.subtitle": "You're in control of when and how Arbor reaches out. These are gentle nudges, not a schedule for your child.",
+  "sr.back": "Back to Settings",
+  // Max-2 contract — MUST be visible to the parent at all times.
+  "sr.max2": "Arbor sends at most 2 nudges per day. Quiet hours and your type settings apply on top of that.",
+  // Next nudge
+  "sr.nextNudge.label": "Next nudge",
+  "sr.nextNudge.none": "Nothing scheduled right now.",
+  "sr.nextNudge.kind.prep": "Today's guidance",
+  "sr.nextNudge.kind.calm": "Calm-down prompt",
+  "sr.nextNudge.kind.log": "Moment reminder",
+  "sr.nextNudge.kind.practice": "Practice suggestion",
+  // Per-type toggles
+  "sr.types.heading": "Nudge types",
+  "sr.types.guidance.label": "Today's guidance",
+  "sr.types.guidance.desc": "A calm, well-timed prompt based on what you've logged.",
+  "sr.types.milestone.label": "Milestone moments",
+  "sr.types.milestone.desc": "A note when a new developmental milestone is worth celebrating.",
+  "sr.types.weekly.label": "Weekly report",
+  "sr.types.weekly.desc": "A brief summary of the week, ready to share or review.",
+  // Quiet hours
+  "sr.quiet.heading": "Quiet hours",
+  "sr.quiet.desc": "Your chosen window. Arbor won't send anything during these hours.",
+  "sr.quiet.start": "Start",
+  "sr.quiet.end": "End",
+  "sr.quiet.summary": "No nudges from {start} to {end}.",
+  // Calm-window scheduling
+  "sr.calm.heading": "Calm-window scheduling",
+  "sr.calm.label": "Route nudges to calmer stretches",
+  "sr.calm.desc": "Arbor routes nudges to the calmer stretches of your day — based on the patterns you've logged, not a fixed clock.",
+  // Saved state
+  "sr.saved": "Saved",
 };
 
 export const he: Dict = {
@@ -1100,6 +1136,7 @@ export const he: Dict = {
   "nav.tab.comics": "קומיקס גיבורים",
   "nav.tab.masterclasses": "מאסטרקלאס להורים",
   "nav.tab.family": "בניית משפחה",
+  "nav.tab.smart-reminders": "תזכורות חכמות",
   "nav.short.home": "בית",
   "nav.short.today": "היום",
   "nav.short.ask": "שאל",
@@ -1972,6 +2009,34 @@ export const he: Dict = {
   "dw.cta": "ראו את תבנית היום שלכם",
   "dw.back": "חזרה להיום",
   "dw.daysLogged": "{n} ימים מתועדים",
+  // AP-058 — Smart Reminders (HE — flagged for arbor-localization native review before wide release).
+  // Framing: parent-control language; no surveillance/monitoring/child-watching copy.
+  "sr.title": "תזכורות חכמות",
+  "sr.subtitle": "אתם שולטים מתי ואיך ארבור מגיע אליכם. אלו הנחיות עדינות, לא לוח זמנים לילדכם.",
+  "sr.back": "חזרה להגדרות",
+  "sr.max2": "ארבור שולח לכל היותר 2 תזכורות ביום. שעות שקט והגדרות הסוג מתווספות על כך.",
+  "sr.nextNudge.label": "תזכורת הבאה",
+  "sr.nextNudge.none": "אין כרגע תזכורת מתוכננת.",
+  "sr.nextNudge.kind.prep": "הנחיית היום",
+  "sr.nextNudge.kind.calm": "הנחיית הרגעה",
+  "sr.nextNudge.kind.log": "תזכורת לתיעוד רגע",
+  "sr.nextNudge.kind.practice": "הצעת תרגול",
+  "sr.types.heading": "סוגי תזכורות",
+  "sr.types.guidance.label": "הנחיית היום",
+  "sr.types.guidance.desc": "הנחיה רגועה וממוקדת, על בסיס מה שתיעדתם.",
+  "sr.types.milestone.label": "רגעי אבן דרך",
+  "sr.types.milestone.desc": "הודעה כאשר יש אבן דרך התפתחותית חדשה שכדאי לחגוג.",
+  "sr.types.weekly.label": "דוח שבועי",
+  "sr.types.weekly.desc": "סיכום קצר של השבוע, מוכן לשיתוף או לסקירה.",
+  "sr.quiet.heading": "שעות שקט",
+  "sr.quiet.desc": "החלון שבחרתם. ארבור לא ישלח כלום בשעות אלו.",
+  "sr.quiet.start": "התחלה",
+  "sr.quiet.end": "סיום",
+  "sr.quiet.summary": "ללא תזכורות מ-{start} עד {end}.",
+  "sr.calm.heading": "תזמון חלון שקט",
+  "sr.calm.label": "הפנו תזכורות לרגעים הרגועים יותר",
+  "sr.calm.desc": "ארבור מפנה תזכורות לחלקים הרגועים יותר של היום שלכם — על בסיס הדפוסים שתיעדתם, לא שעון קבוע.",
+  "sr.saved": "נשמר",
 };
 
 const DICTS: Record<UiLang, Dict> = { en, he };

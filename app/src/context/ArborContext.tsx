@@ -102,7 +102,10 @@ export type ActiveTab =
   | "attribution"
   // AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI.
   // Read-only detail view, reachable from Today/Overview; does NOT replace the inline nudge.
-  | "day-windows";
+  | "day-windows"
+  // AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI engine.
+  // Parent-only surface (no child data, no consent surface, no redaction implication).
+  | "smart-reminders";
 
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
 // working browser back/forward button.
@@ -113,6 +116,7 @@ const VALID_TABS = new Set<string>([
   "development", "daily-play", "practice", "consult",
   "attribution",
   "day-windows", // AP-051: Day Windows detail panel (read-only, from Today)
+  "smart-reminders", // AP-058: Smart Reminders settings (parent prefs over existing JITAI)
 ]);
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this
