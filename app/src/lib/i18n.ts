@@ -104,6 +104,12 @@ const en: Dict = {
   "play.libSubtitle": "Matched to {name}'s stage and what's been coming up lately. Each uses things you already have at home.",
   "play.readinessTitle": "Get ready for…",
   "play.readinessSubtitle": "Short tracks for the moments parents prepare for.",
+  // CI-31: Session-length chips
+  "play.session.eyebrow": "Time I have today",
+  "play.session.short": "Quick (8-10 min)",
+  "play.session.standard": "Standard (15 min)",
+  "play.session.extended": "Extended (25-30 min)",
+  "play.session.hint": "A focused 10-min activity looks good around {time} today — from your log.",
   // Daily Play Courses
   "course.eyebrow": "Play course",
   "course.progress": "{done} of {total} done",
@@ -701,6 +707,12 @@ const he: Dict = {
   "play.libSubtitle": "מותאם לשלב של {name} ולמה שעלה לאחרונה. כל פעילות משתמשת בדברים שכבר יש בבית.",
   "play.readinessTitle": "להתכונן ל…",
   "play.readinessSubtitle": "מסלולים קצרים לרגעים שהורים מתכוננים אליהם.",
+  // CI-31: Session-length chips (Hebrew)
+  "play.session.eyebrow": "כמה זמן יש לי היום",
+  "play.session.short": "קצר (10-8 דק׳)",
+  "play.session.standard": "רגיל (15 דק׳)",
+  "play.session.extended": "מורחב (30-25 דק׳)",
+  "play.session.hint": "על פי היומן שלך, חלון טוב לפעילות קצרה הוא סביב {time} היום.",
   // Daily Play Courses
   "course.eyebrow": "מסלול משחק",
   "course.progress": "{done} מתוך {total} הושלמו",

@@ -7,7 +7,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import CourseCard from "../overview/CourseCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
-import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
+import SessionLengthChips from "../practice/SessionLengthChips";
+import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { recommendCourse, READINESS_COURSES, localizeCourse } from "../../playbank/courses";
 import { type PlayActivity } from "../../playbank/content";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
@@ -37,6 +38,18 @@ export default function DailyPlayTab() {
     catch { return []; }
   });
 
+  // CI-31: session-length chip state — lifted to tab level so all grid cards
+  // share the same selection. Persisted per-child, mirrors done-ids pattern.
+  const [sessionLength, setSessionLength] = useState<SessionLength>(() => {
+    try { return (localStorage.getItem(`arbor.play.sessionLength.${childProfile.id}`) as SessionLength) || "standard"; }
+    catch { return "standard"; }
+  });
+
+  const handleSessionLength = (v: SessionLength) => {
+    setSessionLength(v);
+    try { localStorage.setItem(`arbor.play.sessionLength.${childProfile.id}`, v); } catch { /* ignore */ }
+  };
+
   const concernDomains = useMemo(
     () => concernDomainsFromLogs(
       behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, timestamp: l.timestamp })),
@@ -55,8 +68,10 @@ export default function DailyPlayTab() {
       daySeed: daySeedFor(Date.now()),
       // CI-29: pass sanitized interests so themeable activities get the 1.3x boost.
       interests: childProfile.interests,
+      // CI-31: filter by the parent's declared session length.
+      sessionLength,
     }, 4),
-    [concernDomains, goalDomains, childProfile.age, childProfile.interests, doneIds]
+    [concernDomains, goalDomains, childProfile.age, childProfile.interests, doneIds, sessionLength]
   );
 
   // Recommended course — matched to the child's top logged concern (the moat).
@@ -176,6 +191,15 @@ export default function DailyPlayTab() {
         />
       </section>
 
+      {/* CI-31: chip row lifted to tab level — one selection controls all grid cards */}
+      <div className="max-w-[640px]">
+        <SessionLengthChips
+          value={sessionLength}
+          onChange={handleSessionLength}
+          tapped={true}
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {picks.map((p) => (
           <DailyPlayCard
@@ -190,6 +214,7 @@ export default function DailyPlayTab() {
                 ? activeGoals.find((g) => g.domainId === p.activity.domain)?.label
                 : undefined
             }
+            sessionLength={sessionLength}
           />
         ))}
       </div>

@@ -44,6 +44,22 @@ export function sanitizeInterestToken(raw: string): string {
   return trimmed;
 }
 
+/**
+ * CI-31: Session-length preference — the parent's declared time budget.
+ * "short"    → 8–10 min activities (durationMin ≤ 10)
+ * "standard" → 15 min activities   (durationMin 11–20)
+ * "extended" → 25–30 min activities (durationMin > 20)
+ * Default: "standard".
+ */
+export type SessionLength = "short" | "standard" | "extended";
+
+/** durationMin range (inclusive) for each session-length bucket. */
+export const SESSION_LENGTH_RANGES: Record<SessionLength, [number, number]> = {
+  short:    [0, 10],
+  standard: [11, 20],
+  extended: [21, Infinity],
+};
+
 export interface PlaySelectContext {
   ageYears: number;
   /** Domains the child has recently struggled with (from their log). */
@@ -67,6 +83,13 @@ export interface PlaySelectContext {
    * is constructed (FIX 3: no condition word reaches card copy).
    */
   interests?: string[];
+  /**
+   * CI-31: Parent-declared session length — filters the ranked list to
+   * activities within the matching durationMin range. Falls back to
+   * "standard" when undefined or when the filtered result is empty (so there
+   * is never a cold-start failure from an empty bucket). No child-data write.
+   */
+  sessionLength?: SessionLength;
 }
 
 export interface ScoredActivity {
@@ -139,9 +162,24 @@ export function rankDailyPlay(ctx: PlaySelectContext): ScoredActivity[] {
   const interests = (ctx.interests ?? []).map(sanitizeInterestToken).filter(Boolean);
   const hasInterests = interests.length > 0;
 
-  return PLAY_ACTIVITIES
+  // CI-31: apply session-length filter only when explicitly provided.
+  // When the filtered pool is empty (e.g. no activities yet in the extended
+  // bucket) fall back to the full pool so there is never a cold-start failure.
+  // When sessionLength is undefined the full pool is used unchanged — this
+  // preserves backward compatibility for callers that don't know about CI-31.
+  let activities = PLAY_ACTIVITIES;
+  if (ctx.sessionLength) {
+    const [minDur, maxDur] = SESSION_LENGTH_RANGES[ctx.sessionLength];
+    const pool = PLAY_ACTIVITIES.filter(
+      (a) => a.durationMin >= minDur && a.durationMin <= maxDur
+    );
+    activities = pool.length > 0 ? pool : PLAY_ACTIVITIES;
+  }
+
+  return activities
     .map((activity) => {
       const bandScore = matchesBand(activity, band) ? 1 : 0.35;
+
       // CI-28: goal domains apply at 1.6x weight — parent-explicit intent ranks
       // above the inferred concern-log boost (1.8 max). Both can compound on the
       // same activity if the activity's domain matches both.

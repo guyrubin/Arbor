@@ -26,7 +26,7 @@ import GoalBuilderPromptCard from "../practice/GoalBuilderPromptCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
-import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
+import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 
 const card = cardCls;
@@ -115,6 +115,20 @@ export default function OverviewTab() {
     try { return JSON.parse(localStorage.getItem(`arbor.play.done.${childProfile.id}`) || "[]"); }
     catch { return []; }
   });
+
+  // CI-31: session-length chip state — persisted per-child, mirrors done-ids pattern.
+  const [sessionLength, setSessionLength] = useState<SessionLength>(() => {
+    try { return (localStorage.getItem(`arbor.play.sessionLength.${childProfile.id}`) as SessionLength) || "standard"; }
+    catch { return "standard"; }
+  });
+  const [sessionTapped, setSessionTapped] = useState(false);
+
+  const handleSessionLength = (v: SessionLength) => {
+    setSessionLength(v);
+    setSessionTapped(true);
+    try { localStorage.setItem(`arbor.play.sessionLength.${childProfile.id}`, v); } catch { /* ignore */ }
+  };
+
   const dailyPlay: ScoredActivity | null = useMemo(() => {
     const concernDomains = concernDomainsFromLogs(
       behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, timestamp: l.timestamp })),
@@ -130,9 +144,11 @@ export default function OverviewTab() {
       daySeed: daySeedFor(Date.now()),
       // CI-29: pass sanitized interests so themeable activities get the 1.3x boost.
       interests: childProfile.interests,
+      // CI-31: filter by the parent's declared session length.
+      sessionLength,
     }, 1);
     return picks[0] ?? null;
-  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains]);
+  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains, sessionLength]);
 
   const prepWindow = (hour: number) => {
     setChatInput(`${firstName} tends to have a harder time around ${hourLabel(hour)}. Give me one short, calm script I can use to get ahead of it today.`);
@@ -393,6 +409,10 @@ export default function OverviewTab() {
                 ? (activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label)
                 : undefined
             }
+            sessionLength={sessionLength}
+            onSessionLengthChange={handleSessionLength}
+            sessionTapped={sessionTapped}
+            rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined}
           />
         )}
       </section>

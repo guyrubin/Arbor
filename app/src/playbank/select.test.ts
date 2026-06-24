@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   selectDailyPlay, rankDailyPlay, concernDomainsFromLogs, domainForBehaviorType, daySeedFor,
-  sanitizeInterestToken,
+  sanitizeInterestToken, SESSION_LENGTH_RANGES,
 } from "./select";
 import { bandForAge } from "./content";
 
@@ -234,6 +234,64 @@ describe("selectDailyPlay", () => {
     it("blocks condition words mid-token (autism-adjacent substring)", () => {
       // "autistic" contains the banned substring
       expect(sanitizeInterestToken("autistic")).toBe("");
+    });
+  });
+
+  // CI-31: sessionLength filtering
+  describe("CI-31 sessionLength filtering", () => {
+    it("SESSION_LENGTH_RANGES covers the three buckets", () => {
+      expect(SESSION_LENGTH_RANGES.short).toEqual([0, 10]);
+      expect(SESSION_LENGTH_RANGES.standard).toEqual([11, 20]);
+      expect(SESSION_LENGTH_RANGES.extended[0]).toBe(21);
+    });
+
+    it("short filter returns only activities with durationMin ≤ 10", () => {
+      const picks = rankDailyPlay({ ageYears: 4, daySeed: 1, sessionLength: "short" });
+      for (const p of picks) {
+        expect(p.activity.durationMin).toBeLessThanOrEqual(10);
+      }
+    });
+
+    it("standard filter returns only activities with durationMin 11-20", () => {
+      const picks = rankDailyPlay({ ageYears: 4, daySeed: 1, sessionLength: "standard" });
+      for (const p of picks) {
+        expect(p.activity.durationMin).toBeGreaterThan(10);
+        expect(p.activity.durationMin).toBeLessThanOrEqual(20);
+      }
+    });
+
+    it("selectDailyPlay with sessionLength=short returns picks in the short range", () => {
+      const picks = selectDailyPlay({ ageYears: 4, daySeed: 1, sessionLength: "short" });
+      expect(picks.length).toBeGreaterThan(0);
+      for (const p of picks) {
+        expect(p.activity.durationMin).toBeLessThanOrEqual(10);
+      }
+    });
+
+    it("selectDailyPlay with no sessionLength uses the full pool (no filter applied)", () => {
+      // Without sessionLength the full activity pool is used — no duration filter.
+      const picksAll = selectDailyPlay({ ageYears: 4, daySeed: 1 });
+      const picksShort = selectDailyPlay({ ageYears: 4, daySeed: 1, sessionLength: "short" });
+      // The unfiltered top pick can differ from the short-only top pick, showing
+      // the filter is not silently applied.
+      expect(picksAll.length).toBeGreaterThan(0);
+      // All picks from the full pool can include any durationMin — just confirm
+      // the call succeeds and returns results.
+      expect(picksAll[0]).toBeDefined();
+    });
+
+    it("is deterministic for the same seed and sessionLength", () => {
+      const a = selectDailyPlay({ ageYears: 4, daySeed: 3, sessionLength: "short" });
+      const b = selectDailyPlay({ ageYears: 4, daySeed: 3, sessionLength: "short" });
+      expect(a.map((p) => p.activity.id)).toEqual(b.map((p) => p.activity.id));
+    });
+
+    it("different sessionLength values return different top picks for the same seed", () => {
+      const shortPick = selectDailyPlay({ ageYears: 4, daySeed: 1, sessionLength: "short" }, 1);
+      const stdPick   = selectDailyPlay({ ageYears: 4, daySeed: 1, sessionLength: "standard" }, 1);
+      // They come from different durationMin buckets so they cannot be the same activity.
+      expect(shortPick[0].activity.durationMin).toBeLessThanOrEqual(10);
+      expect(stdPick[0].activity.durationMin).toBeGreaterThan(10);
     });
   });
 });

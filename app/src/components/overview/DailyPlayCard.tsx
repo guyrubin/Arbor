@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Sprout, Check, MessageSquare, ChevronDown, Clock, Heart } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity } from "../../playbank/content";
-import type { ScoredActivity } from "../../playbank/select";
+import type { ScoredActivity, SessionLength } from "../../playbank/select";
+import SessionLengthChips from "../practice/SessionLengthChips";
 
 /* Daily Play — one stage-appropriate, household-item activity for today,
    matched to what the child has been working through. "Did this" writes a
@@ -21,6 +22,10 @@ export default function DailyPlayCard({
   onDid,
   onCoach,
   goalLabel,
+  sessionLength,
+  onSessionLengthChange,
+  sessionTapped,
+  rhythmHintTime,
 }: {
   pick: ScoredActivity;
   childName: string;
@@ -29,11 +34,28 @@ export default function DailyPlayCard({
   onCoach: (a: ScoredActivity) => void;
   /** CI-28: label of the active goal that drove this pick (for "because" line). */
   goalLabel?: string;
+  /** CI-31: currently selected session length (controls chip row + duration badge). */
+  sessionLength?: SessionLength;
+  /** CI-31: called when the parent taps a chip. */
+  onSessionLengthChange?: (v: SessionLength) => void;
+  /** CI-31: true once any chip has been tapped this session (hides rhythm hint). */
+  sessionTapped?: boolean;
+  /** CI-31: rhythm calmWindow hour label (e.g. "10am") for the hint line. */
+  rhythmHintTime?: string;
 }) {
   const [open, setOpen] = useState(false);
   const { t, uiLang } = useLanguage();
   const { reason, matchedInterest } = pick;
   const activity = localizeActivity(pick.activity, uiLang);
+
+  // CI-31: duration badge text — shows selected chip range when a chip has been
+  // chosen, otherwise falls back to the activity's own durationMin.
+  const durationLabel: string = (() => {
+    if (!sessionLength) return t("play.min", { n: activity.durationMin });
+    if (sessionLength === "short")    return t("play.session.short");
+    if (sessionLength === "extended") return t("play.session.extended");
+    return t("play.session.standard");
+  })();
 
   // CI-29: interest-match why-line variants (FIX 2: no effect-verb on child capacity;
   // FIX 5: parent-facing "about the child", never kid-companion second-person).
@@ -65,7 +87,7 @@ export default function DailyPlayCard({
           </div>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold flex-shrink-0"
             style={{ background: "var(--arbor-paper-deep)", color: MUTED, border: `1px solid ${RULE}` }}>
-            <Clock className="w-3 h-3" /> {t("play.min", { n: activity.durationMin })}
+            <Clock className="w-3 h-3" /> {durationLabel}
           </span>
         </div>
 
@@ -96,6 +118,18 @@ export default function DailyPlayCard({
             </span>
           ))}
         </div>
+
+        {/* CI-31: Session-length chips — inserted when the card owns the chip row
+            (i.e. on the Overview/Today hero card; in DailyPlayTab the row is
+            lifted to tab level and NOT rendered here). */}
+        {sessionLength && onSessionLengthChange && (
+          <SessionLengthChips
+            value={sessionLength}
+            onChange={onSessionLengthChange}
+            rhythmHintTime={rhythmHintTime}
+            tapped={sessionTapped ?? false}
+          />
+        )}
 
         {/* Steps (collapsible to keep the card calm) */}
         <button
