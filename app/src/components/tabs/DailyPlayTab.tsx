@@ -53,8 +53,10 @@ export default function DailyPlayTab() {
       goalDomains,
       recentlyDoneIds: doneIds,
       daySeed: daySeedFor(Date.now()),
+      // CI-29: pass sanitized interests so themeable activities get the 1.3x boost.
+      interests: childProfile.interests,
     }, 4),
-    [concernDomains, goalDomains, childProfile.age, doneIds]
+    [concernDomains, goalDomains, childProfile.age, childProfile.interests, doneIds]
   );
 
   // Recommended course — matched to the child's top logged concern (the moat).

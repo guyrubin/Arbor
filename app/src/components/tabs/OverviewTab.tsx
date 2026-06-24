@@ -128,6 +128,8 @@ export default function OverviewTab() {
       goalDomains,
       recentlyDoneIds: donePlayIds,
       daySeed: daySeedFor(Date.now()),
+      // CI-29: pass sanitized interests so themeable activities get the 1.3x boost.
+      interests: childProfile.interests,
     }, 1);
     return picks[0] ?? null;
   }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains]);

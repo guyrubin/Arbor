@@ -27,6 +27,17 @@ export interface ChildProfile {
    */
   activeGoals?: import('./practice/goalBuilder').ActiveGoal[];
   /**
+   * CI-29: Parent-entered interest tags (e.g. "Trains", "Dinosaurs").
+   * Parent-facing only — the child never enters this field.
+   * Preference record only; never interpreted as a clinical/behavioral signal.
+   * Feeds Daily Play interest-boost scoring (deterministic, LLM-free).
+   * COPPA gate: arbor-safety COPPA/GDPR review required before prod.
+   * Clinical gate: interest record is displayed, never interpreted (FDI-04/CI-24 veto class).
+   */
+  interests?: string[];
+  /** ISO timestamp of the last time interests[] was written. */
+  interestsUpdatedAt?: string;
+  /**
    * Prematurity adjustment (AAP): for babies born preterm, developmental
    * milestones are compared against *corrected* (adjusted) age until ~2 years.
    * `gestationalWeeks` is the gestation at birth (e.g. 32). Term is 40 weeks;

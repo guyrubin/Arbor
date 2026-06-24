@@ -78,6 +78,29 @@ export default function ChildProfile() {
               {focus.length > 0 ? focus.map((f) => <Chip key={f.label} tone={f.tone}>{f.label}</Chip>) : <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>Exploring — add a challenge to focus Arbor.</span>}
             </div>
           </div>
+          {/* CI-29: Interests field — parent-logged preferences, never interpreted.
+              Displayed as read-only lav chips; edit opens ProfileEditDrawer. */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--arbor-muted)" }}>
+              {t("cp.f.interests", { name: first })}
+            </p>
+            {childProfile.interests && childProfile.interests.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {childProfile.interests.slice(0, 3).map((interest) => (
+                  <Chip key={interest} tone="lav">{interest}</Chip>
+                ))}
+                {childProfile.interests.length > 3 && (
+                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
+                    +{childProfile.interests.length - 3}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>
+                {t("cp.interests.add")} — edit the profile to add interests.
+              </span>
+            )}
+          </div>
         </div>
       </SectionCard>
 

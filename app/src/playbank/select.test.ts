@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   selectDailyPlay, rankDailyPlay, concernDomainsFromLogs, domainForBehaviorType, daySeedFor,
+  sanitizeInterestToken,
 } from "./select";
 import { bandForAge } from "./content";
 
@@ -132,6 +133,107 @@ describe("selectDailyPlay", () => {
       const a = selectDailyPlay({ ageYears: 4, goalDomains: ["language"], daySeed: 7 });
       const b = selectDailyPlay({ ageYears: 4, goalDomains: ["language"], daySeed: 7 });
       expect(a.map((p) => p.activity.id)).toEqual(b.map((p) => p.activity.id));
+    });
+  });
+
+  // CI-29: interest-boost scoring (1.3×) + sanitizeInterestToken (FIX 3)
+  describe("CI-29 interest-boost scoring", () => {
+    it("boosts the score of a themeable activity when interests are provided", () => {
+      // Get the top themeable activity without interests.
+      const withoutInterests = rankDailyPlay({ ageYears: 4, daySeed: 1 });
+      const themeableIdx = withoutInterests.findIndex((p) => p.activity.themeableContextSlot);
+      // Same seed with interests — the same themeable activity should score higher.
+      if (themeableIdx !== -1) {
+        const themeableId = withoutInterests[themeableIdx].activity.id;
+        const withInterests = rankDailyPlay({ ageYears: 4, daySeed: 1, interests: ["Trains"] });
+        const boosted = withInterests.find((p) => p.activity.id === themeableId);
+        const unboosted = withoutInterests[themeableIdx];
+        expect(boosted!.score).toBeGreaterThan(unboosted.score);
+      }
+    });
+
+    it("labels a themeable top pick as interest-match when interests are provided", () => {
+      // Run with interests and check that at least one interest-match exists in top picks.
+      const picks = selectDailyPlay({ ageYears: 4, interests: ["Trains"], daySeed: 1 }, 6);
+      const interestMatches = picks.filter((p) => p.reason === "interest-match");
+      expect(interestMatches.length).toBeGreaterThan(0);
+      // Each interest-match must have matchedInterest set.
+      for (const p of interestMatches) {
+        expect(p.matchedInterest).toBe("Trains");
+      }
+    });
+
+    it("does NOT label non-themeable activities as interest-match", () => {
+      const picks = rankDailyPlay({ ageYears: 4, interests: ["Trains"], daySeed: 1 });
+      const wrongLabel = picks.filter(
+        (p) => p.reason === "interest-match" && !p.activity.themeableContextSlot
+      );
+      expect(wrongLabel).toHaveLength(0);
+    });
+
+    it("produces no interest-match when interests array is empty", () => {
+      const picks = rankDailyPlay({ ageYears: 4, interests: [], daySeed: 1 });
+      expect(picks.filter((p) => p.reason === "interest-match")).toHaveLength(0);
+    });
+
+    it("interest-boost (1.3×) is lower than goal-boost (1.6×) for same activity", () => {
+      // An activity that is both themeable and in the regulation domain.
+      const themeableRegulation = rankDailyPlay({ ageYears: 4, daySeed: 1 })
+        .find((p) => p.activity.themeableContextSlot && p.activity.domain === "regulation");
+      if (!themeableRegulation) return; // skip if no such activity at this age
+      const id = themeableRegulation.activity.id;
+
+      const withGoal = rankDailyPlay({ ageYears: 4, goalDomains: ["regulation"], daySeed: 1 });
+      const withInterest = rankDailyPlay({ ageYears: 4, interests: ["Trains"], daySeed: 1 });
+      const goalScore = withGoal.find((p) => p.activity.id === id)!.score;
+      const interestScore = withInterest.find((p) => p.activity.id === id)!.score;
+      expect(goalScore).toBeGreaterThan(interestScore);
+    });
+
+    it("is deterministic for a given seed with interests", () => {
+      const a = selectDailyPlay({ ageYears: 4, interests: ["Dinosaurs"], daySeed: 5 });
+      const b = selectDailyPlay({ ageYears: 4, interests: ["Dinosaurs"], daySeed: 5 });
+      expect(a.map((p) => p.activity.id)).toEqual(b.map((p) => p.activity.id));
+    });
+  });
+
+  // CI-29 FIX 3: sanitizeInterestToken — clinical/condition word blocking
+  describe("CI-29 sanitizeInterestToken (FIX 3)", () => {
+    it("passes through safe interest tokens unchanged", () => {
+      expect(sanitizeInterestToken("Trains")).toBe("Trains");
+      expect(sanitizeInterestToken("Dinosaurs")).toBe("Dinosaurs");
+      expect(sanitizeInterestToken("Space")).toBe("Space");
+    });
+
+    it("returns empty string for a CONDITIONS word (autism, ADHD, etc.)", () => {
+      expect(sanitizeInterestToken("autism")).toBe("");
+      expect(sanitizeInterestToken("ADHD")).toBe("");
+      expect(sanitizeInterestToken("anxiety disorder")).toBe("");
+      expect(sanitizeInterestToken("developmental delay")).toBe("");
+      expect(sanitizeInterestToken("apraxia")).toBe("");
+    });
+
+    it("returns empty string for banned clinical interest nouns (FIX 1)", () => {
+      expect(sanitizeInterestToken("fixation")).toBe("");
+      expect(sanitizeInterestToken("hyperfocus")).toBe("");
+      expect(sanitizeInterestToken("special interest")).toBe("");
+      expect(sanitizeInterestToken("obsession")).toBe("");
+      expect(sanitizeInterestToken("restricted interests")).toBe("");
+    });
+
+    it("strips whitespace before testing", () => {
+      expect(sanitizeInterestToken("  Trains  ")).toBe("Trains");
+      expect(sanitizeInterestToken("  autism  ")).toBe("");
+    });
+
+    it("returns empty string for empty input", () => {
+      expect(sanitizeInterestToken("")).toBe("");
+      expect(sanitizeInterestToken("   ")).toBe("");
+    });
+
+    it("blocks condition words mid-token (autism-adjacent substring)", () => {
+      // "autistic" contains the banned substring
+      expect(sanitizeInterestToken("autistic")).toBe("");
     });
   });
 });

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sprout, Check, MessageSquare, ChevronDown, Clock } from "lucide-react";
+import { Sprout, Check, MessageSquare, ChevronDown, Clock, Heart } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity } from "../../playbank/content";
 import type { ScoredActivity } from "../../playbank/select";
@@ -32,12 +32,18 @@ export default function DailyPlayCard({
 }) {
   const [open, setOpen] = useState(false);
   const { t, uiLang } = useLanguage();
-  const { reason } = pick;
+  const { reason, matchedInterest } = pick;
   const activity = localizeActivity(pick.activity, uiLang);
 
+  // CI-29: interest-match why-line variants (FIX 2: no effect-verb on child capacity;
+  // FIX 5: parent-facing "about the child", never kid-companion second-person).
   const why =
     reason === "goal-match" && goalLabel
       ? t("play.whyGoal", { goal: goalLabel, name: childName })
+      : reason === "interest-match" && matchedInterest
+      ? t("play.whyInterestStage", { name: childName, interest: matchedInterest })
+      : reason === "concern-match" && matchedInterest
+      ? t("play.whyInterestConcern", { name: childName, interest: matchedInterest })
       : reason === "concern-match"
       ? t("play.whyConcern", { name: childName })
       : t("play.whyStage", { name: childName });
@@ -62,6 +68,19 @@ export default function DailyPlayCard({
             <Clock className="w-3 h-3" /> {t("play.min", { n: activity.durationMin })}
           </span>
         </div>
+
+        {/* CI-29: Interest-match chip — only when themeableContextSlot=true AND
+            a sanitized interest was matched. Tone=lav per design spec.
+            Speaks to the parent about the child (never kid-companion). */}
+        {reason === "interest-match" && matchedInterest && (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold mt-2"
+            style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
+          >
+            <Heart className="w-3 h-3" />
+            {t("play.interestMatchChip", { name: childName, interest: matchedInterest })}
+          </span>
+        )}
 
         {/* What it builds — the developmental "why", stated plainly */}
         <p className="text-[15px] leading-relaxed mt-3" style={{ color: INK, textWrap: "pretty" } as React.CSSProperties}>

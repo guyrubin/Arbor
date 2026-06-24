@@ -5,11 +5,44 @@
  * with in their log. Deterministic given a daySeed, so "today's pick" is stable
  * across a day and varies day to day. Falls back to band-only when logs are
  * sparse — never a cold-start failure.
+ *
+ * CI-29: adds a deterministic interest-boost (1.3×) for activities whose
+ * themeableContextSlot=true when the parent has recorded interests. The
+ * interest framing is a relevance re-rank only — developmental content
+ * (whatItBuilds/steps/items) is byte-identical. LLM theme-rewrite is fenced
+ * OUT of this phase (separate clinical+cost gate per CIL para 2).
  */
 
 import {
   PLAY_ACTIVITIES, bandForAge, type PlayActivity, type PlayBand, type PlayDomain,
 } from "./content";
+
+// CI-29 / FIX 3: sanitize a parent-typed interest token before it surfaces in
+// card copy. Runs the CONDITIONS lexicon from outputScreen.ts (same source of
+// truth). If the token matches, it is neutralized to empty-string — the
+// interest is silently dropped from the why-line so a condition word
+// (e.g. "autism", "speech delay") can never appear as "[name]'s love of autism".
+// This is a deterministic regex lint, not an LLM call (screenHookRequired=false
+// for Phase 1 per clinical gate).
+const CONDITIONS_RE =
+  /autism|autistic|adhd|add\b|asperger|ocd|odd\b|bipolar|depress(?:ion|ive)|anxiety disorder|dyslexia|dyspraxia|apraxia|intellectual disability|developmental delay|sensory processing disorder|attachment disorder|conduct disorder|ptsd|tourette/i;
+
+/** Banned interest-display strings from the CI-29 clinical gate. */
+const BANNED_INTEREST_TOKENS_RE =
+  /restricted interests?|repetitive interests?|narrow(?:ing)? interests?|intense interest|fixat(?:ion|ed)|obsess(?:ion|ive|ed)|perseverat(?:ion|ive)|hyperfocus|special interest/i;
+
+/**
+ * Sanitize a raw parent-typed interest token for use in card copy.
+ * Returns the trimmed token if safe, or an empty string if the token contains
+ * a CONDITIONS word or a banned clinical noun (FIX 3 + FIX 1).
+ */
+export function sanitizeInterestToken(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (CONDITIONS_RE.test(trimmed)) return "";
+  if (BANNED_INTEREST_TOKENS_RE.test(trimmed)) return "";
+  return trimmed;
+}
 
 export interface PlaySelectContext {
   ageYears: number;
@@ -26,6 +59,14 @@ export interface PlaySelectContext {
   recentlyDoneIds?: string[];
   /** Stable per-day seed so the pick doesn't churn within a day. */
   daySeed?: number;
+  /**
+   * CI-29: Parent-recorded interests (from ChildProfile.interests).
+   * When non-empty, activities with themeableContextSlot=true receive a 1.3×
+   * interest-boost — a relevance re-rank, not a developmental claim.
+   * Tokens are pre-sanitized via sanitizeInterestToken before this context
+   * is constructed (FIX 3: no condition word reaches card copy).
+   */
+  interests?: string[];
 }
 
 export interface ScoredActivity {
@@ -34,8 +75,17 @@ export interface ScoredActivity {
   /**
    * Why it surfaced, for an honest "because…" line in the UI.
    * CI-28 adds "goal-match": the parent explicitly set a focus for this domain.
+   * CI-29 adds "interest-match": the activity has themeableContextSlot=true and
+   * the child has recorded interests. The why-line references interests[0].
+   * Reason precedence: goal-match > concern-match > interest-match > stage-match.
    */
-  reason: "concern-match" | "stage-match" | "goal-match";
+  reason: "concern-match" | "stage-match" | "goal-match" | "interest-match";
+  /**
+   * CI-29: The sanitized interest token that drove an interest-match reason.
+   * Only set when reason === "interest-match". Used by DailyPlayCard to render
+   * "Matched to [name]'s love of [interest]" without any further processing.
+   */
+  matchedInterest?: string;
 }
 
 /** Map a logged behaviour type to the developmental domain it stresses. */
@@ -83,6 +133,11 @@ export function rankDailyPlay(ctx: PlaySelectContext): ScoredActivity[] {
   const goals = ctx.goalDomains ?? [];
   const done = new Set(ctx.recentlyDoneIds ?? []);
   const daySeed = ctx.daySeed ?? 0;
+  // CI-29: sanitize interest tokens at ranking time so no condition word
+  // can survive into card copy (FIX 3). Stable first element = deterministic
+  // "love of [interest]" display within a day.
+  const interests = (ctx.interests ?? []).map(sanitizeInterestToken).filter(Boolean);
+  const hasInterests = interests.length > 0;
 
   return PLAY_ACTIVITIES
     .map((activity) => {
@@ -96,15 +151,23 @@ export function rankDailyPlay(ctx: PlaySelectContext): ScoredActivity[] {
       const concernIdx = concerns.indexOf(activity.domain);
       const concernBoost = concernIdx === -1 ? 1 : 1.8 - concernIdx * 0.25;
       const novelty = done.has(activity.id) ? 0.4 : 1;
-      const score = bandScore * goalBoost * concernBoost * novelty + jitter(activity.id, daySeed) * 0.05;
-      // Reason precedence: goal-match > concern-match > stage-match.
+      // CI-29: interest-boost (1.3×) applies to themeable activities when
+      // interests are recorded. Lower than goal (1.6×) and top concern (1.8×)
+      // so it nudges without overriding explicit parent intent.
+      const interestBoost = hasInterests && activity.themeableContextSlot ? 1.3 : 1;
+      const score = bandScore * goalBoost * concernBoost * interestBoost * novelty + jitter(activity.id, daySeed) * 0.05;
+      // Reason precedence: goal-match > concern-match > interest-match > stage-match.
+      const isInterestMatch = hasInterests && !!activity.themeableContextSlot && matchesBand(activity, band);
       const reason: ScoredActivity["reason"] =
         goalMatch && matchesBand(activity, band)
           ? "goal-match"
           : concernIdx !== -1 && matchesBand(activity, band)
           ? "concern-match"
+          : isInterestMatch
+          ? "interest-match"
           : "stage-match";
-      return { activity, score, reason };
+      const matchedInterest = reason === "interest-match" ? interests[0] : undefined;
+      return { activity, score, reason, matchedInterest };
     })
     .sort((a, b) => b.score - a.score);
 }

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Download, Trash2, Camera, Sparkles } from "lucide-react";
+import { X, Download, Trash2, Camera, Sparkles, Check, Plus } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { exportChildData, downloadJson } from "../../lib/childData";
 import { ChildProfile } from "../../types";
 import { Avatar } from "../ui/Avatar";
@@ -13,12 +14,30 @@ import { uploadChildPhoto } from "../../lib/storage";
 import AvatarCreator from "./AvatarCreator";
 import RewardsCard from "./RewardsCard";
 
+// CI-29: The 12 curated interest suggestion keys (i18n-resolved at render).
+// Banned clinical/behavioral strings are never in this list (FIX 1 compliance).
+const INTEREST_SUGGESTION_KEYS = [
+  "interest.trains",
+  "interest.dinosaurs",
+  "interest.animals",
+  "interest.trucks",
+  "interest.superheroes",
+  "interest.princesses",
+  "interest.cooking",
+  "interest.music",
+  "interest.water",
+  "interest.space",
+  "interest.building",
+  "interest.nature",
+] as const;
+
 const RISK_LEVELS: ChildProfile["riskLevel"][] = ["Low", "Moderate", "High"];
 
 export default function ProfileEditDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { activeChild, updateChild, deleteChild, profiles } = useProfile();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(activeChild.name);
   const [age, setAge] = useState(activeChild.age);
@@ -32,6 +51,12 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const [photoBusy, setPhotoBusy] = useState(false);
   const [showCreator, setShowCreator] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // CI-29: Interests state — suggestion toggles + custom additions.
+  // Resolved suggestion labels (EN/HE) mapped from their i18n keys.
+  const suggestionLabels = INTEREST_SUGGESTION_KEYS.map((k) => t(k));
+  const [activeInterests, setActiveInterests] = useState<string[]>(activeChild.interests ?? []);
+  const [interestInput, setInterestInput] = useState("");
 
   const onPickPhoto = async (file?: File) => {
     if (!file) return;
@@ -71,6 +96,9 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setRiskLevel(activeChild.riskLevel);
     setPhotoUrl(activeChild.photoUrl);
     setAvatarMeta(activeChild.avatar);
+    // CI-29: restore saved interests on re-open.
+    setActiveInterests(activeChild.interests ?? []);
+    setInterestInput("");
   }, [open, activeChild]);
 
   const handleExport = async () => {
@@ -100,6 +128,26 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     }
   };
 
+  // CI-29: Toggle a suggestion chip on/off.
+  const toggleSuggestion = (label: string) => {
+    setActiveInterests((prev) =>
+      prev.includes(label) ? prev.filter((i) => i !== label) : [...prev, label]
+    );
+  };
+
+  // CI-29: Add a custom free-text interest (trim, dedup, max 40 chars).
+  const addCustomInterest = () => {
+    const trimmed = interestInput.trim().slice(0, 40);
+    if (!trimmed || activeInterests.includes(trimmed)) { setInterestInput(""); return; }
+    setActiveInterests((prev) => [...prev, trimmed]);
+    setInterestInput("");
+  };
+
+  // CI-29: Remove a custom (non-suggestion) interest chip.
+  const removeInterest = (label: string) => {
+    setActiveInterests((prev) => prev.filter((i) => i !== label));
+  };
+
   const save = async () => {
     setSaving(true);
     try {
@@ -113,6 +161,9 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         riskLevel,
         photoUrl: photoUrl || "",
         ...(avatarMeta ? { avatar: avatarMeta } : {}),
+        // CI-29: persist interests[] + ISO timestamp (parent-written only, COPPA-gated).
+        interests: activeInterests,
+        interestsUpdatedAt: new Date().toISOString(),
       });
       onClose();
     } finally {
@@ -186,6 +237,92 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Languages <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(comma separated)</span></label>
                 <input value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
+              </div>
+
+              {/* CI-29: Interests section — parent-entered only, never child-facing.
+                  Preference record only; never interpreted as a clinical/behavioral signal.
+                  Banned: restricted/repetitive/fixation/perseveration/hyperfocus (FIX 1). */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>
+                  {t("profile.interests.label", { name: name.trim() || activeChild.name })}
+                </p>
+                <p className="text-[11px] mt-0.5" style={{ color: "var(--arbor-faint)" }}>
+                  {t("profile.interests.helper", { name: name.trim() || activeChild.name })}
+                </p>
+                {/* Suggestion chips */}
+                <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Interests">
+                  {suggestionLabels.map((label) => {
+                    const isActive = activeInterests.includes(label);
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => toggleSuggestion(label)}
+                        aria-pressed={isActive}
+                        aria-label={isActive ? `${label}, selected` : `${label}, not selected`}
+                        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition"
+                        style={isActive
+                          ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.40)", color: "var(--arbor-green-ink)" }
+                          : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-muted)" }}
+                      >
+                        {isActive && <Check className="w-3 h-3" />}
+                        {label}
+                      </button>
+                    );
+                  })}
+                  {/* Custom chips (non-suggestion) with X dismiss */}
+                  {activeInterests
+                    .filter((i) => !suggestionLabels.includes(i))
+                    .map((label) => (
+                      <span
+                        key={label}
+                        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold"
+                        style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.40)", color: "var(--arbor-green-ink)" }}
+                      >
+                        {label}
+                        <button
+                          type="button"
+                          onClick={() => removeInterest(label)}
+                          aria-label={`Remove ${label}`}
+                          className="ml-0.5 rounded-full p-0.5 transition"
+                          style={{ color: "var(--arbor-green-ink)" }}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+                {/* Free-text add row */}
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    value={interestInput}
+                    onChange={(e) => setInterestInput(e.target.value.slice(0, 40))}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomInterest(); } }}
+                    placeholder={t("profile.interests.addPlaceholder")}
+                    aria-label="Add a custom interest"
+                    maxLength={40}
+                    className="flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none"
+                    style={inputStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomInterest}
+                    aria-label="Add interest"
+                    className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold transition"
+                    style={{ color: "var(--arbor-green-ink)" }}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {t("profile.interests.addBtn")}
+                  </button>
+                </div>
+                {/* Last-updated line (Flow 3: returning parent) */}
+                {activeChild.interestsUpdatedAt && (
+                  <p className="text-[11px] mt-1" style={{ color: "var(--arbor-faint)" }}>
+                    {t("profile.interests.updated", {
+                      when: new Date(activeChild.interestsUpdatedAt).toLocaleDateString(),
+                    })}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
