@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
+import DailyPlanCard from "../overview/DailyPlanCard";
 import CourseCard from "../overview/CourseCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
 import SessionLengthChips from "../practice/SessionLengthChips";
@@ -12,6 +13,9 @@ import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivit
 import { recommendCourse, READINESS_COURSES, localizeCourse } from "../../playbank/courses";
 import { type PlayActivity } from "../../playbank/content";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
+import { buildDailyPlan, buildGoalObservation, estimateLoggedDayCount, type DailyPlan } from "../../practice/dailyPlan";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import type { GoalObservation } from "../../practice/dailyPlan";
 
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
    matched to their band and recently-logged concerns. The single hero pick also
@@ -112,6 +116,92 @@ export default function DailyPlayTab() {
     setActiveTab("coach");
   };
 
+  // ── CI-30: Daily Plan Generator ───────────────────────────────────────────
+  // The plan is computed once per daySeed from the same ranked picks already
+  // in scope. No new API call, no new selector — reuses rankDailyPlay output.
+
+  // CI-30: goal observations sub-collection — written when parent submits the
+  // post-activity observation. arbor-safety COPPA review gates prod deploy
+  // (reusing CI-23/CI-24/CI-28 write-path precedent; requiredFix #4).
+  const goalObservationsCol = useChildCollection<GoalObservation>(
+    childProfile.id,
+    "goalObservations",
+    { orderByField: "timestamp", orderDir: "desc", max: 50 }
+  );
+
+  // Estimate distinct logged days for the sparse-data gate (5+ = personalized).
+  const loggedDayCount = useMemo(
+    () => estimateLoggedDayCount(behaviorLogs.map((l) => ({ timestamp: l.timestamp }))),
+    [behaviorLogs]
+  );
+
+  // Build the daily plan from the top-ranked pick.
+  const dailyPlan: DailyPlan | null = useMemo(
+    () =>
+      buildDailyPlan({
+        picks,
+        activeGoals,
+        childName: firstName,
+        loggedDayCount,
+        nowMs: Date.now(),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [picks, activeGoals, firstName, loggedDayCount]
+  );
+
+  // Whether the plan card has been marked done today (per-child localStorage).
+  const [planDone, setPlanDone] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`arbor.plan.done.${childProfile.id}`);
+      if (!stored) return false;
+      const { date, activityId } = JSON.parse(stored) as { date: string; activityId: string };
+      const today = new Date().toISOString().slice(0, 10);
+      return date === today && activityId === dailyPlan?.scoredActivity.activity.id;
+    } catch { return false; }
+  });
+
+  const handlePlanDid = (plan: DailyPlan) => {
+    setPlanDone(true);
+    try {
+      localStorage.setItem(
+        `arbor.plan.done.${childProfile.id}`,
+        JSON.stringify({ date: new Date().toISOString().slice(0, 10), activityId: plan.scoredActivity.activity.id })
+      );
+    } catch { /* ignore */ }
+    toast(`Nice. Added to ${firstName}'s day.`, "success");
+  };
+
+  const handlePlanCoach = (plan: DailyPlan) => {
+    const goal = plan.goal ? ` working on ${plan.goal.label}` : "";
+    setChatInput(
+      `We're going to try "${plan.scoredActivity.activity.title}" with ${firstName} today${goal}. How can I get the most out of it, and what should I watch for?`
+    );
+    setActiveTab("coach");
+  };
+
+  const handlePlanObservation = async (text: string): Promise<void> => {
+    if (!dailyPlan) return;
+    // COPPA/GDPR: parent-attributed observation — never a progress score or verdict.
+    // arbor-safety review gates prod (requiredFix #4).
+    const obs = buildGoalObservation({ plan: dailyPlan, observationText: text });
+    await goalObservationsCol.upsert(obs);
+    toast(`Nice — added to ${firstName}'s record.`, "success");
+  };
+
+  // CI-31: DailyPlanCard carries its own session length derived from the plan's
+  // defaultSessionLength (weekend=extended, weekday=standard). The parent can
+  // override via the chip row; we store it per-child so it persists within a day.
+  const [planSessionLength, setPlanSessionLength] = useState<SessionLength>(() => {
+    try {
+      return (localStorage.getItem(`arbor.plan.duration.${childProfile.id}`) as SessionLength) || (dailyPlan?.defaultSessionLength ?? "standard");
+    } catch { return dailyPlan?.defaultSessionLength ?? "standard"; }
+  });
+
+  const handlePlanSessionLength = (v: SessionLength) => {
+    setPlanSessionLength(v);
+    try { localStorage.setItem(`arbor.plan.duration.${childProfile.id}`, v); } catch { /* ignore */ }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
@@ -146,6 +236,24 @@ export default function DailyPlayTab() {
           </button>
         </div>
       </header>
+
+      {/* CI-30: DailyPlanCard hero — goal-linked daily plan, mounts above existing CourseCard.
+          No new tab, no new sidebar item, no new tab registration.
+          Post-activity observation writes to goalObservations sub-collection (COPPA-reviewed path). */}
+      <div className="max-w-[640px]">
+        <DailyPlanCard
+          plan={dailyPlan}
+          noGoal={activeGoals.length === 0}
+          childName={firstName}
+          done={planDone}
+          onDid={handlePlanDid}
+          onCoach={handlePlanCoach}
+          onObservationSubmit={handlePlanObservation}
+          sessionLength={planSessionLength}
+          onSessionLengthChange={handlePlanSessionLength}
+          onSetGoal={() => setGoalModalOpen(true)}
+        />
+      </div>
 
       <div className="max-w-[640px]">
         <CourseCard
