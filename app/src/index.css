@@ -29,9 +29,12 @@
   --arbor-clay:           #34b277;
   --arbor-clay-deep:      #2a9c66;
   --arbor-clay-dim:       rgba(52, 178, 119, 0.12);
+  --arbor-clay-border:    rgba(52, 178, 119, 0.35); /* hairline on green-tinted surfaces */
   --arbor-green-soft:     #e4f4ec;   /* mint pill: active nav, soft chips */
   --arbor-green-ink:      #1f8a5a;   /* text on green-soft (AA on mint) */
   --arbor-sage:           #34b277;
+  /* Canonical primary CTA gradient — replaces the recurring #3cc081 literal. */
+  --arbor-gradient-primary: linear-gradient(135deg, #3cc081, var(--arbor-clay) 60%, var(--arbor-clay-deep));
 
   /* Pastel functional accents — soft tint bg, saturated icon/fill, AA-safe ink for text */
   --arbor-peach:      #d9763f;  --arbor-peach-soft:  #fceadb;  --arbor-peach-ink:  #a8511c;

@@ -83,7 +83,7 @@ export default function DailyPlanCard({
     return (
       <section
         aria-label={t("plan.card.eyebrow")}
-        className="rounded-[22px] overflow-hidden"
+        className="rounded-[var(--r-xl)] overflow-hidden"
         style={{
           background: "var(--arbor-paper-elevated)",
           border: `1px solid ${RULE}`,
@@ -143,7 +143,7 @@ export default function DailyPlanCard({
     return (
       <section
         aria-label={t("plan.card.eyebrow")}
-        className="rounded-[22px] overflow-hidden"
+        className="rounded-[var(--r-xl)] overflow-hidden"
         style={{
           background: "var(--arbor-paper-elevated)",
           border: `1px solid ${RULE}`,
@@ -185,9 +185,9 @@ export default function DailyPlanCard({
               <button
                 type="submit"
                 disabled={!observationText.trim() || submitting}
-                className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-2.5 transition disabled:opacity-50"
+                className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 min-h-[44px] transition disabled:opacity-50"
                 style={{
-                  background: `linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))`,
+                  background: "var(--arbor-gradient-primary)",
                   color: "#fff",
                   boxShadow: "var(--shadow-green)",
                 }}
@@ -206,7 +206,7 @@ export default function DailyPlanCard({
     return (
       <section
         aria-label={t("plan.card.eyebrow")}
-        className="rounded-[22px] overflow-hidden"
+        className="rounded-[var(--r-xl)] overflow-hidden"
         style={{
           background: "var(--arbor-paper-elevated)",
           border: `1px solid ${RULE}`,
@@ -254,7 +254,7 @@ export default function DailyPlanCard({
   return (
     <section
       aria-label={t("plan.card.eyebrow")}
-      className="rounded-[22px] overflow-hidden"
+      className="rounded-[var(--r-xl)] overflow-hidden"
       style={{
         background: "var(--arbor-paper-elevated)",
         border: `1px solid ${RULE}`,
@@ -388,8 +388,7 @@ export default function DailyPlanCard({
             }}
             className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
             style={{
-              background:
-                "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))",
+              background: "var(--arbor-gradient-primary)",
               color: "#fff",
               boxShadow: "var(--shadow-green)",
             }}

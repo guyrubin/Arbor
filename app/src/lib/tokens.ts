@@ -33,6 +33,8 @@ export const CSS_VARS = {
   clay: "var(--arbor-clay)",
   clayDeep: "var(--arbor-clay-deep)",
   clayDim: "var(--arbor-clay-dim)",
+  clayBorder: "var(--arbor-clay-border)",
+  gradientPrimary: "var(--arbor-gradient-primary)",
   greenSoft: "var(--arbor-green-soft)",
   greenInk: "var(--arbor-green-ink)",
   sage: "var(--arbor-sage)",

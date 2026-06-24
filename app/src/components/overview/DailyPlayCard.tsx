@@ -72,7 +72,7 @@ export default function DailyPlayCard({
 
   return (
     <section
-      className="rounded-[22px] overflow-hidden"
+      className="rounded-[var(--r-xl)] overflow-hidden"
       style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
       <div className="p-6">
@@ -161,7 +161,7 @@ export default function DailyPlayCard({
             className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] disabled:cursor-default"
             style={done
               ? { background: GREEN_SOFT, color: GREEN }
-              : { background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", color: "#fff", boxShadow: "var(--shadow-green)" }}
+              : { background: "var(--arbor-gradient-primary)", color: "#fff", boxShadow: "var(--shadow-green)" }}
           >
             <Check className="w-4 h-4" /> {done ? t("play.added", { name: childName }) : t("play.did")}
           </button>

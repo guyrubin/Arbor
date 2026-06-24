@@ -224,11 +224,11 @@ export default function DailyPlayTab() {
           <button
             onClick={() => setGoalModalOpen(true)}
             aria-label="Manage focus goals"
-            className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[12.5px] font-bold transition mt-1"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 min-h-[44px] text-[12.5px] font-bold transition mt-1"
             style={{
               background: activeGoals.length > 0 ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",
               color: activeGoals.length > 0 ? "var(--arbor-green-ink)" : "var(--arbor-muted)",
-              border: `1px solid ${activeGoals.length > 0 ? "rgba(52,178,119,0.35)" : "var(--arbor-rule)"}`,
+              border: `1px solid ${activeGoals.length > 0 ? "var(--arbor-clay-border)" : "var(--arbor-rule)"}`,
             }}
           >
             <Target className="w-3.5 h-3.5" />

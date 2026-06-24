@@ -203,7 +203,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     type="button"
                     onClick={() => setShowCreator(true)}
                     className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition"
-                    style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }}
+                    style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" }}
                   >
                     <Sparkles className="w-3.5 h-3.5" /> {photoUrl ? "New avatar" : "Create avatar"}
                   </button>
@@ -262,7 +262,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                         aria-label={isActive ? `${label}, selected` : `${label}, not selected`}
                         className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition"
                         style={isActive
-                          ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.40)", color: "var(--arbor-green-ink)" }
+                          ? { background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-clay-border)", color: "var(--arbor-green-ink)" }
                           : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-muted)" }}
                       >
                         {isActive && <Check className="w-3 h-3" />}
@@ -277,14 +277,14 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                       <span
                         key={label}
                         className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold"
-                        style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.40)", color: "var(--arbor-green-ink)" }}
+                        style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-clay-border)", color: "var(--arbor-green-ink)" }}
                       >
                         {label}
                         <button
                           type="button"
                           onClick={() => removeInterest(label)}
                           aria-label={`Remove ${label}`}
-                          className="ml-0.5 rounded-full p-0.5 transition"
+                          className="ml-0.5 inline-flex items-center justify-center rounded-full -my-1.5 -me-1.5 p-1.5 transition"
                           style={{ color: "var(--arbor-green-ink)" }}
                         >
                           <X className="w-3 h-3" />
@@ -344,7 +344,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                       type="button"
                       onClick={() => setRiskLevel(lvl)}
                       className="flex-1 py-2 rounded-xl text-xs font-bold transition"
-                      style={riskLevel === lvl ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                      style={riskLevel === lvl ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                     >
                       {lvl}
                     </button>
@@ -356,7 +356,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                 onClick={save}
                 disabled={saving}
                 className="w-full mt-2 py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-60"
-                style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+                style={{ background: "var(--arbor-gradient-primary)" }}
               >
                 {saving ? "Saving…" : "Save changes"}
               </button>

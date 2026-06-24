@@ -205,7 +205,7 @@ export default function GoalBuilderModal({
             style={{
               background: PAPER,
               border: `1px solid ${RULE}`,
-              boxShadow: "0 24px 60px rgba(41,51,63,0.18)",
+              boxShadow: "var(--shadow-lg)",
               maxHeight: "90vh",
               overflowY: "auto",
             }}
@@ -235,7 +235,7 @@ export default function GoalBuilderModal({
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="flex-shrink-0 p-1.5 rounded-lg ml-3 transition"
+                className="flex-shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg ml-3 transition"
                 style={{ border: `1px solid ${RULE}`, color: MUTED }}
               >
                 <X className="w-4 h-4" />
@@ -274,7 +274,7 @@ export default function GoalBuilderModal({
                             <button
                               onClick={() => handleRemove(goal.goalId)}
                               aria-label={`Remove ${goal.label}`}
-                              className="transition p-1"
+                              className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition"
                               style={{ color: MUTED }}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -430,8 +430,7 @@ export default function GoalBuilderModal({
                     onClick={handleSave}
                     className="w-full inline-flex items-center justify-center gap-2 font-extrabold text-[15px] text-white rounded-2xl py-3.5 transition active:scale-[0.98]"
                     style={{
-                      background:
-                        "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))",
+                      background: "var(--arbor-gradient-primary)",
                       boxShadow: "var(--shadow-green)",
                     }}
                   >
