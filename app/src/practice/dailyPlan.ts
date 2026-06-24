@@ -103,7 +103,7 @@ const WHY_LINE_TEMPLATES = {
   weekendNoGoal:
     "A weekend plan — a little more time today. A good fit for where {name} is right now. Developmentally informed, grounded in CDC/AAP/ASHA/WHO.",
   sparse:
-    "Sharpens as you log more days. Developmentally informed, grounded in CDC/AAP/ASHA/WHO.",
+    "Gets more personalized as you log more days. Developmentally informed, grounded in CDC/AAP/ASHA/WHO.",
 };
 
 // Assert templates are clean at module load time.

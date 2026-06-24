@@ -64,7 +64,7 @@ describe("assembleWhyLine — template variants (screenHookRequired gate)", () =
       sparse: true,
     });
     expect(whyLine).toBe(
-      "Sharpens as you log more days. Developmentally informed, grounded in CDC/AAP/ASHA/WHO."
+      "Gets more personalized as you log more days. Developmentally informed, grounded in CDC/AAP/ASHA/WHO."
     );
     expect(wasFlagged).toBe(false);
   });
@@ -176,7 +176,7 @@ describe("screenHookRequired gate — condition-name injection must be blocked",
     expect(wasFlagged).toBe(true);
     // The displayed line must be the safe sparse fallback, never the flagged string.
     expect(whyLine).toBe(
-      "Sharpens as you log more days. Developmentally informed, grounded in CDC/AAP/ASHA/WHO."
+      "Gets more personalized as you log more days. Developmentally informed, grounded in CDC/AAP/ASHA/WHO."
     );
     // The returned why-line itself must pass the screen.
     expect(screenModelOutputLexical(whyLine).flagged).toBe(false);
@@ -340,7 +340,7 @@ describe("buildDailyPlan", () => {
     });
     expect(plan).not.toBeNull();
     expect(plan!.sparse).toBe(true);
-    expect(plan!.whyLine).toContain("Sharpens as you log more days");
+    expect(plan!.whyLine).toContain("Gets more personalized as you log more days");
     expect(plan!.scoredActivity.activity.id).toBe("test-act-1");
   });
 

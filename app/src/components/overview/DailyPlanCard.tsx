@@ -25,7 +25,7 @@ import SessionLengthChips from "../practice/SessionLengthChips";
  *
  * Empty states:
  *   - plan === null && noGoal: renders the NO-GOAL state ("Set a focus goal to get today's plan.").
- *   - plan !== null && plan.sparse: activity IS shown, why-line reads "Sharpens as you log more days."
+ *   - plan !== null && plan.sparse: activity IS shown, why-line reads "Gets more personalized as you log more days."
  *   - plan !== null: happy path.
  */
 

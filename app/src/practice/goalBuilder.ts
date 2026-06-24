@@ -114,7 +114,7 @@ export const GOAL_TILES: GoalTile[] = [
   },
   {
     id: "transitions",
-    label: "Switching between activities without a meltdown",
+    label: "Moving between activities more smoothly",
     domainId: "regulation",
     domainColor: DOMAIN_COLOR.regulation,
     icon: "RefreshCw",

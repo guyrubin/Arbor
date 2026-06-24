@@ -29,7 +29,7 @@ const CONDITIONS_RE =
 
 /** Banned interest-display strings from the CI-29 clinical gate. */
 const BANNED_INTEREST_TOKENS_RE =
-  /restricted interests?|repetitive interests?|narrow(?:ing)? interests?|intense interest|fixat(?:ion|ed)|obsess(?:ion|ive|ed)|perseverat(?:ion|ive)|hyperfocus|special interest/i;
+  /restricted interests?|repetitive interests?|narrow(?:ing)? interests?|intense interest|fixat(?:ion|ed)|obsess(?:ion|ive|ed)|perseverat(?:ion|ive)|hyperfocus|special interest|stim(?:ming|s)?\b|hyper-?fixat(?:ion|ed)|preoccupation/i;
 
 /**
  * Sanitize a raw parent-typed interest token for use in card copy.
