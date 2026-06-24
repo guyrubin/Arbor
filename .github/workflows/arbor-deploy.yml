@@ -165,7 +165,7 @@ jobs:
       - name: Promote candidate to 100%
         run: |
           gcloud run services update-traffic arbor-api \
-            --region europe-west4 --project "$PROJECT_ID" --to-latest=100
+            --region europe-west4 --project "$PROJECT_ID" --to-latest
 
       # Build + deploy hosting in the SAME gated job (avoids new-client / old-API split-brain).
       - name: Build client
