@@ -15,6 +15,31 @@ export const CHILD_SUBCOLLECTIONS = [
   "insights",
   // C4: parent-logged physical measurements (append-only longitudinal record).
   "growthEntries",
+  // GDPR/COPPA completeness fix (caps-reconcile): register EVERY per-child
+  // useChildCollection sink so it is included in the data export (Art. 15/20)
+  // AND hard-erased on deletion (Art. 17) + counted in the deletion receipt.
+  // Previously these escaped both. The guard test childData.subcollections.test.ts
+  // asserts this list stays a superset of all useChildCollection("…") names so
+  // a new sink can never silently bypass export/erasure again.
+  "conversations",
+  "playLogs",
+  "screenings",
+  "devScoreSnapshots",
+  "routines",
+  "goalObservations",
+  "goals",
+  "practiceEvents",
+  "speechAttempts",
+  "langObs",
+  "mimicSessions",
+  "missionRecords",
+  "heroRuns",
+  "journeyObjectives",
+  "adventureResults",
+  "bandSnapshots",
+  "appointments",
+  "apptQuestions",
+  "wellness",
 ];
 
 const remoteActive = (uid?: string) =>
