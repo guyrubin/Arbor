@@ -35,6 +35,11 @@
   --arbor-sage:           #34b277;
   /* Canonical primary CTA gradient — replaces the recurring #3cc081 literal. */
   --arbor-gradient-primary: linear-gradient(135deg, #3cc081, var(--arbor-clay) 60%, var(--arbor-clay-deep));
+  /* Lav (Practice CTA) gradient + shadow tokens — replaces hardcoded literals in OverviewTab. */
+  --arbor-gradient-lav: linear-gradient(135deg, var(--arbor-lav), var(--arbor-lav-ink));
+  --shadow-lav: 0 8px 20px rgba(122,107,216,0.28);
+  /* Progress bar gradient — replaces hardcoded literal in ChildProfile. */
+  --arbor-gradient-progress: linear-gradient(90deg, var(--arbor-clay), var(--arbor-clay-deep));
 
   /* Pastel functional accents — soft tint bg, saturated icon/fill, AA-safe ink for text */
   --arbor-peach:      #d9763f;  --arbor-peach-soft:  #fceadb;  --arbor-peach-ink:  #a8511c;

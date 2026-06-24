@@ -557,6 +557,13 @@ const en: Dict = {
   "sm.extra.handoffSub": "Care Network · Reports & Handoffs",
   "sm.extra.scholar": "Scholar Frameworks",
   "sm.extra.scholarSub": "Ask Arbor",
+  // LANG-15: Word World Tab
+  "wordworld.sourceFraming": "developmentally informed, grounded in CDC/AAP/ASHA/WHO",
+  "wordworld.refresh": "Refresh",
+  "wordworld.skip": "Skip",
+  "wordworld.showLess": "Show less",
+  "wordworld.seeAll": "See all ({n})",
+  "wordworld.copied": "Copied",
   // CI-30: Daily Plan Card
   "plan.card.eyebrow": "Today's plan",
   "plan.card.noGoalBody": "Set a focus goal to get today's plan.",
@@ -1158,6 +1165,13 @@ const he: Dict = {
   "sm.extra.handoffSub": "רשת תמיכה · דוחות והעברות",
   "sm.extra.scholar": "מסגרות מומחה",
   "sm.extra.scholarSub": "שאל את ארבור",
+  // LANG-15: Word World Tab (Hebrew)
+  "wordworld.sourceFraming": "מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO",
+  "wordworld.refresh": "רענון",
+  "wordworld.skip": "דלג",
+  "wordworld.showLess": "הצג פחות",
+  "wordworld.seeAll": "הצג הכל ({n})",
+  "wordworld.copied": "הועתק",
   // CI-30: Daily Plan Card (Hebrew)
   "plan.card.eyebrow": "התוכנית של היום",
   "plan.card.noGoalBody": "הגדירו מטרת מיקוד כדי לקבל את התוכנית של היום.",

@@ -32,6 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { SectionCard, IconBadge, cardCls } from "../ui/kit";
 import { PASTEL } from "../../lib/tokens";
@@ -91,7 +92,6 @@ function ModuleCard({ module, selected, onSelect }: ModuleCardProps) {
         borderColor: selected ? "var(--arbor-clay)" : "var(--arbor-rule)",
         borderWidth: selected ? 2 : 1,
         background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",
-        outline: "none",
       }}
     >
       <IconBadge tone="sky" size={44}>
@@ -113,6 +113,7 @@ function ModuleCard({ module, selected, onSelect }: ModuleCardProps) {
 /* ─── Main component ────────────────────────────────────────────────────── */
 export default function WordWorldTab() {
   const { childProfile } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
 
   const ageBand = useMemo(() => ageBandForAge(childProfile.age), [childProfile.age]);
@@ -194,7 +195,7 @@ export default function WordWorldTab() {
       {/* ── Module picker ─────────────────────────────────────────────── */}
       <SectionCard title="Word World" icon={<BookOpen className="w-5 h-5" />} tone="mint">
         <p className="text-[12px] mb-4" style={{ color: "var(--arbor-muted)" }}>
-          {SOURCE_FRAMING_DISPLAY}
+          {t("wordworld.sourceFraming")}
         </p>
 
         {/* 3-column grid on sm+, horizontal scroll on small phones */}
@@ -240,7 +241,7 @@ export default function WordWorldTab() {
                 style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 aria-label="Show a different prompt"
               >
-                <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> Refresh
+                <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> {t("wordworld.refresh")}
               </button>
             )}
           </div>
@@ -276,7 +277,7 @@ export default function WordWorldTab() {
               className="inline-flex items-center text-[13px] font-bold px-4 min-h-[44px] rounded-full"
               style={{ background: "transparent", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
-              Skip
+              {t("wordworld.skip")}
             </button>
           </div>
         </div>
@@ -307,7 +308,7 @@ export default function WordWorldTab() {
                 className="text-[12px] font-bold"
                 style={{ color: "var(--arbor-clay)" }}
               >
-                {showAllWeek ? "Show less" : `See all (${langEvents.length})`}
+                {showAllWeek ? t("wordworld.showLess") : t("wordworld.seeAll", { n: langEvents.length })}
               </button>
             )}
           </>
@@ -328,13 +329,10 @@ export default function WordWorldTab() {
           aria-label="Share note with pediatrician or SLP"
         >
           <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
-          {shareFlash ? "Copied" : "Share note"}
+          {shareFlash ? t("wordworld.copied") : "Share note"}
         </button>
       </div>
     </div>
   );
 }
 
-/* Internal display constant — not exported (use SOURCE_FRAMING from wordWorld.ts for tests). */
-const SOURCE_FRAMING_DISPLAY =
-  "developmentally informed, grounded in CDC/AAP/ASHA/WHO";

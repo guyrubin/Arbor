@@ -16,6 +16,22 @@
  */
 
 import type { PlayDomain } from "../playbank/content";
+import { BRAND_HEX } from "../lib/tokens";
+
+/**
+ * Domain color map — single source of truth for the domain colour dot rendered
+ * in GoalBuilderModal status view. Uses BRAND_HEX constants from tokens.ts so
+ * values stay in sync with the design token palette.
+ * Social domain uses --arbor-peach (#d9763f) — the nearest brand token to the
+ * previous hardcoded #e07b5a (a warm coral with no token counterpart).
+ */
+export const DOMAIN_COLOR: Record<PlayDomain, string> = {
+  cognitive:  BRAND_HEX.lav,    // #7a6bd8
+  regulation: BRAND_HEX.green,  // #34b277 (was #3cc081 — corrected to canonical)
+  social:     BRAND_HEX.peach,  // #d9763f (nearest brand token to #e07b5a)
+  language:   BRAND_HEX.sky,    // #3f8cc9
+  motor:      BRAND_HEX.ochre,  // #c2882a (warm yellow — closest brand token)
+};
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,56 +67,56 @@ export const GOAL_TILES: GoalTile[] = [
     id: "following-instructions",
     label: "Following multi-step instructions",
     domainId: "cognitive",
-    domainColor: "#7a6bd8",
+    domainColor: DOMAIN_COLOR.cognitive,
     icon: "ListChecks",
   },
   {
     id: "separation-settling",
     label: "Settling at drop-off / easing separations",
     domainId: "regulation",
-    domainColor: "#3cc081",
+    domainColor: DOMAIN_COLOR.regulation,
     icon: "DoorOpen",
   },
   {
     id: "taking-turns",
     label: "Taking turns and sharing",
     domainId: "social",
-    domainColor: "#e07b5a",
+    domainColor: DOMAIN_COLOR.social,
     icon: "Users",
   },
   {
     id: "trying-new-foods",
     label: "Trying new foods",
     domainId: "regulation",
-    domainColor: "#3cc081",
+    domainColor: DOMAIN_COLOR.regulation,
     icon: "Utensils",
   },
   {
     id: "bedtime-wind-down",
     label: "Winding down at bedtime",
     domainId: "regulation",
-    domainColor: "#3cc081",
+    domainColor: DOMAIN_COLOR.regulation,
     icon: "Moon",
   },
   {
     id: "big-feelings",
     label: "Naming and managing big feelings",
     domainId: "regulation",
-    domainColor: "#3cc081",
+    domainColor: DOMAIN_COLOR.regulation,
     icon: "Heart",
   },
   {
     id: "early-talking",
     label: "Building early talking / back-and-forth",
     domainId: "language",
-    domainColor: "#3f8cc9",
+    domainColor: DOMAIN_COLOR.language,
     icon: "MessageCircle",
   },
   {
     id: "transitions",
     label: "Switching between activities without a meltdown",
     domainId: "regulation",
-    domainColor: "#3cc081",
+    domainColor: DOMAIN_COLOR.regulation,
     icon: "RefreshCw",
   },
 ];

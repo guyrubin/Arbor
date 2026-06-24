@@ -135,6 +135,7 @@ export default function DailyPlayCard({
         <button
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
+          aria-label={open ? t("play.hide") : t("play.how")}
           className="inline-flex items-center gap-1 text-[13px] font-bold mt-4 transition"
           style={{ color: GREEN }}
         >
@@ -158,6 +159,7 @@ export default function DailyPlayCard({
           <button
             onClick={() => onDid(pick)}
             disabled={done}
+            aria-label={done ? t("play.added", { name: childName }) : t("play.did")}
             className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] disabled:cursor-default"
             style={done
               ? { background: GREEN_SOFT, color: GREEN }

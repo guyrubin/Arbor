@@ -254,6 +254,7 @@ export default function DailyPlanCard({
   return (
     <section
       aria-label={t("plan.card.eyebrow")}
+      aria-live="polite"
       className="rounded-[var(--r-xl)] overflow-hidden"
       style={{
         background: "var(--arbor-paper-elevated)",

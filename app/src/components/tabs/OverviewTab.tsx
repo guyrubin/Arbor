@@ -25,6 +25,7 @@ import DailyPlayCard from "../overview/DailyPlayCard";
 import GoalBuilderPromptCard from "../practice/GoalBuilderPromptCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
+import { BRAND_HEX } from "../../lib/tokens";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
@@ -247,7 +248,7 @@ export default function OverviewTab() {
       >
         {/* Status band */}
         <div className="p-6 md:p-7 flex items-start gap-4 md:gap-5">
-          <div className="w-[60px] h-[60px] md:w-[68px] md:h-[68px] rounded-full p-[3px] flex-shrink-0" style={{ background: "linear-gradient(135deg,#5fce97,var(--arbor-clay))" }}>
+          <div className="w-[60px] h-[60px] md:w-[68px] md:h-[68px] rounded-full p-[3px] flex-shrink-0" style={{ background: `linear-gradient(135deg,${BRAND_HEX.greenLight},var(--arbor-clay))` }}>
             <div className="w-full h-full rounded-full p-[3px]" style={{ background: "var(--arbor-paper-elevated)" }}>
               {photoUrl ? (
                 <img src={photoUrl} alt={firstName} className="w-full h-full rounded-full object-cover" />
@@ -302,8 +303,9 @@ export default function OverviewTab() {
             <div className="flex flex-wrap items-center gap-2.5 mt-5">
               <button
                 onClick={() => setQuickLog(true)}
+                aria-label={t("ov.logMoment")}
                 className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+                style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--shadow-green)" }}
               >
                 <Plus className="w-4 h-4" /> {t("ov.logMoment")}
               </button>
@@ -371,7 +373,7 @@ export default function OverviewTab() {
             <button
               onClick={() => setActiveTab("practice")}
               className="inline-flex items-center justify-center gap-2 text-white font-extrabold text-[15px] rounded-full px-6 min-h-[52px] transition active:scale-[0.97] hover:-translate-y-0.5"
-              style={{ background: "linear-gradient(135deg, #7a6bd8, #5a4cc0)", boxShadow: "0 8px 20px rgba(90,76,192,0.28)" }}
+              style={{ background: "var(--arbor-gradient-lav)", boxShadow: "var(--shadow-lav)" }}
             >
               <Sparkles className="w-5 h-5" /> {t("ov.play.cta")}
             </button>
@@ -387,7 +389,7 @@ export default function OverviewTab() {
           <button
             onClick={() => setActiveTab("profile")}
             className="inline-flex items-center justify-center gap-2 text-white font-extrabold text-[15px] rounded-full px-6 min-h-[52px] transition active:scale-[0.97] hover:-translate-y-0.5 flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #3cc081, var(--arbor-clay) 60%, var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+            style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--shadow-green)" }}
           >
             <Sparkles className="w-5 h-5" /> {t("ov.hero.cta", { name: firstName })}
           </button>
@@ -436,7 +438,7 @@ export default function OverviewTab() {
         </div>
         <div className="grid sm:grid-cols-3" style={{ borderTop: `1px solid ${RULE}` }}>
           {/* Milestones */}
-          <button onClick={() => setActiveTab("milestones")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderRight: `1px solid ${RULE}` }}>
+          <button onClick={() => setActiveTab("milestones")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderInlineEnd: `1px solid ${RULE}` }}>
             <ProgressRing value={milestonesPercent} size={52} stroke={6}>
               <span className="text-[12px] font-extrabold" style={{ color: GREEN }}>{milestonesPercent}%</span>
             </ProgressRing>
@@ -449,7 +451,7 @@ export default function OverviewTab() {
           </button>
 
           {/* Memory (the moat) */}
-          <button onClick={() => setActiveTab("memory")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderRight: `1px solid ${RULE}` }}>
+          <button onClick={() => setActiveTab("memory")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderInlineEnd: `1px solid ${RULE}` }}>
             <span className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: pendingMemoryItems.length ? PASTEL.yellow.soft : PASTEL.lav.soft, color: pendingMemoryItems.length ? PASTEL.yellow.ink : PASTEL.lav.ink }}>
               <BookMarked className="w-6 h-6" />
             </span>

@@ -190,7 +190,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Edit profile</h3>
-              <button onClick={onClose} className="p-1.5 rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label="Close">
+              <button onClick={onClose} className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -284,7 +284,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                           type="button"
                           onClick={() => removeInterest(label)}
                           aria-label={`Remove ${label}`}
-                          className="ml-0.5 inline-flex items-center justify-center rounded-full -my-1.5 -me-1.5 p-1.5 transition"
+                          className="ms-0.5 inline-flex items-center justify-center rounded-full -my-3 -me-3 p-3 transition"
                           style={{ color: "var(--arbor-green-ink)" }}
                         >
                           <X className="w-3 h-3" />
@@ -308,7 +308,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     type="button"
                     onClick={addCustomInterest}
                     aria-label="Add interest"
-                    className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold transition"
+                    className="inline-flex items-center gap-1 px-3 min-h-[44px] rounded-lg text-xs font-bold transition"
                     style={{ color: "var(--arbor-green-ink)" }}
                   >
                     <Plus className="w-3.5 h-3.5" />

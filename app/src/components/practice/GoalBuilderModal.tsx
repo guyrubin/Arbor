@@ -235,7 +235,7 @@ export default function GoalBuilderModal({
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="flex-shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg ml-3 transition"
+                className="flex-shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg ms-3 transition"
                 style={{ border: `1px solid ${RULE}`, color: MUTED }}
               >
                 <X className="w-4 h-4" />
@@ -309,14 +309,14 @@ export default function GoalBuilderModal({
                             </span>
                             <button
                               onClick={() => handleRemove(goal.goalId)}
-                              className="rounded-lg px-3 py-1.5 text-[12px] font-bold transition"
+                              className="rounded-lg px-4 min-h-[44px] text-[12px] font-bold transition"
                               style={{ background: "var(--arbor-danger, #d6566f)", color: "#fff" }}
                             >
                               Yes, remove
                             </button>
                             <button
                               onClick={cancelRemove}
-                              className="rounded-lg px-3 py-1.5 text-[12px] font-bold transition"
+                              className="rounded-lg px-4 min-h-[44px] text-[12px] font-bold transition"
                               style={{ background: PAPER, color: MUTED, border: `1px solid ${RULE}` }}
                             >
                               Keep it

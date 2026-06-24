@@ -62,7 +62,7 @@ export default function SessionLengthChips({
               key={id}
               aria-pressed={active}
               onClick={() => onChange(id)}
-              className="rounded-full px-3.5 py-3 md:py-2 text-[12.5px] font-bold whitespace-nowrap transition active:scale-[0.98]"
+              className="rounded-full px-3.5 py-3 text-[12.5px] font-bold whitespace-nowrap transition active:scale-[0.98]"
               style={
                 active
                   ? {
