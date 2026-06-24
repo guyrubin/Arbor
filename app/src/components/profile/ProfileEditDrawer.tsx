@@ -11,6 +11,7 @@ import { ChildProfile } from "../../types";
 import { Avatar } from "../ui/Avatar";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
+import { sanitizeInterestToken } from "../../playbank/select";
 import AvatarCreator from "./AvatarCreator";
 import RewardsCard from "./RewardsCard";
 
@@ -135,11 +136,16 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     );
   };
 
-  // CI-29: Add a custom free-text interest (trim, dedup, max 40 chars).
+  // CI-29 (arbor-safety gate §E fix): Add a custom free-text interest.
+  // sanitizeInterestToken runs the CONDITIONS + banned-clinical-noun lexicon at
+  // WRITE time so a condition/clinical word (e.g. "autism", "fixation") can never
+  // be PERSISTED to ChildProfile.interests[] — and therefore never appears in the
+  // GDPR export. Display-time sanitize in the selector is defense-in-depth, not
+  // the only guard. Empty result (sanitized away) is silently dropped.
   const addCustomInterest = () => {
-    const trimmed = interestInput.trim().slice(0, 40);
-    if (!trimmed || activeInterests.includes(trimmed)) { setInterestInput(""); return; }
-    setActiveInterests((prev) => [...prev, trimmed]);
+    const safe = sanitizeInterestToken(interestInput.slice(0, 40));
+    if (!safe || activeInterests.includes(safe)) { setInterestInput(""); return; }
+    setActiveInterests((prev) => [...prev, safe]);
     setInterestInput("");
   };
 
@@ -162,7 +168,10 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         photoUrl: photoUrl || "",
         ...(avatarMeta ? { avatar: avatarMeta } : {}),
         // CI-29: persist interests[] + ISO timestamp (parent-written only, COPPA-gated).
-        interests: activeInterests,
+        // Defensive final sanitize at the write boundary (arbor-safety gate §E):
+        // guarantees no condition/clinical token is persisted even if a value was
+        // restored from an older record or added through any future code path.
+        interests: activeInterests.map(sanitizeInterestToken).filter(Boolean),
         interestsUpdatedAt: new Date().toISOString(),
       });
       onClose();
