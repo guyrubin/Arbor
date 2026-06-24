@@ -27,6 +27,7 @@ const SpellForgeWorld = lazy(() => import("./SpellForgeWorld"));
 const BeatKeeperWorld = lazy(() => import("./BeatKeeperWorld"));
 const HeroPoseWorld = lazy(() => import("./HeroPoseWorld"));
 const PatternPowerWorld = lazy(() => import("./PatternPowerWorld"));
+const WordWorldTab = lazy(() => import("./WordWorldTab"));
 
 const READING_KINDS = new Set(["phonics", "sight-word", "letter-trace"]);
 
@@ -64,6 +65,7 @@ const WORLDS: World[] = [
   { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: Music, color: "clay", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
   { id: "pose", name: "Hero Pose", tag: "Move", icon: PersonStanding, color: "sky", imagePrompt: "a dynamic superhero action pose with bold motion lines", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
   { id: "pattern", name: "Pattern Power", tag: "Logic", icon: Shapes, color: "lav", imagePrompt: "a puzzle world of glowing shapes arranged in patterns", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
+  { id: "word-world", name: "Word World", tag: "Language", icon: BookOpen, color: "sky", imagePrompt: "a warm cozy reading nook with open books, speech bubbles, and colorful letters floating gently", isNew: true, Comp: WordWorldTab, count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
 ];
 
 function Stars({ n }: { n: number }) {

@@ -393,7 +393,8 @@ export type PracticeEventKind =
   | 'letter-trace'      // traced a letter path in the tracing mini-game
   | 'rhythm'            // kept the beat in Beat Keeper (regulation/timing)
   | 'pattern'           // continued a sequence in Pattern Power (logic)
-  | 'pose';             // copied a hero action pose in Hero Pose (body imitation)
+  | 'pose'              // copied a hero action pose in Hero Pose (body imitation)
+  | 'lang-strategy';    // LANG-15: parent logged a serve-and-return / narrated-play / shared-reading moment
 
 export interface PracticeEvent {
   id: string;
