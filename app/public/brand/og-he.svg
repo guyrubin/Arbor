@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;500&amp;family=Heebo:wght@400;500;600&amp;display=swap');
+    </style>
+    <radialGradient id="bg1he" cx="90%" cy="110%" r="75%" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#4c825a" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#4c825a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bg2he" cx="5%" cy="-10%" r="50%" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#4c825a" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#4c825a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="borderGradHe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a7d52"/>
+      <stop offset="60%" stop-color="#2d6344"/>
+      <stop offset="100%" stop-color="#1e4a32"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background: sage paper -->
+  <rect width="1200" height="630" fill="#f4f6f3"/>
+  <rect width="1200" height="630" fill="url(#bg1he)"/>
+  <rect width="1200" height="630" fill="url(#bg2he)"/>
+
+  <!-- RTL: right emerald-clay border accent (reading start) -->
+  <rect x="1194" y="0" width="6" height="630" fill="url(#borderGradHe)"/>
+
+  <!-- TOP ROW (RTL: wordmark anchors right, pill anchors left) -->
+  <!-- Wordmark right-anchored -->
+  <text x="1120" y="106" text-anchor="end"
+    font-family="'Frank Ruhl Libre', Georgia, serif"
+    font-size="32" font-weight="300" font-style="italic"
+    fill="#1e3a2a" letter-spacing="-0.3">Arbor</text>
+
+  <!-- Category pill — left side (RTL reading end) -->
+  <rect x="80" y="72" width="228" height="40" rx="20"
+    fill="rgba(58,125,82,0.10)" stroke="rgba(58,125,82,0.25)" stroke-width="1"/>
+  <text x="194" y="97" text-anchor="middle"
+    font-family="Heebo, 'Arial Hebrew', system-ui, sans-serif"
+    font-size="13" font-weight="600" fill="#2d6344" letter-spacing="0.3">מודיעין ילד לאורך זמן</text>
+
+  <!-- MAIN CONTENT -->
+  <!-- Child context — RTL: text anchors right, dash on left -->
+  <text x="1120" y="230" text-anchor="end"
+    font-family="Heebo, 'Arial Hebrew', system-ui, sans-serif"
+    font-size="15" font-weight="500" fill="#4a7c5c" letter-spacing="0.2">
+    Arbor · מאיה, 3 שנים
+  </text>
+  <line x1="1132" y1="224" x2="1162" y2="224" stroke="#4a7c5c" stroke-width="2"/>
+
+  <!-- Headline line 1 — RTL right-anchored -->
+  <text x="1120" y="305" text-anchor="end"
+    font-family="'Frank Ruhl Libre', Georgia, serif"
+    font-size="54" font-weight="400"
+    fill="#1a3225" letter-spacing="-0.8">כל אפליקציית הורות נותנת לך תוכן.</text>
+
+  <!-- Headline line 2 — italic emerald — RTL right-anchored -->
+  <text x="1120" y="375" text-anchor="end"
+    font-family="'Frank Ruhl Libre', Georgia, serif"
+    font-size="54" font-weight="300" font-style="italic"
+    fill="#2d6344" letter-spacing="-0.8">Arbor באמת מכירה את הילד שלי.</text>
+
+  <!-- BOTTOM ROW -->
+  <!-- Sub-line right-anchored (RTL primary content side) -->
+  <text x="1120" y="543" text-anchor="end"
+    font-family="Heebo, 'Arial Hebrew', system-ui, sans-serif"
+    font-size="15" font-weight="400" fill="#3d5c4a">
+    ארבעה מוצרים מובילים על רשומה אחת שנשארת אצלך.
+  </text>
+  <text x="1120" y="566" text-anchor="end"
+    font-family="Heebo, 'Arial Hebrew', system-ui, sans-serif"
+    font-size="15" font-weight="400" fill="#3d5c4a">
+    הזיכרון הוא היתרון. הסיפור הוא של ילדך.
+  </text>
+
+  <!-- URL — left side (reading end in RTL) -->
+  <text x="80" y="530"
+    font-family="Heebo, system-ui, sans-serif"
+    font-size="11" font-weight="600" fill="#4a7c5c" opacity="0.7"
+    letter-spacing="0.5">arborprd-westeu.web.app</text>
+
+  <!-- Product tag pills — bottom left (RTL: visual end) -->
+  <!-- Pill: משחק יומי -->
+  <rect x="80" y="540" width="80" height="24" rx="5"
+    fill="rgba(58,125,82,0.08)" stroke="rgba(58,125,82,0.18)" stroke-width="1"/>
+  <text x="120" y="557" text-anchor="middle"
+    font-family="Heebo, 'Arial Hebrew', system-ui, sans-serif"
+    font-size="11" font-weight="600" fill="#2d6344">משחק יומי</text>
+
+  <!-- Pill: קצב -->
+  <rect x="168" y="540" width="48" height="24" rx="5"
+    fill="rgba(58,125,82,0.08)" stroke="rgba(58,125,82,0.18)" stroke-width="1"/>
+  <text x="192" y="557" text-anchor="middle"
+    font-family="Heebo, 'Arial Hebrew', system-ui, sans-serif"
+    font-size="11" font-weight="600" fill="#2d6344">קצב</text>
+
+  <!-- Pill: שאל מומחה -->
+  <rect x="224" y="540" width="92" height="24" rx="5"
+    fill="rgba(58,125,82,0.08)" stroke="rgba(58,125,82,0.18)" stroke-width="1"/>
+  <text x="270" y="557" text-anchor="middle"
+    font-family="Heebo, 'Arial Hebrew', system-ui, sans-serif"
+    font-size="11" font-weight="600" fill="#2d6344">שאל מומחה</text>
+
+  <!-- Pill: זיכרון הילד -->
+  <rect x="324" y="540" width="96" height="24" rx="5"
+    fill="rgba(58,125,82,0.08)" stroke="rgba(58,125,82,0.18)" stroke-width="1"/>
+  <text x="372" y="557" text-anchor="middle"
+    font-family="Heebo, 'Arial Hebrew', system-ui, sans-serif"
+    font-size="11" font-weight="600" fill="#2d6344">זיכרון הילד</text>
+</svg>

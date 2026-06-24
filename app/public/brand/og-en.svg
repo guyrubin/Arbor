@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;1,300;1,400&amp;family=Inter:wght@400;500;600&amp;display=swap');
+    </style>
+    <!-- Sage-paper background gradient -->
+    <radialGradient id="bg1" cx="10%" cy="110%" r="75%" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#4c825a" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#4c825a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bg2" cx="95%" cy="-10%" r="50%" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#4c825a" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#4c825a" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Emerald border gradient -->
+    <linearGradient id="borderGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a7d52"/>
+      <stop offset="60%" stop-color="#2d6344"/>
+      <stop offset="100%" stop-color="#1e4a32"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background: sage paper -->
+  <rect width="1200" height="630" fill="#f4f6f3"/>
+  <rect width="1200" height="630" fill="url(#bg1)"/>
+  <rect width="1200" height="630" fill="url(#bg2)"/>
+
+  <!-- Left emerald-clay border accent -->
+  <rect x="0" y="0" width="6" height="630" fill="url(#borderGrad)"/>
+
+  <!-- TOP ROW -->
+  <!-- Wordmark: Arbor — Fraunces italic light -->
+  <text x="80" y="106"
+    font-family="Fraunces, Georgia, 'Times New Roman', serif"
+    font-size="32" font-weight="300" font-style="italic"
+    fill="#1e3a2a" letter-spacing="-0.3">Arbor</text>
+
+  <!-- Category pill -->
+  <rect x="834" y="72" width="286" height="40" rx="20"
+    fill="rgba(58,125,82,0.10)" stroke="rgba(58,125,82,0.25)" stroke-width="1"/>
+  <text x="977" y="97" text-anchor="middle"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="12" font-weight="600" fill="#2d6344"
+    letter-spacing="1.2">LONGITUDINAL CHILD INTELLIGENCE</text>
+
+  <!-- MAIN CONTENT — child context line -->
+  <line x1="80" y1="224" x2="110" y2="224" stroke="#4a7c5c" stroke-width="2"/>
+  <text x="122" y="230"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="15" font-weight="500" fill="#4a7c5c" letter-spacing="0.3">
+    Arbor · Maya, 3y
+  </text>
+
+  <!-- Headline line 1 -->
+  <text x="80" y="305"
+    font-family="Fraunces, Georgia, 'Times New Roman', serif"
+    font-size="58" font-weight="400" font-style="normal"
+    fill="#1a3225" letter-spacing="-1.2">Every parenting app</text>
+
+  <!-- Headline line 2 -->
+  <text x="80" y="370"
+    font-family="Fraunces, Georgia, 'Times New Roman', serif"
+    font-size="58" font-weight="400" font-style="normal"
+    fill="#1a3225" letter-spacing="-1.2">gives you content.</text>
+
+  <!-- Headline line 3 — italic emerald -->
+  <text x="80" y="435"
+    font-family="Fraunces, Georgia, 'Times New Roman', serif"
+    font-size="58" font-weight="300" font-style="italic"
+    fill="#2d6344" letter-spacing="-1.2">Arbor actually knows my kid.</text>
+
+  <!-- BOTTOM ROW -->
+  <!-- Sub-line left -->
+  <text x="80" y="543"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="16" font-weight="400" fill="#3d5c4a" letter-spacing="-0.1">
+    Daily Play · Rhythm · Ask a Specialist · Child Memory
+  </text>
+  <text x="80" y="566"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="16" font-weight="400" fill="#3d5c4a" letter-spacing="-0.1">
+    Four category leaders on one parent-owned record.
+  </text>
+
+  <!-- Product tag pills — bottom right -->
+  <!-- URL -->
+  <text x="1120" y="530" text-anchor="end"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="11" font-weight="600" fill="#4a7c5c" opacity="0.7"
+    letter-spacing="0.6">arborprd-westeu.web.app</text>
+
+  <!-- Pill: Daily Play -->
+  <rect x="827" y="540" width="82" height="24" rx="5"
+    fill="rgba(58,125,82,0.08)" stroke="rgba(58,125,82,0.18)" stroke-width="1"/>
+  <text x="868" y="557" text-anchor="middle"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="10" font-weight="600" fill="#2d6344" letter-spacing="0.5">DAILY PLAY</text>
+
+  <!-- Pill: Rhythm -->
+  <rect x="917" y="540" width="64" height="24" rx="5"
+    fill="rgba(58,125,82,0.08)" stroke="rgba(58,125,82,0.18)" stroke-width="1"/>
+  <text x="949" y="557" text-anchor="middle"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="10" font-weight="600" fill="#2d6344" letter-spacing="0.5">RHYTHM</text>
+
+  <!-- Pill: Ask a Specialist -->
+  <rect x="989" y="540" width="115" height="24" rx="5"
+    fill="rgba(58,125,82,0.08)" stroke="rgba(58,125,82,0.18)" stroke-width="1"/>
+  <text x="1046" y="557" text-anchor="middle"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="10" font-weight="600" fill="#2d6344" letter-spacing="0.5">ASK A SPECIALIST</text>
+
+  <!-- Pill: Child Memory -->
+  <rect x="1112" y="540" width="88" height="24" rx="5"
+    fill="rgba(58,125,82,0.08)" stroke="rgba(58,125,82,0.18)" stroke-width="1"/>
+  <text x="1156" y="557" text-anchor="middle"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="10" font-weight="600" fill="#2d6344" letter-spacing="0.5">CHILD MEMORY</text>
+</svg>

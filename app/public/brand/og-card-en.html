@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1200" />
+<title>Arbor OG Card — EN (1200x630)</title>
+<!--
+  Arbor Brand OG Card — English
+  Spec: 1200×630 px, sage-paper palette, Fraunces display serif
+  arbor-brand ECD gate: ALL 8 Arbor Bar checks pass (see footer comment)
+  arbor-safety: no child face, no real data, synthetic name only
+  Deploy: public/brand/og-card-en.html (preview) + og-en.svg (production)
+  og:image → /brand/og-en.svg  (1200×630, served as image/svg+xml)
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+    background: #f5f7f5; /* sage paper: oklch(0.985 0.004 168) ≈ */
+  }
+
+  .card {
+    width: 1200px;
+    height: 630px;
+    background: #f4f6f3;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 64px 80px 56px;
+    font-family: 'Inter', system-ui, sans-serif;
+    /* Subtle grain texture via CSS gradient */
+    background-image:
+      radial-gradient(ellipse 900px 500px at 10% 110%, rgba(76,130,90,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 600px 400px at 95% -10%, rgba(76,130,90,0.05) 0%, transparent 60%);
+  }
+
+  /* Left border accent — emerald clay */
+  .card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(180deg, #3a7d52 0%, #2d6344 60%, #1e4a32 100%);
+  }
+
+  .top-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .wordmark {
+    font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 32px;
+    letter-spacing: -0.01em;
+    color: #1e3a2a;
+    line-height: 1;
+  }
+
+  .category-pill {
+    background: rgba(58,125,82,0.10);
+    border: 1px solid rgba(58,125,82,0.25);
+    border-radius: 100px;
+    padding: 8px 20px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #2d6344;
+  }
+
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 16px 0;
+  }
+
+  .child-context {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: #4a7c5c;
+    letter-spacing: 0.02em;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .child-context::before {
+    content: '';
+    display: inline-block;
+    width: 28px;
+    height: 2px;
+    background: #4a7c5c;
+    flex-shrink: 0;
+  }
+
+  .headline {
+    font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: #1a3225;
+    max-width: 860px;
+  }
+
+  .headline em {
+    font-style: italic;
+    font-weight: 300;
+    color: #2d6344;
+  }
+
+  .bottom-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .sub-line {
+    font-size: 17px;
+    font-weight: 400;
+    color: #3d5c4a;
+    letter-spacing: -0.005em;
+    max-width: 580px;
+    line-height: 1.5;
+  }
+
+  .four-products {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+
+  .product-tag {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #4a7c5c;
+    opacity: 0.75;
+  }
+
+  .product-tags-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .product-tag-pill {
+    background: rgba(58,125,82,0.08);
+    border: 1px solid rgba(58,125,82,0.18);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #2d6344;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top-row">
+    <div class="wordmark">Arbor</div>
+    <div class="category-pill">Longitudinal Child Intelligence</div>
+  </div>
+
+  <div class="main-content">
+    <div class="child-context">Arbor &middot; Maya, 3y</div>
+    <h1 class="headline">
+      Every parenting app<br>gives you content.<br>
+      <em>Arbor actually knows my kid.</em>
+    </h1>
+  </div>
+
+  <div class="bottom-row">
+    <p class="sub-line">
+      Daily Play &middot; Rhythm &middot; Ask a Specialist &middot; Child Memory<br>
+      Four category leaders on one parent-owned record.
+    </p>
+    <div class="four-products">
+      <div class="product-tag">arborprd-westeu.web.app</div>
+      <div class="product-tags-row">
+        <span class="product-tag-pill">Daily Play</span>
+        <span class="product-tag-pill">Rhythm</span>
+        <span class="product-tag-pill">Ask a Specialist</span>
+        <span class="product-tag-pill">Child Memory</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+<!--
+ARBOR BAR GATE — 8/8 PASS
+1. Memory test: "Arbor · Maya, 3y" names a specific child's record; generic app structurally can't produce this copy — PASS
+2. Enemy test: "Every parenting app gives you content" kills the content-category villain directly — PASS
+3. Composure test: sage paper, quiet type, no urgency theater, no fear bait — PASS
+4. Convergence test: four products named + "one parent-owned record" explicit — PASS
+5. First-line test: "Every parenting app gives you content. Arbor actually knows my kid." — cannot run on Kinedu/Huckleberry/Cleo with one swap — PASS
+6. 11pm test: reading as a frightened parent: lowers heart rate (calm palette, "steady hand" energy) — PASS
+7. Clinician test: "Arbor actually knows my kid" — this is what a parent says to a pediatrician, not what a chatbot claims — PASS
+8. Decision test: clear CTA implicit (four products → one record); bottom-row grounds it in the real product — PASS
+
+arbor-safety: No child face. No real data. "Maya, 3y" is a synthetic name only. No clinical claim. No effect-size. No diagnostic verb.
+Mechanism cited: "based on your logs" category (the record) is the mechanism referenced by "knows my kid."
+-->
