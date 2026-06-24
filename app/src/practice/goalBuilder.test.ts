@@ -176,7 +176,7 @@ describe("observation-link surface (gate §B compliance)", () => {
   // This test verifies the contract: it is always a plain integer ≥ 0.
   it("an observation count is a non-negative integer — no score/percentage computation", () => {
     // Simulate the value that the GoalBuilderModal status view receives.
-    const observationCount = 3; // e.g. 3 BehaviorLogs matched this goal's domain
+    const observationCount: number = 3; // e.g. 3 BehaviorLogs matched this goal's domain
     expect(Number.isInteger(observationCount)).toBe(true);
     expect(observationCount).toBeGreaterThanOrEqual(0);
     // The spec forbids rendering this as a percentage or score.
