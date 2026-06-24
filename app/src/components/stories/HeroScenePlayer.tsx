@@ -15,9 +15,10 @@ import type { HeroSceneRender } from "../../types";
 
 /**
  * AVA-3 / S3: scene-art cache. Generated scene images are large data URLs, so they
- * are cached via `lib/sceneCache` — a persistent (localStorage), quota-safe LRU
- * with in-flight dedupe — keyed by the shared `comicKey` helper so Story-Journey
- * panels and Comic Reader pages share hits AND survive a reload (no re-pay).
+ * are cached via `lib/sceneCache` — a memory-only, quota-safe LRU with in-flight
+ * dedupe and a MAX_CONCURRENT throttle — keyed by the shared `comicKey` helper so
+ * Story-Journey panels and Comic Reader pages share hits. Cross-session persistence
+ * is deferred to the Guy-gated Firebase Storage layer.
  */
 
 /**
@@ -77,7 +78,8 @@ export function HeroScenePlayer({
     // M4: scene art is generated lazily and degrades gracefully (the catch below
     // keeps the fallback illustration). runInstrumented adds start/success/error
     // analytics ("scene_art_*") so silent generation failures are observable.
-    // resolveScene persists the result + dedupes concurrent identical requests.
+    // resolveScene dedupes concurrent identical requests and throttles to
+    // MAX_CONCURRENT parallel generations (cost guard).
     resolveScene(key, () =>
       runInstrumented("scene_art", () =>
         api.generateComic({

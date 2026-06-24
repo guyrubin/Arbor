@@ -70,7 +70,9 @@ export const trackInviteSent = (channel?: string): void =>
 
 // wired by: mk-p0-2-referral-loop. Fired on the REFERRED side after
 // /api/referral/activate succeeds (role:"referred"); the referrer's grant is a
-// server-side event. Reuses the stable LoopEvent.InviteActivated name.
+// server-side event. Abuse-resistant: fires only after real activation (child
+// profile + first coach interaction), never at registration.
+// Signature frozen — ArborContext.tsx:1102 calls with a role string.
 export const trackInviteActivated = (role: "referrer" | "referred"): void =>
   track(LoopEvent.InviteActivated, { role });
 

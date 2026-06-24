@@ -220,6 +220,12 @@ export function domainBands(
     ? memoryScores.reduce((s, e) => s + (e.score ?? 0), 0) / memoryScores.length
     : null;
   const calmCount = events.filter((e) => e.kind === "calm").length;
+  const patternScores = events.filter((e) => e.kind === "pattern" && e.score !== undefined);
+  const patternAcc = patternScores.length >= 2
+    ? patternScores.reduce((s, e) => s + (e.score ?? 0), 0) / patternScores.length
+    : null;
+  const rhythmCount = events.filter((e) => e.kind === "rhythm").length;
+  const poseCount = events.filter((e) => e.kind === "pose").length;
   // Story-choice metrics: empathy reads as social signal; courage/resilience as
   // emotional regulation practice. Capped nudges, not drivers.
   const heroSocial = Math.min((heroMetrics?.empathy ?? 0) * 2, 8);
@@ -250,6 +256,10 @@ export function domainBands(
           signal = signal * 0.75 + memoryAcc * 0.25;
           basis.push("Memory Match");
         }
+        if (patternAcc !== null) {
+          signal = signal * 0.8 + patternAcc * 0.2;
+          basis.push("Pattern Power");
+        }
       }
       if (domain === "language" && languageAcc !== null) {
         signal = signal * 0.6 + languageAcc * 0.4;
@@ -265,18 +275,24 @@ export function domainBands(
           signal = signal * 0.6 + emotionAcc * 0.4;
           basis.push("Feelings Lab");
         }
-        if (calmCount > 0) {
-          signal += Math.min(calmCount, 5);
-          basis.push("calm-down practice");
+        if (calmCount > 0 || rhythmCount > 0) {
+          signal += Math.min(calmCount + rhythmCount, 5);
+          basis.push(rhythmCount > 0 ? "calm + Beat Keeper" : "calm-down practice");
         }
         if (heroEmotional > 0) {
           signal += heroEmotional;
           basis.push("story choices");
         }
       }
-      if (domain === "social" && heroSocial > 0) {
-        signal += heroSocial;
-        basis.push("story choices");
+      if (domain === "social") {
+        if (heroSocial > 0) {
+          signal += heroSocial;
+          basis.push("story choices");
+        }
+        if (poseCount > 0) {
+          signal += Math.min(poseCount, 5);
+          basis.push("Hero Pose");
+        }
       }
     }
     const boost = missionBoost(domain);

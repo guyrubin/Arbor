@@ -29,9 +29,13 @@ import { StreakChip } from "../overview/StreakChip";
 import { computeStreak } from "../../lib/streak";
 import { trackInviteSent } from "../../lib/loopEvents";
 import { MissionsPanel } from "../practice/MissionsTab";
+import GoalBuilderPromptCard from "../practice/GoalBuilderPromptCard";
+import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
+import { BRAND_HEX } from "../../lib/tokens";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
-import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity } from "../../playbank/select";
+import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
+import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { dayPartFor, type DayPart } from "../../lib/timeOfDay";
 import { track } from "../../lib/analytics";
@@ -53,6 +57,7 @@ export default function OverviewTab() {
     pendingMemoryItems, approvedMemoryItems,
     proposeMemory,
     donePlayIds, logPlayCompletion, playLogs,
+    updateChild,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -64,6 +69,49 @@ export default function OverviewTab() {
   const [showTools, setShowTools] = useState(false);
   // Today's focus can come back long; keep it to a glance with a Read-more.
   const [focusOpen, setFocusOpen] = useState(false);
+
+  // CI-28: Goal Builder state.
+  // activeGoals is stored on ChildProfile (COPPA note: parent-expressed intent,
+  // not child assessment — gate §E arbor-safety review required before prod).
+  const activeGoals: ActiveGoal[] = childProfile.activeGoals ?? [];
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  // Dismissible once-per-session (sessionStorage, not localStorage, so it
+  // returns on next app open to encourage goal-setting on subsequent visits
+  // within the D3-D14 activation window).
+  const [goalPromptDismissed, setGoalPromptDismissed] = useState(() => {
+    try { return sessionStorage.getItem("arbor.ci28.promptDismissed") === "1"; }
+    catch { return false; }
+  });
+
+  const dismissGoalPrompt = () => {
+    setGoalPromptDismissed(true);
+    try { sessionStorage.setItem("arbor.ci28.promptDismissed", "1"); } catch { /* ignore */ }
+  };
+
+  const handleSaveGoals = async (goals: ActiveGoal[]) => {
+    // Gate §E: write activeGoals to ChildProfile via updateChild.
+    // This uses the same updateChild path used for avatars/profile — Firestore
+    // when authed, localStorage in sandbox. COPPA review gates prod deploy.
+    await updateChild(childProfile.id, { activeGoals: goals });
+    const n = goals.length;
+    toast(`Focus set. Daily Play is now matched to what you're working on.`, "success");
+    if (n > 0) {
+      // Ensure the prompt stays dismissed after saving.
+      setGoalPromptDismissed(true);
+      try { sessionStorage.setItem("arbor.ci28.promptDismissed", "1"); } catch { /* ignore */ }
+    }
+  };
+
+  // Derive the PlayDomains from active goals to inject 1.6x weighting.
+  const goalDomains = useMemo(() => activeGoalDomains(activeGoals), [activeGoals]);
+
+  // Onboarding concern id — used for tile pre-fill highlight (gate §D).
+  // The value is the concern id stored during onboarding (not the challenge text).
+  const onboardingConcernId = useMemo(() => {
+    try { return localStorage.getItem("arbor.ci28.concernId") ?? undefined; }
+    catch { return undefined; }
+  }, []);
+
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const photoUrl = childProfile.photoUrl;
   const { hasHero } = useHeroAvatar();
@@ -77,6 +125,20 @@ export default function OverviewTab() {
     ),
     [behaviorLogs, childProfile.age]
   );
+
+  // CI-31: session-length chip state — persisted per-child, mirrors done-ids pattern.
+  const [sessionLength, setSessionLength] = useState<SessionLength>(() => {
+    try { return (localStorage.getItem(`arbor.play.sessionLength.${childProfile.id}`) as SessionLength) || "standard"; }
+    catch { return "standard"; }
+  });
+  const [sessionTapped, setSessionTapped] = useState(false);
+
+  const handleSessionLength = (v: SessionLength) => {
+    setSessionLength(v);
+    setSessionTapped(true);
+    try { localStorage.setItem(`arbor.play.sessionLength.${childProfile.id}`, v); } catch { /* ignore */ }
+  };
+
   const dailyPlay: ScoredActivity | null = useMemo(() => {
     const concernDomains = concernDomainsFromLogs(
       behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, timestamp: l.timestamp })),
@@ -85,11 +147,18 @@ export default function OverviewTab() {
     const picks = selectDailyPlay({
       ageYears: childProfile.age,
       concernDomains,
+      // CI-28: inject goal domains at 1.6x weight so goal-linked activities
+      // surface first when the parent has set a focus.
+      goalDomains,
       recentlyDoneIds: donePlayIds,
       daySeed: daySeedFor(Date.now()),
+      // CI-29: pass sanitized interests so themeable activities get the 1.3x boost.
+      interests: childProfile.interests,
+      // CI-31: filter by the parent's declared session length.
+      sessionLength,
     }, 1);
     return picks[0] ?? null;
-  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds]);
+  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains, sessionLength]);
 
   // V4: gentle "days of moments" streak off any logged moment (a behaviour log
   // or a Daily Play completion). AADC-hardened in lib/streak — no loss/guilt,
@@ -266,6 +335,9 @@ export default function OverviewTab() {
       ? {
           key: "play" as SlotKey,
           // TENANT: daily-play (c2) — b1 owns placement only; do not change props here.
+          // CI-28: goalLabel surfaces the active goal that drove this pick.
+          // CI-31: sessionLength + onSessionLengthChange + sessionTapped + rhythmHintTime
+          //        enable the session-length chip row on the Today hero card.
           node: (
             <DailyPlayCard
               pick={dailyPlay}
@@ -274,6 +346,15 @@ export default function OverviewTab() {
               onDid={markPlayDone}
               onCoach={coachOnPlay}
               concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined}
+              goalLabel={
+                dailyPlay.reason === "goal-match"
+                  ? (activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label)
+                  : undefined
+              }
+              sessionLength={sessionLength}
+              onSessionLengthChange={handleSessionLength}
+              sessionTapped={sessionTapped}
+              rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined}
             />
           ),
         }
@@ -333,7 +414,7 @@ export default function OverviewTab() {
       >
         {/* Status band */}
         <div className="p-6 md:p-7 flex items-start gap-4 md:gap-5">
-          <div className="w-[60px] h-[60px] md:w-[68px] md:h-[68px] rounded-full p-[3px] flex-shrink-0" style={{ background: "linear-gradient(135deg,#5fce97,var(--arbor-clay))" }}>
+          <div className="w-[60px] h-[60px] md:w-[68px] md:h-[68px] rounded-full p-[3px] flex-shrink-0" style={{ background: `linear-gradient(135deg,${BRAND_HEX.greenLight},var(--arbor-clay))` }}>
             <div className="w-full h-full rounded-full p-[3px]" style={{ background: "var(--arbor-paper-elevated)" }}>
               {photoUrl ? (
                 <img src={photoUrl} alt={firstName} className="w-full h-full rounded-full object-cover" />
@@ -389,8 +470,9 @@ export default function OverviewTab() {
             <div className="flex flex-wrap items-center gap-2.5 mt-5">
               <button
                 onClick={() => setQuickLog(true)}
+                aria-label={t("ov.logMoment")}
                 className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+                style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--shadow-green)" }}
               >
                 <Plus className="w-4 h-4" /> {t("ov.logMoment")}
               </button>
@@ -458,7 +540,7 @@ export default function OverviewTab() {
             <button
               onClick={() => setActiveTab("practice")}
               className="inline-flex items-center justify-center gap-2 text-white font-extrabold text-[15px] rounded-full px-6 min-h-[52px] transition active:scale-[0.97] hover:-translate-y-0.5"
-              style={{ background: "linear-gradient(135deg, #7a6bd8, #5a4cc0)", boxShadow: "0 8px 20px rgba(90,76,192,0.28)" }}
+              style={{ background: "var(--arbor-gradient-lav)", boxShadow: "var(--shadow-lav)" }}
             >
               <Sparkles className="w-5 h-5" /> {t("ov.play.cta")}
             </button>
@@ -474,7 +556,7 @@ export default function OverviewTab() {
           <button
             onClick={() => setActiveTab("profile")}
             className="inline-flex items-center justify-center gap-2 text-white font-extrabold text-[15px] rounded-full px-6 min-h-[52px] transition active:scale-[0.97] hover:-translate-y-0.5 flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #3cc081, var(--arbor-clay) 60%, var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+            style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--shadow-green)" }}
           >
             <Sparkles className="w-5 h-5" /> {t("ov.hero.cta", { name: firstName })}
           </button>
@@ -494,6 +576,15 @@ export default function OverviewTab() {
              honest to show. The full card (and the snapshot write) live there. ─ */}
       <DevScoreStrip />
 
+      {/* ── CI-28: Goal Builder prompt card (D3-D14 activation) ───────────── */}
+      {activeGoals.length === 0 && !goalPromptDismissed && (
+        <GoalBuilderPromptCard
+          childName={firstName}
+          onSetFocus={() => setGoalModalOpen(true)}
+          onDismiss={dismissGoalPrompt}
+        />
+      )}
+
       {/* ── How your child is doing (the picture, with the moat folded in) ─ */}
       <section className={`${card} overflow-hidden`}>
         <div className="px-6 pt-5 pb-3 flex items-center justify-between gap-3">
@@ -504,7 +595,7 @@ export default function OverviewTab() {
         </div>
         <div className="grid sm:grid-cols-3" style={{ borderTop: `1px solid ${RULE}` }}>
           {/* Milestones */}
-          <button onClick={() => setActiveTab("milestones")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderRight: `1px solid ${RULE}` }}>
+          <button onClick={() => setActiveTab("milestones")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderInlineEnd: `1px solid ${RULE}` }}>
             <ProgressRing value={milestonesPercent} size={52} stroke={6}>
               <span className="text-[12px] font-extrabold" style={{ color: GREEN }}>{milestonesPercent}%</span>
             </ProgressRing>
@@ -517,7 +608,7 @@ export default function OverviewTab() {
           </button>
 
           {/* Memory (the moat) */}
-          <button onClick={() => setActiveTab("memory")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderRight: `1px solid ${RULE}` }}>
+          <button onClick={() => setActiveTab("memory")} className="text-left p-5 flex items-center gap-4 transition hover:bg-[var(--arbor-paper-deep)]" style={{ borderInlineEnd: `1px solid ${RULE}` }}>
             <span className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: pendingMemoryItems.length ? PASTEL.yellow.soft : PASTEL.lav.soft, color: pendingMemoryItems.length ? PASTEL.yellow.ink : PASTEL.lav.ink }}>
               <BookMarked className="w-6 h-6" />
             </span>
@@ -656,6 +747,17 @@ export default function OverviewTab() {
       </section>
 
       <QuickLogModal open={quickLog} onClose={() => setQuickLog(false)} />
+
+      {/* CI-28: Goal Builder modal — opened from prompt card or Goals chip */}
+      <GoalBuilderModal
+        open={goalModalOpen}
+        onClose={() => setGoalModalOpen(false)}
+        childName={firstName}
+        activeGoals={activeGoals}
+        concernId={onboardingConcernId}
+        onSave={handleSaveGoals}
+        behaviorLogs={behaviorLogs}
+      />
     </motion.div>
   );
 }

@@ -132,7 +132,7 @@ export const createApp = (config: ArborConfig) => {
   // data URL) as a style reference, which blows the 250kb default → 413 and a
   // blank card. Give them the same headroom as vision (handlers still enforce a
   // 6MB per-image cap). This is the fix for the "Academy/Playbank cards have no
-  // images" regression.
+  // images" regression (generate-scene was returning 413 in prod).
   app.use(
     ["/api/generate-scene", "/api/generate-comic", "/api/generate-avatar"],
     express.json({ limit: "12mb" }),

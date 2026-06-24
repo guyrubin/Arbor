@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Sprout, Check, MessageSquare, ChevronDown, Clock } from "lucide-react";
+import { Sprout, Check, MessageSquare, ChevronDown, Clock, Heart } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity } from "../../playbank/content";
-import type { ScoredActivity } from "../../playbank/select";
+import type { ScoredActivity, SessionLength } from "../../playbank/select";
 import { ShareButton } from "../ui/ShareButton";
 import type { ShareCardOpts } from "../../lib/shareCard";
+import SessionLengthChips from "../practice/SessionLengthChips";
 
 /* Daily Play — one stage-appropriate, household-item activity for today,
    matched to what the child has been working through. "Did this" writes a
@@ -23,6 +24,11 @@ export default function DailyPlayCard({
   onDid,
   onCoach,
   concernLabel,
+  goalLabel,
+  sessionLength,
+  onSessionLengthChange,
+  sessionTapped,
+  rhythmHintTime,
 }: {
   pick: ScoredActivity;
   childName: string;
@@ -31,24 +37,50 @@ export default function DailyPlayCard({
   onCoach: (a: ScoredActivity) => void;
   /** Localized domain word driving a concern-match (e.g. "settling big feelings"). */
   concernLabel?: string;
+  /** CI-28: label of the active goal that drove this pick (for "because" line). */
+  goalLabel?: string;
+  /** CI-31: currently selected session length (controls chip row + duration badge). */
+  sessionLength?: SessionLength;
+  /** CI-31: called when the parent taps a chip. */
+  onSessionLengthChange?: (v: SessionLength) => void;
+  /** CI-31: true once any chip has been tapped this session (hides rhythm hint). */
+  sessionTapped?: boolean;
+  /** CI-31: rhythm calmWindow hour label (e.g. "10am") for the hint line. */
+  rhythmHintTime?: string;
 }) {
   const [open, setOpen] = useState(false);
   const { t, uiLang } = useLanguage();
-  const { reason } = pick;
+  const { reason, matchedInterest } = pick;
   const activity = localizeActivity(pick.activity, uiLang);
 
-  // Name the driver when we know it — makes the longitudinal-memory moat legible
-  // ("because settling big feelings has come up a lot"), not just asserted.
+  // CI-31: duration badge text — shows selected chip range when a chip has been
+  // chosen, otherwise falls back to the activity's own durationMin.
+  const durationLabel: string = (() => {
+    if (!sessionLength) return t("play.min", { n: activity.durationMin });
+    if (sessionLength === "short")    return t("play.session.short");
+    if (sessionLength === "extended") return t("play.session.extended");
+    return t("play.session.standard");
+  })();
+
+  // CI-29: interest-match why-line variants (FIX 2: no effect-verb on child capacity;
+  // FIX 5: parent-facing "about the child", never kid-companion second-person).
+  // Backward compat: concernLabel (live) used when no named interest is available.
   const why =
-    reason === "concern-match" && concernLabel
+    reason === "goal-match" && goalLabel
+      ? t("play.whyGoal", { goal: goalLabel, name: childName })
+      : reason === "interest-match" && matchedInterest
+      ? t("play.whyInterestStage", { name: childName, interest: matchedInterest })
+      : reason === "concern-match" && matchedInterest
+      ? t("play.whyInterestConcern", { name: childName, interest: matchedInterest })
+      : reason === "concern-match" && concernLabel
       ? t("play.whyConcernNamed", { area: concernLabel, name: childName })
       : reason === "concern-match"
-        ? t("play.whyConcern", { name: childName })
-        : t("play.whyStage", { name: childName });
+      ? t("play.whyConcern", { name: childName })
+      : t("play.whyStage", { name: childName });
 
   return (
     <section
-      className="rounded-[22px] overflow-hidden"
+      className="rounded-[var(--r-xl)] overflow-hidden"
       style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
       <div className="p-6">
@@ -63,9 +95,22 @@ export default function DailyPlayCard({
           </div>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold flex-shrink-0"
             style={{ background: "var(--arbor-paper-deep)", color: MUTED, border: `1px solid ${RULE}` }}>
-            <Clock className="w-3 h-3" /> {t("play.min", { n: activity.durationMin })}
+            <Clock className="w-3 h-3" /> {durationLabel}
           </span>
         </div>
+
+        {/* CI-29: Interest-match chip — only when themeableContextSlot=true AND
+            a sanitized interest was matched. Tone=lav per design spec.
+            Speaks to the parent about the child (never kid-companion). */}
+        {reason === "interest-match" && matchedInterest && (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold mt-2"
+            style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
+          >
+            <Heart className="w-3 h-3" />
+            {t("play.interestMatchChip", { name: childName, interest: matchedInterest })}
+          </span>
+        )}
 
         {/* What it builds — the developmental "why", stated plainly */}
         <p className="text-[15px] leading-relaxed mt-3" style={{ color: INK, textWrap: "pretty" } as React.CSSProperties}>
@@ -98,11 +143,24 @@ export default function DailyPlayCard({
           ))}
         </div>
 
+        {/* CI-31: Session-length chips — inserted when the card owns the chip row
+            (i.e. on the Overview/Today hero card; in DailyPlayTab the row is
+            lifted to tab level and NOT rendered here). */}
+        {sessionLength && onSessionLengthChange && (
+          <SessionLengthChips
+            value={sessionLength}
+            onChange={onSessionLengthChange}
+            rhythmHintTime={rhythmHintTime}
+            tapped={sessionTapped ?? false}
+          />
+        )}
+
         {/* Steps (collapsible to keep the card calm) */}
         {/* VIS-2: text-only tap area was ~20px tall — add min-h-[44px] + side padding */}
         <button
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
+          aria-label={open ? t("play.hide") : t("play.how")}
           className="inline-flex items-center gap-1 text-[13px] font-bold mt-4 transition min-h-[44px] px-1"
           style={{ color: GREEN }}
         >
@@ -126,10 +184,11 @@ export default function DailyPlayCard({
           <button
             onClick={() => onDid(pick)}
             disabled={done}
+            aria-label={done ? t("play.added", { name: childName }) : t("play.did")}
             className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] disabled:cursor-default"
             style={done
               ? { background: GREEN_SOFT, color: GREEN }
-              : { background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", color: "#fff", boxShadow: "var(--shadow-green)" }}
+              : { background: "var(--arbor-gradient-primary)", color: "#fff", boxShadow: "var(--shadow-green)" }}
           >
             <Check className="w-4 h-4" /> {done ? t("play.added", { name: childName }) : t("play.did")}
           </button>

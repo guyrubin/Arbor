@@ -18,54 +18,82 @@
 /** Bounded entry count — data URLs are large, so keep the working set small. */
 const MAX_ENTRIES = 24;
 
-type Entry = { url: string; at: number };
+// Map insertion-order is used as the LRU order: re-inserting on read bumps an
+// entry to most-recently-used. Eviction always removes the map's first key.
+const mem = new Map<string, string>();
+const inFlight = new Map<string, Promise<string>>();
 
-const mem = new Map<string, Entry>();
+// Throttle concurrent generations: many cards or beats mounting at once would
+// otherwise fire a dozen image-gen calls in parallel — choking the renderer and
+// the cost budget. At most MAX_CONCURRENT run at a time; the rest queue.
+const MAX_CONCURRENT = 2;
+let activeGens = 0;
+const genQueue: Array<() => void> = [];
 
-function evictOldest(n: number): void {
-  if (n <= 0) return;
-  const byAge = [...mem.entries()].sort((a, b) => a[1].at - b[1].at);
-  for (let i = 0; i < n && i < byAge.length; i++) mem.delete(byAge[i][0]);
+function pump(): void {
+  while (activeGens < MAX_CONCURRENT && genQueue.length) {
+    const job = genQueue.shift()!;
+    activeGens++;
+    job();
+  }
 }
 
 /** Read a cached panel data-URL (touches LRU recency), or undefined. */
 export function getScene(key: string): string | undefined {
-  const e = mem.get(key);
-  if (!e) return undefined;
-  e.at = Date.now();
-  return e.url;
+  const v = mem.get(key);
+  if (v !== undefined) {
+    // Re-insert → most-recently-used (Map preserves insertion order).
+    mem.delete(key);
+    mem.set(key, v);
+  }
+  return v;
 }
 
 /** Store a panel data-URL under `key`, enforcing the LRU bound. */
 export function setScene(key: string, url: string): void {
-  mem.set(key, { url, at: Date.now() });
-  if (mem.size > MAX_ENTRIES) evictOldest(mem.size - MAX_ENTRIES);
+  mem.delete(key);
+  mem.set(key, url);
+  while (mem.size > MAX_ENTRIES) {
+    const oldest = mem.keys().next().value as string | undefined;
+    if (oldest === undefined) break;
+    mem.delete(oldest);
+  }
 }
-
-const inFlight = new Map<string, Promise<string>>();
 
 /**
- * Resolve a panel from cache → an in-flight request → `gen()`, caching the
- * result. Concurrent calls with the same key share one generation, so flipping
- * between beats (or Story-Journey ↔ Comic Reader) never double-pays.
+ * Resolve a panel from cache → an in-flight request → a throttled `gen()` call,
+ * caching the result. Concurrent calls with the same key share one generation, so
+ * flipping between beats (or Story-Journey ↔ Comic Reader) never double-pays.
+ * At most MAX_CONCURRENT generations run in parallel; the rest are queued.
  */
-export async function resolveScene(key: string, gen: () => Promise<string>): Promise<string> {
+export function resolveScene(key: string, gen: () => Promise<string>): Promise<string> {
   const cached = getScene(key);
-  if (cached) return cached;
+  if (cached !== undefined) return Promise.resolve(cached);
   const existing = inFlight.get(key);
   if (existing) return existing;
-  const run = gen()
-    .then((url) => {
-      setScene(key, url);
-      return url;
-    })
-    .finally(() => inFlight.delete(key));
-  inFlight.set(key, run);
-  return run;
+  const p = new Promise<string>((resolve, reject) => {
+    genQueue.push(() => {
+      gen()
+        .then((url) => { setScene(key, url); resolve(url); })
+        .catch(reject)
+        .finally(() => { activeGens--; pump(); });
+    });
+    pump();
+  }).finally(() => { inFlight.delete(key); });
+  inFlight.set(key, p);
+  return p;
 }
 
-/** Test/QA reset hook — clears the cache. */
+/**
+ * Alias for `resolveScene` — same implementation, exported under the caps-branch
+ * name so WorldScene.tsx and any other caps consumer compiles without changes.
+ */
+export const dedupeScene = resolveScene;
+
+/** Test/QA reset hook — clears the cache and any in-flight/queued state. */
 export function _resetSceneCache(): void {
   mem.clear();
   inFlight.clear();
+  genQueue.length = 0;
+  activeGens = 0;
 }

@@ -41,6 +41,15 @@ export interface PlayActivity {
   /** Optional expert/research attribution. Hidden in the UI when absent.
    *  Must be a real, verified source — never fabricated. */
   source?: ActivitySource;
+  /**
+   * CI-29: When true, the activity's framing can be contextualised with the
+   * child's recorded interests (e.g. "Make a calm-down jar" can reference
+   * trains, dinosaurs, etc.). The developmental content (whatItBuilds, steps,
+   * householdItems) is byte-identical regardless of interest match.
+   * The LLM theme-rewrite is fenced out of Phase 1 — only the chip + why-line
+   * are touched here. Default: false (undefined = false).
+   */
+  themeableContextSlot?: boolean;
 }
 
 export const PLAY_BANDS: { band: PlayBand; label: string; minYears: number; maxYears: number }[] = [
@@ -71,6 +80,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Leave it somewhere reachable so they can choose it next meltdown.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
   {
     id: "feelings-weather",
@@ -93,6 +103,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.drdansiegel.com/book/the-whole-brain-child/",
       kind: "research",
     },
+    themeableContextSlot: true,
   },
   {
     id: "transition-countdown",
@@ -179,6 +190,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "End it together with 'and that's how...'.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
   {
     id: "sort-the-laundry",
@@ -211,6 +223,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Count the treasures together at the end.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
   {
     id: "turn-taking-tower",
@@ -227,6 +240,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Build it taller the next round.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
   {
     id: "helper-of-the-day",

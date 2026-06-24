@@ -358,10 +358,15 @@ export class VertexGeminiProvider {
 export class VertexModelProvider implements ModelProvider {
   private readonly claude: ClaudeVertexProvider;
   private readonly gemini: VertexGeminiProvider;
+  /** AI-Studio Gemini for IMAGES only: same model (gemini-2.5-flash-image) but a
+   *  separate quota pool from Vertex, which 429s under arcade/story load. Active
+   *  only when GEMINI_API_KEY is set; otherwise images stay on Vertex. */
+  private readonly genaiImages: GeminiDevProvider | null;
 
   constructor(private readonly config: ArborConfig) {
     this.claude = new ClaudeVertexProvider(config);
     this.gemini = new VertexGeminiProvider(config);
+    this.genaiImages = config.geminiApiKey ? new GeminiDevProvider(config) : null;
   }
 
   routeDecision(route: ModelRoute) {
@@ -378,8 +383,10 @@ export class VertexModelProvider implements ModelProvider {
   }
 
   generateImage(options: GenerateImageOptions) {
-    // Image generation always uses the Gemini image model (Claude can't render images).
-    return this.gemini.generateImage(options);
+    // Image generation always uses the Gemini image model (Claude can't render
+    // images). Prefer the AI-Studio path (separate quota) when a key is set,
+    // else Vertex (which 429s under load).
+    return (this.genaiImages ?? this.gemini).generateImage(options);
   }
 
   generateJsonStream(options: GenerateJsonOptions) {

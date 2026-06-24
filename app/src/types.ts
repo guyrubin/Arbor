@@ -20,6 +20,26 @@ export interface ChildProfile {
     createdAt: string;
   };
   /**
+   * CI-28: Parent-selected developmental focus goals (1–3).
+   * Each entry is a curated goal from GOAL_TILES — never auto-assigned.
+   * Written only via explicit parent selection in GoalBuilderModal (gate §D).
+   * Feeds Daily Play selector at 1.6× weight on the matching domain.
+   * COPPA note: this field stores parent-expressed intent (not child assessment).
+   * Gate §E: arbor-safety COPPA review required before shipping to prod.
+   */
+  activeGoals?: import('./practice/goalBuilder').ActiveGoal[];
+  /**
+   * CI-29: Parent-entered interest tags (e.g. "Trains", "Dinosaurs").
+   * Parent-facing only — the child never enters this field.
+   * Preference record only; never interpreted as a clinical/behavioral signal.
+   * Feeds Daily Play interest-boost scoring (deterministic, LLM-free).
+   * COPPA gate: arbor-safety COPPA/GDPR review required before prod.
+   * Clinical gate: interest record is displayed, never interpreted (FDI-04/CI-24 veto class).
+   */
+  interests?: string[];
+  /** ISO timestamp of the last time interests[] was written. */
+  interestsUpdatedAt?: string;
+  /**
    * Prematurity adjustment (AAP): for babies born preterm, developmental
    * milestones are compared against *corrected* (adjusted) age until ~2 years.
    * `gestationalWeeks` is the gestation at birth (e.g. 32). Term is 40 weeks;
@@ -166,7 +186,10 @@ export interface PlayLog {
   activityId: string;
   title: string; // denormalized for timeline display without re-lookup
   domain: PlayDomain;
-  reason: "concern-match" | "stage-match";
+  // CI-28/29 widened this to match ScoredActivity.reason (select.ts): the
+  // Daily Plan Generator persists goal-match / interest-match picks too. Purely
+  // additive — existing concern/stage values stay valid (zero regression).
+  reason: "concern-match" | "stage-match" | "goal-match" | "interest-match";
   source: "today" | "library" | "course";
   timestamp: string; // ISO
 }
@@ -419,7 +442,11 @@ export type PracticeEventKind =
   | 'expressive'        // open question / scene description / story starter
   | 'phonics'           // matched a letter to its sound (early reading)
   | 'sight-word'        // read/recognized a high-frequency sight word
-  | 'letter-trace';     // traced a letter path in the tracing mini-game
+  | 'letter-trace'      // traced a letter path in the tracing mini-game
+  | 'rhythm'            // kept the beat in Beat Keeper (regulation/timing)
+  | 'pattern'           // continued a sequence in Pattern Power (logic)
+  | 'pose'              // copied a hero action pose in Hero Pose (body imitation)
+  | 'lang-strategy';    // LANG-15: parent logged a serve-and-return / narrated-play / shared-reading moment
 
 export interface PracticeEvent {
   id: string;
