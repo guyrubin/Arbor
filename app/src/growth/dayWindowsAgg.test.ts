@@ -155,8 +155,10 @@ describe("AP-051 safety gate — banned words absent from aggregator + i18n keys
   const aggNoComments = aggSrc
     .replace(/\/\*[\s\S]*?\*\//g, "")   // block comments (TSDoc)
     .replace(/\/\/[^\n]*/g, "");         // line comments
-  // Also exclude import path strings (e.g. "../rhythm/predict").
-  const aggNoImports = aggNoComments.replace(/^import\s+.*\n/gm, "");
+  // Also exclude import path strings (e.g. "../rhythm/predict"). Use \r?\n so the
+  // strip works on CRLF files too — `.` does not match `\r`, so a bare `\n` would
+  // leave the import line (and its path) intact on Windows checkouts.
+  const aggNoImports = aggNoComments.replace(/^import\s+.*\r?\n/gm, "");
 
   const stringLiteralRegex = /["'`]([^"'`\n]{2,}?)["'`]/g;
   const aggStrings: string[] = [];
