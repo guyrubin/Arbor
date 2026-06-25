@@ -191,13 +191,18 @@ jobs:
           # the secret and point firebase at THAT. Assert it's a service_account key so a
           # wrong-shaped secret fails with a clear message, not firebase's misleading one.
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           KEY="$RUNNER_TEMP/firebase-sa-key.json"
           printf '%s' "$GCP_SA_KEY" > "$KEY"
           export GOOGLE_APPLICATION_CREDENTIALS="$KEY"
           node -e "const k=JSON.parse(require('fs').readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,'utf8')); if(k.type!=='service_account'){console.error('::error::GCP_SA_KEY is not a service_account key (type='+(k.type||'unknown')+') — firebase needs a raw SA key JSON');process.exit(1)} console.log('✓ service_account key for '+k.client_email)"
-          npx --yes firebase-tools deploy --only hosting,firestore \
-            --project "$PROJECT_ID" --non-interactive
+          test -n "$FIREBASE_TOKEN" || (echo "::error::FIREBASE_TOKEN is missing" && exit 1)
+          npx --yes firebase-tools deploy \
+            --only hosting,firestore \
+            --project "$PROJECT_ID" \
+            --non-interactive \
+            --token "$FIREBASE_TOKEN"
 
       # NEVER-AGAIN GUARD: confirm the live site actually responds after the hosting deploy,
       # so a silent hosting/auth failure can never again leave prod frozen on an old build
