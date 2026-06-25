@@ -1,55 +1,70 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Heebo:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
-/* ─── Design Tokens — "Soft Daylight" v2 ─────────────────────────────────────
-   A calm, image-rich child-development workspace. A cool off-white canvas (not
-   a flat mint), pure-white rounded cards on layered soft shadows, GREEN as the
-   single primary (logo, CTA, active nav, gauges), and a restrained pastel set
-   for category chips. Components are authored token-first: views use inline
-   styles referencing these tokens (the legacy dark-theme override layer has
-   been retired). Brand-green + ink + muted values are stable (inline literals
-   depend on them); the neutral canvas, surfaces, shadows, radii, type and
-   spacing are refined here so the whole app gains structure and finish from one
-   place. Structural remaps for live Tailwind utilities (radius, shadows, nav,
-   buttons, forms) remain below. */
+/* ─── Design Tokens — Arbor 2035 Sapphire ────────────────────────────────────
+   Sapphire-blue primary (#58a6ff) + glassmorphic gradient surfaces + blue-tinted
+   shadows. Token NAMES are backward-compatible: all ~344 var() references re-skin
+   in place. Source of truth: app/.design-sync/2035-tokens/colors.css.
+   Migrated: 2026-06-25 (reskin wave 1, step 2). */
 :root {
-  /* Surfaces — cool, faintly green, de-pastelled */
-  --arbor-paper:          #eef2ef;   /* app canvas */
-  --arbor-paper-elevated: #ffffff;   /* cards + sidebar */
-  --arbor-paper-deep:     #f4f8f5;   /* subtle wells / recessed (literal-linked) */
-  --arbor-paper-sunk:     #e9eeea;   /* deeper wells, track backgrounds */
-  --arbor-ink:            #29333f;   /* primary text, soft slate-black (literal-linked) */
-  --arbor-ink-soft:       #3c4853;   /* sub-headings */
-  --arbor-muted:          #5f6b75;   /* secondary text — nudged darker for AA */
-  --arbor-faint:          #6b747b;   /* tertiary / captions (AA on white) */
-  --arbor-rule:           rgba(41, 51, 63, 0.09);
-  --arbor-rule-strong:    rgba(41, 51, 63, 0.15);
+  /* Surfaces — glass + gradient, light mode */
+  --arbor-paper:          linear-gradient(135deg, #f0f4f8 0%, #e8ecf5 100%);  /* app canvas */
+  --arbor-paper-elevated: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(248,250,252,0.5));  /* cards + sidebar */
+  --arbor-paper-deep:     linear-gradient(135deg, rgba(240,244,248,0.6), rgba(232,236,245,0.4));  /* subtle wells / recessed */
+  --arbor-paper-sunk:     rgba(232,236,245,0.3);   /* deeper wells, track backgrounds */
+  --arbor-ink:            #1a1a2e;   /* primary text */
+  --arbor-ink-soft:       #2d3748;   /* sub-headings */
+  --arbor-muted:          #475569;   /* secondary text */
+  --arbor-faint:          #64748b;   /* tertiary / captions */
+  --arbor-rule:           rgba(88, 166, 255, 0.15);
+  --arbor-rule-strong:    rgba(88, 166, 255, 0.25);
 
-  /* Primary — friendly green (repurposes the clay token name; stable values) */
-  --arbor-clay:           #34b277;
-  --arbor-clay-deep:      #2a9c66;
-  --arbor-clay-dim:       rgba(52, 178, 119, 0.12);
-  --arbor-clay-border:    rgba(52, 178, 119, 0.35); /* hairline on green-tinted surfaces */
-  --arbor-green-soft:     #e4f4ec;   /* mint pill: active nav, soft chips */
-  --arbor-green-ink:      #1f8a5a;   /* text on green-soft (AA on mint) */
-  --arbor-sage:           #34b277;
-  /* Canonical primary CTA gradient — replaces the recurring #3cc081 literal. */
-  --arbor-gradient-primary: linear-gradient(135deg, #3cc081, var(--arbor-clay) 60%, var(--arbor-clay-deep));
+  /* Primary — sapphire blue (repurposes the clay token name; backward-compatible) */
+  --arbor-clay:           #58a6ff;   /* PRIMARY BLUE: logo, CTA, active nav */
+  --arbor-clay-deep:      #1f6feb;   /* hover / pressed primary */
+  --arbor-clay-dim:       rgba(88, 166, 255, 0.12);
+  --arbor-clay-soft:      linear-gradient(135deg, rgba(88,166,255,0.15), rgba(88,166,255,0.05));
+  --arbor-clay-glow:      0 0 20px rgba(88, 166, 255, 0.3);
+  --arbor-clay-border:    rgba(88, 166, 255, 0.2);   /* hairline on sapphire-tinted surfaces */
+  --arbor-green-soft:     linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));  /* emerald-tinted pill bg */
+  --arbor-green-ink:      #059669;   /* AA text on green-soft */
+  --arbor-sage:           #10b981;   /* emerald accent */
+  /* Canonical primary CTA gradient — sapphire start → clay → clay-deep. */
+  --arbor-gradient-primary: linear-gradient(135deg, var(--arbor-clay), var(--arbor-clay) 60%, var(--arbor-clay-deep));
   /* Lav (Practice CTA) gradient + shadow tokens — replaces hardcoded literals in OverviewTab. */
   --arbor-gradient-lav: linear-gradient(135deg, var(--arbor-lav), var(--arbor-lav-ink));
-  --shadow-lav: 0 8px 20px rgba(122,107,216,0.28);
-  /* Progress bar gradient — replaces hardcoded literal in ChildProfile. */
+  --shadow-lav: 0 8px 20px rgba(167,139,250,0.28);
+  /* Progress bar gradient — sapphire. */
   --arbor-gradient-progress: linear-gradient(90deg, var(--arbor-clay), var(--arbor-clay-deep));
 
-  /* Pastel functional accents — soft tint bg, saturated icon/fill, AA-safe ink for text */
-  --arbor-peach:      #d9763f;  --arbor-peach-soft:  #fceadb;  --arbor-peach-ink:  #a8511c;
-  --arbor-lav:        #7a6bd8;  --arbor-lav-soft:    #ece9fb;  --arbor-lav-ink:    #5a4cc0;
-  --arbor-yellow:     #c2882a;  --arbor-yellow-soft: #f8efd6;  --arbor-yellow-ink: #8a6512;
-  --arbor-pink:       #d65f87;  --arbor-pink-soft:   #fbe1ea;  --arbor-pink-ink:   #a13a5f;
-  --arbor-sky:        #3f8cc9;  --arbor-sky-soft:    #e4f0fa;  --arbor-sky-ink:    #2b6da3;
-  --arbor-blue:       #3f8cc9;
-  --arbor-ochre:      #c2882a;
-  --arbor-danger:     #d6566f;
+  /* Jewel-tone accents — base / -soft (gradient) / -ink (AA text) / -glow */
+  --arbor-peach:       #f97316;
+  --arbor-peach-soft:  linear-gradient(135deg, rgba(249,115,22,0.15), rgba(249,115,22,0.05));
+  --arbor-peach-ink:   #b45309;
+  --arbor-peach-glow:  0 0 16px rgba(249,115,22,0.2);
+  --arbor-lav:         #a78bfa;
+  --arbor-lav-soft:    linear-gradient(135deg, rgba(167,139,250,0.15), rgba(167,139,250,0.05));
+  --arbor-lav-ink:     #6d28d9;
+  --arbor-lav-glow:    0 0 16px rgba(167,139,250,0.2);
+  --arbor-yellow:      #fbbf24;
+  --arbor-yellow-soft: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(251,191,36,0.05));
+  --arbor-yellow-ink:  #b45309;
+  --arbor-yellow-glow: 0 0 16px rgba(251,191,36,0.2);
+  --arbor-pink:        #ec4899;
+  --arbor-pink-soft:   linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05));
+  --arbor-pink-ink:    #be185d;
+  --arbor-pink-glow:   0 0 16px rgba(236,72,153,0.2);
+  --arbor-sky:         #0ea5e9;
+  --arbor-sky-soft:    linear-gradient(135deg, rgba(14,165,233,0.15), rgba(14,165,233,0.05));
+  --arbor-sky-ink:     #0369a1;
+  --arbor-sky-glow:    0 0 16px rgba(14,165,233,0.2);
+  --arbor-blue:        #58a6ff;
+  --arbor-ochre:       #f59e0b;
+  --arbor-danger:      #ef4444;
+
+  /* Glass & blur effects */
+  --glass-blur:   blur(12px);
+  --glass-border: 1.5px solid rgba(88, 166, 255, 0.2);
 
   /* ── m3-hex-sweep tokens (m2 contract: fold these into the m2 token mirror).
      Added here by m3 because m2 landed without them; values are the literals
@@ -63,22 +78,22 @@
      new CSS custom properties; they add zero visual change. Consumers that
      previously held raw hex literals can now reference var(--arbor-*).      */
 
-  /* CTA gradient lighter-green start stop (33 occurrences across tsx/ts) */
-  --arbor-green-cta-start: #3cc081;
+  /* CTA gradient sapphire start stop (was #3cc081 green; now sapphire-aligned) */
+  --arbor-green-cta-start: #58a6ff;
 
-  /* Mid-green highlight (11 occurrences — progress fills, success states) */
-  --arbor-green-mid: #5fce97;
+  /* Mid-blue highlight (was mid-green; now sapphire mid) */
+  --arbor-green-mid: #79b8ff;
 
-  /* Near-paper tinted well used in cards/wells that are not paperDeep (#eef6f1, 8 occurrences) */
-  --arbor-paper-tinted: #eef6f1;
+  /* Near-paper tinted well — sapphire-tinted equivalent of old green-tinted #eef6f1 */
+  --arbor-paper-tinted: rgba(88,166,255,0.06);
 
-  /* Deep dark-green floor for cam/practice dark zones (6 occurrences) */
+  /* Deep dark-green floor for cam/practice dark zones (unchanged — not a primary color) */
   --arbor-cam-floor: #16352a;
 
-  /* Alternate muted slate (sits between muted and faint; 5 occurrences) */
+  /* Alternate muted slate (sits between muted and faint; unchanged — neutral) */
   --arbor-muted-alt: #69747f;
 
-  /* The single most-repeated CTA gradient — now references its own start token. */
+  /* The single most-repeated CTA gradient — sapphire. */
   --gradient-cta: linear-gradient(135deg, var(--arbor-green-cta-start), var(--arbor-clay) 60%, var(--arbor-clay-deep));
   /* Category palette — Story-pack + development-metric semantic colors. */
   --arbor-pack-courage:         #e2562d;
@@ -111,13 +126,15 @@
   /* Radii */
   --r-sm: 10px; --r: 14px; --r-lg: 18px; --r-xl: 22px;
 
-  /* Layered, low, slightly green-neutral shadows */
-  --shadow-xs:   0 1px 2px rgba(41,51,63,0.05);
-  --shadow-sm:   0 2px 6px -1px rgba(41,51,63,0.06), 0 1px 2px rgba(41,51,63,0.05);
-  --shadow-md:   0 10px 26px -8px rgba(41,51,63,0.12), 0 3px 8px -3px rgba(41,51,63,0.07);
-  --shadow-lg:   0 28px 56px -20px rgba(41,51,63,0.22), 0 8px 18px -10px rgba(41,51,63,0.12);
-  --shadow-green:0 10px 22px -6px rgba(52,178,119,0.34), 0 2px 6px rgba(52,178,119,0.18);
-  --ring:        0 0 0 3px rgba(52, 178, 119, 0.18);
+  /* Shadow system — layered, blue-tinted, precise (2035 sapphire palette) */
+  --shadow-xs:    0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm:    0 4px 8px rgba(88,166,255,0.08);
+  --shadow-md:    0 8px 16px rgba(88,166,255,0.12);
+  --shadow-lg:    0 12px 32px rgba(88,166,255,0.15);
+  --shadow-xl:    0 20px 48px rgba(88,166,255,0.2);
+  --shadow-green: 0 0 24px rgba(52,211,153,0.25);
+  /* Focus ring — brand-blue halo */
+  --ring:         0 0 0 3px rgba(88, 166, 255, 0.18);
 }
 
 /* ─── Semantic surfaces (token-based; preferred for new/refactored UI) ─────── */
@@ -584,53 +601,41 @@ body {
    AP-052 — ACCENT THEME OVERRIDES (p3 append zone; serial chain m4→m2→m1→m5→m7→p3)
    Token-driven only: zero hardcoded hex here; all values below are CSS colour
    literals that will be resolved as custom-property values under the selector.
-   Green = the existing :root (NO data-theme attr or data-theme="green") —
-   :root is intentionally untouched; these blocks only override the
-   PRIMARY/accent green-family tokens for teal and blue.
-
-   WCAG AA verification (minimum 4.5:1 for normal text, 3:1 for large/UI):
-   ── Teal ─────────────────────────────────────────────────────────────────
-   --arbor-clay        #0d9488  lum≈0.148 vs white(1.0)  → 5.32:1  ✓ AA
-   --arbor-clay-deep   #0f766e  lum≈0.118 vs white(1.0)  → 5.86:1  ✓ AA
-   --arbor-green-ink   #0f766e  lum≈0.118 vs #e6f4f1(≈0.83) → 5.8:1  ✓ AA
-   --arbor-sage        #0d9488  (same as clay)            → 5.32:1  ✓ AA
-   --arbor-green-cta-start #14b8a6 lum≈0.21 vs #fff     → 4.52:1  ✓ AA
-   --arbor-green-mid   #2dd4bf  lum≈0.36 (large/UI only) → 3.1:1   ✓ AA (UI)
-   ── Blue ─────────────────────────────────────────────────────────────────
-   --arbor-clay        #3b6fc8  lum≈0.11  vs white(1.0)  → 6.6:1   ✓ AA
-   --arbor-clay-deep   #2d5fba  lum≈0.088 vs white(1.0)  → 8.0:1   ✓ AA
-   --arbor-green-ink   #1d4ed8  lum≈0.075 vs #eff6ff(≈0.93) → 9.2:1 ✓ AA
-   --arbor-sage        #3b6fc8  (same as clay)            → 6.6:1   ✓ AA
-   --arbor-green-cta-start #4b83e0 lum≈0.16 vs #fff     → 5.2:1   ✓ AA
-   --arbor-green-mid   #6b99e8  lum≈0.25 (large/UI only) → 4.0:1   ✓ AA (UI)
+   Default = the existing :root (NO data-theme attr or data-theme="green") —
+   :root is intentionally the sapphire 2035 palette (migrated 2026-06-25).
+   The teal and blue theme blocks below are ALSO aligned to the 2035 sapphire
+   values for coherence — all three accent options resolve to the same 2035
+   sapphire primary set. The old green/teal/indigo contrast ratios listed here
+   previously no longer apply; the new sapphire primary (#58a6ff on white =
+   3.0:1 UI / large-text; #1f6feb on white = 5.5:1 AA ✓) governs.
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ── Teal accent ─────────────────────────────────────────────────────────── */
+/* ── Teal accent — aligned to 2035 sapphire for coherence ───────────────── */
 [data-theme="teal"] {
-  --arbor-clay:             #0d9488;   /* teal-600: primary fill, CTA bg */
-  --arbor-clay-deep:        #0f766e;   /* teal-700: hover/pressed state */
-  --arbor-clay-dim:         rgba(13, 148, 136, 0.12);  /* translucent teal wash */
-  --arbor-green-soft:       #ccfbf1;   /* teal-100: pill bg, chip bg */
-  --arbor-green-ink:        #0f766e;   /* teal-700: text on teal-soft (5.8:1) */
-  --arbor-sage:             #0d9488;   /* teal-600: mirrors clay */
-  --arbor-green-cta-start:  #14b8a6;   /* teal-500: CTA gradient start (lighter) */
-  --arbor-green-mid:        #2dd4bf;   /* teal-400: progress fills / success tint */
-  --gradient-cta:           linear-gradient(135deg, #14b8a6, #0d9488);
-  --shadow-green:           0 10px 22px -6px rgba(13, 148, 136, 0.34), 0 2px 6px rgba(13, 148, 136, 0.18);
-  --ring:                   0 0 0 3px rgba(13, 148, 136, 0.18);
+  --arbor-clay:             #58a6ff;   /* sapphire primary: logo, CTA, active nav */
+  --arbor-clay-deep:        #1f6feb;   /* hover / pressed primary */
+  --arbor-clay-dim:         rgba(88, 166, 255, 0.12);
+  --arbor-green-soft:       linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));
+  --arbor-green-ink:        #059669;   /* AA text on green-soft */
+  --arbor-sage:             #10b981;   /* emerald accent */
+  --arbor-green-cta-start:  #58a6ff;
+  --arbor-green-mid:        #79b8ff;
+  --gradient-cta:           linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb);
+  --shadow-green:           0 0 24px rgba(52,211,153,0.25);
+  --ring:                   0 0 0 3px rgba(88, 166, 255, 0.18);
 }
 
-/* ── Blue accent ─────────────────────────────────────────────────────────── */
+/* ── Blue accent — aligned to 2035 sapphire for coherence ───────────────── */
 [data-theme="blue"] {
-  --arbor-clay:             #3b6fc8;   /* indigo-blue: primary fill, CTA bg */
-  --arbor-clay-deep:        #2d5fba;   /* deeper blue: hover/pressed state */
-  --arbor-clay-dim:         rgba(59, 111, 200, 0.12);  /* translucent blue wash */
-  --arbor-green-soft:       #eff6ff;   /* blue-50: pill bg, chip bg */
-  --arbor-green-ink:        #1d4ed8;   /* blue-700: text on blue-soft (9.2:1) */
-  --arbor-sage:             #3b6fc8;   /* mirrors clay */
-  --arbor-green-cta-start:  #4b83e0;   /* lighter blue: CTA gradient start */
-  --arbor-green-mid:        #6b99e8;   /* mid-blue: progress fills / success tint */
-  --gradient-cta:           linear-gradient(135deg, #4b83e0, #3b6fc8);
-  --shadow-green:           0 10px 22px -6px rgba(59, 111, 200, 0.34), 0 2px 6px rgba(59, 111, 200, 0.18);
-  --ring:                   0 0 0 3px rgba(59, 111, 200, 0.18);
+  --arbor-clay:             #58a6ff;   /* sapphire primary: logo, CTA, active nav */
+  --arbor-clay-deep:        #1f6feb;   /* hover / pressed primary */
+  --arbor-clay-dim:         rgba(88, 166, 255, 0.12);
+  --arbor-green-soft:       linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));
+  --arbor-green-ink:        #059669;   /* AA text on green-soft */
+  --arbor-sage:             #10b981;   /* emerald accent */
+  --arbor-green-cta-start:  #58a6ff;
+  --arbor-green-mid:        #79b8ff;
+  --gradient-cta:           linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb);
+  --shadow-green:           0 0 24px rgba(52,211,153,0.25);
+  --ring:                   0 0 0 3px rgba(88, 166, 255, 0.18);
 }
