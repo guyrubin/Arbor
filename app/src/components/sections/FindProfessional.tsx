@@ -211,7 +211,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
                 <button
                   onClick={() => openConsult(p)}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 text-white font-bold text-xs rounded-xl py-2.5"
-                  style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}
+                  style={{ background: "var(--arbor-gradient-primary)" }}
                 >
                   <Send className="w-3.5 h-3.5" /> Request consultation
                 </button>
@@ -284,7 +284,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
             <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
               Nothing from {first}'s profile is shared automatically — only the note above. You stay in control of any reports you choose to share.
             </p>
-            <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}>
+            <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
               {consultBusy ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Sending…</>) : (<><Send className="w-4 h-4" /> Send the request</>)}
             </button>
           </div>

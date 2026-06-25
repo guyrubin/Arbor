@@ -312,7 +312,7 @@ export default function SpeechCoachTab() {
                       onClick={() => setSoundId(s.id)}
                       className="play-pressable min-w-[52px] h-[52px] px-3 rounded-2xl text-base font-extrabold transition inline-flex items-center justify-center gap-1"
                       style={on
-                        ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "0 6px 16px rgba(52,178,119,0.28)" }
+                        ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "0 6px 16px rgba(88,166,255,0.28)" }
                         : { background: "#fff", color: "var(--arbor-ink)", border: "2px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
                       title={appropriate ? `${s.label} · typical ${s.typicalAge}` : `${s.label} · typically emerges ${s.typicalAge} — usually later than ${first}'s age, so go gently`}
                     >

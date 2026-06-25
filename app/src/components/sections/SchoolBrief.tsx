@@ -168,7 +168,7 @@ export default function SchoolBrief() {
             onClick={generate}
             disabled={generating}
             className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 mt-4 min-h-[44px] disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+            style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
           >
             {generating
               ? (<><RefreshCw className="w-4 h-4 animate-spin" /> {t("schoolBrief.generating")}</>)
@@ -202,7 +202,7 @@ export default function SchoolBrief() {
             <button
               onClick={() => setReviewOpen(true)}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
-              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+              style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
             >
               <Download className="w-4 h-4" /> {t("schoolBrief.download")}
             </button>
@@ -235,7 +235,7 @@ export default function SchoolBrief() {
             <button
               onClick={onApprove}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 min-h-[44px]"
-              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "var(--shadow-green)" }}
+              style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
             >
               <Download className="w-4 h-4" /> {t(APPROVE_EXPORT_CTA_KEY)}
             </button>

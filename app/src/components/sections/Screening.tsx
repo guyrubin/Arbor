@@ -151,7 +151,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
           <button
             onClick={() => setPhase("questions")}
             className="mt-4 inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3"
-            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+            style={{ background: "var(--arbor-gradient-primary)" }}
           >
             <ClipboardCheck className="w-4 h-4" /> Start the check
           </button>
@@ -193,7 +193,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
               onClick={submit}
               disabled={!allAnswered}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}
+              style={{ background: "var(--arbor-gradient-primary)" }}
             >
               See result <ArrowRight className="w-4 h-4" />
             </button>
@@ -240,7 +240,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
               <div className="flex flex-wrap gap-2">
                 {result.elevated && (
                   <>
-                    <button onClick={() => { routeTo("reports"); toast("Build a handoff to share this with a professional", "info"); }} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
+                    <button onClick={() => { routeTo("reports"); toast("Build a handoff to share this with a professional", "info"); }} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
                       <FileText className="w-4 h-4" /> Prepare a professional summary
                     </button>
                     <button onClick={() => routeTo("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
