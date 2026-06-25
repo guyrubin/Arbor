@@ -183,17 +183,19 @@ jobs:
 
       - name: Deploy Hosting + Firestore
         env:
-          # ROOT CAUSE (2026-06-25): this step had been auth-failing every run
-          # ("Failed to authenticate, have you run firebase login?"), silently freezing
-          # prod hosting on an old build while main + the API kept advancing. The repo is
-          # on the SA-key path (no GCP_WIF_PROVIDER var), so list auth-key FIRST, and assert
-          # the ADC file is real before calling firebase — a clear error beats firebase's
-          # misleading "run firebase login". google-github-actions/auth@v2 also exports
-          # GOOGLE_APPLICATION_CREDENTIALS globally; this just pins it for firebase-tools.
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth-key.outputs.credentials_file_path || steps.auth-wif.outputs.credentials_file_path }}
+          # ROOT CAUSE (2026-06-25, confirmed across runs #94/#95): firebase-tools kept
+          # failing "Failed to authenticate, have you run firebase login?" EVEN THOUGH
+          # GOOGLE_APPLICATION_CREDENTIALS pointed to a valid file gcloud used fine. The
+          # google-github-actions/auth file is a credential *config*, which the Firebase
+          # CLI's auth library won't accept. FIX: write the RAW service-account key from
+          # the secret and point firebase at THAT. Assert it's a service_account key so a
+          # wrong-shaped secret fails with a clear message, not firebase's misleading one.
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
-          : "${GOOGLE_APPLICATION_CREDENTIALS:?GOOGLE_APPLICATION_CREDENTIALS unset — auth step exported no ADC file}"
-          test -s "$GOOGLE_APPLICATION_CREDENTIALS" || { echo "::error::ADC credentials file missing/empty at $GOOGLE_APPLICATION_CREDENTIALS — firebase cannot authenticate"; exit 1; }
+          KEY="$RUNNER_TEMP/firebase-sa-key.json"
+          printf '%s' "$GCP_SA_KEY" > "$KEY"
+          export GOOGLE_APPLICATION_CREDENTIALS="$KEY"
+          node -e "const k=JSON.parse(require('fs').readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,'utf8')); if(k.type!=='service_account'){console.error('::error::GCP_SA_KEY is not a service_account key (type='+(k.type||'unknown')+') — firebase needs a raw SA key JSON');process.exit(1)} console.log('✓ service_account key for '+k.client_email)"
           npx --yes firebase-tools deploy --only hosting,firestore \
             --project "$PROJECT_ID" --non-interactive
 
