@@ -182,8 +182,12 @@ jobs:
           rm -f dist/server.cjs dist/server.cjs.map
 
       - name: Deploy Hosting + Firestore
+        # firebase-tools Hosting deploys don't reliably pick up the gcloud SA via
+        # GOOGLE_APPLICATION_CREDENTIALS — auth a CI token instead (repo secret
+        # FIREBASE_TOKEN from `npx firebase-tools login:ci`). This is what unblocks
+        # the client-to-Hosting leg that was silently failing post-merge.
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth-wif.outputs.credentials_file_path || steps.auth-key.outputs.credentials_file_path }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           npx --yes firebase-tools deploy --only hosting,firestore \
-            --project "$PROJECT_ID" --non-interactive
+            --project "$PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive
