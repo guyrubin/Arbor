@@ -180,6 +180,7 @@ jobs:
         run: |
           npm run build
           rm -f dist/server.cjs dist/server.cjs.map
+          echo "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}" > dist/timestamp.txt
 
       - name: Deploy Hosting + Firestore
         env:
