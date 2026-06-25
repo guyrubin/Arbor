@@ -46,7 +46,7 @@ export default function Strengths() {
           <h3 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Turn a challenge into a calm next step</h3>
           <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>Arbor reads {first}'s profile and proposes an age-aware plan or script.</p>
         </div>
-        <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}>
+        <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
           <Sparkles className="w-4 h-4" /> Ask Arbor
         </button>
       </div>

@@ -44,7 +44,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           <button
             onClick={this.reset}
             className="inline-flex items-center gap-2 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition active:scale-[0.97]"
-            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}
+            style={{ background: "var(--arbor-gradient-primary)" }}
           >
             <RotateCcw className="w-3.5 h-3.5" /> Try again
           </button>

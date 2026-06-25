@@ -70,7 +70,7 @@ export default function CourseCard({
             const isNext = !progress.complete && a.id === progress.nextActivityId;
             const open = openId === a.id;
             return (
-              <li key={a.id} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${isNext ? "rgba(52,178,119,0.4)" : RULE}`, background: isNext ? GREEN_SOFT : "var(--arbor-paper-deep)" }}>
+              <li key={a.id} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${isNext ? "rgba(88,166,255,0.4)" : RULE}`, background: isNext ? GREEN_SOFT : "var(--arbor-paper-deep)" }}>
                 <div className="w-full flex items-center gap-3 p-3">
                   <button
                     onClick={() => onToggle(a.id)}
@@ -115,7 +115,7 @@ export default function CourseCard({
                       <button
                         onClick={() => onToggle(a.id)}
                         className="inline-flex items-center justify-center gap-2 font-bold text-[13px] rounded-xl px-4 py-2.5 transition active:scale-[0.98]"
-                        style={done ? { background: GREEN_SOFT, color: GREEN } : { background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", color: "#fff", boxShadow: "var(--shadow-green)" }}
+                        style={done ? { background: GREEN_SOFT, color: GREEN } : { background: "var(--arbor-gradient-primary)", color: "#fff", boxShadow: "var(--arbor-clay-glow)" }}
                       >
                         <Check className="w-4 h-4" /> {done ? t("play.added", { name: childName }) : t("play.did")}
                       </button>

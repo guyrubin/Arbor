@@ -219,7 +219,7 @@ export default function AvatarCreator({
                 onClick={generate}
                 disabled={!canGenerate || generating}
                 className="flex-1 py-3 font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-50"
-                style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", color: "#fff" }}
+                style={{ background: "var(--arbor-gradient-primary)", color: "#fff" }}
               >
                 {generating ? "Creating…" : result ? "Try again" : "Create avatar"}
               </button>

@@ -61,7 +61,7 @@ export default function CareTeam() {
         subtitle={t("sec.care.sub", { name: first })}
         action={
           <div className="flex items-center gap-2">
-            <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
+            <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
               <UserPlus className="w-4 h-4" /> Add someone
             </button>
             <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
@@ -93,7 +93,7 @@ export default function CareTeam() {
             Add a co-parent, teacher or therapist and choose exactly what they can see about {first}. Every grant is time-boxed and revocable.
           </p>
           <div className="flex items-center justify-center gap-2 mt-4">
-            <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
+            <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
               <UserPlus className="w-4 h-4" /> Add someone
             </button>
             <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>

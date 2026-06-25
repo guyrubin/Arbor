@@ -109,7 +109,7 @@ export default function PlansTab() {
             onClick={handleGenerateActionPlan}
             disabled={isPlanGenerating}
             className="text-white font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+            style={{ background: "var(--arbor-gradient-primary)" }}
           >
             {isPlanGenerating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> {t("plan.creating")}</>) : (<><Sparkles className="w-4 h-4" /> {t("plan.createBtn")}</>)}
           </button>

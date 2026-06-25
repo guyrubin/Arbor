@@ -62,7 +62,7 @@ export default function AiRail() {
       <button
         onClick={() => setActiveTab("coach")}
         className="w-full inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl py-3"
-        style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
         <Sparkles className="w-4 h-4" /> {t("airail.askCta")}
       </button>

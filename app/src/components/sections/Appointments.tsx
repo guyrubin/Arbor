@@ -38,7 +38,7 @@ export default function Appointments() {
         title={t("sec.appt.title")}
         subtitle={t("sec.appt.sub")}
         action={
-          <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
+          <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
             <Plus className="w-4 h-4" /> Add appointment
           </button>
         }

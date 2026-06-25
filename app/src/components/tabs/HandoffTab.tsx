@@ -45,7 +45,7 @@ export default function HandoffTab() {
             onClick={handleGenerateBrief}
             disabled={isGeneratingBrief}
             className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))" }}
+            style={{ background: "var(--arbor-gradient-primary)" }}
           >
             {isGeneratingBrief ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Weaving brief…</>) : (<><Sparkles className="w-4 h-4" /> Compile brief summary</>)}
           </button>

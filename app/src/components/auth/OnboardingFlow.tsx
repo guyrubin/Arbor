@@ -95,7 +95,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
       <button
         onClick={onNext}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-        style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
         {t("ob.step.welcome.cta")}
       </button>
@@ -264,7 +264,7 @@ function StepChild({
         onClick={onNext}
         disabled={!name.trim() || !controllerConsent}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-50"
-        style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
         {t("ob.step.continue")}
       </button>
@@ -361,7 +361,7 @@ function StepDomains({
         onClick={onNext}
         disabled={selectedDomains.length === 0}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-50"
-        style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
         {t("ob.step.continue")}
       </button>
@@ -419,7 +419,7 @@ function StepAvatar({
         type="button"
         onClick={replayMode ? onSkip : () => setAvatarOpen(true)}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-        style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
         {t("ob.step.continue")}
       </button>
@@ -533,7 +533,7 @@ function StepReady({
         onClick={onSubmit}
         disabled={saving}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-        style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay) 60%,var(--arbor-clay-deep))", boxShadow: "0 8px 20px rgba(52,178,119,0.24)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
         {saving && <RefreshCw className="w-4 h-4 animate-spin" />}
         {t("ob.step.ready.cta")}

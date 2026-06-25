@@ -470,7 +470,7 @@ export default function MilestonesTab() {
             </h4>
             <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.nurtureDesc")}</p>
           </div>
-          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ml-auto sm:ml-0 disabled:opacity-60" style={{ background: "linear-gradient(135deg,#3cc081,var(--arbor-clay-deep))" }}>
+          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ml-auto sm:ml-0 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
             {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("ms.findingSteps")}</>) : (<><Brain className="w-3.5 h-3.5" /> {t("ms.findSteps")}</>)}
           </button>
         </div>
