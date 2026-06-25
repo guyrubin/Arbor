@@ -189,7 +189,11 @@ export default function Shell() {
         {/* AP-044: Right column — topbar placeholder (desktop) + scrollable content area */}
         <div className="flex flex-col min-h-0 md:h-screen">
           <Topbar />
-        <main className="px-5 py-6 pb-24 md:px-6 md:py-8 md:pb-10 xl:px-12 xl:py-10 overflow-y-auto flex-1 min-h-0">
+        {/* arbor-parent: scopes the flat-white clinical token overrides to the parent
+            dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
+            as a sibling of the grid — it carries its own .arbor-play scope and does
+            NOT inherit from this <main>. See index.css .arbor-parent block. */}
+        <main className="arbor-parent px-5 py-6 pb-24 md:px-6 md:py-8 md:pb-10 xl:px-12 xl:py-10 overflow-y-auto flex-1 min-h-0">
           {/* Mobile brand header (sidebar is hidden below md, so the logo lives here) */}
           <div className="flex md:hidden items-center gap-2.5 mb-5">
             <ArborMark size={34} />

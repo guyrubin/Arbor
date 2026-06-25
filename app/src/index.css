@@ -639,3 +639,65 @@ body {
   --shadow-green:           0 0 24px rgba(52,211,153,0.25);
   --ring:                   0 0 0 3px rgba(88, 166, 255, 0.18);
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PARENT VIEW SCOPE — .arbor-parent
+   Applied to the parent dashboard <main> in Shell.tsx.
+   Overrides the global glass/gradient surface tokens with the flat-white
+   clinical system from the Arbor-Web-App.dc.html design source.
+   Design source values (canonical):
+     - Outer canvas: #e7ece8 (body bg, untouched)
+     - App canvas:   #eef3fb (main content area)
+     - Sidebar/topbar: #fbfdfc / #eef3fb (shell chrome, not scoped here)
+     - Cards:        solid #fff
+     - Card shadow (neutral soft): 0 10px 26px -16px rgba(31,60,120,.22)
+     - Hero/elevated shadow:       0 16px 36px -18px rgba(31,90,120,.3)
+     - Hairline borders: #e8eee9 / #e8eef7
+     - Ink: #14225a (navy, 14.9:1 on white — AAA)
+     - Muted: #6b7a6e (4.53:1 on white — AA; #8a958e from mockup was 3.1:1
+       which fails AA for normal text, so this is bumped to the nearest AA pass)
+     - Accent sapphire: #2b7fff (3.76:1 on white — passes UI-component 3:1)
+     - Recessed wells: #fbfdfc with #e8eef7 border
+   Token override policy: re-skin in place via existing token names so consuming
+   components (OverviewTab, DevelopmentTab, etc.) need ZERO edits.
+   Serial chain position: APPENDED after [data-theme="blue"] (end of file).
+   ════════════════════════════════════════════════════════════════════════════ */
+.arbor-parent {
+  /* ── Surfaces: flat white, zero glass ──────────────────────────────────── */
+  --arbor-paper:            #eef3fb;                          /* app canvas */
+  --arbor-paper-elevated:   #ffffff;                          /* cards + panels */
+  --arbor-paper-deep:       #fbfdfc;                          /* recessed wells inside cards */
+  --arbor-paper-sunk:       #eef3fb;                          /* deeper track backgrounds */
+  --arbor-paper-tinted:     #eef3fb;                          /* tinted accent well */
+
+  /* ── Shadows: neutral soft, no blue tint ───────────────────────────────── */
+  --shadow-xs:  0 1px 3px rgba(31,60,120,.08);
+  --shadow-sm:  0 6px 18px rgba(16,24,40,.07);                /* neutral soft */
+  --shadow-md:  0 10px 26px -16px rgba(31,60,120,.22);        /* card (neutral soft) */
+  --shadow-lg:  0 16px 36px -18px rgba(31,90,120,.3);         /* hero / elevated */
+  --shadow-xl:  0 24px 48px -20px rgba(31,60,120,.32);
+
+  /* ── Glass: fully disabled ─────────────────────────────────────────────── */
+  --glass-blur:   none;
+  --glass-border: 1px solid #e8eee9;                          /* solid hairline */
+
+  /* ── Hairline borders ──────────────────────────────────────────────────── */
+  --arbor-rule:        #e8eee9;
+  --arbor-rule-strong: #e8eef7;
+
+  /* ── Ink & text ────────────────────────────────────────────────────────── */
+  --arbor-ink:      #14225a;     /* navy — 14.9:1 on white (AAA) */
+  --arbor-ink-soft: #1a2e4a;     /* near-navy sub-headings */
+  --arbor-muted:    #6b7a6e;     /* AA-bumped: 4.53:1 on white (original #8a958e = 3.1:1 fail) */
+  --arbor-faint:    #8a958e;     /* captions / decorative labels; not for normal body text */
+
+  /* ── Accent: sapphire brand ────────────────────────────────────────────── */
+  --accent:           #2b7fff;   /* mockup canonical `var(--accent,#2b7fff)` */
+  --arbor-clay:       #2b7fff;   /* remaps the primary token to the mockup sapphire */
+  --arbor-clay-deep:  #1a6be8;   /* hover/pressed (slightly darker for contrast) */
+  --arbor-clay-dim:   rgba(43,127,255,0.10);
+  --arbor-clay-border: rgba(43,127,255,0.18);
+
+  /* ── Background: flat canvas, no radial-gradient wash ─────────────────── */
+  background: var(--arbor-paper) !important;
+}
