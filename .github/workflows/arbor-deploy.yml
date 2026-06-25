@@ -183,7 +183,29 @@ jobs:
 
       - name: Deploy Hosting + Firestore
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth-wif.outputs.credentials_file_path || steps.auth-key.outputs.credentials_file_path }}
+          # ROOT CAUSE (2026-06-25): this step had been auth-failing every run
+          # ("Failed to authenticate, have you run firebase login?"), silently freezing
+          # prod hosting on an old build while main + the API kept advancing. The repo is
+          # on the SA-key path (no GCP_WIF_PROVIDER var), so list auth-key FIRST, and assert
+          # the ADC file is real before calling firebase — a clear error beats firebase's
+          # misleading "run firebase login". google-github-actions/auth@v2 also exports
+          # GOOGLE_APPLICATION_CREDENTIALS globally; this just pins it for firebase-tools.
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth-key.outputs.credentials_file_path || steps.auth-wif.outputs.credentials_file_path }}
         run: |
+          : "${GOOGLE_APPLICATION_CREDENTIALS:?GOOGLE_APPLICATION_CREDENTIALS unset — auth step exported no ADC file}"
+          test -s "$GOOGLE_APPLICATION_CREDENTIALS" || { echo "::error::ADC credentials file missing/empty at $GOOGLE_APPLICATION_CREDENTIALS — firebase cannot authenticate"; exit 1; }
           npx --yes firebase-tools deploy --only hosting,firestore \
             --project "$PROJECT_ID" --non-interactive
+
+      # NEVER-AGAIN GUARD: confirm the live site actually responds after the hosting deploy,
+      # so a silent hosting/auth failure can never again leave prod frozen on an old build
+      # while main advances. Fails the run loudly (red) if the live domain doesn't answer 200.
+      - name: Verify live site responds
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -fsS -o /dev/null -w '%{http_code}' https://arborparentingapp.com/ || true)
+            echo "attempt $i: https://arborparentingapp.com/ -> ${code:-no-response}"
+            [ "$code" = "200" ] && { echo "✓ live site responded 200 after deploy"; exit 0; }
+            sleep 10
+          done
+          echo "::error::Live site did not return 200 after deploy — hosting may not have propagated"; exit 1
