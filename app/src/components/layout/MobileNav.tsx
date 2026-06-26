@@ -23,7 +23,7 @@ export default function MobileNav() {
             key={sec.id}
             onClick={() => { void selectionHaptic(); setActiveTab(primaryTabOf(sec)); }}
             className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9.5px] font-bold transition"
-            style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
+            style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
           >
             <Icon className="w-[18px] h-[18px]" />
             {t("nav.short." + sec.id)}

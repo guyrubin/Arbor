@@ -233,10 +233,10 @@ export default function OverviewTab() {
                regenerate), Log Moment, Ask Arbor. */}
         <section
           className="rounded-[22px] overflow-hidden"
-          style={{ background: "#fff", boxShadow: "var(--shadow-md)" }}
+          style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-lg)" }}
         >
           {/* Gradient hero band */}
-          <div className="relative h-[176px] flex flex-col justify-between" style={{ background: "linear-gradient(140deg, #4a90e2 0%, #4a90e2 52%, #9b8cf0 105%)", padding: "20px" }}>
+          <div className="relative h-[176px] flex flex-col justify-between" style={{ background: "var(--arbor-hero-grad)", padding: "20px" }}>
             <div className="absolute inset-0" style={{ background: "radial-gradient(60% 80% at 86% 4%, rgba(255,255,255,0.34), transparent 60%)" }}></div>
             <Sparkles className="absolute right-[22px] bottom-[14px] text-[88px] opacity-[0.16]" style={{ color: "#fff", fontVariationSettings: "'FILL' 1" }} aria-hidden="true" />
             {/* Top row: eyebrow tag + trend chip */}
@@ -245,7 +245,7 @@ export default function OverviewTab() {
                 {heroEyebrow}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold flex-shrink-0" style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#fff" }} /> {trendWord}
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-paper-elevated)" }} /> {trendWord}
               </span>
             </div>
             {/* Greeting + pulse */}
@@ -262,7 +262,7 @@ export default function OverviewTab() {
           <div className="px-5 pb-5 pt-4">
             <div className="flex items-center justify-between gap-3">
               <StreakChip days={streak.current} lang={uiLang === "he" ? "he" : "en"} />
-              <span className="text-[12px] font-medium text-right" style={{ color: "#7c8983" }}>
+              <span className="text-[12px] font-medium text-right" style={{ color: "var(--arbor-muted)" }}>
                 {firstName}, age {childProfile.age}{childProfile.schoolContext ? ` · ${childProfile.schoolContext}` : ""}
               </span>
             </div>
@@ -272,30 +272,30 @@ export default function OverviewTab() {
                 <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
               ) : focus ? (
                 <div>
-                  <p className={`text-[15px] leading-relaxed font-medium ${focusOpen ? "" : "line-clamp-3"}`} style={{ color: "#14225a", textWrap: "pretty" } as React.CSSProperties}>{focus.text}</p>
+                  <p className={`text-[15px] leading-relaxed font-medium ${focusOpen ? "" : "line-clamp-3"}`} style={{ color: "var(--arbor-ink)", textWrap: "pretty" } as React.CSSProperties}>{focus.text}</p>
                   <div className="flex items-center gap-2 mt-1.5">
                     {focus.text.length > 160 && (
                       <button onClick={() => setFocusOpen((v) => !v)} className="text-[12px] font-bold inline-flex items-center min-h-[36px] px-1 transition" style={{ color: "var(--arbor-clay)" }}>
                         {focusOpen ? t("ov.focus.less") : t("ov.focus.more")}
                       </button>
                     )}
-                    <button onClick={() => void regenerate()} disabled={focusLoading} title="Suggest another focus" aria-label="Suggest another focus" className="inline-flex items-center justify-center w-9 h-9 rounded-xl transition disabled:opacity-50" style={{ background: "#eef3fb", color: "var(--arbor-clay)" }}>
+                    <button onClick={() => void regenerate()} disabled={focusLoading} title="Suggest another focus" aria-label="Suggest another focus" className="inline-flex items-center justify-center w-9 h-9 rounded-xl transition disabled:opacity-50" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
                       <RefreshCw className={`w-4 h-4 ${focusLoading ? "animate-spin" : ""}`} />
                     </button>
                   </div>
                 </div>
               ) : recentCount > 0 ? (
-                <p className="text-[15px] leading-relaxed" style={{ color: "#7c8983" }}>{t("ov.recoLoading", { name: firstName })}</p>
+                <p className="text-[15px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ov.recoLoading", { name: firstName })}</p>
               ) : (
-                <p className="text-[15px] leading-relaxed" style={{ color: "#14225a" }}>{t("ov.recoEmpty", { name: firstName })}</p>
+                <p className="text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoEmpty", { name: firstName })}</p>
               )}
             </div>
             {/* Primary actions */}
             <div className="flex flex-wrap items-center gap-2.5 mt-4">
-              <button onClick={() => setQuickLog(true)} aria-label={t("ov.logMoment")} className="inline-flex items-center gap-2 text-white font-extrabold text-[13px] rounded-xl px-5 py-3 transition active:scale-[0.98]" style={{ background: "#14225a", boxShadow: "0 8px 18px -6px rgba(20,34,90,0.5)" }}>
+              <button onClick={() => setQuickLog(true)} aria-label={t("ov.logMoment")} className="inline-flex items-center gap-2 text-white font-extrabold text-[13px] rounded-xl px-5 py-3 transition active:scale-[0.98]" style={{ background: "var(--arbor-ink)", boxShadow: "0 8px 18px -6px rgba(20,34,90,0.5)" }}>
                 <Plus className="w-4 h-4" /> {t("ov.logMoment")}
               </button>
-              <button onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }} className="inline-flex items-center gap-2 font-bold text-[13px] rounded-xl px-4 py-3 transition" style={{ background: "#eef3fb", color: "var(--arbor-clay)" }}>
+              <button onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }} className="inline-flex items-center gap-2 font-bold text-[13px] rounded-xl px-4 py-3 transition" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
                 <MessageSquare className="w-4 h-4" /> {t("ov.askArbor")}
               </button>
             </div>
@@ -311,22 +311,22 @@ export default function OverviewTab() {
             <section
               onClick={() => setActiveTab("development")}
               className="rounded-[22px] p-5 flex flex-col transition hover:-translate-y-0.5 cursor-pointer"
-              style={{ background: "#fff", boxShadow: "var(--shadow-sm)" }}
+              style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}
             >
               <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-clay)" }}>
                 {t("devscore.overall")}
               </div>
               <div className="flex items-center gap-4 mt-3">
-                <div className="relative w-[72px] h-[72px] rounded-full flex-none" style={{ background: `conic-gradient(var(--arbor-clay) 0 ${score.overall}%, #e7eeea ${score.overall}% 100%)` }}>
+                <div className="relative w-[72px] h-[72px] rounded-full flex-none" style={{ background: `conic-gradient(var(--arbor-clay) 0 ${score.overall}%, var(--arbor-track) ${score.overall}% 100%)` }}>
                   <div className="absolute inset-1 m-auto w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-full bg-white flex flex-col items-center justify-center">
-                    <span className="text-[22px] font-extrabold" style={{ color: "#14225a" }}>{score.overall}%</span>
+                    <span className="text-[22px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{score.overall}%</span>
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[15px] font-extrabold leading-tight" style={{ color: "#14225a" }}>
+                  <div className="text-[15px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>
                     {t("devscore.todayLine", { focus: focusLabel || t("devscore.todayLineSteady") })}
                   </div>
-                  <div className="text-[11px] mt-1" style={{ color: "#8a958e" }}>
+                  <div className="text-[11px] mt-1" style={{ color: "var(--arbor-faint)" }}>
                     {t("devscore.reached", { reached: checkedMilestones, total: totalMilestones })}
                   </div>
                 </div>
@@ -339,11 +339,11 @@ export default function OverviewTab() {
       {/* ── PROTOTYPE GRID LAYOUT: Row 2 (3-col, 1fr + 1fr + 1fr) ─────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* ── Kid activity sync card (spans 2 cols) ─────────────────────────── */}
-        <section className="lg:col-span-2 rounded-[22px] p-5" style={{ background: "#fff", boxShadow: "var(--shadow-sm)" }}>
+        <section className="lg:col-span-2 rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
           <div className="flex items-center gap-2 mb-4">
             <RotateCw className="w-5 h-5" style={{ color: "var(--arbor-clay)", fontVariationSettings: "'FILL' 1" }} />
-            <span className="text-[15px] font-extrabold" style={{ color: "#14225a" }}>{t("ov.reco.play.title")}</span>
-            <span className="ml-auto text-[10px] font-extrabold rounded-full px-2.5 py-1" style={{ color: "var(--arbor-clay)", background: "#eaf2ff" }}>
+            <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.reco.play.title")}</span>
+            <span className="ml-auto text-[10px] font-extrabold rounded-full px-2.5 py-1" style={{ color: "var(--arbor-clay)", background: "var(--arbor-tint-2)" }}>
               {t("today.live")}
             </span>
           </div>
@@ -368,27 +368,27 @@ export default function OverviewTab() {
                 rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined}
               />
             ) : (
-              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#fbfdfc" }}>
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#eef3fb", color: "var(--arbor-clay)" }}>
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
                   <Sparkles className="w-5 h-5" />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-extrabold" style={{ color: "#14225a" }}>{focus?.text || t("ov.recoLoading", { name: firstName })}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: "#8a958e" }}>{t("ov.play.desc")}</div>
+                  <div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoLoading", { name: firstName })}</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: "var(--arbor-faint)" }}>{t("ov.play.desc")}</div>
                 </div>
               </div>
             )}
             {/* Rhythm card */}
             {rhythm.confidence !== "none" && (
-              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#fbfdfc" }}>
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#eef3fb", color: "#3f8cc9" }}>
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay-deep)" }}>
                   <CalendarDays className="w-5 h-5" />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-extrabold" style={{ color: "#14225a" }}>{t("dw.cta")}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: "#8a958e" }}>{rhythm.frictionPeak ? t("rhythm.peak", { hour: hourLabel(rhythm.frictionPeak.hour) }) : t("rhythm.steady")}</div>
+                  <div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("dw.cta")}</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: "var(--arbor-faint)" }}>{rhythm.frictionPeak ? t("rhythm.peak", { hour: hourLabel(rhythm.frictionPeak.hour) }) : t("rhythm.steady")}</div>
                 </div>
-                <CheckCircle className="w-5 h-5" style={{ color: "#10b981" }} />
+                <CheckCircle className="w-5 h-5" style={{ color: "var(--arbor-success)" }} />
               </div>
             )}
           </div>
@@ -398,19 +398,19 @@ export default function OverviewTab() {
         <section
           onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
           className="rounded-[22px] p-5 flex flex-col transition hover:-translate-y-0.5 cursor-pointer"
-          style={{ background: "linear-gradient(140deg, #eaf2ff, #e7f1fa)", boxShadow: "var(--shadow-sm)" }}
+          style={{ background: "var(--arbor-coach-grad)", boxShadow: "var(--shadow-sm)" }}
         >
           <div className="flex items-center gap-3">
-            <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-[16px] font-extrabold" style={{ background: "linear-gradient(135deg, #4a90e2, #2b7fd1)", color: "#fff" }}>
+            <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-[16px] font-extrabold" style={{ background: "var(--arbor-avatar-grad)", color: "#fff" }}>
               {firstName.charAt(0)}
             </div>
             <div>
-              <div className="text-[14px] font-extrabold" style={{ color: "#14225a" }}>Arbor Coach</div>
+              <div className="text-[14px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>Arbor Coach</div>
               <div className="text-[10px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>{t("coach.online")}</div>
             </div>
           </div>
-          <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "#3a463f" }}>
-            {focus?.text || t("coach.ready", { name: firstName })}
+          <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "var(--arbor-ink-soft)" }}>
+            {t("coach.ready", { name: firstName })}
           </div>
           <button className="mt-4 bg-white text-center rounded-xl py-3 text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
             <MessageSquare className="w-4 h-4" /> {t("ov.askArbor")}
