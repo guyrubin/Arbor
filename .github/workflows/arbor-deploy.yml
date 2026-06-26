@@ -184,26 +184,23 @@ jobs:
 
       - name: Deploy Hosting + Firestore
         env:
-          # ROOT CAUSE (2026-06-25, confirmed across runs #94/#95): firebase-tools kept
-          # failing "Failed to authenticate, have you run firebase login?" EVEN THOUGH
-          # GOOGLE_APPLICATION_CREDENTIALS pointed to a valid file gcloud used fine. The
-          # google-github-actions/auth file is a credential *config*, which the Firebase
-          # CLI's auth library won't accept. FIX: write the RAW service-account key from
-          # the secret and point firebase at THAT. Assert it's a service_account key so a
-          # wrong-shaped secret fails with a clear message, not firebase's misleading one.
+          # Auth = the raw service-account key from GCP_SA_KEY, written to a temp file
+          # and exposed to firebase-tools as GOOGLE_APPLICATION_CREDENTIALS (ADC).
+          # firebase-tools >=11.1 honors ADC WITHOUT --token. Do NOT pass --token: a
+          # legacy token forces token-auth and overrides this SA key, which is what
+          # silently broke this step (runs #94/#95) — the SA key was valid but an
+          # expired/invalid FIREBASE_TOKEN won the auth contest. The SA in GCP_SA_KEY
+          # must hold Firebase Admin / Hosting Admin (arbor-deployer does).
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           KEY="$RUNNER_TEMP/firebase-sa-key.json"
           printf '%s' "$GCP_SA_KEY" > "$KEY"
           export GOOGLE_APPLICATION_CREDENTIALS="$KEY"
-          node -e "const k=JSON.parse(require('fs').readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,'utf8')); if(k.type!=='service_account'){console.error('::error::GCP_SA_KEY is not a service_account key (type='+(k.type||'unknown')+') — firebase needs a raw SA key JSON');process.exit(1)} console.log('✓ service_account key for '+k.client_email)"
-          test -n "$FIREBASE_TOKEN" || (echo "::error::FIREBASE_TOKEN is missing" && exit 1)
+          node -e "const k=JSON.parse(require('fs').readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,'utf8')); if(k.type!=='service_account'){console.error('::error::GCP_SA_KEY is not a service_account key (type='+(k.type||'unknown')+') — firebase needs a raw SA key JSON');process.exit(1)} console.log('✓ ADC via service_account key for '+k.client_email)"
           npx --yes firebase-tools deploy \
             --only hosting,firestore \
             --project "$PROJECT_ID" \
-            --non-interactive \
-            --token "$FIREBASE_TOKEN"
+            --non-interactive
 
       # NEVER-AGAIN GUARD: confirm the live site actually responds after the hosting deploy,
       # so a silent hosting/auth failure can never again leave prod frozen on an old build
