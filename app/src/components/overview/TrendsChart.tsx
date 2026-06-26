@@ -3,9 +3,11 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { TrendingUp } from "lucide-react";
 import { BehaviorLog } from "../../types";
 import { cardCls } from "../ui/kit";
+import { useLanguage } from "../../context/LanguageContext";
 
 /** Multi-month behavior-intensity trend (last 6 months). */
 export default function TrendsChart({ logs, milestonesPercent }: { logs: BehaviorLog[]; milestonesPercent: number }) {
+  const { t } = useLanguage();
   const data = useMemo(() => {
     const now = new Date();
     const months: { key: string; label: string; sum: number; count: number }[] = [];
@@ -38,13 +40,13 @@ export default function TrendsChart({ logs, milestonesPercent }: { logs: Behavio
       <div className="flex items-center justify-between">
         <div>
           <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-            <TrendingUp className="w-3.5 h-3.5" /> Trend over time
+            <TrendingUp className="w-3.5 h-3.5" /> {t("trends.eyebrow")}
           </span>
-          <h3 className="text-lg font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Behavior intensity · last 6 months</h3>
+          <h3 className="text-lg font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("trends.title")}</h3>
         </div>
         <div className="text-right">
           <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{milestonesPercent}%</div>
-          <span className="text-[10px] uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>milestone readiness</span>
+          <span className="text-[10px] uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("trends.readiness")}</span>
         </div>
       </div>
       {hasData ? (
@@ -57,7 +59,7 @@ export default function TrendsChart({ logs, milestonesPercent }: { logs: Behavio
               <Tooltip
                 contentStyle={{ background: "#ffffff", border: "1px solid rgba(41,51,63,0.12)", borderRadius: 12, fontSize: 12, boxShadow: "0 8px 24px rgba(41,51,63,0.10)" }}
                 labelStyle={{ color: "var(--arbor-clay-deep)", fontWeight: 700 }}
-                formatter={(v: any, _n: any, item: any) => [`avg ${v}/5 · ${item?.payload?.count || 0} events`, "Intensity"]}
+                formatter={(v: any, _n: any, item: any) => [t("trends.tooltip.fmt", { avg: v, count: item?.payload?.count || 0 }), t("trends.tooltip.label")]}
               />
               <Line type="monotone" dataKey="avg" stroke="var(--arbor-clay)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--arbor-clay)" }} activeDot={{ r: 5 }} />
             </LineChart>
@@ -65,7 +67,7 @@ export default function TrendsChart({ logs, milestonesPercent }: { logs: Behavio
         </div>
       ) : (
         <div className="h-32 flex items-center justify-center text-center text-xs rounded-2xl" style={{ color: "var(--arbor-muted)", border: "1px dashed var(--arbor-rule-strong)" }}>
-          A few weeks of logs will reveal your longer-term trend here.
+          {t("trends.empty")}
         </div>
       )}
     </div>

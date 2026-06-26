@@ -85,7 +85,7 @@ export default function OverviewTab() {
   };
   const handleSaveGoals = async (goals: ActiveGoal[]) => {
     await updateChild(childProfile.id, { activeGoals: goals });
-    toast(`Focus set. Daily Play is now matched to what you're working on.`, "success");
+    toast(t("ov.toast.focusSet"), "success");
     if (goals.length > 0) {
       setGoalPromptDismissed(true);
       try { sessionStorage.setItem("arbor.ci28.promptDismissed", "1"); } catch { /* ignore */ }
@@ -151,7 +151,7 @@ export default function OverviewTab() {
   };
   const markPlayDone = (p: ScoredActivity) => {
     logPlayCompletion(p, "today");
-    toast(`Nice. Added to ${firstName}'s day.`, "success");
+    toast(t("ov.toast.playDone", { name: firstName }), "success");
   };
 
   // ── Living, time-aware Today ──
@@ -263,7 +263,7 @@ export default function OverviewTab() {
             <div className="flex items-center justify-between gap-3">
               <StreakChip days={streak.current} lang={uiLang === "he" ? "he" : "en"} />
               <span className="text-[12px] font-medium text-right" style={{ color: "var(--arbor-muted)" }}>
-                {firstName}, age {childProfile.age}{childProfile.schoolContext ? ` · ${childProfile.schoolContext}` : ""}
+                {firstName}, {t("ov.ageWord")} {childProfile.age}{childProfile.schoolContext ? ` · ${childProfile.schoolContext}` : ""}
               </span>
             </div>
             {/* AI focus recommendation well */}
@@ -279,7 +279,7 @@ export default function OverviewTab() {
                         {focusOpen ? t("ov.focus.less") : t("ov.focus.more")}
                       </button>
                     )}
-                    <button onClick={() => void regenerate()} disabled={focusLoading} title="Suggest another focus" aria-label="Suggest another focus" className="inline-flex items-center justify-center w-9 h-9 rounded-xl transition disabled:opacity-50" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
+                    <button onClick={() => void regenerate()} disabled={focusLoading} title={t("ov.focus.regenerate")} aria-label={t("ov.focus.regenerate")} className="inline-flex items-center justify-center w-9 h-9 rounded-xl transition disabled:opacity-50" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
                       <RefreshCw className={`w-4 h-4 ${focusLoading ? "animate-spin" : ""}`} />
                     </button>
                   </div>
@@ -405,7 +405,7 @@ export default function OverviewTab() {
               {firstName.charAt(0)}
             </div>
             <div>
-              <div className="text-[14px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>Arbor Coach</div>
+              <div className="text-[14px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.title")}</div>
               <div className="text-[10px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>{t("coach.online")}</div>
             </div>
           </div>
