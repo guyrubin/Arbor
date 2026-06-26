@@ -19,7 +19,14 @@ export type NavSection = {
 };
 
 /**
- * The six-section Arbor information architecture (IA v2 + Wave-1 consolidation).
+ * The five-section Arbor information architecture — aligned to the "Arbor Web
+ * App" prototype (claude.ai/design 6ddac523): TODAY · MY CHILD · GROW · CARE
+ * NETWORK · ARBOR ACADEMY.
+ *
+ * Ask Arbor (the coach) is NOT a sidebar row: it is a top-bar action + the
+ * Today coach card (the prototype's model). It opens as a full view with the
+ * Today item highlighted. No capability was deleted — `coach` is still a valid,
+ * deep-linkable tab; its fallback points at "today" so the sidebar resolves.
  *
  * Wave 1 collapsed visible redundancy so the IA reads as deliberate, not
  * scattered: 22 nav leaves → 17. No capability was deleted — the routes below
@@ -38,12 +45,6 @@ export const SECTIONS: NavSection[] = [
     label: "Today",
     icon: Home,
     items: [{ tab: "overview", label: "Today", icon: LayoutDashboard }],
-  },
-  {
-    id: "ask",
-    label: "Ask Arbor",
-    icon: Sparkles,
-    items: [{ tab: "coach", label: "Ask Arbor", icon: Sparkles }],
   },
   {
     id: "child",
@@ -116,8 +117,11 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   screening: "child",
   memory: "child",
   weekly: "child",
-  // Ask — scholar lens lives inside the coach.
-  scholar: "ask",
+  // Ask — coach (Ask Arbor) is a top-bar action + Today coach card, not a
+  // sidebar row; it opens as a full view with Today highlighted. scholar lens
+  // lives inside the coach, so it resolves to Today too.
+  coach: "today",
+  scholar: "today",
   // Grow — drills reached via the Practice hub. (ia-b1: missions fully folded
   // into the Today daily loop and retired as a route — no fallback needed.)
   speech: "grow",
@@ -139,8 +143,8 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   // AP-051: Day Windows detail panel is reached from Today; maps to today section.
   "day-windows": "today",
   // AP-058: Smart Reminders is a settings surface reachable from Ask Arbor or Settings.
-  // Maps to the ask section (nearest semantic home for nudge/guidance settings).
-  "smart-reminders": "ask",
+  // Ask Arbor now lives under Today, so reminders resolve there too.
+  "smart-reminders": "today",
   // AP-060: The Science trust page — reached from Settings footer. Maps to the care section
   // (nearest semantic home for trust/transparency content).
   science: "care",

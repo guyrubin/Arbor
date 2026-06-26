@@ -1,14 +1,17 @@
 import { describe, it, expect } from "vitest";
 import { SECTIONS, sectionForTab, primaryTabOf } from "./navigation";
 
-/** Structural guard for the six-pillar information architecture (IA v3:
- *  Today / Ask / My Child / Grow / Care / Academy). Catches accidental drift:
- *  wrong section count, duplicate/colliding tabs, empty sections, a primary tab
- *  that doesn't belong, or a demoted leaf that no longer resolves. */
+/** Structural guard for the five-pillar information architecture — aligned to
+ *  the "Arbor Web App" prototype: Today / My Child / Grow / Care / Academy.
+ *  Ask Arbor (coach) is a top-bar action + Today coach card, NOT a sidebar row,
+ *  but it stays a valid route whose fallback resolves to "today". Catches
+ *  accidental drift: wrong section count, duplicate/colliding tabs, empty
+ *  sections, a primary tab that doesn't belong, or a demoted leaf that no
+ *  longer resolves. */
 describe("navigation IA", () => {
-  it("exposes exactly six task-based pillars", () => {
-    expect(SECTIONS).toHaveLength(6);
-    expect(SECTIONS.map((s) => s.id)).toEqual(["today", "ask", "child", "grow", "care", "academy"]);
+  it("exposes exactly five task-based pillars", () => {
+    expect(SECTIONS).toHaveLength(5);
+    expect(SECTIONS.map((s) => s.id)).toEqual(["today", "child", "grow", "care", "academy"]);
   });
 
   it("My Child collapses the development leaves into one Development hub", () => {
@@ -68,6 +71,9 @@ describe("navigation IA", () => {
     expect(sectionForTab("reports").id).toBe("care");     // → Consult
     expect(sectionForTab("find-pro").id).toBe("care");
     expect(sectionForTab("handoff").id).toBe("care");
-    expect(sectionForTab("scholar").id).toBe("ask");
+    // Ask Arbor (coach) is folded into Today (top-bar action + coach card), not
+    // a sidebar row — but it stays a valid route and must resolve to "today".
+    expect(sectionForTab("coach").id).toBe("today");
+    expect(sectionForTab("scholar").id).toBe("today");
   });
 });
