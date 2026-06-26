@@ -20,9 +20,35 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 const LS_AI = "arbor.aiLang";
 const LS_UI = "arbor.uiLang";
 
+const SUPPORTED: UiLang[] = ["en", "he"];
+
+/**
+ * First-visit detection: when there's no stored preference, honor the browser's
+ * UI language when it maps to one we support. An Israeli parent on a Hebrew
+ * browser (he / he-IL) lands in Hebrew + RTL, not English — which is the
+ * correct default for a Clalit/Maccabi-facing product. "iw" is the legacy
+ * Java/IE locale code for Hebrew and is treated the same as "he". An explicit
+ * choice in-app always wins: it's persisted to localStorage and read first.
+ */
+const detectBrowserLang = (): UiLang => {
+  try {
+    const tags = navigator.languages?.length ? navigator.languages : [navigator.language];
+    for (const tag of tags) {
+      const base = (tag || "").toLowerCase().split("-")[0];
+      if (base === "he" || base === "iw") return "he";
+      if (base === "en") return "en";
+    }
+  } catch {
+    /* SSR / no navigator — fall through to the default */
+  }
+  return "en";
+};
+
 const readLang = (key: string): UiLang => {
   try {
-    return (localStorage.getItem(key) as UiLang) || "en";
+    const stored = localStorage.getItem(key) as UiLang | null;
+    if (stored && SUPPORTED.includes(stored)) return stored;
+    return detectBrowserLang();
   } catch {
     return "en";
   }

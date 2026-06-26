@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo } from "react";
-import { Gauge, ArrowUp, ArrowDown, Minus, Sparkles } from "lucide-react";
+import { Gauge, Sparkles } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { ProgressRing } from "../ui/ProgressRing";
 import { HeroAvatar } from "../ui/HeroAvatar";
+import { DevRadarRing } from "./DevRadarRing";
 import framework from "../../framework.json";
 import type { StoredDevScoreSnapshot } from "../../types";
 import { isoWeekKey, prefersReducedMotion } from "../../lib/devscore";
 import {
-  computeDevScore, toSnapshot, shouldSnapshot, type DevScoreSnapshot, type Trend,
+  computeDevScore, toSnapshot, shouldSnapshot, type DevScoreSnapshot,
 } from "../../growth/devScore";
 
 // Domain id → human label, resolved from the framework (e.g. social_development
@@ -28,12 +29,6 @@ const MUTED = "var(--arbor-muted)";
 const GREEN = "var(--arbor-green-ink)";
 const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
-
-const TREND_ICON: Record<Trend, React.ReactNode> = {
-  up: <ArrowUp className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />,
-  down: <ArrowDown className="w-3.5 h-3.5" style={{ color: "var(--arbor-peach-ink)" }} />,
-  flat: <Minus className="w-3.5 h-3.5" style={{ color: "var(--arbor-faint)" }} />,
-};
 
 export default function DevScoreCard() {
   const { milestones, childProfile, setChatInput, setActiveTab } = useArbor();
@@ -128,20 +123,27 @@ export default function DevScoreCard() {
           </div>
         </div>
 
-        {/* Per-domain bars */}
-        <div className="mt-5 space-y-2.5">
-          {score.domains.map((d) => (
-            <div key={d.domain} className="flex items-center gap-3">
-              <span className="w-36 flex-shrink-0 text-[13px] font-bold truncate" style={{ color: INK }} title={labelFor(d.domain)}>{labelFor(d.domain)}</span>
-              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-sunk)" }}>
-                <div className="h-full rounded-full" style={{ width: `${d.score}%`, background: "var(--arbor-clay)" }} />
-              </div>
-              <span className="w-6 text-right text-[12px] font-extrabold" style={{ color: MUTED }}>{d.score}</span>
-              <span className="w-4 flex-shrink-0" aria-hidden="true">{TREND_ICON[d.trend]}</span>
-              {/* Trend non-visually (color alone fails AA): label, value, direction. */}
-              <span className="sr-only">{t("devscore.bar.aria", { domain: labelFor(d.domain), score: d.score, trend: d.trend })}</span>
-            </div>
-          ))}
+        {/* Per-domain radar ring — the prototype's signature dev-radar map.
+            Replaces the flat bars (same data, same numbers) with a radial
+            polar map: each spoke is a domain, the sapphire shape fills to the
+            share of age-appropriate milestones reached. Keeps the sr-only per-
+            domain trend announcements for screen readers (color/shape alone
+            fails AA). */}
+        <div className="mt-5">
+          <DevRadarRing
+            domains={score.domains}
+            t={t}
+            labelFor={labelFor}
+            firstName={firstName}
+            animate={animateRing}
+          />
+          <div className="sr-only">
+            {score.domains.map((d) => (
+              <span key={d.domain}>
+                {t("devscore.bar.aria", { domain: labelFor(d.domain), score: d.score, trend: d.trend })}{"; "}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Nurture-next */}

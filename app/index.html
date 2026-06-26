@@ -3,6 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      // Pre-hydration locale: set <html lang/dir> BEFORE the bundle loads so an
+      // Israeli parent on a Hebrew browser never sees an English/LTR flash, and
+      // RTL font stacks apply from first paint. Mirrors LanguageContext — a
+      // stored choice (arbor.uiLang) always wins; otherwise the browser locale
+      // is honored (he / legacy "iw" → Hebrew + RTL, en → English, else English).
+      // React re-reads and keeps this in sync after mount.
+      (function () {
+        try {
+          var html = document.documentElement;
+          var stored = localStorage.getItem('arbor.uiLang');
+          var lang = 'en';
+          if (stored === 'he' || stored === 'en') {
+            lang = stored;
+          } else {
+            var tags = (navigator.languages && navigator.languages.length)
+              ? navigator.languages : [navigator.language];
+            for (var i = 0; i < tags.length; i++) {
+              var base = (tags[i] || '').toLowerCase().split('-')[0];
+              if (base === 'he' || base === 'iw') { lang = 'he'; break; }
+              if (base === 'en') { break; }
+            }
+          }
+          html.lang = lang;
+          html.dir = lang === 'he' ? 'rtl' : 'ltr';
+        } catch (e) { /* bundle sets defaults on mount */ }
+      })();
+    </script>
     <meta name="description" content="Arbor — your child's development, thoughtfully guided." />
     <meta name="theme-color" content="#0c0e14" />
     <link rel="manifest" href="/manifest.webmanifest" />
