@@ -42,7 +42,7 @@ export default function Strengths() {
       </div>
 
       <div className="rounded-[22px] p-6 flex flex-col sm:flex-row items-center gap-5" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
-        <div className="flex-1 text-center sm:text-left">
+        <div className="flex-1 text-center sm:text-start">
           <h3 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Turn a challenge into a calm next step</h3>
           <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>Arbor reads {first}'s profile and proposes an age-aware plan or script.</p>
         </div>

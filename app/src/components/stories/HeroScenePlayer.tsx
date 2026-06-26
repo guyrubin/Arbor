@@ -51,7 +51,7 @@ export function HeroScenePlayer({
   const [speaking, setSpeaking] = useState(false);
   const [sceneArt, setSceneArt] = useState<string | undefined>();
   const [artLoading, setArtLoading] = useState(false);
-  const { uiLang } = useLanguage();
+  const { uiLang, t } = useLanguage();
 
   // Stop speech whenever the scene changes or the card unmounts.
   useEffect(() => {
@@ -142,7 +142,7 @@ export function HeroScenePlayer({
           </button>
         )}
         {sceneArt && (
-          <button onClick={saveComicPage} className="flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label="Save this comic page">
+          <button onClick={saveComicPage} className="flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
             <Download className="w-3.5 h-3.5" /> Save
           </button>
         )}

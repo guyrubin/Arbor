@@ -124,7 +124,7 @@ export default function AvatarCreator({
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-label="Create an avatar"
+            aria-label={t("aria.createAvatar")}
             className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-6"
             style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 64px rgba(41,51,63,0.18)" }}
             initial={{ scale: 0.96, y: 8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 8 }}
@@ -134,7 +134,7 @@ export default function AvatarCreator({
               <h3 className="text-lg font-extrabold tracking-tight flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                 <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} /> Create {childName}&apos;s avatar
               </h3>
-              <button onClick={close} className="p-1.5 rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label="Close">
+              <button onClick={close} className="p-1.5 rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -188,7 +188,7 @@ export default function AvatarCreator({
                 <label className="flex items-start gap-2 p-3 rounded-xl cursor-pointer" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}>
                   <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-clay)" }} />
                   <span className="text-[11px] leading-snug" style={{ color: "var(--arbor-green-ink)" }}>
-                    <ShieldCheck className="w-3.5 h-3.5 inline mr-1" />
+                    <ShieldCheck className="w-3.5 h-3.5 inline me-1" />
                     I consent to Arbor using this photo to create a cartoon character. The original is used once, then <strong>immediately discarded — never stored and never used to train AI.</strong>
                   </span>
                 </label>

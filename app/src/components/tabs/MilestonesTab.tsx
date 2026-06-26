@@ -167,7 +167,7 @@ export default function MilestonesTab() {
               <button
                 type="button"
                 onClick={(e) => { e.preventDefault(); const nt = window.prompt("Rename milestone", item.title); if (nt) updateMilestoneTitle(item.id, nt); }}
-                aria-label="Rename custom milestone"
+                aria-label={t("aria.renameCustomMilestone")}
                 className="text-[9px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
@@ -178,7 +178,7 @@ export default function MilestonesTab() {
               <button
                 type="button"
                 onClick={(e) => { e.preventDefault(); if (window.confirm("Delete this custom milestone?")) deleteMilestone(item.id); }}
-                aria-label="Delete custom milestone"
+                aria-label={t("aria.deleteCustomMilestone")}
                 className="text-[9px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
@@ -401,7 +401,7 @@ export default function MilestonesTab() {
                         type="button"
                         onClick={() => { if (isEarlier) setOpenEarlierBands((p) => ({ ...p, [band.months]: !p[band.months] })); }}
                         aria-expanded={!collapsed}
-                        className="w-full flex items-center justify-between gap-2 text-left"
+                        className="w-full flex items-center justify-between gap-2 text-start"
                         style={{ cursor: isEarlier ? "pointer" : "default" }}
                       >
                         <span className="flex items-center gap-2">
@@ -470,7 +470,7 @@ export default function MilestonesTab() {
             </h4>
             <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.nurtureDesc")}</p>
           </div>
-          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ml-auto sm:ml-0 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
+          <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ms-auto sm:ms-0 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
             {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("ms.findingSteps")}</>) : (<><Brain className="w-3.5 h-3.5" /> {t("ms.findSteps")}</>)}
           </button>
         </div>

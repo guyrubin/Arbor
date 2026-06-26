@@ -110,7 +110,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
         {contract.domains?.slice(0, 3).map((d) => (
           <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{d.replace(/_/g, " ")}</span>
         ))}
-        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full ml-auto" style={{ color: risk.fg, background: risk.bg }}>Risk: {risk.label}</span>
+        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full ms-auto" style={{ color: risk.fg, background: risk.bg }}>Risk: {risk.label}</span>
       </div>
 
       {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
@@ -136,7 +136,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
             {contract.nonDiagnosticHypotheses.map((h, i) => (
               <li key={i} className="text-[12.5px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
                 <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{h.label}</span>
-                {h.confidence && <span className="ml-1.5 text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}>({h.confidence})</span>}
+                {h.confidence && <span className="ms-1.5 text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}>({h.confidence})</span>}
                 {h.rationale && <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{h.rationale}</span>}
               </li>
             ))}
@@ -158,7 +158,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           <ul className="space-y-1">
             {contract.todayPlan.map((step, i) => (
               <li key={i}>
-                <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-start gap-2 text-left w-full group">
+                <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-start gap-2 text-start w-full group">
                   <span className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition" style={done[i] ? { background: "var(--arbor-clay)", border: "1px solid var(--arbor-clay)" } : { border: "1px solid var(--arbor-rule-strong)" }}>
                     {done[i] && <Check className="w-3 h-3 text-white" />}
                   </span>
@@ -195,14 +195,14 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {contract.avoid?.length > 0 && (
           <Panel icon={<Ban className="w-3 h-3" />} title="Avoid" tint="var(--arbor-peach-ink)">
-            <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "var(--arbor-muted)" }}>
+            <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.avoid.map((a, i) => <li key={i}>{a}</li>)}
             </ul>
           </Panel>
         )}
         {contract.observe?.length > 0 && (
           <Panel icon={<Eye className="w-3 h-3" />} title="Watch for" tint="var(--arbor-lav-ink)">
-            <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "var(--arbor-muted)" }}>
+            <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.observe.map((o, i) => <li key={i}>{o}</li>)}
             </ul>
           </Panel>
@@ -212,7 +212,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       {/* Escalate */}
       {contract.escalateIf?.length > 0 && (
         <Panel icon={<AlertTriangle className="w-3 h-3" />} title="Reach out for help if" tint="var(--arbor-pink-ink)">
-          <ul className="space-y-1 text-[12px] leading-snug list-disc pl-4" style={{ color: "var(--arbor-pink-ink)" }}>
+          <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-pink-ink)" }}>
             {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
         </Panel>

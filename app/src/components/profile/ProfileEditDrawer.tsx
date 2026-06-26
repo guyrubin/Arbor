@@ -179,7 +179,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-label="Edit child profile"
+            aria-label={t("aria.editChildProfile")}
             className="w-full max-w-md h-full bg-white p-6 overflow-y-auto"
             style={{ borderLeft: "1px solid var(--arbor-rule)" }}
             initial={{ x: "100%" }}
@@ -190,7 +190,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Edit profile</h3>
-              <button onClick={onClose} className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label="Close">
+              <button onClick={onClose} className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -250,7 +250,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                   {t("profile.interests.helper", { name: name.trim() || activeChild.name })}
                 </p>
                 {/* Suggestion chips */}
-                <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Interests">
+                <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label={t("aria.interests")}>
                   {suggestionLabels.map((label) => {
                     const isActive = activeInterests.includes(label);
                     return (
@@ -299,7 +299,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     onChange={(e) => setInterestInput(e.target.value.slice(0, 40))}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomInterest(); } }}
                     placeholder={t("profile.interests.addPlaceholder")}
-                    aria-label="Add a custom interest"
+                    aria-label={t("aria.addCustomInterest")}
                     maxLength={40}
                     className="flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none"
                     style={inputStyle}
@@ -307,7 +307,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                   <button
                     type="button"
                     onClick={addCustomInterest}
-                    aria-label="Add interest"
+                    aria-label={t("aria.addInterest")}
                     className="inline-flex items-center gap-1 px-3 min-h-[44px] rounded-lg text-xs font-bold transition"
                     style={{ color: "var(--arbor-green-ink)" }}
                   >

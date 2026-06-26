@@ -19,7 +19,7 @@ const List = ({ icon, title, tint, items }: { icon: React.ReactNode; title: stri
   items?.length ? (
     <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
       <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider mb-1.5" style={{ color: tint }}>{icon} {title}</span>
-      <ul className="space-y-1 text-[12.5px] leading-snug list-disc pl-4" style={{ color: "var(--arbor-ink)" }}>{items.map((t, i) => <li key={i}>{t}</li>)}</ul>
+      <ul className="space-y-1 text-[12.5px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-ink)" }}>{items.map((t, i) => <li key={i}>{t}</li>)}</ul>
     </div>
   ) : null;
 
@@ -103,7 +103,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
         <div className="space-y-3">
           <div className="relative">
             <img src={dataUrl} alt="To analyze" className="w-full max-h-56 object-contain rounded-2xl" style={{ border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }} />
-            <button onClick={() => { setDataUrl(""); setResult(null); }} className="absolute top-2 right-2 text-white rounded-lg px-2 py-1 text-[10px] font-bold" style={{ background: "rgba(41,51,63,0.7)" }}>Change</button>
+            <button onClick={() => { setDataUrl(""); setResult(null); }} className="absolute top-2 end-2 text-white rounded-lg px-2 py-1 text-[10px] font-bold" style={{ background: "rgba(41,51,63,0.7)" }}>Change</button>
           </div>
           {!isDoc && (
             <textarea

@@ -1,5 +1,6 @@
 import { Gamepad2 } from "lucide-react";
 import { useKidMode } from "../kidmode/KidModeContext";
+import { useLanguage } from "../../context/LanguageContext";
 
 /**
  * The single affordance to hand the device to the child (enter Kid Mode).
@@ -14,12 +15,13 @@ import { useKidMode } from "../kidmode/KidModeContext";
  */
 export default function KidModeButton({ compact = false }: { compact?: boolean }) {
   const { openKidMode } = useKidMode();
+  const { t } = useLanguage();
 
   if (compact) {
     return (
       <button
         onClick={openKidMode}
-        aria-label="Kid Mode"
+        aria-label={t("aria.kidMode")}
         title="Kid Mode — hand the device to your child"
         className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
         style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
@@ -32,7 +34,7 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
   return (
     <button
       onClick={openKidMode}
-      aria-label="Launch Kid Mode"
+      aria-label={t("aria.launchKidMode")}
       title="Kid Mode — hand the device to your child"
       style={{
         display: "inline-flex",

@@ -3,6 +3,7 @@ import { Shapes } from "lucide-react";
 import { PlayHeader, MascotSay, ChoiceTile, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { PATTERN_PUZZLES, gradeStars } from "../../practice/newGames";
+import { useLanguage } from "../../context/LanguageContext";
 
 /* Pattern Power — continue the sequence. A logic/cognition game: read a
    repeating run of shapes, pick the glyph that comes next. Each pick logs a
@@ -19,6 +20,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 export default function PatternPowerWorld() {
   const { first, log } = useArcadeLogger();
+  const { t } = useLanguage();
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [scores, setScores] = useState<number[]>([]);
@@ -54,7 +56,7 @@ export default function PatternPowerWorld() {
       <PlayHeader title="Pattern Power" say="What comes next? Tap the shape that finishes the pattern." mood="think" />
       <ProgressPips total={PATTERN_PUZZLES.length} current={idx} tone="lav" />
 
-      <div className="flex flex-wrap items-center justify-center gap-3 py-2" role="img" aria-label="Pattern to continue">
+      <div className="flex flex-wrap items-center justify-center gap-3 py-2" role="img" aria-label={t("aria.patternToContinue")}>
         {puzzle.shown.map((g, i) => (
           <span key={i} className="text-[2.8rem] leading-none">{g}</span>
         ))}

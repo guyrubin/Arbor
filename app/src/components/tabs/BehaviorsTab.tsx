@@ -5,7 +5,6 @@ import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
-import { Sparkline } from "../ui/Sparkline";
 import { Skeleton } from "../ui/Skeleton";
 import { PageHeader, cardCls } from "../ui/kit";
 import { T } from "../../lib/tokens";
@@ -165,23 +164,19 @@ export default function BehaviorsTab() {
     return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
   }, [filtered]);
 
-  // Per-type 30-day intensity series
-  const sparkSeries = useMemo(() => {
+  // Per-type 30-day FLAT COUNT (Wave-3 clinical subtraction, 2026-06-26).
+  // Replaces the prior 30-day intensity-over-time sparkline series — a behavior-
+  // intensity trend per type on a child metric = verdict-shaped (same firewall
+  // class as TrendsChart). The replacement is a flat parent-log count per type
+  // in the window; no time axis, no avg, no line, no verdict.
+  const typeCounts30d = useMemo(() => {
     const now = Date.now();
-    return types.map((type) => {
-      const sums = new Array(30).fill(0);
-      const counts = new Array(30).fill(0);
-      behaviorLogs
-        .filter((l) => l.behaviorType === type)
-        .forEach((l) => {
-          const idx = 29 - Math.floor((now - new Date(l.timestamp).getTime()) / DAY);
-          if (idx >= 0 && idx < 30) {
-            sums[idx] += l.intensity;
-            counts[idx] += 1;
-          }
-        });
-      return { type, series: sums.map((s, i) => (counts[i] ? s / counts[i] : 0)) };
-    });
+    return types.map((type) => ({
+      type,
+      count: behaviorLogs.filter(
+        (l) => l.behaviorType === type && now - new Date(l.timestamp).getTime() < 30 * DAY,
+      ).length,
+    }));
   }, [behaviorLogs, types]);
 
   const exportPdf = () => {
@@ -384,15 +379,20 @@ export default function BehaviorsTab() {
           {/* Correlations / pattern intelligence */}
           <PatternInsights logs={behaviorLogs} />
 
-          {/* Per-type intensity sparklines */}
-          {sparkSeries.length > 0 && (
+          {/* Per-type 30-day FLAT COUNT (Wave-3 clinical subtraction). Replaces
+              the prior per-type intensity sparkline cluster — a behavior-intensity
+              trend on a child metric = verdict-shaped. Now a flat parent-log
+              count per type in the window; no time axis, no avg, no verdict. */}
+          {typeCounts30d.length > 0 && (
             <div className={`${cardCls} p-5 space-y-3`}>
-              <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.trendLabel")}</span>
+              <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.countLabel")}</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {sparkSeries.map(({ type, series }) => (
+                {typeCounts30d.map(({ type, count }) => (
                   <div key={type} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                     <span className="text-[11px] truncate" style={{ color: "var(--arbor-muted)" }}>{type}</span>
-                    <Sparkline data={series} />
+                    <span className="text-[11px] font-bold" style={{ color: "var(--arbor-ink)" }}>
+                      {t("beh.countEntry", { count })}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -405,7 +405,7 @@ export default function BehaviorsTab() {
                 <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("beh.activeLogs")}</h3>
                 <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("beh.entriesOf", { n: filtered.length, total: behaviorLogs.length })}</p>
               </div>
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center gap-2 ms-auto">
                 <button onClick={exportPdf} className="font-bold text-xs px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
                   <Download className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
                 </button>
@@ -476,7 +476,7 @@ export default function BehaviorsTab() {
             )}
 
             {/* Weekly grouped logs */}
-            <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+            <div className="space-y-4 max-h-[420px] overflow-y-auto pe-1">
               {!logsLoaded && (
                 <div className="space-y-2"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div>
               )}
@@ -500,7 +500,7 @@ export default function BehaviorsTab() {
                       {!collapsed && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
                           {logs.map((log) => (
-                            <div key={log.id} className="p-4 rounded-xl space-y-2.5 text-xs text-left" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                            <div key={log.id} className="p-4 rounded-xl space-y-2.5 text-xs text-start" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                               <div className="flex justify-between items-start gap-3">
                                 <div>
                                   <span className="font-bold text-sm" style={{ color: "var(--arbor-ink)" }}>{log.behaviorType}</span>

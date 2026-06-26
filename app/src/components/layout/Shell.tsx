@@ -248,7 +248,7 @@ export default function Shell() {
               <KidModeButton compact />
               <button
                 onClick={() => setSettingsOpen(true)}
-                aria-label="Settings"
+                aria-label={t("aria.settings")}
                 title="Settings"
                 className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
@@ -258,7 +258,7 @@ export default function Shell() {
               {firebaseEnabled && user && (
                 <button
                   onClick={() => void signOut()}
-                  aria-label="Sign out"
+                  aria-label={t("aria.signout")}
                   title="Sign out"
                   className="md:hidden flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-bold transition bg-white"
                   style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}

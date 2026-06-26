@@ -170,6 +170,15 @@ export interface Momentum {
   momentsThisWeek: number;
   momentsPrevWeek: number;
   momentTrend: Trend;
+  /**
+   * CI-22/23/24 firewall (Wave-3 clinical subtraction, 2026-06-26): the per-week
+   * average behavior-intensity + the easing/rising trend are behavior-intensity
+   * metrics on a child = verdict-shaped. They are KEPT on the type only for
+   * back-compat with existing callers/tests; NOTHING in the product renders them
+   * as a verdict anymore. Do NOT wire these to any UI/text/code path that emits a
+   * child verdict. Verified-rendered-safe by `clinicalFirewall.test.ts`.
+   * @deprecated for any verdict use.
+   */
   avgIntensityThisWeek: number | null;
   avgIntensityPrevWeek: number | null;
   intensityTrend: "easing" | "rising" | "flat" | "none";
@@ -250,15 +259,14 @@ export const deriveNextStep = (momentum: Momentum, childName: string): NextStep 
   }
 
   if (momentum.topPattern && momentum.momentsThisWeek >= 2) {
+    // CI-22/23/24 firewall (Wave-3 clinical subtraction): the intensity-trend
+    // verdict ("easing — whatever you're doing is helping" / "rising — worth a
+    // closer look") was a behavior-intensity trend on a child metric = a verdict.
+    // Removed. The flat moment count + top pattern + route-to-coach (mechanism)
+    // remain — they emit nothing about the child as a verdict.
     const where = momentum.topContext ? `, usually at ${momentum.topContext.toLowerCase()}` : "";
-    const easing = momentum.intensityTrend === "easing";
-    const trendLine = easing
-      ? " Intensity is easing — whatever you're doing is helping."
-      : momentum.intensityTrend === "rising"
-        ? " Intensity is rising this week — worth a closer look."
-        : "";
     return {
-      message: `Most of ${name}'s moments this week were "${momentum.topPattern}"${where}.${trendLine}`,
+      message: `You logged ${momentum.momentsThisWeek} moments for ${name} this week — most often "${momentum.topPattern}"${where}.`,
       cta: {
         label: `Ask Arbor about ${momentum.topPattern.toLowerCase()}`,
         prompt: `This week ${name} had several "${momentum.topPattern}" moments${

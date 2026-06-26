@@ -10,6 +10,15 @@ export type FocusSignals = {
   avg: number;
   topTrigger: string;
   milestonesPercent: number;
+  /**
+   * Wave-3 clinical subtraction (2026-06-26): the coach prompt no longer passes
+   * `milestonesPercent` or `avg` (intensity) to the model — both are verdict
+   * primitives that could be re-emitted as a child verdict. The prompt now uses
+   * flat parent-log counts + the top pattern only. The fields stay on the type
+   * for back-compat with callers; they are ignored below.
+   */
+  milestonesChecked?: number;
+  milestonesTotal?: number;
 };
 
 type Focus = { text: string; generatedAt: string; dateKey: string };
@@ -41,7 +50,12 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
         method: "POST",
         headers: await authHeaders(),
         body: JSON.stringify({
-          message: `In 2 short sentences, give me today's single most useful parenting focus for ${child.name} (age ${child.age}). Signals this week: ${signals.count} behavior events, average intensity ${signals.avg.toFixed(1)}/5, most frequent pattern "${signals.topTrigger || "transitions"}", milestone readiness ${signals.milestonesPercent}%. Warm, concrete, non-diagnostic, no headings or markdown.`,
+          // Wave-3 clinical subtraction (2026-06-26): the prompt no longer feeds
+          // the model `average intensity X/5` nor `milestone readiness X%` —
+          // both are verdict primitives a child metric could re-emit. Only flat
+          // parent-log counts + the top pattern (a parent-tagged category) are
+          // passed. The model is asked for a mechanism-only focus.
+          message: `In 2 short sentences, give me today's single most useful parenting focus for ${child.name} (age ${child.age}). What the parent has logged this week: ${signals.count} moment${signals.count === 1 ? "" : "s"}, most often around "${signals.topTrigger || "transitions"}". Suggest ONE small, concrete thing to try — a developmental mechanism (serve-and-return, co-regulation, a transition cue), not an assessment, score, percentage, trend, diagnosis, or outcome claim. Warm, non-diagnostic, no headings or markdown.`,
           childProfile: child,
           scholarLens: "Integrated Balanced",
           language: getAiLanguage(),

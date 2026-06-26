@@ -74,7 +74,7 @@ export function TrustSafetyBar({ risk = "Low", note, onEscalate }: { risk?: "Low
       <span style={{ color: "var(--arbor-muted)" }}>Escalation available</span>
       {note && <span style={{ color: "var(--arbor-muted)" }}>· {note}</span>}
       {elevated && onEscalate && (
-        <button onClick={onEscalate} className="ml-auto inline-flex items-center gap-1 font-extrabold rounded-full px-3 py-1" style={{ background: PASTEL[tone].ink, color: T.onAccent }}>
+        <button onClick={onEscalate} className="ms-auto inline-flex items-center gap-1 font-extrabold rounded-full px-3 py-1" style={{ background: PASTEL[tone].ink, color: T.onAccent }}>
           Talk to a professional →
         </button>
       )}

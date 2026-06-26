@@ -1,6 +1,7 @@
 import React from "react";
 import { DOMAIN_META } from "../../practice/content";
 import type { DomainBand } from "../../practice/signals";
+import { useLanguage } from "../../context/LanguageContext";
 
 /**
  * Hand-rolled SVG radar of the five development domains (Epic 1 "visual
@@ -8,6 +9,7 @@ import type { DomainBand } from "../../practice/signals";
  * 0–100 signal; the filled polygon is the child's current picture.
  */
 export default function DomainRadar({ bands, size = 240 }: { bands: DomainBand[]; size?: number }) {
+  const { t } = useLanguage();
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - 34;
@@ -25,7 +27,7 @@ export default function DomainRadar({ bands, size = 240 }: { bands: DomainBand[]
   const dataPolygon = polygon((i) => (Math.max(0, Math.min(100, bands[i].signal)) / 100) * r);
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Domain radar">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t("aria.domainRadar")}>
       {/* grid rings */}
       {rings.map((ring, ri) => (
         <polygon key={ri} points={polygon(() => r * ring)} fill="none" stroke="rgba(41,51,63,0.10)" strokeWidth={1} />

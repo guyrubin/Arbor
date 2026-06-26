@@ -146,7 +146,7 @@ export default function AdventuresTab() {
               <button
                 key={s.id}
                 onClick={() => openScenario(s.id)}
-                className="play-pressable rounded-[var(--play-radius-lg)] p-5 text-left bg-white shadow-[0_4px_20px_rgba(41,51,63,0.06)] flex items-start gap-4"
+                className="play-pressable rounded-[var(--play-radius-lg)] p-5 text-start bg-white shadow-[0_4px_20px_rgba(41,51,63,0.06)] flex items-start gap-4"
               >
                 <span className="grid place-items-center w-16 h-16 rounded-2xl text-4xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)" }}>{s.emoji}</span>
                 <div className="flex-1 min-w-0">

@@ -64,10 +64,10 @@ export default function ChildProfile() {
         {!hasHero && (
           <button
             onClick={() => setActiveTab("profile")}
-            className="text-left"
+            className="text-start"
           >
             <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
-              <Sparkles className="w-4 h-4 inline-block mr-1 -mt-0.5" /> {t("cp.hero.create", { name: heroName })}
+              <Sparkles className="w-4 h-4 inline-block me-1 -mt-0.5" /> {t("cp.hero.create", { name: heroName })}
             </span>
             <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span>
           </button>
@@ -265,7 +265,7 @@ export default function ChildProfile() {
           { tab: "behaviors" as const, tone: "coral" as const, icon: <Activity className="w-4 h-4" />, label: t("cp.footer.moments") },
           { tab: "memory" as const, tone: "lav" as const, icon: <BookMarked className="w-4 h-4" />, label: t("cp.footer.memory") },
         ]).map((l) => (
-          <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} p-4 text-left flex items-center gap-3 transition hover:-translate-y-0.5`}>
+          <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} p-4 text-start flex items-center gap-3 transition hover:-translate-y-0.5`}>
             <IconBadge tone={l.tone}>{l.icon}</IconBadge>
             <span className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
               {l.label} <ArrowRight className="w-3.5 h-3.5" style={{ color: PASTEL[l.tone].ink }} />

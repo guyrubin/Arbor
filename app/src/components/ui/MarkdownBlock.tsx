@@ -43,7 +43,7 @@ export function renderMarkdown(text: string) {
     if (content.startsWith("- ") || content.startsWith("* ")) {
       const items = content.split(/\n[\-*]\s+/);
       return (
-        <ul key={idx} className="list-disc pl-5 my-3 space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
+        <ul key={idx} className="list-disc ps-5 my-3 space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
           {items.map((item, i) => {
             const cleanItem = item.replace(/^[\-*]\s+/, "");
             return <li key={i}>{parseInline(cleanItem)}</li>;

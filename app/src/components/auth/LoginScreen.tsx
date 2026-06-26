@@ -114,24 +114,24 @@ export default function LoginScreen() {
         ) : (
           <form onSubmit={handleEmail} className="space-y-3">
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
+              <Mail className="w-4 h-4 absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t("auth.emailPlaceholder")}
-                className="w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none transition"
+                className="w-full rounded-xl ps-10 pe-4 py-3 text-sm focus:outline-none transition"
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
+              <Lock className="w-4 h-4 absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("auth.passwordPlaceholder")}
-                className="w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none transition"
+                className="w-full rounded-xl ps-10 pe-4 py-3 text-sm focus:outline-none transition"
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
             </div>

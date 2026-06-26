@@ -82,14 +82,14 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     <Modal open={open} onClose={onClose} title={t("sm.title")}>
       <div className="space-y-3">
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
+          <Search className="w-4 h-4 absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
           <input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && shown[0]) run(shown[0]); }}
             placeholder={t("sm.placeholder")}
-            className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none"
+            className="w-full rounded-xl ps-10 pe-4 py-2.5 text-sm focus:outline-none"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />
         </div>
@@ -101,7 +101,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
             <button
               key={i}
               onClick={() => run(r)}
-              className="group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition"
+              className="group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-start transition"
               style={{ background: "transparent" }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}

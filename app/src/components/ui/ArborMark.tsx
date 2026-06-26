@@ -1,4 +1,5 @@
 import React, { useId } from "react";
+import { useLanguage } from "../../context/LanguageContext";
 
 /**
  * Arbor brand mark — the original layered gradient leaf/figure. Gradient IDs are
@@ -6,6 +7,7 @@ import React, { useId } from "react";
  * mobile header) don't share/clobber each other's <defs>.
  */
 export function ArborMark({ size = 40, className = "" }: { size?: number; className?: string }) {
+  const { t } = useLanguage();
   const uid = useId().replace(/:/g, "");
   const teal = `arb-teal-${uid}`;
   const purple = `arb-purple-${uid}`;
@@ -17,7 +19,7 @@ export function ArborMark({ size = 40, className = "" }: { size?: number; classN
       viewBox="0 0 100 100"
       fill="none"
       role="img"
-      aria-label="Arbor"
+      aria-label={t("aria.arborMark")}
       className={className}
       xmlns="http://www.w3.org/2000/svg"
     >

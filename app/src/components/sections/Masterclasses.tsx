@@ -133,7 +133,7 @@ export default function Masterclasses() {
           <button
             key={c.id}
             onClick={() => setOpenId(c.id)}
-            className={`${cardCls} p-5 flex flex-col gap-3 text-left transition hover:-translate-y-0.5`}
+            className={`${cardCls} p-5 flex flex-col gap-3 text-start transition hover:-translate-y-0.5`}
           >
             <div className="flex items-center justify-between">
               <IconBadge tone={FRAME_TONE[c.frame]}><GraduationCap className="w-5 h-5" /></IconBadge>

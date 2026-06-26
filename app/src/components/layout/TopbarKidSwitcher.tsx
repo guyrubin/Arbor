@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { ChevronDown, Check, Plus } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
 import AddChildModal from "../profile/AddChildModal";
 
@@ -18,6 +19,7 @@ import AddChildModal from "../profile/AddChildModal";
  */
 export default function TopbarKidSwitcher() {
   const { profiles, activeChild, setActiveChild } = useProfile();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -97,7 +99,7 @@ export default function TopbarKidSwitcher() {
           />
           <div
             role="listbox"
-            aria-label="Switch child"
+            aria-label={t("aria.switchChild")}
             style={{
               position: "absolute",
               top: "calc(100% + 8px)",

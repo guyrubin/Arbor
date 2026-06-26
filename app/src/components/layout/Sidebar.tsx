@@ -44,7 +44,7 @@ export default function Sidebar() {
               key={sec.id}
               onClick={() => setActiveTab(primaryTabOf(sec))}
               aria-current={active ? "page" : undefined}
-              className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-2xl text-left text-sm transition"
+              className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-2xl text-start text-sm transition"
               style={active
                 ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)", fontWeight: 700, boxShadow: "inset 0 0 0 1px rgba(43,127,255,0.20)" }
                 : { color: "var(--arbor-muted)", fontWeight: 600 }}

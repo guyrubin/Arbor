@@ -124,7 +124,7 @@ function Section({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left min-h-[44px] transition"
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-start min-h-[44px] transition"
         style={{ background: open ? "var(--arbor-green-soft)" : "transparent" }}
         onMouseEnter={(e) => { if (!open) e.currentTarget.style.background = "var(--arbor-paper-deep)"; }}
         onMouseLeave={(e) => { if (!open) e.currentTarget.style.background = "transparent"; }}

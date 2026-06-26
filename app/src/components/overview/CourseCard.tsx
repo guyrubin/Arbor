@@ -84,7 +84,7 @@ export default function CourseCard({
                   <button
                     onClick={() => setOpenId(open ? null : a.id)}
                     aria-expanded={open}
-                    className="flex-1 min-w-0 flex items-center gap-3 text-left"
+                    className="flex-1 min-w-0 flex items-center gap-3 text-start"
                   >
                     <span className="flex-1 min-w-0">
                       <span className="block text-[14px] font-bold" style={{ color: INK, textDecoration: done ? "line-through" : "none" }}>{a.title}</span>

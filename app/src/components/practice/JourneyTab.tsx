@@ -142,7 +142,7 @@ export default function JourneyTab() {
                 </button>
                 <button
                   onClick={() => setActiveTab(extraTab)}
-                  className="text-left rounded-xl p-3 transition"
+                  className="text-start rounded-xl p-3 transition"
                   style={{ background: DOMAIN_META[day.mission.domain].soft }}
                 >
                   <span className="block text-[10px] font-extrabold uppercase tracking-wide" style={{ color: DOMAIN_META[day.mission.domain].color }}>Aimed extra</span>
@@ -168,7 +168,7 @@ export default function JourneyTab() {
           {objectives.map((obj) => {
             const meta = DOMAIN_META[obj.domain];
             return (
-              <button key={obj.id} onClick={() => toggleObjective(obj)} className={`${cardCls} p-4 text-left transition hover:shadow-md`}>
+              <button key={obj.id} onClick={() => toggleObjective(obj)} className={`${cardCls} p-4 text-start transition hover:shadow-md`}>
                 <span className="inline-flex items-center gap-2">
                   <span className="w-8 h-8 rounded-xl inline-flex items-center justify-center" style={{ background: meta.soft, color: meta.color }}>
                     <CheckCircle2 className="w-4 h-4" />

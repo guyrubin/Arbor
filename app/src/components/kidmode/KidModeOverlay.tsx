@@ -24,6 +24,7 @@ import { useKidMode } from "./KidModeContext";
 import { holdProgress, holdComplete, HOLD_MS } from "./parentGate";
 import { TabSkeleton } from "../ui/Skeleton";
 import { ArborMascot } from "../ui/ArborMascot";
+import { useLanguage } from "../../context/LanguageContext";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
 const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
@@ -193,6 +194,7 @@ function HoldExitButton({ onExit }: HoldExitButtonProps) {
 // ── Main overlay ──────────────────────────────────────────────────────────────
 export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
+  const { t } = useLanguage();
   const [activeSurface, setActiveSurface] = useState<KidSurface>("journeys");
 
   // Reset surface to default when overlay opens.
@@ -227,7 +229,7 @@ export default function KidModeOverlay() {
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           role="dialog"
           aria-modal="true"
-          aria-label="Kid Mode"
+          aria-label={t("aria.kidMode")}
           className="arbor-play"
           style={{
             position: "fixed",
@@ -270,7 +272,7 @@ export default function KidModeOverlay() {
 
             {/* Surface tabs */}
             <nav
-              aria-label="Kid Mode sections"
+              aria-label={t("aria.kidModeSections")}
               role="tablist"
               style={{ display: "flex", gap: "6px", alignItems: "center" }}
             >

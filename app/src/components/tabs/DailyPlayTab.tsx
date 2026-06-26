@@ -227,7 +227,7 @@ export default function DailyPlayTab() {
           {/* CI-28: Goals chip — persistent entry to Goal Builder */}
           <button
             onClick={() => setGoalModalOpen(true)}
-            aria-label="Manage focus goals"
+            aria-label={t("aria.manageFocusGoals")}
             className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 min-h-[44px] text-[12.5px] font-bold transition mt-1"
             style={{
               background: activeGoals.length > 0 ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",

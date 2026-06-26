@@ -1,4 +1,5 @@
 import React from "react";
+import { useLanguage } from "../../context/LanguageContext";
 
 /**
  * Deterministic, on-brand storybook backdrop derived from a seed (story title + page).
@@ -26,6 +27,7 @@ function hash(s: string): number {
 }
 
 export function StoryIllustration({ seed, className = "" }: { seed: string; className?: string }) {
+  const { t } = useLanguage();
   const h = hash(seed);
   const sc = SCENES[h % SCENES.length];
   // Unique, valid gradient id per instance (useId can contain ":"/"," — strip them).
@@ -42,7 +44,7 @@ export function StoryIllustration({ seed, className = "" }: { seed: string; clas
       viewBox="0 0 100 100"
       className={className}
       role="img"
-      aria-label="Story illustration"
+      aria-label={t("aria.storyIllustration")}
       preserveAspectRatio="xMidYMid slice"
     >
       <defs>

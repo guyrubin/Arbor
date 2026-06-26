@@ -3,6 +3,7 @@ import { DndContext, useDraggable, useDroppable, PointerSensor, useSensor, useSe
 import { GripVertical, Trash2, Pencil } from "lucide-react";
 import { ProgressRing } from "../ui/ProgressRing";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { ActionPlan, StepStatus } from "../../types";
 
 type Item = { id: string; phaseIdx: number; stepIdx: number; text: string; status: StepStatus; phaseName: string };
@@ -28,6 +29,7 @@ function daysActive(planId: string): number | null {
 function StepCard({ item }: { item: Item }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id });
   const { updatePlanStepText } = useArbor();
+  const { t } = useLanguage();
   const planId = item.id.split("::")[0];
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   return (
@@ -36,7 +38,7 @@ function StepCard({ item }: { item: Item }) {
       style={{ ...style, background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
       className={`group rounded-xl p-2.5 text-[11px] flex items-start gap-2 ${isDragging ? "opacity-60 ring-1 ring-[var(--arbor-clay)]/50" : ""}`}
     >
-      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-0.5" style={{ color: "var(--arbor-muted)" }} aria-label="Drag step">
+      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-0.5" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.dragStep")}>
         <GripVertical className="w-3.5 h-3.5" />
       </button>
       <span className="flex-1" style={item.status === "done" ? { textDecoration: "line-through", color: "var(--arbor-muted)" } : undefined}>{item.text}</span>
@@ -45,7 +47,7 @@ function StepCard({ item }: { item: Item }) {
           const t = window.prompt("Edit step", item.text);
           if (t) updatePlanStepText(planId, item.phaseIdx, item.stepIdx, t);
         }}
-        aria-label="Edit step"
+        aria-label={t("aria.editStep")}
         className="opacity-0 group-hover:opacity-100 transition mt-0.5"
         style={{ color: "var(--arbor-muted)" }}
       >
@@ -76,6 +78,7 @@ function Column({ planId, status, label, tint, items }: { planId: string; status
 
 export default function PlanKanban({ plan }: { plan: ActionPlan }) {
   const { setPlanStepStatus, deletePlan } = useArbor();
+  const { t } = useLanguage();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const items: Item[] = useMemo(() => {
@@ -116,7 +119,7 @@ export default function PlanKanban({ plan }: { plan: ActionPlan }) {
           </ProgressRing>
           <button
             onClick={() => { if (window.confirm(`Delete the plan "${plan.title}"?`)) deletePlan(plan.id); }}
-            aria-label="Delete plan"
+            aria-label={t("aria.deletePlan")}
             className="p-1.5 rounded-lg transition self-start"
             style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
           >

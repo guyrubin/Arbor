@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -21,6 +22,7 @@ export function Modal({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const { t } = useLanguage();
 
   // Keyboard: Escape closes; Tab cycles inside the dialog (focus trap).
   useEffect(() => {
@@ -96,9 +98,9 @@ export function Modal({
               {title && <h3 id={titleId} className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h3>}
               <button
                 onClick={onClose}
-                className="ml-auto p-1.5 rounded-lg transition"
+                className="ms-auto p-1.5 rounded-lg transition"
                 style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-                aria-label="Close"
+                aria-label={t("aria.close")}
               >
                 <X className="w-4 h-4" />
               </button>

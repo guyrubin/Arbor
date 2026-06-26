@@ -1,4 +1,5 @@
 import React from "react";
+import { useLanguage } from "../../context/LanguageContext";
 
 export type MascotMood = "happy" | "cheer" | "think" | "proud" | "wave" | "calm";
 
@@ -23,6 +24,7 @@ export function ArborMascot({
   animate?: boolean;
   className?: string;
 }) {
+  const { t } = useLanguage();
   // Eyes: most moods share the round eyes; "proud" closes them into happy arcs.
   const eyesClosed = mood === "proud";
   // Mouth path per mood.
@@ -45,7 +47,7 @@ export function ArborMascot({
       viewBox="0 0 140 140"
       fill="none"
       role="img"
-      aria-label="Sprout, Arbor's guide"
+      aria-label={t("aria.sproutMascot")}
       className={`${animate ? "sprout-bob" : ""} ${className}`.trim()}
       xmlns="http://www.w3.org/2000/svg"
     >

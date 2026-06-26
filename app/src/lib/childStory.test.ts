@@ -47,6 +47,8 @@ describe("composeChildStory (T4)", () => {
       ...base,
       momentsThisWeek: 5,
       momentsPrevWeek: 3,
+      // Wave-3 clinical subtraction: intensity trend must NOT leak into prose
+      // anymore, even when passed. The narrative stays observational-only.
       intensityTrend: "easing",
       milestonesObserved: 4,
       milestonesTotal: 10,
@@ -55,7 +57,8 @@ describe("composeChildStory (T4)", () => {
     const text = s.paragraphs.join(" ");
     expect(text).toContain("5 moments");
     expect(text).toContain("more than the 3");
-    expect(text).toMatch(/calmer/);
+    // Wave-3: the intensity-trend prose ("calmer" / "bigger lately") is gone.
+    expect(text).not.toMatch(/calmer|bigger lately/i);
     expect(text).toContain("4 of 10 milestones");
     expect(text).toContain("2 small wins");
   });

@@ -27,7 +27,7 @@ export default function AiRail() {
           </div>
         </div>
         {/* VIS-2: icon-only → min 44×44 hit area */}
-        <button onClick={() => setShowAiRail(false)} title="Hide this panel" aria-label="Hide this panel" className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition" style={{ color: "var(--arbor-muted)" }}>
+        <button onClick={() => setShowAiRail(false)} title={t("aria.hidePanel")} aria-label={t("aria.hidePanel")} className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition" style={{ color: "var(--arbor-muted)" }}>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>

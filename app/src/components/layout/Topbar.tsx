@@ -44,7 +44,7 @@ export default function Topbar() {
         background: "var(--arbor-paper-deep)",
         borderBottom: "1px solid var(--arbor-rule)",
       }}
-      aria-label="Application topbar"
+      aria-label={t("aria.applicationTopbar")}
     >
       {/* Left zone: Arbor mark + active section (orientation, not a duplicate wordmark) */}
       <div className="flex items-center gap-2.5 flex-1 min-w-0">

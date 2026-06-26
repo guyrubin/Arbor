@@ -83,6 +83,11 @@ export function composeChildStory(i: ChildStoryInput): ChildStory {
   }
 
   // Rhythm of attention this week + milestones tracked — observational, hedged.
+  // CI-22/23/24 firewall (Wave-3 clinical subtraction, 2026-06-26): the
+  // intensity-trend prose ("the harder moments have felt a little calmer" /
+  // "some moments have felt bigger lately") was a behavior-intensity verdict on
+  // a child metric rendered as narrative. Removed. The flat parent-log moment
+  // count stays — it emits nothing about the child as a verdict.
   const rhythmBits: string[] = [];
   if (i.momentsThisWeek > 0) {
     const vsLast =
@@ -93,8 +98,6 @@ export function composeChildStory(i: ChildStoryInput): ChildStory {
         : "";
     rhythmBits.push(`This week you noticed ${i.momentsThisWeek} moment${i.momentsThisWeek === 1 ? "" : "s"} worth keeping${vsLast}`);
   }
-  if (i.intensityTrend === "easing") rhythmBits.push("and the harder moments have felt a little calmer");
-  else if (i.intensityTrend === "rising") rhythmBits.push("and some moments have felt bigger lately");
   if (rhythmBits.length) paragraphs.push(rhythmBits.join(" ") + ".");
 
   const closers: string[] = [];

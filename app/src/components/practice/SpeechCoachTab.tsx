@@ -348,7 +348,7 @@ export default function SpeechCoachTab() {
               </button>
             );
           })}
-          <span className="self-center text-[11px] ml-1" style={{ color: "var(--arbor-muted)" }}>{t(LADDER.find((l) => l.level === level)?.hintKey ?? "")}</span>
+          <span className="self-center text-[11px] ms-1" style={{ color: "var(--arbor-muted)" }}>{t(LADDER.find((l) => l.level === level)?.hintKey ?? "")}</span>
         </div>
 
         {/* Target — the big, friendly say-it-together card */}
@@ -392,7 +392,7 @@ export default function SpeechCoachTab() {
           )}
           {!recognitionAvailable && (
             <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-              <MicOff className="w-3 h-3 inline mr-1" />{t("prac.speech.noAutoListen")}
+              <MicOff className="w-3 h-3 inline me-1" />{t("prac.speech.noAutoListen")}
             </span>
           )}
         </div>
@@ -404,7 +404,7 @@ export default function SpeechCoachTab() {
             <span>{t("prac.speech.heardPrefix")} <b>&ldquo;{heard}&rdquo;</b>{autoResult && <> — {t("prac.speech.heardLooksLike")} <b>{autoResult === "got" ? t("prac.speech.heard.match") : autoResult === "almost" ? t("prac.speech.heard.close") : t("prac.speech.heard.different")}</b></>}</span>
             {autoResult && (
               <button onClick={() => saveAttempt(autoResult, "auto")}
-                className="ml-auto font-extrabold text-white rounded-full px-3 py-1" style={{ background: "var(--arbor-sky-ink)" }}>
+                className="ms-auto font-extrabold text-white rounded-full px-3 py-1" style={{ background: "var(--arbor-sky-ink)" }}>
                 {t("prac.speech.saveScore")}
               </button>
             )}
