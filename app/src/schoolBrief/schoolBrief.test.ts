@@ -146,6 +146,67 @@ describe("AP-056 Condition 3 — ZERO clinical-diagnosis language in the brief",
   });
 });
 
+describe("AP-056 Condition 3 (edit frame) — wave-6 per-section parent edit is fail-closed", () => {
+  // Wave-6 lets a parent PER-SECTION EDIT the curated fields before export. The
+  // React layer builds the export FROM the edited draft, so buildSchoolBriefExport
+  // is the single fail-closed gate — locking it per field means no edited field can
+  // smuggle a diagnosis term out, and editing never weakens the approval contract.
+  const base = { title: cleanBrief.title, date: cleanBrief.date };
+
+  it("an edit RESETS a previously-granted approval — and introduces NO new 'edited' phase", () => {
+    // The React layer calls markRendered() on every edit. The machine stays
+    // idle → rendered → approved; there is no edit-bypass phase.
+    let s = markRendered(initialExportState());
+    s = approveExport(s, "2026-06-23T10:00:00.000Z");
+    expect(canExport(s)).toBe(true);
+    s = markRendered(s); // any edit → approval reset, must re-approve the edited copy
+    expect(canExport(s)).toBe(false);
+    expect(s.phase).toBe("rendered"); // never a new phase
+    expect(s.approvedAt).toBeNull();
+  });
+
+  it("fails closed when a clinical term is edited into the overview textarea", () => {
+    const edited = { ...cleanBrief, overview: "Sam is on the autism spectrum." };
+    expect(() => buildSchoolBriefExport(edited, base)).toThrow(ClinicalLanguageError);
+  });
+
+  it("fails closed when a clinical term is edited into keyStrengths", () => {
+    const edited = { ...cleanBrief, keyStrengths: ["Bright", "compensating for a delay"] };
+    expect(() => buildSchoolBriefExport(edited, base)).toThrow(ClinicalLanguageError);
+  });
+
+  it("fails closed when a clinical term is edited into classroomChallenges", () => {
+    const edited = { ...cleanBrief, classroomChallenges: ["ADHD-style fidgeting"] };
+    expect(() => buildSchoolBriefExport(edited, base)).toThrow(ClinicalLanguageError);
+  });
+
+  it("fails closed when a clinical term is edited into languageSupportPlan", () => {
+    const edited = { ...cleanBrief, languageSupportPlan: ["working through a speech delay"] };
+    expect(() => buildSchoolBriefExport(edited, base)).toThrow(ClinicalLanguageError);
+  });
+
+  it("fails closed when a clinical term is edited into suggestedTeacherStrategies", () => {
+    const edited = { ...cleanBrief, suggestedTeacherStrategies: ["seating for an attention deficit"] };
+    expect(() => buildSchoolBriefExport(edited, base)).toThrow(ClinicalLanguageError);
+  });
+
+  it("lets a CLEAN edit through (parent trims a strength) and stays non-diagnostic", () => {
+    const edited = { ...cleanBrief, keyStrengths: [cleanBrief.keyStrengths[0]] };
+    const ex = buildSchoolBriefExport(edited, base);
+    expect(ex.keyStrengths).toHaveLength(1);
+    expect(findClinicalDiagnosisTerm(exportToText(ex))).toBeNull();
+  });
+
+  it("a raw-record KEY on an edit-shape payload is still dropped (edits mutate VALUES, never keys)", () => {
+    // An edit object is spread from the draft; locking this proves an edit cannot
+    // re-introduce a raw-record key the curated-field allowlist excludes.
+    const edited = { ...cleanBrief, behaviorType: "meltdown", notes: "RAW PRIVATE NOTE" } as any;
+    const ex = buildSchoolBriefExport(edited, base);
+    expect(JSON.stringify(ex)).not.toContain("meltdown");
+    expect(JSON.stringify(ex)).not.toContain("RAW PRIVATE NOTE");
+  });
+});
+
 describe("AP-056 Condition 5 — OUTSIDE-ERASE-REACH notice present (EN + HE)", () => {
   it("the notice key exists in both dictionaries and warns the copy is outside Arbor's reach", () => {
     expect(en[OUTSIDE_ERASE_REACH_NOTICE_KEY]).toBeTruthy();

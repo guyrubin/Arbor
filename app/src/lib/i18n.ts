@@ -213,6 +213,12 @@ export const en: Dict = {
   "schoolBrief.reviewBody": "This is exactly what {name}'s teacher will see. Read it, then approve to download the PDF. Nothing is sent until you do.",
   "schoolBrief.cancel": "Not yet",
   "schoolBrief.download": "Download PDF",
+  // Design wave-6 — SchoolBrief per-section parent edit UI (safety-cleared AP-056 edit frame).
+  "schoolBrief.edit": "Make adjustments",
+  "schoolBrief.editDone": "Done editing",
+  "schoolBrief.addItem": "Add item",
+  "schoolBrief.removeItem": "Remove this item",
+  "schoolBrief.editHint": "Fine-tune any section before you share it.",
   "schoolBrief.downloaded": "Downloaded. You choose when to hand it to the teacher.",
   "schoolBrief.notApproved": "Approve the note first — nothing is shared until you do.",
   // Condition 5 — outside-erase-reach notice (key referenced by schoolBrief.ts).
@@ -2565,6 +2571,12 @@ export const he: Dict = {
   "schoolBrief.reviewBody": "זה בדיוק מה שהמחנכת של {name} תראה. קראו, ואז אשרו כדי להוריד את ה-PDF. שום דבר לא נשלח עד שתעשו זאת.",
   "schoolBrief.cancel": "עדיין לא",
   "schoolBrief.download": "הורידו PDF",
+  // Design wave-6 — SchoolBrief per-section parent edit UI (safety-cleared AP-056 edit frame).
+  "schoolBrief.edit": "לערוך התאמות",
+  "schoolBrief.editDone": "סיום עריכה",
+  "schoolBrief.addItem": "הוספת פריט",
+  "schoolBrief.removeItem": "הסרת הפריט",
+  "schoolBrief.editHint": "כוונו כל סעיף לפני שיתוף הדף.",
   "schoolBrief.downloaded": "הורד. אתם בוחרים מתי למסור אותו למחנכת.",
   "schoolBrief.notApproved": "אשרו תחילה את הפתק — שום דבר לא משותף עד שתעשו זאת.",
   "schoolBrief.outsideEraseReach": "ברגע שתשתפו את זה, העותק של המחנכת שייך לה — ארבור לא יכול למחוק אותו. מחיקת הנתונים שלכם בארבור לא תבטל מסירה של פתק שכבר העברתם.",

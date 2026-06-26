@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { School, Sparkles, RefreshCw, ShieldAlert, Download, Languages, Heart, ArrowRightLeft, ClipboardList } from "lucide-react";
+import { School, Sparkles, RefreshCw, ShieldAlert, Download, Languages, Heart, ArrowRightLeft, ClipboardList, Pencil, Check, Plus, X } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
@@ -26,13 +26,22 @@ import {
  *  - generates via the EXISTING /generate-handoff endpoint (audience="teacher"),
  *    which already escalation-screens (409) + redacts name/email/phone server-side;
  *  - shows the parent the EXACT rendered brief;
+ *  - lets the parent PER-SECTION EDIT the curated fields before export (the
+ *    editable payload is a transient `draft` in React state — never persisted;
+ *    the export is built FROM the draft so the clinical-term scan inside
+ *    buildSchoolBriefExport covers any parent edit, and fail-closes if a
+ *    diagnosis term is typed into any field). Editing is MORE parent control
+ *    over what leaves the app, not less;
  *  - blocks ANY export until an explicit per-export approval (state machine in
- *    ../../schoolBrief/schoolBrief.ts) — the approval screen carries the
+ *    ../../schoolBrief/schoolBrief.ts) — every edit RESETS that approval, so the
+ *    parent re-approves the edited copy; the approval screen carries the
  *    outside-erase-reach notice;
  *  - builds the PDF/download body from the CURATED field set ONLY (the builder
  *    never reads raw memory-ledger / behavior-log fields);
  *  - is generate-and-present: it does NOT persist a new child-data record.
  */
+
+type ListField = "keyStrengths" | "classroomChallenges" | "languageSupportPlan" | "suggestedTeacherStrategies";
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
@@ -48,11 +57,14 @@ export default function SchoolBrief() {
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
   // generate-and-present: the brief lives in component state only — no new
-  // persistent child-data store is created (Condition 6).
-  const [brief, setBrief] = useState<SchoolBriefData | null>(null);
+  // persistent child-data store is created (Condition 6). `draft` is the
+  // EDITABLE payload; the export is built from it, so the clinical-term scan
+  // inside buildSchoolBriefExport covers any parent edit (Condition 3).
+  const [draft, setDraft] = useState<SchoolBriefData | null>(null);
   const [generating, setGenerating] = useState(false);
   const [exportState, setExportState] = useState<ExportState>(initialExportState());
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const sectionLabels = useMemo(
     () => ({
@@ -65,15 +77,51 @@ export default function SchoolBrief() {
     [t, firstName]
   );
 
-  // Condition 2 + 3: the export payload is built from the curated allowlist only.
-  // Throws (ClinicalLanguageError) if any diagnosis language slipped through.
+  // Condition 2 + 3: the export payload is built from the curated allowlist only,
+  // and — because it receives the EDITED draft — the clinical-term scan runs over
+  // the post-edit content. Throws (ClinicalLanguageError) if any diagnosis term
+  // slipped through (including one a parent typed into an edit field).
   const buildExport = useCallback(() => {
-    if (!brief) return null;
-    return buildSchoolBriefExport(brief, {
+    if (!draft) return null;
+    return buildSchoolBriefExport(draft, {
       title: t("schoolBrief.title") + ` — ${firstName}`,
       date: new Date().toISOString().slice(0, 10),
     });
-  }, [brief, t, firstName]);
+  }, [draft, t, firstName]);
+
+  // Condition 1: every edit RESETS the per-export approval — the parent must
+  // re-approve the edited brief before it can leave the app. The state machine
+  // stays idle → rendered → approved (no edit-bypass phase).
+  const resetApproval = useCallback(() => {
+    setExportState((s) => markRendered(s));
+  }, []);
+
+  const updateOverview = (val: string) => {
+    setDraft((d) => (d ? { ...d, overview: val } : d));
+    resetApproval();
+  };
+  const updateListItem = (field: ListField, idx: number, val: string) => {
+    setDraft((d) => {
+      if (!d) return d;
+      const arr = [...(d[field] || [])];
+      arr[idx] = val;
+      return { ...d, [field]: arr };
+    });
+    resetApproval();
+  };
+  const addListItem = (field: ListField) => {
+    setDraft((d) => (d ? { ...d, [field]: [...(d[field] || []), ""] } : d));
+    resetApproval();
+  };
+  const removeListItem = (field: ListField, idx: number) => {
+    setDraft((d) => {
+      if (!d) return d;
+      const arr = [...(d[field] || [])];
+      arr.splice(idx, 1);
+      return { ...d, [field]: arr };
+    });
+    resetApproval();
+  };
 
   const generate = async () => {
     setGenerating(true);
@@ -84,7 +132,8 @@ export default function SchoolBrief() {
         milestones,
         audience: "teacher", // reuse the redacted + escalation-screened path
       });
-      setBrief(data);
+      setDraft(data);
+      setEditing(false);
       // A fresh brief is rendered but NOT approved — approval is per-export.
       setExportState(markRendered(initialExportState()));
     } catch (err: any) {
@@ -120,7 +169,7 @@ export default function SchoolBrief() {
       setReviewOpen(false);
       toast(t("schoolBrief.downloaded"), "success");
     } catch (err) {
-      // Condition 3 fail-closed: a diagnosis term means we DO NOT export.
+      // Condition 3 fail-closed: a diagnosis term (incl. one edited in) means we DO NOT export.
       if (err instanceof ClinicalLanguageError) toast(t("schoolBrief.nonDiagnostic", { name: firstName }), "error");
       else toast("Couldn't build the note — please try again.", "error");
     }
@@ -157,7 +206,7 @@ export default function SchoolBrief() {
         </p>
       </div>
 
-      {!brief ? (
+      {!draft ? (
         <div className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
             <School className="w-6 h-6" />
@@ -177,15 +226,41 @@ export default function SchoolBrief() {
         </div>
       ) : (
         <>
-          {/* The rendered brief — curated sections only. */}
+          {editing && (
+            <p className="text-[12px] leading-relaxed" style={{ color: MUTED }}>{t("schoolBrief.editHint")}</p>
+          )}
+
+          {/* The rendered brief — curated sections only (editable when `editing`). */}
           <div className="rounded-2xl p-5 md:p-6 space-y-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
             <Section icon={<ClipboardList className="w-4 h-4" />} title={sectionLabels.overview}>
-              <p className="text-[14px] leading-relaxed" style={{ color: MUTED }}>{brief.overview}</p>
+              {editing ? (
+                <textarea
+                  value={draft.overview}
+                  onChange={(e) => updateOverview(e.target.value)}
+                  rows={3}
+                  className="w-full text-[14px] leading-relaxed rounded-lg px-2.5 py-2 resize-y min-h-[72px] focus:outline-none focus:ring-2"
+                  style={{ color: INK, background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+                />
+              ) : (
+                <p className="text-[14px] leading-relaxed" style={{ color: MUTED }}>{draft.overview}</p>
+              )}
             </Section>
-            <ListSection icon={<Heart className="w-4 h-4" />} title={sectionLabels.strengths} items={brief.keyStrengths} />
-            <ListSection icon={<ArrowRightLeft className="w-4 h-4" />} title={sectionLabels.challenges} items={brief.classroomChallenges} />
-            <ListSection icon={<Languages className="w-4 h-4" />} title={sectionLabels.language} items={brief.languageSupportPlan} />
-            <ListSection icon={<School className="w-4 h-4" />} title={sectionLabels.strategies} items={brief.suggestedTeacherStrategies} />
+
+            {editing ? (
+              <>
+                <EditableListSection icon={<Heart className="w-4 h-4" />} title={sectionLabels.strengths} items={draft.keyStrengths} field="keyStrengths" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
+                <EditableListSection icon={<ArrowRightLeft className="w-4 h-4" />} title={sectionLabels.challenges} items={draft.classroomChallenges} field="classroomChallenges" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
+                <EditableListSection icon={<Languages className="w-4 h-4" />} title={sectionLabels.language} items={draft.languageSupportPlan} field="languageSupportPlan" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
+                <EditableListSection icon={<School className="w-4 h-4" />} title={sectionLabels.strategies} items={draft.suggestedTeacherStrategies} field="suggestedTeacherStrategies" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
+              </>
+            ) : (
+              <>
+                <ListSection icon={<Heart className="w-4 h-4" />} title={sectionLabels.strengths} items={draft.keyStrengths} />
+                <ListSection icon={<ArrowRightLeft className="w-4 h-4" />} title={sectionLabels.challenges} items={draft.classroomChallenges} />
+                <ListSection icon={<Languages className="w-4 h-4" />} title={sectionLabels.language} items={draft.languageSupportPlan} />
+                <ListSection icon={<School className="w-4 h-4" />} title={sectionLabels.strategies} items={draft.suggestedTeacherStrategies} />
+              </>
+            )}
             <p className="text-[12px] leading-relaxed pt-1" style={{ color: "var(--arbor-faint)" }}>{t("schoolBrief.bilingualNote")}</p>
           </div>
 
@@ -197,6 +272,15 @@ export default function SchoolBrief() {
               style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
             >
               <RefreshCw className={`w-4 h-4 ${generating ? "animate-spin" : ""}`} /> {t("schoolBrief.regenerate")}
+            </button>
+            {/* Per-section edit toggle — keeps the default view calm; full edit power on demand. */}
+            <button
+              onClick={() => setEditing((e) => !e)}
+              aria-pressed={editing}
+              className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
+              style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+            >
+              {editing ? (<><Check className="w-4 h-4" style={{ color: GREEN }} /> {t("schoolBrief.editDone")}</>) : (<><Pencil className="w-4 h-4" /> {t("schoolBrief.edit")}</>)}
             </button>
             {/* Opening the review is NOT an export — export only fires after approve. */}
             <button
@@ -264,6 +348,52 @@ function ListSection({ icon, title, items }: { icon: React.ReactNode; title: str
       <ul className="list-disc ps-5 space-y-1" style={{ color: MUTED }}>
         {items.map((it, i) => <li key={i} className="text-[14px] leading-relaxed">{it}</li>)}
       </ul>
+    </Section>
+  );
+}
+
+function EditableListSection({ icon, title, items, field, onUpdate, onAdd, onRemove, addItemLabel, removeAria }: {
+  icon: React.ReactNode;
+  title: string;
+  items: string[];
+  field: ListField;
+  onUpdate: (field: ListField, idx: number, val: string) => void;
+  onAdd: (field: ListField) => void;
+  onRemove: (field: ListField, idx: number) => void;
+  addItemLabel: string;
+  removeAria: string;
+}) {
+  return (
+    <Section icon={icon} title={title}>
+      <div className="space-y-1.5">
+        {(items || []).map((it, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <input
+              value={it}
+              onChange={(e) => onUpdate(field, i, e.target.value)}
+              className="flex-1 text-[14px] leading-relaxed rounded-lg px-2.5 py-1.5 min-h-[40px] focus:outline-none focus:ring-2"
+              style={{ color: INK, background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+            />
+            <button
+              type="button"
+              onClick={() => onRemove(field, i)}
+              aria-label={removeAria}
+              className="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg mt-0.5"
+              style={{ color: MUTED, border: `1px solid ${RULE}` }}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => onAdd(field)}
+          className="inline-flex items-center gap-1.5 text-[13px] font-bold mt-1"
+          style={{ color: GREEN }}
+        >
+          <Plus className="w-3.5 h-3.5" /> {addItemLabel}
+        </button>
+      </div>
     </Section>
   );
 }
