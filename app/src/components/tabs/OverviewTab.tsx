@@ -597,7 +597,6 @@ export default function OverviewTab() {
         </section>
       </div>
 
-      {/* ── Original sections below (preserved) ─────────────────────────────── */}
       {/* ── JITAI nudge ─────────────────────────────────────────────────────── */}
       {nudge && (
         <section className="rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: PASTEL[nudge.tone].soft, border: `1px solid ${RULE}` }}>
