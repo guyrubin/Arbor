@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { GraduationCap, Clock, ArrowLeft, Check, MessageSquareQuote, MoonStar } from "lucide-react";
+import { GraduationCap, Clock, ArrowLeft, Check, MessageSquareQuote, MoonStar, PenLine } from "lucide-react";
+import confetti from "canvas-confetti";
 import { PageHeader, cardCls, IconBadge, type PastelKey } from "../ui/kit";
+import { BRAND_CONFETTI } from "../../lib/tokens";
 import { useLanguage } from "../../context/LanguageContext";
 import { MASTERCLASSES, FRAME_LABELS, type FrameId, type Masterclass } from "../../lib/masterclasses";
 import { loadCharter, aimVirtues } from "../../lib/becoming";
@@ -33,6 +35,12 @@ const loadDone = (): Record<string, boolean> => {
   try { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); } catch { return {}; }
 };
 
+// Wave-8: private parent reflection — client-only localStorage, never sent/stored server-side.
+const REFLECT_KEY = "arbor.masterclasses.reflection";
+const loadReflection = (): Record<string, string> => {
+  try { return JSON.parse(localStorage.getItem(REFLECT_KEY) || "{}"); } catch { return {}; }
+};
+
 /** Arbor Academy › Parent Masterclasses — short, frame-routed lessons that build
  *  the parent's own competence (the calm, competent adult). Text-first, bilingual. */
 export default function Masterclasses() {
@@ -40,12 +48,20 @@ export default function Masterclasses() {
   const he = aiLang === "he";
   const [openId, setOpenId] = useState<string | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
+  const [reflection, setReflection] = useState<Record<string, string>>({});
 
-  useEffect(() => { setDone(loadDone()); }, []);
+  useEffect(() => { setDone(loadDone()); setReflection(loadReflection()); }, []);
   const markDone = (id: string) => {
     setDone((d) => {
       const next = { ...d, [id]: true };
       try { localStorage.setItem(DONE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+  const saveReflection = (id: string, val: string) => {
+    setReflection((r) => {
+      const next = { ...r, [id]: val };
+      try { localStorage.setItem(REFLECT_KEY, JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
   };
@@ -60,7 +76,7 @@ export default function Masterclasses() {
     : [];
 
   // ── Reader ───────────────────────────────────────────────────────────────
-  if (open) return <Reader m={open} he={he} isDone={!!done[open.id]} onDone={() => markDone(open.id)} onBack={() => setOpenId(null)} frameLabel={frameLabel(open.frame)} tone={FRAME_TONE[open.frame]} />;
+  if (open) return <Reader m={open} he={he} isDone={!!done[open.id]} onDone={() => markDone(open.id)} onBack={() => setOpenId(null)} frameLabel={frameLabel(open.frame)} tone={FRAME_TONE[open.frame]} reflection={reflection[open.id] || ""} onReflect={(val) => saveReflection(open.id, val)} />;
 
   // ── Catalog ──────────────────────────────────────────────────────────────
   return (
@@ -95,6 +111,23 @@ export default function Masterclasses() {
           </div>
         </div>
       )}
+      {/* Wave-8: catalog progress — gentle continuity, never gamified pressure. */}
+      {(() => {
+        const doneCount = Object.values(done).filter(Boolean).length;
+        if (doneCount === 0) return null;
+        const total = MASTERCLASSES.length;
+        const all = doneCount >= total;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
+              <div className="h-full rounded-full transition-all" style={{ width: `${(doneCount / total) * 100}%`, background: "var(--arbor-green-ink)" }} />
+            </div>
+            <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: all ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
+              {all ? t("master.progress.all") : t("master.progress.count", { done: doneCount, total })}
+            </span>
+          </div>
+        );
+      })()}
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {MASTERCLASSES.map((c) => (
           <button
@@ -129,10 +162,17 @@ export default function Masterclasses() {
   );
 }
 
-function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone }: {
-  m: Masterclass; he: boolean; isDone: boolean; onDone: () => void; onBack: () => void; frameLabel: string; tone: PastelKey;
+function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, onReflect }: {
+  m: Masterclass; he: boolean; isDone: boolean; onDone: () => void; onBack: () => void; frameLabel: string; tone: PastelKey; reflection: string; onReflect: (v: string) => void;
 }) {
   const { t } = useLanguage();
+  // Wave-8: a single subtle brand-colored burst on completing a lesson (respects reduced-motion).
+  const onComplete = () => {
+    if (typeof window !== "undefined" && !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      confetti({ particleCount: 90, spread: 75, startVelocity: 45, origin: { y: 0.7 }, colors: BRAND_CONFETTI, disableForReducedMotion: true });
+    }
+    onDone();
+  };
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 max-w-[760px]">
       <button onClick={onBack} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
@@ -178,12 +218,29 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone }: {
         <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? m.tryTonightHe : m.tryTonight}</p>
       </div>
 
+      {/* Wave-8: private parent reflection — client-only localStorage, never sent or stored server-side. */}
+      <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
+        <p className="text-[11px] uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
+          <PenLine className="w-3.5 h-3.5" /> {t("master.reflect.label")}
+        </p>
+        <textarea
+          value={reflection}
+          onChange={(e) => onReflect(e.target.value)}
+          placeholder={t("master.reflect.placeholder")}
+          dir="auto"
+          rows={2}
+          className="w-full text-[14px] leading-relaxed rounded-lg px-3 py-2 resize-y min-h-[64px] focus:outline-none focus:ring-2"
+          style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-sunk)", border: "1px solid var(--arbor-rule)" }}
+        />
+        <p className="text-[11px] mt-1.5" style={{ color: "var(--arbor-faint)" }}>{t("master.reflect.hint")}</p>
+      </div>
+
       {isDone ? (
         <div className="text-center text-sm font-bold inline-flex items-center justify-center gap-2 w-full" style={{ color: "var(--arbor-green-ink)" }}>
           <Check className="w-4 h-4" /> {t("master.markedComplete")}
         </div>
       ) : (
-        <button onClick={onDone} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]" style={{ background: "var(--gradient-cta)" }}>
+        <button onClick={onComplete} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]" style={{ background: "var(--gradient-cta)" }}>
           <Check className="w-4 h-4" /> {t("master.markComplete")}
         </button>
       )}
