@@ -69,7 +69,7 @@ export default function Masterclasses() {
       {/* AP-053: Academy "For You" — joins copilot focus recommendation with
           course-progress roll-up by domain. Pure frontend join; no new AI call;
           no new Firestore read. Least-explored framing (board-cleared 2026-06-22). */}
-      <AcademyForYou onNavigateToMasterclasses={() => {}} />
+      <AcademyForYou />
       {/* AP-055: Scholar Hub — one developmental concept per week, auto-matched
           to the child's least-explored domain from the Development Map.
           Non-diagnostic, strengths-based framing, editorial content only. */}
