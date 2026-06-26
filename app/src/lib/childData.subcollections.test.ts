@@ -27,9 +27,11 @@ function collectChildCollectionSinks(dir: string, acc: Set<string>): void {
 }
 
 describe("child-data GDPR allow-list completeness", () => {
-  it("registers every useChildCollection sink in CHILD_SUBCOLLECTIONS (export + erasure)", () => {
-    const sinks = new Set<string>();
-    collectChildCollectionSinks(SRC_ROOT, sinks);
+  it(
+    "registers every useChildCollection sink in CHILD_SUBCOLLECTIONS (export + erasure)",
+    () => {
+      const sinks = new Set<string>();
+      collectChildCollectionSinks(SRC_ROOT, sinks);
 
     // Sanity: the scan actually found sinks (guards against a broken regex
     // silently making this test pass).
@@ -40,5 +42,14 @@ describe("child-data GDPR allow-list completeness", () => {
       missing,
       `child sub-collections missing from CHILD_SUBCOLLECTIONS (they would escape GDPR export + erasure): ${missing.join(", ")}`,
     ).toEqual([]);
-  });
+    },
+    // This test does a synchronous recursive walk + readFileSync of every
+    // source file under src/. Under full-suite parallel cold-start (many workers
+    // doing heavy cold imports at once) the disk I/O contention can push the
+    // walk past vitest's 5s default testTimeout on constrained runners, even
+    // though the work itself is ~1s in isolation. Raise the per-test ceiling
+    // so the guard doesn't flake under parallel load; the work is bounded and
+    // the assertion is unchanged.
+    30_000,
+  );
 });

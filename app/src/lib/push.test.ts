@@ -7,6 +7,21 @@ vi.mock("firebase-admin/messaging", () => ({
   getMessaging: () => ({ send: sendSpy }),
 }));
 
+// Mock the heavy firebase-admin core subpaths so the unit tests for
+// LocalPushTokenStore never trigger a real firebase-admin cold import.
+// These subpaths are only consumed by FirestorePushTokenStore (the prod path,
+// not exercised by this unit-test file). Parallel workers loading the real
+// firebase-admin core simultaneously was the source of a cold-start timeout
+// flake on the first test (which performs the module import).
+vi.mock("firebase-admin/app", () => ({
+  getApps: () => [],
+  initializeApp: () => ({}),
+  applicationDefault: () => ({}),
+}));
+vi.mock("firebase-admin/firestore", () => ({
+  getFirestore: () => ({}),
+}));
+
 // -- pushCapable: off when no VAPID key --------------------------------------
 describe("pushCapable", () => {
   it("returns false when VITE_FIREBASE_VAPID_KEY is absent", async () => {
