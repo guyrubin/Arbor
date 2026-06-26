@@ -3,9 +3,7 @@ import { Gauge, Sparkles } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { ProgressRing } from "../ui/ProgressRing";
 import { HeroAvatar } from "../ui/HeroAvatar";
-import { DevRadarRing } from "./DevRadarRing";
 import framework from "../../framework.json";
 import type { StoredDevScoreSnapshot } from "../../types";
 import { isoWeekKey, prefersReducedMotion } from "../../lib/devscore";
@@ -20,9 +18,17 @@ const DOMAIN_LABEL: Record<string, string> = Object.fromEntries(
 );
 const labelFor = (id: string) => DOMAIN_LABEL[id] ?? id;
 
-/* My Child › Development — the Development picture (PRD C4). One number per
-   domain from the age-appropriate milestones reached, an honest weekly trend,
-   and a single "nurture next" pointer. Non-diagnostic. */
+/* My Child › Development — the Development picture (PRD C4).
+ *
+ * Wave-3 clinical subtraction (2026-06-26): the prior version rendered a 0–100
+ * per-domain score, a single 0–100 overall ProgressRing, per-domain up/flat/down
+ * trend glyphs, a DevRadarRing, and a "strong domain" dot — all verdicts on a
+ * child metric (forbidden by the CI-22/23/24 firewall). Demoted.
+ *
+ * What remains: the parent-owned milestone LOG + CDC/AAP provenance + the
+ * existing "a starting point, not a verdict" footnote + the honesty hedge.
+ * New headline = a flat count of parent-checked milestones + the developmental
+ * MECHANISM + one route-to-pro. Emits nothing about the child as a verdict. */
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
@@ -41,6 +47,8 @@ export default function DevScoreCard() {
   // child-collection path as the rest of the app (Firestore when signed in,
   // localStorage in sandbox), so trend survives a new device. localStorage stays
   // a first-paint read-through fallback only.
+  // (Wave-3: snapshots still recorded for back-compat; nothing renders a verdict
+  // from them anymore — they are a parent-owned log of progress over time.)
   const snapshots = useChildCollection<StoredDevScoreSnapshot>(childProfile.id, "devScoreSnapshots", {
     orderByField: "takenMs",
     orderDir: "desc",
@@ -59,9 +67,8 @@ export default function DevScoreCard() {
     [milestones, prior]
   );
 
-  // Record a fresh weekly snapshot so next week's trend is honest. Keyed by ISO
-  // week so a day both surfaces render does not create a duplicate (Today never
-  // writes — only this card does). Mirror to localStorage for first-paint.
+  // Record a fresh weekly snapshot so the parent keeps an honest log of progress
+  // over time (Wave-3: this is a parent-owned log; no verdict renders from it).
   useEffect(() => {
     if (!snapshots.loaded || score.confidence === "none") return;
     if (!shouldSnapshot(prior, Date.now())) return;
@@ -71,6 +78,9 @@ export default function DevScoreCard() {
     void snapshots.upsert({ id: isoWeekKey(now), ...snap });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [score.confidence, snapshots.loaded]);
+
+  const reached = score.domains.reduce((n, d) => n + d.reached, 0);
+  const total = score.domains.reduce((n, d) => n + d.total, 0);
 
   if (score.confidence === "none") {
     return (
@@ -91,9 +101,11 @@ export default function DevScoreCard() {
     );
   }
 
-  const coachFocus = () => {
-    if (!score.focusDomain) return;
-    setChatInput(`I'd like to nurture ${firstName}'s ${labelFor(score.focusDomain).toLowerCase()} development. What are 2–3 simple things I can do this week?`);
+  // Wave-3: the coach CTA is mechanism-only — it offers the parent ideas for
+  // nurturing development generally. It is NOT a "your child is lowest in X"
+  // pointer (that was a deficit verdict). The prompt is domain-agnostic.
+  const coach = () => {
+    setChatInput(t("devscore.coach.prompt", { name: firstName }));
     setActiveTab("coach");
   };
 
@@ -108,59 +120,46 @@ export default function DevScoreCard() {
           </span>
         </div>
 
+        {/* Headline: flat count of parent-noticed milestones (NOT a percentage/share). */}
         <div className="flex items-center gap-5 mt-3">
-          <ProgressRing value={score.overall} size={72} stroke={8} animate={animateRing}>
-            <span className="text-[18px] font-extrabold" style={{ color: GREEN }}>{score.overall}</span>
-          </ProgressRing>
+          <div className="flex-none w-[72px] h-[72px] rounded-full flex flex-col items-center justify-center" style={{ background: GREEN_SOFT }}>
+            <span className="text-[20px] font-extrabold leading-none" style={{ color: GREEN }}>{reached}</span>
+            <span className="text-[10px] font-bold mt-1" style={{ color: GREEN }}>{t("devscore.noticed.short")}</span>
+          </div>
           <div className="min-w-0">
-            <div className="text-[15px] font-extrabold" style={{ color: INK }}>{t("devscore.overall")}</div>
-            <div className="text-[12.5px]" style={{ color: MUTED }}>
-              {t("devscore.reached", {
-                reached: score.domains.reduce((n, d) => n + d.reached, 0),
-                total: score.domains.reduce((n, d) => n + d.total, 0),
-              })}
+            <div className="text-[15px] font-extrabold" style={{ color: INK }}>
+              {t("devscore.noticed", { reached, total })}
+            </div>
+            {/* Developmental mechanism (parent observation + one-thing-to-try). */}
+            <div className="text-[12.5px] mt-1.5 leading-relaxed" style={{ color: MUTED }}>
+              {t("devscore.mechanism")}
             </div>
           </div>
         </div>
 
-        {/* Per-domain radar ring — the prototype's signature dev-radar map.
-            Replaces the flat bars (same data, same numbers) with a radial
-            polar map: each spoke is a domain, the sapphire shape fills to the
-            share of age-appropriate milestones reached. Keeps the sr-only per-
-            domain trend announcements for screen readers (color/shape alone
-            fails AA). */}
-        <div className="mt-5">
-          <DevRadarRing
-            domains={score.domains}
-            t={t}
-            labelFor={labelFor}
-            firstName={firstName}
-            animate={animateRing}
-          />
-          <div className="sr-only">
-            {score.domains.map((d) => (
-              <span key={d.domain}>
-                {t("devscore.bar.aria", { domain: labelFor(d.domain), score: d.score, trend: d.trend })}{"; "}
-              </span>
-            ))}
-          </div>
+        {/* Domain summary — sr-only, count-only (no score, no trend, no "0 to 100" scale).
+            Wave-3: replaces the prior DevRadarRing + the verdict-shaped bar.aria. */}
+        <div className="sr-only">
+          {score.domains.map((d) => (
+            <span key={d.domain}>
+              {t("devscore.noticed.aria", { domain: labelFor(d.domain), reached: d.reached, total: d.total })}{"; "}
+            </span>
+          ))}
         </div>
 
-        {/* Nurture-next */}
-        {score.focusDomain && (
-          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl p-4" style={{ background: GREEN_SOFT }}>
-            <span className="text-[13.5px] font-bold flex-1 min-w-0" style={{ color: GREEN }}>
-              {t("devscore.focus", { domain: labelFor(score.focusDomain) })}
-            </span>
-            <button
-              onClick={coachFocus}
-              className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2 transition active:scale-[0.98]"
-              style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: `1px solid rgba(52,178,119,0.30)` }}
-            >
-              <Sparkles className="w-3.5 h-3.5" /> {t("devscore.coach")}
-            </button>
-          </div>
-        )}
+        {/* Route-to-pro (mechanism-only — no deficit pointer). */}
+        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl p-4" style={{ background: GREEN_SOFT }}>
+          <span className="text-[13.5px] font-bold flex-1 min-w-0" style={{ color: GREEN }}>
+            {t("devscore.coach.headline")}
+          </span>
+          <button
+            onClick={coach}
+            className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2 transition active:scale-[0.98]"
+            style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: `1px solid rgba(52,178,119,0.30)` }}
+          >
+            <Sparkles className="w-3.5 h-3.5" /> {t("devscore.coach")}
+          </button>
+        </div>
 
         <p className="text-[11.5px] mt-3.5" style={{ color: "var(--arbor-faint)" }}>{t("devscore.note")}</p>
         {/* CI-08 / CLM-004 — the provenance hedge (board-substantiated, Guy-approved 2026-06-22).

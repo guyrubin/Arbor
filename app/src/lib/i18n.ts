@@ -211,20 +211,21 @@ export const en: Dict = {
   "mychild.memoryreview.title": "{count} new facts to review",
   "mychild.memoryreview.all": "Review all ({count})",
   "mychild.screening.sheettitle": "Development check",
-  // Development Score (C4)
+  // Development Score (C4) — Wave-3 clinical subtraction (2026-06-26): verdict-
+  // shaped keys (0–100 score, ring, trend glyph, radar, "strong domain" dot,
+  // focusDomain deficit pointer) removed. Replaced by flat-count + mechanism.
   "devscore.eyebrow": "Development picture",
-  "devscore.overall": "Overall",
-  "devscore.reached": "{reached} of {total}",
   "devscore.empty": "Check off a few milestones and Arbor will show {name}'s development picture across domains.",
-  "devscore.focus": "Worth nurturing next: {domain}",
   "devscore.coach": "Get ideas",
+  "devscore.coach.headline": "Want a few simple ideas for this week?",
+  "devscore.coach.prompt": "I'd like a few simple, age-appropriate ideas for nurturing {name}'s development this week. What's one thing to try?",
   "devscore.note": "A non-diagnostic snapshot from the milestones you've noticed — a starting point, not a verdict.",
-  "devscore.todayLine": "Worth nurturing next: {focus}",
-  "devscore.todayLineSteady": "Tracking steadily across domains",
-  "devscore.today.aria": "Development picture: {score} out of 100. Tap to open.",
-  "devscore.bar.aria": "{domain}: {score} out of 100, trend {trend}",
-  "devscore.radar.caption": "Each spoke is a developmental domain — the sapphire shape shows how much of the age-appropriate milestones {name} has reached. Green dots mark stronger areas.",
-  "devscore.radar.aria": "Development map. {summary}. Scale 0 to 100 per domain.",
+  "devscore.noticed": "{reached} of {total} age-appropriate milestones noticed",
+  "devscore.noticed.short": "noticed",
+  "devscore.noticed.aria": "{domain}: {reached} of {total} milestones noticed",
+  "devscore.noticed.aria.striptoday": "Development picture: {reached} of {total} milestones noticed. Tap to open.",
+  "devscore.mechanism": "Every milestone you notice is a small window into how {name} is growing — and a good prompt for what to try next. This is parent observation, not an assessment.",
+  "devscore.mechanism.short": "Parent observation, not an assessment.",
   // Care › Consult
   "consult.ask": "Ask a specialist",
   "consult.brief": "AI handoff brief",
@@ -439,8 +440,11 @@ export const en: Dict = {
   "beh.triggerPlaceholder": "e.g. Dressing shoe sequence, being told tablet goes off",
   "beh.responsePlaceholder": "e.g. Lowered voice height, used transitional object",
   "beh.notesPlaceholder": "Notes on calming down time, physical behavior...",
-  // beh analysis result labels
-  "beh.trendLabel": "Intensity trend by type (30 days)",
+  // beh analysis result labels — Wave-3 clinical subtraction: prior "Intensity
+  // trend by type (30 days)" named a per-type behavior-intensity trend = verdict.
+  // Replaced by a flat 30-day count per type (parent-log count, no verdict).
+  "beh.countLabel": "Moments logged by type (last 30 days)",
+  "beh.countEntry": "{count} this month",
   "beh.responseEval": "Parent Response Evaluation:",
   "beh.devRec": "Developmental Recommendation:",
   "beh.expertInsights": "Expert Insights:",
@@ -990,12 +994,13 @@ export const en: Dict = {
   "ov.track.title": "Is {name} on track?",
   "ov.track.desc": "A short, non-diagnostic check across developmental areas.",
   "ov.dailyTools": "Your daily tools",
-  "trends.eyebrow": "Trend over time",
-  "trends.title": "Behavior intensity · last 6 months",
-  "trends.readiness": "milestone readiness",
-  "trends.empty": "A few weeks of logs will reveal your longer-term trend here.",
-  "trends.tooltip.label": "Intensity",
-  "trends.tooltip.fmt": "avg {avg}/5 · {count} events",
+  // Wave-3 clinical subtraction: prior keys named an intensity trend + readiness
+  // % (both verdicts). Replaced by a flat recall card (parent-observation only).
+  "trends.eyebrow": "Moments you've logged",
+  "trends.title": "A look back at the last 6 months",
+  "trends.empty": "You haven't logged any moments yet — capture one to start your recall.",
+  "trends.recall": "You've logged {count} moments in the last 6 months — most around {context}.",
+  "trends.recall.noContext": "You've logged {count} moments in the last 6 months.",
   "ov.ageWord": "age",
   "ov.focus.regenerate": "Suggest another focus",
   "ov.toast.focusSet": "Focus set. Daily Play is now matched to what you're working on.",
@@ -1701,20 +1706,21 @@ export const he: Dict = {
   "mychild.memoryreview.title": "{count} עובדות חדשות לבדיקה",
   "mychild.memoryreview.all": "לבדוק הכל ({count})",
   "mychild.screening.sheettitle": "בדיקת התפתחות",
-  // Development Score (C4)
+  // Development Score (C4) — Wave-3 clinical subtraction (2026-06-26): ערכי פסק־דין
+  // (ציון 0–100, טבעת, גליף מגמה, מכ"ם, נקודת "תחום חזק", מצביע חסר ב-focusDomain) הוסרו.
+  // הוחלפו במנייה שטוחה + מנגנון התפתחותי. תואם אנגלית.
   "devscore.eyebrow": "תמונת ההתפתחות",
-  "devscore.overall": "כללי",
-  "devscore.reached": "{reached} מתוך {total}",
   "devscore.empty": "סמנו כמה אבני דרך וארבור יראה את תמונת ההתפתחות של {name} על פני התחומים.",
-  "devscore.focus": "כדאי לטפח עכשיו: {domain}",
   "devscore.coach": "רעיונות",
+  "devscore.coach.headline": "רוצים כמה רעיונות פשוטים להשבוע?",
+  "devscore.coach.prompt": "אשמח לכמה רעיונות פשוטים ומותאמי־גיל לטיפוח ההתפתחות של {name} השבוע. מה דבר אחד שאפשר לנסות?",
   "devscore.note": "תמונת מצב לא־אבחנתית מאבני הדרך ששמתם לב אליהן — נקודת התחלה, לא פסק דין.",
-  "devscore.todayLine": "כדאי לטפח עכשיו: {focus}",
-  "devscore.todayLineSteady": "התקדמות יציבה בכל התחומים",
-  "devscore.today.aria": "תמונת התפתחות: {score} מתוך 100. הקישו לפתיחה.",
-  "devscore.bar.aria": "{domain}: {score} מתוך 100, מגמה {trend}",
-  "devscore.radar.caption": "כל ציר הוא תחום התפתחותי — צורת הספיר מראה כמה מאבני הדרך הגילאיות-{name} הגיע אליהן. נקודות ירוקות מסמנות תחומים חזקים.",
-  "devscore.radar.aria": "מפת התפתחות. {summary}. סקלה 0 עד 100 לכל תחום.",
+  "devscore.noticed": "{reached} מתוך {total} אבני דרך גילאיות מצאתם לב",
+  "devscore.noticed.short": "שמתם לב",
+  "devscore.noticed.aria": "{domain}: {reached} מתוך {total} אבני דרך שמתם לב אליהן",
+  "devscore.noticed.aria.striptoday": "תמונת התפתחות: {reached} מתוך {total} אבני דרך שמתם לב אליהן. הקישו לפתיחה.",
+  "devscore.mechanism": "כל אבן דרך שאתם שמים לב אליה היא חלון קטן לאופן שבו {name} גדל — וגם נקודת פתיחה למה כדאי לנסות הלאה. זו תצפית שלכם כהורים, לא הערכה.",
+  "devscore.mechanism.short": "תצפית הורית, לא הערכה.",
   // Care › Consult
   "consult.ask": "שאל מומחה",
   "consult.brief": "סיכום העברה",
@@ -1892,8 +1898,10 @@ export const he: Dict = {
   "beh.triggerPlaceholder": "למשל רצף נעילת נעליים, הודעה שהטאבלט נכבה",
   "beh.responsePlaceholder": "למשל הורדת גובה הקול, שימוש בחפץ מעבר",
   "beh.notesPlaceholder": "הערות על זמן ההרגעה, התנהגות גופנית...",
-  // beh analysis result labels
-  "beh.trendLabel": "מגמת עוצמה לפי סוג (30 יום)",
+  // beh analysis result labels — Wave-3 clinical subtraction: "מגמת עוצמה לפי סוג"
+  // נקרא מגמת עוצמת התנהגות על מדד של הילד = פסק־דין. הוחלף במנייה שטוחה ל-30 יום. תואם אנגלית.
+  "beh.countLabel": "רגעים שתיעדתם לפי סוג (30 ימים אחרונים)",
+  "beh.countEntry": "{count} החודש",
   "beh.responseEval": "הערכת תגובת הורה:",
   "beh.devRec": "המלצה התפתחותית:",
   "beh.expertInsights": "תובנות מומחים:",
@@ -2428,12 +2436,13 @@ export const he: Dict = {
   "ov.track.title": "האם {name} בקצב?",
   "ov.track.desc": "בדיקה קצרה ולא־אבחנתית על פני תחומי ההתפתחות.",
   "ov.dailyTools": "הכלים היומיים שלכם",
-  "trends.eyebrow": "מגמה לאורך זמן",
-  "trends.title": "עוצמת התנהגות · שישה חודשים אחרונים",
-  "trends.readiness": "מוכנות אבני דרך",
-  "trends.empty": "כמה שבועות של תיעוד יחשפו כאן את המגמה ארוכת־הטווח.",
-  "trends.tooltip.label": "עוצמה",
-  "trends.tooltip.fmt": "ממוצע {avg}/5 · {count} אירועים",
+  // Wave-3 clinical subtraction: הוחלף כרטיס מגמת עוצמה + אחוז מוכנות (שניהם
+  // פסק־דין) בכרטיס שליפה שטוח — תצפית הורית בלבד. תואם אנגלית.
+  "trends.eyebrow": "רגעים שתיעדתם",
+  "trends.title": "מבט לאחור על ששת החודשים האחרונים",
+  "trends.empty": "עדיין לא תיעדתם רגעים — תעדו אחד כדי להתחיל להיזכר.",
+  "trends.recall": "תיעדתם {count} רגעים בששת החודשים האחרונים — רובם סביב {context}.",
+  "trends.recall.noContext": "תיעדתם {count} רגעים בששת החודשים האחרונים.",
   "ov.ageWord": "גיל",
   "ov.focus.regenerate": "הציעו מיקוד אחר",
   "ov.toast.focusSet": "המיקוד נקבע. המשחק היומי כעת מותאם למה שאתם עובדים עליו.",

@@ -22,7 +22,6 @@ import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import GoalBuilderPromptCard from "../practice/GoalBuilderPromptCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { PASTEL } from "../ui/kit";
-import framework from "../../framework.json";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { computeDevScore } from "../../growth/devScore";
@@ -302,11 +301,16 @@ export default function OverviewTab() {
           </div>
         </section>
 
-        {/* ── Dev map ring card (right, 1fr) ─────────────────────────────────── */}
+        {/* ── Dev map card (right, 1fr) ────────────────────────────────────────
+            Wave-3 clinical subtraction (2026-06-26): the prior conic-gradient
+            ring + `score.overall`% + "Worth nurturing next: {focusDomain}"
+            rendered a 0–100 per-child verdict + a deficit pointer (the lowest-
+            scoring domain). Both are forbidden by the CI-22/23/24 firewall. The
+            card now shows a flat parent-checked milestone count + a developmental
+            mechanism line + provenance — same surface, no verdict. */}
         {(() => {
           const score = computeDevScore(milestones.map((m) => ({ domain: m.domain, checked: m.checked })));
           if (score.confidence === "none") return null;
-          const focusLabel = score.focusDomain ? (framework.domains as { id: string; label: string }[]).find((d: { id: string; label: string }) => d.id === score.focusDomain)?.label : null;
           return (
             <section
               onClick={() => setActiveTab("development")}
@@ -314,20 +318,19 @@ export default function OverviewTab() {
               style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}
             >
               <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-clay)" }}>
-                {t("devscore.overall")}
+                {t("devscore.eyebrow")}
               </div>
               <div className="flex items-center gap-4 mt-3">
-                <div className="relative w-[72px] h-[72px] rounded-full flex-none" style={{ background: `conic-gradient(var(--arbor-clay) 0 ${score.overall}%, var(--arbor-track) ${score.overall}% 100%)` }}>
-                  <div className="absolute inset-1 m-auto w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-full bg-white flex flex-col items-center justify-center">
-                    <span className="text-[22px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{score.overall}%</span>
-                  </div>
+                <div className="flex-none w-[72px] h-[72px] rounded-full flex flex-col items-center justify-center" style={{ background: "var(--arbor-green-soft)" }}>
+                  <span className="text-[18px] font-extrabold leading-none" style={{ color: "var(--arbor-green-ink)" }}>{checkedMilestones}</span>
+                  <span className="text-[10px] font-bold mt-1" style={{ color: "var(--arbor-green-ink)" }}>{t("devscore.noticed.short")}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[15px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>
-                    {t("devscore.todayLine", { focus: focusLabel || t("devscore.todayLineSteady") })}
+                  <div className="text-[14px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>
+                    {t("devscore.noticed", { reached: checkedMilestones, total: totalMilestones })}
                   </div>
-                  <div className="text-[11px] mt-1" style={{ color: "var(--arbor-faint)" }}>
-                    {t("devscore.reached", { reached: checkedMilestones, total: totalMilestones })}
+                  <div className="text-[11.5px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-faint)" }}>
+                    {t("devscore.mechanism")}
                   </div>
                 </div>
               </div>
@@ -465,7 +468,7 @@ export default function OverviewTab() {
           </div>
           <div className="mt-4 space-y-4">
             <RemindersCard />
-            <TrendsChart logs={behaviorLogs} milestonesPercent={milestonesPercent} />
+            <TrendsChart logs={behaviorLogs} />
           </div>
         </div>
       </section>

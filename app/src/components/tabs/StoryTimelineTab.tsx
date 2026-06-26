@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import {
   Activity, CheckCircle2, Sprout, BookMarked, MessageSquare,
-  ArrowUpRight, ArrowDownRight, Minus, Sparkles, Camera, TrendingDown, TrendingUp, BarChart2,
+  Sparkles, Camera, BarChart2,
   ShieldCheck, ClipboardCheck, Feather, Download,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
@@ -133,7 +133,10 @@ export default function StoryTimelineTab() {
       milestonesTotal: momentum.milestones.total,
       momentsThisWeek: momentum.momentsThisWeek,
       momentsPrevWeek: momentum.momentsPrevWeek,
-      intensityTrend: momentum.intensityTrend,
+      // Wave-3 clinical subtraction: never pass the intensity trend into the
+      // story narrative (a behavior-intensity verdict rendered as prose is the
+      // same firewall leak as a chart). The story now stays observational-only.
+      intensityTrend: "none",
       planWins: momentum.winsThisWeek,
     }),
     [childProfile.name, childProfile.age, memoryReviewItems, momentum],
@@ -159,8 +162,10 @@ export default function StoryTimelineTab() {
 
   const firstName = childProfile.name?.split(" ")[0] || "Your child";
 
-  const TrendArrow = momentum.momentTrend === "up" ? ArrowUpRight : momentum.momentTrend === "down" ? ArrowDownRight : Minus;
-  const trendColor = momentum.momentTrend === "down" ? PASTEL.mint.ink : momentum.momentTrend === "up" ? PASTEL.coral.ink : "var(--arbor-muted)";
+  // Wave-3 clinical subtraction: the prior momentTrend arrow was color-coded
+  // (coral = "more moments this week = bad", mint = "fewer = good") — a behavior
+  // trend on a child metric = verdict-shaped. Removed. The flat momentsThisWeek
+  // count renders with a neutral "vs N last week" comparison (descriptive only).
 
   const handleCoach = (prompt: string) => {
     setChatInput(prompt);
@@ -235,22 +240,18 @@ export default function StoryTimelineTab() {
         </div>
       </SectionCard>
 
-      {/* Momentum strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Momentum strip — Wave-3 clinical subtraction (2026-06-26): the prior
+          4-tile grid included an "Avg intensity X/5" tile with rising/easing
+          TrendingUp/Down glyphs color-coded coral/mint = a behavior-intensity
+          verdict on a child metric. Removed. The flat parent-log moment count +
+          the plan-steps + milestones counts stay (all are flat parent-owned
+          counts, no verdict). */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatTile
           tone="coral" icon={<Activity className="w-5 h-5" />}
           value={momentum.momentsThisWeek} label="Moments this week"
-          foot={<span className="inline-flex items-center gap-0.5" style={{ color: trendColor }}>
-            <TrendArrow className="w-3 h-3" />
+          foot={<span style={{ color: "var(--arbor-muted)" }}>
             {momentum.momentsPrevWeek > 0 ? `vs ${momentum.momentsPrevWeek} last week` : "first week"}
-          </span>}
-        />
-        <StatTile
-          tone="mint" icon={momentum.intensityTrend === "rising" ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-          value={momentum.avgIntensityThisWeek != null ? `${momentum.avgIntensityThisWeek}/5` : "—"}
-          label="Avg intensity"
-          foot={<span style={{ color: momentum.intensityTrend === "easing" ? PASTEL.mint.ink : momentum.intensityTrend === "rising" ? PASTEL.coral.ink : "var(--arbor-muted)" }}>
-            {momentum.intensityTrend === "none" ? "no data yet" : momentum.intensityTrend}
           </span>}
         />
         <StatTile
