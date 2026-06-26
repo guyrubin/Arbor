@@ -64,7 +64,7 @@ export default function HandoffTab() {
                 key={a.id}
                 type="button"
                 onClick={() => setHandoffAudience(a.id)}
-                className="py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col justify-center text-left gap-0.5"
+                className="py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col justify-center text-start gap-0.5"
                 style={on
                   ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
                   : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
@@ -77,7 +77,7 @@ export default function HandoffTab() {
         </div>
       </SectionCard>
 
-      <div className={`${cardCls} p-6 md:p-8 space-y-6 text-left printable-area`}>
+      <div className={`${cardCls} p-6 md:p-8 space-y-6 text-start printable-area`}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 gap-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
           <div>
             <h3 className="text-lg font-extrabold flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
@@ -156,7 +156,7 @@ function BriefList({ title, items, tone = "ink" }: { title: string; items: strin
   return (
     <div className="space-y-2">
       <span className="font-bold block text-sm" style={{ color: tone === "mint" ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{title}</span>
-      <ul className="list-disc pl-5 space-y-1" style={{ color: "var(--arbor-muted)" }}>
+      <ul className="list-disc ps-5 space-y-1" style={{ color: "var(--arbor-muted)" }}>
         {items.map((it, i) => <li key={i}>{it}</li>)}
       </ul>
     </div>

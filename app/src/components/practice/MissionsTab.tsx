@@ -216,7 +216,7 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
             <Flame className="w-6 h-6" style={{ color: "var(--arbor-peach-ink)" }} />
           </span>
           <div>
-            <p className="text-2xl font-extrabold leading-none" style={{ color: "var(--arbor-ink)" }}>{data.streak}<span className="text-sm font-bold ml-1">day{data.streak === 1 ? "" : "s"}</span></p>
+            <p className="text-2xl font-extrabold leading-none" style={{ color: "var(--arbor-ink)" }}>{data.streak}<span className="text-sm font-bold ms-1">day{data.streak === 1 ? "" : "s"}</span></p>
             <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Practice streak — any completed mission keeps it alive.</p>
           </div>
         </div>
@@ -270,7 +270,7 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
           <span style={{ color: "var(--arbor-ink)" }}>
             <b>Copilot suggestion:</b> {recommendation.headline.toLowerCase()} — the <b>{recommendedMission.title}</b> mission below is aimed exactly there.
           </span>
-          <button onClick={() => setActiveTab("copilot")} className="ml-auto font-extrabold" style={{ color: DOMAIN_META[recommendation.domain].color }}>
+          <button onClick={() => setActiveTab("copilot")} className="ms-auto font-extrabold" style={{ color: DOMAIN_META[recommendation.domain].color }}>
             See why →
           </button>
         </div>

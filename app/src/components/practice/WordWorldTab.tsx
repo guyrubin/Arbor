@@ -87,7 +87,7 @@ function ModuleCard({ module, selected, onSelect }: ModuleCardProps) {
     <button
       onClick={onSelect}
       aria-pressed={selected}
-      className="flex flex-col items-start gap-2 p-4 rounded-[var(--r-lg)] border text-left transition-all"
+      className="flex flex-col items-start gap-2 p-4 rounded-[var(--r-lg)] border text-start transition-all"
       style={{
         borderColor: selected ? "var(--arbor-clay)" : "var(--arbor-rule)",
         borderWidth: selected ? 2 : 1,

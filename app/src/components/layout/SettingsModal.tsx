@@ -198,7 +198,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         {/* AI Engines panel */}
         <Row icon={<Sparkles className="w-4 h-4" />} title={t("set.rail.title")} sub={t("set.rail.sub")}>
           <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 h-6 rounded-full transition relative" style={{ background: showAiRail ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}>
-            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "left-[22px]" : "left-0.5"}`} />
+            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "end-[22px]" : "start-0.5"}`} />
           </button>
         </Row>
 

@@ -48,7 +48,7 @@ export default function DevScoreStrip() {
       type="button"
       onClick={() => setActiveTab("development")}
       aria-label={t("devscore.today.aria", { score: score.overall, focus: focusLabel ?? "" })}
-      className="w-full flex items-center gap-4 rounded-[22px] px-5 text-left transition active:scale-[0.99] hover:-translate-y-0.5"
+      className="w-full flex items-center gap-4 rounded-[22px] px-5 text-start transition active:scale-[0.99] hover:-translate-y-0.5"
       style={{ minHeight: 64, background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
       <ProgressRing value={score.overall} size={44} stroke={6} animate={!prefersReducedMotion()}>

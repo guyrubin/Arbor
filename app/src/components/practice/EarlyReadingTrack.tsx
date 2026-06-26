@@ -167,7 +167,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
 
         <div className="flex-1 min-w-0 w-full">
           {done ? (
-            <div className="text-center sm:text-left play-pop-in">
+            <div className="text-center sm:text-start play-pop-in">
               <div className="flex justify-center sm:justify-start gap-1 mb-2" aria-label={t("prac.read.trace.stars", { n: done.stars })}>
                 {[0, 1, 2].map((i) => (
                   <span key={i} className="text-2xl" style={{ filter: i < done.stars ? "none" : "grayscale(1)", opacity: i < done.stars ? 1 : 0.35 }}>⭐</span>
@@ -287,7 +287,7 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
             </button>
           );
         })}
-        <span className="self-center text-[11px] ml-1" style={{ color: "var(--arbor-muted)" }}>{t(STAGE_HINT_KEY[stage])}</span>
+        <span className="self-center text-[11px] ms-1" style={{ color: "var(--arbor-muted)" }}>{t(STAGE_HINT_KEY[stage])}</span>
       </div>
 
       {stage === "phonics" && (

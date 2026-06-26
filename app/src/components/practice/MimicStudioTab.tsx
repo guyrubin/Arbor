@@ -129,14 +129,14 @@ export default function MimicStudioTab() {
           const done = packDone(p);
           return (
             <button key={p.id} onClick={() => setPackId(p.id)}
-              className={`${cardCls} p-4 text-left transition`}
+              className={`${cardCls} p-4 text-start transition`}
               style={on ? { border: "1px solid var(--arbor-clay)", background: T.paperDeep } : undefined}>
               <span className="text-2xl">{p.emoji}</span>
               <p className="text-sm font-extrabold mt-1.5" style={{ color: "var(--arbor-ink)" }}>{p.title}</p>
               <p className="text-[10.5px] mt-0.5 leading-snug" style={{ color: "var(--arbor-muted)" }}>{p.blurb}</p>
               <div className="flex items-center gap-1.5 mt-2">
                 <ProgressPips total={p.prompts.length} current={done - 1} tone="clay" />
-                {done === p.prompts.length && <Star className="w-3.5 h-3.5 ml-1" style={{ color: "var(--arbor-yellow)", fill: "var(--arbor-yellow)" }} />}
+                {done === p.prompts.length && <Star className="w-3.5 h-3.5 ms-1" style={{ color: "var(--arbor-yellow)", fill: "var(--arbor-yellow)" }} />}
               </div>
             </button>
           );
@@ -183,7 +183,7 @@ export default function MimicStudioTab() {
               </div>
             )}
             {mirrorOn && (
-              <button onClick={stopMirror} className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "rgba(28,34,43,0.75)" }}>
+              <button onClick={stopMirror} className="absolute top-3 end-3 z-10 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "rgba(28,34,43,0.75)" }}>
                 <CameraOff className="w-3.5 h-3.5" /> Mirror off
               </button>
             )}

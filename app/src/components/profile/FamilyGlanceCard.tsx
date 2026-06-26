@@ -56,7 +56,7 @@ export default function FamilyGlanceCard() {
           <li key={row.id}>
             <button
               onClick={() => setActiveChild(row.id)}
-              className="w-full flex items-center gap-3 px-3.5 py-3 text-left transition active:scale-[0.99]"
+              className="w-full flex items-center gap-3 px-3.5 py-3 text-start transition active:scale-[0.99]"
               style={{
                 background: row.isActive ? "var(--arbor-paper-deep)" : "transparent",
               }}

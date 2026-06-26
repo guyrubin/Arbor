@@ -44,7 +44,7 @@ export default function TrendsChart({ logs, milestonesPercent }: { logs: Behavio
           </span>
           <h3 className="text-lg font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("trends.title")}</h3>
         </div>
-        <div className="text-right">
+        <div className="text-end">
           <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{milestonesPercent}%</div>
           <span className="text-[10px] uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("trends.readiness")}</span>
         </div>

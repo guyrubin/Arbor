@@ -226,7 +226,7 @@ export default function HeroJourneyTab() {
           <button
             key={c.id}
             onClick={() => chooseOption(c.id)}
-            className="w-full text-left p-3.5 rounded-2xl transition flex items-center gap-3 group hover:-translate-y-0.5"
+            className="w-full text-start p-3.5 rounded-2xl transition flex items-center gap-3 group hover:-translate-y-0.5"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
           >
             <span className="w-7 h-7 rounded-full font-extrabold flex items-center justify-center flex-shrink-0 uppercase" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
@@ -368,7 +368,7 @@ export default function HeroJourneyTab() {
               return (
                 <button
                   key={story.id}
-                  className="world-tile text-left relative"
+                  className="world-tile text-start relative"
                   aria-disabled={!!loadingId}
                   aria-label={`${he ? story.titleHe : story.title} — ${he ? w.labelHe : w.label}`}
                   onClick={() => !loadingId && startJourney(story)}
@@ -459,7 +459,7 @@ export default function HeroJourneyTab() {
                 const w = spec ? PACK_WORLD[spec.pack] : PACK_WORLD.courage;
                 const art = STORY_ART[run.storyId] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
                 return (
-                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-left" aria-label={run.title}>
+                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={run.title}>
                     <div className="comic-halftone grid place-items-center" style={{ height: 72, background: w.bg, borderBottom: "var(--comic-line)" }}>
                       <span style={{ fontSize: 34 }} aria-hidden="true">{art.emoji}</span>
                     </div>
@@ -532,7 +532,7 @@ export default function HeroJourneyTab() {
               <button
                 key={i}
                 onClick={() => setQuestionsChecked((s) => ({ ...s, [i]: !s[i] }))}
-                className="w-full text-left p-2.5 rounded-xl transition flex items-start gap-2"
+                className="w-full text-start p-2.5 rounded-xl transition flex items-start gap-2"
                 style={questionsChecked[i]
                   ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }
                   : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}

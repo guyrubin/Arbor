@@ -152,13 +152,13 @@ export default function DevelopmentCopilot() {
                     <span key={t} className="absolute top-0 bottom-0 w-px" style={{ left: `${t}%`, background: "rgba(255,255,255,0.9)" }} />
                   ))}
                 </div>
-                <span className="w-28 flex-shrink-0 text-right">
+                <span className="w-28 flex-shrink-0 text-end">
                   <Chip tone={b.band === "strong" ? "mint" : b.band === "on-track" ? "sky" : b.band === "developing" ? "yellow" : "pink"}>{copy.label}</Chip>
                 </span>
                 <span className="w-28 flex-shrink-0 inline-flex items-center justify-end gap-1 text-[11px] font-bold" style={{ color: delta > 1 ? "var(--arbor-green-ink)" : delta < -1 ? "var(--arbor-pink-ink)" : "var(--arbor-muted)" }}>
                   <TrendIcon className="w-3.5 h-3.5" /> {delta > 0 ? "+" : ""}{Math.round(delta)}
                 </span>
-                <span className="w-24 flex-shrink-0 text-right">
+                <span className="w-24 flex-shrink-0 text-end">
                   <Chip tone={confidence[b.domain] === "high" ? "mint" : confidence[b.domain] === "medium" ? "sky" : "yellow"}>{confidence[b.domain]}</Chip>
                 </span>
               </div>
@@ -254,7 +254,7 @@ export default function DevelopmentCopilot() {
                     <span className="text-[11px] font-bold" style={{ color: meta.color }}>{meta.label}</span>
                     <span className="flex items-center gap-2">
                       <Sparkline data={d.series} max={100} width={72} height={20} color={meta.color} />
-                      <span className="text-[10px] font-bold w-8 text-right" style={{ color: d.delta >= 0 ? "var(--arbor-green-ink)" : "var(--arbor-pink-ink)" }}>
+                      <span className="text-[10px] font-bold w-8 text-end" style={{ color: d.delta >= 0 ? "var(--arbor-green-ink)" : "var(--arbor-pink-ink)" }}>
                         {d.delta >= 0 ? "+" : ""}{d.delta}
                       </span>
                     </span>

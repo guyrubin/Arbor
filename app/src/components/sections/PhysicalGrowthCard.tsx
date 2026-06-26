@@ -573,7 +573,7 @@ export default function PhysicalGrowthCard() {
                       <span className="truncate flex-1 text-[11px]">{e.note}</span>
                     )}
                     <button
-                      className="touch-target ml-auto flex-shrink-0"
+                      className="touch-target ms-auto flex-shrink-0"
                       style={{ color: FAINT, background: "none", border: "none", minHeight: 32, minWidth: 32 }}
                       onClick={() => setConfirmDeleteId(e.id)}
                       aria-label={t("growth.delete.confirm")}

@@ -401,7 +401,7 @@ export default function CoachTab() {
           return (
             <div
               key={c.id}
-              className="flex-shrink-0 flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1 transition"
+              className="flex-shrink-0 flex items-center gap-1.5 rounded-full ps-3 pe-1.5 py-1 transition"
               style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, border: "1px solid var(--arbor-rule)" }}
             >
               <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>

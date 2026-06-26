@@ -57,7 +57,7 @@ export default function RoutinesCard() {
               </div>
               <div className="space-y-1">
                 {r.steps.map((s, i) => (
-                  <button key={i} onClick={() => toggle(r, i)} className="w-full flex items-center gap-2 text-left text-[11px]">
+                  <button key={i} onClick={() => toggle(r, i)} className="w-full flex items-center gap-2 text-start text-[11px]">
                     <span className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={s.done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { border: "1px solid var(--arbor-rule-strong)", color: "transparent" }}>
                       <Check className="w-3 h-3" />
                     </span>

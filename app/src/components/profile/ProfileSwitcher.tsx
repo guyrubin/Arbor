@@ -16,7 +16,7 @@ export default function ProfileSwitcher() {
   return (
     <div className="relative">
       <div className="rounded-2xl p-3 flex items-center justify-between gap-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 flex-1 text-left group">
+        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 flex-1 text-start group">
           <Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={36} ring />
           <div className="min-w-0">
             <h4 className="text-sm font-bold leading-tight truncate" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
@@ -54,7 +54,7 @@ export default function ProfileSwitcher() {
                     setActiveChild(p.id);
                     setOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition"
+                  className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-start transition"
                   style={{ background: p.id === activeChild.id ? "var(--arbor-paper-deep)" : "transparent" }}
                 >
                   <Avatar name={p.name} photoURL={p.photoUrl} size={28} />
@@ -70,7 +70,7 @@ export default function ProfileSwitcher() {
                   setOpen(false);
                   setShowAdd(true);
                 }}
-                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition mt-1"
+                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-start transition mt-1"
                 style={{ color: "var(--arbor-green-ink)", borderTop: "1px solid var(--arbor-rule)" }}
               >
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--arbor-green-soft)" }}>

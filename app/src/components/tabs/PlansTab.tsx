@@ -53,7 +53,7 @@ export default function PlansTab() {
 
         {/* Templates — start from a common challenge */}
         <div className="flex flex-wrap gap-1.5">
-          <span className="text-[10px] font-bold self-center mr-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
+          <span className="text-[10px] font-bold self-center me-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
           {[
             t("plan.template.morningDeparture"),
             t("plan.template.screenShutdown"),
@@ -80,7 +80,7 @@ export default function PlansTab() {
         {/* Data-driven: suggestions from {name}'s recent logged behavior */}
         {suggestions.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            <span className="text-[10px] font-bold self-center mr-1" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
+            <span className="text-[10px] font-bold self-center me-1" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
             {suggestions.map((s) => (
               <button
                 key={s.topic}
@@ -210,7 +210,7 @@ export default function PlansTab() {
 
               <div className="space-y-2 text-xs">
                 <span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("plan.signs")}</span>
-                <ul className="list-disc pl-5 space-y-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                <ul className="list-disc ps-5 space-y-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                   {plan.successIndicators.map((sc, scIdx) => <li key={scIdx}>{sc}</li>)}
                 </ul>
               </div>

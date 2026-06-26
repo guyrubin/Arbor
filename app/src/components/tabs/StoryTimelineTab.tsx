@@ -74,9 +74,9 @@ function SignalRow({ signal }: { signal: TimelineSignal }) {
   const Icon = KIND_ICON[signal.kind];
   const tone = signal.tone as SignalTone as PastelKey;
   return (
-    <div className="relative pl-12">
+    <div className="relative ps-12">
       {/* node on the rail */}
-      <span className="absolute left-[14px] top-1.5 -translate-x-1/2 w-3 h-3 rounded-full ring-4 ring-[var(--arbor-paper)]" style={{ background: PASTEL[tone].ink }} />
+      <span className="absolute start-[14px] top-1.5 -translate-x-1/2 w-3 h-3 rounded-full ring-4 ring-[var(--arbor-paper)]" style={{ background: PASTEL[tone].ink }} />
       <div className={`${cardCls} p-3.5`}>
         <div className="flex items-start gap-3">
           <IconBadge tone={tone} size={34}><Icon className="w-4 h-4" /></IconBadge>
@@ -84,7 +84,7 @@ function SignalRow({ signal }: { signal: TimelineSignal }) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL[tone].ink }}>{KIND_LABEL[signal.kind]}</span>
               {typeof signal.intensity === "number" && <IntensityDots value={signal.intensity} />}
-              {signal.at && <span className="text-[10.5px] font-semibold ml-auto" style={{ color: "var(--arbor-muted)" }}>{new Date(signal.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>}
+              {signal.at && <span className="text-[10.5px] font-semibold ms-auto" style={{ color: "var(--arbor-muted)" }}>{new Date(signal.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>}
             </div>
             <p className="text-sm font-extrabold mt-0.5" style={{ color: "var(--arbor-ink)" }}>{signal.title}</p>
             {signal.detail && <p className="text-[12.5px] mt-0.5 leading-snug line-clamp-2" style={{ color: "var(--arbor-muted)" }}>{signal.detail}</p>}

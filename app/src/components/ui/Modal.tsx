@@ -96,7 +96,7 @@ export function Modal({
               {title && <h3 id={titleId} className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h3>}
               <button
                 onClick={onClose}
-                className="ml-auto p-1.5 rounded-lg transition"
+                className="ms-auto p-1.5 rounded-lg transition"
                 style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 aria-label="Close"
               >

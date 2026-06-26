@@ -84,7 +84,7 @@ export default function SafetyTab() {
           <span className="text-[10px] uppercase font-extrabold tracking-widest" style={{ color: riskP.ink }}>Current risk level</span>
           <div className="text-xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{riskLabel}</div>
         </div>
-        <p className="text-xs ml-auto max-w-sm text-right hidden sm:block" style={{ color: "var(--arbor-muted)" }}>
+        <p className="text-xs ms-auto max-w-sm text-end hidden sm:block" style={{ color: "var(--arbor-muted)" }}>
           Based on {first}&apos;s profile. Update it from the profile editor as circumstances change.
         </p>
       </div>

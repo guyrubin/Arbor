@@ -188,7 +188,7 @@ export default function AvatarCreator({
                 <label className="flex items-start gap-2 p-3 rounded-xl cursor-pointer" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}>
                   <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-clay)" }} />
                   <span className="text-[11px] leading-snug" style={{ color: "var(--arbor-green-ink)" }}>
-                    <ShieldCheck className="w-3.5 h-3.5 inline mr-1" />
+                    <ShieldCheck className="w-3.5 h-3.5 inline me-1" />
                     I consent to Arbor using this photo to create a cartoon character. The original is used once, then <strong>immediately discarded — never stored and never used to train AI.</strong>
                   </span>
                 </label>

@@ -115,7 +115,7 @@ export default function RemindersCard() {
             className="w-10 h-5 rounded-full transition relative"
             style={{ background: prefs.dailyLog ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
           >
-            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.dailyLog ? "left-5" : "left-0.5"}`} />
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.dailyLog ? "end-5" : "start-0.5"}`} />
           </button>
         </div>
       </label>
@@ -130,7 +130,7 @@ export default function RemindersCard() {
           className="w-10 h-5 rounded-full transition relative"
           style={{ background: prefs.monthlySafety ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
         >
-          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.monthlySafety ? "left-5" : "left-0.5"}`} />
+          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.monthlySafety ? "end-5" : "start-0.5"}`} />
         </button>
       </label>
 

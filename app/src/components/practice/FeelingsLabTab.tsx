@@ -239,7 +239,7 @@ export default function FeelingsLabTab() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {CALM_TOOLS.map((tool) => (
-            <button key={tool.id} onClick={() => completeCalm(tool.id)} className={`${cardCls} p-4 text-left transition hover:shadow-md`}>
+            <button key={tool.id} onClick={() => completeCalm(tool.id)} className={`${cardCls} p-4 text-start transition hover:shadow-md`}>
               <span className="text-2xl">{tool.emoji}</span>
               <span className="block text-sm font-extrabold mt-1" style={{ color: "var(--arbor-ink)" }}>{tool.title}</span>
               <span className="block text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{tool.how}</span>

@@ -155,7 +155,7 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
               {!won && (
                 <button
                   onClick={skipFace}
-                  className="play-pressable absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 text-[12px] font-extrabold px-3 py-2 rounded-xl text-white"
+                  className="play-pressable absolute top-3 end-3 z-20 inline-flex items-center gap-1.5 text-[12px] font-extrabold px-3 py-2 rounded-xl text-white"
                   style={{ background: "rgba(28,34,43,0.6)", backdropFilter: "blur(4px)", minHeight: 44 }}
                 >
                   <SkipForward className="w-4 h-4" /> {t("prac.mimic.face.skip")}

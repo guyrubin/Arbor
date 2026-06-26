@@ -317,7 +317,7 @@ function StepDomains({
               key={d.id}
               type="button"
               onClick={() => toggle(d.id)}
-              className="flex items-start gap-3 px-4 py-3 rounded-2xl text-left transition active:scale-[0.99]"
+              className="flex items-start gap-3 px-4 py-3 rounded-2xl text-start transition active:scale-[0.99]"
               style={
                 on
                   ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.40)" }
@@ -501,7 +501,7 @@ function StepReady({
   const row = (label: string, value: string) => (
     <div key={label} className="flex items-start justify-between gap-4 py-2" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
       <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{label}</span>
-      <span className="text-xs font-extrabold text-right" style={{ color: "var(--arbor-ink)" }}>{value}</span>
+      <span className="text-xs font-extrabold text-end" style={{ color: "var(--arbor-ink)" }}>{value}</span>
     </div>
   );
 

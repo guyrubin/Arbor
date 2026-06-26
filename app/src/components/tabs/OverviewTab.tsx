@@ -262,7 +262,7 @@ export default function OverviewTab() {
           <div className="px-5 pb-5 pt-4">
             <div className="flex items-center justify-between gap-3">
               <StreakChip days={streak.current} lang={uiLang === "he" ? "he" : "en"} />
-              <span className="text-[12px] font-medium text-right" style={{ color: "var(--arbor-muted)" }}>
+              <span className="text-[12px] font-medium text-end" style={{ color: "var(--arbor-muted)" }}>
                 {firstName}, {t("ov.ageWord")} {childProfile.age}{childProfile.schoolContext ? ` · ${childProfile.schoolContext}` : ""}
               </span>
             </div>
@@ -343,7 +343,7 @@ export default function OverviewTab() {
           <div className="flex items-center gap-2 mb-4">
             <RotateCw className="w-5 h-5" style={{ color: "var(--arbor-clay)", fontVariationSettings: "'FILL' 1" }} />
             <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.reco.play.title")}</span>
-            <span className="ml-auto text-[10px] font-extrabold rounded-full px-2.5 py-1" style={{ color: "var(--arbor-clay)", background: "var(--arbor-tint-2)" }}>
+            <span className="ms-auto text-[10px] font-extrabold rounded-full px-2.5 py-1" style={{ color: "var(--arbor-clay)", background: "var(--arbor-tint-2)" }}>
               {t("today.live")}
             </span>
           </div>

@@ -73,7 +73,7 @@ export default function FamilyFormation() {
             const isOpen = openId === r.id;
             return (
               <div key={r.id} className={`${cardCls} p-5`}>
-                <button onClick={() => setOpenId(isOpen ? null : r.id)} className="w-full flex items-start gap-4 text-left">
+                <button onClick={() => setOpenId(isOpen ? null : r.id)} className="w-full flex items-start gap-4 text-start">
                   <IconBadge tone={FRAME_TONE[r.frame]}><Icon className="w-5 h-5" /></IconBadge>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-[15px] font-extrabold flex items-center justify-between gap-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>

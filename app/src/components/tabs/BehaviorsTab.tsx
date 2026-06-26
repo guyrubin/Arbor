@@ -405,7 +405,7 @@ export default function BehaviorsTab() {
                 <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("beh.activeLogs")}</h3>
                 <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("beh.entriesOf", { n: filtered.length, total: behaviorLogs.length })}</p>
               </div>
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center gap-2 ms-auto">
                 <button onClick={exportPdf} className="font-bold text-xs px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
                   <Download className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
                 </button>
@@ -476,7 +476,7 @@ export default function BehaviorsTab() {
             )}
 
             {/* Weekly grouped logs */}
-            <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+            <div className="space-y-4 max-h-[420px] overflow-y-auto pe-1">
               {!logsLoaded && (
                 <div className="space-y-2"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div>
               )}
@@ -500,7 +500,7 @@ export default function BehaviorsTab() {
                       {!collapsed && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
                           {logs.map((log) => (
-                            <div key={log.id} className="p-4 rounded-xl space-y-2.5 text-xs text-left" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                            <div key={log.id} className="p-4 rounded-xl space-y-2.5 text-xs text-start" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                               <div className="flex justify-between items-start gap-3">
                                 <div>
                                   <span className="font-bold text-sm" style={{ color: "var(--arbor-ink)" }}>{log.behaviorType}</span>

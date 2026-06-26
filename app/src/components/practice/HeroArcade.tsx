@@ -174,7 +174,7 @@ export default function HeroArcade() {
             const stars = w.count ? Math.min(3, Math.floor(w.count(data) / 3)) : 0;
             const c = COLOR[w.color];
             return (
-              <button key={w.id} className="world-tile text-left relative" aria-disabled={!live}
+              <button key={w.id} className="world-tile text-start relative" aria-disabled={!live}
                 aria-label={`${w.name}, ${w.tag}${live ? "" : ", coming soon"}`}
                 onClick={() => live && setOpenId(w.id)}>
                 {w.isNew && (

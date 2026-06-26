@@ -174,8 +174,8 @@ html[lang="he"] .arbor-app h1,
 html[lang="he"] .arbor-app h2,
 html[lang="he"] .arbor-app h3 { letter-spacing: 0; }
 html[dir="rtl"] .arbor-app aside:first-of-type {
-  border-right: none !important;
-  border-left: 1px solid var(--arbor-rule) !important;
+  border-inline-end: none !important;
+  border-inline-start: 1px solid var(--arbor-rule) !important;
 }
 html[dir="rtl"] .arbor-app .no-scrollbar { direction: rtl; }
 
@@ -252,8 +252,8 @@ body {
   color: var(--arbor-ink);
   backdrop-filter: none !important;
 }
-.arbor-app aside:first-of-type { border-right: 1px solid var(--arbor-rule) !important; }
-.arbor-app aside:last-of-type  { border-left: 1px solid var(--arbor-rule) !important; }
+.arbor-app aside:first-of-type { border-inline-end: 1px solid var(--arbor-rule) !important; }
+.arbor-app aside:last-of-type  { border-inline-start: 1px solid var(--arbor-rule) !important; }
 
 /* ─── Nav as soft sapphire pills ─────────────────────────────────────────── */
 .arbor-app nav button {

@@ -371,7 +371,7 @@ export default function GoalBuilderModal({
                           aria-pressed={isSelected}
                           aria-disabled={isDisabled}
                           title={isDisabled ? "You can set up to 3 focuses." : undefined}
-                          className="flex items-center gap-3 rounded-2xl p-3.5 text-left transition"
+                          className="flex items-center gap-3 rounded-2xl p-3.5 text-start transition"
                           style={{
                             background: isSelected
                               ? GREEN_SOFT

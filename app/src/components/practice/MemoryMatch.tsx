@@ -148,7 +148,7 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
             </button>
           );
         })}
-        <span className="text-[13px] font-bold ml-auto" style={{ color: "var(--arbor-muted)" }}>Moves: <b style={{ color: "var(--arbor-ink)" }}>{moves}</b> · Found {matchedCount}/{pairs}</span>
+        <span className="text-[13px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>Moves: <b style={{ color: "var(--arbor-ink)" }}>{moves}</b> · Found {matchedCount}/{pairs}</span>
       </div>
 
       {won ? (
