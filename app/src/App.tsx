@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProfileProvider, useProfile } from "./context/ProfileContext";
 import { ArborProvider } from "./context/ArborContext";
 import { ToastProvider } from "./context/ToastContext";
-import { LanguageProvider } from "./context/LanguageContext";
+import { LanguageProvider, useLanguage } from "./context/LanguageContext";
 import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
 import OnboardingFlow from "./components/auth/OnboardingFlow";
@@ -19,6 +19,7 @@ import { recordBillingTransition } from "./lib/billingTransition";
  */
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
 
   if (firebaseClientMisconfigured) return <ProductionAuthConfigError />;
 
@@ -28,7 +29,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         className="arbor-app min-h-screen flex items-center justify-center"
         style={{ color: "var(--arbor-muted)" }}
         role="status"
-        aria-label="Loading"
+        aria-label={t("aria.loading")}
       >
         <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-clay)" }} />
       </div>
@@ -67,6 +68,7 @@ function ProductionAuthConfigError() {
  */
 function ProfileGate({ children }: { children: React.ReactNode }) {
   const { loading, needsOnboarding } = useProfile();
+  const { t } = useLanguage();
 
   if (loading) {
     return (
@@ -74,7 +76,7 @@ function ProfileGate({ children }: { children: React.ReactNode }) {
         className="arbor-app min-h-screen flex items-center justify-center"
         style={{ color: "var(--arbor-muted)" }}
         role="status"
-        aria-label="Loading"
+        aria-label={t("aria.loading")}
       >
         <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-clay)" }} />
       </div>

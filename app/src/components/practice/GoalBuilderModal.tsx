@@ -45,6 +45,7 @@ import {
 } from "../../practice/goalBuilder";
 import type { BehaviorLog } from "../../types";
 import { domainForBehaviorType } from "../../playbank/select";
+import { useLanguage } from "../../context/LanguageContext";
 
 // ── Icon map (tile icon names → Lucide components) ───────────────────────────
 
@@ -128,6 +129,7 @@ export default function GoalBuilderModal({
   onSave,
   behaviorLogs = [],
 }: GoalBuilderModalProps) {
+  const { t } = useLanguage();
   const firstName = (childName || "your child").split(" ")[0];
   const hasGoals = activeGoals.length > 0;
 
@@ -234,7 +236,7 @@ export default function GoalBuilderModal({
               </div>
               <button
                 onClick={onClose}
-                aria-label="Close"
+                aria-label={t("aria.close")}
                 className="flex-shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg ms-3 transition"
                 style={{ border: `1px solid ${RULE}`, color: MUTED }}
               >

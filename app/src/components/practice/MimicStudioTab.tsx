@@ -155,11 +155,11 @@ export default function MimicStudioTab() {
             <p className="text-sm mt-2 max-w-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{prompt.instruction}</p>
             <Chip tone="coral" icon={<Smile className="w-3 h-3" />}>{prompt.focus}</Chip>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => setPromptIdx((i) => (i - 1 + pack.prompts.length) % pack.prompts.length)} aria-label="Previous round"
+              <button onClick={() => setPromptIdx((i) => (i - 1 + pack.prompts.length) % pack.prompts.length)} aria-label={t("aria.previousRound")}
                 className="p-2 rounded-xl" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button onClick={() => setPromptIdx((i) => (i + 1) % pack.prompts.length)} aria-label="Next round"
+              <button onClick={() => setPromptIdx((i) => (i + 1) % pack.prompts.length)} aria-label={t("aria.nextRound")}
                 className="p-2 rounded-xl" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
                 <ChevronRight className="w-4 h-4" />
               </button>

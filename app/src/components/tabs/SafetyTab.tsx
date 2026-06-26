@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { ShieldAlert, Phone, Plus, Trash2, CalendarCheck, AlertTriangle, BrainCircuit, Stethoscope, Lock, Users } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 
@@ -23,6 +24,7 @@ const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)",
 
 export default function SafetyTab() {
   const { childProfile, approvedMemoryItems, handleMemoryDecision, isMemoryUpdating } = useArbor();
+  const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   const reviewedKey = useMemo(() => `arbor.safetyReviewed.${childProfile.id}`, [childProfile.id]);
@@ -141,7 +143,7 @@ export default function SafetyTab() {
                   <span style={{ color: "var(--arbor-muted)" }}>{c.role}{c.role && c.phone ? " · " : ""}{c.phone}</span>
                   {c.notes && <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>{c.notes}</p>}
                 </div>
-                <button onClick={() => void contactsCol.remove(c.id)} className="transition" style={{ color: "var(--arbor-muted)" }} aria-label="Remove contact">
+                <button onClick={() => void contactsCol.remove(c.id)} className="transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.removeContact")}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -155,7 +157,7 @@ export default function SafetyTab() {
           <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className={inputCls} style={inputStyle} />
           <div className="flex gap-2">
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes" className={`flex-1 ${inputCls}`} style={inputStyle} />
-            <button type="submit" aria-label="Add contact" className="text-white font-extrabold px-3 rounded-lg flex items-center" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
+            <button type="submit" aria-label={t("aria.addContact")} className="text-white font-extrabold px-3 rounded-lg flex items-center" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
           </div>
         </form>
       </SectionCard>

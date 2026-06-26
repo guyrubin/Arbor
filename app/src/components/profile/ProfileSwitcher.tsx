@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown, Plus, Check, Pencil } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
+import { useLanguage } from "../../context/LanguageContext";
 import AddChildModal from "./AddChildModal";
 import ProfileEditDrawer from "./ProfileEditDrawer";
 import { Avatar } from "../ui/Avatar";
@@ -9,6 +10,7 @@ import FamilyGlanceCard from "./FamilyGlanceCard";
 
 export default function ProfileSwitcher() {
   const { profiles, activeChild, setActiveChild } = useProfile();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -28,7 +30,7 @@ export default function ProfileSwitcher() {
         <button
           onClick={() => setShowEdit(true)}
           title="Edit profile"
-          aria-label="Edit child profile"
+          aria-label={t("aria.editChildProfile")}
           className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition"
           style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
         >

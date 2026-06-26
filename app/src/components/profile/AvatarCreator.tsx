@@ -124,7 +124,7 @@ export default function AvatarCreator({
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-label="Create an avatar"
+            aria-label={t("aria.createAvatar")}
             className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-6"
             style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 64px rgba(41,51,63,0.18)" }}
             initial={{ scale: 0.96, y: 8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 8 }}
@@ -134,7 +134,7 @@ export default function AvatarCreator({
               <h3 className="text-lg font-extrabold tracking-tight flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                 <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} /> Create {childName}&apos;s avatar
               </h3>
-              <button onClick={close} className="p-1.5 rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label="Close">
+              <button onClick={close} className="p-1.5 rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
                 <X className="w-4 h-4" />
               </button>
             </div>

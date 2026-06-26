@@ -239,7 +239,7 @@ export default function WordWorldTab() {
                 onClick={handleRefresh}
                 className="inline-flex items-center gap-1 text-[12px] font-bold px-3 min-h-[44px] rounded-full"
                 style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
-                aria-label="Show a different prompt"
+                aria-label={t("aria.showDifferentPrompt")}
               >
                 <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> {t("wordworld.refresh")}
               </button>
@@ -326,7 +326,7 @@ export default function WordWorldTab() {
           onClick={handleReferralShare}
           className="inline-flex items-center gap-1.5 text-[12px] font-extrabold flex-shrink-0"
           style={{ color: "var(--arbor-clay)" }}
-          aria-label="Share note with pediatrician or SLP"
+          aria-label={t("aria.shareNoteWithPro")}
         >
           <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
           {shareFlash ? t("wordworld.copied") : "Share note"}

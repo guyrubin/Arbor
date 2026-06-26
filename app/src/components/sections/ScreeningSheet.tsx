@@ -90,7 +90,7 @@ export default function ScreeningSheet({ open, onClose }: { open: boolean; onClo
                 onClick={onClose}
                 className="ms-auto inline-flex items-center justify-center rounded-xl shrink-0"
                 style={{ width: 44, height: 44, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-                aria-label="Close"
+                aria-label={t("aria.close")}
               >
                 <X className="w-5 h-5" />
               </button>

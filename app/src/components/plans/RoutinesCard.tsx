@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { ListChecks, Plus, Check, Trash2, RotateCcw } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { cardCls } from "../ui/kit";
 
@@ -10,6 +11,7 @@ type Routine = { id: string; name: string; steps: Step[] };
 /** Reusable co-regulation routines (e.g. morning, bedtime) as resettable checklists. */
 export default function RoutinesCard() {
   const { childProfile } = useArbor();
+  const { t } = useLanguage();
   const col = useChildCollection<Routine>(childProfile.id, "routines");
   const routines = useMemo(() => [...col.items].sort((a, b) => (a.id < b.id ? -1 : 1)), [col.items]);
   const [newName, setNewName] = useState("");
@@ -51,8 +53,8 @@ export default function RoutinesCard() {
                 <strong className="text-sm" style={{ color: "var(--arbor-ink)" }}>{r.name}</strong>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{done}/{r.steps.length}</span>
-                  <button onClick={() => reset(r)} aria-label="Reset routine" style={{ color: "var(--arbor-muted)" }}><RotateCcw className="w-3 h-3" /></button>
-                  <button onClick={() => void col.remove(r.id)} aria-label="Delete routine" style={{ color: "var(--arbor-muted)" }}><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => reset(r)} aria-label={t("aria.resetRoutine")} style={{ color: "var(--arbor-muted)" }}><RotateCcw className="w-3 h-3" /></button>
+                  <button onClick={() => void col.remove(r.id)} aria-label={t("aria.deleteRoutine")} style={{ color: "var(--arbor-muted)" }}><Trash2 className="w-3 h-3" /></button>
                 </div>
               </div>
               <div className="space-y-1">
@@ -74,7 +76,7 @@ export default function RoutinesCard() {
                   className="flex-1 rounded-lg px-2 py-1 text-[11px] focus:outline-none bg-white"
                   style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                 />
-                <button onClick={() => addStep(r)} aria-label="Add step" style={{ color: "var(--arbor-green-ink)" }}><Plus className="w-4 h-4" /></button>
+                <button onClick={() => addStep(r)} aria-label={t("aria.addStep")} style={{ color: "var(--arbor-green-ink)" }}><Plus className="w-4 h-4" /></button>
               </div>
             </div>
           );

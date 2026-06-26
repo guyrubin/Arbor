@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, AlertTriangle, Info, X } from "lucide-react";
+import { useLanguage } from "./LanguageContext";
 
 type ToastType = "success" | "error" | "info";
 type Toast = { id: number; type: ToastType; message: string };
@@ -19,6 +20,7 @@ const STYLES: Record<ToastType, { border: string; icon: React.ReactNode }> = {
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useLanguage();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const remove = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
@@ -37,22 +39,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div role="status" aria-live="polite" className="fixed top-4 end-4 z-[80] flex flex-col gap-2 w-[min(92vw,340px)]">
         <AnimatePresence>
-          {toasts.map((t) => (
+          {toasts.map((tc) => (
             <motion.div
-              key={t.id}
+              key={tc.id}
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 40 }}
               className="border rounded-2xl px-4 py-3 shadow-2xl flex items-start gap-3 text-sm"
               style={{
                 background: "var(--arbor-paper-elevated)",
-                borderColor: STYLES[t.type].border,
+                borderColor: STYLES[tc.type].border,
                 color: "var(--arbor-ink)",
               }}
             >
-              {STYLES[t.type].icon}
-              <span className="flex-1 leading-snug" style={{ color: "var(--arbor-ink)" }}>{t.message}</span>
-              <button onClick={() => remove(t.id)} className="arbor-toast-dismiss" aria-label="Dismiss">
+              {STYLES[tc.type].icon}
+              <span className="flex-1 leading-snug" style={{ color: "var(--arbor-ink)" }}>{tc.message}</span>
+              <button onClick={() => remove(tc.id)} className="arbor-toast-dismiss" aria-label={t("aria.dismiss")}>
                 <X className="w-3.5 h-3.5" />
               </button>
             </motion.div>

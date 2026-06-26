@@ -93,7 +93,7 @@ const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
 
 export default function HeroJourneyTab() {
   const { childProfile } = useArbor();
-  const { aiLang } = useLanguage();
+  const { aiLang, t } = useLanguage();
   const { toast } = useToast();
 
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
@@ -595,7 +595,7 @@ export default function HeroJourneyTab() {
         <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "var(--arbor-paper)" }}>
           <div className="flex items-center justify-between px-6 py-4">
             <span className="text-xs font-bold tracking-wider uppercase" style={{ color: "var(--arbor-muted)" }}>{render.title}</span>
-            <button onClick={() => setImmersive(false)} aria-label="Exit immersive" style={{ color: "var(--arbor-muted)" }}>
+            <button onClick={() => setImmersive(false)} aria-label={t("aria.exitImmersive")} style={{ color: "var(--arbor-muted)" }}>
               <X className="w-5 h-5" />
             </button>
           </div>

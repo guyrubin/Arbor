@@ -4,6 +4,7 @@ import {
   ArrowLeft, Star, Flame, Lock, Camera, type LucideIcon,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { evaluateCosmetics, type CosmeticStats } from "../../practice/cosmetics";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
@@ -81,6 +82,7 @@ function Stars({ n }: { n: number }) {
 
 export default function HeroArcade() {
   const { childProfile, setActiveTab } = useArbor();
+  const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const hero = useHeroAvatar();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -117,7 +119,7 @@ export default function HeroArcade() {
   return (
     <div className="arbor-play space-y-6">
       {/* HERO PANEL */}
-      <section className="comic-panel p-5 sm:p-6 flex items-center gap-4 sm:gap-6" aria-label="Your hero">
+      <section className="comic-panel p-5 sm:p-6 flex items-center gap-4 sm:gap-6" aria-label={t("aria.yourHero")}>
         <HeroCrest size={104} frame={activeFrame} badges={badges}>
           <HeroAvatar size={104} mood="cheer" />
         </HeroCrest>

@@ -48,7 +48,7 @@ export default function Appointments() {
         <div className={`${cardCls} p-5`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>New appointment</h3>
-            <button onClick={() => setAdding(false)} aria-label="Cancel"><X className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} /></button>
+            <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><X className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           <div className="grid sm:grid-cols-3 gap-2">
             <input value={form.who} onChange={(e) => setForm({ ...form, who: e.target.value })} placeholder="Professional name" className="rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
@@ -70,7 +70,7 @@ export default function Appointments() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Chip tone="sky">{a.when}</Chip>
-                  <button onClick={() => void apptsCol.remove(a.id)} aria-label="Remove appointment"><Trash2 className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
+                  <button onClick={() => void apptsCol.remove(a.id)} aria-label={t("aria.removeAppointment")}><Trash2 className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
                 </div>
               </div>
             ))}
@@ -84,7 +84,7 @@ export default function Appointments() {
           {questions.map((qq) => (
             <li key={qq.id} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
               <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} /> <span className="flex-1">{qq.text}</span>
-              <button onClick={() => void questionsCol.remove(qq.id)} aria-label="Remove question"><X className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
+              <button onClick={() => void questionsCol.remove(qq.id)} aria-label={t("aria.removeQuestion")}><X className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
             </li>
           ))}
         </ul>

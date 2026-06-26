@@ -118,7 +118,7 @@ export default function TrustedSharing() {
         <div className={`${cardCls} p-5 space-y-3`}>
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Share {first}'s context</h3>
-            <button onClick={() => setAdding(false)} aria-label="Cancel"><X className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} /></button>
+            <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><X className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           <input value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder="Recipient email (they sign in with this to see what you share)" type="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
           <div>

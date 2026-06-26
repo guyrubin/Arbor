@@ -407,7 +407,7 @@ export default function CoachTab() {
               <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
                 <MessageSquare className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{c.title}</span>
               </button>
-              <button onClick={() => deleteConversation(c.id)} aria-label="Delete conversation" className="transition" style={{ color: "var(--arbor-muted)" }}>
+              <button onClick={() => deleteConversation(c.id)} aria-label={t("aria.deleteConversation")} className="transition" style={{ color: "var(--arbor-muted)" }}>
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { cardCls } from "../ui/kit";
 
@@ -27,6 +28,7 @@ function notify(title: string, body: string) {
  */
 export default function RemindersCard() {
   const { childProfile, behaviorLogs } = useArbor();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const key = `arbor.reminders.${childProfile.id}`;
   const safetyReviewedKey = `arbor.safetyReviewed.${childProfile.id}`;
@@ -100,7 +102,7 @@ export default function RemindersCard() {
           {prefs.dailyLog && (
             <input
               type="time"
-              aria-label="Daily reminder time"
+              aria-label={t("aria.dailyReminderTime")}
               value={prefs.dailyTime}
               onChange={(e) => save({ ...prefs, dailyTime: e.target.value })}
               className="rounded-lg px-2 py-1 text-xs"
@@ -111,7 +113,7 @@ export default function RemindersCard() {
             onClick={() => void enable({ dailyLog: !prefs.dailyLog })}
             role="switch"
             aria-checked={prefs.dailyLog}
-            aria-label="Daily log reminder"
+            aria-label={t("aria.dailyLogReminder")}
             className="w-10 h-5 rounded-full transition relative"
             style={{ background: prefs.dailyLog ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
           >
@@ -126,7 +128,7 @@ export default function RemindersCard() {
           onClick={() => void enable({ monthlySafety: !prefs.monthlySafety })}
           role="switch"
           aria-checked={prefs.monthlySafety}
-          aria-label="Monthly safety review"
+          aria-label={t("aria.monthlySafetyReview")}
           className="w-10 h-5 rounded-full transition relative"
           style={{ background: prefs.monthlySafety ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
         >

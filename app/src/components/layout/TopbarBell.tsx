@@ -309,7 +309,7 @@ export default function TopbarBell() {
       {open && (
         <div
           role="listbox"
-          aria-label="Notifications"
+          aria-label={t("aria.notifications")}
           style={panelStyle()}
         >
           {/* Panel header */}

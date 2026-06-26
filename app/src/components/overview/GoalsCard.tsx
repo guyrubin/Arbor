@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Target, Plus, Check, Trash2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { cardCls } from "../ui/kit";
 
@@ -9,6 +10,7 @@ type Goal = { id: string; title: string; achieved: boolean; createdAt: string };
 /** Parent-set focus goals, tracked to "achieved". */
 export default function GoalsCard() {
   const { childProfile } = useArbor();
+  const { t } = useLanguage();
   const goalsCol = useChildCollection<Goal>(childProfile.id, "goals");
   const goals = useMemo(
     () => [...goalsCol.items].sort((a, b) => Number(a.achieved) - Number(b.achieved) || (a.createdAt < b.createdAt ? 1 : -1)),
@@ -46,7 +48,7 @@ export default function GoalsCard() {
               <Check className="w-3.5 h-3.5" />
             </button>
             <span className="flex-1 text-sm" style={{ color: g.achieved ? "var(--arbor-muted)" : "var(--arbor-ink)", textDecoration: g.achieved ? "line-through" : "none" }}>{g.title}</span>
-            <button onClick={() => void goalsCol.remove(g.id)} aria-label="Delete goal" className="transition" style={{ color: "var(--arbor-muted)" }}>
+            <button onClick={() => void goalsCol.remove(g.id)} aria-label={t("aria.deleteGoal")} className="transition" style={{ color: "var(--arbor-muted)" }}>
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>

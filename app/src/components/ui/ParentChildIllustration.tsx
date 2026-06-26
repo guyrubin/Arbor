@@ -1,4 +1,5 @@
 import React from "react";
+import { useLanguage } from "../../context/LanguageContext";
 
 /**
  * Warm flat illustration of a parent holding a child — used on the safety /
@@ -6,6 +7,7 @@ import React from "react";
  * faces, so it reads as any family.
  */
 export function ParentChildIllustration({ size = 96, className = "" }: { size?: number; className?: string }) {
+  const { t } = useLanguage();
   return (
     <svg
       width={size}
@@ -13,7 +15,7 @@ export function ParentChildIllustration({ size = 96, className = "" }: { size?: 
       viewBox="0 0 120 120"
       fill="none"
       role="img"
-      aria-label="A parent holding their child"
+      aria-label={t("aria.parentChildIllustration")}
       className={className}
       xmlns="http://www.w3.org/2000/svg"
     >

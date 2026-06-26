@@ -20,6 +20,7 @@ import React, {
 } from "react";
 import { Search, X } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { searchIndex, type SearchEntry } from "../../lib/searchIndex";
 
 const CATEGORY_TOKEN: Record<SearchEntry["category"], string> = {
@@ -32,6 +33,7 @@ const CATEGORY_TOKEN: Record<SearchEntry["category"], string> = {
 /** AP-045 global search input + results overlay (topbar slot 1). */
 export default function TopbarSearch() {
   const { setActiveTab } = useArbor();
+  const { t } = useLanguage();
   const [query, setQuery]       = useState("");
   const [open, setOpen]         = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -107,7 +109,7 @@ export default function TopbarSearch() {
     <div
       ref={containerRef}
       style={{ position: "relative", width: "200px" }}
-      aria-label="Global search"
+      aria-label={t("aria.globalSearch")}
     >
       {/* ── Input ────────────────────────────────────────────────────────── */}
       <div
@@ -172,7 +174,7 @@ export default function TopbarSearch() {
         />
         {query && (
           <button
-            aria-label="Clear search"
+            aria-label={t("aria.clearSearch")}
             onClick={() => { setQuery(""); setOpen(false); inputRef.current?.focus(); }}
             style={{
               flexShrink: 0,
@@ -196,7 +198,7 @@ export default function TopbarSearch() {
           ref={overlayRef}
           id="topbar-search-results"
           role="listbox"
-          aria-label="Search results"
+          aria-label={t("aria.searchResults")}
           style={{
             position: "absolute",
             top: "calc(100% + 6px)",

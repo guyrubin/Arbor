@@ -167,7 +167,7 @@ export default function MilestonesTab() {
               <button
                 type="button"
                 onClick={(e) => { e.preventDefault(); const nt = window.prompt("Rename milestone", item.title); if (nt) updateMilestoneTitle(item.id, nt); }}
-                aria-label="Rename custom milestone"
+                aria-label={t("aria.renameCustomMilestone")}
                 className="text-[9px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
@@ -178,7 +178,7 @@ export default function MilestonesTab() {
               <button
                 type="button"
                 onClick={(e) => { e.preventDefault(); if (window.confirm("Delete this custom milestone?")) deleteMilestone(item.id); }}
-                aria-label="Delete custom milestone"
+                aria-label={t("aria.deleteCustomMilestone")}
                 className="text-[9px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >

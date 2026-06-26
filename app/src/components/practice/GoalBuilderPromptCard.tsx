@@ -12,6 +12,7 @@
 
 import React from "react";
 import { Target, X } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 const GREEN = "var(--arbor-green-ink)";
 const GREEN_SOFT = "var(--arbor-green-soft)";
@@ -30,6 +31,7 @@ export default function GoalBuilderPromptCard({
   onSetFocus,
   onDismiss,
 }: GoalBuilderPromptCardProps) {
+  const { t } = useLanguage();
   const firstName = (childName || "your child").split(" ")[0];
 
   return (
@@ -80,7 +82,7 @@ export default function GoalBuilderPromptCard({
       {/* Dismiss button */}
       <button
         onClick={onDismiss}
-        aria-label="Dismiss goal prompt"
+        aria-label={t("aria.dismissGoalPrompt")}
         className="flex-shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition"
         style={{ color: MUTED, border: `1px solid ${RULE}` }}
       >
