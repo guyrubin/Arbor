@@ -66,6 +66,17 @@
   --glass-blur:   blur(12px);
   --glass-border: 1.5px solid rgba(88, 166, 255, 0.2);
 
+  /* ── Type scale (P1.0): one 8-step ramp so font sizes aren't scattered
+     literals. Consumed as var(--t-*); backward-compatible (adds, not renames). */
+  --t-caption: 10px;   /* eyebrows, uppercase tags */
+  --t-xs:      11px;   /* labels, sub-line meta */
+  --t-sm:      12px;   /* secondary text, sub-nav (already referenced) */
+  --t-body:    13px;   /* default body / CTAs */
+  --t-md:      15px;   /* emphasis body, card titles */
+  --t-lg:      18px;   /* section heads */
+  --t-xl:      22px;   /* large numerals */
+  --t-display: 26px;   /* hero pulse line */
+
   /* ── m3-hex-sweep tokens (m2 contract: fold these into the m2 token mirror).
      Added here by m3 because m2 landed without them; values are the literals
      m3 replaced, so the sweep is pixel-identical. ─────────────────────────── */
@@ -244,13 +255,13 @@ body {
 .arbor-app aside:first-of-type { border-right: 1px solid var(--arbor-rule) !important; }
 .arbor-app aside:last-of-type  { border-left: 1px solid var(--arbor-rule) !important; }
 
-/* ─── Nav as soft mint pills ─────────────────────────────────────────────── */
+/* ─── Nav as soft sapphire pills ─────────────────────────────────────────── */
 .arbor-app nav button {
   transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
 }
 .arbor-app nav button[class~="bg-white/5"] {
-  background-color: var(--arbor-green-soft) !important;
-  color: var(--arbor-green-ink) !important;
+  background-color: var(--arbor-clay-dim) !important;
+  color: var(--arbor-clay-deep) !important;
   border-color: transparent !important;
   font-weight: 700;
 }
@@ -275,7 +286,7 @@ body {
   background-color: var(--arbor-paper-deep) !important;
 }
 .arbor-app button[class*="bg-white/5"]:hover {
-  background-color: var(--arbor-green-soft) !important;
+  background-color: var(--arbor-clay-dim) !important;
 }
 
 /* ─── Form Controls ──────────────────────────────────────────────────────── */
@@ -697,6 +708,20 @@ body {
   --arbor-clay-deep:  #1a6be8;   /* hover/pressed (slightly darker for contrast) */
   --arbor-clay-dim:   rgba(43,127,255,0.10);
   --arbor-clay-border: rgba(43,127,255,0.18);
+
+  /* ── P1.0 token sweep — gradients, tints, wells, track, success ──────────
+     Folds the scattered hex literals on Today (and reusable across the parent
+     surface) into one named set. Values match the literals they replace →
+     pixel-identical except the hero gradient, which is intentionally evolved
+     from the AI-generic blue→lilac to a Clalit/Maccabi clinical-trust band
+     (sapphire → calm clinical teal-green): medical authority + warmth. */
+  --arbor-hero-grad:   linear-gradient(140deg, #2b7fff 0%, #2b7fff 48%, #1f8a8c 108%);
+  --arbor-coach-grad:  linear-gradient(140deg, #eaf2ff, #e3eefa);   /* soft sapphire wash */
+  --arbor-avatar-grad: linear-gradient(135deg, #2b7fff, #1f6fe0);   /* coach avatar sapphire */
+  --arbor-tint:   #eef3fb;     /* sapphire-tinted surface: icon chips, secondary CTA bg */
+  --arbor-tint-2: #eaf2ff;     /* lighter sapphire wash: LIVE chip, coach card */
+  --arbor-track:  #e7eeea;     /* conic / ring remainder track */
+  --arbor-success:#10b981;     /* Clalit/Maccabi clinical green — success / checkmark */
 
   /* ── Background: flat canvas, no radial-gradient wash ─────────────────── */
   background: var(--arbor-paper) !important;

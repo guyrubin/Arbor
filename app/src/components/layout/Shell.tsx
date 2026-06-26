@@ -278,7 +278,7 @@ export default function Shell() {
                     aria-selected={on}
                     onClick={() => { void selectionHaptic(); setActiveTab(it.tab); }}
                     className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-[var(--t-sm)] font-bold whitespace-nowrap transition flex-shrink-0"
-                    style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", boxShadow: "inset 0 0 0 1px rgba(52,178,119,0.18)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                    style={on ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)", boxShadow: "inset 0 0 0 1px rgba(43,127,255,0.20)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                   >
                     <Icon className="w-3.5 h-3.5" /> {t("nav.tab." + it.tab)}
                   </button>
