@@ -1,26 +1,24 @@
 import React from "react";
-import { Gamepad2 } from "lucide-react";
 import { ArborMark } from "../ui/ArborMark";
 import TopbarKidSwitcher from "./TopbarKidSwitcher";
 import TopbarSearch from "../search/TopbarSearch";
 import TopbarBell from "./TopbarBell";
-import { useKidMode } from "../kidmode/KidModeContext";
+import KidModeButton from "./KidModeButton";
 
 /**
  * AP-044: Desktop topbar placeholder bar.
  *
  * Rendered above the main content area on md+ viewports. Hidden on mobile
- * (the mobile brand header inside the main scroll column covers that role).
+ * (the mobile brand header inside the main scroll column covers that role,
+ * and a compact KidModeButton lives in the in-content accessories row so
+ * mobile users can still hand the device to their child).
  *
- * AP-048: Kid Mode toggle added to the right zone. Desktop-only (hidden md:flex
- * already gates the parent header). Fires openKidMode() from KidModeContext —
- * no Firestore write, no child-data mutation.
+ * AP-048: Kid Mode toggle in the right zone (desktop). Delegates to the shared
+ * <KidModeButton> so desktop + mobile share one sapphire affordance.
  *
  * All tokens are sourced from index.css :root; no raw hex values.
  */
 export default function Topbar() {
-  const { openKidMode } = useKidMode();
-
   return (
     <header
       className="hidden md:flex items-center gap-4 px-7 flex-none"
@@ -44,34 +42,7 @@ export default function Topbar() {
 
       {/* Right zone: Kid Mode toggle + search / notifications / kid-switcher */}
       <div className="flex items-center gap-2.5">
-        {/* AP-048: Kid Mode toggle — desktop only (this topbar is hidden md:flex) */}
-        <button
-          onClick={openKidMode}
-          aria-label="Launch Kid Mode"
-          title="Kid Mode — hand the device to your child"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            paddingInline: "14px",
-            paddingBlock: "0",
-            height: "40px",
-            minHeight: "44px",
-            minWidth: "44px",
-            borderRadius: "var(--r)",
-            fontWeight: 800,
-            fontSize: "var(--t-sm)",
-            background: "var(--arbor-green-soft)",
-            color: "var(--arbor-green-ink)",
-            border: "1px solid var(--arbor-clay-dim)",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-            transition: "background 120ms",
-          }}
-        >
-          <Gamepad2 aria-hidden="true" style={{ width: "16px", height: "16px", flexShrink: 0 }} />
-          <span>Kid Mode</span>
-        </button>
+        <KidModeButton />
         {/* Search slot — AP-045 */}
         <TopbarSearch />
         {/* Notification bell slot — AP-046 */}

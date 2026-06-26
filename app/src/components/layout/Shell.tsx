@@ -8,6 +8,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { sectionForTab } from "../../lib/navigation";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import KidModeButton from "./KidModeButton";
 import AiRail from "./AiRail";
 import MobileNav from "./MobileNav";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -205,7 +206,7 @@ export default function Shell() {
             <span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
               <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
               <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {t("top.age")} {childProfile.age}</strong>
-              {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-green-ink)" }}>{focusLabel}</strong></span>}</span>
+              {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></span>}</span>
             </span>
             <div className="flex items-center gap-2">
               {/* Whole-app language switch (UI + AI). Hebrew flips the app to RTL. */}
@@ -237,11 +238,12 @@ export default function Shell() {
                 <button
                   onClick={() => setShowAiRail(true)}
                   className="hidden xl:flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
-                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+                  style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
                 >
                   <ShieldCheck className="w-3.5 h-3.5" /> {t("top.howHelps")}
                 </button>
               )}
+              <KidModeButton compact />
               <button
                 onClick={() => setSettingsOpen(true)}
                 aria-label="Settings"

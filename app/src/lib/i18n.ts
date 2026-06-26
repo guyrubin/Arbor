@@ -76,6 +76,7 @@ export const en: Dict = {
   "nav.tab.comics": "Hero Comics",
   "nav.tab.masterclasses": "Parent Masterclasses",
   "nav.tab.family": "Family Formation",
+  "nav.tab.bedtime-stories": "Bedtime Story",
   "nav.tab.smart-reminders": "Smart Reminders",
   "nav.tab.science": "The Science",
   // mobile bottom-nav short labels (keyed by section id)
@@ -1354,6 +1355,7 @@ export const he: Dict = {
   "nav.tab.comics": "קומיקס גיבורים",
   "nav.tab.masterclasses": "מאסטרקלאס להורים",
   "nav.tab.family": "בניית משפחה",
+  "nav.tab.bedtime-stories": "סיפור לשינה",
   "nav.tab.smart-reminders": "תזכורות חכמות",
   "nav.tab.science": "המדע",
   "nav.short.home": "בית",
