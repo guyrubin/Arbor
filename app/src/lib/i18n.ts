@@ -350,6 +350,8 @@ export const en: Dict = {
   "beh.discussCoach": "Discuss further with Coach",
   "beh.noMatch": "No logs match these filters.",
   "beh.patternShows": "What the pattern shows",
+  "beh.analyzeCoachCta": "Work on this in Ask Arbor",
+  "beh.analyzeCoachPrompt": "Help me turn this behavior pattern into a concrete, simple weekly plan for {name}.",
   // beh type option labels
   "beh.type.transition": "Departure Refusal (Mornings / Leaving home)",
   "beh.type.sensory": "Sensory Overload Meltdown (Loud / Overcrowded spaces)",
@@ -1609,6 +1611,8 @@ export const he: Dict = {
   "beh.discussCoach": "המשיכו עם המאמן",
   "beh.noMatch": "אין תיעודים שתואמים את הסינון.",
   "beh.patternShows": "מה הדפוס מראה",
+  "beh.analyzeCoachCta": "לעבוד על זה ב'שאל את ארבור'",
+  "beh.analyzeCoachPrompt": "עזרו לי להפוך את דפוס ההתנהגות הזה לתוכנית שבועית קונקרטית ופשוטה עבור {name}.",
   // beh type option labels
   "beh.type.transition": "סירוב ליציאה (בבוקר / עזיבת הבית)",
   "beh.type.sensory": "התמוטטות חושית (מקומות רועשים / צפופים)",

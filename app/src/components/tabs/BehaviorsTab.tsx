@@ -455,6 +455,23 @@ export default function BehaviorsTab() {
                     ))}
                   </div>
                 </div>
+                {/* Capability-depth: the analysis is no longer a dead-end report.
+                    One tap carries the detected pattern + the suggested plan into
+                    Ask Arbor (the same setChatInput -> coach route the inline-script
+                    "Discuss in Coach" button uses). Surfaces existing AI content;
+                    adds no new claim. */}
+                <div className="flex flex-wrap gap-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                  <button
+                    onClick={() => {
+                      setChatInput(`${t("beh.analyzeCoachPrompt", { name: behFirst })}\n\n${behaviorAnalysis.actionPlanSuggestion}`);
+                      setActiveTab("coach");
+                    }}
+                    className="inline-flex items-center gap-2 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition active:scale-[0.98]"
+                    style={{ background: T.gradientCta }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> {t("beh.analyzeCoachCta")}
+                  </button>
+                </div>
               </motion.div>
             )}
 
