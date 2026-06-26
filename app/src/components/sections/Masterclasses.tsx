@@ -77,7 +77,7 @@ export default function Masterclasses() {
       {recommended.length > 0 && (
         <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
           <p className="text-[11px] uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
-            {he ? "מומלץ למשפחה שלכם" : "Recommended for your family"}
+            {t("master.rec")}
           </p>
           <div className="flex flex-wrap gap-2">
             {recommended.map((c) => (
@@ -105,7 +105,7 @@ export default function Masterclasses() {
             <div className="flex items-center justify-between">
               <IconBadge tone={FRAME_TONE[c.frame]}><GraduationCap className="w-5 h-5" /></IconBadge>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                <Clock className="w-3 h-3" /> {c.durationMin} {he ? "דק'" : "min"}
+                <Clock className="w-3 h-3" /> {c.durationMin} {t("master.min")}
               </span>
             </div>
             <h3 className="text-[15px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
@@ -119,8 +119,8 @@ export default function Masterclasses() {
                 {frameLabel(c.frame)}
               </span>
               {done[c.id]
-                ? <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)" }}><Check className="w-3.5 h-3.5" /> {he ? "הושלם" : "Done"}</span>
-                : <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{he ? "קראו" : "Read"} →</span>}
+                ? <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)" }}><Check className="w-3.5 h-3.5" /> {t("master.done")}</span>
+                : <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{t("master.read")} →</span>}
             </div>
           </button>
         ))}
@@ -132,17 +132,18 @@ export default function Masterclasses() {
 function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone }: {
   m: Masterclass; he: boolean; isDone: boolean; onDone: () => void; onBack: () => void; frameLabel: string; tone: PastelKey;
 }) {
+  const { t } = useLanguage();
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 max-w-[760px]">
       <button onClick={onBack} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <ArrowLeft className="w-4 h-4" /> {he ? "כל השיעורים" : "All masterclasses"}
+        <ArrowLeft className="w-4 h-4" /> {t("master.all")}
       </button>
 
       <div>
         <div className="flex items-center gap-2 mb-2">
           <IconBadge tone={tone}><GraduationCap className="w-5 h-5" /></IconBadge>
           <span className="text-[10.5px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{frameLabel}</span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}><Clock className="w-3 h-3" /> {m.durationMin} {he ? "דק'" : "min"}</span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}><Clock className="w-3 h-3" /> {m.durationMin} {t("master.min")}</span>
         </div>
         <h1 className="text-2xl md:text-[1.9rem] leading-tight tracking-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {he ? m.titleHe : m.title}
@@ -164,7 +165,7 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone }: {
       {/* What to say — the verbatim parent script */}
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
         <p className="text-[11px] uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-          <MessageSquareQuote className="w-3.5 h-3.5" /> {he ? "מה לומר" : "What to say"}
+          <MessageSquareQuote className="w-3.5 h-3.5" /> {t("master.whatToSay")}
         </p>
         <p className="text-[14px] leading-relaxed italic" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? m.parentScriptHe : m.parentScript}</p>
       </div>
@@ -172,18 +173,18 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone }: {
       {/* Try tonight */}
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
         <p className="text-[11px] uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
-          <MoonStar className="w-3.5 h-3.5" /> {he ? "נסו הערב" : "Try tonight"}
+          <MoonStar className="w-3.5 h-3.5" /> {t("master.tryTonight")}
         </p>
         <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? m.tryTonightHe : m.tryTonight}</p>
       </div>
 
       {isDone ? (
         <div className="text-center text-sm font-bold inline-flex items-center justify-center gap-2 w-full" style={{ color: "var(--arbor-green-ink)" }}>
-          <Check className="w-4 h-4" /> {he ? "סומן כהושלם" : "Marked complete"}
+          <Check className="w-4 h-4" /> {t("master.markedComplete")}
         </div>
       ) : (
         <button onClick={onDone} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]" style={{ background: "var(--gradient-cta)" }}>
-          <Check className="w-4 h-4" /> {he ? "סמנו כהושלם" : "Mark complete"}
+          <Check className="w-4 h-4" /> {t("master.markComplete")}
         </button>
       )}
     </motion.div>
