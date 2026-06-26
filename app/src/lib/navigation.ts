@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Activity, Languages,
   Users, FileBarChart, Calendar,
   Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert,
-  Target, Map, Gauge, School,
+  Target, Map, Gauge, School, Moon,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -91,6 +91,7 @@ export const SECTIONS: NavSection[] = [
       // beat by beat. Hero Comics is the batch studio: generate the whole story
       // catalog as shareable hero-comic pages in one tap (the viral surface).
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
+      { tab: "bedtime-stories", label: "Bedtime Story", icon: Moon },
       { tab: "comics", label: "Hero Comics", icon: Sparkles },
       { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
       { tab: "family", label: "Family Formation", icon: Heart },
