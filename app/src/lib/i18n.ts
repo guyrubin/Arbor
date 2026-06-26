@@ -168,6 +168,8 @@ export const en: Dict = {
   "devscore.todayLineSteady": "Tracking steadily across domains",
   "devscore.today.aria": "Development picture: {score} out of 100. Tap to open.",
   "devscore.bar.aria": "{domain}: {score} out of 100, trend {trend}",
+  "devscore.radar.caption": "Each spoke is a developmental domain — the sapphire shape shows how much of the age-appropriate milestones {name} has reached. Green dots mark stronger areas.",
+  "devscore.radar.aria": "Development map. {summary}. Scale 0 to 100 per domain.",
   // Care › Consult
   "consult.ask": "Ask a specialist",
   "consult.brief": "AI handoff brief",
@@ -1445,6 +1447,8 @@ export const he: Dict = {
   "devscore.todayLineSteady": "התקדמות יציבה בכל התחומים",
   "devscore.today.aria": "תמונת התפתחות: {score} מתוך 100. הקישו לפתיחה.",
   "devscore.bar.aria": "{domain}: {score} מתוך 100, מגמה {trend}",
+  "devscore.radar.caption": "כל ציר הוא תחום התפתחותי — צורת הספיר מראה כמה מאבני הדרך הגילאיות-{name} הגיע אליהן. נקודות ירוקות מסמנות תחומים חזקים.",
+  "devscore.radar.aria": "מפת התפתחות. {summary}. סקלה 0 עד 100 לכל תחום.",
   // Care › Consult
   "consult.ask": "שאל מומחה",
   "consult.brief": "סיכום העברה",
