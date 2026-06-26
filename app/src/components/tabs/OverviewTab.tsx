@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import {
   MessageSquare, Plus, RefreshCw, Sun, Sunrise, Moon, ArrowRight,
   Heart, BookOpen, Smile, Phone, ChevronRight, BookMarked,
-  Share2, Waypoints, ClipboardCheck, Sparkles, CalendarDays,
+  Share2, Waypoints, ClipboardCheck, Sparkles, CalendarDays, RotateCw, CheckCircle,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -22,7 +22,6 @@ import GoalsCard from "../overview/GoalsCard";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import RhythmStrip from "../overview/RhythmStrip";
 import DailyPlayCard from "../overview/DailyPlayCard";
-import DevScoreStrip from "../overview/DevScoreStrip";
 import PrideMomentCard from "../overview/PrideMomentCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import { StreakChip } from "../overview/StreakChip";
@@ -32,9 +31,10 @@ import { MissionsPanel } from "../practice/MissionsTab";
 import GoalBuilderPromptCard from "../practice/GoalBuilderPromptCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { PASTEL, PastelKey, cardCls } from "../ui/kit";
-import { BRAND_HEX } from "../../lib/tokens";
+import framework from "../../framework.json";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
+import { computeDevScore } from "../../growth/devScore";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { dayPartFor, type DayPart } from "../../lib/timeOfDay";
@@ -52,7 +52,7 @@ const RULE = "var(--arbor-rule)";
 
 export default function OverviewTab() {
   const {
-    setActiveTab, milestonesPercent, checkedMilestones, totalMilestones,
+    setActiveTab, milestones, milestonesPercent, checkedMilestones, totalMilestones,
     behaviorLogs, childProfile, setChatInput,
     pendingMemoryItems, approvedMemoryItems,
     proposeMemory,
@@ -113,7 +113,6 @@ export default function OverviewTab() {
   }, []);
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
-  const photoUrl = childProfile.photoUrl;
   const { hasHero } = useHeroAvatar();
 
   // ── Today surface: Rhythm prediction + Daily Play pick (memory-driven) ──
@@ -275,7 +274,6 @@ export default function OverviewTab() {
   const trendWord =
     recentCount === 0 ? t("ov.trend.gettingStarted")
     : trend === "down" ? t("ov.trend.easing") : trend === "up" ? t("ov.trend.attention") : t("ov.trend.steady");
-  const trendTone: PastelKey = trend === "up" ? "yellow" : "mint";
 
   // JITAI: one well-timed nudge off the child's logged rhythm + today's state.
   const loggedTodayCount = useMemo(() => {
@@ -407,100 +405,200 @@ export default function OverviewTab() {
              (renders nothing when there is none) ── */}
       <PrideMomentCard />
 
-      {/* ── Decision hero: status → recommendation → one primary action ──── */}
-      <section
-        className="rounded-[24px] overflow-hidden"
-        style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}
-      >
-        {/* Status band */}
-        <div className="p-6 md:p-7 flex items-start gap-4 md:gap-5">
-          <div className="w-[60px] h-[60px] md:w-[68px] md:h-[68px] rounded-full p-[3px] flex-shrink-0" style={{ background: `linear-gradient(135deg,${BRAND_HEX.greenLight},var(--arbor-clay))` }}>
-            <div className="w-full h-full rounded-full p-[3px]" style={{ background: "var(--arbor-paper-elevated)" }}>
-              {photoUrl ? (
-                <img src={photoUrl} alt={firstName} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                <div className="w-full h-full rounded-full flex items-center justify-center text-2xl font-extrabold" style={{ background: GREEN_SOFT, color: GREEN, fontFamily: "var(--font-display)" }}>
-                  {firstName.charAt(0)}
-                </div>
-              )}
+      {/* ── PROTOTYPE GRID LAYOUT: Row 1 (2-col, 1.6fr + 1fr) ─────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">
+        {/* ── Guidance hero card (left, 1.6fr) — prototype gradient band carrying
+               the FULL capability set: greeting, streak, trend, AI focus (expand +
+               regenerate), Log Moment, Ask Arbor. Supersedes the legacy decision-hero. */}
+        <section
+          className="rounded-[22px] overflow-hidden"
+          style={{ background: "#fff", boxShadow: "var(--shadow-md)" }}
+        >
+          {/* Gradient hero band */}
+          <div className="relative h-[176px] flex flex-col justify-between" style={{ background: "linear-gradient(140deg, #4a90e2 0%, #4a90e2 52%, #9b8cf0 105%)", padding: "20px" }}>
+            <div className="absolute inset-0" style={{ background: "radial-gradient(60% 80% at 86% 4%, rgba(255,255,255,0.34), transparent 60%)" }}></div>
+            <Sparkles className="absolute right-[22px] bottom-[14px] text-[88px] opacity-[0.16]" style={{ color: "#fff", fontVariationSettings: "'FILL' 1" }} aria-hidden="true" />
+            {/* Top row: eyebrow tag + trend chip */}
+            <div className="relative flex items-center justify-between gap-2">
+              <span className="inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider" style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(4px)", color: "#fff", padding: "6px 12px", borderRadius: "20px", letterSpacing: "1.4px" }}>
+                {heroEyebrow}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold flex-shrink-0" style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#fff" }} /> {trendWord}
+              </span>
+            </div>
+            {/* Greeting + pulse */}
+            <div className="relative">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-bold" style={{ color: "rgba(255,255,255,0.92)" }}>
+                {greeting.icon} {greeting.text}
+              </span>
+              <h1 className="text-[26px] font-extrabold leading-[1.12] mt-1" style={{ color: "#fff", maxWidth: "88%", letterSpacing: "-0.5px", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}>
+                {pulse}
+              </h1>
             </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>{greeting.icon} {greeting.text}</span>
-            <h1 className="text-[1.5rem] md:text-[1.85rem] font-extrabold leading-[1.12] mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
-              {pulse}
-            </h1>
-            <p className="text-sm mt-1.5" style={{ color: MUTED }}>
-              {firstName}, age {childProfile.age}{childProfile.schoolContext ? ` · ${childProfile.schoolContext}` : ""}
-            </p>
-            <StreakChip days={streak.current} lang={uiLang === "he" ? "he" : "en"} />
-          </div>
-          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold flex-shrink-0" style={{ background: PASTEL[trendTone].soft, color: PASTEL[trendTone].ink }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: PASTEL[trendTone].ink }} /> {trendWord}
-          </span>
-        </div>
-
-        {/* Recommendation well — the single most important thing today */}
-        <div className="px-6 md:px-7 pb-6 md:pb-7">
-          <div className="rounded-2xl p-5 md:p-6" style={{ background: "var(--arbor-paper-deep)", border: `1px solid ${RULE}` }}>
-            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-              <Sparkles className="w-3.5 h-3.5" /> {heroEyebrow}
-            </span>
-            <div className="mt-2 min-h-[2.25rem]">
+          {/* Action band: streak + name row → AI focus recommendation → primary CTAs */}
+          <div className="px-5 pb-5 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <StreakChip days={streak.current} lang={uiLang === "he" ? "he" : "en"} />
+              <span className="text-[12px] font-medium text-right" style={{ color: "#7c8983" }}>
+                {firstName}, age {childProfile.age}{childProfile.schoolContext ? ` · ${childProfile.schoolContext}` : ""}
+              </span>
+            </div>
+            {/* AI focus recommendation well */}
+            <div className="mt-3 min-h-[2.5rem]">
               {focusLoading && !focus ? (
                 <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
               ) : focus ? (
                 <div>
-                  <p className={`text-[17px] leading-relaxed font-medium ${focusOpen ? "" : "line-clamp-3"}`} style={{ color: INK, textWrap: "pretty" } as React.CSSProperties}>{focus.text}</p>
-                  {focus.text.length > 160 && (
-                    <button onClick={() => setFocusOpen((v) => !v)} className="text-[13px] font-bold mt-1.5 inline-flex items-center min-h-[44px] px-1" style={{ color: GREEN }}>
-                      {focusOpen ? t("ov.focus.less") : t("ov.focus.more")}
+                  <p className={`text-[15px] leading-relaxed font-medium ${focusOpen ? "" : "line-clamp-3"}`} style={{ color: "#14225a", textWrap: "pretty" } as React.CSSProperties}>{focus.text}</p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    {focus.text.length > 160 && (
+                      <button onClick={() => setFocusOpen((v) => !v)} className="text-[12px] font-bold inline-flex items-center min-h-[36px] px-1 transition" style={{ color: "var(--arbor-clay)" }}>
+                        {focusOpen ? t("ov.focus.less") : t("ov.focus.more")}
+                      </button>
+                    )}
+                    <button onClick={() => void regenerate()} disabled={focusLoading} title="Suggest another focus" aria-label="Suggest another focus" className="inline-flex items-center justify-center w-9 h-9 rounded-xl transition disabled:opacity-50" style={{ background: "#eef3fb", color: "var(--arbor-clay)" }}>
+                      <RefreshCw className={`w-4 h-4 ${focusLoading ? "animate-spin" : ""}`} />
                     </button>
-                  )}
+                  </div>
                 </div>
               ) : recentCount > 0 ? (
-                <p className="text-[17px] leading-relaxed" style={{ color: MUTED }}>{t("ov.recoLoading", { name: firstName })}</p>
+                <p className="text-[15px] leading-relaxed" style={{ color: "#7c8983" }}>{t("ov.recoLoading", { name: firstName })}</p>
               ) : (
-                <p className="text-[16px] leading-relaxed" style={{ color: INK }}>
-                  {t("ov.recoEmpty", { name: firstName })}
-                </p>
+                <p className="text-[15px] leading-relaxed" style={{ color: "#14225a" }}>{t("ov.recoEmpty", { name: firstName })}</p>
               )}
             </div>
-
-            <div className="flex flex-wrap items-center gap-2.5 mt-5">
-              <button
-                onClick={() => setQuickLog(true)}
-                aria-label={t("ov.logMoment")}
-                className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
-                style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--shadow-green)" }}
-              >
+            {/* Primary actions */}
+            <div className="flex flex-wrap items-center gap-2.5 mt-4">
+              <button onClick={() => setQuickLog(true)} aria-label={t("ov.logMoment")} className="inline-flex items-center gap-2 text-white font-extrabold text-[13px] rounded-xl px-5 py-3 transition active:scale-[0.98]" style={{ background: "#14225a", boxShadow: "0 8px 18px -6px rgba(20,34,90,0.5)" }}>
                 <Plus className="w-4 h-4" /> {t("ov.logMoment")}
               </button>
-              <button
-                onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
-                className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition"
-                style={{ background: GREEN_SOFT, color: GREEN }}
-              >
+              <button onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }} className="inline-flex items-center gap-2 font-bold text-[13px] rounded-xl px-4 py-3 transition" style={{ background: "#eef3fb", color: "var(--arbor-clay)" }}>
                 <MessageSquare className="w-4 h-4" /> {t("ov.askArbor")}
               </button>
-              {focus && (
-                <button
-                  onClick={() => void regenerate()}
-                  disabled={focusLoading}
-                  title="Suggest another focus"
-                  aria-label="Suggest another focus"
-                  className="inline-flex items-center justify-center w-11 h-11 rounded-2xl transition disabled:opacity-50"
-                  style={{ background: "var(--arbor-paper-sunk)", color: GREEN }}
-                >
-                  <RefreshCw className={`w-4 h-4 ${focusLoading ? "animate-spin" : ""}`} />
-                </button>
-              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── JITAI nudge — one well-timed cue off the child's logged rhythm ─── */}
+        {/* ── Dev map ring card (right, 1fr) ─────────────────────────────────── */}
+        {(() => {
+          const score = computeDevScore(milestones.map((m) => ({ domain: m.domain, checked: m.checked })));
+          if (score.confidence === "none") return null;
+          const focusLabel = score.focusDomain ? (framework.domains as { id: string; label: string }[]).find((d: { id: string; label: string }) => d.id === score.focusDomain)?.label : null;
+          return (
+            <section
+              onClick={() => setActiveTab("development")}
+              className="rounded-[22px] p-5 flex flex-col transition hover:-translate-y-0.5 cursor-pointer"
+              style={{ background: "#fff", boxShadow: "var(--shadow-sm)" }}
+            >
+              <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-clay)" }}>
+                {t("devscore.overall")}
+              </div>
+              <div className="flex items-center gap-4 mt-3">
+                <div className="relative w-[72px] h-[72px] rounded-full flex-none" style={{ background: `conic-gradient(var(--arbor-clay) 0 ${score.overall}%, #e7eeea ${score.overall}% 100%)` }}>
+                  <div className="absolute inset-1 m-auto w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-full bg-white flex flex-col items-center justify-center">
+                    <span className="text-[22px] font-extrabold" style={{ color: "#14225a" }}>{score.overall}%</span>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[15px] font-extrabold leading-tight" style={{ color: "#14225a" }}>
+                    {t("devscore.todayLine", { focus: focusLabel || t("devscore.todayLineSteady") })}
+                  </div>
+                  <div className="text-[11px] mt-1" style={{ color: "#8a958e" }}>
+                    {t("devscore.reached", { reached: checkedMilestones, total: totalMilestones })}
+                  </div>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
+      </div>
+
+      {/* ── PROTOTYPE GRID LAYOUT: Row 2 (3-col, 1fr + 1fr + 1fr) ─────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* ── Kid activity sync card (spans 2 cols) ─────────────────────────── */}
+        <section className="lg:col-span-2 rounded-[22px] p-5" style={{ background: "#fff", boxShadow: "var(--shadow-sm)" }}>
+          <div className="flex items-center gap-2 mb-4">
+            <RotateCw className="w-5 h-5" style={{ color: "var(--arbor-clay)", fontVariationSettings: "'FILL' 1" }} />
+            <span className="text-[15px] font-extrabold" style={{ color: "#14225a" }}>{t("ov.reco.play.title")}</span>
+            <span className="ml-auto text-[10px] font-extrabold rounded-full px-2.5 py-1" style={{ color: "var(--arbor-clay)", background: "#eaf2ff" }}>
+              {t("today.live")}
+            </span>
+          </div>
+          <div className="flex flex-col gap-3">
+            {/* Daily Play card if available */}
+            {dailyPlay ? (
+              <DailyPlayCard
+                pick={dailyPlay}
+                childName={firstName}
+                done={donePlayIds.includes(dailyPlay.activity.id)}
+                onDid={markPlayDone}
+                onCoach={coachOnPlay}
+                concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined}
+                goalLabel={
+                  dailyPlay.reason === "goal-match"
+                    ? (activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label)
+                    : undefined
+                }
+                sessionLength={sessionLength}
+                onSessionLengthChange={handleSessionLength}
+                sessionTapped={sessionTapped}
+                rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined}
+              />
+            ) : (
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#fbfdfc" }}>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#eef3fb", color: "var(--arbor-clay)" }}>
+                  <Sparkles className="w-5 h-5" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-extrabold" style={{ color: "#14225a" }}>{focus?.text || t("ov.recoLoading", { name: firstName })}</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: "#8a958e" }}>{t("ov.play.desc")}</div>
+                </div>
+              </div>
+            )}
+            {/* Rhythm card */}
+            {rhythm.confidence !== "none" && (
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#fbfdfc" }}>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#eef3fb", color: "#3f8cc9" }}>
+                  <CalendarDays className="w-5 h-5" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-extrabold" style={{ color: "#14225a" }}>{t("dw.cta")}</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: "#8a958e" }}>{rhythm.frictionPeak ? t("rhythm.peak", { hour: hourLabel(rhythm.frictionPeak.hour) }) : t("rhythm.steady")}</div>
+                </div>
+                <CheckCircle className="w-5 h-5" style={{ color: "#10b981" }} />
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── Coach card (1 col) ──────────────────────────────────────────── */}
+        <section
+          onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
+          className="rounded-[22px] p-5 flex flex-col transition hover:-translate-y-0.5 cursor-pointer"
+          style={{ background: "linear-gradient(140deg, #eaf2ff, #e7f1fa)", boxShadow: "var(--shadow-sm)" }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-[16px] font-extrabold" style={{ background: "linear-gradient(135deg, #4a90e2, #2b7fd1)", color: "#fff" }}>
+              {firstName.charAt(0)}
+            </div>
+            <div>
+              <div className="text-[14px] font-extrabold" style={{ color: "#14225a" }}>Arbor Coach</div>
+              <div className="text-[10px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>{t("coach.online")}</div>
+            </div>
+          </div>
+          <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "#3a463f" }}>
+            {focus?.text || t("coach.ready", { name: firstName })}
+          </div>
+          <button className="mt-4 bg-white text-center rounded-xl py-3 text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
+            <MessageSquare className="w-4 h-4" /> {t("ov.askArbor")}
+          </button>
+        </section>
+      </div>
+
+      {/* ── Original sections below (preserved) ─────────────────────────────── */}
+      {/* ── JITAI nudge ─────────────────────────────────────────────────────── */}
       {nudge && (
         <section className="rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: PASTEL[nudge.tone].soft, border: `1px solid ${RULE}` }}>
           <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style={{ background: "var(--arbor-paper-elevated)", color: PASTEL[nudge.tone].ink }}>
@@ -570,11 +668,6 @@ export default function OverviewTab() {
           <React.Fragment key={s.key}>{s.node}</React.Fragment>
         ))}
       </div>
-
-      {/* ── Development picture (PRD C4): a glanceable, read-only pointer into
-             My Child › Development. Renders nothing until there is something
-             honest to show. The full card (and the snapshot write) live there. ─ */}
-      <DevScoreStrip />
 
       {/* ── CI-28: Goal Builder prompt card (D3-D14 activation) ───────────── */}
       {activeGoals.length === 0 && !goalPromptDismissed && (
