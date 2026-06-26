@@ -50,10 +50,10 @@ export default function ChildProfile() {
   // Derive the current developmental focus from the child's real profile.
   const challengeText = childProfile.challenges.join(" ");
   const focus = [
-    childProfile.languages.length > 1 && { label: "Language Transition", tone: "sky" as const },
-    /anx|regulat|meltdown|emotion|sensory/i.test(challengeText) && { label: "Emotional Regulation", tone: "coral" as const },
-    /school|kindergarten|class/i.test(childProfile.schoolContext) && { label: "School Readiness", tone: "mint" as const },
-  ].filter(Boolean) as { label: string; tone: "sky" | "coral" | "mint" }[];
+    childProfile.languages.length > 1 && { labelKey: "languageTransition", tone: "sky" as const },
+    /anx|regulat|meltdown|emotion|sensory/i.test(challengeText) && { labelKey: "emotionalRegulation", tone: "coral" as const },
+    /school|kindergarten|class/i.test(childProfile.schoolContext) && { labelKey: "schoolReadiness", tone: "mint" as const },
+  ].filter(Boolean) as { labelKey: "languageTransition" | "emotionalRegulation" | "schoolReadiness"; tone: "sky" | "coral" | "mint" }[];
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
@@ -67,14 +67,14 @@ export default function ChildProfile() {
             className="text-left"
           >
             <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
-              <Sparkles className="w-4 h-4 inline-block mr-1 -mt-0.5" /> Create {heroName}'s hero
+              <Sparkles className="w-4 h-4 inline-block mr-1 -mt-0.5" /> {t("cp.hero.create", { name: heroName })}
             </span>
-            <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>One character — everywhere in Arbor.</span>
+            <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span>
           </button>
         )}
       </div>
       <PageHeader
-        eyebrow="My Child"
+        eyebrow={t("cp.eyebrow")}
         title={t("cp.title", { name: first })}
         subtitle={t("cp.subtitle", { name: first })}
         action={
@@ -93,7 +93,7 @@ export default function ChildProfile() {
           <div>
             <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--arbor-muted)" }}>{t("cp.f.focus")}</p>
             <div className="flex flex-wrap gap-1.5">
-              {focus.length > 0 ? focus.map((f) => <Chip key={f.label} tone={f.tone}>{f.label}</Chip>) : <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>Exploring — add a challenge to focus Arbor.</span>}
+              {focus.length > 0 ? focus.map((f) => <Chip key={f.labelKey} tone={f.tone}>{t(`cp.focus.${f.labelKey}`)}</Chip>) : <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.focus.empty")}</span>}
             </div>
           </div>
           {/* CI-29: Interests field — parent-logged preferences, never interpreted.
@@ -115,7 +115,7 @@ export default function ChildProfile() {
               </div>
             ) : (
               <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>
-                {t("cp.interests.add")} — edit the profile to add interests.
+                {t("cp.interests.empty")}
               </span>
             )}
           </div>
@@ -127,20 +127,22 @@ export default function ChildProfile() {
         {week.count > 0 ? (
           <div className="space-y-3">
             <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-              {week.count} moment{week.count === 1 ? "" : "s"} logged this week
-              {week.avg !== null && <> · average intensity <strong>{week.avg.toFixed(1)}/5</strong></>}
-              {week.resolved > 0 && <> · {week.resolved} marked resolved</>}.
+              {week.count === 1
+                ? t("cp.now.countOne", { count: week.count })
+                : t("cp.now.countMany", { count: week.count })}
+              {week.avg !== null && <> {t("cp.now.avg", { avg: week.avg.toFixed(1) })}</>}
+              {week.resolved > 0 && <> {t("cp.now.resolved", { count: week.resolved })}</>}.
             </p>
             {week.latest && (
               <div className={`${cardCls} p-3.5 text-sm`}>
-                <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Most recent</span>
+                <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("cp.now.mostRecent")}</span>
                 <p className="mt-1 font-semibold" style={{ color: "var(--arbor-ink)" }}>{week.latest.behaviorType}</p>
-                {week.latest.trigger && <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>Trigger: {week.latest.trigger}</p>}
+                {week.latest.trigger && <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("cp.now.trigger", { trigger: week.latest.trigger })}</p>}
               </div>
             )}
           </div>
         ) : (
-          <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>No moments logged in the past week. A 20-second note after a hard (or great!) moment keeps {first}'s story sharp.</p>
+          <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.now.empty", { name: first })}</p>
         )}
         <div className="flex flex-wrap gap-3 mt-3">
           <JumpLink onClick={() => setActiveTab("behaviors")} color="var(--arbor-peach-ink)">{t("cp.openMoments")}</JumpLink>
@@ -156,13 +158,13 @@ export default function ChildProfile() {
               <div className="h-full rounded-full transition-all" style={{ width: `${milestonesPercent}%`, background: "var(--arbor-gradient-progress)" }} />
             </div>
             <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
-              <strong style={{ color: "var(--arbor-ink)" }}>{checkedMilestones} of {totalMilestones}</strong> reached ({milestonesPercent}%) for age {childProfile.age}.
+              <strong style={{ color: "var(--arbor-ink)" }}>{t("cp.ms.progress", { checked: checkedMilestones, total: totalMilestones, pct: milestonesPercent, age: childProfile.age })}</strong>
             </p>
           </div>
         </div>
         {nextMilestones.length > 0 && (
           <div className="mt-3 space-y-2">
-            <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Worth watching next</span>
+            <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("cp.ms.worthWatching")}</span>
             <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
               {nextMilestones.map((m) => (
                 <li key={m.id} className="flex items-start gap-2">
@@ -188,7 +190,7 @@ export default function ChildProfile() {
                 <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{s}</span>
               </li>
             ))}
-            {childProfile.strengths.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>Add strengths in the profile editor.</li>}
+            {childProfile.strengths.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.strengths.empty")}</li>}
           </ul>
         </SectionCard>
         <SectionCard title={t("cp.ch.support")} icon={<Sprout className="w-5 h-5" />} tone="coral">
@@ -201,7 +203,7 @@ export default function ChildProfile() {
                 </button>
               </li>
             ))}
-            {childProfile.challenges.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>Add challenges in the profile editor.</li>}
+            {childProfile.challenges.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.support.empty")}</li>}
           </ul>
         </SectionCard>
       </div>
@@ -210,8 +212,8 @@ export default function ChildProfile() {
       <SectionCard title={t("cp.ch.language")} icon={<Languages className="w-5 h-5" />} tone="sky">
         <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
           {childProfile.languages.length > 1
-            ? `${first} is growing up with ${childProfile.languages.join(" and ")} — a real developmental asset that can look like a delay during the transition. The Language Lab tracks both languages so progress is never miscounted.`
-            : `${first}'s home language is ${childProfile.languages[0] || "not set"}. Track expressive and receptive growth in the Language Lab.`}
+            ? t("cp.lang.multi", { name: first, langs: childProfile.languages.join(t("cp.lang.and")) })
+            : t("cp.lang.single", { name: first, lang: childProfile.languages[0] || t("cp.lang.notSet") })}
         </p>
         <div className="mt-3"><JumpLink onClick={() => setActiveTab("language")} color="var(--arbor-sky-ink)">{t("cp.openLang")}</JumpLink></div>
       </SectionCard>
@@ -228,11 +230,11 @@ export default function ChildProfile() {
           </ul>
         ) : (
           <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>
-            Nothing approved yet. When you chat with Arbor, it proposes durable facts about {first} — you approve what it may remember.
+            {t("cp.memory.empty", { name: first })}
           </p>
         )}
         {pendingMemoryItems.length > 0 && (
-          <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-lav-ink)" }}>{pendingMemoryItems.length} proposal{pendingMemoryItems.length === 1 ? "" : "s"} waiting for your review.</p>
+          <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-lav-ink)" }}>{pendingMemoryItems.length === 1 ? t("cp.memory.pendingOne", { count: pendingMemoryItems.length }) : t("cp.memory.pendingMany", { count: pendingMemoryItems.length })}</p>
         )}
         <div className="mt-3"><JumpLink onClick={() => setActiveTab("memory")} color="var(--arbor-lav-ink)">{t("cp.reviewMemory", { name: first })}</JumpLink></div>
       </SectionCard>
@@ -242,14 +244,14 @@ export default function ChildProfile() {
         {activePlan && planProgress ? (
           <>
             <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
-              Active plan: <strong>{activePlan.title}</strong> — {planProgress.done} of {planProgress.total} steps done.
+              {t("cp.next.active", { title: activePlan.title, done: planProgress.done, total: planProgress.total })}
             </p>
             <div className="mt-3"><JumpLink onClick={() => setActiveTab("plans")} color="var(--arbor-yellow-ink)">{t("cp.continuePlan")}</JumpLink></div>
           </>
         ) : (
           <>
             <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
-              No active growth plan. Turn {first}'s current focus into a step-by-step plan with scripts you can use today.
+              {t("cp.next.none", { name: first })}
             </p>
             <div className="mt-3"><JumpLink onClick={() => setActiveTab("plans")} color="var(--arbor-yellow-ink)">{t("cp.createPlan")}</JumpLink></div>
           </>
@@ -259,9 +261,9 @@ export default function ChildProfile() {
       {/* Footer jump strip — the deep tools, one tap away */}
       <div className="grid sm:grid-cols-3 gap-3">
         {([
-          { tab: "timeline" as const, tone: "sky" as const, icon: <Waypoints className="w-4 h-4" />, label: `${first}'s Story` },
-          { tab: "behaviors" as const, tone: "coral" as const, icon: <Activity className="w-4 h-4" />, label: "Moments" },
-          { tab: "memory" as const, tone: "lav" as const, icon: <BookMarked className="w-4 h-4" />, label: "Child Memory" },
+          { tab: "timeline" as const, tone: "sky" as const, icon: <Waypoints className="w-4 h-4" />, label: t("cp.footer.story", { name: first }) },
+          { tab: "behaviors" as const, tone: "coral" as const, icon: <Activity className="w-4 h-4" />, label: t("cp.footer.moments") },
+          { tab: "memory" as const, tone: "lav" as const, icon: <BookMarked className="w-4 h-4" />, label: t("cp.footer.memory") },
         ]).map((l) => (
           <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} p-4 text-left flex items-center gap-3 transition hover:-translate-y-0.5`}>
             <IconBadge tone={l.tone}>{l.icon}</IconBadge>

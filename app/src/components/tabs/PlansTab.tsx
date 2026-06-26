@@ -41,7 +41,7 @@ export default function PlansTab() {
         <HeroAvatar size={56} mood="happy" ring className="flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <PageHeader
-            eyebrow="Growth Plans"
+            eyebrow={t("plan.eyebrow")}
             title={t("plan.title")}
             subtitle={t("plan.subtitle")}
           />
@@ -55,15 +55,15 @@ export default function PlansTab() {
         <div className="flex flex-wrap gap-1.5">
           <span className="text-[10px] font-bold self-center mr-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
           {[
-            "Morning departure refusal and tantrums when leaving for school",
-            "Screen-time shut-off meltdowns at night",
-            "Sibling sharing conflicts and hitting",
-            "Bedtime resistance and stalling",
-            "Refusing new or non-preferred foods",
-            "Separation anxiety at drop-off",
-            "Build a responsibility ladder of age-appropriate chores and ownership",
-            "School adaptation plan for a smooth transition into kindergarten",
-            "Behavior reset plan to re-establish calm routines after a hard week",
+            t("plan.template.morningDeparture"),
+            t("plan.template.screenShutdown"),
+            t("plan.template.siblingConflict"),
+            t("plan.template.bedtimeResistance"),
+            t("plan.template.foodRefusal"),
+            t("plan.template.separationAnxiety"),
+            t("plan.template.responsibilityLadder"),
+            t("plan.template.schoolAdaptation"),
+            t("plan.template.behaviorReset"),
           ].map((tpl) => (
             <button
               key={tpl}
@@ -80,7 +80,7 @@ export default function PlansTab() {
         {/* Data-driven: suggestions from {name}'s recent logged behavior */}
         {suggestions.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            <span className="text-[10px] font-bold self-center mr-1" style={{ color: "var(--arbor-green-ink)" }}>Suggested for {first}</span>
+            <span className="text-[10px] font-bold self-center mr-1" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
             {suggestions.map((s) => (
               <button
                 key={s.topic}
@@ -140,22 +140,26 @@ export default function PlansTab() {
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
                     {prog.planComplete
-                      ? <><CheckCircle2 className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> Plan complete</>
-                      : <><ListChecks className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> Focus this week</>}
+                      ? <><CheckCircle2 className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.complete")}</>
+                      : <><ListChecks className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.focusThisWeek")}</>}
                   </p>
-                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{prog.doneSteps}/{prog.totalSteps} steps · {prog.pct}%</span>
+                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("plan.stepsCount", { done: prog.doneSteps, total: prog.totalSteps, pct: prog.pct })}</span>
                 </div>
                 <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: "var(--arbor-paper-deep)" }}>
                   <div className="h-full rounded-full" style={{ width: `${prog.pct}%`, background: "var(--arbor-clay)" }} />
                 </div>
                 {prog.planComplete ? (
                   <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-                    Every step is done — nice work. Watch for the success signs below; if the challenge has shifted, start a fresh plan above.
+                    {t("plan.completeHint")}
                   </p>
                 ) : (
                   <>
                     <p className="text-[11px] mb-2" style={{ color: "var(--arbor-muted)" }}>
-                      You&apos;re in <b style={{ color: "var(--arbor-ink)" }}>{prog.currentPhaseName || `phase ${prog.currentPhaseIndex + 1}`}</b> (phase {prog.currentPhaseIndex + 1} of {prog.totalPhases}). Next small steps:
+                      {t("plan.phaseProgress", {
+                        phase: prog.currentPhaseName || t("plan.phaseFallback", { n: prog.currentPhaseIndex + 1 }),
+                        current: prog.currentPhaseIndex + 1,
+                        total: prog.totalPhases,
+                      })}
                     </p>
                     <ul className="space-y-1.5">
                       {prog.nextSteps.map((s, i) => (

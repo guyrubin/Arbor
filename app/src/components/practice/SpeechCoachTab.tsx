@@ -30,10 +30,10 @@ function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   return (w.SpeechRecognition as new () => SpeechRecognitionLike) || (w.webkitSpeechRecognition as new () => SpeechRecognitionLike) || null;
 }
 
-const LADDER: { level: SpeechLevel; label: string; hint: string }[] = [
-  { level: "word", label: "Words", hint: "One word at a time — the foundation." },
-  { level: "sentence", label: "Sentences", hint: "The sound inside real sentences." },
-  { level: "story", label: "Story", hint: "Carry the sound through free talk." },
+const LADDER: { level: SpeechLevel; labelKey: string; hintKey: string }[] = [
+  { level: "word", labelKey: "prac.speech.ladder.word", hintKey: "prac.speech.ladder.word.hint" },
+  { level: "sentence", labelKey: "prac.speech.ladder.sentence", hintKey: "prac.speech.ladder.sentence.hint" },
+  { level: "story", labelKey: "prac.speech.ladder.story", hintKey: "prac.speech.ladder.story.hint" },
 ];
 
 export default function SpeechCoachTab() {
@@ -161,7 +161,7 @@ export default function SpeechCoachTab() {
         recog.start();
       }
     } catch {
-      setMicError("Microphone unavailable. You can still practice out loud and score it yourself below.");
+      setMicError(t("prac.speech.micError"));
       setRecState("idle");
     }
   };
@@ -240,10 +240,10 @@ export default function SpeechCoachTab() {
     setActiveTab("coach");
   };
 
-  const RESULT_BTN: { result: SpeechAttempt["result"]; label: string; tone: PastelKey }[] = [
-    { result: "got", label: "Got it!", tone: "mint" },
-    { result: "almost", label: "Almost", tone: "yellow" },
-    { result: "missed", label: "Try again later", tone: "pink" },
+  const RESULT_BTN: { result: SpeechAttempt["result"]; labelKey: string; tone: PastelKey }[] = [
+    { result: "got", labelKey: "prac.speech.result.got", tone: "mint" },
+    { result: "almost", labelKey: "prac.speech.result.almost", tone: "yellow" },
+    { result: "missed", labelKey: "prac.speech.result.missed", tone: "pink" },
   ];
 
   return (
@@ -254,32 +254,32 @@ export default function SpeechCoachTab() {
         mood="happy"
         action={
           <button onClick={() => setActiveTab("language")} className="inline-flex items-center gap-1.5 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
-            <Languages className="w-3.5 h-3.5" /> Multiple languages? Language &amp; Communication
+            <Languages className="w-3.5 h-3.5" /> {t("prac.speech.switchLangCta")}
           </button>
         }
       />
 
       <TrustSafetyBar
         risk="Low"
-        note={`Sound ages are typical ranges, not deadlines. If you're concerned about ${first}'s speech, the right next step is a speech-language professional — Arbor can prepare the report.`}
+        note={t("prac.speech.safetyNote", { name: first })}
       />
 
       {/* ASHA dosage: practice little and often (≈50 reps/session, 2–3×/week) */}
       <div className={`${cardCls} p-5`}>
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
-            <AudioLines className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> Today&apos;s practice dose
+            <AudioLines className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> {t("prac.speech.dose.eyebrow")}
           </p>
           <Chip tone={dose.sessionMetToday ? "mint" : "yellow"}>
-            {dose.sessionMetToday ? "Today's dose done 🎉" : `${dose.trialsToday}/${dose.perSessionTarget} reps`}
+            {dose.sessionMetToday ? t("prac.speech.dose.done") : t("prac.speech.dose.count", { done: dose.trialsToday, target: dose.perSessionTarget })}
           </Chip>
         </div>
         <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: "var(--arbor-paper-deep)" }}>
           <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((dose.trialsToday / dose.perSessionTarget) * 100))}%`, background: "var(--arbor-clay)" }} />
         </div>
         <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-          Speech practice works best little and often — about {dose.perSessionTarget} gentle repetitions a session, {dose.weeklySessionTarget}× a week (ASHA guidance).
-          {" "}This week: <b style={{ color: dose.weeklyMet ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{dose.sessionsThisWeek}/{dose.weeklySessionTarget} sessions</b>{dose.weeklyMet ? " — nicely consistent." : "."}
+          {t("prac.speech.dose.explainer", { perSession: dose.perSessionTarget, perWeek: dose.weeklySessionTarget })}
+          {" "}{t("prac.speech.dose.weekPrefix")} <b style={{ color: dose.weeklyMet ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{t("prac.speech.dose.weekCount", { done: dose.sessionsThisWeek, target: dose.weeklySessionTarget })}</b>{dose.weeklyMet ? ` ${t("prac.speech.dose.consistent")}` : "."}
         </p>
       </div>
 
@@ -290,13 +290,13 @@ export default function SpeechCoachTab() {
           subtitle={t("prac.speech.doseWin.sub", { name: first, target: dose.perSessionTarget })}
         >
           <PlayButton onClick={() => setDoseCelebrated(false)} variant="soft" tone="mint" size="md">
-            Keep going
+            {t("prac.speech.doseWin.cta")}
           </PlayButton>
         </Celebrate>
       )}
 
       {/* Sound Studio (feature 1): age-banded sound picker */}
-      <SectionCard title="Pick today's sound" icon={<AudioLines className="w-5 h-5" />} tone="mint">
+      <SectionCard title={t("prac.speech.studio.title")} icon={<AudioLines className="w-5 h-5" />} tone="mint">
         <div className="space-y-4">
           {bands.map((band) => (
             <div key={band}>
@@ -314,7 +314,7 @@ export default function SpeechCoachTab() {
                       style={on
                         ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "0 6px 16px rgba(88,166,255,0.28)" }
                         : { background: "#fff", color: "var(--arbor-ink)", border: "2px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
-                      title={appropriate ? `${s.label} · typical ${s.typicalAge}` : `${s.label} · typically emerges ${s.typicalAge} — usually later than ${first}'s age, so go gently`}
+                      title={appropriate ? t("prac.speech.sound.tip", { label: s.label, age: s.typicalAge }) : t("prac.speech.sound.tipLate", { label: s.label, age: s.typicalAge, name: first })}
                     >
                       {s.id.toUpperCase()}
                       {st && st.attempts > 0 && (
@@ -331,30 +331,30 @@ export default function SpeechCoachTab() {
 
       {/* Practice card: ladder + record & compare */}
       <SectionCard title={`${sound.label} · ${sound.ipa}`} icon={<Mic className="w-5 h-5" />} tone="sky"
-        action={<Chip tone="sky">Typical {sound.typicalAge}</Chip>}>
+        action={<Chip tone="sky">{t("prac.speech.typicalAge", { age: sound.typicalAge })}</Chip>}>
         <p className="text-xs rounded-xl p-3 mb-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
-          <b>How to model it:</b> {sound.cue}
+          <b>{t("prac.speech.modelLabel")}</b> {sound.cue}
         </p>
 
         {/* Ladder */}
-        <div role="tablist" aria-label="Practice level" className="flex gap-2 mb-4">
+        <div role="tablist" aria-label={t("prac.speech.ladder.aria")} className="flex gap-2 mb-4">
           {LADDER.map((l) => {
             const on = l.level === level;
             return (
               <button key={l.level} role="tab" aria-selected={on} onClick={() => setLevel(l.level)}
                 className="rounded-full px-3.5 py-1.5 text-[11.5px] font-extrabold transition"
                 style={on ? { background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-                {l.label}
+                {t(l.labelKey)}
               </button>
             );
           })}
-          <span className="self-center text-[11px] ml-1" style={{ color: "var(--arbor-muted)" }}>{LADDER.find((l) => l.level === level)?.hint}</span>
+          <span className="self-center text-[11px] ml-1" style={{ color: "var(--arbor-muted)" }}>{t(LADDER.find((l) => l.level === level)?.hintKey ?? "")}</span>
         </div>
 
         {/* Target — the big, friendly say-it-together card */}
         <div className="rounded-[var(--play-radius-lg)] p-7 text-center mb-4" style={{ background: "linear-gradient(135deg, var(--arbor-sky-soft), #ffffff 75%)", border: "2px solid var(--arbor-sky-soft)" }}>
           <p className="text-[11px] uppercase font-extrabold tracking-wider mb-3" style={{ color: "var(--arbor-sky-ink)" }}>
-            {level === "story" ? "Story time" : `Say it together — ${itemIdx + 1} of ${items.length}`}
+            {level === "story" ? t("prac.speech.target.story") : t("prac.speech.target.together", { current: itemIdx + 1, total: items.length })}
           </p>
           <p className="font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", fontSize: level === "word" ? "3.4rem" : "1.6rem" }}>
             {target}
@@ -363,11 +363,11 @@ export default function SpeechCoachTab() {
             <div className="flex justify-center gap-2.5 mt-5">
               <button onClick={() => setItemIdx((i) => Math.max(0, i - 1))} disabled={itemIdx === 0}
                 className="play-pressable text-[13px] font-extrabold px-5 min-h-[44px] rounded-full disabled:opacity-40" style={{ background: "#fff", color: "var(--arbor-sky-ink)", border: "2px solid var(--arbor-sky-soft)" }}>
-                Back
+                {t("prac.speech.back")}
               </button>
               <button onClick={() => setItemIdx((i) => Math.min(items.length - 1, i + 1))} disabled={itemIdx >= items.length - 1}
                 className="play-pressable text-[13px] font-extrabold px-5 min-h-[44px] rounded-full inline-flex items-center gap-1 disabled:opacity-40 text-white" style={{ background: "var(--arbor-sky-ink)" }}>
-                Next <ChevronRight className="w-4 h-4" />
+                {t("prac.speech.next")} <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}
@@ -377,11 +377,11 @@ export default function SpeechCoachTab() {
         <div className="flex flex-wrap items-center gap-3 mb-3">
           {recState !== "recording" ? (
             <PlayButton onClick={() => void startRecording()} tone="peach">
-              <Mic className="w-5 h-5" /> Record {first}
+              <Mic className="w-5 h-5" /> {t("prac.speech.record", { name: first })}
             </PlayButton>
           ) : (
             <PlayButton onClick={stopRecording} tone="pink" className="animate-pulse">
-              <Square className="w-5 h-5" /> Stop
+              <Square className="w-5 h-5" /> {t("prac.speech.stop")}
             </PlayButton>
           )}
           {audioUrl && recState === "review" && (
@@ -392,7 +392,7 @@ export default function SpeechCoachTab() {
           )}
           {!recognitionAvailable && (
             <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-              <MicOff className="w-3 h-3 inline mr-1" />Auto-listening isn't supported in this browser — you be the judge below.
+              <MicOff className="w-3 h-3 inline mr-1" />{t("prac.speech.noAutoListen")}
             </span>
           )}
         </div>
@@ -401,11 +401,11 @@ export default function SpeechCoachTab() {
         {heard && (
           <div className="rounded-xl p-3 mb-3 text-xs flex items-center gap-2" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
             <Ear className="w-4 h-4 flex-shrink-0" />
-            <span>Arbor heard: <b>&ldquo;{heard}&rdquo;</b>{autoResult && <> — looks like <b>{autoResult === "got" ? "a match!" : autoResult === "almost" ? "a close try" : "a different word"}</b></>}</span>
+            <span>{t("prac.speech.heardPrefix")} <b>&ldquo;{heard}&rdquo;</b>{autoResult && <> — {t("prac.speech.heardLooksLike")} <b>{autoResult === "got" ? t("prac.speech.heard.match") : autoResult === "almost" ? t("prac.speech.heard.close") : t("prac.speech.heard.different")}</b></>}</span>
             {autoResult && (
               <button onClick={() => saveAttempt(autoResult, "auto")}
                 className="ml-auto font-extrabold text-white rounded-full px-3 py-1" style={{ background: "var(--arbor-sky-ink)" }}>
-                Save this score
+                {t("prac.speech.saveScore")}
               </button>
             )}
           </div>
@@ -413,31 +413,31 @@ export default function SpeechCoachTab() {
 
         {/* Parent scoring — the universal floor */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>How did it sound?</span>
+          <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("prac.speech.howDidItSound")}</span>
           {RESULT_BTN.map((b) => (
             <button key={b.result} onClick={() => saveAttempt(b.result, "parent")}
               className="text-xs font-extrabold px-3.5 py-2 rounded-xl transition"
               style={{ background: b.tone === "mint" ? "var(--arbor-green-soft)" : b.tone === "yellow" ? "var(--arbor-yellow-soft)" : "var(--arbor-pink-soft)", color: b.tone === "mint" ? "var(--arbor-green-ink)" : b.tone === "yellow" ? "var(--arbor-yellow-ink)" : "var(--arbor-pink-ink)" }}>
-              {b.label}
+              {t(b.labelKey)}
             </button>
           ))}
           {lastSaved && (
             <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-clay)" }}>
-              <Check className="w-3.5 h-3.5" /> Saved
+              <Check className="w-3.5 h-3.5" /> {t("prac.read.saved")}
             </span>
           )}
         </div>
       </SectionCard>
 
       {/* Vocabulary expansion + expressive language (Epic 3) */}
-      <SectionCard title="Words & Express" icon={<BookOpen className="w-5 h-5" />} tone="mint"
-        action={<Chip tone="mint">Language practice</Chip>}>
+      <SectionCard title={t("prac.lang.title")} icon={<BookOpen className="w-5 h-5" />} tone="mint"
+        action={<Chip tone="mint">{t("prac.lang.chip")}</Chip>}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className={`${cardCls} p-4`}>
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
                 <Tags className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} />
-                <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Object naming</p>
+                <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("prac.lang.naming.title")}</p>
               </div>
               <Chip tone="mint">{vocabSet.category}</Chip>
             </div>
@@ -456,11 +456,11 @@ export default function SpeechCoachTab() {
             <div className="rounded-2xl p-5 text-center" style={{ background: "var(--arbor-paper-deep)" }}>
               <p className="text-5xl">{vocabItem.emoji}</p>
               <p className="text-xl font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{vocabItem.word}</p>
-              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Ask {first}: "What is this?" Then expand one word into a short sentence.</p>
+              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("prac.lang.naming.ask", { name: first })}</p>
             </div>
             <button onClick={markNamed} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
               {languageSaved === "vocab-naming" ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
-              {languageSaved === "vocab-naming" ? "Saved" : "Named it"}
+              {languageSaved === "vocab-naming" ? t("prac.read.saved") : t("prac.lang.naming.cta")}
             </button>
           </div>
 
@@ -468,9 +468,9 @@ export default function SpeechCoachTab() {
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
                 <Tags className="w-4 h-4" style={{ color: "var(--arbor-sky-ink)" }} />
-                <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Category pick</p>
+                <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("prac.lang.category.title")}</p>
               </div>
-              <Chip tone="sky">{categoryIdx + 1} of {CATEGORY_ROUNDS.length}</Chip>
+              <Chip tone="sky">{t("prac.lang.category.count", { current: categoryIdx + 1, total: CATEGORY_ROUNDS.length })}</Chip>
             </div>
             <div className="flex items-center justify-between gap-2 mb-3">
               <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{categoryRound.question}</p>
@@ -504,10 +504,10 @@ export default function SpeechCoachTab() {
             {categoryPick !== null && (
               <div className="mt-3 rounded-2xl p-3 flex items-center gap-3" style={{ background: categoryRound.options[categoryPick].correct ? "var(--arbor-green-soft)" : "var(--arbor-yellow-soft)" }}>
                 <p className="text-[11px] flex-1" style={{ color: "var(--arbor-ink)" }}>
-                  {categoryRound.options[categoryPick].correct ? "Nice sorting. Name one more thing in that category." : "Warm retry: talk through why the correct one belongs."}
+                  {categoryRound.options[categoryPick].correct ? t("prac.lang.category.correct") : t("prac.lang.category.wrong")}
                 </p>
                 <button onClick={nextCategory} className="text-[11px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "var(--arbor-sky-ink)" }}>
-                  Next
+                  {t("prac.speech.next")}
                 </button>
               </div>
             )}
@@ -517,7 +517,7 @@ export default function SpeechCoachTab() {
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
                 <MessageCircle className="w-4 h-4" style={{ color: "var(--arbor-peach-ink)" }} />
-                <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Express mode</p>
+                <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("prac.lang.express.title")}</p>
               </div>
               <Chip tone="coral">{expressPrompt.kind.replace("-", " ")}</Chip>
             </div>
@@ -526,11 +526,11 @@ export default function SpeechCoachTab() {
               <p className="text-base font-extrabold mt-3 leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                 {fillChild(expressPrompt.prompt)}
               </p>
-              <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Parent tip:</b> {expressPrompt.parentTip}</p>
+              <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("prac.lang.express.tipLabel")}</b> {expressPrompt.parentTip}</p>
             </div>
             <button onClick={completeExpress} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-peach-ink)" }}>
               {languageSaved === "expressive" ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
-              {languageSaved === "expressive" ? "Saved" : "We answered it"}
+              {languageSaved === "expressive" ? t("prac.read.saved") : t("prac.lang.express.cta")}
             </button>
           </div>
         </div>
@@ -541,16 +541,16 @@ export default function SpeechCoachTab() {
       <EarlyReadingTrack age={childProfile.age} first={first} onLog={savePracticeEvent} />
 
       {/* Sound Progress Tracking (feature 3) */}
-      <SectionCard title={`${first}'s sound progress`} icon={<TrendingUp className="w-5 h-5" />} tone="lav"
+      <SectionCard title={t("prac.speech.progress.title", { name: first })} icon={<TrendingUp className="w-5 h-5" />} tone="lav"
         action={
-          <button onClick={() => askCoach(`${first} (age ${childProfile.age}) is practicing the ${sound.label} sound and currently scores ${statForActive?.recentAccuracy ?? 0}% on recent tries at the ${level} level. Give me one playful way to practice it during daily routines this week, and what 'normal progress' looks like.`)}
+          <button onClick={() => askCoach(t("prac.speech.progress.coachPrompt", { name: first, age: childProfile.age, sound: sound.label, score: statForActive?.recentAccuracy ?? 0, level }))}
             className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-            <Sparkles className="w-3.5 h-3.5" /> Coach me on this sound
+            <Sparkles className="w-3.5 h-3.5" /> {t("prac.speech.progress.coachCta")}
           </button>
         }>
         {data.stats.length === 0 ? (
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-            No practice yet — every scored try lands here, builds the trend, and feeds the report you can share with a speech professional.
+            {t("prac.speech.progress.empty")}
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -566,7 +566,7 @@ export default function SpeechCoachTab() {
                       <div className="h-2 rounded-full transition-all" style={{ width: `${s.recentAccuracy}%`, background: s.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow)" }} />
                     </div>
                     <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>
-                      {s.attempts} tries · recent {s.recentAccuracy}% · reached {s.levelReached} level
+                      {t("prac.speech.progress.stat", { tries: s.attempts, accuracy: s.recentAccuracy, level: s.levelReached })}
                     </p>
                   </div>
                   <TrendIcon className="w-4 h-4 flex-shrink-0" style={{ color: s.trend === "up" ? "var(--arbor-clay)" : s.trend === "down" ? "var(--arbor-pink-ink)" : "var(--arbor-muted)" }} />
@@ -576,7 +576,7 @@ export default function SpeechCoachTab() {
           </div>
         )}
         <p className="text-[11px] mt-4" style={{ color: "var(--arbor-muted)" }}>
-          This trend is included in professional reports (Care Network → Reports &amp; Handoffs) so a speech-language professional sees real between-session data.
+          {t("prac.speech.progress.footer")}
         </p>
       </SectionCard>
     </PlayShell>

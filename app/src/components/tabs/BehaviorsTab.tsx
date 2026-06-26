@@ -188,17 +188,17 @@ export default function BehaviorsTab() {
     const rows = filtered
       .map(
         (l) =>
-          `<tr><td>${new Date(l.timestamp).toLocaleString()}</td><td>${escapeHtml(l.behaviorType)}</td><td>${l.context || ""}</td><td>${l.intensity}/5</td><td>${l.durationMinutes}m</td><td>${l.resolved ? "Resolved" : "Open"}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response)}</td></tr>`
+          `<tr><td>${new Date(l.timestamp).toLocaleString()}</td><td>${escapeHtml(l.behaviorType)}</td><td>${l.context || ""}</td><td>${l.intensity}/5</td><td>${l.durationMinutes}m</td><td>${l.resolved ? t("beh.resolved") : t("beh.open")}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response)}</td></tr>`
       )
       .join("");
     // print stylesheet — intentional literals (printed report has its own static
     // palette; design tokens don't apply to the export window, m3-hex-sweep skip).
-    const html = `<!doctype html><html><head><title>Arbor Behavior Summary</title>
+    const html = `<!doctype html><html><head><title>${t("beh.pdf.title")}</title>
       <style>body{font-family:Georgia,serif;color:#14160f;padding:32px} h1{font-size:20px} table{width:100%;border-collapse:collapse;font-size:11px;margin-top:16px} th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top} th{background:#f0ece0}</style>
       </head><body>
-      <h1>Arbor — Behavior &amp; Emotion Summary</h1>
-      <p>Generated ${new Date().toLocaleString()} · ${filtered.length} entries</p>
-      <table><thead><tr><th>When</th><th>Type</th><th>Where</th><th>Intensity</th><th>Duration</th><th>Status</th><th>Trigger</th><th>Parent response</th></tr></thead><tbody>${rows}</tbody></table>
+      <h1>${t("beh.pdf.heading")}</h1>
+      <p>${t("beh.pdf.generated", { date: new Date().toLocaleString(), n: filtered.length })}</p>
+      <table><thead><tr><th>${t("beh.pdf.col.when")}</th><th>${t("beh.pdf.col.type")}</th><th>${t("beh.pdf.col.where")}</th><th>${t("beh.pdf.col.intensity")}</th><th>${t("beh.pdf.col.duration")}</th><th>${t("beh.pdf.col.status")}</th><th>${t("beh.triggerField")}</th><th>${t("beh.parentAction")}</th></tr></thead><tbody>${rows}</tbody></table>
       </body></html>`;
     const w = window.open("", "_blank");
     if (!w) return;
@@ -231,7 +231,7 @@ export default function BehaviorsTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
       <PageHeader
-        eyebrow="My Child"
+        eyebrow={t("beh.eyebrow")}
         title={t("nav.tab.behaviors")}
         subtitle={t("beh.subtitle", { name: behFirst })}
       />
@@ -519,7 +519,7 @@ export default function BehaviorsTab() {
                                   </button>
                                   <button
                                     onClick={() => startEditLog(log.id)}
-                                    aria-label="Edit log"
+                                    aria-label={t("beh.editLogAria")}
                                     className="px-1.5 py-0.5 rounded transition"
                                     style={{ color: "var(--arbor-muted)" }}
                                   >
@@ -527,7 +527,7 @@ export default function BehaviorsTab() {
                                   </button>
                                   <button
                                     onClick={() => { if (window.confirm(t("beh.deleteConfirm"))) deleteLog(log.id); }}
-                                    aria-label="Delete log"
+                                    aria-label={t("beh.deleteLogAria")}
                                     className="px-1.5 py-0.5 rounded transition"
                                     style={{ color: "var(--arbor-muted)" }}
                                   >
@@ -542,7 +542,7 @@ export default function BehaviorsTab() {
                               </div>
                               {log.notes && <p className="p-2 rounded italic bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}><strong style={{ color: "var(--arbor-ink)" }}>{t("beh.observerNote")}</strong> {log.notes}</p>}
                               {log.photoAttachment && (
-                                <img src={log.photoAttachment} alt="log attachment" className="h-24 rounded-lg object-cover" style={{ border: "1px solid var(--arbor-rule)" }} />
+                                <img src={log.photoAttachment} alt={t("beh.logPhotoAlt")} className="h-24 rounded-lg object-cover" style={{ border: "1px solid var(--arbor-rule)" }} />
                               )}
 
                               <div className="pt-2.5 mt-2 flex flex-col gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
