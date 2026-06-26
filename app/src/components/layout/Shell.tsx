@@ -9,6 +9,7 @@ import { sectionForTab } from "../../lib/navigation";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import KidModeButton from "./KidModeButton";
+import AskArborButton from "./AskArborButton";
 import AiRail from "./AiRail";
 import MobileNav from "./MobileNav";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -209,6 +210,7 @@ export default function Shell() {
               {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></span>}</span>
             </span>
             <div className="flex items-center gap-2">
+              <AskArborButton compact />
               {/* Whole-app language switch (UI + AI). Hebrew flips the app to RTL. */}
               {/* VIS-2: language switcher — min 44px hit area via min-h/padding; visual stays compact */}
               <div className="flex items-center rounded-xl p-0.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} title={t("top.language")}>
