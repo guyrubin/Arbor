@@ -132,7 +132,7 @@ export default function DevScoreCard() {
             </div>
             {/* Developmental mechanism (parent observation + one-thing-to-try). */}
             <div className="text-[12.5px] mt-1.5 leading-relaxed" style={{ color: MUTED }}>
-              {t("devscore.mechanism")}
+              {t("devscore.mechanism", { name: firstName })}
             </div>
           </div>
         </div>

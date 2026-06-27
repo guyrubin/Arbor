@@ -330,7 +330,7 @@ export default function OverviewTab() {
                     {t("devscore.noticed", { reached: checkedMilestones, total: totalMilestones })}
                   </div>
                   <div className="text-[11.5px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-faint)" }}>
-                    {t("devscore.mechanism")}
+                    {t("devscore.mechanism", { name: firstName })}
                   </div>
                 </div>
               </div>

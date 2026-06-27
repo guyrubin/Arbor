@@ -1,28 +1,23 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Activity, AlertTriangle, Check, ClipboardCopy, Compass, FileBarChart, Gauge, History, Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, AlertTriangle, Check, ClipboardCopy, Compass, FileBarChart, Gauge, History } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
-import ProgressRing from "../ui/ProgressRing";
-import { Sparkline } from "../ui/Sparkline";
-import DomainRadar from "./DomainRadar";
 import { DOMAIN_META } from "../../practice/content";
 import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
 import { watchSignals } from "../../practice/watch";
 import type { ScreeningResult } from "../../lib/screening";
-import { developmentTrajectory, type BandLevel } from "../../practice/signals";
 import { track } from "../../lib/analytics";
 
 type SavedScreening = ScreeningResult & { id: string };
 
-const BAND_COPY: Record<BandLevel, { label: string; note: string }> = {
-  emerging:   { label: "Emerging",   note: "early signal — more observation and play will sharpen the picture" },
-  developing: { label: "Developing", note: "growing steadily — keep the daily reps going" },
-  "on-track": { label: "On track",   note: "solid signal across what we can observe" },
-  strong:     { label: "Strong",     note: "a clear strength — use it to pull the other domains along" },
-};
+// Wave-3 (2026-06-27): verdict bands demoted. No "emerging / developing / on
+// track / strong" label is rendered against a child anymore (mirrors DevScoreCard).
+// The band is still computed by signals.ts (drives the route-to-pro escalation
+// internally) but is never surfaced as a verdict. One mechanism-only message.
+const MECHANISM_NOTE = "More play and observation will add to the picture.";
 
 /**
  * Child Development Copilot — the connective layer the single-skill apps don't
@@ -36,12 +31,24 @@ export default function DevelopmentCopilot() {
   const { childProfile, milestones, behaviorLogs, setActiveTab } = useArbor();
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
-  const { bands, recommendation, confidence, trend, snapshots } = useCopilot(milestones, data, childProfile.id);
-  // Longitudinal trajectory (the moat made visible) — trend lines from the weekly history.
-  const trajectory = useMemo(() => developmentTrajectory(snapshots), [snapshots]);
+  const { bands, recommendation, snapshots } = useCopilot(milestones, data, childProfile.id);
   const screeningsCol = useChildCollection<SavedScreening>(childProfile.id, "screenings");
   const first = childProfile.name.split(" ")[0];
   const [copied, setCopied] = useState(false);
+
+  // Wave-3 (2026-06-27): the domain picture is now a flat COUNT of parent-
+  // noticed milestones per domain (a parent-owned log), never the 0–100 band
+  // signal. Mirrors DevScoreCard's parent-observed / count / mechanism register.
+  const domainCounts = useMemo(() => {
+    const map = new Map<string, { reached: number; total: number }>();
+    for (const m of milestones) {
+      const e = map.get(m.domain) ?? { reached: 0, total: 0 };
+      e.total += 1;
+      if (m.checked) e.reached += 1;
+      map.set(m.domain, e);
+    }
+    return map;
+  }, [milestones]);
 
   const advCount = data.adventures.items.length;
   const advCorrect = data.adventures.items.filter((a) => a.correct).length;
@@ -77,14 +84,19 @@ export default function DevelopmentCopilot() {
       `Generated ${data.today} · Parent-collected observational data · NOT a diagnostic assessment`,
       ``,
       `Domain picture (milestone checklist + home practice signal):`,
-      ...bands.map((b) => `  • ${DOMAIN_META[b.domain].label}: ${BAND_COPY[b.band].label}; confidence ${confidence[b.domain]}; trend ${trend[b.domain] >= 0 ? "+" : ""}${Math.round(trend[b.domain])} (basis: ${b.basis.join(", ")})`),
+      ...bands.map((b) => {
+        const c = domainCounts.get(b.domain);
+        const reached = c?.reached ?? 0;
+        const total = c?.total ?? 0;
+        return `  • ${DOMAIN_META[b.domain].label}: ${reached} of ${total} milestones noticed by parent (home-practice signal; basis: ${b.basis.join(", ")})`;
+      }),
       ``,
       `Home practice, last 7 days: ${data.week.sessions} interactions on ${data.week.activeDays} day(s) across ${data.week.domainsTouched.length} domain(s). Streak: ${data.streak} day(s).`,
     ];
     if (data.stats.length > 0) {
       lines.push(``, `Articulation practice (parent/auto-scored at home):`);
       for (const s of data.stats.slice(0, 8)) {
-        lines.push(`  • /${s.sound}/ — ${s.attempts} attempts, recent accuracy ${s.recentAccuracy}%, trend ${s.trend}, highest level: ${s.levelReached}`);
+        lines.push(`  • /${s.sound}/ — ${s.attempts} attempts, recent home-practice accuracy ${s.recentAccuracy}% (parent/auto-scored, not a normed measure), highest level: ${s.levelReached}`);
       }
     }
     if (advCount > 0) {
@@ -96,7 +108,7 @@ export default function DevelopmentCopilot() {
     }
     lines.push(``, `Current focus suggested to the family: ${recommendation.headline}.`);
     return lines.join("\n");
-  }, [bands, confidence, trend, childProfile, data.today, data.week, data.streak, data.stats, advCount, advCorrect, watch, recommendation]);
+  }, [bands, domainCounts, childProfile, data.today, data.week, data.streak, data.stats, advCount, advCorrect, watch, recommendation]);
 
   const copySummary = async () => {
     try {
@@ -123,58 +135,36 @@ export default function DevelopmentCopilot() {
         onEscalate={() => setActiveTab("find-pro")}
       />
 
-      {/* Feature 9: domain bands vs chronological age context */}
-      <SectionCard title={`Domain picture — chronological age ${childProfile.age}`} icon={<Gauge className="w-5 h-5" />} tone="mint">
-        <div className="flex flex-col lg:flex-row gap-6 items-center mb-5">
-          <div className="flex-shrink-0">
-            <DomainRadar bands={bands} />
-            <p className="text-[10px] text-center mt-1" style={{ color: "var(--arbor-muted)" }}>Each axis is one domain&apos;s current signal (0–100).</p>
-          </div>
-          <div className="flex-1 w-full space-y-4">
+      {/* Feature 9: domain picture — flat parent-noticed milestone COUNT per
+          domain (Wave-3, 2026-06-27). Replaces the prior 0–100 radar polygon,
+          the animated fill bars, the band-label chips, the threshold ticks, and
+          the per-domain trend glyphs — all verdicts on a child. Now mirrors
+          DevScoreCard: count / mechanism / route-to-pro. Emits nothing about
+          the child as a verdict. */}
+      <SectionCard title={`Domain picture — age ${childProfile.age}`} icon={<Gauge className="w-5 h-5" />} tone="mint">
+        <ul className="space-y-2.5">
           {bands.map((b) => {
             const meta = DOMAIN_META[b.domain];
-            const copy = BAND_COPY[b.band];
-            const delta = trend[b.domain] ?? 0;
-            const TrendIcon = delta > 1 ? TrendingUp : delta < -1 ? TrendingDown : Minus;
+            const c = domainCounts.get(b.domain) ?? { reached: 0, total: 0 };
             return (
-              <div key={b.domain} className="flex items-center gap-4">
-                <span className="w-40 flex-shrink-0 text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{meta.label}</span>
-                <div className="flex-1 h-5 rounded-full relative overflow-hidden" style={{ background: "rgba(41,51,63,0.06)" }}>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${b.signal}%` }}
-                    transition={{ duration: 0.7, ease: "easeOut" }}
-                    className="h-full rounded-full"
-                    style={{ background: meta.color, opacity: 0.85 }}
-                  />
-                  {/* band threshold ticks */}
-                  {[35, 55, 75].map((t) => (
-                    <span key={t} className="absolute top-0 bottom-0 w-px" style={{ left: `${t}%`, background: "rgba(255,255,255,0.9)" }} />
-                  ))}
-                </div>
-                <span className="w-28 flex-shrink-0 text-end">
-                  <Chip tone={b.band === "strong" ? "mint" : b.band === "on-track" ? "sky" : b.band === "developing" ? "yellow" : "pink"}>{copy.label}</Chip>
+              <li key={b.domain} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <span className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{meta.label}</span>
+                <span className="text-[11.5px]" style={{ color: "var(--arbor-muted)" }}>
+                  {c.reached} of {c.total} milestones noticed · {MECHANISM_NOTE}
                 </span>
-                <span className="w-28 flex-shrink-0 inline-flex items-center justify-end gap-1 text-[11px] font-bold" style={{ color: delta > 1 ? "var(--arbor-green-ink)" : delta < -1 ? "var(--arbor-pink-ink)" : "var(--arbor-muted)" }}>
-                  <TrendIcon className="w-3.5 h-3.5" /> {delta > 0 ? "+" : ""}{Math.round(delta)}
-                </span>
-                <span className="w-24 flex-shrink-0 text-end">
-                  <Chip tone={confidence[b.domain] === "high" ? "mint" : confidence[b.domain] === "medium" ? "sky" : "yellow"}>{confidence[b.domain]}</Chip>
-                </span>
-              </div>
+              </li>
             );
           })}
-          </div>
+        </ul>
+        {/* sr-only count summary for assistive tech — count-only, no verdict. */}
+        <div className="sr-only">
+          {bands.map((b) => {
+            const c = domainCounts.get(b.domain) ?? { reached: 0, total: 0 };
+            return <span key={b.domain}>{DOMAIN_META[b.domain].label}: {c.reached} of {c.total} milestones noticed by you. </span>;
+          })}
         </div>
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-          {bands.map((b) => (
-            <p key={b.domain}>
-              <b style={{ color: DOMAIN_META[b.domain].color }}>{DOMAIN_META[b.domain].label}:</b> {BAND_COPY[b.band].note}. Confidence: {confidence[b.domain]}; trend: {trend[b.domain] > 0 ? "+" : ""}{Math.round(trend[b.domain] ?? 0)}. <i>Based on: {b.basis.join(" + ")}.</i>
-            </p>
-          ))}
-        </div>
-        <p className="text-[11px] mt-4 rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-          Why bands and not ages? &ldquo;Language age 3.7&rdquo; sounds precise but home observation can&apos;t honestly support it. Bands show where attention helps — a professional assessment is what turns this into clinical conclusions.
+        <p className="text-[11px] mt-4 rounded-xl p-3 leading-relaxed" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+          We show counts of what you&apos;ve noticed — not a score or a &ldquo;developmental age.&rdquo; Home observation can&apos;t honestly support either. A professional assessment is what turns this into conclusions.
         </p>
       </SectionCard>
 
@@ -231,42 +221,11 @@ export default function DevelopmentCopilot() {
       </SectionCard>
 
       <SectionCard title="Weekly history" icon={<History className="w-5 h-5" />} tone="sky">
-        {/* Longitudinal trend lines — only meaningful once there's more than one week */}
-        {trajectory.weeks >= 2 && (
-          <div className={`${cardCls} p-4 mb-4`}>
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
-                <TrendingUp className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> Trend over {trajectory.weeks} weeks
-              </p>
-              <span className="flex items-center gap-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                Overall
-                <Sparkline data={trajectory.overall} max={100} width={84} height={22} color="var(--arbor-green-ink)" />
-                <span style={{ color: trajectory.overallDelta >= 0 ? "var(--arbor-green-ink)" : "var(--arbor-pink-ink)" }}>
-                  {trajectory.overallDelta >= 0 ? "+" : ""}{trajectory.overallDelta}
-                </span>
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-              {trajectory.domains.map((d) => {
-                const meta = DOMAIN_META[d.domain];
-                return (
-                  <div key={d.domain} className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold" style={{ color: meta.color }}>{meta.label}</span>
-                    <span className="flex items-center gap-2">
-                      <Sparkline data={d.series} max={100} width={72} height={20} color={meta.color} />
-                      <span className="text-[10px] font-bold w-8 text-end" style={{ color: d.delta >= 0 ? "var(--arbor-green-ink)" : "var(--arbor-pink-ink)" }}>
-                        {d.delta >= 0 ? "+" : ""}{d.delta}
-                      </span>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="text-[10px] mt-3" style={{ color: "var(--arbor-muted)" }}>
-              {first}&apos;s own signal over time — a conversation starter, never a diagnosis.
-            </p>
-          </div>
-        )}
+        {/* Wave-3 (2026-06-27): the longitudinal trend/sparkline block was removed —
+            it rendered a per-child "signal over time" trajectory, a verdict surface
+            the clinical firewall does not allow. The weekly snapshots below remain
+            for now; converting their 0–100 signal bars to the count register is a
+            larger data-shape change tracked in PRODUCT-BACKLOG (AP-CF-snapshots). */}
         {snapshots.length === 0 ? (
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
             The first weekly band snapshot will appear here once the dashboard has loaded practice data.
@@ -303,14 +262,9 @@ export default function DevelopmentCopilot() {
 
       {/* Practice pulse */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={`${cardCls} p-5 flex items-center gap-4`}>
-          <ProgressRing value={data.score} size={64} stroke={6} color="var(--arbor-clay)">
-            <span className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.score}</span>
-          </ProgressRing>
-          <div>
-            <p className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>Development Score</p>
-            <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>Practice consistency this week — not ability.</p>
-          </div>
+        <div className={`${cardCls} p-5`}>
+          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.score}</p>
+          <p className="text-[10.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>Practice consistency this week — engagement, not ability or development.</p>
         </div>
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.week.sessions}</p>
