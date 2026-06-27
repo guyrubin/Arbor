@@ -11,6 +11,7 @@ import Topbar from "./Topbar";
 import KidModeButton from "./KidModeButton";
 import AskArborButton from "./AskArborButton";
 import AiRail from "./AiRail";
+import ChildContextHeader from "./ChildContextHeader";
 import MobileNav from "./MobileNav";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { ArborMark } from "../ui/ArborMark";
@@ -180,7 +181,7 @@ export default function Shell() {
     {/* select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility) */}
     <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
       <div
-        className={`grid grid-cols-1 md:grid-cols-[260px_1fr] ${
+        className={`page-shell grid grid-cols-1 md:grid-cols-[260px_1fr] ${
           showAiRail
             ? "xl:grid-cols-[290px_1fr_340px] 2xl:grid-cols-[290px_1fr_365px]"
             : "xl:grid-cols-[290px_1fr]"
@@ -203,13 +204,13 @@ export default function Shell() {
           </div>
 
           {/* Top workspace accessories header row */}
-          <div className="flex justify-between items-center mb-5 gap-4">
-            <span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
+          <ChildContextHeader
+            identity={<span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
               <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
               <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {t("top.age")} {childProfile.age}</strong>
               {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></span>}</span>
-            </span>
-            <div className="flex items-center gap-2">
+            </span>}
+            actions={<div className="flex items-center gap-2">
               <AskArborButton compact />
               {/* Whole-app language switch (UI + AI). Hebrew flips the app to RTL. */}
               {/* VIS-2: language switcher — min 44px hit area via min-h/padding; visual stays compact */}
@@ -267,7 +268,7 @@ export default function Shell() {
                 </button>
               )}
             </div>
-          </div>
+          }/>
 
           {/* Secondary sub-navigation for multi-capability sections */}
           {section.items.length > 1 && (

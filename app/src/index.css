@@ -146,6 +146,15 @@
   --shadow-green: 0 0 24px rgba(52,211,153,0.25);
   /* Focus ring — brand-blue halo */
   --ring:         0 0 0 3px rgba(88, 166, 255, 0.18);
+
+  /* ── UC-1 layout foundation — page width + composition ───────────────────
+     Centers the app on wide canvases (fixes the "full-width card desert" on
+     large desktops) and gives tabs opt-in readable bounds. Hue-agnostic:
+     purely structural, no color. Backward-compatible (adds tokens, renames none). */
+  --page-max: 1480px;       /* app-grid cap on ultrawide */
+  --content-max: 1040px;    /* opt-in readable single-column bound for tabs */
+  --rail-width: 360px;      /* right InsightRail track target */
+  --shell-pad-x: clamp(16px, 3vw, 48px); /* outer gutter inside the capped grid */
 }
 
 /* ─── Semantic surfaces (token-based; preferred for new/refactored UI) ─────── */
@@ -155,6 +164,10 @@
 .arbor-accent-text   { color: var(--arbor-clay); }
 .arbor-ink-text      { color: var(--arbor-ink); }
 .arbor-muted-tone    { color: var(--arbor-muted); }
+
+/* ── UC-1 layout utilities (structural only — no color, no opinion) ───────── */
+.page-shell  { width: 100%; max-width: var(--page-max); margin-inline: auto; }
+.content-col { width: 100%; max-width: var(--content-max); margin-inline: auto; }
 
 /* ─── Base ───────────────────────────────────────────────────────────────── */
 html, body, #root { min-height: 100%; }
