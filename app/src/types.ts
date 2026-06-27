@@ -464,7 +464,15 @@ export interface PracticeEvent {
 export interface BandSnapshot {
   id: string;            // ISO week key, e.g. "2026-W24"
   date: string;          // YYYY-MM-DD when taken
-  bands: { domain: PracticeDomain; signal: number; band: string }[];
+  /**
+   * `signal`/`band` are the internal 0–100 strength + verdict label. They are
+   * persisted for the route-to-pro escalation basis but, per the Wave-3 clinical
+   * firewall, are NEVER surfaced against a child. The count register below
+   * (`reached`/`total` parent-noticed milestones) is what the UI renders over time.
+   * `reached`/`total` are optional for back-compat with snapshots written before
+   * the count register existed.
+   */
+  bands: { domain: PracticeDomain; signal: number; band: string; reached?: number; total?: number }[];
 }
 
 /** A monthly development objective on the Journey. */

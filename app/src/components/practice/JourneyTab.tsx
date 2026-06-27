@@ -9,6 +9,7 @@ import { DOMAIN_META, fillTemplate } from "../../practice/content";
 import { computeAchievements } from "../../practice/achievements";
 import { composeWeek, suggestObjectives } from "../../practice/journey";
 import { useCopilot, usePracticeData } from "../../practice/usePracticeData";
+import { domainMilestoneCounts } from "../../practice/signals";
 import type { JourneyObjective, MissionRecord } from "../../types";
 import { track } from "../../lib/analytics";
 
@@ -85,6 +86,9 @@ export default function JourneyTab() {
   };
 
   const snapshots = [...copilot.snapshots].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 6);
+  // AP-CF-snapshots: count register for the historical progression — parent-noticed
+  // milestones per domain, never the 0–100 `signal`. Fallback for legacy snapshots.
+  const domainCounts = useMemo(() => domainMilestoneCounts(milestones), [milestones]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
@@ -205,7 +209,7 @@ export default function JourneyTab() {
       <SectionCard title="Historical progression" icon={<History className="w-5 h-5" />} tone="sky">
         {snapshots.length === 0 ? (
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-            Arbor will keep one weekly snapshot of the domain bands once practice data loads. The record is historical context, not a diagnostic chart.
+            Arbor will keep one weekly snapshot once practice data loads — a count of how many milestones you&apos;ve noticed in each domain. It&apos;s historical context and a conversation starter, never a diagnostic chart.
           </p>
         ) : (
           <div className="space-y-3">
@@ -218,12 +222,16 @@ export default function JourneyTab() {
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                   {snap.bands.map((b) => {
                     const meta = DOMAIN_META[b.domain];
+                    // Count register: persisted parent-noticed counts, with a
+                    // current-tally fallback for snapshots written before counts existed.
+                    const fallback = domainCounts.get(b.domain);
+                    const reached = b.reached ?? fallback?.reached ?? 0;
+                    const total = b.total ?? fallback?.total ?? 0;
                     return (
                       <div key={b.domain}>
                         <p className="text-[10px] font-bold mb-1" style={{ color: meta.color }}>{meta.label}</p>
-                        <div className="h-2 rounded-full" style={{ background: "rgba(41,51,63,0.08)" }}>
-                          <div className="h-2 rounded-full" style={{ width: `${b.signal}%`, background: meta.color }} />
-                        </div>
+                        <p className="text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{reached} of {total}</p>
+                        <p className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>noticed</p>
                       </div>
                     );
                   })}
