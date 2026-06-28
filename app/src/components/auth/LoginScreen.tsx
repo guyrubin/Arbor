@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Mail, Lock, RefreshCw } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { api } from "../../lib/api";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 
 function ArborMark() {
@@ -15,8 +16,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showEmail, setShowEmail] = useState(false);
-  const [busy, setBusy] = useState<"google" | "email" | null>(null);
+  const [busy, setBusy] = useState<"google" | "email" | "access" | null>(null);
   const [resetMsg, setResetMsg] = useState("");
+  const [accessMsg, setAccessMsg] = useState("");
 
   const handleReset = async () => {
     if (!email.trim()) {
@@ -50,6 +52,30 @@ export default function LoginScreen() {
       await signInWithEmail(email.trim(), password);
     } catch {
       /* surfaced via context error */
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleAccessRequest = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setShowEmail(true);
+      setAccessMsg(t("auth.accessNeedEmail"));
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+      setShowEmail(true);
+      setAccessMsg(t("auth.accessInvalidEmail"));
+      return;
+    }
+    setBusy("access");
+    setAccessMsg("");
+    try {
+      await api.requestAccess({ email: trimmedEmail, source: "login-access", market: "il" });
+      setAccessMsg(t("auth.accessReceived"));
+    } catch {
+      setAccessMsg(t("auth.accessFail"));
     } finally {
       setBusy(null);
     }
@@ -153,16 +179,22 @@ export default function LoginScreen() {
           </form>
         )}
 
-        <p className="text-center text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-          {t("auth.inviteOnly")}{" "}
-          <a
-            href="mailto:hello@arbor.app?subject=Arbor%20access%20request"
-            className="font-bold hover:underline"
-            style={{ color: "var(--arbor-green-ink)" }}
-          >
-            {t("auth.requestAccess")}
-          </a>
-        </p>
+        <div className="text-center text-[11px] space-y-1" style={{ color: "var(--arbor-muted)" }}>
+          <p>
+            {t("auth.inviteOnly")}{" "}
+            <button
+              type="button"
+              onClick={handleAccessRequest}
+              disabled={busy !== null}
+              className="font-bold hover:underline disabled:opacity-60"
+              style={{ color: "var(--arbor-green-ink)" }}
+            >
+              {busy === "access" ? t("auth.requestingAccess") : t("auth.requestAccess")}
+            </button>
+          </p>
+          <p className="text-[10px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("auth.accessPrivacy")}</p>
+          {accessMsg && <p aria-live="polite" style={{ color: "var(--arbor-green-ink)" }}>{accessMsg}</p>}
+        </div>
       </motion.div>
     </div>
   );

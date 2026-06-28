@@ -48,6 +48,8 @@ export interface ChildProfile {
   preterm?: {
     gestationalWeeks: number;
   };
+  /** Parent-entered child marker for optional copy/personalization; never diagnostic. */
+  gender?: 'girl' | 'boy' | 'other' | 'unspecified';
   /**
    * B0 — months-precise age spine.
    *
