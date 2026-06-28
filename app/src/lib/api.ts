@@ -228,6 +228,10 @@ export const api = {
   // mk-p0-2: redeem a captured referral code on the referred parent's activation.
   referralActivate: (code: string) =>
     post<ReferralActivateResult>("/api/referral/activate", { code }),
+  // Pre-auth access request from LoginScreen. This hits the server-side waitlist
+  // pipeline rather than relying on the parent having a local mail client.
+  requestAccess: (payload: { email: string; source?: string; market?: string }) =>
+    post<{ ok: true; duplicate: boolean }>("/api/waitlist", { ...payload, consent: true }),
 };
 
 /** mk-p0-2: GET /api/referral/code response. `code`/`link` are null when anon. */
