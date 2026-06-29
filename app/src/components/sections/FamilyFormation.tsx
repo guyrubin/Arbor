@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { ScrollText, ListChecks, BookOpen, ShieldCheck, CalendarHeart, Plus, X, ChevronDown, type LucideIcon } from "lucide-react";
+import Icon from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, IconBadge, type PastelKey } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
 import type { FrameId } from "../../lib/masterclasses";
 
-const RITUAL_ICON: Record<string, LucideIcon> = {
-  "truth-practice-weekly": ShieldCheck,
-  "responsibility-ladder": ListChecks,
-  "family-story-canon": BookOpen,
-  "weekly-reflection-sunday-reset": CalendarHeart,
+// Each ritual → its Material Symbols Rounded glyph (UC-2 visual-match).
+const RITUAL_ICON: Record<string, string> = {
+  "truth-practice-weekly": "verified_user",
+  "responsibility-ladder": "checklist",
+  "family-story-canon": "menu_book",
+  "weekly-reflection-sunday-reset": "event",
 };
 const FRAME_TONE: Record<FrameId, PastelKey> = {
   aim: "sky", twoAxes: "mint", story: "lav", shadow: "coral", marriage: "pink", shepherd: "yellow",
@@ -43,7 +44,7 @@ export default function FamilyFormation() {
       <PageHeader title={t("sec.family.title")} subtitle={t("sec.family.sub")} />
 
       {/* Family Charter — the real, editable tool (names the family's aim) */}
-      <SectionCard title={he ? "מגילת המשפחה" : "Family Charter"} icon={<ScrollText className="w-5 h-5" />} tone="mint">
+      <SectionCard title={he ? "מגילת המשפחה" : "Family Charter"} icon={<Icon name="history_edu" size={20} />} tone="mint">
         <p className="text-sm mb-4" dir="auto" style={{ color: "var(--arbor-muted)" }}>
           {he
             ? "תנו שם לערכים שאתם מגדלים סביבם את המשפחה. ארבור משתמש בהם כדי לשמור שההכוונה והסיפורים נשארים מחוברים למה שחשוב לכם."
@@ -53,32 +54,32 @@ export default function FamilyFormation() {
           {values.map((v) => (
             <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" dir="auto" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
               {v}
-              <button onClick={() => remove(v)} aria-label={`Remove ${v}`}><X className="w-3.5 h-3.5" /></button>
+              <button onClick={() => remove(v)} aria-label={`Remove ${v}`}><Icon name="close" size={14} /></button>
             </span>
           ))}
           {values.length === 0 && <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{he ? "הוסיפו ערך כדי להתחיל." : "Add a value to begin your charter."}</span>}
         </div>
         <div className="flex gap-2 max-w-md">
           <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={he ? "הוסיפו ערך (למשל סבלנות)…" : "Add a value (e.g. Patience)…"} dir="auto" className="flex-1 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-          <button onClick={add} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 text-white" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /> {he ? "הוסיפו" : "Add"}</button>
+          <button onClick={add} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 text-white" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
         </div>
       </SectionCard>
 
       {/* Family rituals — real, repeatable practices */}
       <div>
-        <h2 className="text-[15px] font-extrabold mb-3" style={{ color: "var(--arbor-ink)" }}>{he ? "טקסי משפחה" : "Family rituals"}</h2>
+        <h2 className="text-[15px] font-extrabold mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "טקסי משפחה" : "Family rituals"}</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           {FAMILY_RITUALS.map((r) => {
-            const Icon = RITUAL_ICON[r.id] ?? ScrollText;
+            const glyph = RITUAL_ICON[r.id] ?? "history_edu";
             const isOpen = openId === r.id;
             return (
               <div key={r.id} className={`${cardCls} p-5`}>
                 <button onClick={() => setOpenId(isOpen ? null : r.id)} className="w-full flex items-start gap-4 text-start">
-                  <IconBadge tone={FRAME_TONE[r.frame]}><Icon className="w-5 h-5" /></IconBadge>
+                  <IconBadge tone={FRAME_TONE[r.frame]}><Icon name={glyph} size={20} /></IconBadge>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-[15px] font-extrabold flex items-center justify-between gap-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                    <h3 className="text-[15px] font-extrabold flex items-center justify-between gap-2" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                       <span>{he ? r.titleHe : r.title}</span>
-                      <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
+                      <Icon name="expand_more" size={16} className={`flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
                     </h3>
                     <p className="text-xs mt-1 leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{he ? r.purposeHe : r.purpose}</p>
                     <span className="inline-block text-[10.5px] font-bold mt-2 px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{he ? r.cadenceHe : r.cadence}</span>

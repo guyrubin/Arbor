@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Users, Eye, RefreshCw, Search, ShieldCheck, Clock, Share2, Inbox, UserPlus } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
@@ -62,10 +63,10 @@ export default function CareTeam() {
         action={
           <div className="flex items-center gap-2">
             <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
-              <UserPlus className="w-4 h-4" /> Add someone
+              <Icon name="person_add" size={18} /> Add someone
             </button>
             <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
-              <Search className="w-4 h-4" /> Find a professional
+              <Icon name="search" size={18} /> Find a professional
             </button>
           </div>
         }
@@ -86,25 +87,25 @@ export default function CareTeam() {
       ) : mine.length === 0 && inbound.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>
           <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-            <Users className="w-6 h-6" />
+            <Icon name="diversity_3" size={26} fill={1} />
           </div>
-          <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>No one on the team yet</h3>
+          <h3 className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>No one on the team yet</h3>
           <p className="text-sm mt-1.5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }}>
             Add a co-parent, teacher or therapist and choose exactly what they can see about {first}. Every grant is time-boxed and revocable.
           </p>
           <div className="flex items-center justify-center gap-2 mt-4">
             <button onClick={() => setActiveTab("sharing")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
-              <UserPlus className="w-4 h-4" /> Add someone
+              <Icon name="person_add" size={18} /> Add someone
             </button>
             <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
-              <Search className="w-4 h-4" /> Find a professional
+              <Icon name="search" size={18} /> Find a professional
             </button>
           </div>
         </div>
       ) : (
         <>
           {mine.length > 0 && (
-            <SectionCard title={`Coordinating around ${first}`} icon={<Users className="w-5 h-5" />} tone="mint">
+            <SectionCard title={`Coordinating around ${first}`} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
               <div className="grid lg:grid-cols-2 gap-4">
                 {mine.map((g) => {
                   const meta = ROLE_META[g.role] || ROLE_META.viewer;
@@ -113,18 +114,18 @@ export default function CareTeam() {
                       <div className="flex items-center gap-3">
                         <InitialsTile name={g.recipientEmail} tone={meta.tone} />
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-extrabold truncate" style={{ color: "var(--arbor-ink)" }}>{g.recipientEmail}</h3>
+                          <h3 className="text-sm font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{g.recipientEmail}</h3>
                           <p className="text-xs" style={{ color: PASTEL[meta.tone].ink }}>{meta.label}</p>
                         </div>
                         <Chip tone={meta.tone}>{meta.label}</Chip>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mt-4">
-                        <Chip tone="sky" icon={<ShieldCheck className="w-3.5 h-3.5" />}>{g.scopes.join(", ") || "No scopes"}</Chip>
-                        <Chip tone="yellow" icon={<Clock className="w-3.5 h-3.5" />}>{expiryLabel(g)}</Chip>
+                        <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{g.scopes.join(", ") || "No scopes"}</Chip>
+                        <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(g)}</Chip>
                       </div>
                       <div className="flex flex-wrap gap-2 mt-4">
-                        <Action icon={<Eye className="w-3.5 h-3.5" />} label="Manage access" onClick={() => setActiveTab("sharing")} />
-                        <Action icon={<Share2 className="w-3.5 h-3.5" />} label="Update what's shared" onClick={() => setActiveTab("sharing")} />
+                        <Action icon={<Icon name="visibility" size={15} />} label="Manage access" onClick={() => setActiveTab("sharing")} />
+                        <Action icon={<Icon name="share" size={15} />} label="Update what's shared" onClick={() => setActiveTab("sharing")} />
                       </div>
                     </div>
                   );
@@ -134,7 +135,7 @@ export default function CareTeam() {
           )}
 
           {inbound.length > 0 && (
-            <SectionCard title="Children shared with you" icon={<Inbox className="w-5 h-5" />} tone="lav">
+            <SectionCard title="Children shared with you" icon={<Icon name="inbox" size={20} />} tone="lav">
               <div className="grid lg:grid-cols-2 gap-4">
                 {inbound.map((g) => {
                   const meta = ROLE_META[g.role] || ROLE_META.viewer;
@@ -142,12 +143,12 @@ export default function CareTeam() {
                     <div key={g.id} className={`${cardCls} p-5`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="text-sm font-extrabold truncate" style={{ color: "var(--arbor-ink)" }}>{g.childName || "A child"}</h3>
+                          <h3 className="text-sm font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{g.childName || "A child"}</h3>
                           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>from {g.ownerEmail || "a parent"} · you are {meta.label}</p>
                         </div>
-                        <Chip tone="yellow" icon={<Clock className="w-3.5 h-3.5" />}>{expiryLabel(g)}</Chip>
+                        <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(g)}</Chip>
                       </div>
-                      <div className="mt-3"><Chip tone="sky" icon={<ShieldCheck className="w-3.5 h-3.5" />}>{g.scopes.join(", ")}</Chip></div>
+                      <div className="mt-3"><Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{g.scopes.join(", ")}</Chip></div>
                     </div>
                   );
                 })}

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Heebo:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Heebo:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Baloo+2:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
 /* ─── Design Tokens — Arbor 2035 Sapphire ────────────────────────────────────
@@ -116,8 +116,12 @@
   --arbor-pack-truth:           #4f6ae6;
   --arbor-metric-truth:         #4f6ae6;
 
-  --font-display: 'Fraunces', 'Nunito', Georgia, 'Times New Roman', serif;
-  --font-sans:    'Nunito', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* UC-2 visual-match: Baloo 2 rounded display + Plus Jakarta Sans UI +
+     Instrument Serif editorial accents (mock font system). Fraunces/Nunito kept
+     as graceful fallbacks; Hebrew swaps to Heebo/Frank Ruhl Libre below. */
+  --font-display:   'Baloo 2', 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans:      'Plus Jakarta Sans', 'Nunito', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-editorial: 'Instrument Serif', Georgia, serif;
 
   /* Type scale (rem, product-fixed; root = 15px → px equivalents shown as comment)
      Step  Token      rem        ~px    Replaces ad-hoc values
@@ -214,7 +218,7 @@ body {
   background-attachment: fixed;
 }
 
-/* ─── Typography — Baloo 2 display, Nunito body ──────────────────────────── */
+/* ─── Typography — Baloo 2 rounded display, Plus Jakarta Sans body ───────── */
 .arbor-app h1,
 .arbor-app h2,
 .arbor-app h3 {
@@ -687,11 +691,14 @@ body {
    Serial chain position: APPENDED after [data-theme="blue"] (end of file).
    ════════════════════════════════════════════════════════════════════════════ */
 .arbor-parent {
-  /* ── Surfaces: flat white, zero glass ──────────────────────────────────── */
-  --arbor-paper:            #eef3fb;                          /* app canvas */
+  /* ── Surfaces: warm sage canvas + flat-white cards, zero glass ─────────────
+     UC-2 visual-match: the app canvas warms from the cool #eef3fb to the mock's
+     sage (#e7ece8) via a gentle vertical wash; panels/cards stay light (white +
+     #eef3fb sapphire-tinted wells) so cards read as calm islands on the sage. */
+  --arbor-paper:            linear-gradient(180deg, #eaeee9 0%, #e7ece8 100%);  /* app canvas — warm sage */
   --arbor-paper-elevated:   #ffffff;                          /* cards + panels */
-  --arbor-paper-deep:       #fbfdfc;                          /* recessed wells inside cards */
-  --arbor-paper-sunk:       #eef3fb;                          /* deeper track backgrounds */
+  --arbor-paper-deep:       #eef3fb;                          /* recessed wells inside cards (sapphire-tinted) */
+  --arbor-paper-sunk:       #e7eeea;                          /* deeper track backgrounds (sage well) */
   --arbor-paper-tinted:     #eef3fb;                          /* tinted accent well */
 
   /* ── Shadows: neutral soft, no blue tint ───────────────────────────────── */

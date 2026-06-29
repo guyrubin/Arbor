@@ -15,10 +15,11 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, Info, ArrowRight } from "lucide-react";
+import { Info, ArrowRight } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useNotifications, writeReadSet } from "../../hooks/useNotifications";
+import { Icon } from "../ui/Icon";
 import type { AppNotification } from "../../hooks/useNotifications";
 
 // ── Design tokens (no raw hex) ──────────────────────────────────────────────
@@ -267,14 +268,14 @@ export default function TopbarBell() {
         onFocus={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 2px var(--arbor-clay)"; }}
         onBlur={(e)  => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
       >
-        <Bell
+        <Icon
+          name="notifications"
+          size={20}
+          fill={open ? 1 : 0}
           style={{
-            width: "17px",
-            height: "17px",
             color: open ? T.green : T.muted,
             transition: "color 0.15s",
           }}
-          aria-hidden="true"
         />
 
         {/* Unread count badge — AC-6: a bare number, neutral framing only */}

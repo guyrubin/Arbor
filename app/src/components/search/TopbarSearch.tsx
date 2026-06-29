@@ -18,10 +18,11 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { searchIndex, type SearchEntry } from "../../lib/searchIndex";
+import { Icon } from "../ui/Icon";
 
 const CATEGORY_TOKEN: Record<SearchEntry["category"], string> = {
   "Activity":        "var(--arbor-green-ink)",
@@ -128,15 +129,13 @@ export default function TopbarSearch() {
           boxSizing: "border-box",
         }}
       >
-        <Search
+        <Icon
+          name="search"
+          size={18}
           style={{
-            width: "14px",
-            height: "14px",
-            flexShrink: 0,
             color: open ? "var(--arbor-clay)" : "var(--arbor-faint)",
             transition: "color 0.15s",
           }}
-          aria-hidden="true"
         />
         <input
           ref={inputRef}

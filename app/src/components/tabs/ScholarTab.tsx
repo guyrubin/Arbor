@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "motion/react";
-import { ExternalLink, Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { scholarsInfo } from "../../initialData";
@@ -44,7 +45,7 @@ export default function ScholarTab() {
                 </div>
 
                 <div className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                  <span className="text-[10px] font-bold block italic" style={{ color: p.ink }}>{t("scholar.focus", { theory: sch.theory })}</span>
+                  <span className="text-[12px] block" style={{ color: p.ink, fontFamily: "var(--font-editorial)", fontStyle: "italic" }}>{t("scholar.focus", { theory: sch.theory })}</span>
                   <p className="leading-relaxed text-[11px]" style={{ color: "var(--arbor-muted)" }}>{sch.value}</p>
                   {sch.useWhen && (
                     <p className="leading-relaxed text-[11px] rounded-lg p-2.5" style={{ background: p.soft, color: p.ink }}>
@@ -66,7 +67,7 @@ export default function ScholarTab() {
                   className="w-full min-h-[44px] py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                 >
-                  <Sparkles className="w-3.5 h-3.5" aria-hidden /> {t("scholar.apply", { name: first })}
+                  <Icon name="auto_awesome" size={15} fill={1} /> {t("scholar.apply", { name: first })}
                 </button>
                 <button
                   onClick={() => {
@@ -78,7 +79,7 @@ export default function ScholarTab() {
                   className="w-full min-h-[44px] py-2 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 >
-                  {t("scholar.example")} <ExternalLink className="w-3.5 h-3.5" aria-hidden />
+                  {t("scholar.example")} <Icon name="open_in_new" size={15} />
                 </button>
               </div>
             </div>

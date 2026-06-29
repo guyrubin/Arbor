@@ -1,9 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "motion/react";
-import {
-  Mic, Camera, Keyboard, Sparkles, PencilLine,
-  type LucideIcon,
-} from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildTimeline, type SignalKind, type TimelineSignal } from "../../lib/signalTimeline";
@@ -30,11 +27,28 @@ import type { PlayDomain } from "../../playbank/content";
  * score, verdict tag, intensity-trend coloring, or weakest-domain pointer.
  */
 
-const MODE_TILES: { icon: LucideIcon; key: "voice" | "photo" | "text" }[] = [
-  { icon: Mic, key: "voice" },
-  { icon: Camera, key: "photo" },
-  { icon: Keyboard, key: "text" },
+/** Compose modality tiles — Material Symbols glyphs matched to the Claude Design
+ *  mock's behLogModes (mic / photo_camera / keyboard). */
+const MODE_TILES: { ms: string; key: "voice" | "photo" | "text" }[] = [
+  { ms: "mic", key: "voice" },
+  { ms: "photo_camera", key: "photo" },
+  { ms: "keyboard", key: "text" },
 ];
+
+/** Per-domain Material Symbols glyph for the descriptive entry chip. Mirrors the
+ *  kit's lucide DOMAIN_VISUALS one-for-one (Heart→favorite, Languages→translate,
+ *  Brain→psychology, Users→group, Sprout→eco, Hand→sign_language, Globe→public)
+ *  so the journal chip re-skins without forking the domain taxonomy. Descriptive
+ *  only — no verdict, score, or trend is ever attached. */
+const DOMAIN_MS: Record<DevelopmentalDomainId, string> = {
+  attachment_regulation: "favorite",
+  language_communication: "translate",
+  cognition_executive_function: "psychology",
+  social_development: "group",
+  independence_adaptive_skills: "eco",
+  sensory_motor_patterns: "sign_language",
+  ecosystem_stressors: "public",
+};
 
 /** PlayDomain (5) → the canonical 7-domain taxonomy for the per-entry chip. */
 const PLAY_TO_DOMAIN: Record<PlayDomain, DevelopmentalDomainId> = {
@@ -104,19 +118,20 @@ function JournalRow({
   domainLabel: string;
 }) {
   const dv = domainVisual(domain);
-  const DomainIcon = dv.icon;
-  // Auto entries lead with the Sparkles "Arbor noticed" glyph; manual entries
-  // lead with a hand-written PencilLine. The icon tone follows the entry's domain.
-  const LeadIcon = auto ? Sparkles : PencilLine;
   const tone = dv.tone;
   const p = PASTEL[tone];
+  // Auto entries lead with the "auto_awesome" (Arbor noticed) glyph; manual
+  // entries lead with the hand-written "edit_note" glyph — matching the mock's
+  // j.icon provenance. Filled to read as a confident, rounded tile mark; tone
+  // follows the entry's domain.
+  const leadMs = auto ? "auto_awesome" : "edit_note";
   return (
     <div className={`${cardCls} p-4 flex gap-3.5`}>
       <span
         className="inline-flex items-center justify-center rounded-[13px] flex-shrink-0"
         style={{ width: 42, height: 42, background: p.soft, color: p.ink }}
       >
-        <LeadIcon className="w-5 h-5" />
+        <Icon name={leadMs} size={22} fill={1} />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
@@ -128,7 +143,7 @@ function JournalRow({
               {autoLabel}
             </span>
           )}
-          <Chip tone={tone} icon={<DomainIcon className="w-3 h-3" />}>{domainLabel}</Chip>
+          <Chip tone={tone} icon={<Icon name={DOMAIN_MS[domain]} size={13} fill={1} />}>{domainLabel}</Chip>
           <span className="text-[11px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
         </div>
         <p className="text-[13.5px] font-semibold mt-2 leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
@@ -196,13 +211,13 @@ export default function JournalTab() {
           new capture path. */}
       <div className={`${cardCls} p-[18px]`}>
         <div className="flex items-center gap-2.5 mb-3.5">
-          <IconBadge tone="lav" size={32}><PencilLine className="w-4 h-4" /></IconBadge>
-          <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+          <IconBadge tone="lav" size={32}><Icon name="edit_note" size={18} fill={1} /></IconBadge>
+          <h2 className="text-[16px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("journal.compose.title")}
           </h2>
         </div>
         <div className="grid grid-cols-3 gap-2.5">
-          {MODE_TILES.map(({ icon: Icon, key }) => (
+          {MODE_TILES.map(({ ms, key }) => (
             <button
               key={key}
               type="button"
@@ -210,7 +225,7 @@ export default function JournalTab() {
               className="flex items-center justify-center gap-2 rounded-[13px] py-3.5 text-[12.5px] font-extrabold transition hover:-translate-y-0.5"
               style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
             >
-              <Icon className="w-5 h-5" style={{ color: "var(--arbor-green-ink)" }} />
+              <Icon name={ms} size={21} fill={1} style={{ color: "var(--arbor-green-ink)" }} />
               {t(`journal.mode.${key}`)}
             </button>
           ))}
@@ -220,8 +235,11 @@ export default function JournalTab() {
       {/* Flat single-column feed */}
       {signals.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>
-          <IconBadge tone="lav" size={48}><PencilLine className="w-6 h-6" /></IconBadge>
-          <p className="text-[var(--t-sm)] mt-3 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }}>
+          <div className="inline-flex"><IconBadge tone="lav" size={48}><Icon name="edit_note" size={26} fill={1} /></IconBadge></div>
+          <p
+            className="text-[17px] mt-4 max-w-md mx-auto leading-snug"
+            style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }}
+          >
             {t("journal.empty")}
           </p>
         </div>

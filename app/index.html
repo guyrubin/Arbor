@@ -39,6 +39,34 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Arbor" />
     <title>Arbor — Parent Development Support</title>
+
+    <!-- UC-2 visual-match: Material Symbols Rounded icon font (parent surfaces).
+         Variable axes (opsz,wght,FILL,GRAD) match the .design-source mock; the
+         .msr base class below sets the default variation; per-instance overrides
+         come from the shared <Icon> component (src/components/ui/Icon.tsx). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    />
+    <style>
+      .msr {
+        font-family: 'Material Symbols Rounded';
+        font-weight: normal;
+        font-style: normal;
+        line-height: 1;
+        display: inline-block;
+        white-space: nowrap;
+        word-wrap: normal;
+        direction: ltr;
+        vertical-align: middle;
+        font-variation-settings: 'opsz' 24, 'wght' 500, 'GRAD' 0, 'FILL' 0;
+        -webkit-font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

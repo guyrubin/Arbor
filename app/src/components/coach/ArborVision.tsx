@@ -1,8 +1,5 @@
 import React, { useRef, useState } from "react";
-import {
-  Camera, FileText, Eye, Sparkles, RefreshCw, ListChecks, Ban, BookMarked,
-  MessageSquare, Send, Copy, Check, AlertTriangle, Upload,
-} from "lucide-react";
+import Icon from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { api, type VisionResult, type VisionObserve, type VisionDocument } from "../../lib/api";
 import { fileToThumbnail } from "../../lib/image";
@@ -95,7 +92,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
           className="w-full rounded-2xl py-10 flex flex-col items-center gap-2 transition"
           style={{ border: "2px dashed var(--arbor-rule-strong)", color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}
         >
-          {isDoc ? <Upload className="w-7 h-7" /> : <Camera className="w-7 h-7" />}
+          {isDoc ? <Icon name="upload" size={28} /> : <Icon name="photo_camera" size={28} />}
           <span className="text-sm font-bold">{isDoc ? "Upload or photograph a document" : "Take or choose a photo"}</span>
           <span className="text-[10px]">Resized on your device before sending</span>
         </button>
@@ -122,7 +119,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
               className="w-full text-white font-extrabold text-sm py-3 rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60"
               style={{ background: "var(--arbor-gradient-primary)" }}
             >
-              {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Arbor is looking…</> : <><Sparkles className="w-4 h-4" /> {isDoc ? "Read this document" : "Ask Arbor to look"}</>}
+              {loading ? <><Icon name="sync" size={16} className="animate-spin" /> Arbor is looking…</> : <><Icon name="auto_awesome" size={16} /> {isDoc ? "Read this document" : "Ask Arbor to look"}</>}
             </button>
           )}
         </div>
@@ -130,7 +127,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
 
       {error && (
         <div className="mt-3 p-3 rounded-xl text-[12px] flex items-start gap-2" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
-          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" /> {error}
+          <Icon name="warning" size={16} className="flex-shrink-0 mt-0.5" /> {error}
         </div>
       )}
 
@@ -142,21 +139,21 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
 
       {result && !result.offTopic && result.mode === "observe" && (
         <div className="mt-3 space-y-2.5">
-          <List icon={<Eye className="w-3 h-3" />} title="What Arbor sees" tint="var(--arbor-lav-ink)" items={(result as VisionObserve).observations} />
-          <List icon={<Sparkles className="w-3 h-3" />} title="What it may mean" tint="var(--arbor-yellow-ink)" items={(result as VisionObserve).possibleMeanings} />
-          <List icon={<ListChecks className="w-3 h-3" />} title="Try today" tint="var(--arbor-green-ink)" items={(result as VisionObserve).tryToday} />
-          <List icon={<Ban className="w-3 h-3" />} title="Avoid" tint="var(--arbor-peach-ink)" items={(result as VisionObserve).avoid} />
+          <List icon={<Icon name="visibility" size={12} />} title="What Arbor sees" tint="var(--arbor-lav-ink)" items={(result as VisionObserve).observations} />
+          <List icon={<Icon name="auto_awesome" size={12} />} title="What it may mean" tint="var(--arbor-yellow-ink)" items={(result as VisionObserve).possibleMeanings} />
+          <List icon={<Icon name="checklist" size={12} />} title="Try today" tint="var(--arbor-green-ink)" items={(result as VisionObserve).tryToday} />
+          <List icon={<Icon name="block" size={12} />} title="Avoid" tint="var(--arbor-peach-ink)" items={(result as VisionObserve).avoid} />
           {(result as VisionObserve).nonDiagnosticNote && (
             <p className="text-[11px] italic px-1" style={{ color: "var(--arbor-muted)" }}>{(result as VisionObserve).nonDiagnosticNote}</p>
           )}
           <div className="flex flex-wrap gap-2 pt-1">
             <button onClick={() => { onSeedCoach(`About the photo I showed you${note ? ` (${note})` : ""}: ${(result as VisionObserve).observations?.[0] || ""}. What's one thing to try this week?`); close(); }}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              <MessageSquare className="w-3.5 h-3.5" /> Discuss in Arbor
+              <Icon name="chat" size={14} /> Discuss in Arbor
             </button>
             <button onClick={() => { onGoBehaviors((result as VisionObserve).observations?.join(". ") || note); close(); }}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              <BookMarked className="w-3.5 h-3.5" /> Log this moment
+              <Icon name="bookmark" size={14} /> Log this moment
             </button>
           </div>
         </div>
@@ -165,24 +162,24 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
       {result && !result.offTopic && result.mode === "document" && (
         <div className="mt-3 space-y-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}><FileText className="w-3 h-3" /> {(result as VisionDocument).documentType || "Document"}</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}><Icon name="description" size={12} /> {(result as VisionDocument).documentType || "Document"}</span>
           </div>
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{(result as VisionDocument).summary}</p>
-          <List icon={<ListChecks className="w-3 h-3" />} title="Key points" tint="var(--arbor-green-ink)" items={(result as VisionDocument).keyPoints} />
-          <List icon={<BookMarked className="w-3 h-3" />} title="Worth remembering" tint="var(--arbor-yellow-ink)" items={(result as VisionDocument).suggestedMemory} />
-          <List icon={<MessageSquare className="w-3 h-3" />} title="Ask the professional" tint="var(--arbor-lav-ink)" items={(result as VisionDocument).questionsForProfessional} />
+          <List icon={<Icon name="checklist" size={12} />} title="Key points" tint="var(--arbor-green-ink)" items={(result as VisionDocument).keyPoints} />
+          <List icon={<Icon name="bookmark" size={12} />} title="Worth remembering" tint="var(--arbor-yellow-ink)" items={(result as VisionDocument).suggestedMemory} />
+          <List icon={<Icon name="chat" size={12} />} title="Ask the professional" tint="var(--arbor-lav-ink)" items={(result as VisionDocument).questionsForProfessional} />
           <div className="flex flex-wrap gap-2 pt-1">
             <button onClick={() => { const n = (result as VisionDocument).handoffNote || (result as VisionDocument).summary; copy(n); onGoHandoff(n); close(); }}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              <Send className="w-3.5 h-3.5" /> Use in a handoff
+              <Icon name="send" size={14} /> Use in a handoff
             </button>
             <button onClick={() => { onSeedCoach(`Here's what a ${(result as VisionDocument).documentType || "document"} from my child's school/clinic says: ${(result as VisionDocument).summary}. What should I take from this and do next?`); close(); }}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              <MessageSquare className="w-3.5 h-3.5" /> Discuss in Arbor
+              <Icon name="chat" size={14} /> Discuss in Arbor
             </button>
             <button onClick={() => copy((result as VisionDocument).summary)}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              {copied ? <><Check className="w-3.5 h-3.5" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+              {copied ? <><Icon name="check" size={14} /> Copied</> : <><Icon name="content_copy" size={14} /> Copy</>}
             </button>
           </div>
         </div>

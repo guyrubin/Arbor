@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { Gauge, Sparkles } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -90,7 +90,7 @@ export default function DevScoreCard() {
           <HeroAvatar size={48} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-              <Gauge className="w-3.5 h-3.5" /> {t("devscore.eyebrow")}
+              <Icon name="speed" size={15} /> {t("devscore.eyebrow")}
             </span>
             <p className="text-sm mt-2 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
               {t("devscore.empty", { name: firstName })}
@@ -116,18 +116,18 @@ export default function DevScoreCard() {
           {/* The child as the hero of their own development record — modest parent register. */}
           <HeroAvatar size={44} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
           <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-            <Gauge className="w-3.5 h-3.5" /> {t("devscore.eyebrow")}
+            <Icon name="speed" size={15} /> {t("devscore.eyebrow")}
           </span>
         </div>
 
         {/* Headline: flat count of parent-noticed milestones (NOT a percentage/share). */}
         <div className="flex items-center gap-5 mt-3">
           <div className="flex-none w-[72px] h-[72px] rounded-full flex flex-col items-center justify-center" style={{ background: GREEN_SOFT }}>
-            <span className="text-[20px] font-extrabold leading-none" style={{ color: GREEN }}>{reached}</span>
+            <span className="text-[24px] font-extrabold leading-none" style={{ fontFamily: "var(--font-display)", color: GREEN }}>{reached}</span>
             <span className="text-[10px] font-bold mt-1" style={{ color: GREEN }}>{t("devscore.noticed.short")}</span>
           </div>
           <div className="min-w-0">
-            <div className="text-[15px] font-extrabold" style={{ color: INK }}>
+            <div className="text-[16px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
               {t("devscore.noticed", { reached, total })}
             </div>
             {/* Developmental mechanism (parent observation + one-thing-to-try). */}
@@ -157,7 +157,7 @@ export default function DevScoreCard() {
             className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2 transition active:scale-[0.98]"
             style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: `1px solid rgba(52,178,119,0.30)` }}
           >
-            <Sparkles className="w-3.5 h-3.5" /> {t("devscore.coach")}
+            <Icon name="auto_awesome" size={15} /> {t("devscore.coach")}
           </button>
         </div>
 

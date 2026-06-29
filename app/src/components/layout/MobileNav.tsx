@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { MoreHorizontal, X } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
+import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
 
 /**
@@ -45,7 +45,6 @@ export default function MobileNav() {
       >
         {primary.map((sec) => {
           const on = sec.id === activeSectionId;
-          const Icon = sec.icon;
           return (
             <button
               key={sec.id}
@@ -53,7 +52,7 @@ export default function MobileNav() {
               className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9.5px] font-bold transition"
               style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
             >
-              <Icon className="w-[18px] h-[18px]" />
+              <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} />
               {t("nav.short." + sec.id)}
             </button>
           );
@@ -66,7 +65,7 @@ export default function MobileNav() {
           className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9.5px] font-bold transition"
           style={{ color: overflowActive ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
         >
-          <MoreHorizontal className="w-[18px] h-[18px]" />
+          <Icon name="more_horiz" size={20} fill={overflowActive ? 1 : 0} />
           {t("nav.short.more")}
         </button>
       </nav>
@@ -88,13 +87,12 @@ export default function MobileNav() {
             <div className="flex items-center justify-between mb-3">
               <span className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("nav.popover.more")}</span>
               <button aria-label={t("aria.close")} onClick={() => setMoreOpen(false)} className="p-2 rounded-full" style={{ color: "var(--arbor-muted)" }}>
-                <X className="w-4 h-4" />
+                <Icon name="close" size={18} />
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {overflow.map((sec) => {
                 const on = sec.id === activeSectionId;
-                const Icon = sec.icon;
                 return (
                   <button
                     key={sec.id}
@@ -104,7 +102,7 @@ export default function MobileNav() {
                       ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
                       : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                   >
-                    <Icon className="w-[18px] h-[18px]" /> {t("nav.cat." + sec.id)}
+                    <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} /> {t("nav.cat." + sec.id)}
                   </button>
                 );
               })}

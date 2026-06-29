@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { ChevronDown, Check, Plus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
@@ -90,14 +91,12 @@ export default function TopbarKidSwitcher() {
         >
           {activeChild.name}
         </span>
-        <ChevronDown
-          aria-hidden="true"
+        <Icon
+          name="expand_more"
+          size={16}
           style={{
-            width: "12px",
-            height: "12px",
             transition: "transform 150ms ease",
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            flexShrink: 0,
           }}
         />
       </button>

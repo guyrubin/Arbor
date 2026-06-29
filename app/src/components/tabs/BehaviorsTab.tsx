@@ -1,12 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  Plus, Sparkles, RefreshCw, Brain, ExternalLink, Download, ChevronDown, Check,
-  RotateCcw, Mic, Square, Trash2, Pencil, Activity, ClipboardCheck, CheckCircle2,
-  Clock, Image as ImageIcon, Type, ArrowRight,
-  AlertTriangle, Volume2, MonitorSmartphone, Users as UsersIcon, Utensils, Moon,
-  type LucideIcon,
-} from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -26,19 +20,21 @@ import { BehaviorContext, BehaviorLog } from "../../types";
 const CONTEXTS: BehaviorContext[] = ["Home", "School", "Transit", "Public"];
 const DAY = 86_400_000;
 
-/** behaviorType enum → {lucide icon, layout-kit tone} for the event-row icon
- *  tile + 5-dot meter. Layout-kit tones only (mint|coral|lav|yellow|pink|sky);
- *  unknown types fall back to coral so a row never renders blank. */
-const TYPE_VISUAL: Record<string, { icon: LucideIcon; tone: PastelKey }> = {
-  "Transition Refusal": { icon: AlertTriangle, tone: "coral" },
-  "Sensory Overload": { icon: Volume2, tone: "pink" },
-  "Screentime Dispute": { icon: MonitorSmartphone, tone: "sky" },
-  "Sibling Conflict": { icon: UsersIcon, tone: "lav" },
-  "Food Refusal": { icon: Utensils, tone: "yellow" },
-  "Sleep Meltdown": { icon: Moon, tone: "lav" },
+/** behaviorType enum → {Material Symbols glyph, layout-kit tone} for the
+ *  event-row icon tile + 5-dot meter. Glyph names match the .design-source mock
+ *  (bolt / volume_up / sentiment_very_dissatisfied / block …). Layout-kit tones
+ *  only (mint|coral|lav|yellow|pink|sky); unknown types fall back to coral so a
+ *  row never renders blank. */
+const TYPE_VISUAL: Record<string, { icon: string; tone: PastelKey }> = {
+  "Transition Refusal": { icon: "bolt", tone: "coral" },
+  "Sensory Overload": { icon: "volume_up", tone: "pink" },
+  "Screentime Dispute": { icon: "devices", tone: "sky" },
+  "Sibling Conflict": { icon: "group", tone: "lav" },
+  "Food Refusal": { icon: "restaurant", tone: "yellow" },
+  "Sleep Meltdown": { icon: "bedtime", tone: "lav" },
 };
-function typeVisual(type: string): { icon: LucideIcon; tone: PastelKey } {
-  return TYPE_VISUAL[type] ?? { icon: Activity, tone: "coral" };
+function typeVisual(type: string): { icon: string; tone: PastelKey } {
+  return TYPE_VISUAL[type] ?? { icon: "monitoring", tone: "coral" };
 }
 
 /** behaviorType → the developmental-domain i18n key for the expanded chip.
@@ -305,10 +301,11 @@ export default function BehaviorsTab() {
   };
 
   // QuickLog tiles — shortcuts INTO the existing form (no new capability).
-  const quickModes: { key: string; icon: LucideIcon; label: string; onClick: () => void; tone: PastelKey }[] = [
-    { key: "voice", icon: Mic, label: t("beh.mode.voice"), onClick: () => { focusForm(); toggleVoice(); }, tone: "mint" },
-    { key: "photo", icon: ImageIcon, label: t("beh.mode.photo"), onClick: openPhoto, tone: "sky" },
-    { key: "text", icon: Type, label: t("beh.mode.text"), onClick: focusForm, tone: "coral" },
+  // Glyphs match the mock log-modes (mic / photo_camera / keyboard).
+  const quickModes: { key: string; icon: string; label: string; onClick: () => void; tone: PastelKey }[] = [
+    { key: "voice", icon: "mic", label: t("beh.mode.voice"), onClick: () => { focusForm(); toggleVoice(); }, tone: "mint" },
+    { key: "photo", icon: "photo_camera", label: t("beh.mode.photo"), onClick: openPhoto, tone: "sky" },
+    { key: "text", icon: "keyboard", label: t("beh.mode.text"), onClick: focusForm, tone: "coral" },
   ];
 
   return (
@@ -324,11 +321,11 @@ export default function BehaviorsTab() {
         {/* Coral hero — mapped to the existing CTA gradient (peach/clay), no new hue */}
         <div className="relative rounded-[22px] overflow-hidden p-6 flex flex-col justify-between text-white" style={{ background: T.gradientCta, minHeight: 188 }}>
           {/* faint oversized background icon */}
-          <Activity className="absolute pointer-events-none" style={{ width: 180, height: 180, top: -28, insetInlineEnd: -28, opacity: 0.14 }} aria-hidden="true" />
+          <Icon name="monitoring" size={180} className="absolute pointer-events-none" style={{ top: -28, insetInlineEnd: -28, opacity: 0.14 }} />
           <div className="relative">
             <span className="text-[10px] font-extrabold uppercase tracking-[0.18em]" style={{ color: "rgba(255,255,255,0.85)" }}>{t("beh.hero.tag")}</span>
-            <h2 className="text-2xl font-extrabold mt-1" style={{ fontFamily: "var(--font-display)" }}>{t("beh.hero.title", { name: behFirst })}</h2>
-            <p className="text-sm mt-1.5 max-w-md" style={{ color: "rgba(255,255,255,0.9)" }}>{t("beh.hero.sub")}</p>
+            <h2 className="text-[1.75rem] leading-tight mt-1" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>{t("beh.hero.title", { name: behFirst })}</h2>
+            <p className="text-base mt-1.5 max-w-md" style={{ fontFamily: "var(--font-editorial)", color: "rgba(255,255,255,0.92)" }}>{t("beh.hero.sub")}</p>
           </div>
           {/* docked 3-stat strip — flat counts only */}
           <div className="relative grid grid-cols-3 gap-2 mt-5">
@@ -360,7 +357,7 @@ export default function BehaviorsTab() {
                   className={`flex flex-col items-center justify-center gap-2 rounded-2xl py-5 transition active:scale-[0.98] ${active ? "animate-pulse" : ""}`}
                   style={{ background: p.soft, color: p.ink, border: "1px solid var(--arbor-rule)" }}
                 >
-                  <m.icon className="w-6 h-6" />
+                  <Icon name={m.icon} size={24} />
                   <span className="text-xs font-extrabold">{m.label}</span>
                 </button>
               );
@@ -376,15 +373,15 @@ export default function BehaviorsTab() {
           <div className={`${cardCls} p-5 space-y-4`}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("beh.activeLogs")}</h3>
+                <h3 className="text-lg" style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--arbor-ink)" }}>{t("beh.activeLogs")}</h3>
                 <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("beh.entriesOf", { n: filtered.length, total: behaviorLogs.length })}</p>
               </div>
               <div className="flex items-center gap-2 ms-auto">
                 <button onClick={exportPdf} className="font-bold text-xs px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
-                  <Download className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
+                  <Icon name="download" size={15} style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
                 </button>
                 <button onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} className="text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60" style={{ background: T.gradientCta }}>
-                  {isAnalyzingBehavior ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("beh.synthesizing")}</>) : (<><Brain className="w-3.5 h-3.5" /> {t("beh.analyze")}</>)}
+                  {isAnalyzingBehavior ? (<><Icon name="progress_activity" size={15} className="animate-spin" /> {t("beh.synthesizing")}</>) : (<><Icon name="psychology" size={15} /> {t("beh.analyze")}</>)}
                 </button>
               </div>
             </div>
@@ -405,14 +402,14 @@ export default function BehaviorsTab() {
                 <option value="open">{t("beh.open")}</option>
                 <option value="resolved">{t("beh.resolved")}</option>
               </select>
-              <button onClick={resetFilters} className="flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><RotateCcw className="w-3 h-3" /> {t("beh.reset")}</button>
+              <button onClick={resetFilters} className="flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Icon name="restart_alt" size={13} /> {t("beh.reset")}</button>
             </div>
 
             {behaviorAnalysis && (
               // m3-hex-sweep: #eef6f1 insight-wash start has no m2 token yet; left
               // as-is per spec (would become --gradient-insight if m2 adds it).
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
-                <h4 className="text-sm font-extrabold flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.patternShows")}</h4>
+                <h4 className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={15} fill={1} /> {t("beh.patternShows")}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("beh.responseEval")}</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.effectivenessRating}</p></div>
                   <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("beh.devRec")}</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.actionPlanSuggestion}</p></div>
@@ -443,7 +440,7 @@ export default function BehaviorsTab() {
                     className="inline-flex items-center gap-2 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition active:scale-[0.98]"
                     style={{ background: T.gradientCta }}
                   >
-                    <Sparkles className="w-3.5 h-3.5" /> {t("beh.analyzeCoachCta")}
+                    <Icon name="auto_awesome" size={15} fill={1} /> {t("beh.analyzeCoachCta")}
                   </button>
                 </div>
               </motion.div>
@@ -467,7 +464,7 @@ export default function BehaviorsTab() {
                       style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
                     >
                       <span>{t("beh.weekOf")} {weekLabel(weekKey)} · {logs.length} {logs.length === 1 ? t("beh.entry") : t("beh.entries")}</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
+                      <Icon name="expand_more" size={18} className={`transition-transform ${collapsed ? "-rotate-90" : ""}`} />
                     </button>
 
                     <AnimatePresence initial={false}>
@@ -475,7 +472,6 @@ export default function BehaviorsTab() {
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-2.5 overflow-hidden">
                           {logs.map((log) => {
                             const tv = typeVisual(log.behaviorType);
-                            const Icon = tv.icon;
                             const tonePal = PASTEL[tv.tone];
                             const isOpen = openEventId === log.id;
                             return (
@@ -488,7 +484,7 @@ export default function BehaviorsTab() {
                                   className="w-full flex items-center gap-3 p-3 text-start"
                                 >
                                   <span className="inline-flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 42, height: 42, background: tonePal.soft, color: tonePal.ink }}>
-                                    <Icon className="w-5 h-5" />
+                                    <Icon name={tv.icon} size={22} />
                                   </span>
                                   <div className="min-w-0 flex-1">
                                     <div className="font-bold text-sm truncate" style={{ color: "var(--arbor-ink)" }}>{log.behaviorType}</div>
@@ -497,11 +493,11 @@ export default function BehaviorsTab() {
                                     </div>
                                   </div>
                                   <IntensityMeter intensity={log.intensity} tone={tv.tone} />
-                                  {/* Status icon — resolved (mint check) / open (amber clock) */}
+                                  {/* Status icon — resolved (mint check_circle) / open (amber pending) */}
                                   {log.resolved
-                                    ? <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} aria-label={t("beh.resolved")} />
-                                    : <Clock className="w-5 h-5 flex-shrink-0" style={{ color: "var(--arbor-yellow-ink)" }} aria-label={t("beh.open")} />}
-                                  <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
+                                    ? <Icon name="check_circle" size={20} fill={1} style={{ color: "var(--arbor-green-ink)" }} aria-label={t("beh.resolved")} />
+                                    : <Icon name="pending" size={20} style={{ color: "var(--arbor-yellow-ink)" }} aria-label={t("beh.open")} />}
+                                  <Icon name="expand_more" size={18} className={`flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
                                 </button>
 
                                 {/* Expanded detail */}
@@ -533,7 +529,7 @@ export default function BehaviorsTab() {
                                             className="px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition text-[10px]"
                                             style={log.resolved ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                                           >
-                                            <Check className="w-3 h-3" /> {log.resolved ? t("beh.resolved") : t("beh.markResolved")}
+                                            <Icon name="check" size={13} /> {log.resolved ? t("beh.resolved") : t("beh.markResolved")}
                                           </button>
                                           <button
                                             onClick={() => { startEditLog(log.id); focusForm(); }}
@@ -541,7 +537,7 @@ export default function BehaviorsTab() {
                                             className="px-2 py-1 rounded-lg transition flex items-center gap-1 text-[10px]"
                                             style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                                           >
-                                            <Pencil className="w-3 h-3" /> {t("beh.editMoment")}
+                                            <Icon name="edit" size={13} /> {t("beh.editMoment")}
                                           </button>
                                           <button
                                             onClick={() => { if (window.confirm(t("beh.deleteConfirm"))) deleteLog(log.id); }}
@@ -549,7 +545,7 @@ export default function BehaviorsTab() {
                                             className="px-2 py-1 rounded-lg transition"
                                             style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                                           >
-                                            <Trash2 className="w-3 h-3" />
+                                            <Icon name="delete" size={13} />
                                           </button>
                                         </div>
 
@@ -558,7 +554,7 @@ export default function BehaviorsTab() {
                                           <div className="flex justify-between items-center">
                                             <span className="text-[9px] font-semibold font-mono" style={{ color: "var(--arbor-muted)" }}>{t("beh.parentScriptLayer")}</span>
                                             <button type="button" onClick={() => handleGetInlineCoRegulationScript(log)} disabled={isGeneratingInlineScript[log.id]} className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-                                              {isGeneratingInlineScript[log.id] ? (<><RefreshCw className="w-3 h-3 animate-spin" /> {t("beh.analyzing")}</>) : inlineCoRegulationScripts[log.id] ? (<><Sparkles className="w-3 h-3" /> {t("beh.regenerateScript")}</>) : (<><Sparkles className="w-3 h-3" /> {t("beh.generateScript")}</>)}
+                                              {isGeneratingInlineScript[log.id] ? (<><Icon name="progress_activity" size={13} className="animate-spin" /> {t("beh.analyzing")}</>) : inlineCoRegulationScripts[log.id] ? (<><Icon name="auto_awesome" size={13} fill={1} /> {t("beh.regenerateScript")}</>) : (<><Icon name="auto_awesome" size={13} fill={1} /> {t("beh.generateScript")}</>)}
                                             </button>
                                           </div>
 
@@ -568,7 +564,7 @@ export default function BehaviorsTab() {
                                                 <MarkdownBlock text={inlineCoRegulationScripts[log.id]} className="space-y-1.5" />
                                                 <div className="flex justify-end pt-1 gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                                                   <button type="button" onClick={() => { setChatInput(`Regarding the log event where the child did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${inlineCoRegulationScripts[log.id]}\n\nHow do I adapt this if they continue to resist or act physically aggressive?`); setSelectedLens("Bowlby's Attachment Model"); setActiveTab("coach"); }} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
-                                                    {t("beh.discussCoach")} <ExternalLink className="w-2.5 h-2.5" />
+                                                    {t("beh.discussCoach")} <Icon name="open_in_new" size={11} />
                                                   </button>
                                                 </div>
                                               </motion.div>
@@ -596,8 +592,8 @@ export default function BehaviorsTab() {
               capability. */}
           <form ref={formRef} onSubmit={submitLog} className={`${cardCls} p-5 space-y-4 text-sm`}>
             <div className="flex items-center justify-between pb-2" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
-              <h3 className="text-base font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
-                {editingLogId ? <Pencil className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> : <Plus className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} />}
+              <h3 className="text-lg flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--arbor-ink)" }}>
+                {editingLogId ? <Icon name="edit" size={18} style={{ color: "var(--arbor-green-ink)" }} /> : <Icon name="add" size={18} style={{ color: "var(--arbor-green-ink)" }} />}
                 {editingLogId ? t("beh.editMoment") : t("beh.logMoment")}
               </h3>
               <button
@@ -610,14 +606,14 @@ export default function BehaviorsTab() {
                   ? { background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)", border: "1px solid rgba(189,79,116,0.40)" }
                   : { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
               >
-                {parsing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : listening ? <Square className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                {parsing ? <Icon name="progress_activity" size={15} className="animate-spin" /> : listening ? <Icon name="stop" size={15} fill={1} /> : <Icon name="mic" size={15} />}
                 {parsing ? t("beh.parsing") : listening ? t("beh.stop") : t("beh.speak")}
               </button>
             </div>
 
             <div className="p-3 rounded-xl space-y-1.5" style={{ background: "var(--arbor-peach-soft)" }}>
               <span className="text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1" style={{ color: "var(--arbor-peach-ink)" }}>
-                <Sparkles className="w-3 h-3" />
+                <Icon name="auto_awesome" size={13} fill={1} />
                 {t("beh.quickFill")}
               </span>
               <div className="flex flex-wrap gap-1">
@@ -692,7 +688,7 @@ export default function BehaviorsTab() {
                 </div>
               ) : (
                 <label className="flex items-center gap-2 text-[11px] rounded-xl px-3 py-2 cursor-pointer transition" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px dashed var(--arbor-rule-strong)" }}>
-                  <Plus className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.addPhoto")}
+                  <Icon name="add_a_photo" size={15} style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.addPhoto")}
                   <input
                     ref={photoInputRef}
                     type="file"
@@ -752,13 +748,13 @@ export default function BehaviorsTab() {
           >
             <div className="flex items-start gap-3">
               <span className="inline-flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 40, height: 40, background: "rgba(255,255,255,0.16)" }}>
-                <RefreshCw className="w-5 h-5" />
+                <Icon name="account_tree" size={22} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="font-extrabold text-sm">{t("beh.devMap.title")}</div>
                 <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.85)" }}>{t("beh.devMap.body")}</p>
                 <span className="inline-flex items-center gap-1.5 mt-3 text-xs font-extrabold">
-                  {t("beh.devMap.cta")} <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
+                  {t("beh.devMap.cta")} <Icon name="arrow_forward" size={15} className="rtl:rotate-180" />
                 </span>
               </div>
             </div>

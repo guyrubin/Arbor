@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Calendar, Plus, HelpCircle, FileText, CheckCircle2, X, Trash2 } from "lucide-react";
+import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -39,7 +39,7 @@ export default function Appointments() {
         subtitle={t("sec.appt.sub")}
         action={
           <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
-            <Plus className="w-4 h-4" /> Add appointment
+            <Icon name="add" size={18} /> Add appointment
           </button>
         }
       />
@@ -47,8 +47,8 @@ export default function Appointments() {
       {adding && (
         <div className={`${cardCls} p-5`}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>New appointment</h3>
-            <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><X className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} /></button>
+            <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>New appointment</h3>
+            <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           <div className="grid sm:grid-cols-3 gap-2">
             <input value={form.who} onChange={(e) => setForm({ ...form, who: e.target.value })} placeholder="Professional name" className="rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
@@ -59,18 +59,18 @@ export default function Appointments() {
         </div>
       )}
 
-      <SectionCard title="Upcoming" icon={<Calendar className="w-5 h-5" />} tone="sky">
+      <SectionCard title="Upcoming" icon={<Icon name="calendar_month" size={20} />} tone="sky">
         {appts.length ? (
           <div className="space-y-3">
             {appts.map((a) => (
               <div key={a.id} className={`${cardCls} p-4 flex items-center justify-between gap-4`}>
                 <div>
-                  <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{a.who}</h3>
+                  <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{a.who}</h3>
                   <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{a.role} · {a.mode}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Chip tone="sky">{a.when}</Chip>
-                  <button onClick={() => void apptsCol.remove(a.id)} aria-label={t("aria.removeAppointment")}><Trash2 className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
+                  <button onClick={() => void apptsCol.remove(a.id)} aria-label={t("aria.removeAppointment")}><Icon name="delete" size={16} style={{ color: "var(--arbor-muted)" }} /></button>
                 </div>
               </div>
             ))}
@@ -78,22 +78,22 @@ export default function Appointments() {
         ) : <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>No appointments scheduled.</p>}
       </SectionCard>
 
-      <SectionCard title="Prepare your questions" icon={<HelpCircle className="w-5 h-5" />} tone="mint">
+      <SectionCard title="Prepare your questions" icon={<Icon name="help" size={20} />} tone="mint">
         <ul className="space-y-2 mb-3">
           {questions.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>Add a question you want to ask at the next session.</li>}
           {questions.map((qq) => (
             <li key={qq.id} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
-              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} /> <span className="flex-1">{qq.text}</span>
-              <button onClick={() => void questionsCol.remove(qq.id)} aria-label={t("aria.removeQuestion")}><X className="w-3.5 h-3.5" style={{ color: "var(--arbor-muted)" }} /></button>
+              <Icon name="check_circle" size={16} fill={1} className="mt-0.5" style={{ color: "var(--arbor-green-ink)" }} /> <span className="flex-1">{qq.text}</span>
+              <button onClick={() => void questionsCol.remove(qq.id)} aria-label={t("aria.removeQuestion")}><Icon name="close" size={16} style={{ color: "var(--arbor-muted)" }} /></button>
             </li>
           ))}
         </ul>
         <div className="flex gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQ()} placeholder="Add a question to ask…" className="flex-1 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-          <button onClick={addQ} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}><Plus className="w-4 h-4" /> Add</button>
+          <button onClick={addQ} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}><Icon name="add" size={18} /> Add</button>
         </div>
         <button onClick={() => setActiveTab("reports")} className="mt-3 inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-2.5" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-          <FileText className="w-4 h-4" /> Share an Arbor summary
+          <Icon name="description" size={18} /> Share an Arbor summary
         </button>
       </SectionCard>
 

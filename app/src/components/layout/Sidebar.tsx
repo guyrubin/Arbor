@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Settings, LogOut, ChevronUp, Globe } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import ProfileSwitcher from "../profile/ProfileSwitcher";
 import { ArborMark } from "../ui/ArborMark";
 import { Avatar } from "../ui/Avatar";
+import { Icon } from "../ui/Icon";
 import SettingsModal from "./SettingsModal";
 import { SECTIONS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/navigation";
 
@@ -58,7 +58,6 @@ export default function Sidebar() {
       <nav className="flex flex-col gap-1 flex-1">
         {SECTIONS.map((sec) => {
           const active = sec.id === activeSectionId;
-          const Icon = sec.icon;
           const text = badgeText(sec.badge, { milestonesPercent, plansCount: actionPlans.length, unreadCoachCount });
           const showDot = typeof sec.badge === "object" && sec.badge.kind === "dot";
           return (
@@ -78,7 +77,7 @@ export default function Sidebar() {
               onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
             >
               <span className="flex items-center gap-3 min-w-0">
-                <Icon style={{ width: 22, height: 22, flexShrink: 0 }} /> <span className="truncate">{t("nav.cat." + sec.id)}</span>
+                <Icon name={sec.msIcon} size={22} fill={active ? 1 : 0} /> <span className="truncate">{t("nav.cat." + sec.id)}</span>
               </span>
               {showDot ? (
                 <span aria-hidden="true" className="rounded-full flex-shrink-0" style={{ width: 8, height: 8, background: "var(--arbor-clay)" }} />
@@ -104,7 +103,7 @@ export default function Sidebar() {
             {/* Language toggle */}
             <div className="flex items-center justify-between gap-2 px-2.5 py-2">
               <span className="inline-flex items-center gap-2 text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>
-                <Globe className="w-3.5 h-3.5" /> {t("nav.popover.language")}
+                <Icon name="language" size={16} /> {t("nav.popover.language")}
               </span>
               <div className="flex items-center rounded-xl p-0.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 {(["en", "he"] as const).map((l) => (
@@ -130,7 +129,7 @@ export default function Sidebar() {
               onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              <Settings className="w-[18px] h-[18px]" /> {t("nav.popover.settings")}
+              <Icon name="settings" size={18} /> {t("nav.popover.settings")}
             </button>
             {firebaseEnabled && user && (
               <button
@@ -141,7 +140,7 @@ export default function Sidebar() {
                 onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                <LogOut className="w-[18px] h-[18px]" /> {t("nav.signout")}
+                <Icon name="logout" size={18} /> {t("nav.signout")}
               </button>
             )}
           </div>
@@ -160,7 +159,7 @@ export default function Sidebar() {
             <p className="text-[12px] font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user?.displayName || t("nav.parent")}</p>
             {user?.email && <p className="text-[10px] truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
           </div>
-          <ChevronUp className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)", transform: popoverOpen ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 150ms ease" }} />
+          <Icon name="expand_less" size={18} style={{ color: "var(--arbor-muted)", transform: popoverOpen ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 150ms ease" }} />
         </button>
       </div>
 

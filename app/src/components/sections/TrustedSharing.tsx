@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
-import { Share2, ShieldCheck, Clock, X, Download, Trash2, History, Plus, Users, Inbox, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { downloadJson } from "../../lib/childData";
@@ -107,7 +108,7 @@ export default function TrustedSharing() {
         subtitle={t("sec.sharing.sub", { name: first })}
         action={
           <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
-            <Plus className="w-4 h-4" /> New share
+            <Icon name="add" size={18} /> New share
           </button>
         }
       />
@@ -117,8 +118,8 @@ export default function TrustedSharing() {
       {adding && (
         <div className={`${cardCls} p-5 space-y-3`}>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>Share {first}'s context</h3>
-            <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><X className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} /></button>
+            <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Share {first}'s context</h3>
+            <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           <input value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder="Recipient email (they sign in with this to see what you share)" type="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
           <div>
@@ -152,7 +153,7 @@ export default function TrustedSharing() {
         </div>
       )}
 
-      <SectionCard title="Active shares" icon={<Share2 className="w-5 h-5" />} tone="mint">
+      <SectionCard title="Active shares" icon={<Icon name="share" size={20} />} tone="mint">
         <div className="space-y-3">
           {loading ? (
             <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><RefreshCw className="w-4 h-4 animate-spin" /> Loading shares…</p>
@@ -162,17 +163,17 @@ export default function TrustedSharing() {
             <div key={s.id} className={`${cardCls} p-4`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{s.recipientEmail}</h3>
+                  <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{s.recipientEmail}</h3>
                   <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{roleLabel(s.role)}</p>
                 </div>
                 <button onClick={() => revoke(s)} disabled={busy === s.id} className="inline-flex items-center gap-1 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>
-                  {busy === s.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />} Revoke access
+                  {busy === s.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Icon name="close" size={15} />} Revoke access
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-3">
-                {s.role === "co_parent" && <Chip tone="mint" icon={<Users className="w-3.5 h-3.5" />}>Co-parent</Chip>}
-                <Chip tone="sky" icon={<ShieldCheck className="w-3.5 h-3.5" />}>{s.scopes.join(", ")}</Chip>
-                <Chip tone="yellow" icon={<Clock className="w-3.5 h-3.5" />}>{expiryLabel(s)}</Chip>
+                {s.role === "co_parent" && <Chip tone="mint" icon={<Icon name="group" size={15} />}>Co-parent</Chip>}
+                <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{s.scopes.join(", ")}</Chip>
+                <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(s)}</Chip>
               </div>
             </div>
           ))}
@@ -180,19 +181,19 @@ export default function TrustedSharing() {
       </SectionCard>
 
       {inbound.length > 0 && (
-        <SectionCard title="Shared with you" icon={<Inbox className="w-5 h-5" />} tone="lav">
+        <SectionCard title="Shared with you" icon={<Icon name="inbox" size={20} />} tone="lav">
           <div className="space-y-3">
             {inbound.map((s) => (
               <div key={s.id} className={`${cardCls} p-4`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{s.childName || "A child"}</h3>
+                    <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{s.childName || "A child"}</h3>
                     <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>from {s.ownerEmail || "a parent"} · you are {roleLabel(s.role)}</p>
                   </div>
-                  <Chip tone="yellow" icon={<Clock className="w-3.5 h-3.5" />}>{expiryLabel(s)}</Chip>
+                  <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(s)}</Chip>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <Chip tone="sky" icon={<ShieldCheck className="w-3.5 h-3.5" />}>{s.scopes.join(", ")}</Chip>
+                  <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{s.scopes.join(", ")}</Chip>
                 </div>
               </div>
             ))}
@@ -201,13 +202,13 @@ export default function TrustedSharing() {
       )}
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <SectionCard title="Your data" icon={<Download className="w-5 h-5" />} tone="lav">
+        <SectionCard title="Your data" icon={<Icon name="download" size={20} />} tone="lav">
           <div className="space-y-2">
-            <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Download className="w-4 h-4" /> Export all data</button>
-            <button onClick={deleteData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}><Trash2 className="w-4 h-4" /> Delete child data</button>
+            <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Icon name="download" size={18} /> Export all data</button>
+            <button onClick={deleteData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}><Icon name="delete" size={18} /> Delete child data</button>
           </div>
         </SectionCard>
-        <SectionCard title="This session" icon={<History className="w-5 h-5" />} tone="sky">
+        <SectionCard title="This session" icon={<Icon name="history" size={20} />} tone="sky">
           <ul className="space-y-2.5 text-xs max-h-44 overflow-y-auto" style={{ color: "var(--arbor-muted)" }}>
             {audit.length === 0 && <li>Share and revoke actions you take will appear here.</li>}
             {audit.map((a, i) => <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "#69747f" }} />{a}</li>)}

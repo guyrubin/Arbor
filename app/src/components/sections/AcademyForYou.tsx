@@ -24,7 +24,7 @@
 
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Compass, GraduationCap, ChevronDown, ChevronUp } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { computeDevScore } from "../../growth/devScore";
@@ -149,7 +149,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
               height: 40,
             }}
           >
-            <Compass className="w-5 h-5" aria-hidden />
+            <Icon name="explore" size={20} />
           </span>
           <span
             className="text-[11px] uppercase tracking-widest font-bold"
@@ -197,7 +197,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
               height: 40,
             }}
           >
-            <Compass className="w-5 h-5" aria-hidden />
+            <Icon name="explore" size={20} />
           </span>
           <h2
             className="text-[15px] font-extrabold leading-snug"
@@ -250,8 +250,8 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
           >
             {t("foryou.whyToggle")}
             {whyOpen
-              ? <ChevronUp className="w-3.5 h-3.5" aria-hidden />
-              : <ChevronDown className="w-3.5 h-3.5" aria-hidden />}
+              ? <Icon name="expand_less" size={16} />
+              : <Icon name="expand_more" size={16} />}
           </button>
 
           <AnimatePresence>
@@ -323,7 +323,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
             }}
             data-testid="academy-foryou-cta"
           >
-            <GraduationCap className="w-4 h-4" aria-hidden />
+            <Icon name="school" size={17} />
             {t("foryou.cta")}
           </button>
         )}
@@ -374,7 +374,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
               {/* Alphabetical order only — never rendered as a ranked deficit list */}
               {domainRows.map((row) => {
                 const v = domainVisual(row.domainId);
-                const Icon = v.icon;
+                const DomainIcon = v.icon;
                 return (
                   <div
                     key={row.domainId}
@@ -386,7 +386,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
                         className="inline-flex items-center justify-center rounded-lg flex-shrink-0"
                         style={{ background: PASTEL[v.tone].soft, color: PASTEL[v.tone].ink, width: 26, height: 26 }}
                       >
-                        <Icon className="w-3.5 h-3.5" aria-hidden />
+                        <DomainIcon className="w-3.5 h-3.5" aria-hidden />
                       </span>
                       <span
                         className="text-[13px] font-bold truncate flex-1 min-w-0"

@@ -1,9 +1,5 @@
 import React, { useState } from "react";
-import {
-  Lightbulb, ListChecks, MessageSquareQuote, Ban, Eye, AlertTriangle,
-  Copy, ListPlus, ClipboardList, Send, Compass, Check, Users,
-  BookOpen, ChevronDown, ChevronUp,
-} from "lucide-react";
+import Icon from "../ui/Icon";
 import type { CoachContract, CouncilTake } from "../../types";
 import type { UiLang } from "../../lib/i18n";
 import { translate } from "../../lib/i18n";
@@ -107,7 +103,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
 
       {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
       {council && council.length > 0 && (
-        <Panel icon={<Users className="w-3 h-3" />} title={`The council weighed in · ${council.length} voices`} tint="var(--arbor-sky-ink)">
+        <Panel icon={<Icon name="group" size={12} />} title={`The council weighed in · ${council.length} voices`} tint="var(--arbor-sky-ink)">
           <ul className="space-y-2">
             {council.map((c) => (
               <li key={c.scholarId} className="text-[12.5px] leading-snug">
@@ -123,7 +119,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
 
       {/* What may be happening */}
       {contract.nonDiagnosticHypotheses?.length > 0 && (
-        <Panel icon={<Lightbulb className="w-3 h-3" />} title="What may be happening" tint="var(--arbor-yellow-ink)">
+        <Panel icon={<Icon name="lightbulb" size={12} />} title="What may be happening" tint="var(--arbor-yellow-ink)">
           <ul className="space-y-1.5">
             {contract.nonDiagnosticHypotheses.map((h, i) => (
               <li key={i} className="text-[12.5px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
@@ -139,11 +135,11 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       {/* Today's plan — interactive checklist */}
       {contract.todayPlan?.length > 0 && (
         <Panel
-          icon={<ListChecks className="w-3 h-3" />} title="Try today" tint="var(--arbor-green-ink)"
+          icon={<Icon name="checklist" size={12} />} title="Try today" tint="var(--arbor-green-ink)"
           action={
             <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan[0])}
               className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
-              <ListPlus className="w-3 h-3" /> Save as plan
+              <Icon name="playlist_add" size={12} /> Save as plan
             </button>
           }
         >
@@ -152,7 +148,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
               <li key={i}>
                 <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-start gap-2 text-start w-full group">
                   <span className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition" style={done[i] ? { background: "var(--arbor-clay)", border: "1px solid var(--arbor-clay)" } : { border: "1px solid var(--arbor-rule-strong)" }}>
-                    {done[i] && <Check className="w-3 h-3 text-white" />}
+                    {done[i] && <Icon name="check" size={12} className="text-white" />}
                   </span>
                   <span className="text-[12.5px] leading-snug" style={done[i] ? { color: "var(--arbor-muted)", textDecoration: "line-through" } : { color: "var(--arbor-ink)" }}>{step}</span>
                 </button>
@@ -165,12 +161,12 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       {/* Parent script — say aloud */}
       {contract.parentScript && (
         <Panel
-          icon={<MessageSquareQuote className="w-3 h-3" />} title="Say this" tint="var(--arbor-sky-ink)"
+          icon={<Icon name="format_quote" size={12} />} title="Say this" tint="var(--arbor-sky-ink)"
           action={
             <div className="flex items-center gap-2">
               <SpeakButton text={contract.parentScript} lang={lang} className="text-[10px]" />
               <button onClick={() => copy(contract.parentScript, "script")} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
-                {copied === "script" ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                {copied === "script" ? <><Icon name="check" size={12} /> Copied</> : <><Icon name="content_copy" size={12} /> Copy</>}
               </button>
             </div>
           }
@@ -182,14 +178,14 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       {/* Avoid / Observe */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {contract.avoid?.length > 0 && (
-          <Panel icon={<Ban className="w-3 h-3" />} title="Avoid" tint="var(--arbor-peach-ink)">
+          <Panel icon={<Icon name="block" size={12} />} title="Avoid" tint="var(--arbor-peach-ink)">
             <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.avoid.map((a, i) => <li key={i}>{a}</li>)}
             </ul>
           </Panel>
         )}
         {contract.observe?.length > 0 && (
-          <Panel icon={<Eye className="w-3 h-3" />} title="Watch for" tint="var(--arbor-lav-ink)">
+          <Panel icon={<Icon name="visibility" size={12} />} title="Watch for" tint="var(--arbor-lav-ink)">
             <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.observe.map((o, i) => <li key={i}>{o}</li>)}
             </ul>
@@ -199,7 +195,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
 
       {/* Escalate */}
       {contract.escalateIf?.length > 0 && (
-        <Panel icon={<AlertTriangle className="w-3 h-3" />} title="Reach out for help if" tint="var(--arbor-pink-ink)">
+        <Panel icon={<Icon name="warning" size={12} />} title="Reach out for help if" tint="var(--arbor-pink-ink)">
           <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-pink-ink)" }}>
             {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
@@ -208,7 +204,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
 
       {/* Six-frame routing chips (SF-2) */}
       {frames.length > 0 && (
-        <Panel icon={<Compass className="w-3 h-3" />} title="Developmental frame" tint="var(--arbor-yellow-ink)">
+        <Panel icon={<Icon name="explore" size={12} />} title="Developmental frame" tint="var(--arbor-yellow-ink)">
           <div className="flex flex-wrap gap-1.5">
             {frames.map(([k, v]) => (
               <span key={k} className="text-[10.5px] leading-tight rounded-lg px-2 py-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -238,7 +234,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
                 className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
               >
-                <BookOpen className="w-3 h-3" aria-hidden />
+                <Icon name="menu_book" size={12} />
                 {t("cite.badge")}
               </span>
               <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
@@ -247,8 +243,8 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
             </span>
             <span className="text-[10px] font-bold inline-flex items-center gap-0.5" style={{ color: "var(--arbor-muted)" }}>
               {citationsOpen
-                ? <><ChevronUp className="w-3.5 h-3.5" aria-hidden />{t("cite.toggle.close")}</>
-                : <><ChevronDown className="w-3.5 h-3.5" aria-hidden />{t("cite.toggle.open")}</>}
+                ? <><Icon name="expand_less" size={14} />{t("cite.toggle.close")}</>
+                : <><Icon name="expand_more" size={14} />{t("cite.toggle.open")}</>}
             </span>
           </button>
 
@@ -277,16 +273,16 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || "")}
           className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-          <ListPlus className="w-3.5 h-3.5" /> Save to plan
+          <Icon name="playlist_add" size={14} /> Save to plan
         </button>
         <button onClick={onCreateLog}
           className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-          <ClipboardList className="w-3.5 h-3.5" /> Log a moment
+          <Icon name="assignment" size={14} /> Log a moment
         </button>
         {contract.handoffNotes?.teacher && (
           <button onClick={() => { onAddToHandoff(contract.handoffNotes.teacher); copy(contract.handoffNotes.teacher, "handoff"); }}
             className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-            {copied === "handoff" ? <><Check className="w-3.5 h-3.5" /> Copied note</> : <><Send className="w-3.5 h-3.5" /> Teacher note</>}
+            {copied === "handoff" ? <><Icon name="check" size={14} /> Copied note</> : <><Icon name="send" size={14} /> Teacher note</>}
           </button>
         )}
       </div>
