@@ -279,6 +279,16 @@ export const en: Dict = {
   "schoolBrief.notApproved": "Approve the note first — nothing is shared until you do.",
   // Condition 5 — outside-erase-reach notice (key referenced by schoolBrief.ts).
   "schoolBrief.outsideEraseReach": "Once you share this, the teacher's copy is theirs — Arbor can't delete it. Deleting your data in Arbor won't un-send a brief you've already handed over.",
+  // P0.5 — reusable trust pattern (TrustPanel): what Arbor uses / stores / you control.
+  "trust.uses.title": "What Arbor uses",
+  "trust.stores.title": "What Arbor stores",
+  "trust.controls.title": "What you control",
+  "trust.avatar.notRealPhoto": "A friendly, hand-illustrated character — not a real photo.",
+  "trust.avatar.uses.1": "This photo, once, to draw the cartoon",
+  "trust.avatar.stores.1": "Only the cartoon you keep — the original photo is never stored or used to train AI",
+  "trust.avatar.controls.1": "You pick the photo, approve the result, and can remove the avatar anytime",
+  "trust.avatar.consent.pre": "I consent to Arbor using this photo to create a cartoon character. The original is used once, then",
+  "trust.avatar.consent.claim": "immediately discarded — never stored and never used to train AI.",
   // top bar
   "top.caringFor": "Caring for",
   "top.age": "Age",
@@ -2800,6 +2810,16 @@ export const he: Dict = {
   "schoolBrief.downloaded": "הורד. אתם בוחרים מתי למסור אותו למחנכת.",
   "schoolBrief.notApproved": "אשרו תחילה את הפתק — שום דבר לא משותף עד שתעשו זאת.",
   "schoolBrief.outsideEraseReach": "ברגע שתשתפו את זה, העותק של המחנכת שייך לה — ארבור לא יכול למחוק אותו. מחיקת הנתונים שלכם בארבור לא תבטל מסירה של פתק שכבר העברתם.",
+  // P0.5 — דפוס אמון לשימוש חוזר (TrustPanel): במה ארבור משתמש / מה הוא שומר / מה בשליטתכם.
+  "trust.uses.title": "במה ארבור משתמש",
+  "trust.stores.title": "מה ארבור שומר",
+  "trust.controls.title": "מה בשליטתכם",
+  "trust.avatar.notRealPhoto": "דמות מצוירת וידידותית — לא תמונה אמיתית.",
+  "trust.avatar.uses.1": "בתמונה הזו, פעם אחת, כדי לצייר את הדמות",
+  "trust.avatar.stores.1": "רק בדמות המצוירת שתשמרו — התמונה המקורית לעולם לא נשמרת ולא משמשת לאימון AI",
+  "trust.avatar.controls.1": "אתם בוחרים את התמונה, מאשרים את התוצאה, ויכולים להסיר את הדמות בכל רגע",
+  "trust.avatar.consent.pre": "אני מאשר/ת לארבור להשתמש בתמונה הזו כדי ליצור דמות מצוירת. המקור משמש פעם אחת, ואז",
+  "trust.avatar.consent.claim": "נמחק מיד — לעולם לא נשמר ולא משמש לאימון AI.",
   // AP-049 — 5-step structured onboarding (HE)
   "ob.step.welcome.title": "ברוכים הבאים לארבור",
   "ob.step.welcome.subtitle": "מרחב אישי ורגוע לתמיכה בצמיחת ילדכם — כל צעד בקצב שלהם.",
