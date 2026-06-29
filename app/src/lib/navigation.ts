@@ -19,6 +19,11 @@ export type NavSection = {
   id: string;
   label: string;
   icon: LucideIcon;
+  /** Material Symbols Rounded ligature for the section rail glyph (UC-2
+   *  visual-match). The shell rails (Sidebar / MobileNav) render this via the
+   *  shared <Icon>; `icon` (lucide) is retained as a fallback / for any
+   *  non-shell consumer. */
+  msIcon: string;
   /** optional sidebar badge fed from app state */
   badge?: NavBadge;
   items: NavItem[];
@@ -49,6 +54,7 @@ export const SECTIONS: NavSection[] = [
     id: "today",
     label: "Today",
     icon: Home,
+    msIcon: "home",
     items: [
       { tab: "overview", label: "Overview", icon: LayoutDashboard },
       { tab: "day-windows", label: "Day Windows", icon: Map },
@@ -59,6 +65,7 @@ export const SECTIONS: NavSection[] = [
     id: "behaviors",
     label: "Behaviors",
     icon: Activity,
+    msIcon: "monitoring",
     items: [
       { tab: "behaviors", label: "Behaviors", icon: Activity },
     ],
@@ -67,6 +74,7 @@ export const SECTIONS: NavSection[] = [
     id: "growth",
     label: "Growth",
     icon: Sprout,
+    msIcon: "eco",
     badge: "milestone",
     items: [
       { tab: "development", label: "Development", icon: Gauge },
@@ -81,6 +89,7 @@ export const SECTIONS: NavSection[] = [
     id: "journal",
     label: "Journal",
     icon: NotebookPen,
+    msIcon: "edit_note",
     items: [
       { tab: "journal", label: "Journal", icon: NotebookPen },
       { tab: "timeline", label: "Story", icon: Waypoints },
@@ -90,6 +99,7 @@ export const SECTIONS: NavSection[] = [
     id: "academy",
     label: "Academy",
     icon: GraduationCap,
+    msIcon: "school",
     items: [
       // Story Journeys render AS personalized comics starring the child's hero.
       // Hero Comics is the batch studio (the viral surface).
@@ -104,6 +114,7 @@ export const SECTIONS: NavSection[] = [
     id: "ask",
     label: "Ask Arbor",
     icon: MessageCircle,
+    msIcon: "forum",
     badge: { kind: "count" },
     items: [
       { tab: "coach", label: "Ask Arbor", icon: MessageCircle },
@@ -113,6 +124,7 @@ export const SECTIONS: NavSection[] = [
     id: "care",
     label: "Care Network",
     icon: HeartHandshake,
+    msIcon: "diversity_1",
     items: [
       { tab: "consult", label: "Consult", icon: FileBarChart },
       { tab: "school-brief", label: "School Brief", icon: School },
@@ -126,6 +138,7 @@ export const SECTIONS: NavSection[] = [
     id: "profile",
     label: "Profile",
     icon: UserCircle,
+    msIcon: "person",
     items: [
       { tab: "profile", label: "Development Profile", icon: UserCircle },
       { tab: "memory", label: "Child Memory", icon: Waypoints },
