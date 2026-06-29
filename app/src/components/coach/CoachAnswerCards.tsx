@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import {
   Lightbulb, ListChecks, MessageSquareQuote, Ban, Eye, AlertTriangle,
-  Volume2, Square, Copy, ListPlus, ClipboardList, Send, Compass, Check, Users,
+  Copy, ListPlus, ClipboardList, Send, Compass, Check, Users,
   BookOpen, ChevronDown, ChevronUp,
 } from "lucide-react";
 import type { CoachContract, CouncilTake } from "../../types";
 import type { UiLang } from "../../lib/i18n";
 import { translate } from "../../lib/i18n";
-import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
+import { SpeakButton } from "../ui/SpeakButton";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 
 /**
@@ -69,7 +69,6 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   onAddToHandoff: (note: string) => void;
 }) {
   const [done, setDone] = useState<Record<number, boolean>>({});
-  const [speaking, setSpeaking] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [citationsOpen, setCitationsOpen] = useState(false);
 
@@ -88,13 +87,6 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
     );
     setCopied(key);
     setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
-  };
-
-  const sayScript = () => {
-    if (!ttsSupported()) return;
-    if (speaking) { stopSpeaking(); setSpeaking(false); return; }
-    setSpeaking(true);
-    speak(contract.parentScript, () => setSpeaking(false));
   };
 
   const frames = Object.entries(contract.frameRouting || {}).filter(([, v]) => v && String(v).trim());
@@ -176,11 +168,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           icon={<MessageSquareQuote className="w-3 h-3" />} title="Say this" tint="var(--arbor-sky-ink)"
           action={
             <div className="flex items-center gap-2">
-              {ttsSupported() && (
-                <button onClick={sayScript} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
-                  {speaking ? <><Square className="w-3 h-3" /> Stop</> : <><Volume2 className="w-3 h-3" /> Say it aloud</>}
-                </button>
-              )}
+              <SpeakButton text={contract.parentScript} lang={lang} className="text-[10px]" />
               <button onClick={() => copy(contract.parentScript, "script")} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
                 {copied === "script" ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
               </button>

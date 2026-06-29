@@ -17,9 +17,9 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
       data.adventures.items.length +
       data.events.items.length +
       data.missions.items.filter((m) => m.completed).length,
-    streakDays: data.streak,
+    daysPracticed: data.daysPracticed,
     domainsTouched: data.week.domainsTouched.length,
-  }), [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, data.streak, data.week.domainsTouched]);
+  }), [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, data.daysPracticed, data.week.domainsTouched]);
 
   const { unlocked, next } = useMemo(() => evaluateCosmetics(stats), [stats]);
 
