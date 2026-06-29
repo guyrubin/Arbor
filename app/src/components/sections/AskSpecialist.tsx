@@ -22,6 +22,40 @@ const GREEN = "var(--arbor-green-ink)";
 const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
+/* Local presentational helper: the design's tinted label/value inset row, here
+   carrying the include/exclude toggle (the leading check = the include
+   affordance). Layout-only — all redaction logic stays in AskSpecialist. */
+function PacketInsetRow({ on, label, value, onToggle }: { on: boolean; label: string; value: string; onToggle: () => void }) {
+  return (
+    <li>
+      <button
+        onClick={onToggle}
+        aria-pressed={on}
+        aria-label={`Include: ${value}`}
+        className="w-full flex items-start gap-3 rounded-[13px] px-3.5 py-2.5 text-start transition"
+        style={{ background: on ? "var(--arbor-paper)" : "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+      >
+        <span
+          className="flex-shrink-0 w-5 h-5 mt-0.5 rounded-full flex items-center justify-center transition"
+          style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+        >
+          {on && <Check className="w-3 h-3" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          {label && (
+            <span className="block text-[10px] font-extrabold tracking-wide uppercase mb-0.5" style={{ color: "var(--arbor-faint)" }}>
+              {label}
+            </span>
+          )}
+          <span className="block text-[14px] leading-relaxed" style={{ color: on ? INK : "var(--arbor-faint)", textDecoration: on ? "none" : "line-through" }}>
+            {value}
+          </span>
+        </span>
+      </button>
+    </li>
+  );
+}
+
 export default function AskSpecialist() {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab } = useArbor();
   const { toast } = useToast();

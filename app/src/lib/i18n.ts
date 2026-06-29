@@ -245,6 +245,10 @@ export const en: Dict = {
   "consult.empty.title": "Nothing to summarise yet",
   "consult.empty.body": "Log a moment or check a milestone and Arbor will build a shareable summary here.",
   "consult.empty.cta": "Log a moment",
+  // UC-1 care reconciliation — summary-card envelope + verified-pros rail.
+  "consult.summaryTitle": "Your summary",
+  "consult.prosTitle": "Verified professionals",
+  "consult.requestPro": "Request consult",
   // AP-056 — School Handoff Brief (parent-controlled, teacher-facing). DISTINCT
   // from the clinician consult packet above. Curated, non-diagnostic, <=1 page.
   "schoolBrief.eyebrow": "Care Network",
@@ -1740,6 +1744,10 @@ export const he: Dict = {
   "consult.empty.title": "אין עדיין מה לסכם",
   "consult.empty.body": "תעדו רגע או סמנו אבן דרך, וארבור יבנה כאן סיכום לשיתוף.",
   "consult.empty.cta": "תיעוד רגע",
+  // UC-1 care reconciliation — summary-card envelope + verified-pros rail.
+  "consult.summaryTitle": "הסיכום שלכם",
+  "consult.prosTitle": "אנשי מקצוע מאומתים",
+  "consult.requestPro": "בקשת ייעוץ",
   // top bar
   "top.caringFor": "מטפלים ב־",
   "top.age": "גיל",
