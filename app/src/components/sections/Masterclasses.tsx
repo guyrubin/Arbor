@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { GraduationCap, Clock, ArrowLeft, Check, MessageSquareQuote, MoonStar, PenLine } from "lucide-react";
 import confetti from "canvas-confetti";
-import { PageHeader, cardCls, IconBadge, type PastelKey } from "../ui/kit";
+import { PageHeader, cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
 import { BRAND_CONFETTI } from "../../lib/tokens";
 import { useLanguage } from "../../context/LanguageContext";
+import { useArbor } from "../../context/ArborContext";
 import { MASTERCLASSES, FRAME_LABELS, type FrameId, type Masterclass } from "../../lib/masterclasses";
 import { loadCharter, aimVirtues } from "../../lib/becoming";
 import type { DevelopmentMetricId } from "../../types";
@@ -45,6 +46,7 @@ const loadReflection = (): Record<string, string> => {
  *  the parent's own competence (the calm, competent adult). Text-first, bilingual. */
 export default function Masterclasses() {
   const { t, aiLang } = useLanguage();
+  const { childProfile } = useArbor();
   const he = aiLang === "he";
   const [openId, setOpenId] = useState<string | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
@@ -79,84 +81,146 @@ export default function Masterclasses() {
   if (open) return <Reader m={open} he={he} isDone={!!done[open.id]} onDone={() => markDone(open.id)} onBack={() => setOpenId(null)} frameLabel={frameLabel(open.frame)} tone={FRAME_TONE[open.frame]} reflection={reflection[open.id] || ""} onReflect={(val) => saveReflection(open.id, val)} />;
 
   // ── Catalog ──────────────────────────────────────────────────────────────
+  const doneCount = Object.values(done).filter(Boolean).length;
+  const total = MASTERCLASSES.length;
+  const allDone = doneCount >= total;
+  const childName = (childProfile.name || "").split(" ")[0] || (he ? "ילדכם" : "your child");
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader title={t("sec.master.title")} subtitle={t("sec.master.sub")} />
-      {/* AP-053: Academy "For You" — joins copilot focus recommendation with
-          course-progress roll-up by domain. Pure frontend join; no new AI call;
-          no new Firestore read. Least-explored framing (board-cleared 2026-06-22). */}
-      <AcademyForYou />
-      {/* AP-055: Scholar Hub — one developmental concept per week, auto-matched
-          to the child's least-explored domain from the Development Map.
-          Non-diagnostic, strengths-based framing, editorial content only. */}
-      <ScholarHubCard />
-      {recommended.length > 0 && (
-        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-          <p className="text-[11px] uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
-            {t("master.rec")}
+
+      {/* Design's two-column shell: left = the Learning Map rail (the explicit
+          development-map spine — courses matched to where the child is growing),
+          right = the "All courses" gallery. Collapses to one column below xl. */}
+      <div className="grid xl:grid-cols-[1fr_1.7fr] gap-5 items-start">
+        {/* ── Left rail: Learning Map ─────────────────────────────────────── */}
+        <div className="space-y-5">
+          <p className="text-[11px] uppercase tracking-widest font-bold px-1" style={{ color: "var(--arbor-green-ink)" }}>
+            {t("academy.learnMap.title")}
+            <span className="block normal-case tracking-normal text-[12px] font-medium mt-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              {t("academy.learnMap.sub", { name: childName })}
+            </span>
           </p>
-          <div className="flex flex-wrap gap-2">
-            {recommended.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setOpenId(c.id)}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition hover:-translate-y-0.5"
-                dir="auto"
-                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-              >
-                {he ? c.titleHe : c.title}
-                {done[c.id] && <Check className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />}
-              </button>
-            ))}
+
+          {/* AP-053: Academy "For You" — copilot focus recommendation + per-domain
+              Learning Map roll-up (ring + count bars). Pure frontend join; no new
+              AI call; no new Firestore read. Least-explored framing (board-cleared). */}
+          <AcademyForYou />
+
+          {/* AP-055: Scholar Hub — one developmental concept per week, auto-matched
+              to the child's least-explored domain. Non-diagnostic, editorial. */}
+          <ScholarHubCard />
+
+          {/* Recommended-by-Family-Charter strip — relocated into the rail. */}
+          {recommended.length > 0 && (
+            <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
+              <p className="text-[11px] uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
+                {t("master.rec")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {recommended.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setOpenId(c.id)}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition hover:-translate-y-0.5"
+                    dir="auto"
+                    style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+                  >
+                    {he ? c.titleHe : c.title}
+                    {done[c.id] && <Check className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Catalog-wide progress — relocated beneath the Learning Map. Gentle
+              continuity, never gamified pressure. */}
+          {doneCount > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${(doneCount / total) * 100}%`, background: "var(--arbor-green-ink)" }} />
+              </div>
+              <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: allDone ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
+                {allDone ? t("master.progress.all") : t("master.progress.count", { done: doneCount, total })}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ── Right column: All courses gallery ───────────────────────────── */}
+        <div className="space-y-4 min-w-0">
+          <h2 className="text-[15px] font-extrabold uppercase tracking-widest px-1" style={{ color: "var(--arbor-muted)" }}>
+            {t("academy.courses.title")}
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {MASTERCLASSES.map((c) => {
+              const p = PASTEL[FRAME_TONE[c.frame]];
+              const isCardDone = !!done[c.id];
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setOpenId(c.id)}
+                  className={`${cardCls} flex flex-col text-start overflow-hidden transition motion-safe:hover:-translate-y-0.5`}
+                >
+                  {/* Gradient header band — pulled from FRAME_TONE → PASTEL (soft→
+                      elevated). No raw hex; lucide GraduationCap centred. */}
+                  <div
+                    className="relative flex items-center justify-center"
+                    style={{
+                      height: 74,
+                      background: `linear-gradient(135deg, ${p.soft}, var(--arbor-paper-elevated))`,
+                    }}
+                  >
+                    <span className="inline-flex items-center justify-center rounded-2xl" style={{ background: p.soft, color: p.ink, width: 44, height: 44 }}>
+                      <GraduationCap className="w-6 h-6" aria-hidden />
+                    </span>
+                  </div>
+
+                  {/* Body */}
+                  <div className="flex flex-col gap-2 p-5 flex-1">
+                    {/* domain/frame pill at the top of the body */}
+                    <span className="self-start text-[10.5px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: p.soft, color: p.ink }}>
+                      {frameLabel(c.frame)}
+                    </span>
+                    <h3 className="text-[15px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                      {he ? c.titleHe : c.title}
+                    </h3>
+                    {/* meta line */}
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                      <Clock className="w-3 h-3" aria-hidden /> {c.durationMin} {t("master.min")}
+                    </span>
+                    <p className="text-[12.5px] leading-relaxed line-clamp-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+                      {he ? c.hookHe : c.hook}
+                    </p>
+
+                    {/* Per-card progress — binary 0/100 from the existing done
+                        localStorage state. The app has NO granular course % model,
+                        so the bar is strictly empty or full (1-of-1 done count),
+                        never a fabricated continuous percentage. */}
+                    <div className="mt-auto pt-3 space-y-3">
+                      <ProgressBar value={isCardDone ? 1 : 0} total={1} tone="mint" height={6} />
+                      {/* Footer status chip CTA */}
+                      <span
+                        className="inline-flex items-center justify-center gap-1.5 w-full rounded-full px-3 py-1.5 text-[12px] font-extrabold"
+                        style={
+                          isCardDone
+                            ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
+                            : { background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }
+                        }
+                      >
+                        {isCardDone
+                          ? <><Check className="w-3.5 h-3.5" aria-hidden /> {t("master.done")}</>
+                          : <>{t("master.read")} →</>}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
-      )}
-      {/* Wave-8: catalog progress — gentle continuity, never gamified pressure. */}
-      {(() => {
-        const doneCount = Object.values(done).filter(Boolean).length;
-        if (doneCount === 0) return null;
-        const total = MASTERCLASSES.length;
-        const all = doneCount >= total;
-        return (
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${(doneCount / total) * 100}%`, background: "var(--arbor-green-ink)" }} />
-            </div>
-            <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: all ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
-              {all ? t("master.progress.all") : t("master.progress.count", { done: doneCount, total })}
-            </span>
-          </div>
-        );
-      })()}
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {MASTERCLASSES.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setOpenId(c.id)}
-            className={`${cardCls} p-5 flex flex-col gap-3 text-start transition hover:-translate-y-0.5`}
-          >
-            <div className="flex items-center justify-between">
-              <IconBadge tone={FRAME_TONE[c.frame]}><GraduationCap className="w-5 h-5" /></IconBadge>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                <Clock className="w-3 h-3" /> {c.durationMin} {t("master.min")}
-              </span>
-            </div>
-            <h3 className="text-[15px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-              {he ? c.titleHe : c.title}
-            </h3>
-            <p className="text-[12.5px] leading-relaxed line-clamp-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
-              {he ? c.hookHe : c.hook}
-            </p>
-            <div className="mt-auto flex items-center justify-between">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                {frameLabel(c.frame)}
-              </span>
-              {done[c.id]
-                ? <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)" }}><Check className="w-3.5 h-3.5" /> {t("master.done")}</span>
-                : <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{t("master.read")} →</span>}
-            </div>
-          </button>
-        ))}
       </div>
     </motion.div>
   );

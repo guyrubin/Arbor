@@ -1,12 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
-import { Stethoscope, ShieldCheck, Copy, Download, Send, Check, FileText, ChevronDown, NotebookPen } from "lucide-react";
+import { Stethoscope, ShieldCheck, Copy, Download, Send, Check, FileText, ChevronDown, NotebookPen, Star } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildConsultPacket, serializePacket, countIncluded } from "../../consult/packet";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { Modal } from "../ui/Modal";
+import { InitialsTile, InsetRow, PASTEL } from "../ui/kit";
+import type { PastelKey } from "../ui/kit";
+import type { Professional } from "../../services/professionals";
+import { ARBOR_PROFESSIONALS } from "../../services/professionals";
+import { authHeaders } from "../../lib/api";
 import { REPORTS, useReportExport } from "./Reports";
 import FindProfessional from "./FindProfessional";
 
@@ -14,7 +19,13 @@ import FindProfessional from "./FindProfessional";
    One spine (a parent-redacted packet from the child's record) and one honest
    action bar with four verbs: Copy / Download / Export as PDF / Send to a
    professional. No HubTabs facets, no hidden handoff door, no triple "share"
-   buttons. Safety L3: nothing leaves the device until the parent exports. */
+   buttons. Safety L3: nothing leaves the device until the parent exports.
+
+   UC-1: two-column reconcile — live redactable packet card (left) +
+   verified-pros rail (right). The packet is built from the LIVE child record
+   (buildConsultPacket), never a static design array; each section's items
+   render as label/value inset rows with a per-item include-toggle. The
+   GDPR/COPPA trust row lives INSIDE the summary card in green tokens. */
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
@@ -37,8 +48,32 @@ export default function AskSpecialist() {
   const menuRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  // Send-to-a-professional modal.
+  // Send-to-a-professional modal. `sendPro` carries the pro chosen from the rail
+  // so FindProfessional can open its consult request directly on that pro.
   const [sendOpen, setSendOpen] = useState(false);
+
+  // Verified-pros rail — same live source/fallback as the FindProfessional tab
+  // (curated, Arbor-verified). The rail is a preview; the full filterable
+  // directory + consult transaction still lives in FindProfessional, which we
+  // host in the Send modal so no transaction logic is duplicated here.
+  const [pros, setPros] = useState<Professional[]>(ARBOR_PROFESSIONALS);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/professionals", { headers: await authHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          if (alive && Array.isArray(data.professionals) && data.professionals.length) setPros(data.professionals);
+        }
+      } catch { /* keep fallback */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+  const railPros = useMemo(() => pros.filter((p) => p.verified).slice(0, 3), [pros]);
+  // Pro `tone` is a free string from the directory; clamp it to a valid layout-kit
+  // pastel so InitialsTile never renders blank on an unexpected value.
+  const proTone = (tone: string): PastelKey => (tone in PASTEL ? (tone as PastelKey) : "sky");
 
   const packet = useMemo(
     () => buildConsultPacket({
@@ -118,8 +153,53 @@ export default function AskSpecialist() {
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0 } }
     : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.2 } };
 
+  // Right-rail verified-pros card. Tapping "Request consult" opens the Send
+  // modal (FindProfessional embedded), prefilled with the selected packet — the
+  // existing consult transaction is reused, not re-implemented.
+  const ProsRail = (
+    <aside className="space-y-3.5">
+      <h2 className="text-[15px] font-extrabold" style={{ color: INK }}>{t("care.pros.title")}</h2>
+      <div className="flex flex-col gap-3.5">
+        {railPros.map((p) => (
+          <div
+            key={p.id}
+            className="rounded-[18px] p-4 flex items-center gap-3.5"
+            style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
+          >
+            <InitialsTile name={p.name} tone={proTone(p.tone)} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[15px] font-extrabold truncate" style={{ color: INK }}>{p.name}</span>
+                {p.verified && <ShieldCheck className="w-4 h-4 flex-shrink-0" style={{ color: GREEN }} aria-label="Verified by Arbor" />}
+              </div>
+              <div className="text-[12px] font-bold mt-px" style={{ color: GREEN }}>{p.role}</div>
+              <div className="text-[11px] font-semibold mt-0.5 inline-flex items-center gap-1" style={{ color: MUTED }}>
+                {p.langs?.split(" · ")[0] || p.langs} · {/online|remote/i.test(`${p.mode} ${p.city}`) ? "Online" : p.mode}
+                <span className="inline-flex items-center gap-0.5" style={{ color: "var(--arbor-yellow-ink)" }}><Star className="w-3 h-3 fill-current" /> {p.rating}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setSendOpen(true)}
+              className="inline-flex items-center font-extrabold text-[12px] rounded-[11px] px-4 py-2.5 whitespace-nowrap min-h-[44px]"
+              style={{ background: "var(--arbor-clay-deep, var(--arbor-clay))", color: "#fff" }}
+            >
+              {t("care.request")}
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => setActiveTab("find-pro")}
+        className="w-full text-center text-[12px] font-bold rounded-[13px] py-2.5 transition hover:brightness-95"
+        style={{ background: "var(--arbor-paper-deep)", color: GREEN }}
+      >
+        {t("sec.findpro.title")}
+      </button>
+    </aside>
+  );
+
   return (
-    <motion.div {...motionProps} className="space-y-5 max-w-[760px]">
+    <motion.div {...motionProps} className="space-y-5 max-w-[1180px]">
       <header>
         <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
           <Stethoscope className="w-3.5 h-3.5" /> {t("consult.eyebrow")}
@@ -131,14 +211,6 @@ export default function AskSpecialist() {
           {t("consult.subtitle", { name: firstName })}
         </p>
       </header>
-
-      {/* Trust line (Safety L3) — the GDPR/COPPA promise, kept above the fold. */}
-      <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: GREEN_SOFT }}>
-        <ShieldCheck className="w-5 h-5 flex-shrink-0" style={{ color: GREEN }} />
-        <p className="text-[13px] leading-relaxed" style={{ color: GREEN }}>
-          {t("consult.trust")}
-        </p>
-      </div>
 
       {isEmpty ? (
         /* Empty state — new profile with nothing to summarise yet. */
@@ -158,39 +230,55 @@ export default function AskSpecialist() {
         </div>
       ) : (
         <>
-          {/* Redactable packet sections (the moat read). */}
-          <div className="space-y-3">
-            {packet.sections.map((section) => (
-              <section key={section.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-                <div className="px-5 pt-4 pb-2">
-                  <h2 className="text-[15px] font-extrabold" style={{ color: INK }}>{section.title}</h2>
-                  {section.note && <p className="text-[12px] mt-0.5" style={{ color: "var(--arbor-faint)" }}>{section.note}</p>}
-                </div>
-                <ul className="px-5 pb-3">
-                  {section.items.map((it) => {
-                    const on = !excluded.has(it.id);
-                    return (
-                      <li key={it.id}>
-                        <button
-                          onClick={() => toggle(it.id)}
-                          aria-pressed={on}
-                          aria-label={`Include: ${it.text}`}
-                          className="w-full flex items-start gap-3 py-2 text-start transition"
-                        >
-                          <span className="flex-shrink-0 w-5 h-5 mt-0.5 rounded-md flex items-center justify-center transition"
-                            style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}>
-                            {on && <Check className="w-3.5 h-3.5" />}
-                          </span>
-                          <span className="text-[14px] leading-relaxed" style={{ color: on ? INK : "var(--arbor-faint)", textDecoration: on ? "none" : "line-through" }}>
-                            {it.text}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
+          {/* Two-column: live redactable packet (left) + verified-pros rail (right). */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-5 items-start">
+            {/* Left: the summary card (the moat read). Section titles mirror the
+                child record (incl. the 7 Development-Map domains in the dev
+                snapshot); each item is a label/value inset row with an
+                include-toggle. The GDPR/COPPA trust row lives inside the card. */}
+            <section className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
+              <h2 className="text-[15px] font-extrabold" style={{ color: INK }}>{t("care.packet.title")}</h2>
+              <p className="text-[12px] font-semibold mt-1.5 leading-relaxed" style={{ color: MUTED }}>{t("care.lead", { name: firstName })}</p>
+
+              <div className="flex flex-col gap-2.5 mt-4">
+                {packet.sections.map((section) => (
+                  <div key={section.id} className="flex flex-col gap-2">
+                    {section.items.map((it) => {
+                      const on = !excluded.has(it.id);
+                      return (
+                        <InsetRow
+                          key={it.id}
+                          label={section.title}
+                          value={it.text}
+                          excluded={!on}
+                          check={
+                            <button
+                              onClick={() => toggle(it.id)}
+                              aria-pressed={on}
+                              aria-label={`Include: ${it.text}`}
+                              className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition self-start mt-0.5"
+                              style={on ? { background: GREEN, color: "#fff" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+                            >
+                              {on && <Check className="w-3.5 h-3.5" />}
+                            </button>
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+
+              {/* Trust row (Safety L3) — the GDPR/COPPA promise, INSIDE the card,
+                  green tokens (never the design's blue). */}
+              <div className="flex items-start gap-2.5 rounded-[13px] p-3 mt-3.5" style={{ background: GREEN_SOFT }}>
+                <ShieldCheck className="w-[19px] h-[19px] flex-shrink-0" style={{ color: GREEN }} />
+                <span className="text-[11.5px] font-semibold leading-relaxed" style={{ color: GREEN }}>{t("care.trust")}</span>
+              </div>
+            </section>
+
+            {/* Right: verified-pros rail. */}
+            {ProsRail}
           </div>
 
           {/* Export & send bar (sticky) — the single transactional control. */}

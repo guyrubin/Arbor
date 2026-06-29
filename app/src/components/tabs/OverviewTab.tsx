@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import {
   MessageSquare, Plus, RefreshCw, Sun, Sunrise, Moon, ArrowRight,
   Sparkles, RotateCw, CheckCircle, CalendarDays, ChevronRight,
+  Clock, Gamepad2, NotebookPen, Award, CheckCircle2,
 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -28,6 +29,7 @@ import { computeDevScore } from "../../growth/devScore";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { dayPartFor, type DayPart } from "../../lib/timeOfDay";
+import { usePrideMoment } from "../../hooks/usePrideMoment";
 
 const DAY = 86_400_000;
 
@@ -215,6 +217,89 @@ export default function OverviewTab() {
     else setActiveTab(nudge.action as Parameters<typeof setActiveTab>[0]);
   };
 
+  // ── Loops 1+3+5 — kid-originated + parent-logged events from the ONE shared
+  //    child profile, unified into a single live activity feed. These are real
+  //    timestamped reads of the same profile the kid app writes to:
+  //    · playLogs        = quest / Daily Play completions (the kid's stars/streak window)
+  //    · behaviorLogs    = parent-logged moments
+  //    · milestone cross  = a freshly-noticed milestone (Loop-5 growth story)
+  //    Every row is a neutral/positive fact — never a score, verdict, or trend. */
+  const { crossing: milestoneCrossing } = usePrideMoment();
+
+  type FeedRow = {
+    id: string;
+    at: number;
+    icon: React.ReactNode;
+    tone: { soft: string; ink: string };
+    title: string;
+    sub: string;
+  };
+
+  const activityFeed: FeedRow[] = useMemo(() => {
+    const rows: FeedRow[] = [];
+    const fmtTime = (ms: number) =>
+      new Date(ms).toLocaleTimeString(uiLang === "he" ? "he-IL" : "en-US", { hour: "numeric", minute: "2-digit" });
+
+    // Kid-side quest / play completions (Loop 3 — stars/streak window)
+    for (const p of playLogs) {
+      const at = new Date(p.timestamp).getTime();
+      rows.push({
+        id: `play.${p.id}`,
+        at,
+        icon: <Gamepad2 className="w-[21px] h-[21px]" />,
+        tone: { soft: "var(--arbor-tint)", ink: "var(--arbor-clay)" },
+        title: t("today.feed.played", { title: p.title }),
+        sub: t("today.feed.playedSub", { domain: playDomainLabel(p.domain, uiLang === "he" ? "he" : "en") }),
+      });
+    }
+    // Parent-logged moments (Loop 1 window — emotional/behavioral signal)
+    for (const l of behaviorLogs) {
+      const at = new Date(l.timestamp).getTime();
+      rows.push({
+        id: `beh.${l.id}`,
+        at,
+        icon: <NotebookPen className="w-[21px] h-[21px]" />,
+        tone: { soft: PASTEL.lav.soft, ink: PASTEL.lav.ink },
+        title: t("today.feed.logged"),
+        sub: t("today.feed.loggedSub", { context: l.context ?? t("ov.logMoment"), time: fmtTime(at) }),
+      });
+    }
+    // A freshly-noticed milestone (Loop 5 — growth story). No timestamp on
+    // milestones, so it floats to the top when present.
+    if (milestoneCrossing) {
+      rows.push({
+        id: "milestone.crossing",
+        at: Date.now(),
+        icon: <Award className="w-[21px] h-[21px]" />,
+        tone: { soft: GREEN_SOFT, ink: GREEN },
+        title: t("today.feed.noticed"),
+        // Firewall-safe: a calm factual sub, never the threshold/score that
+        // triggered the crossing. The crossing object intentionally carries no
+        // verdict text — we surface only the parent-observation framing.
+        sub: t("devscore.mechanism.short"),
+      });
+    }
+    return rows.sort((a, b) => b.at - a.at).slice(0, 4);
+  }, [playLogs, behaviorLogs, milestoneCrossing, t, uiLang]);
+
+  // The "Live" pill reflects REAL recent activity (last 48h), not a static label.
+  const hasRecentActivity = useMemo(
+    () => activityFeed.some((r) => r.at >= Date.now() - 2 * DAY),
+    [activityFeed]
+  );
+
+  // ── Dev-footer COUNT stats (clinical firewall: counts only, never a %/verdict) ──
+  const devStats = useMemo(() => {
+    const focus = activeGoals.length; // parent-expressed goals, never weakest-domain
+    const domainsWithProgress = new Set(
+      milestones.filter((m) => m.checked).map((m) => m.domain)
+    ).size; // domains where a milestone has been noticed (count of 7)
+    const weekActivity =
+      behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= Date.now() - 7 * DAY).length +
+      playLogs.filter((p) => new Date(p.timestamp).getTime() >= Date.now() - 7 * DAY).length;
+    return { focus, domains: domainsWithProgress, week: weekActivity };
+  }, [activeGoals.length, milestones, behaviorLogs, playLogs]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -234,12 +319,16 @@ export default function OverviewTab() {
           className="rounded-[22px] overflow-hidden"
           style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-lg)" }}
         >
-          {/* Gradient hero band */}
-          <div className="relative h-[176px] flex flex-col justify-between" style={{ background: "var(--arbor-hero-grad)", padding: "20px" }}>
+          {/* Gradient hero band — 188px guidance-briefing band with a top-down
+              legibility scrim so the title reads on a calm base over the gradient. */}
+          <div className="relative h-[188px]" style={{ background: "var(--arbor-hero-grad)" }}>
             <div className="absolute inset-0" style={{ background: "radial-gradient(60% 80% at 86% 4%, rgba(255,255,255,0.34), transparent 60%)" }}></div>
-            <Sparkles className="absolute right-[22px] bottom-[14px] text-[88px] opacity-[0.16]" style={{ color: "#fff", fontVariationSettings: "'FILL' 1" }} aria-hidden="true" />
+            <Sparkles className="absolute bottom-[14px] text-[88px] opacity-[0.16]" style={{ color: "#fff", insetInlineEnd: 22 }} aria-hidden="true" />
+            {/* Legibility scrim: darken from the bottom up so text sits on a readable base */}
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(13,28,52,0.5), transparent 64%)" }} aria-hidden="true"></div>
+            <div className="relative h-full flex flex-col justify-between" style={{ padding: "20px" }}>
             {/* Top row: eyebrow tag + trend chip */}
-            <div className="relative flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider" style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(4px)", color: "#fff", padding: "6px 12px", borderRadius: "20px", letterSpacing: "1.4px" }}>
                 {heroEyebrow}
               </span>
@@ -248,7 +337,7 @@ export default function OverviewTab() {
               </span>
             </div>
             {/* Greeting + pulse */}
-            <div className="relative">
+            <div>
               <span className="inline-flex items-center gap-1.5 text-[12px] font-bold" style={{ color: "rgba(255,255,255,0.92)" }}>
                 {greeting.icon} {greeting.text}
               </span>
@@ -256,6 +345,21 @@ export default function OverviewTab() {
                 {pulse}
               </h1>
             </div>
+            </div>
+          </div>
+          {/* Meta footer row — reads as a guidance briefing: duration/one-action
+              microcopy + a single dark "Begin" CTA that drops into today's focus. */}
+          <div className="flex items-center justify-between gap-3 px-5 py-[14px]" style={{ borderBottom: `1px solid ${RULE}` }}>
+            <span className="inline-flex items-center gap-2 text-[13px] font-bold" style={{ color: "var(--arbor-faint)" }}>
+              <Clock className="w-4 h-4" /> {t("today.meta")}
+            </span>
+            <button
+              onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
+              className="inline-flex items-center gap-1.5 text-white font-extrabold text-[13px] rounded-xl px-5 py-2.5 transition active:scale-[0.98]"
+              style={{ background: "var(--arbor-ink)", boxShadow: "0 8px 18px -6px rgba(20,34,90,0.5)" }}
+            >
+              {t("today.begin")} <ArrowRight className="w-4 h-4 rtl:-scale-x-100" />
+            </button>
           </div>
           {/* Action band: streak + name row → AI focus recommendation → primary CTAs */}
           <div className="px-5 pb-5 pt-4">
@@ -326,13 +430,30 @@ export default function OverviewTab() {
                   <span className="text-[10px] font-bold mt-1" style={{ color: "var(--arbor-green-ink)" }}>{t("devscore.noticed.short")}</span>
                 </div>
                 <div className="flex-1 min-w-0">
+                  {/* Bold lead + one muted sub (scans like the design's summary). */}
                   <div className="text-[14px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>
                     {t("devscore.noticed", { reached: checkedMilestones, total: totalMilestones })}
                   </div>
                   <div className="text-[11.5px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-faint)" }}>
-                    {t("devscore.mechanism", { name: firstName })}
+                    {t("devscore.mechanism.short")}
                   </div>
                 </div>
+              </div>
+              {/* COUNT-based 3-stat footer (clinical firewall: counts only — no
+                  0–100 ring, no per-domain %, no on-track verdict, no weakest-domain
+                  pointer). Focus = parent-expressed goals; Domains = domains with a
+                  noticed milestone (of 7); This week = moments noticed in 7d. */}
+              <div className="flex gap-2 mt-auto pt-4">
+                {([
+                  { v: devStats.focus, label: t("devscore.stat.focus"), ink: "var(--arbor-clay)" },
+                  { v: devStats.domains, label: t("devscore.stat.domains"), ink: "var(--arbor-green-ink)" },
+                  { v: devStats.week, label: t("devscore.stat.week"), ink: "var(--arbor-clay-deep)" },
+                ] as const).map((s) => (
+                  <div key={s.label} className="flex-1 rounded-xl py-2.5 text-center" style={{ background: "var(--arbor-paper-deep)" }}>
+                    <div className="text-[17px] font-extrabold leading-none" style={{ color: s.ink }}>{s.v}</div>
+                    <div className="text-[9.5px] font-bold mt-1.5" style={{ color: "var(--arbor-faint)" }}>{s.label}</div>
+                  </div>
+                ))}
               </div>
             </section>
           );
@@ -344,11 +465,14 @@ export default function OverviewTab() {
         {/* ── Kid activity sync card (spans 2 cols) ─────────────────────────── */}
         <section className="lg:col-span-2 rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
           <div className="flex items-center gap-2 mb-4">
-            <RotateCw className="w-5 h-5" style={{ color: "var(--arbor-clay)", fontVariationSettings: "'FILL' 1" }} />
+            <RotateCw className="w-5 h-5" style={{ color: "var(--arbor-clay)" }} />
             <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.reco.play.title")}</span>
-            <span className="ms-auto text-[10px] font-extrabold rounded-full px-2.5 py-1" style={{ color: "var(--arbor-clay)", background: "var(--arbor-tint-2)" }}>
-              {t("today.live")}
-            </span>
+            {/* Live pill reflects REAL recent activity (kid + parent events in 48h). */}
+            {hasRecentActivity && (
+              <span className="ms-auto inline-flex items-center gap-1.5 text-[10px] font-extrabold rounded-full px-2.5 py-1" style={{ color: "var(--arbor-clay)", background: "var(--arbor-tint-2)" }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-clay)" }} /> {t("today.live")}
+              </span>
+            )}
           </div>
           <div className="flex flex-col gap-3">
             {/* Daily Play card if available */}
@@ -394,6 +518,21 @@ export default function OverviewTab() {
                 <CheckCircle className="w-5 h-5" style={{ color: "var(--arbor-success)" }} />
               </div>
             )}
+            {/* ── Unified ActivityRow feed (Loops 1+3+5) — kid quest/play
+                  completions, parent-logged moments and a noticed milestone, all
+                  in one row grammar: icon-tile + title/sub + trailing status. */}
+            {activityFeed.map((row) => (
+              <div key={row.id} className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-none" style={{ background: row.tone.soft, color: row.tone.ink }}>
+                  {row.icon}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13.5px] font-extrabold truncate" style={{ color: "var(--arbor-ink)" }}>{row.title}</div>
+                  <div className="text-[11px] mt-0.5 truncate" style={{ color: "var(--arbor-faint)" }}>{row.sub}</div>
+                </div>
+                <CheckCircle2 className="w-5 h-5 flex-none" style={{ color: "var(--arbor-success)" }} />
+              </div>
+            ))}
           </div>
         </section>
 
@@ -409,14 +548,16 @@ export default function OverviewTab() {
             </div>
             <div>
               <div className="text-[14px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.title")}</div>
-              <div className="text-[10px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>{t("coach.online")}</div>
+              <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-success)" }} /> {t("coach.online")}
+              </div>
             </div>
           </div>
           <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "var(--arbor-ink-soft)" }}>
             {t("coach.ready", { name: firstName })}
           </div>
           <button className="mt-4 bg-white text-center rounded-xl py-3 text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
-            <MessageSquare className="w-4 h-4" /> {t("ov.askArbor")}
+            <MessageSquare className="w-4 h-4" /> {t("today.coach.reply")}
           </button>
         </section>
       </div>

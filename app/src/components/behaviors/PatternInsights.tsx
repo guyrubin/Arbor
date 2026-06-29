@@ -1,81 +1,108 @@
 import React, { useMemo } from "react";
-import { Activity, MapPin, CalendarDays, Clock, CheckCircle2 } from "lucide-react";
+import { Activity, MapPin, CalendarDays, Clock, CheckCircle2, type LucideIcon } from "lucide-react";
 import { BehaviorLog } from "../../types";
 import { timeBand } from "../../lib/behaviorUtils";
+import { useLanguage } from "../../context/LanguageContext";
+import { PASTEL, type PastelKey } from "../ui/kit";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** Surfaces correlations from behavior logs, not just counts. */
+/** Surfaces correlations from behavior logs as a calm icon-row list (UC-1).
+ *  Keeps the existing context/day/time/resolve-rate correlation logic, but
+ *  presents COUNTS only (no per-tile avg-intensity) so it stays clear of the
+ *  clinical firewall — these are flat aggregates of parent-noticed moments,
+ *  never a verdict on the child. Strings flow through t() for He/En + RTL. */
 export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
+  const { t } = useLanguage();
+
   const insights = useMemo(() => {
     if (logs.length === 0) return null;
 
-    const avgBy = (key: (l: BehaviorLog) => string | undefined) => {
-      const m = new Map<string, { sum: number; n: number }>();
+    // Most-frequent bucket by key (count-based, not intensity-ranked).
+    const topBy = (key: (l: BehaviorLog) => string | undefined) => {
+      const m = new Map<string, number>();
       logs.forEach((l) => {
         const k = key(l);
         if (!k) return;
-        const cur = m.get(k) || { sum: 0, n: 0 };
-        cur.sum += l.intensity;
-        cur.n += 1;
-        m.set(k, cur);
+        m.set(k, (m.get(k) || 0) + 1);
       });
       let top = "";
-      let topAvg = 0;
       let topN = 0;
-      m.forEach((v, k) => {
-        const a = v.sum / v.n;
-        if (a > topAvg || (a === topAvg && v.n > topN)) {
+      m.forEach((n, k) => {
+        if (n > topN) {
           top = k;
-          topAvg = a;
-          topN = v.n;
+          topN = n;
         }
       });
-      return top ? { label: top, avg: topAvg, n: topN } : null;
+      return top ? { label: top, n: topN } : null;
     };
 
-    const context = avgBy((l) => l.context);
-    const day = avgBy((l) => DAYS[new Date(l.timestamp).getDay()]);
-    const time = avgBy((l) => timeBand(new Date(l.timestamp).getHours()));
+    const context = topBy((l) => l.context);
+    const day = topBy((l) => DAYS[new Date(l.timestamp).getDay()]);
+    const time = topBy((l) => timeBand(new Date(l.timestamp).getHours()));
     const resolved = logs.filter((l) => l.resolved).length;
-    const resolveRate = Math.round((resolved / logs.length) * 100);
 
-    return { context, day, time, resolveRate, total: logs.length };
+    return { context, day, time, resolved, total: logs.length };
   }, [logs]);
 
   if (!insights) return null;
 
   const headline =
     insights.context && insights.day
-      ? `Hardest moments cluster at ${insights.context.label.toLowerCase()} on ${insights.day.label}.`
-      : "Keep logging to reveal stronger patterns.";
+      ? t("beh.pattern.headline", {
+          place: insights.context.label.toLowerCase(),
+          day: insights.day.label,
+        })
+      : t("beh.pattern.empty");
 
-  const Tile = ({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) => (
-    <div className="rounded-xl p-3 space-y-1 bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-      <span className="text-[10px] uppercase font-extrabold tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>{icon} {label}</span>
-      <div className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{value}</div>
-      {sub && <div className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{sub}</div>}
-    </div>
-  );
+  const Row = ({
+    icon: Icon,
+    tone,
+    label,
+    value,
+    sub,
+  }: {
+    icon: LucideIcon;
+    tone: PastelKey;
+    label: string;
+    value: string;
+    sub: string;
+  }) => {
+    const p = PASTEL[tone];
+    return (
+      <div className="flex items-center gap-3">
+        <span
+          className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
+          style={{ width: 40, height: 40, background: p.soft, color: p.ink }}
+        >
+          <Icon className="w-4 h-4" />
+        </span>
+        <div className="min-w-0 flex-1 text-start">
+          <div className="text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{value}</div>
+          <div className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{label} · {sub}</div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="rounded-2xl p-5 space-y-3" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+    <div className="rounded-2xl p-5 space-y-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center gap-2">
         <Activity className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} />
-        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>Pattern intelligence</span>
+        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.pattern.title")}</span>
       </div>
       <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>{headline}</p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="space-y-3">
         {insights.context && (
-          <Tile icon={<MapPin className="w-3 h-3" />} label="Toughest place" value={insights.context.label} sub={`avg ${insights.context.avg.toFixed(1)}/5 · ${insights.context.n}×`} />
+          <Row icon={MapPin} tone="sky" label={t("beh.pattern.place")} value={insights.context.label} sub={t("beh.pattern.placeSub", { count: insights.context.n })} />
         )}
         {insights.day && (
-          <Tile icon={<CalendarDays className="w-3 h-3" />} label="Toughest day" value={insights.day.label} sub={`avg ${insights.day.avg.toFixed(1)}/5 · ${insights.day.n}×`} />
+          <Row icon={CalendarDays} tone="lav" label={t("beh.pattern.day")} value={insights.day.label} sub={t("beh.pattern.daySub", { count: insights.day.n })} />
         )}
         {insights.time && (
-          <Tile icon={<Clock className="w-3 h-3" />} label="Toughest time" value={insights.time.label} sub={`avg ${insights.time.avg.toFixed(1)}/5 · ${insights.time.n}×`} />
+          <Row icon={Clock} tone="yellow" label={t("beh.pattern.time")} value={insights.time.label} sub={t("beh.pattern.timeSub", { count: insights.time.n })} />
         )}
-        <Tile icon={<CheckCircle2 className="w-3 h-3" />} label="Resolved" value={`${insights.resolveRate}%`} sub={`of ${insights.total} events`} />
+        <Row icon={CheckCircle2} tone="mint" label={t("beh.pattern.resolved")} value={`${insights.resolved}/${insights.total}`} sub={t("beh.pattern.resolvedSub", { count: insights.resolved, total: insights.total })} />
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { Search, ShieldCheck, Globe, MapPin, Languages as LangIcon, Star, Send, FileText, RefreshCw, CheckCircle2, Mail } from "lucide-react";
-import { PageHeader, cardCls, Chip, PASTEL } from "../ui/kit";
+import { PageHeader, cardCls, Chip, PASTEL, InitialsTile } from "../ui/kit";
+import type { PastelKey } from "../ui/kit";
 import { Modal } from "../ui/Modal";
 import type { Professional } from "../../services/professionals";
 import { api, authHeaders } from "../../lib/api";
@@ -184,9 +185,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           {results.map((p) => (
             <div key={p.name} className={`${cardCls} p-5`}>
               <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-extrabold flex-shrink-0" style={{ background: PASTEL[p.tone as keyof typeof PASTEL].soft, color: PASTEL[p.tone as keyof typeof PASTEL].ink, fontFamily: "var(--font-display)" }}>
-                  {p.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-                </div>
+                <InitialsTile name={p.name} tone={(p.tone in PASTEL ? p.tone : "sky") as PastelKey} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{p.name}</h3>
