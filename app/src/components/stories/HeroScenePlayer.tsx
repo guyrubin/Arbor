@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Volume2, VolumeX, Download } from "lucide-react";
+import { Download } from "lucide-react";
 import { StoryIllustration } from "./StoryIllustration";
 import { ComicPage } from "../ui/playkit";
-import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
+import { SpeakButton } from "../ui/SpeakButton";
+import { stopSpeaking } from "../../lib/tts";
 import { api, type AvatarStyle } from "../../lib/api";
 import { comicKey } from "../../lib/heroComics";
 import { getScene, resolveScene } from "../../lib/sceneCache";
@@ -48,7 +49,6 @@ export function HeroScenePlayer({
   heroName?: string;
   immersive?: boolean;
 }) {
-  const [speaking, setSpeaking] = useState(false);
   const [sceneArt, setSceneArt] = useState<string | undefined>();
   const [artLoading, setArtLoading] = useState(false);
   const { uiLang, t } = useLanguage();
@@ -56,7 +56,6 @@ export function HeroScenePlayer({
   // Stop speech whenever the scene changes or the card unmounts.
   useEffect(() => {
     stopSpeaking();
-    setSpeaking(false);
     return () => stopSpeaking();
   }, [scene.beatId]);
 
@@ -111,16 +110,6 @@ export function HeroScenePlayer({
     );
   };
 
-  const toggleSpeak = () => {
-    if (speaking) {
-      stopSpeaking();
-      setSpeaking(false);
-    } else if (scene.narration) {
-      speak(scene.narration, () => setSpeaking(false));
-      setSpeaking(true);
-    }
-  };
-
   const artSize = immersive ? "w-40 h-40 md:w-48 md:h-48" : "w-28 h-28";
   const textSize = immersive ? "text-2xl md:text-3xl leading-relaxed" : "text-sm md:text-base leading-relaxed";
 
@@ -130,17 +119,7 @@ export function HeroScenePlayer({
         <span>
           Beat {beatNumber} of {beatTotal}
         </span>
-        {ttsSupported() && (
-          <button
-            onClick={toggleSpeak}
-            className="flex items-center gap-1 transition"
-            style={{ color: speaking ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
-            aria-label={speaking ? "Stop reading" : "Read aloud"}
-          >
-            {speaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-            {speaking ? "Stop" : "Read"}
-          </button>
-        )}
+        {scene.narration && <SpeakButton text={scene.narration} lang={uiLang} />}
         {sceneArt && (
           <button onClick={saveComicPage} className="flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
             <Download className="w-3.5 h-3.5" /> Save
