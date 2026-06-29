@@ -20,7 +20,7 @@ import { createBillingWebhookRouter } from "./billing.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
 import { initUsageRollup } from "./usageRollup.js";
 import { createConsultStore } from "./consultRequests.js";
-import { createWaitlistStore } from "./waitlist.js";
+import { createWaitlistNotifierFromEnv, createWaitlistStore } from "./waitlist.js";
 import { createPushTokenStore } from "./pushTokens.js";
 import { requestObservability } from "./logger.js";
 import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
@@ -83,6 +83,7 @@ export const createApp = (config: ArborConfig) => {
   const consultStore = createConsultStore(config);
   // B2: pre-auth waitlist capture — no AI, no entitlement dependency.
   const waitlistStore = createWaitlistStore(config);
+  const waitlistNotifier = createWaitlistNotifierFromEnv();
   // C2: push token store. Always created (firebase-admin is an existing dep);
   // the feature is gated client-side by VITE_FIREBASE_VAPID_KEY, not by this.
   const pushTokenStore = createPushTokenStore(config);
@@ -182,7 +183,7 @@ export const createApp = (config: ArborConfig) => {
   app.use(["/api/chat", "/api/council"], createCoachMeter(entitlementStore, counters));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, pushTokenStore }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore }));
 
   return app;
 };

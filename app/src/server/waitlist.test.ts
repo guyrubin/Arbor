@@ -8,8 +8,8 @@
  *   4. duplicate email                 → idempotent ok + duplicate: true, no second record
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
-import { LocalWaitlistStore, buildWaitlistEntry, isValidEmail } from "./waitlist.js";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { LocalWaitlistStore, buildWaitlistEntry, createResendWaitlistNotifier, isValidEmail } from "./waitlist.js";
 
 // ── isValidEmail ──────────────────────────────────────────────────────────────
 
@@ -94,6 +94,60 @@ describe("LocalWaitlistStore", () => {
     const entry = buildWaitlistEntry({ email: "p@test.com" });
     const keys = Object.keys(entry);
     expect(keys.sort()).toEqual(["consentAt", "email", "id", "market", "source"].sort());
+  });
+});
+
+// ── Waitlist notification ─────────────────────────────────────────────────────
+
+describe("createResendWaitlistNotifier", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns null when email delivery is not configured", () => {
+    expect(createResendWaitlistNotifier({})).toBeNull();
+    expect(createResendWaitlistNotifier({ resendApiKey: "rk_test", notifyTo: "team@arbor.app" })).toBeNull();
+    expect(createResendWaitlistNotifier({ resendApiKey: "rk_test", notifyFrom: "Arbor <hello@arbor.app>" })).toBeNull();
+  });
+
+  it("sends a founder notification email for a new waitlist lead", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "email_123" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const notifier = createResendWaitlistNotifier({
+      resendApiKey: "rk_test",
+      notifyTo: "founder@arbor.app",
+      notifyFrom: "Arbor <waitlist@arbor.app>",
+    });
+
+    await notifier?.notify(buildWaitlistEntry({ email: "Parent@Example.com", source: "login-access", market: "il" }));
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    const [url, init] = calls[0];
+    expect(url).toBe("https://api.resend.com/emails");
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer rk_test");
+    const body = JSON.parse(String(init.body));
+    expect(body).toMatchObject({
+      from: "Arbor <waitlist@arbor.app>",
+      to: ["founder@arbor.app"],
+      subject: "New Arbor access request — parent@example.com",
+    });
+    expect(body.text).toContain("Email: parent@example.com");
+    expect(body.text).toContain("Source: login-access");
+    expect(body.text).toContain("Market: il");
+  });
+
+  it("raises an actionable error when the provider rejects delivery", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("bad api key", { status: 401 })));
+    const notifier = createResendWaitlistNotifier({
+      resendApiKey: "rk_bad",
+      notifyTo: "founder@arbor.app",
+      notifyFrom: "Arbor <waitlist@arbor.app>",
+    });
+
+    await expect(notifier?.notify(buildWaitlistEntry({ email: "parent@example.com" })))
+      .rejects.toThrow("Waitlist notification email failed: 401 bad api key");
   });
 });
 

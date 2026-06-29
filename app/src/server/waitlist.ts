@@ -29,6 +29,11 @@ export interface WaitlistStore {
   has(email: string): Promise<boolean>;
 }
 
+export interface WaitlistNotifier {
+  /** Notify the product/founder inbox that a new parent requested access. */
+  notify(entry: WaitlistEntry): Promise<void>;
+}
+
 // ── In-memory (dev) ──────────────────────────────────────────────────────────
 
 export class LocalWaitlistStore implements WaitlistStore {
@@ -87,6 +92,59 @@ export const createWaitlistStore = (config: ArborConfig): WaitlistStore =>
   config.memoryAdapter === "firestore"
     ? new FirestoreWaitlistStore(config)
     : new LocalWaitlistStore();
+
+// ── Email notification (prod opt-in) ──────────────────────────────────────────
+
+export const createResendWaitlistNotifier = (input: {
+  resendApiKey?: string;
+  notifyTo?: string;
+  notifyFrom?: string;
+}): WaitlistNotifier | null => {
+  const resendApiKey = input.resendApiKey?.trim();
+  const notifyTo = input.notifyTo?.trim();
+  const notifyFrom = input.notifyFrom?.trim();
+  if (!resendApiKey || !notifyTo || !notifyFrom) return null;
+
+  return {
+    async notify(entry: WaitlistEntry) {
+      const text = [
+        "New Arbor access request",
+        "",
+        `Email: ${entry.email}`,
+        `Source: ${entry.source || "unknown"}`,
+        `Market: ${entry.market || "unknown"}`,
+        `Consent recorded: ${entry.consentAt}`,
+        `Waitlist id: ${entry.id}`,
+      ].join("\n");
+
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: notifyFrom,
+          to: [notifyTo],
+          subject: `New Arbor access request — ${entry.email}`,
+          text,
+        }),
+      });
+
+      if (!response.ok) {
+        const details = (await response.text()).slice(0, 500);
+        throw new Error(`Waitlist notification email failed: ${response.status} ${details}`.trim());
+      }
+    },
+  };
+};
+
+export const createWaitlistNotifierFromEnv = (): WaitlistNotifier | null =>
+  createResendWaitlistNotifier({
+    resendApiKey: process.env.RESEND_API_KEY,
+    notifyTo: process.env.WAITLIST_NOTIFY_EMAIL || process.env.ARBOR_WAITLIST_NOTIFY_EMAIL,
+    notifyFrom: process.env.WAITLIST_NOTIFY_FROM || process.env.ARBOR_WAITLIST_NOTIFY_FROM,
+  });
 
 // ── Builder ──────────────────────────────────────────────────────────────────
 
