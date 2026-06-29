@@ -1,0 +1,137 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 82240354008,
+      "run_id": 27791214660,
+      "workflow_name": "iOS build",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/guyrubin/PPPPtherapy-/actions/runs/27791214660",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOSX8zhs8AAAATJeg22A",
+      "head_sha": "6ecde46113534fd85c4a09523780cd13638d2f89",
+      "url": "https://api.github.com/repos/guyrubin/PPPPtherapy-/actions/jobs/82240354008",
+      "html_url": "https://github.com/guyrubin/PPPPtherapy-/actions/runs/27791214660/job/82240354008",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-06-18T21:44:14Z",
+      "started_at": "2026-06-18T21:44:16Z",
+      "completed_at": "2026-06-18T21:44:46Z",
+      "name": "ios",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-06-18T21:44:16Z",
+          "completed_at": "2026-06-18T21:44:17Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-06-18T21:44:17Z",
+          "completed_at": "2026-06-18T21:44:19Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-06-18T21:44:19Z",
+          "completed_at": "2026-06-18T21:44:20Z"
+        },
+        {
+          "name": "Run npm ci",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-06-18T21:44:20Z",
+          "completed_at": "2026-06-18T21:44:32Z"
+        },
+        {
+          "name": "Build web bundle",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-06-18T21:44:32Z",
+          "completed_at": "2026-06-18T21:44:38Z"
+        },
+        {
+          "name": "Sync Capacitor (iOS)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-06-18T21:44:38Z",
+          "completed_at": "2026-06-18T21:44:39Z"
+        },
+        {
+          "name": "Build signed IPA + upload to TestFlight",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-06-18T21:44:39Z",
+          "completed_at": "2026-06-18T21:44:39Z"
+        },
+        {
+          "name": "Upload IPA artifact",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-06-18T21:44:39Z",
+          "completed_at": "2026-06-18T21:44:39Z"
+        },
+        {
+          "name": "Xcode build (unsigned archive — store-ready compile verification)",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-06-18T21:44:39Z",
+          "completed_at": "2026-06-18T21:44:42Z"
+        },
+        {
+          "name": "Upload archive",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-06-18T21:44:42Z",
+          "completed_at": "2026-06-18T21:44:42Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 19,
+          "started_at": "2026-06-18T21:44:42Z",
+          "completed_at": "2026-06-18T21:44:42Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 20,
+          "started_at": "2026-06-18T21:44:42Z",
+          "completed_at": "2026-06-18T21:44:43Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-06-18T21:44:43Z",
+          "completed_at": "2026-06-18T21:44:43Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/guyrubin/PPPPtherapy-/check-runs/82240354008",
+      "labels": [
+        "macos-14"
+      ],
+      "runner_id": 1000000106,
+      "runner_name": "GitHub Actions 1000000106",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

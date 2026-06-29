@@ -1,0 +1,162 @@
+/* Consult packet — the warm handoff.
+ *
+ * Assembles a structured, parent-readable summary of the child's longitudinal
+ * record so a professional opens the conversation already in context (vs the
+ * cold start every competitor begins from). Pure + deterministic: the parent
+ * chooses what to include (redaction, Safety L3), and nothing leaves the device
+ * until they explicitly export. Non-diagnostic by construction — facts and
+ * parent observations only, never a label or assessment.
+ */
+
+export interface PacketInputProfile {
+  name: string;
+  age: number;
+  languages: string[];
+  schoolContext?: string;
+  strengths?: string[];
+  challenges?: string[];
+}
+export interface PacketInputLog {
+  behaviorType: string;
+  intensity: number;
+  timestamp: string | number;
+  trigger?: string;
+  response?: string;
+  resolved?: boolean;
+}
+export interface PacketInputMilestone { domain: string; title: string; checked: boolean }
+export interface PacketInputPlan { title: string; issue?: string }
+export interface PacketInputMemory { fact: string; status: string }
+
+export interface PacketItem { id: string; text: string }
+export interface PacketSection { id: string; title: string; note?: string; items: PacketItem[] }
+export interface ConsultPacket {
+  childLabel: string;
+  generatedAt: string;
+  sections: PacketSection[];
+}
+
+const DAY = 86_400_000;
+function toMs(ts: string | number): number {
+  return typeof ts === "number" ? ts : new Date(ts).getTime();
+}
+
+export interface BuildPacketInput {
+  profile: PacketInputProfile;
+  logs: PacketInputLog[];
+  milestones: PacketInputMilestone[];
+  plans: PacketInputPlan[];
+  memory: PacketInputMemory[];
+  nowMs: number;
+  windowDays?: number;
+}
+
+/** Assemble the packet from the child's record. Empty sources yield no section. */
+export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
+  const { profile, logs, milestones, plans, memory, nowMs } = input;
+  const windowDays = input.windowDays ?? 30;
+  const since = nowMs - windowDays * DAY;
+  const recent = logs.filter((l) => toMs(l.timestamp) >= since);
+
+  const sections: PacketSection[] = [];
+
+  // 1) Who the child is.
+  const aboutItems: PacketItem[] = [
+    { id: "about-basics", text: `${profile.name}, age ${profile.age}${profile.languages.length ? `, speaks ${profile.languages.join(" and ")}` : ""}.` },
+  ];
+  if (profile.schoolContext) aboutItems.push({ id: "about-school", text: `Setting: ${profile.schoolContext}.` });
+  if (profile.strengths?.length) aboutItems.push({ id: "about-strengths", text: `Strengths: ${profile.strengths.join(", ")}.` });
+  if (profile.challenges?.length) aboutItems.push({ id: "about-focus", text: `Current focus: ${profile.challenges.join(", ")}.` });
+  sections.push({ id: "about", title: `About ${profile.name}`, items: aboutItems });
+
+  // 2) What's been happening — top recent concerns by frequency.
+  if (recent.length) {
+    const counts = new Map<string, { n: number; maxIntensity: number }>();
+    for (const l of recent) {
+      const c = counts.get(l.behaviorType) ?? { n: 0, maxIntensity: 0 };
+      c.n += 1; c.maxIntensity = Math.max(c.maxIntensity, l.intensity);
+      counts.set(l.behaviorType, c);
+    }
+    const top = [...counts.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 3);
+    const items: PacketItem[] = top.map(([type, c], i) => ({
+      id: `pattern-${i}`,
+      text: `${type}: ${c.n} time${c.n === 1 ? "" : "s"} in the last ${windowDays} days${c.maxIntensity >= 4 ? ", sometimes intense" : ""}.`,
+    }));
+    sections.push({
+      id: "patterns",
+      title: `What we've been seeing (last ${windowDays} days)`,
+      note: "Parent-logged moments, not a diagnosis.",
+      items,
+    });
+  }
+
+  // 3) Development snapshot — milestone coverage, lightly.
+  if (milestones.length) {
+    const done = milestones.filter((m) => m.checked).length;
+    const byDomain = new Map<string, { done: number; total: number }>();
+    for (const m of milestones) {
+      const d = byDomain.get(m.domain) ?? { done: 0, total: 0 };
+      d.total += 1; if (m.checked) d.done += 1;
+      byDomain.set(m.domain, d);
+    }
+    const items: PacketItem[] = [
+      { id: "dev-overall", text: `${done} of ${milestones.length} tracked milestones noticed so far.` },
+      ...[...byDomain.entries()].map(([domain, d], i) => ({ id: `dev-${i}`, text: `${domain}: ${d.done}/${d.total}.` })),
+    ];
+    sections.push({ id: "development", title: "Development snapshot", items });
+  }
+
+  // 4) What's been tried — active plans (shows the family is already working on it).
+  if (plans.length) {
+    const items: PacketItem[] = plans.slice(0, 4).map((p, i) => ({
+      id: `tried-${i}`,
+      text: p.issue ? `${p.title} — for ${p.issue}.` : p.title,
+    }));
+    sections.push({ id: "tried", title: "What we've already tried", items });
+  }
+
+  // 5) What Arbor remembers — approved longitudinal facts (the moat).
+  const approved = memory.filter((m) => m.status === "approved");
+  if (approved.length) {
+    const items: PacketItem[] = approved.slice(0, 8).map((m, i) => ({ id: `mem-${i}`, text: m.fact }));
+    sections.push({
+      id: "memory",
+      title: "Context worth knowing",
+      note: "Approved notes from your history with Arbor.",
+      items,
+    });
+  }
+
+  return {
+    childLabel: profile.name,
+    generatedAt: new Date(nowMs).toISOString().slice(0, 10),
+    sections,
+  };
+}
+
+/** Render the packet to shareable Markdown, omitting any redacted item ids and
+ *  any section the parent emptied. */
+export function serializePacket(packet: ConsultPacket, excludedIds: Set<string> = new Set()): string {
+  const lines: string[] = [
+    `# ${packet.childLabel} — context for our conversation`,
+    `_Prepared ${packet.generatedAt} via Arbor. Parent-selected; non-diagnostic._`,
+    "",
+  ];
+  for (const section of packet.sections) {
+    const items = section.items.filter((it) => !excludedIds.has(it.id));
+    if (items.length === 0) continue;
+    lines.push(`## ${section.title}`);
+    if (section.note) lines.push(`_${section.note}_`);
+    for (const it of items) lines.push(`- ${it.text}`);
+    lines.push("");
+  }
+  return lines.join("\n").trim() + "\n";
+}
+
+/** Count of includable items (for the UI's "N details selected"). */
+export function countIncluded(packet: ConsultPacket, excludedIds: Set<string>): number {
+  return packet.sections.reduce(
+    (n, s) => n + s.items.filter((it) => !excludedIds.has(it.id)).length,
+    0
+  );
+}

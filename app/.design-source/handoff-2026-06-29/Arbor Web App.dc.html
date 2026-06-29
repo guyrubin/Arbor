@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Heebo:wght@400;500;700;800&family=Baloo+2:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..700,0..1,-25..0&display=block" rel="stylesheet">
+<style>
+  html,body{margin:0;background:#e8edf5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  *{box-sizing:border-box;}
+  .msr{font-family:'Material Symbols Rounded';line-height:1;display:inline-block;font-variation-settings:'opsz' 24,'wght' 500,'GRAD' 0,'FILL' 0;-webkit-font-feature-settings:'liga';vertical-align:middle;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:#cbd6cf;border-radius:8px;border:3px solid transparent;background-clip:content-box;}
+  .nv{cursor:pointer;transition:background .15s, color .15s;}
+  .nv:hover{background:#eef4f0;}
+  .cardh{transition:transform .16s ease, box-shadow .2s ease;}
+  .cardh:hover{transform:translateY(-2px);box-shadow:0 18px 38px -16px rgba(31,60,120,.26);}
+  .scrIn{animation:scrIn .34s cubic-bezier(.2,.7,.3,1);}
+  @keyframes scrIn{from{opacity:.4;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+
+<div dir="{{ dirAttr }}" style="min-height:100vh;background:#e8edf5;font-family:'Plus Jakarta Sans','Heebo',sans-serif;display:flex;justify-content:center;padding:26px;">
+  <div style="width:1320px;max-width:100%;height:860px;background:#eef3fb;border-radius:26px;overflow:hidden;box-shadow:0 40px 90px -30px rgba(20,40,60,.4);display:flex;border:1px solid #dde6f2;position:relative;">
+
+    <sc-if value="{{ kidMode }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:50;background:radial-gradient(120% 80% at 50% 0%, #eaf2ff, #d8e6fb);overflow-y:auto;font-family:'Baloo 2','Heebo',sans-serif;">
+        <div style="max-width:980px;margin:0 auto;padding:26px 30px 40px;">
+          <!-- header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+            <div style="display:flex;align-items:center;gap:13px;">
+              <div style="width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 6px 16px -6px rgba(31,60,120,.3);">{{ kidAvatarEl }}</div>
+              <div style="font-size:26px;font-weight:700;color:#14225a;">{{ kidGreeting }}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="display:flex;align-items:center;gap:6px;background:#fff;border-radius:20px;padding:8px 15px;box-shadow:0 6px 16px -10px rgba(31,60,120,.2);"><span class="msr" style="font-size:20px;color:#e0a83b;font-variation-settings:'FILL' 1;">star</span><span style="font-size:16px;font-weight:800;color:#cf9320;">{{ kidStars }}</span></span>
+              <div onClick="{{ exitKid }}" class="nv" style="display:flex;align-items:center;gap:6px;background:#14225a;color:#fff;font-size:13px;font-weight:800;padding:9px 16px;border-radius:20px;cursor:pointer;"><span class="msr" style="font-size:18px;">arrow_back</span>{{ exitKidLabel }}</div>
+            </div>
+          </div>
+          <!-- quest hero -->
+          <div style="border-radius:26px;overflow:hidden;box-shadow:0 18px 40px -18px rgba(43,127,255,.5);margin-bottom:24px;">
+            <div style="position:relative;height:180px;background:linear-gradient(140deg,#2b7fff,#4a90e2);padding:24px;display:flex;flex-direction:column;justify-content:space-between;">
+              <span class="msr" style="position:absolute;inset-inline-end:22px;bottom:18px;font-size:96px;color:rgba(255,255,255,.18);font-variation-settings:'FILL' 1;">self_improvement</span>
+              <span style="align-self:flex-start;background:rgba(255,255,255,.22);font-size:11px;font-weight:800;letter-spacing:1.2px;color:#fff;padding:6px 13px;border-radius:20px;">{{ kidQuestTag }}</span>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;">
+                <div style="font-size:28px;font-weight:700;color:#fff;line-height:1.1;">{{ kidQuestTitle }}</div>
+                <div style="background:#fff;color:#14225a;font-size:16px;font-weight:800;padding:12px 28px;border-radius:18px;cursor:pointer;white-space:nowrap;box-shadow:0 8px 18px -6px rgba(20,34,90,.3);">{{ kidQuestGo }}</div>
+              </div>
+            </div>
+          </div>
+          <!-- rooms -->
+          <div style="font-size:19px;font-weight:700;color:#14225a;margin-bottom:13px;">{{ kidRoomsLabel }}</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px;">
+            <sc-for list="{{ kidRooms }}" as="r" hint-placeholder-count="4">
+              <div class="nv" style="border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 12px 26px -16px rgba(31,60,120,.3);">
+                <div style="height:96px;background:{{ r.grad }};display:flex;align-items:center;justify-content:center;"><span class="msr" style="font-size:44px;color:#fff;font-variation-settings:'FILL' 1;">{{ r.icon }}</span></div>
+                <div style="background:#fff;padding:12px 14px;"><div style="font-size:15px;font-weight:700;color:#14225a;">{{ r.title }}</div><div style="font-size:11px;color:#8a958e;font-weight:600;">{{ r.sub }}</div></div>
+              </div>
+            </sc-for>
+          </div>
+          <!-- games -->
+          <div style="font-size:19px;font-weight:700;color:#14225a;margin-bottom:13px;">{{ kidGamesLabel }}</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:26px;">
+            <sc-for list="{{ kidGames }}" as="g" hint-placeholder-count="6">
+              <div class="nv" style="border-radius:20px;overflow:hidden;background:#fff;cursor:pointer;box-shadow:0 12px 26px -16px rgba(31,60,120,.28);">
+                <div style="height:130px;">{{ g.imgEl }}</div>
+                <div style="padding:13px 15px;font-size:15px;font-weight:700;color:#14225a;">{{ g.title }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <!-- stories -->
+          <div style="font-size:19px;font-weight:700;color:#14225a;margin-bottom:13px;">{{ kidStoriesLabel }}</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+            <sc-for list="{{ kidStories }}" as="s" hint-placeholder-count="4">
+              <div class="nv" style="border-radius:20px;overflow:hidden;background:#fff;cursor:pointer;box-shadow:0 12px 26px -16px rgba(31,60,120,.28);">
+                <div style="height:150px;">{{ s.imgEl }}</div>
+                <div style="padding:12px 14px;font-size:13.5px;font-weight:700;color:#14225a;">{{ s.title }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside style="width:250px;flex:none;background:#fbfdfc;border-inline-end:1px solid #e8eee9;display:flex;flex-direction:column;padding:22px 16px;">
+      <div style="display:flex;align-items:center;gap:11px;padding:4px 8px 22px;">
+        <div style="width:38px;height:38px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px -3px rgba(31,60,120,.2);overflow:hidden;"><img src="assets/arbor-mark.png" alt="Arbor" style="width:28px;height:28px;object-fit:contain;" /></div>
+        <span style="font-size:21px;font-weight:800;color:#14225a;letter-spacing:-0.4px;">Arbor</span>
+      </div>
+
+      <nav style="display:flex;flex-direction:column;gap:3px;">
+        <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+          <div onClick="{{ go }}" data-v="{{ n.id }}" class="nv" style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:13px;background:{{ n.bg }};">
+            <span class="msr" style="font-size:23px;color:{{ n.color }};font-variation-settings:'FILL' {{ n.fill }};">{{ n.icon }}</span>
+            <span style="font-size:14.5px;font-weight:{{ n.weight }};color:{{ n.color }};">{{ n.label }}</span>
+            <sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}"><span style="margin-inline-start:auto;background:#e2562d;color:#fff;font-size:10px;font-weight:800;border-radius:20px;padding:2px 7px;">{{ n.badge }}</span></sc-if>
+          </div>
+        </sc-for>
+      </nav>
+
+      <div style="margin-top:auto;">
+        <div onClick="{{ enterKid }}" style="background:linear-gradient(140deg,#2b7fff,#4a90e2);border-radius:16px;padding:14px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;gap:11px;box-shadow:0 10px 24px -12px rgba(43,127,255,.5);" class="nv">
+          <span style="width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:22px;color:#fff;font-variation-settings:'FILL' 1;">child_care</span></span>
+          <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:800;color:#fff;">{{ kidModeLabel }}</div><div style="font-size:10.5px;color:rgba(255,255,255,.85);font-weight:600;">{{ kidModeSub }}</div></div>
+          <span class="msr" style="font-size:20px;color:#fff;">{{ chevEnd }}</span>
+        </div>
+        <div style="position:relative;">
+          <div onClick="{{ toggleSettings }}" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:13px;cursor:pointer;" class="nv">
+            <div style="width:38px;height:38px;border-radius:50%;overflow:hidden;background:#e3edff;flex:none;border:2px solid #fff;box-shadow:0 2px 6px rgba(31,60,120,.12);"><img src="assets/viz/hero-comic.png" alt="" style="width:100%;height:100%;object-fit:cover;" /></div>
+            <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#14225a;">{{ parentName }}</div><div style="font-size:11px;color:#8a958e;font-weight:600;">{{ planLabel }}</div></div>
+            <span class="msr" style="font-size:18px;color:#aab4af;">settings</span>
+          </div>
+          <sc-if value="{{ settingsOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;bottom:54px;inset-inline-start:0;width:218px;background:#fff;border:1px solid #e8eee9;border-radius:15px;box-shadow:0 18px 40px -12px rgba(31,60,120,.28);padding:7px;z-index:30;">
+              <div style="font-size:10px;font-weight:800;letter-spacing:.6px;color:#8a958e;padding:6px 9px 4px;">{{ settingsLabel }}</div>
+              <div onClick="{{ toggleLang }}" class="nv" data-comment-anchor="935c590a06-button" style="display:flex;align-items:center;gap:10px;padding:9px;border-radius:11px;cursor:pointer;">
+                <span class="msr" style="font-size:20px;color:#14225a;">language</span>
+                <span style="flex:1;font-size:13px;font-weight:700;color:#14225a;">{{ langSettingLabel }}</span>
+                <span style="font-size:12px;font-weight:800;color:var(--accent,#2b7fff);background:#eaf2ff;border-radius:8px;padding:3px 9px;">{{ langLabel }}</span>
+              </div>
+              <div onClick="{{ toggleSettings }}" class="nv" style="display:flex;align-items:center;gap:10px;padding:9px;border-radius:11px;cursor:pointer;">
+                <span class="msr" style="font-size:20px;color:#14225a;">tune</span>
+                <span style="flex:1;font-size:13px;font-weight:700;color:#14225a;">{{ settingsLabel }}</span>
+                <span class="msr" style="font-size:17px;color:#aab4af;">{{ chevEnd }}</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main style="flex:1;display:flex;flex-direction:column;min-width:0;">
+      <!-- topbar -->
+      <header style="flex:none;height:74px;border-bottom:1px solid #e8eee9;display:flex;align-items:center;gap:18px;padding:0 28px;background:#eef3fb;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:18px;font-weight:800;color:#14225a;letter-spacing:-0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ pageTitle }}</div>
+          <div style="font-size:12px;color:#8a958e;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ pageSub }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e8eee9;border-radius:12px;padding:8px 13px;width:230px;flex-shrink:1;min-width:44px;overflow:hidden;">
+            <span class="msr" style="font-size:19px;color:#aab4af;">search</span><span style="font-size:13px;color:#aab4af;font-weight:600;">{{ searchLabel }}</span>
+          </div>
+          <div style="width:42px;height:42px;border-radius:12px;background:#fff;border:1px solid #e8eee9;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;" class="nv"><span class="msr" style="font-size:21px;color:#14225a;">notifications</span><span style="position:absolute;top:9px;inset-inline-end:10px;width:8px;height:8px;border-radius:50%;background:#e2562d;border:1.5px solid #fff;"></span></div>
+          <!-- child switcher (multi-kid) -->
+          <div style="position:relative;">
+            <div onClick="{{ toggleKidMenu }}" style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e8eee9;border-radius:12px;padding:6px 12px 6px 6px;cursor:pointer;" class="nv">
+              <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;background:#e3edff;">{{ kidImgEl }}</div>
+              <span style="font-size:13px;font-weight:800;color:#14225a;">{{ childName }}</span>
+              <span class="msr" style="font-size:18px;color:#aab4af;">expand_more</span>
+            </div>
+            <sc-if value="{{ kidOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;top:50px;inset-inline-end:0;width:232px;background:#fff;border:1px solid #e8eee9;border-radius:15px;box-shadow:0 18px 40px -12px rgba(31,60,120,.28);padding:7px;z-index:30;">
+                <div style="font-size:10px;font-weight:800;letter-spacing:.6px;color:#8a958e;padding:6px 9px 4px;">{{ switchChildLabel }}</div>
+                <sc-for list="{{ kidList }}" as="k" hint-placeholder-count="2">
+                  <div onClick="{{ pickKid }}" data-i="{{ k.idx }}" class="nv" style="display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:11px;cursor:pointer;background:{{ k.bg }};">
+                    <div style="width:34px;height:34px;border-radius:50%;overflow:hidden;background:#e3edff;flex:none;">{{ k.imgEl }}</div>
+                    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#14225a;">{{ k.name }}</div><div style="font-size:10.5px;color:#8a958e;font-weight:600;">{{ k.sub }}</div></div>
+                    <sc-if value="{{ k.active }}" hint-placeholder-val="{{ false }}"><span class="msr" style="font-size:18px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">check_circle</span></sc-if>
+                  </div>
+                </sc-for>
+                <div onClick="{{ addChild }}" class="nv" style="display:flex;align-items:center;gap:10px;padding:9px;border-radius:11px;cursor:pointer;border-top:1px solid #f0f3f1;margin-top:4px;">
+                  <span style="width:34px;height:34px;border-radius:50%;background:#eaf2ff;display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:20px;color:var(--accent,#2b7fff);">add</span></span>
+                  <span style="font-size:13px;font-weight:800;color:var(--accent,#2b7fff);">{{ addChildLabel }}</span>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </header>
+
+      <!-- scroll content -->
+      <div key="{{ viewKey }}" class="scrIn" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;">
+        <sc-if value="{{ hasSubTabs }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:8px;padding:16px 28px 0;flex-wrap:wrap;flex:none;">
+            <sc-for list="{{ subTabs }}" as="t" hint-placeholder-count="4">
+              <div onClick="{{ goSub }}" data-vv="{{ t.vv }}" data-ff="{{ t.ff }}" class="nv" style="font-size:12.5px;font-weight:800;color:{{ t.color }};background:{{ t.bg }};border:{{ t.border }};border-radius:20px;padding:8px 16px;cursor:pointer;">{{ t.label }}</div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <div style="padding:26px 28px;">
+
+        <!-- ===== TODAY ===== -->
+        <sc-if value="{{ isToday }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:20px;">
+            <!-- guidance hero -->
+            <div class="cardh" style="border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 16px 36px -18px rgba(31,90,120,.3);cursor:pointer;">
+              <div style="position:relative;height:188px;background:linear-gradient(140deg,#4a90e2 0%,#4a90e2 52%,#9b8cf0 105%);">
+                <div style="position:absolute;inset:0;background:radial-gradient(60% 80% at 86% 4%, rgba(255,255,255,.34), transparent 60%);"></div>
+                <span class="msr" style="position:absolute;inset-inline-end:22px;bottom:18px;font-size:92px;color:rgba(255,255,255,.16);font-variation-settings:'FILL' 1;">self_improvement</span>
+                <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(13,28,52,.5),transparent 64%);display:flex;flex-direction:column;justify-content:space-between;padding:20px;">
+                  <span style="align-self:flex-start;background:rgba(255,255,255,.18);backdrop-filter:blur(4px);font-size:10px;font-weight:800;letter-spacing:1.4px;color:#fff;text-transform:uppercase;padding:6px 12px;border-radius:20px;">{{ todayTag }}</span>
+                  <div style="font-size:28px;font-weight:800;color:#fff;max-width:80%;line-height:1.12;letter-spacing:-0.5px;">{{ todayTitle }}</div>
+                </div>
+              </div>
+              <div style="padding:18px 20px;display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:8px;"><span class="msr" style="font-size:18px;color:#9aa5a0;">schedule</span><span style="font-size:13px;color:#7c8983;font-weight:700;">{{ todayMeta }}</span></div>
+                <span style="background:#14225a;color:#fff;font-size:13.5px;font-weight:800;padding:12px 26px;border-radius:13px;box-shadow:0 8px 18px -6px rgba(20,34,90,.5);display:flex;align-items:center;gap:7px;">{{ beginLabel }}<span class="msr" style="font-size:18px;">{{ chevEnd }}</span></span>
+              </div>
+            </div>
+            <!-- dev map ring -->
+            <div class="cardh" onClick="{{ goGrowth }}" style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:20px;display:flex;flex-direction:column;cursor:pointer;">
+              <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent,#2b7fff);">{{ devMapEyebrow }}</div>
+              <div style="display:flex;align-items:center;gap:18px;margin-top:14px;">
+                <div style="width:104px;height:104px;border-radius:50%;background:conic-gradient(var(--accent,#2b7fff) 0 {{ overallPct }}%, #e7eeea {{ overallPct }}% 100%);display:flex;align-items:center;justify-content:center;flex:none;">
+                  <div style="width:76px;height:76px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:26px;font-weight:800;color:#14225a;">{{ overallPct }}%</span><span style="font-size:9px;color:var(--accent,#2b7fff);font-weight:800;">{{ devDelta }}</span></div>
+                </div>
+                <div style="flex:1;"><div style="font-size:15px;font-weight:800;color:#14225a;line-height:1.3;">{{ devLead }}</div><div style="font-size:11.5px;color:#8a958e;font-weight:600;margin-top:6px;">{{ devSub }}</div></div>
+              </div>
+              <div style="margin-top:auto;display:flex;gap:8px;padding-top:16px;">
+                <div style="flex:1;background:#eef3fb;border-radius:12px;padding:10px;text-align:center;"><div style="font-size:17px;font-weight:800;color:#e2562d;">2</div><div style="font-size:9.5px;color:#8a958e;font-weight:700;">{{ focusLabel }}</div></div>
+                <div style="flex:1;background:#eef3fb;border-radius:12px;padding:10px;text-align:center;"><div style="font-size:17px;font-weight:800;color:var(--accent,#2b7fff);">7</div><div style="font-size:9.5px;color:#8a958e;font-weight:700;">{{ domainsLabel }}</div></div>
+                <div style="flex:1;background:#eef3fb;border-radius:12px;padding:10px;text-align:center;"><div style="font-size:17px;font-weight:800;color:#3f8cc9;">+3</div><div style="font-size:9.5px;color:#8a958e;font-weight:700;">{{ weekLabel }}</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- second row -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:20px;">
+            <!-- Mia's activity (kid sync) -->
+            <div style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:18px;grid-column:span 2;">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:15px;"><span class="msr" style="font-size:19px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">sync_alt</span><span style="font-size:15px;font-weight:800;color:#14225a;">{{ activityTitle }}</span><span style="margin-inline-start:auto;font-size:10px;font-weight:800;color:var(--accent,#2b7fff);background:#eaf2ff;border-radius:20px;padding:4px 10px;">{{ liveLabel }}</span></div>
+              <div style="display:flex;flex-direction:column;gap:11px;">
+                <sc-for list="{{ kidActivity }}" as="a" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:13px;">
+                    <span style="width:40px;height:40px;border-radius:12px;background:{{ a.bg }};display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:21px;color:{{ a.c }};font-variation-settings:'FILL' 1;">{{ a.icon }}</span></span>
+                    <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:800;color:#14225a;">{{ a.title }}</div><div style="font-size:11px;color:#8a958e;font-weight:600;margin-top:1px;">{{ a.sub }}</div></div>
+                    <span class="msr" style="font-size:20px;color:{{ a.statusColor }};font-variation-settings:'FILL' 1;">{{ a.statusIcon }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <!-- coach -->
+            <div class="cardh" onClick="{{ goCoach }}" style="border-radius:22px;background:linear-gradient(140deg,#eaf2ff,#e7f1fa);box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:18px;display:flex;flex-direction:column;cursor:pointer;">
+              <div style="display:flex;align-items:center;gap:11px;">
+                <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#4a90e2,#2b7fd1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;flex:none;">{{ coachInitials }}</div>
+                <div><div style="font-size:14px;font-weight:800;color:#14225a;">{{ coachName }}</div><div style="font-size:10.5px;color:var(--accent,#2b7fff);font-weight:700;">{{ coachStatus }}</div></div>
+              </div>
+              <div style="font-size:13px;color:#3a463f;font-weight:600;line-height:1.5;margin-top:14px;flex:1;">{{ coachMsg }}</div>
+              <div style="margin-top:14px;background:#fff;color:var(--accent,#2b7fff);font-size:13px;font-weight:800;text-align:center;padding:11px 0;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:7px;"><span class="msr" style="font-size:18px;">forum</span>{{ replyLabel }}</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== GROWTH ===== -->
+        <sc-if value="{{ isGrowth }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:20px;">
+            <div style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:22px;">
+              <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent,#2b7fff);">{{ devMapEyebrow }}</div>
+              <div style="display:flex;flex-direction:column;align-items:center;margin-top:14px;">
+                <div style="width:160px;height:160px;border-radius:50%;background:conic-gradient(var(--accent,#2b7fff) 0 {{ overallPct }}%, #e7eeea {{ overallPct }}% 100%);display:flex;align-items:center;justify-content:center;">
+                  <div style="width:120px;height:120px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:40px;font-weight:800;color:#14225a;">{{ overallPct }}%</span><span style="font-size:11px;color:var(--accent,#2b7fff);font-weight:800;">{{ devDelta }}</span></div>
+                </div>
+                <div style="font-size:14px;font-weight:700;color:#14225a;text-align:center;line-height:1.4;margin-top:18px;max-width:280px;">{{ devLead }}</div>
+              </div>
+            </div>
+            <div style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:22px;">
+              <sc-if value="{{ domOpen }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ backDomain }}" class="nv" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--accent,#2b7fff);cursor:pointer;border-radius:9px;padding:5px 9px;margin-bottom:14px;"><span class="msr" style="font-size:17px;">{{ chevStart }}</span>{{ backLabel }}</div>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+                  <span style="width:46px;height:46px;border-radius:13px;background:#eef3fb;display:flex;align-items:center;justify-content:center;"><span class="msr" style="font-size:25px;color:{{ openDomColor }};font-variation-settings:'FILL' 1;">{{ openDomIcon }}</span></span>
+                  <div style="flex:1;"><div style="font-size:17px;font-weight:800;color:#14225a;">{{ openDomName }}</div></div>
+                  <span style="font-size:22px;font-weight:800;color:{{ openDomColor }};">{{ openDomPct }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <sc-for list="{{ openSkills }}" as="sk" hint-placeholder-count="4">
+                    <div style="background:#fbfdfc;border:1px solid #e8eef7;border-radius:14px;padding:13px;">
+                      <div style="font-size:13.5px;font-weight:700;color:#14225a;margin-bottom:10px;">{{ sk.text }}</div>
+                      <div style="display:flex;gap:8px;">
+                        <sc-for list="{{ sk.states }}" as="st" hint-placeholder-count="3">
+                          <div onClick="{{ setSkill }}" data-id="{{ sk.id }}" data-v="{{ st.val }}" class="nv" style="flex:1;text-align:center;border:{{ st.border }};background:{{ st.bg }};color:{{ st.color }};border-radius:10px;padding:9px 0;font-size:11.5px;font-weight:800;cursor:pointer;">{{ st.label }}</div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;background:#eaf2ff;border-radius:13px;padding:13px;margin-top:14px;"><span class="msr" style="font-size:19px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;flex:none;">sync</span><span style="font-size:12px;color:#1c63d6;font-weight:600;line-height:1.5;">{{ domTrackHint }}</span></div>
+              </sc-if>
+              <sc-if value="{{ domClosed }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size:15px;font-weight:800;color:#14225a;margin-bottom:18px;">{{ domainsTitle }}</div>
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                  <sc-for list="{{ domains }}" as="d" hint-placeholder-count="7">
+                    <div onClick="{{ openDomain }}" data-d="{{ d.id }}" class="nv" style="border-radius:14px;padding:11px 12px;cursor:pointer;border:1px solid #f0f3f1;">
+                      <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">
+                        <span class="msr" style="font-size:19px;color:{{ d.color }};font-variation-settings:'FILL' 1;">{{ d.icon }}</span>
+                        <span style="flex:1;font-size:13.5px;font-weight:700;color:#14225a;">{{ d.name }}</span>
+                        <span style="font-size:10.5px;font-weight:800;color:{{ d.tagColor }};">{{ d.tag }}</span>
+                        <span style="font-size:12px;font-weight:800;color:{{ d.color }};width:38px;text-align:end;">{{ d.pct }}%</span>
+                        <span class="msr" style="font-size:18px;color:#cdd6cf;">{{ chevEnd }}</span>
+                      </div>
+                      <div style="height:9px;background:#e8eef7;border-radius:5px;overflow:hidden;"><div style="width:{{ d.pct }}%;height:100%;background:{{ d.color }};border-radius:5px;transition:width .6s ease;"></div></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== BEHAVIORS ===== -->
+        <sc-if value="{{ isBehaviors }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:20px;">
+            <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px;">
+              <div style="border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 16px 36px -18px rgba(31,90,120,.3);">
+                <div style="position:relative;height:152px;background:linear-gradient(140deg,#e2562d,#f0915f);padding:22px;display:flex;flex-direction:column;justify-content:space-between;">
+                  <span class="msr" style="position:absolute;inset-inline-end:20px;bottom:14px;font-size:82px;color:rgba(255,255,255,.16);font-variation-settings:'FILL' 1;">fact_check</span>
+                  <span style="align-self:flex-start;background:rgba(255,255,255,.2);font-size:10px;font-weight:800;letter-spacing:1.4px;color:#fff;text-transform:uppercase;padding:6px 12px;border-radius:20px;">{{ behHeroTag }}</span>
+                  <div><div style="font-size:23px;font-weight:800;color:#fff;letter-spacing:-0.4px;">{{ behHeroTitle }}</div><div style="font-size:13px;color:rgba(255,255,255,.92);font-weight:600;margin-top:4px;">{{ behHeroSub }}</div></div>
+                </div>
+                <div style="padding:16px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                  <sc-for list="{{ behStats }}" as="s" hint-placeholder-count="3">
+                    <div style="background:#eef3fb;border-radius:14px;padding:13px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#14225a;">{{ s.n }}</div><div style="font-size:10px;color:#8a958e;font-weight:700;margin-top:2px;">{{ s.l }}</div></div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="border-radius:22px;background:linear-gradient(140deg,#eaf2ff,#e7f1fa);box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:20px;display:flex;flex-direction:column;">
+                <div style="display:flex;align-items:center;gap:9px;"><span class="msr" style="font-size:20px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">add_circle</span><span style="font-size:15px;font-weight:800;color:#14225a;">{{ behLogTitle }}</span></div>
+                <div style="font-size:12px;color:#3a463f;font-weight:600;line-height:1.5;margin-top:8px;flex:1;">{{ behLogSub }}</div>
+                <div style="display:flex;gap:8px;margin-top:14px;">
+                  <sc-for list="{{ behLogModes }}" as="m" hint-placeholder-count="3">
+                    <div class="nv" style="flex:1;background:#fff;border-radius:13px;padding:12px 8px;text-align:center;cursor:pointer;"><span class="msr" style="font-size:22px;color:{{ m.c }};font-variation-settings:'FILL' 1;">{{ m.icon }}</span><div style="font-size:10.5px;font-weight:800;color:#14225a;margin-top:4px;">{{ m.label }}</div></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px;align-items:start;">
+              <div>
+                <div style="font-size:15px;font-weight:800;color:#14225a;margin-bottom:14px;">{{ behRecentTitle }}</div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <sc-for list="{{ behEvents }}" as="e" hint-placeholder-count="4">
+                    <div style="border-radius:16px;background:#fff;border:1px solid #e5e9f0;box-shadow:0 6px 16px -12px rgba(31,60,120,.18);overflow:hidden;">
+                      <div onClick="{{ toggleBeh }}" data-id="{{ e.id }}" class="nv" style="display:flex;align-items:center;gap:13px;padding:14px;cursor:pointer;">
+                        <span style="width:42px;height:42px;border-radius:13px;background:{{ e.bg }};display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:23px;color:{{ e.c }};font-variation-settings:'FILL' 1;">{{ e.icon }}</span></span>
+                        <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:#14225a;">{{ e.title }}</div><div style="font-size:11.5px;color:#8d9892;font-weight:600;margin-top:1px;">{{ e.ctx }}</div></div>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                          <div style="display:flex;gap:3px;">
+                            <sc-for list="{{ e.dots }}" as="d" hint-placeholder-count="5"><span style="width:7px;height:7px;border-radius:50%;background:{{ d.color }};"></span></sc-for>
+                          </div>
+                          <span class="msr" style="font-size:18px;color:{{ e.statusColor }};font-variation-settings:'FILL' 1;">{{ e.statusIcon }}</span>
+                        </div>
+                      </div>
+                      <sc-if value="{{ e.open }}" hint-placeholder-val="{{ false }}">
+                        <div style="padding:0 14px 14px;">
+                          <div style="display:flex;gap:8px;margin-bottom:10px;">
+                            <span style="font-size:10.5px;font-weight:800;color:#8d9892;background:#eef3fb;border-radius:8px;padding:4px 9px;">{{ e.domainLabel }}</span>
+                            <span style="font-size:10.5px;font-weight:800;color:#8d9892;background:#eef3fb;border-radius:8px;padding:4px 9px;">{{ e.triggerLabel }}</span>
+                          </div>
+                          <div style="background:#eaf2ff;border:1px solid #cfe0ff;border-radius:13px;padding:13px;">
+                            <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;"><span class="msr" style="font-size:17px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">record_voice_over</span><span style="font-size:11px;font-weight:800;letter-spacing:.4px;color:var(--accent,#2b7fff);">{{ coRegLabel }}</span></div>
+                            <div style="font-size:13px;color:#1c63d6;font-weight:600;line-height:1.55;">{{ e.script }}</div>
+                          </div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:20px;">
+                <div style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:20px;">
+                  <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;"><span class="msr" style="font-size:19px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">insights</span><span style="font-size:15px;font-weight:800;color:#14225a;">{{ behPatternsTitle }}</span></div>
+                  <div style="display:flex;flex-direction:column;gap:13px;">
+                    <sc-for list="{{ behPatterns }}" as="p" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="width:40px;height:40px;border-radius:12px;background:{{ p.bg }};display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:21px;color:{{ p.c }};font-variation-settings:'FILL' 1;">{{ p.icon }}</span></span>
+                        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#14225a;">{{ p.title }}</div><div style="font-size:11px;color:#8a958e;font-weight:600;margin-top:1px;">{{ p.sub }}</div></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div onClick="{{ goGrowth }}" class="cardh" style="border-radius:22px;background:linear-gradient(155deg,#14225a,#1f3a6e);box-shadow:0 14px 32px -16px rgba(20,34,90,.5);padding:20px;cursor:pointer;">
+                  <div style="display:flex;align-items:center;gap:9px;"><span class="msr" style="font-size:20px;color:#8fb3ff;font-variation-settings:'FILL' 1;">sync</span><span style="font-size:13px;font-weight:800;color:#fff;">{{ behRegHintTitle }}</span></div>
+                  <div style="font-size:12px;color:rgba(255,255,255,.85);font-weight:600;line-height:1.5;margin-top:8px;">{{ behRegHint }}</div>
+                  <div style="margin-top:14px;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:#8fb3ff;">{{ behRegCta }}<span class="msr" style="font-size:17px;">{{ chevEnd }}</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== JOURNAL ===== -->
+        <sc-if value="{{ isJournal }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:840px;display:flex;flex-direction:column;gap:18px;">
+            <div style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:18px;">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px;"><span class="msr" style="font-size:20px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">edit_note</span><span style="font-size:15px;font-weight:800;color:#14225a;">{{ journalComposeTitle }}</span></div>
+              <div style="display:flex;gap:10px;">
+                <sc-for list="{{ behLogModes }}" as="m" hint-placeholder-count="3">
+                  <div class="nv" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#fbfdfc;border:1px solid #e8eef7;border-radius:13px;padding:13px;cursor:pointer;"><span class="msr" style="font-size:21px;color:{{ m.c }};font-variation-settings:'FILL' 1;">{{ m.icon }}</span><span style="font-size:12.5px;font-weight:800;color:#14225a;">{{ m.label }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <sc-for list="{{ journal }}" as="j" hint-placeholder-count="4">
+                <div style="display:flex;gap:13px;background:#fff;border:1px solid #e5e9f0;border-radius:16px;padding:15px;box-shadow:0 6px 16px -12px rgba(31,60,120,.18);">
+                  <span style="width:42px;height:42px;border-radius:13px;background:{{ j.bg }};display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:22px;color:{{ j.c }};font-variation-settings:'FILL' 1;">{{ j.icon }}</span></span>
+                  <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <sc-if value="{{ j.auto }}" hint-placeholder-val="{{ false }}"><span style="font-size:9.5px;font-weight:800;letter-spacing:.4px;color:var(--accent,#2b7fff);background:#eaf2ff;border-radius:7px;padding:3px 8px;">{{ autoLabel }}</span></sc-if>
+                      <span style="font-size:9.5px;font-weight:800;color:#8d9892;background:#eef3fb;border-radius:7px;padding:3px 8px;">{{ j.domain }}</span>
+                      <span style="font-size:11px;color:#aab4af;font-weight:700;margin-inline-start:auto;">{{ j.when }}</span>
+                    </div>
+                    <div style="font-size:13.5px;color:#29333f;font-weight:600;line-height:1.55;margin-top:8px;">{{ j.text }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== ACADEMY ===== -->
+        <sc-if value="{{ isAcademy }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:1fr 1.7fr;gap:20px;align-items:start;">
+            <!-- Learning Map -->
+            <div style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:22px;">
+              <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent,#2b7fff);">{{ learnMapTitle }}</div>
+              <div style="display:flex;flex-direction:column;align-items:center;margin-top:14px;">
+                <div style="width:128px;height:128px;border-radius:50%;background:conic-gradient(var(--accent,#2b7fff) 0 {{ learnOverall }}%, #e7eeea {{ learnOverall }}% 100%);display:flex;align-items:center;justify-content:center;">
+                  <div style="width:96px;height:96px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;"><span style="font-size:30px;font-weight:800;color:#14225a;">{{ learnOverall }}%</span></div>
+                </div>
+                <div style="font-size:11.5px;color:#8a958e;font-weight:600;text-align:center;line-height:1.4;margin-top:14px;">{{ learnMapSub }}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px;margin-top:18px;">
+                <sc-for list="{{ learnByDom }}" as="d" hint-placeholder-count="5">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span class="msr" style="font-size:16px;color:{{ d.color }};font-variation-settings:'FILL' 1;">{{ d.icon }}</span><span style="flex:1;font-size:12px;font-weight:700;color:#14225a;">{{ d.name }}</span><span style="font-size:11px;font-weight:800;color:{{ d.color }};">{{ d.pct }}%</span></div>
+                    <div style="height:6px;background:#e8eef7;border-radius:3px;overflow:hidden;"><div style="width:{{ d.pct }}%;height:100%;background:{{ d.color }};border-radius:3px;transition:width .6s ease;"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <!-- Courses with tracking -->
+            <div>
+              <div style="font-size:15px;font-weight:800;color:#14225a;margin-bottom:14px;">{{ coursesTitle }}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <sc-for list="{{ courses }}" as="c" hint-placeholder-count="6">
+                  <div class="cardh" style="border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);display:flex;flex-direction:column;">
+                    <div style="height:74px;background:{{ c.grad }};display:flex;align-items:center;justify-content:center;"><span class="msr" style="font-size:32px;color:#fff;font-variation-settings:'FILL' 1;">{{ c.icon }}</span></div>
+                    <div style="padding:13px;flex:1;display:flex;flex-direction:column;">
+                      <div style="font-size:9px;font-weight:800;color:#8a958e;background:#eef3fb;border-radius:7px;padding:3px 7px;display:inline-block;align-self:flex-start;">{{ c.domName }}</div>
+                      <div style="font-size:13.5px;font-weight:800;color:#14225a;margin-top:7px;line-height:1.25;">{{ c.title }}</div>
+                      <div style="font-size:10.5px;color:#8a958e;font-weight:600;margin-top:3px;">{{ c.meta }}</div>
+                      <div style="height:6px;background:#e8eef7;border-radius:3px;overflow:hidden;margin-top:11px;"><div style="width:{{ c.barW }};height:100%;background:var(--accent,#2b7fff);border-radius:3px;transition:width .5s ease;"></div></div>
+                      <div onClick="{{ trackCourse }}" data-id="{{ c.id }}" class="nv" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:11px;border-radius:10px;padding:8px 0;cursor:pointer;background:#eef3fb;font-size:11.5px;font-weight:800;color:{{ c.trackColor }};"><span class="msr" style="font-size:18px;color:{{ c.trackColor }};font-variation-settings:'FILL' 1;">{{ c.trackIcon }}</span>{{ c.pctLabel }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== CARE NETWORK ===== -->
+        <sc-if value="{{ isCare }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:start;">
+            <div style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:22px;">
+              <div style="font-size:15px;font-weight:800;color:#14225a;">{{ packetTitle }}</div>
+              <div style="font-size:12px;color:#8a958e;font-weight:600;line-height:1.5;margin-top:6px;">{{ careLead }}</div>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px;">
+                <sc-for list="{{ carePacket }}" as="p" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:flex-start;gap:11px;background:#fbfdfc;border:1px solid #e8eef7;border-radius:13px;padding:12px;">
+                    <span class="msr" style="font-size:20px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;flex:none;">check_circle</span>
+                    <div><div style="font-size:11px;font-weight:800;color:#8a958e;">{{ p.t }}</div><div style="font-size:13px;font-weight:700;color:#14225a;margin-top:2px;">{{ p.v }}</div></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:10px;background:#eaf2ff;border-radius:13px;padding:12px;margin-top:14px;"><span class="msr" style="font-size:19px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;flex:none;">verified_user</span><span style="font-size:11.5px;color:#1c63d6;font-weight:600;line-height:1.5;">{{ careTrust }}</span></div>
+            </div>
+            <div>
+              <div style="font-size:15px;font-weight:800;color:#14225a;margin-bottom:14px;">{{ prosTitle }}</div>
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <sc-for list="{{ pros }}" as="p" hint-placeholder-count="3">
+                  <div class="cardh" style="border-radius:18px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:16px;display:flex;align-items:center;gap:14px;">
+                    <span style="width:54px;height:54px;border-radius:15px;background:{{ p.tone }};color:{{ p.ink }};display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex:none;">{{ p.init }}</span>
+                    <div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:6px;"><span style="font-size:15px;font-weight:800;color:#14225a;">{{ p.name }}</span><span class="msr" style="font-size:16px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">verified</span></div><div style="font-size:12px;font-weight:700;color:var(--accent,#2b7fff);margin-top:1px;">{{ p.role }}</div><div style="font-size:11px;color:#8a958e;font-weight:600;margin-top:3px;">{{ p.meta }}</div></div>
+                    <span style="background:#14225a;color:#fff;font-size:12px;font-weight:800;padding:10px 16px;border-radius:11px;cursor:pointer;white-space:nowrap;">{{ requestLabel }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== PROFILE ===== -->
+        <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:20px;align-items:start;">
+            <div style="display:flex;flex-direction:column;gap:20px;">
+              <!-- child card -->
+              <div style="border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);">
+                <div style="height:90px;background:linear-gradient(140deg,#4a90e2,#4a90e2 60%,#9b8cf0);"></div>
+                <div style="padding:0 20px 20px;margin-top:-38px;">
+                  <div style="width:76px;height:76px;border-radius:50%;overflow:hidden;border:4px solid #fff;background:#e3edff;box-shadow:0 6px 16px -6px rgba(31,60,120,.3);">{{ kidImgEl }}</div>
+                  <div style="font-size:20px;font-weight:800;color:#14225a;margin-top:12px;">{{ childCardName }}</div>
+                  <div style="font-size:12.5px;color:#8a958e;font-weight:600;margin-top:2px;">{{ childCardSub }}</div>
+                </div>
+              </div>
+              <!-- family circle -->
+              <div style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:20px;">
+                <div style="display:flex;align-items:center;gap:9px;margin-bottom:15px;"><span class="msr" style="font-size:19px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">diversity_3</span><span style="font-size:15px;font-weight:800;color:#14225a;">{{ familyTitle }}</span></div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <sc-for list="{{ family }}" as="m" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                      <span style="width:42px;height:42px;border-radius:50%;background:{{ m.bg }};color:{{ m.c }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex:none;">{{ m.initials }}</span>
+                      <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:800;color:#14225a;">{{ m.name }}</div><div style="font-size:11px;color:#8a958e;font-weight:600;margin-top:1px;">{{ m.role }}</div></div>
+                    </div>
+                  </sc-for>
+                  <div class="nv" style="display:flex;align-items:center;gap:12px;border-radius:12px;padding:6px;cursor:pointer;">
+                    <span style="width:42px;height:42px;border-radius:50%;background:#eaf2ff;display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:21px;color:var(--accent,#2b7fff);">add</span></span>
+                    <span style="font-size:13px;font-weight:800;color:var(--accent,#2b7fff);">{{ addMemberLabel }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Mia's activity -->
+            <div style="border-radius:22px;background:#fff;box-shadow:0 10px 26px -16px rgba(31,60,120,.22);padding:20px;">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:16px;"><span class="msr" style="font-size:19px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">sync_alt</span><span style="font-size:15px;font-weight:800;color:#14225a;">{{ activityTitle }}</span><span style="margin-inline-start:auto;font-size:10px;font-weight:800;color:var(--accent,#2b7fff);background:#eaf2ff;border-radius:20px;padding:4px 10px;">{{ liveLabel }}</span></div>
+              <div style="display:flex;flex-direction:column;gap:13px;">
+                <sc-for list="{{ kidActivity }}" as="a" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:13px;background:#fbfdfc;border:1px solid #e8eef7;border-radius:14px;padding:13px;">
+                    <span style="width:42px;height:42px;border-radius:12px;background:{{ a.bg }};display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:22px;color:{{ a.c }};font-variation-settings:'FILL' 1;">{{ a.icon }}</span></span>
+                    <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:#14225a;">{{ a.title }}</div><div style="font-size:11.5px;color:#8a958e;font-weight:600;margin-top:1px;">{{ a.sub }}</div></div>
+                    <span class="msr" style="font-size:21px;color:{{ a.statusColor }};font-variation-settings:'FILL' 1;">{{ a.statusIcon }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== ASK ARBOR ===== -->
+        <sc-if value="{{ isAsk }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
+            <div style="align-self:flex-start;max-width:80%;background:#fff;border-radius:18px;border-end-start-radius:6px;padding:15px 18px;box-shadow:0 6px 16px -10px rgba(31,60,120,.18);"><div style="font-size:14px;color:#29333f;line-height:1.55;font-weight:500;">{{ coachMsg }}</div></div>
+            <div style="align-self:flex-end;max-width:75%;background:var(--accent,#2b7fff);border-radius:18px;border-end-end-radius:6px;padding:15px 18px;"><div style="font-size:14px;color:#fff;line-height:1.55;font-weight:500;">{{ parentMsg }}</div></div>
+            <div style="align-self:flex-start;max-width:80%;background:#fff;border-radius:18px;border-end-start-radius:6px;padding:15px 18px;box-shadow:0 6px 16px -10px rgba(31,60,120,.18);"><div style="font-size:14px;color:#29333f;line-height:1.55;font-weight:500;">{{ coachMsg2 }}</div></div>
+            <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:6px;">
+              <sc-for list="{{ quickReplies }}" as="q" hint-placeholder-count="3">
+                <span class="nv" style="background:#fff;border:1px solid #e8eee9;color:#2563c9;font-size:13px;font-weight:700;padding:9px 15px;border-radius:20px;cursor:pointer;">{{ q }}</span>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:11px;margin-top:8px;">
+              <div style="flex:1;background:#fff;border:1px solid #e8eee9;border-radius:24px;padding:14px 18px;font-size:14px;color:#aab4af;font-weight:600;">{{ inputPlaceholder }}</div>
+              <button style="border:none;background:var(--accent,#2b7fff);color:#fff;width:48px;height:48px;border-radius:50%;cursor:pointer;flex:none;"><span class="msr" style="font-size:22px;transform:scaleX(-1);">send</span></button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== GENERIC FEATURE DETAIL ===== -->
+        <sc-if value="{{ isFeat }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:840px;display:flex;flex-direction:column;gap:18px;">
+            <sc-for list="{{ featBlocks }}" as="b" hint-placeholder-count="3">
+              <sc-if value="{{ b.isHero }}" hint-placeholder-val="{{ false }}">
+                <div style="border-radius:22px;overflow:hidden;box-shadow:0 14px 32px -14px rgba(31,60,120,.3);">
+                  <div style="position:relative;height:150px;background:{{ b.grad }};padding:22px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <span class="msr" style="position:absolute;inset-inline-end:20px;bottom:16px;font-size:74px;color:rgba(255,255,255,.18);font-variation-settings:'FILL' 1;">{{ b.icon }}</span>
+                    <span style="align-self:flex-start;background:rgba(255,255,255,.18);font-size:10px;font-weight:800;letter-spacing:1.4px;color:#fff;text-transform:uppercase;padding:5px 11px;border-radius:20px;">{{ b.tag }}</span>
+                    <div><div style="font-size:23px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15;">{{ b.title }}</div><div style="font-size:13px;color:rgba(255,255,255,.92);font-weight:600;margin-top:5px;">{{ b.sub }}</div></div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isStats }}" hint-placeholder-val="{{ false }}">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+                  <sc-for list="{{ b.items }}" as="s" hint-placeholder-count="3">
+                    <div style="background:#fff;border:1px solid #e5e9f0;border-radius:18px;padding:18px;text-align:center;box-shadow:0 8px 20px -14px rgba(31,60,120,.2);"><div style="font-size:28px;font-weight:800;color:#14225a;">{{ s.n }}</div><div style="font-size:11px;color:#8d9892;font-weight:700;margin-top:3px;">{{ s.l }}</div></div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isRows }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="font-size:15px;font-weight:800;color:#14225a;margin-bottom:11px;">{{ b.title }}</div>
+                  <div style="display:flex;flex-direction:column;gap:10px;">
+                    <sc-for list="{{ b.items }}" as="r" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #e5e9f0;border-radius:16px;padding:14px;box-shadow:0 6px 16px -12px rgba(31,60,120,.18);">
+                        <span style="width:42px;height:42px;border-radius:13px;background:{{ r.bg }};display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:23px;color:{{ r.c }};font-variation-settings:'FILL' 1;">{{ r.icon }}</span></span>
+                        <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:#14225a;">{{ r.title }}</div><div style="font-size:11.5px;color:#8d9892;font-weight:600;margin-top:1px;">{{ r.sub }}</div></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isProg }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#fff;border:1px solid #e5e9f0;border-radius:18px;padding:18px;box-shadow:0 8px 20px -14px rgba(31,60,120,.2);">
+                  <div style="font-size:15px;font-weight:800;color:#14225a;margin-bottom:14px;">{{ b.title }}</div>
+                  <div style="display:flex;flex-direction:column;gap:13px;">
+                    <sc-for list="{{ b.items }}" as="p" hint-placeholder-count="3">
+                      <div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12.5px;color:#14225a;font-weight:700;">{{ p.label }}</span><span style="font-size:11px;color:{{ p.color }};font-weight:800;">{{ p.tag }}</span></div><div style="height:8px;background:#e8eef7;border-radius:5px;overflow:hidden;"><div style="width:{{ p.w }};height:100%;background:{{ p.color }};border-radius:5px;"></div></div></div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isWindows }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#fff;border:1px solid #e5e9f0;border-radius:18px;padding:18px;box-shadow:0 8px 20px -14px rgba(31,60,120,.2);">
+                  <div style="font-size:15px;font-weight:800;color:#14225a;margin-bottom:16px;">{{ windowsTitle }}</div>
+                  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;height:80px;">
+                    <sc-for list="{{ windowHours }}" as="w" hint-placeholder-count="8">
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:flex-end;height:100%;"><div style="width:100%;max-width:30px;height:{{ w.barH }};background:{{ w.c }};border-radius:7px 7px 3px 3px;"></div><span style="font-size:10px;color:#aab4af;font-weight:700;">{{ w.h }}</span></div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isTrend }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#fff;border:1px solid #e5e9f0;border-radius:18px;padding:18px;box-shadow:0 8px 20px -14px rgba(31,60,120,.2);">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;"><span style="font-size:15px;font-weight:800;color:#14225a;">{{ trendTitle }}</span><span style="font-size:13px;font-weight:800;color:var(--accent,#2b7fff);">{{ trendDelta }}</span></div>
+                  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;height:120px;">
+                    <sc-for list="{{ trendBars }}" as="t" hint-placeholder-count="4">
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:flex-end;height:100%;"><span style="font-size:11px;font-weight:800;color:{{ t.vc }};">{{ t.pct }}%</span><div style="width:100%;max-width:40px;height:{{ t.h }};background:{{ t.bg }};border-radius:8px 8px 3px 3px;"></div><span style="font-size:10px;color:#aab4af;font-weight:700;">{{ t.label }}</span></div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isPricing }}" hint-placeholder-val="{{ false }}">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+                  <div style="background:#fff;border:1px solid #e5e9f0;border-radius:20px;padding:20px;box-shadow:0 8px 20px -14px rgba(31,60,120,.2);">
+                    <div style="font-size:15px;font-weight:800;color:#14225a;">{{ freeLabel }}</div><div style="font-size:24px;font-weight:800;color:#14225a;margin:4px 0 14px;">{{ freePrice }}</div>
+                    <div style="display:flex;flex-direction:column;gap:9px;"><sc-for list="{{ planFree }}" as="f" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:9px;"><span class="msr" style="font-size:18px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">check_circle</span><span style="font-size:12.5px;color:#3a463f;font-weight:600;">{{ f }}</span></div></sc-for></div>
+                  </div>
+                  <div style="background:linear-gradient(155deg,#14225a,#1f3a6e);border-radius:20px;padding:20px;box-shadow:0 16px 36px -16px rgba(20,34,90,.5);">
+                    <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:15px;font-weight:800;color:#fff;">{{ plusLabel }}</span><span style="background:#2b7fff;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;">{{ trialBadge }}</span></div>
+                    <div style="font-size:24px;font-weight:800;color:#fff;margin:4px 0 14px;">{{ plusPrice }}</div>
+                    <div style="display:flex;flex-direction:column;gap:9px;"><sc-for list="{{ planPlus }}" as="p" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:9px;"><span class="msr" style="font-size:18px;color:#4a90e2;font-variation-settings:'FILL' 1;">check_circle</span><span style="font-size:12.5px;color:rgba(255,255,255,.92);font-weight:600;">{{ p }}</span></div></sc-for></div>
+                    <div style="margin-top:16px;background:#2b7fff;color:#fff;font-size:13px;font-weight:800;text-align:center;padding:12px 0;border-radius:12px;cursor:pointer;">{{ plusCta }}</div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isStories }}" hint-placeholder-val="{{ false }}">
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+                  <sc-for list="{{ kidStories }}" as="s" hint-placeholder-count="4">
+                    <div style="border-radius:18px;overflow:hidden;background:#fff;border:1px solid #e5e9f0;box-shadow:0 8px 20px -14px rgba(31,60,120,.22);cursor:pointer;">
+                      <div style="height:150px;">{{ s.imgEl }}</div>
+                      <div style="padding:13px 15px;font-size:14px;font-weight:800;color:#14225a;">{{ s.title }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isNote }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:flex-start;gap:12px;background:#eaf2ff;border:1px solid #cfe0ff;border-radius:16px;padding:15px;"><span class="msr" style="font-size:22px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;flex:none;">{{ b.icon }}</span><span style="font-size:12.5px;color:#1c63d6;font-weight:600;line-height:1.5;">{{ b.text }}</span></div>
+              </sc-if>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1372,&quot;height&quot;:912}}">
+class Component extends DCLogic {
+  state = { view:'today', lang:'en', kidOpen:false, kid:0, settingsOpen:false, ms:{}, openDom:null, feat:null, cp:{}, kidMode:false, kidStars:12, behOpen:null };
+  he(){ return this.state.lang==='he'; }
+  renderVals(){
+    const he=this.he(); const T=(h,e)=>he?h:e; const A='#2b7fff';
+    const v=this.state.view;
+    const KIDS=[
+      {name:T('מיה, 6','Mia, 6'), sub:T('גן חובה','Pre-K'), img:'assets/viz/hero-comic.png'},
+      {name:T('איתן, 4','Eitan, 4'), sub:T('גן','Nursery'), img:'assets/viz/hero-avatar.png'},
+    ];
+    const kid=KIDS[this.state.kid]||KIDS[0];
+    const mkImg=(src)=>React.createElement('img',{src,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',display:'block'}});
+    const kidList=KIDS.map((k,i)=>({name:k.name,sub:k.sub,imgEl:mkImg(k.img),idx:i,active:i===this.state.kid,
+      bg:i===this.state.kid?'#eaf2ff':'#fff'}));
+
+    const MSF=[
+      {id:'comm',name:T('תקשורת ושפה','Communication & Language'),icon:'chat',color:A,skills:[
+        {id:'c1',he:'משתמש/ת במשפטים של 4–5 מילים',en:'Uses 4–5 word sentences',st:'mastered'},
+        {id:'c2',he:'מבצע/ת הוראה בת שני שלבים',en:'Follows a 2-step instruction',st:'mastered'},
+        {id:'c3',he:'מספר/ת סיפור קצר ברצף',en:'Tells a short story in order',st:'emerging'},
+        {id:'c4',he:'מנהל/ת שיחה הלוך-ושוב',en:'Holds a back-and-forth conversation',st:'emerging'}]},
+      {id:'social',name:T('חברתי ומשחק','Social & Play'),icon:'groups',color:'#e2562d',skills:[
+        {id:'s1',he:'משחק/ת בשיתוף עם ילד אחד',en:'Plays cooperatively with one child',st:'mastered'},
+        {id:'s2',he:'משחק/ת בתורות במשחק',en:'Takes turns in a game',st:'emerging'},
+        {id:'s3',he:'יוזם/ת משחק עם חבר',en:'Initiates play with a peer',st:'notyet'},
+        {id:'s4',he:'מצטרף/ת לקבוצת ילדים',en:'Joins a group of children',st:'notyet'}]},
+      {id:'understanding',name:T('הבנה חברתית','Social Understanding'),icon:'psychology',color:'#7a6bd8',skills:[
+        {id:'u1',he:'יוצר/ת קשר עין בשיחה',en:'Makes eye contact',st:'mastered'},
+        {id:'u2',he:'מזהה הבעות פנים',en:'Reads facial expressions',st:'emerging'},
+        {id:'u3',he:'מבין/ה רגש של אחר',en:'Understands another\u2019s feelings',st:'emerging'},
+        {id:'u4',he:'שם/ה לב כשחבר/ה עצוב/ה',en:'Notices when a friend is upset',st:'notyet'}]},
+      {id:'selfcare',name:T('עצמאות','Self-Care'),icon:'soap',color:'#3f8cc9',skills:[
+        {id:'d1',he:'מתלבש/ת בעזרה מועטה',en:'Dresses with little help',st:'mastered'},
+        {id:'d2',he:'שוטף/ת ומנגב/ת ידיים',en:'Washes & dries hands',st:'mastered'},
+        {id:'d3',he:'מצחצח/ת שיניים עם תזכורת',en:'Brushes teeth with reminders',st:'emerging'}]},
+      {id:'motor',name:T('מוטוריקה','Motor'),icon:'directions_run',color:'#3f8cc9',skills:[
+        {id:'m1',he:'רץ/ה ועוצר/ת בשליטה',en:'Runs and stops with control',st:'mastered'},
+        {id:'m2',he:'מצייר/ת אדם עם 3+ חלקים',en:'Draws a person with 3+ parts',st:'mastered'},
+        {id:'m3',he:'קופץ/ת על רגל אחת',en:'Hops on one foot',st:'emerging'},
+        {id:'m4',he:'גוזר/ת לאורך קו',en:'Cuts along a line',st:'emerging'}]},
+      {id:'regulation',name:T('ויסות עצמי','Self-Regulation'),icon:'self_improvement',color:A,skills:[
+        {id:'r1',he:'נרגע/ת בעזרת מבוגר',en:'Calms with support',st:'mastered'},
+        {id:'r2',he:'ממתין/ה לתור קצר',en:'Waits for a short turn',st:'emerging'},
+        {id:'r3',he:'נפרד/ת מההורה ברוגע',en:'Separates calmly',st:'emerging'},
+        {id:'r4',he:'נותן/ת שם לרגש גדול',en:'Names a big feeling',st:'emerging'}]},
+      {id:'thinking',name:T('חשיבה','Thinking'),icon:'lightbulb',color:'#cf9320',skills:[
+        {id:'t1',he:'מכיר/ה צבעים וצורות',en:'Knows colors & shapes',st:'mastered'},
+        {id:'t2',he:'סופר/ת 10 עצמים',en:'Counts 10 objects',st:'mastered'},
+        {id:'t3',he:'ממיין/ת לפי קטגוריה',en:'Sorts by category',st:'mastered'},
+        {id:'t4',he:'מזהה את שמו/ה בכתב',en:'Recognizes own name',st:'emerging'}]},
+    ];
+    const stOf=(sk)=>this.state.ms[sk.id]||sk.st; const SW={mastered:1,emerging:0.5,notyet:0};
+    const dPct=(d)=>Math.round(100*d.skills.reduce((s,sk)=>s+SW[stOf(sk)],0)/d.skills.length);
+    const tagFor=(p)=>p>=70?{t:T('בקצב טוב','On track'),c:A}:p>=50?{t:T('מתפתח','Developing'),c:'#3f8cc9'}:{t:T('לשים לב','Keep an eye'),c:'#e2562d'};
+    const domains=MSF.map(d=>{const p=dPct(d);const tg=tagFor(p);const mast=d.skills.filter(sk=>stOf(sk)==='mastered').length;return {id:d.id,name:d.name,icon:d.icon,color:d.color,pct:p,tag:tg.t,tagColor:tg.c,count:(he?(mast+' מתוך '+d.skills.length):(mast+' of '+d.skills.length)),active:this.state.openDom===d.id};});
+    let allSum=0,allTot=0; MSF.forEach(d=>d.skills.forEach(sk=>{allSum+=SW[stOf(sk)];allTot++;}));
+    const overallPct=Math.round(100*allSum/allTot);
+    const curD=MSF.find(d=>d.id===this.state.openDom)||MSF[1];
+    const STLABEL={mastered:T('שולט/ת','Mastered'),emerging:T('מתפתח','Emerging'),notyet:T('עוד לא','Not yet')};
+    const openDomName=curD.name; const openDomIcon=curD.icon; const openDomColor=curD.color; const openDomPct=dPct(curD)+'%';
+    const openSkills=curD.skills.map(sk=>{const s=stOf(sk);return {id:sk.id,text:he?sk.he:sk.en,
+      states:['notyet','emerging','mastered'].map(val=>({val,label:STLABEL[val],
+        bg:s===val?(val==='mastered'?A:val==='emerging'?'#3f8cc9':'#e2562d'):'#fff',
+        color:s===val?'#fff':'#8d9892',border:s===val?'none':'1px solid #e8eee9'}))};});
+
+    const courseDefs=[
+      {id:'k0',title:T('להבין רגשות גדולים','Understanding Big Feelings'),dom:'understanding',domName:T('הבנה חברתית','Social Understanding'),meta:T('7 שיעורים · 40 דק׳','7 lessons · 40 min'),icon:'favorite',grad:'linear-gradient(135deg,#d8d2f0,#b9aee4)',base:40},
+      {id:'k1',title:T('התקפי זעם, בשלווה','Tantrums, calmly'),dom:'regulation',domName:T('ויסות','Regulation'),meta:T('5 שיעורים · 28 דק׳','5 lessons · 28 min'),icon:'sentiment_stressed',grad:'linear-gradient(135deg,#f6cdbf,#eba88f)',base:60},
+      {id:'k2',title:T('שיחות תורות ומשחק','Turn-taking & play'),dom:'social',domName:T('חברתי','Social'),meta:T('5 שיעורים · 26 דק׳','5 lessons · 26 min'),icon:'groups',grad:'linear-gradient(135deg,#cdeadd,#a9d8c4)',base:40},
+      {id:'k3',title:T('זמן מסך בלי ריבים','Screen-time without fights'),dom:'selfcare',domName:T('עצמאות','Self-Care'),meta:T('4 שיעורים · 22 דק׳','4 lessons · 22 min'),icon:'devices',grad:'linear-gradient(135deg,#c5ddf2,#9cc3e6)',base:25},
+      {id:'k4',title:T('לבנות עצמאות','Building independence'),dom:'selfcare',domName:T('עצמאות','Self-Care'),meta:T('6 שיעורים · 35 דק׳','6 lessons · 35 min'),icon:'emoji_people',grad:'linear-gradient(135deg,#cdeadd,#a9d8c4)',base:0},
+      {id:'k5',title:T('שינה רגועה','Calm sleep'),dom:'regulation',domName:T('ויסות','Regulation'),meta:T('5 שיעורים · 30 דק׳','5 lessons · 30 min'),icon:'bedtime',grad:'linear-gradient(135deg,#cfe0f5,#a9c3ec)',base:0},
+    ].map(c=>{const cp=this.state.cp||{};return {...c,pct:cp[c.id]!==undefined?cp[c.id]:c.base};});
+    const courses=courseDefs.map(c=>({id:c.id,title:c.title,domName:c.domName,meta:c.meta,icon:c.icon,grad:c.grad,barW:c.pct+'%',
+      pctLabel:c.pct>=100?(he?'הושלם':'Done'):(c.pct>0?c.pct+'%':(he?'התחל':'Start')),
+      trackIcon:c.pct>=100?'check_circle':'add_circle',trackColor:c.pct>=100?A:'#cdd6cf'}));
+    const learnOverall=Math.round(courseDefs.reduce((s,c)=>s+c.pct,0)/courseDefs.length);
+    const domName=(id)=>{const d=MSF.find(x=>x.id===id);return d?d.name:id;};
+    const learnByDom=MSF.map(d=>{const cs=courseDefs.filter(c=>c.dom===d.id);if(!cs.length)return null;const pct=Math.round(cs.reduce((s,c)=>s+c.pct,0)/cs.length);return {name:d.name,icon:d.icon,color:d.color,pct};}).filter(Boolean);
+
+    // Family Circle
+    const family=[
+      {name:T('נועה כהן','Noa Cohen'),role:T('הורה · גישה מלאה','Parent · full access'),initials:T('נ','NC'),c:A,bg:'#eaf2ff'},
+      {name:T('דני כהן','Danny Cohen'),role:T('הורה · גישה מלאה','Parent · full access'),initials:T('ד','DC'),c:'#3f8cc9',bg:'#e7f1fa'},
+      {name:T('סבתא רותי','Grandma Ruthie'),role:T('סבתא · אבני דרך','Grandparent · milestones'),initials:T('ר','GR'),c:'#7a6bd8',bg:'#ece9fb'},
+      {name:T('מאיה (מטפלת)','Maya (carer)'),role:T('מטפלת · שגרות','Carer · routines'),initials:T('מ','M'),c:'#cf9320',bg:'#fbf0d8'},
+    ];
+    // Care Network packet
+    const carePacket=[
+      {t:T('פרופיל','Profile'),v:T('מיה, בת 6 · דו-לשונית','Mia, 6 · bilingual')},
+      {t:T('אבני דרך שסומנו','Flagged milestones'),v:T('חברתי — יוזמה (לשים לב)','Social — initiation (watch)')},
+      {t:T('דפוס מצב רוח','Mood pattern'),v:T('מתח חוזר בבקרים','Recurring morning stress')},
+      {t:T('תוכנית פעילה','Active plan'),v:T('טקס פרידה רגוע','Calm goodbye ritual')},
+    ];
+    const pros=[
+      {name:T('ד״ר מאיה לוי','Dr. Maya Levi'),role:T('פסיכולוגית ילדים','Child Psychologist'),meta:T('עברית · אונליין · ⭐ 4.9','He · Online · ⭐ 4.9'),init:T('מל','ML'),tone:'#e7f1fa',ink:'#3f8cc9'},
+      {name:T('נועה בן-דוד','Noa Ben-David'),role:T('קלינאית תקשורת','Speech Therapist'),meta:T('עברית · אונליין · ⭐ 4.8','He · Online · ⭐ 4.8'),init:T('נב','NB'),tone:'#eaf2ff',ink:A},
+      {name:T('ד״ר אמיר כהן','Dr. Amir Cohen'),role:T('רופא ילדים התפתחותי','Dev. Pediatrician'),meta:T('עברית · פרונטלי · ⭐ 5.0','He · In-person · ⭐ 5.0'),init:T('אכ','AC'),tone:'#fbe6df',ink:'#e2562d'},
+    ];
+    // ── Behaviors ──
+    const behStats=[
+      {n:'7',l:T('אירועים השבוע','events this week')},
+      {n:'2.8',l:T('עוצמה ממוצעת','avg intensity')},
+      {n:'5/7',l:T('נפתרו','resolved')},
+    ];
+    const behLogModes=[
+      {icon:'mic',c:'#e2562d',label:T('קול','Voice')},
+      {icon:'photo_camera',c:'#3f8cc9',label:T('תמונה','Photo')},
+      {icon:'keyboard',c:A,label:T('טקסט','Text')},
+    ];
+    const behEventsDef=[
+      {id:'be1',icon:'bolt',c:'#e2562d',bg:'#fbe6df',title:T('התנגדות בפרידה','Separation resistance'),ctx:T('גן · היום 8:05','Preschool · today 8:05a'),intensity:3,resolved:false,
+        domain:T('ויסות','Regulation'),trigger:T('מעבר הבית→גן','Home→preschool transition'),
+        script:T('״אני יודעת שקשה להיפרד. ניתן את החיבוק המיוחד שלנו, ואאסוף אותך אחרי ארוחת הצהריים.״','“I know goodbyes are hard. Let’s do our special hug — I’ll pick you up right after lunch.”')},
+      {id:'be2',icon:'volume_up',c:'#cf9320',bg:'#fbf0d8',title:T('התפרצות קולית','Vocal outburst'),ctx:T('בית · אתמול 18:40','Home · yesterday 6:40p'),intensity:2,resolved:true,
+        domain:T('ויסות','Regulation'),trigger:T('עייפות לפני שינה','Pre-bed tiredness'),
+        script:T('״אני שומעת כמה את מתוסכלת. ננשום שלוש נשימות דרקון יחד ואז נבחר סיפור.״','“You sound really frustrated. Let’s take three dragon breaths together, then pick a story.”')},
+      {id:'be3',icon:'sentiment_very_dissatisfied',c:'#e2562d',bg:'#fbe6df',title:T('התקף זעם','Tantrum'),ctx:T('סופר · יום א׳','Supermarket · Sunday'),intensity:4,resolved:true,
+        domain:T('ויסות','Regulation'),trigger:T('״לא״ לממתק','Told no to a treat'),
+        script:T('״ממש רצית את זה. מותר להרגיש עצוב. אני כאן ואחזיק אותך עד שהרגש הגדול יחלוף.״','“You really wanted that. It’s okay to feel sad — I’m here, I’ll hold you until the big feeling passes.”')},
+      {id:'be4',icon:'block',c:'#7a6bd8',bg:'#ece9fb',title:T('סירוב לחלוק','Refusing to share'),ctx:T('פארק · יום ג׳','Park · Tuesday'),intensity:2,resolved:true,
+        domain:T('חברתי','Social'),trigger:T('משחק לצד ילד אחר','Playing beside a peer'),
+        script:T('״קשה לחכות לתור. בואי נכוון טיימר — שתי דקות לכל אחד.״','“It’s hard to wait for a turn. Let’s set a timer — two minutes each.”')},
+    ];
+    const behEvents=behEventsDef.map(ev=>({
+      id:ev.id,icon:ev.icon,c:ev.c,bg:ev.bg,title:ev.title,ctx:ev.ctx,script:ev.script,
+      domainLabel:ev.domain,triggerLabel:ev.trigger,
+      dots:[1,2,3,4,5].map(i=>({color:i<=ev.intensity?ev.c:'#e7eeea'})),
+      statusIcon:ev.resolved?'check_circle':'pending',statusColor:ev.resolved?'#3f8cc9':'#cf9320',
+      open:this.state.behOpen===ev.id,
+    }));
+    const behPatterns=[
+      {icon:'wb_twilight',c:'#e2562d',bg:'#fbe6df',title:T('בקרים קשים','Hard mornings'),sub:T('3 מתוך 5 לפני הגן','3 of 5 events before preschool')},
+      {icon:'bedtime',c:'#7a6bd8',bg:'#ece9fb',title:T('עייפות בערב','Evening tiredness'),sub:T('עוצמה עולה אחרי 18:00','Intensity rises after 6pm')},
+      {icon:'restaurant',c:'#cf9320',bg:'#fbf0d8',title:T('רעב = פתיל קצר','Hunger = short fuse'),sub:T('דפוס לפני ארוחות','Pattern before meals')},
+    ];
+    // ── Journal ──
+    const journal=[
+      {id:'j1',icon:'mic',c:'#e2562d',bg:'#fbe6df',when:T('היום 8:05','Today 8:05a'),domain:T('ויסות','Regulation'),auto:false,text:T('מיה בכתה שוב בפרידה בגן. נרגעה אחרי החיבוק המיוחד.','Mia cried at preschool drop-off again. Calmed after our special hug.')},
+      {id:'j2',icon:'auto_awesome',c:A,bg:'#eaf2ff',when:T('אתמול','Yesterday'),domain:T('שפה','Language'),auto:true,text:T('ארבור: מיה סיפרה סיפור בן 4 משפטים ברצף — אבן דרך בשפה.','Arbor: Mia told a 4-sentence story in order — a language milestone.')},
+      {id:'j3',icon:'photo_camera',c:'#3f8cc9',bg:'#e7f1fa',when:T('יום ג׳','Tuesday'),domain:T('יצירה','Creativity'),auto:false,text:T('ציור של המשפחה — פירוט מרשים בפרצופים.','A drawing of the whole family — impressive detail in the faces.')},
+      {id:'j4',icon:'auto_awesome',c:A,bg:'#eaf2ff',when:T('יום ב׳','Monday'),domain:T('חברתי','Social'),auto:true,text:T('ארבור: שיתפה צעצוע ביוזמתה במשחק — התקדמות חברתית.','Arbor: Shared a toy on her own during play — social progress.')},
+    ];
+    // Day Windows
+    const windowHours=[
+      {h:T('7','7a'),lvl:'hard'},{h:T('8','8a'),lvl:'hard'},{h:T('9','9a'),lvl:'mid'},{h:T('10','10a'),lvl:'calm'},
+      {h:T('12','12p'),lvl:'calm'},{h:T('15','3p'),lvl:'mid'},{h:T('17','5p'),lvl:'hard'},{h:T('19','7p'),lvl:'mid'},
+    ].map(w=>({h:w.h,lvl:w.lvl,barH:(w.lvl==='calm'?64:w.lvl==='mid'?40:20)+'px',c:w.lvl==='calm'?A:w.lvl==='mid'?'#cf9320':'#e2562d'}));
+    // Pricing
+    const planFree=[T('מפת התפתחות','Development Map'),T('הדרכה יומית','Daily guidance'),T('משחקי ילדים','Kid games'),T('תיעוד רגעים','Log moments')];
+    const planPlus=[T('כל מה שבחינם','Everything in Free'),T('ייעוץ מומחים','Expert consults'),T('דוחות שבועיים','Weekly reports'),T('מסירה לגן','School handoff'),T('סיפורי גיבור ללא הגבלה','Unlimited hero stories')];
+
+    // ── Feature catalogue (full parity with mobile) ──
+    const hero=(grad,icon,tag,title,sub)=>({kind:'hero',grad,icon,tag,title,sub});
+    const stat3=(items)=>({kind:'stats',items});
+    const rows=(title,items)=>({kind:'rows',title,items});
+    const prog=(title,items)=>({kind:'prog',title,items});
+    const note=(icon,text)=>({kind:'note',icon,text});
+    const FEAT={
+      log:{title:T('תיעוד רגע','Log a Moment'),sub:T('צלמו, הקליטו או כתבו — ארבור ימצה את התובנה ויעדכן את המפה.','Snap, speak or type — Arbor extracts the insight and updates the map.'),blocks:[
+        hero('linear-gradient(140deg,#e2562d,#f0915f)','edit_note',T('ללא טפסים','NO FORMS'),T('מה קרה היום?','What happened today?'),T('קול · תמונה · טקסט','Voice · photo · text')),
+        rows(T('דרכים לתעד','Ways to log'),[{icon:'mic',c:'#e2562d',bg:'#fbe6df',title:T('הקלטה קולית','Voice note'),sub:T('״מיה התרגזה לפני הגן״','“Mia got upset before preschool”')},{icon:'photo_camera',c:'#3f8cc9',bg:'#e7f1fa',title:T('תמונה','Photo'),sub:T('רגע, ציור, התקף זעם','A moment, drawing, tantrum')},{icon:'keyboard',c:A,bg:'#eaf2ff',title:T('טקסט','Text'),sub:T('כמה מילים מהירות','A few quick words')}]),
+        note('auto_awesome',T('ארבור מסווג לתחום, מעדכן את מפת ההתפתחות ומציע צעד אחד.','Arbor tags the domain, updates the Development Map and suggests one step.'))]},
+      windows:{title:T('חלונות היום','Day Windows'),sub:T('מתי מיה רגועה ומתי קשה יותר — חיזוי לפי דפוסים אמיתיים.','When Mia is calm vs harder — predicted from real patterns.'),blocks:[
+        hero('linear-gradient(140deg,#2b7fff,#4a90e2)','schedule',T('עכשיו · חלון רגוע','NOW · CALM WINDOW'),T('זמן טוב לפעילות חדשה','A good time for something new'),T('הרגע הבא הקשה: 17:00','Next hard window: 5pm')),
+        {kind:'windows'},
+        rows(T('דפוסים שזוהו','Detected patterns'),[{icon:'wb_twilight',c:'#e2562d',bg:'#fbe6df',title:T('בקרים קשים','Hard mornings'),sub:T('מתח לפני הגן, 7–8','Pre-preschool stress, 7–8a')},{icon:'bedtime',c:'#7a6bd8',bg:'#ece9fb',title:T('ערב רגיש','Sensitive evenings'),sub:T('עייפות אחרי 17:00','Tired after 5pm')}])]},
+      science:{title:T('המדע שמאחורי','The Science'),sub:T('כל המלצה נשענת על מסגרות מוכרות ומקורות שנבדקו.','Every recommendation rests on recognized frameworks and reviewed sources.'),blocks:[
+        hero('linear-gradient(140deg,#3f8cc9,#6da9dd)','verified','',T('נבדק על ידי מומחים','Expert-reviewed'),T('מבוסס ראיות, לא דעות','Evidence-based, not opinions')),
+        stat3([{n:'133',l:T('אבני דרך','milestones')},{n:'40+',l:T('מקורות','sources')},{n:'7',l:T('תחומים','domains')}]),
+        rows(T('המסגרות שמאחורי ארבור','The frameworks behind Arbor'),[{icon:'school',c:'#3f8cc9',bg:'#e7f1fa',title:'CDC · ASQ-3',sub:T('מעקב אבני דרך','Milestone tracking')},{icon:'psychology',c:'#7a6bd8',bg:'#ece9fb',title:'Siegel & Bryson',sub:T('ויסות רגשי','Emotional regulation')},{icon:'favorite',c:A,bg:'#eaf2ff',title:'Gottman',sub:T('יחסי הורה-ילד','Parent-child bond')}]),
+        note('info',T('ארבור הוא כלי הדרכה התפתחותי — לא כלי אבחון. בכל חשש פנו לאיש מקצוע.','Arbor is a developmental guidance tool — not a diagnostic. For any concern, see a professional.'))]},
+      routines:{title:T('שגרות יומיות','Daily Routines'),sub:T('בקר, ערב ומעברים — שגרות צפויות שמחזקות ויסות עצמי.','Morning, evening & transitions — predictable routines that build regulation.'),blocks:[
+        prog(T('השגרות של מיה היום','Mia\u2019s routines today'),[{label:T('בוקר','Morning'),tag:'4/5',color:A,w:'80%'},{label:T('מעבר לגן','To preschool'),tag:'2/3',color:'#cf9320',w:'66%'},{label:T('ערב','Evening'),tag:'0/4',color:'#cdd6cf',w:'4%'}]),
+        rows(T('שגרות מוצעות','Suggested routines'),[{icon:'wb_sunny',c:'#cf9320',bg:'#fbf0d8',title:T('בוקר רגוע','Calm morning'),sub:T('5 שלבים · 20 דק׳','5 steps · 20 min')},{icon:'directions_walk',c:'#3f8cc9',bg:'#e7f1fa',title:T('טקס פרידה','Goodbye ritual'),sub:T('3 שלבים','3 steps')},{icon:'bedtime',c:'#7a6bd8',bg:'#ece9fb',title:T('שינה רגועה','Calm bedtime'),sub:T('4 שלבים','4 steps')}]),
+        note('insights',T('שגרות שהושלמו מזינות את ויסות עצמי במפת ההתפתחות.','Completed routines feed Self-Regulation on the Development Map.'))]},
+      reminders:{title:T('תזכורות חכמות','Smart Reminders'),sub:T('תזכורת אחת ביום, בחלון הרגוע של מיה. אף פעם לא יותר משתיים.','One nudge a day, in Mia\u2019s calm window. Never more than two.'),blocks:[
+        hero('linear-gradient(140deg,#cf9320,#e0b34a)','notifications_active',T('היום · 10:00','TODAY · 10:00'),T('זמן טוב לפעילות החברתית','Good time for the social activity'),T('שעות שקטות: 19:00–7:00','Quiet hours: 7pm–7am')),
+        rows(T('תזכורות פעילות','Active reminders'),[{icon:'extension',c:A,bg:'#eaf2ff',title:T('פעילות יומית','Daily activity'),sub:T('בחלון הרגוע','In the calm window')},{icon:'mood',c:'#cf9320',bg:'#fbf0d8',title:T('בדיקת רגשות','Feeling check-in'),sub:T('אחה״צ','Afternoon')}])]},
+      behaviors:{title:T('יומן התנהגות','Behavior Logs'),sub:T('כל אירוע עם הקשר, עוצמה ופתרון — כדי לראות את הדפוס.','Every event with context, intensity & resolution.'),blocks:[
+        stat3([{n:'7',l:T('אירועים','events')},{n:'2.8',l:T('עוצמה','avg intensity')},{n:'5',l:T('נפתרו','resolved')}]),
+        rows(T('לאחרונה','Recent'),[{icon:'bolt',c:'#e2562d',bg:'#fbe6df',title:T('התנגדות בפרידה','Separation resistance'),sub:T('גן · היום 8:05','Preschool · today 8:05')},{icon:'volume_up',c:'#cf9320',bg:'#fbf0d8',title:T('התפרצות קולית','Vocal outburst'),sub:T('בית · אתמול','Home · yesterday')}]),
+        note('tips_and_updates',T('לכל אירוע מצורף תסריט ויסות — מילים מדויקות לרגע הקשה.','Each event has a co-regulation script — exact words for the hard moment.'))]},
+      weekly:{title:T('דוח שבועי','Weekly Report'),sub:T('סיכום אוטומטי כל יום ראשון — תנועה, דפוסים, הישגים ותובנה.','Auto-generated every Sunday — movement, patterns, wins, insight.'),blocks:[
+        {kind:'trend'},
+        prog(T('תנועה לפי תחום','Domain movement'),[{label:T('הבנה חברתית','Social Understanding'),tag:'+8%',color:'#7a6bd8',w:'50%'},{label:T('חברתי','Social'),tag:'+5%',color:'#e2562d',w:'45%'},{label:T('ויסות','Regulation'),tag:'+2%',color:A,w:'62%'}]),
+        rows(T('הישגי השבוע','Wins this week'),[{icon:'emoji_events',c:A,bg:'#eaf2ff',title:T('שיתפה צעצוע ביוזמתה','Shared a toy on her own'),sub:T('חברתי','Social')},{icon:'emoji_events',c:A,bg:'#eaf2ff',title:T('סיפרה סיפור ברצף','Told a story in order'),sub:T('שפה','Language')}])]},
+      stories:{title:T('סיפורי גיבור','Hero Stories'),sub:T('סיפורים אישיים שבהם מיה היא גיבורת-העל — מהעולם של הילד.','Personal stories where Mia is the hero — from the kid world.'),blocks:[
+        hero('linear-gradient(140deg,#7a6bd8,#9d92e4)','auto_stories',T('מככב/ת: מיה','STARRING: MIA'),T('הסיפורים של מיה','Mia\u2019s hero stories'),T('דוד וגוליית · תיבת נח · ועוד','David & Goliath · Noah\u2019s Ark · more')),
+        {kind:'stories'},
+        note('child_care',T('מיה משחקת בסיפורים האלה בעולם הילד שלה — והם מזינים את ההתפתחות הרגשית.','Mia plays these in her kid world — and they feed her emotional development.'))]},
+      pricing:{title:T('ארבור פלוס','Arbor Plus'),sub:T('כל הכלים לליווי מלא של ההתפתחות — נסו 14 יום חינם.','Every tool for full developmental support — try 14 days free.'),blocks:[{kind:'pricing'}]},
+    };
+    const CATFEAT={
+      today:[{f:'log',label:T('תיעוד רגע','Log a Moment')},{f:'reminders',label:T('תזכורות','Reminders')}],
+      growth:[{f:'weekly',label:T('דוח שבועי','Weekly')},{f:'windows',label:T('חלונות היום','Windows')},{f:'routines',label:T('שגרות','Routines')},{f:'science',label:T('המדע','Science')}],
+      academy:[{f:'stories',label:T('סיפורי גיבור','Hero Stories')}],
+      profile:[{f:'pricing',label:T('ארבור פלוס','Arbor Plus')}],
+    };
+    const featCat=(()=>{ if(v!=='feat')return null; for(const c in CATFEAT){ if(CATFEAT[c].some(x=>x.f===this.state.feat))return c; } return null; })();
+    const activeCat=v==='feat'?(featCat||'today'):v;
+    const catSubs=CATFEAT[activeCat]||[];
+    const subTabs=catSubs.length?[{label:T('סקירה','Overview'),vv:activeCat,ff:null,on:v===activeCat}].concat(catSubs.map(s=>({label:s.label,vv:null,ff:s.f,on:v==='feat'&&this.state.feat===s.f}))).map(t=>({...t,bg:t.on?'#14225a':'#fff',color:t.on?'#fff':'#586273',border:t.on?'none':'1px solid #e5e9f0'})):[];
+    const hasSubTabs=subTabs.length>0;
+    const fkey=this.state.feat;
+    const rawF=fkey&&FEAT[fkey];
+    const featBlocks=rawF?rawF.blocks.map(b=>({...b,isHero:b.kind==='hero',isStats:b.kind==='stats',isRows:b.kind==='rows',isProg:b.kind==='prog',isNote:b.kind==='note',isWindows:b.kind==='windows',isTrend:b.kind==='trend',isPricing:b.kind==='pricing',isStories:b.kind==='stories'})):[];
+    const trendBars=[{label:'W21',pct:61},{label:'W22',pct:63},{label:'W23',pct:66},{label:'W24',pct:overallPct}].map((b,i,a)=>({...b,h:Math.round(b.pct*1.1)+'px',bg:i===a.length-1?A:'#cfe1d6',vc:i===a.length-1?A:'#8d9892'}));
+
+    const STATE_NAV=[
+      {id:'today',icon:'home',label:T('היום','Today')},
+      {id:'behaviors',icon:'fact_check',label:T('התנהגות','Behaviors')},
+      {id:'growth',icon:'insights',label:T('צמיחה','Growth')},
+      {id:'journal',icon:'edit_note',label:T('יומן','Journal')},
+      {id:'academy',icon:'school',label:T('אקדמיה','Academy')},
+      {id:'ask',icon:'chat_bubble',label:T('שאל את ארבור','Ask Arbor'),badge:'1'},
+      {id:'care',icon:'stethoscope',label:T('רשת הטיפול','Care Network')},
+      {id:'profile',icon:'account_circle',label:T('פרופיל','Profile')},
+    ];
+    const nav=STATE_NAV.map(n=>({...n,bg:activeCat===n.id?'#eaf2ff':'transparent',color:activeCat===n.id?'#1c63d6':'#586273',fill:activeCat===n.id?1:0,weight:activeCat===n.id?800:600}));
+    const TOOLS=[
+      {f:'log',icon:'edit_note',label:T('תיעוד רגע','Log a Moment')},
+      {f:'windows',icon:'schedule',label:T('חלונות היום','Day Windows')},
+      {f:'routines',icon:'checklist',label:T('שגרות','Routines')},
+      {f:'weekly',icon:'bar_chart',label:T('דוח שבועי','Weekly Report')},
+      {f:'behaviors',icon:'fact_check',label:T('יומן התנהגות','Behavior Logs')},
+      {f:'stories',icon:'auto_stories',label:T('סיפורי לילה','Bedtime Stories')},
+      {f:'reminders',icon:'notifications',label:T('תזכורות','Reminders')},
+      {f:'science',icon:'verified',label:T('המדע','The Science')},
+      {f:'pricing',icon:'workspace_premium',label:T('ארבור פלוס','Arbor Plus')},
+    ];
+    const tools=TOOLS.map(t=>({...t,active:v==='feat'&&this.state.feat===t.f,bg:(v==='feat'&&this.state.feat===t.f)?'#eaf2ff':'transparent',color:(v==='feat'&&this.state.feat===t.f)?'#1c63d6':'#586273',fill:(v==='feat'&&this.state.feat===t.f)?1:0}));
+
+    const kidActivity=[
+      {icon:'flag',title:T('המשימה של היום','Today\u2019s quest'),sub:T('פינת רוגע · הושלם','Calm corner · done'),bg:'#eaf2ff',c:A,statusIcon:'check_circle',statusColor:A},
+      {icon:'mood',title:T('בדיקת רגשות','Feeling check-in'),sub:T('הרגישה טוב','Felt good'),bg:'#fbf0d8',c:'#cf9320',statusIcon:'check_circle',statusColor:A},
+      {icon:'auto_stories',title:T('קומיקס גיבור','Hero comic'),sub:T('דוד וגוליית','David & Goliath'),bg:'#ece9fb',c:'#7a6bd8',statusIcon:'check_circle',statusColor:A},
+      {icon:'sports_esports',title:T('משחקייה','Playbank'),sub:T('משחק הזיכרון · 2 משחקים','Memory Match · 2 games'),bg:'#e7f1fa',c:'#3f8cc9',statusIcon:'check_circle',statusColor:A},
+    ];
+
+    const titles={today:[T('בוקר טוב, נועה','Good morning, Noa'),T('הנה מה שחשוב היום','Here\u2019s what matters today')],
+      growth:[T('מפת ההתפתחות של מיה','Mia\u2019s Development Map'),T('מבוסס מסגרת קלינית של 7 תחומים','Based on a 7-domain clinical framework')],
+      academy:[T('אקדמיה','Academy'),T('קורסים להורים, מותאמים למיה','Parent courses, tailored to Mia')],
+      ask:[T('שאל את ארבור','Ask Arbor'),T('מאמן AI 24/7 + מומחים אנושיים','24/7 AI coach + human experts')],
+      profile:[T('פרופיל','Profile'),T('הילד, המשפחה וההגדרות','Child, family & settings')],
+      care:[T('רשת הטיפול','Care Network'),T('שתפו תקציר עם מומחה מאומת','Share a summary with a verified pro')],
+      behaviors:[T('יומן התנהגות','Behaviors'),T('אירועים, דפוסים ותסריטי ויסות','Events, patterns & co-regulation scripts')],
+      journal:[T('יומן','Journal'),T('רגעים שתועדו — אוטומטית וביד','Logged moments — automatic & by hand')]};
+    const pg=titles[v]||(v==='feat'&&rawF?[rawF.title,rawF.sub]:titles.today);
+
+    // ── KID WORLD (web) ──
+    const mkI=(src)=>React.createElement('img',{src,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',display:'block'}});
+    const kidRooms=[
+      {k:'playbank',icon:'sports_esports',title:T('משחקייה','Playbank'),sub:T('6 משחקים','6 games'),grad:'linear-gradient(140deg,#2b7fff,#4a90e2)'},
+      {k:'stories',icon:'auto_stories',title:T('סיפורי גיבור','Hero Stories'),sub:T('את/ה הכוכב','You\u2019re the star'),grad:'linear-gradient(140deg,#7a6bd8,#9d92e4)'},
+      {k:'feelings',icon:'mood',title:T('רגשות','Feelings'),sub:T('איך אני מרגיש/ה','How I feel'),grad:'linear-gradient(140deg,#cf9320,#e0b34a)'},
+      {k:'studio',icon:'palette',title:T('סטודיו','Studio'),sub:T('יצירה','Create'),grad:'linear-gradient(140deg,#e2562d,#f0915f)'},
+    ];
+    const kidGames=[
+      {title:T('משחק הזיכרון','Memory Match'),img:'assets/viz/game-memory.png'},
+      {title:T('בלש הרגשות','Feelings Detective'),img:'assets/viz/game-feelings.png'},
+      {title:T('סטודיו חיקוי','Mimic Studio'),img:'assets/viz/game-mimic.png'},
+      {title:T('מסע קריאה','Reading Journey'),img:'assets/viz/game-reading.png'},
+      {title:T('מסע נשימה','Breath Journey'),img:'assets/viz/game-beat.png'},
+      {title:T('מיון ודפוסים','Sort & Pattern'),img:'assets/viz/game-pattern.png'},
+    ].map(g=>({title:g.title,imgEl:mkI(g.img)}));
+    const kidStories=[
+      {title:T('דוד וגוליית','David & Goliath'),img:'assets/viz/story-david-and-goliath.png'},
+      {title:T('תיבת נח','Noah\u2019s Ark'),img:'assets/viz/story-noahs-ark.png'},
+      {title:T('האריה שפחד','The Lion Who Was Afraid'),img:'assets/viz/story-the-lion-who-was-afraid.png'},
+      {title:T('דרקון האחריות','The Dragon of Responsibility'),img:'assets/viz/story-the-dragon-of-responsibility.png'},
+    ].map(s=>({title:s.title,imgEl:mkI(s.img)}));
+
+    return {
+      toolsLabel:T('כלים','TOOLS'), subTabs, hasSubTabs, viewKey:v==='feat'?('feat-'+this.state.feat):v,
+      kidMode:this.state.kidMode, kidStars:this.state.kidStars, kidRooms, kidGames, kidStories, kidAvatarEl:mkI('assets/viz/hero-comic.png'),
+      kidGreeting:T('היי מיה! ✦','Hi Mia! ✦'), kidQuestTag:T('המשימה של היום','TODAY\u2019S QUEST'), kidQuestTitle:T('לבנות פינת רוגע','Build a calm corner'), kidQuestGo:T('קדימה!','Let\u2019s go!'),
+      kidRoomsLabel:T('החדרים שלי','My rooms'), kidGamesLabel:T('משחקים','Games'), kidStoriesLabel:T('הסיפורים שלי','My stories'),
+      enterKid:()=>this.setState({kidMode:true}), exitKid:()=>this.setState({kidMode:false}),
+      kidModeLabel:T('מצב ילד','Kid Mode'), kidModeSub:T('העולם של מיה','Mia\u2019s world'), exitKidLabel:T('חזרה להורה','Back to parent'),
+      goSub:(e)=>{const vv=e.currentTarget.getAttribute('data-vv'),ff=e.currentTarget.getAttribute('data-ff');if(ff)this.setState({view:'feat',feat:ff,openDom:null});else this.setState({view:vv,openDom:null});},
+      windowsTitle:T('היום של מיה, שעה־שעה','Mia\u2019s day, hour by hour'),
+      trendTitle:T('מפת ההתפתחות לאורך זמן','Development Map over time'), trendDelta:T('+3 השבוע','+3 this week'),
+      freeLabel:T('חינם','Free'), freePrice:T('₪0','$0'), plusLabel:T('ארבור פלוס','Arbor Plus'), plusPrice:T('₪39 / חודש','$12 / mo'), trialBadge:T('14 יום חינם','14-day trial'), plusCta:T('התחילו ניסיון','Start free trial'),
+      dirAttr:he?'rtl':'ltr', view:v,
+      isToday:v==='today', isBehaviors:v==='behaviors', isJournal:v==='journal', isGrowth:v==='growth', isAcademy:v==='academy', isAsk:v==='ask', isCare:v==='care', isProfile:v==='profile',
+      isFeat:v==='feat', featTitle:rawF&&rawF.title, featSub:rawF&&rawF.sub, featBlocks, windowHours, trendBars,
+      behStats, behLogModes, behEvents, behPatterns,
+      toggleBeh:(e)=>{const id=e.currentTarget.getAttribute('data-id');this.setState(s=>({behOpen:s.behOpen===id?null:id}));},
+      behHeroTag:T('השבוע','THIS WEEK'), behHeroTitle:T('ההתנהגות של מיה','Mia\u2019s behavior'), behHeroSub:T('כל אירוע עם הקשר, עוצמה ופתרון','Every event with context, intensity & resolution'),
+      behLogTitle:T('תיעוד התנהגות','Log a behavior'), behLogSub:T('רגע קשה? תעדו בשנייה — ארבור ימצא את הדפוס ויציע תסריט ויסות.','A hard moment? Log it in a second — Arbor finds the pattern and offers a co-regulation script.'),
+      behRecentTitle:T('אירועים אחרונים','Recent events'), behPatternsTitle:T('דפוסים שזוהו','Detected patterns'),
+      coRegLabel:T('תסריט ויסות','CO-REGULATION SCRIPT'),
+      behRegHintTitle:T('מחובר למפת ההתפתחות','Linked to the Development Map'),
+      behRegHint:T('כל אירוע שמסומן כנפתר מזין את ויסות עצמי במפת ההתפתחות.','Each resolved event feeds Self-Regulation on the Development Map.'),
+      behRegCta:T('למפת ההתפתחות','Open the map'),
+      journal, journalComposeTitle:T('תיעוד רגע','Log a moment'), autoLabel:T('ארבור','ARBOR'),
+      planFree, planPlus, toolItems:tools,
+      navItems:nav, go:(e)=>this.setState({view:e.currentTarget.getAttribute('data-v'),openDom:null}),
+      openFeat:(e)=>this.setState({view:'feat',feat:e.currentTarget.getAttribute('data-f'),openDom:null}),
+      goGrowth:()=>this.setState({view:'growth'}), goCoach:()=>this.setState({view:'ask'}),
+      openDomain:(e)=>this.setState({openDom:e.currentTarget.getAttribute('data-d')}),
+      backDomain:()=>this.setState({openDom:null}),
+      setSkill:(e)=>{const id=e.currentTarget.getAttribute('data-id'),val=e.currentTarget.getAttribute('data-v');this.setState(s=>({ms:{...s.ms,[id]:val}}));},
+      trackCourse:(e)=>{const id=e.currentTarget.getAttribute('data-id');this.setState(s=>{const base={k0:40,k1:60,k2:40,k3:25,k4:0,k5:0};const cur=(s.cp&&s.cp[id]!==undefined)?s.cp[id]:base[id];const next=cur>=100?0:Math.min(100,cur+25);return {cp:{...s.cp,[id]:next}};});},
+      toggleLang:()=>this.setState({lang:he?'en':'he'}), langLabel:he?'EN':'עב',
+      toggleKidMenu:()=>this.setState(s=>({kidOpen:!s.kidOpen,settingsOpen:false})),
+      pickKid:(e)=>this.setState({kid:Number(e.currentTarget.getAttribute('data-i')),kidOpen:false}),
+      addChild:()=>this.setState({kidOpen:false}),
+      toggleSettings:()=>this.setState(s=>({settingsOpen:!s.settingsOpen,kidOpen:false})),
+      chevEnd:he?'chevron_left':'chevron_right',
+      pageTitle:pg[0], pageSub:pg[1], searchLabel:T('חיפוש…','Search…'),
+      childName:kid.name, kidList, kidOpen:this.state.kidOpen, kidImgEl:mkImg(kid.img),
+      switchChildLabel:T('החלפת ילד/ה','Switch child'), addChildLabel:T('הוספת ילד/ה','Add a child'),
+      settingsOpen:this.state.settingsOpen,
+      settingsLabel:T('הגדרות','Settings'), langSettingLabel:T('שפה','Language'),
+      parentName:T('נועה כהן','Noa Cohen'), planLabel:T('מנוי משפחתי','Family plan'),
+      upsellEyebrow:T('ARBOR PLUS','ARBOR PLUS'), upsellTitle:T('פתחו ייעוץ מומחים בלתי מוגבל','Unlock unlimited expert consults'), upsellCta:T('שדרגו','Upgrade'),
+      // today
+      todayTag:T('ההדרכה של היום','Today\u2019s guidance'), todayTitle:T('לעזור למיה לתת שם לרגשות הגדולים','Help Mia name her big feelings'),
+      todayMeta:T('3 דק׳ קריאה · פעולה אחת קטנה','3 min read · one small action'), beginLabel:T('בואו נתחיל','Begin'),
+      devMapEyebrow:T('מפת ההתפתחות','DEVELOPMENT MAP'), overallPct, devDelta:T('+3 השבוע','+3 this week'),
+      devLead:T('מיה מתקדמת יפה ברוב התחומים','Mia is thriving across most domains'), devSub:T('מוקד החודש: חברתי','This month\u2019s focus: Social'),
+      focusLabel:T('מוקדים','Focus'), domainsLabel:T('תחומים','Domains'), weekLabel:T('השבוע','Week'),
+      activityTitle:T('הפעילות של מיה','Mia\u2019s activity'), liveLabel:T('● חי','● Live'), kidActivity,
+      coachInitials:T('ל','ML'), coachName:T('ד״ר לוי','Dr. Levi'), coachStatus:T('● זמינה עכשיו','● Online now'),
+      coachMsg:T('בוקר טוב נועה 🌿 ראיתי שמיה דיווחה על מתח מהגן. רוצה כמה מילים שיעזרו בבוקר?','Morning Noa 🌿 I saw Mia felt stressed about preschool. Want a few words that help at drop-off?'),
+      replyLabel:T('המשך שיחה','Continue chat'),
+      // growth
+      domains, domainsTitle:T('שבעת התחומים','The seven domains'),
+      domOpen:!!this.state.openDom, domClosed:!this.state.openDom, chevStart:he?'chevron_right':'chevron_left', openDomName, openDomIcon, openDomColor, openDomPct, openSkills,
+      domTrackHint:T('סמנו כל מיומנות — מזין את מפת ההתפתחות, האקדמיה ורשת הטיפול','Mark each skill — it feeds the Map, Academy & Care Network'),
+      backLabel:T('כל התחומים','All domains'),
+      // academy
+      courses, learnOverall, learnByDom, learnMapTitle:T('מפת הלמידה','Learning Map'),
+      learnMapSub:T('התקדמות הקורסים לפי אותם 7 תחומים','Course progress across the same 7 domains'),
+      coursesTitle:T('כל הקורסים','All courses'),
+      // care
+      carePacket, pros, careLead:T('בנו תקציר מהנתונים של מיה ושתפו עם איש מקצוע מאומת.','Build a summary from Mia\u2019s record and share with a verified professional.'),
+      careTrust:T('כלום לא יוצא מהמכשיר עד שתבחרו · GDPR/COPPA','Nothing leaves your device until you choose · GDPR/COPPA'),
+      packetTitle:T('התקציר שלך','Your summary'), prosTitle:T('מומחים מאומתים','Verified professionals'), requestLabel:T('בקשת ייעוץ','Request consult'),
+      // profile
+      family, familyTitle:T('מעגל המשפחה','Family Circle'), childCardName:kid.name, childCardSub:T('דו-לשונית · גן חובה → כיתה א׳','Bilingual · Pre-K → 1st grade'),
+      kidActivity, activityTitle:T('הפעילות של מיה','Mia\u2019s activity'), liveLabel:T('● חי','● Live'),
+      addMemberLabel:T('הוספת בן משפחה','Add a member'),
+      // windows / pricing (reachable from cards)
+      windowHours, planFree, planPlus,
+      // ask
+      parentMsg:T('כן בבקשה. היא בוכה כל בוקר בפרידה.','Yes please. She cries every morning at drop-off.'),
+      coachMsg2:T('נסי ״טקס פרידה״ קבוע — אותן 3 מילים ונשיקה כל בוקר. זה בונה תחושת ביטחון וצפי.','Try a fixed “goodbye ritual” — the same 3 words and a kiss each morning. It builds security and predictability.'),
+      quickReplies:[T('תני לי דוגמה','Give me an example'),T('מה אם זה לא עובד?','What if it doesn\u2019t work?'),T('קבעי שיחת וידאו','Book a video call')],
+      inputPlaceholder:T('כתבו הודעה לארבור…','Message Arbor…'),
+    };
+  }
+}
+</script>
+</body>
+</html>

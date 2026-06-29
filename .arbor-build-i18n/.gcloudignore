@@ -1,0 +1,9 @@
+# Keep the Cloud Build upload small. The image runs `npm ci` + `npm run build`
+# itself, so source deps/artifacts are not needed in the build context.
+.git/
+**/node_modules/
+**/dist/
+**/.vite/
+*.log
+ROS_BACKUP_OLD_*/
+.workspace/

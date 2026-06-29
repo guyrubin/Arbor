@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arbor - Parent App Prototype</title>
+  <style>
+    /* Arbor - Scandinavian x Amsterdam
+       Warm paper, true ink, signal orange, Delft blue, hairline grids,
+       rectilinear radii, mono labels, and editorial serif accents. */
+    :root {
+      --bg: #ece6d8;
+      --surface: #f6f1e3;
+      --surface-2: #efe9da;
+      --surface-3: #e3dccc;
+      --ink: #14160f;
+      --ink-2: #2a2d26;
+      --muted: #6e6e63;
+      --muted-2: #9b9a8e;
+      --line: rgba(20, 22, 15, .14);
+      --line-2: rgba(20, 22, 15, .07);
+      --rule: rgba(20, 22, 15, .86);
+      --clay: #e2562d;
+      --clay-ink: #2b0e05;
+      --clay-soft: #f4cdbc;
+      --blue: #1c3d6b;
+      --blue-soft: #c3d0e0;
+      --sage: #5d7a55;
+      --sage-soft: #cbd5c0;
+      --ochre: #c89645;
+      --ochre-soft: #ead9af;
+      --rose: #b8635a;
+      --rose-soft: #e8cdc7;
+      --radius-sm: 2px;
+      --radius: 3px;
+      --radius-lg: 4px;
+      --radius-xl: 6px;
+      --shadow: 0 1px 0 rgba(20, 22, 15, .04), 0 22px 54px rgba(20, 22, 15, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "ss03", "cv11";
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    h1, h2, h3, h4, p { margin-top: 0; }
+    p { color: var(--ink-2); }
+
+    .serif {
+      font-family: "Instrument Serif", "EB Garamond", Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .mono {
+      font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 268px minmax(0, 1fr);
+      min-height: 100vh;
+      background: var(--bg);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 22px;
+      background: var(--surface);
+      border-right: 1px solid var(--ink);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow: auto;
+    }
+
+    .brand {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 4px 8px;
+      padding: 2px 0 18px;
+      border-bottom: 1px solid var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .brand-mark {
+      grid-row: span 2;
+      align-self: start;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      display: grid;
+      place-items: center;
+      background: var(--ink);
+      color: var(--bg);
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: 31px;
+      font-style: italic;
+      line-height: 1;
+      position: relative;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      right: -7px;
+      bottom: -7px;
+      width: 7px;
+      height: 7px;
+      background: var(--clay);
+      border: 1px solid var(--ink);
+    }
+
+    .brand-name {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 500;
+      letter-spacing: -0.035em;
+      line-height: 1;
+    }
+
+    .brand-name em {
+      color: var(--clay);
+      font-family: "Instrument Serif", Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+    }
+
+    .brand-sub,
+    .brand-issue,
+    .eyebrow {
+      font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      text-transform: uppercase;
+    }
+
+    .brand-sub {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .16em;
+      line-height: 1.2;
+    }
+
+    .brand-issue {
+      align-self: end;
+      color: var(--ink);
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-align: right;
+      line-height: 1.2;
+    }
+
+    .brand-issue span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 8.5px;
+    }
+
+    .child-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 2px;
+      border: 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      text-align: left;
+    }
+
+    .child-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      display: grid;
+      place-items: center;
+      background: var(--clay);
+      color: var(--surface);
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: 22px;
+      font-style: italic;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .child-avatar::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 1px solid rgba(20, 22, 15, .18);
+      border-radius: var(--radius-sm);
+      pointer-events: none;
+    }
+
+    .child-name {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: -0.015em;
+    }
+
+    .child-meta {
+      margin-top: 2px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 9.5px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .nav-section {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 2px 8px;
+      color: var(--ink);
+      font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+
+    .nav-section::after {
+      content: "";
+      height: 1px;
+      background: var(--ink);
+      opacity: .85;
+    }
+
+    .nav-section-num { color: var(--muted); font-weight: 400; }
+    .nav { display: flex; flex-direction: column; gap: 0; }
+
+    .nav-item {
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      padding: 11px 2px 11px 4px;
+      border: 0;
+      border-bottom: 1px solid var(--line-2);
+      border-radius: 0;
+      background: none;
+      color: var(--ink-2);
+      font-size: 14.5px;
+      font-weight: 400;
+      letter-spacing: -0.015em;
+      text-align: left;
+      transition: color .12s, padding .12s;
+      position: relative;
+    }
+
+    .nav-item:hover { color: var(--ink); padding-left: 8px; }
+    .nav-item.active { color: var(--ink); font-weight: 500; }
+
+    .nav-item.active::before {
+      content: "";
+      position: absolute;
+      left: -22px;
+      top: 50%;
+      width: 14px;
+      height: 1px;
+      transform: translateY(-50%);
+      background: var(--clay);
+    }
+
+    .nav-icon { color: var(--muted); font-size: 15px; }
+    .nav-item.active .nav-icon, .nav-item:hover .nav-icon { color: var(--clay); }
+    .nav-badge {
+      border: 1px solid var(--clay);
+      color: var(--clay);
+      padding: 2px 5px;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 8.5px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-note {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--ink);
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .canvas {
+      min-width: 0;
+      padding: 28px 34px 40px;
+    }
+
+    .canvas-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: start;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--ink);
+      margin-bottom: 28px;
+      position: relative;
+    }
+
+    .greeting {
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .canvas-head h1 {
+      margin: 0;
+      max-width: 15ch;
+      color: var(--ink);
+      font-size: clamp(42px, 5.1vw, 74px);
+      font-weight: 400;
+      letter-spacing: -0.055em;
+      line-height: .92;
+    }
+
+    .canvas-head h1 em { color: var(--clay); }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      min-height: 38px;
+      border-radius: var(--radius);
+      border: 1px solid var(--ink);
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+    }
+
+    .btn.primary {
+      background: var(--ink);
+      color: var(--surface);
+    }
+
+    .btn.clay {
+      border-color: var(--clay);
+      background: var(--clay);
+      color: #fff;
+    }
+
+    .btn.ghost {
+      border-color: var(--line);
+      color: var(--ink-2);
+    }
+
+    .today-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(360px, .9fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .insight-card {
+      position: relative;
+      padding: 8px 0 30px;
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .insight-card::before {
+      content: "NO. 01";
+      position: absolute;
+      top: 8px;
+      right: 0;
+      color: var(--ink);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .18em;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--clay);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .22em;
+    }
+
+    .pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--clay);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(226, 86, 45, .45); }
+      50% { box-shadow: 0 0 0 8px rgba(226, 86, 45, 0); }
+    }
+
+    .insight-title {
+      max-width: 19ch;
+      margin: 24px 0;
+      color: var(--ink);
+      font-size: clamp(36px, 4.1vw, 62px);
+      font-weight: 400;
+      letter-spacing: -0.045em;
+      line-height: .96;
+    }
+
+    .insight-title em { color: var(--clay); }
+
+    .insight-body {
+      max-width: 62ch;
+      margin-bottom: 0;
+      padding-left: 22px;
+      border-left: 1px solid var(--line);
+      color: var(--ink-2);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin-top: 34px;
+      padding-top: 4px;
+      border-top: 1px solid var(--ink);
+      counter-reset: metric;
+    }
+
+    .metric-tile {
+      padding: 18px 18px 0 0;
+      border-right: 1px solid var(--line);
+    }
+
+    .metric-tile:not(:first-child) { padding-left: 18px; }
+    .metric-tile:last-child { border-right: 0; padding-right: 0; }
+
+    .metric-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .metric-label::before {
+      counter-increment: metric;
+      content: counter(metric, decimal-leading-zero);
+      color: var(--clay);
+      font-weight: 500;
+    }
+
+    .metric-value {
+      margin-top: 12px;
+      font-size: 42px;
+      font-weight: 400;
+      letter-spacing: -0.05em;
+      line-height: 1;
+    }
+
+    .metric-delta {
+      margin-top: 10px;
+      color: var(--sage);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .synthesis, .quickask, .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .synthesis { padding: 28px 30px; }
+
+    .synthesis-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--ink);
+      margin-bottom: 24px;
+    }
+
+    .synthesis-title {
+      max-width: 16ch;
+      margin: 8px 0;
+      font-size: 31px;
+      font-weight: 400;
+      letter-spacing: -0.035em;
+      line-height: 1;
+    }
+
+    .synthesis-title em { color: var(--clay); }
+
+    .synthesis-meta {
+      color: var(--muted);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9.5px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .synthesis-body {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .synthesis-rail { display: flex; flex-direction: column; gap: 6px; }
+
+    .synthesis-tab {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto auto;
+      gap: 4px 14px;
+      align-items: baseline;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      padding: 14px 16px 14px 18px;
+      text-align: left;
+      transition: background .12s, border-color .12s;
+    }
+
+    .synthesis-tab:hover { background: var(--surface-2); }
+    .synthesis-tab.active { border-color: var(--ink); background: var(--surface-2); }
+
+    .synthesis-tab-num {
+      grid-row: span 2;
+      color: var(--muted);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: .08em;
+    }
+
+    .synthesis-tab.active .synthesis-tab-num { color: var(--clay); }
+    .synthesis-tab-head { font-size: 14.5px; font-weight: 400; }
+    .synthesis-tab-evidence { color: var(--muted); font-size: 12px; }
+
+    .synthesis-detail {
+      min-height: 270px;
+      border-left: 1px solid var(--ink);
+      padding: 4px 0 0 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .synthesis-detail-bar {
+      width: 56px;
+      height: 3px;
+      background: var(--clay);
+      margin-bottom: 22px;
+    }
+
+    .synthesis-detail-text {
+      font-size: 17px;
+      line-height: 1.58;
+    }
+
+    .quickask {
+      margin-top: 28px;
+      padding: 26px 28px;
+      position: relative;
+      overflow: hidden;
+      background: var(--ink);
+      color: var(--surface);
+      box-shadow: none;
+    }
+
+    .quickask::before {
+      content: "";
+      position: absolute;
+      right: 24px;
+      top: 24px;
+      width: 62px;
+      height: 62px;
+      border: 1px solid rgba(246, 241, 227, .18);
+      transform: rotate(8deg);
+    }
+
+    .quickask h3 {
+      margin: 12px 0 18px;
+      max-width: 18ch;
+      color: var(--surface);
+      font-size: 38px;
+      font-weight: 400;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .quickask h3 em { color: var(--clay); }
+
+    .ask-input {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid rgba(246, 241, 227, .26);
+      border-radius: 0;
+      background: transparent;
+      color: var(--surface);
+      padding: 12px 0;
+      outline: 0;
+      font-size: 16px;
+    }
+
+    .ask-input::placeholder {
+      color: rgba(236, 234, 216, .42);
+      font-style: italic;
+    }
+
+    .ask-suggest {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 18px;
+    }
+
+    .ask-suggest button {
+      border: 1px solid rgba(246, 241, 227, .22);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--surface);
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: minmax(360px, .78fr) minmax(520px, 1.22fr);
+      gap: 28px;
+      margin-top: 34px;
+      align-items: start;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .panel-head h3 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .panel-body { padding: 20px; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field { margin-bottom: 14px; }
+    .span-2 { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      color: var(--ink);
+      padding: 10px 11px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 112px;
+      resize: vertical;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--clay);
+      background: var(--surface);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--ink);
+      background: var(--surface);
+    }
+
+    .tab {
+      min-height: 46px;
+      border: 0;
+      border-right: 1px solid var(--line);
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 0 16px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      color: var(--ink);
+      background: var(--surface-2);
+      box-shadow: inset 0 -3px 0 var(--clay);
+    }
+
+    .screen { display: none; padding: 20px; }
+    .screen.active { display: block; }
+
+    .answer-section {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line-2);
+    }
+
+    .answer-section:first-child { padding-top: 0; }
+    .answer-section:last-of-type { border-bottom: 0; }
+
+    .answer-section .label {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      color: var(--clay);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9.5px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .answer-section .body {
+      color: var(--ink-2);
+      font-size: 14.5px;
+      line-height: 1.6;
+    }
+
+    .answer-section.script .body {
+      color: var(--ink);
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: 22px;
+      font-style: italic;
+      line-height: 1.25;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border: 1px solid var(--sage);
+      border-radius: var(--radius-sm);
+      color: var(--sage);
+      padding: 3px 7px;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .status-pill.warn { border-color: var(--ochre); color: var(--ochre); }
+    .status-pill.urgent { border-color: var(--rose); color: var(--rose); }
+
+    .domain-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--ink);
+      border-left: 1px solid var(--line);
+    }
+
+    .domain {
+      min-height: 128px;
+      padding: 16px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .domain h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .domain p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+
+    .bar {
+      height: 4px;
+      margin-top: 14px;
+      background: var(--surface-3);
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      background: var(--clay);
+    }
+
+    .data-rows { display: flex; flex-direction: column; }
+
+    .data-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line-2);
+    }
+
+    .data-row:last-child { border-bottom: 0; }
+    .data-row input { width: 18px; height: 18px; accent-color: var(--clay); }
+    .data-row h4 { margin: 0 0 5px; font-size: 15px; font-weight: 500; }
+    .data-row p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+    .handoff {
+      border: 1px solid var(--ink);
+      background: var(--surface-2);
+    }
+
+    .handoff-row {
+      display: grid;
+      grid-template-columns: 138px 1fr;
+      gap: 16px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .handoff-row:last-child { border-bottom: 0; }
+    .handoff-row strong {
+      color: var(--ink);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9.5px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .eval-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--line-2);
+    }
+
+    .eval-row:last-child { border-bottom: 0; }
+
+    .screen-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      max-width: 380px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: var(--surface);
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      font-size: 13px;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1320px) {
+      .today-grid, .app-grid, .synthesis-body { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .canvas { padding: 22px; }
+      .canvas-head { grid-template-columns: 1fr; }
+      .actions { justify-content: flex-start; }
+      .metric-row { grid-template-columns: repeat(2, 1fr); }
+      .metric-tile:nth-child(2) { border-right: 0; }
+      .metric-tile:nth-child(n+3) { padding-left: 0; margin-top: 18px; }
+    }
+
+    @media (max-width: 620px) {
+      .form-grid, .domain-grid { grid-template-columns: 1fr; }
+      .metric-row { grid-template-columns: 1fr; }
+      .metric-tile, .metric-tile:not(:first-child) {
+        border-right: 0;
+        padding-left: 0;
+        padding-right: 0;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 18px;
+      }
+      .handoff-row, .data-row, .eval-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div>
+          <h1 class="brand-name">Arbor<em>.</em></h1>
+          <p class="brand-sub">A daily field notebook</p>
+        </div>
+        <div class="brand-mark">A</div>
+        <div class="brand-issue">Beta 02<span>Parent app</span></div>
+      </div>
+
+      <button class="child-card" type="button">
+        <span class="child-avatar">D</span>
+        <span>
+          <span class="child-name">Dylan Rubin</span>
+          <span class="child-meta">5Y 2M / Kindergarten</span>
+        </span>
+      </button>
+
+      <div class="nav-section"><span>Workspace</span><span></span><span class="nav-section-num">01</span></div>
+      <nav class="nav" aria-label="Prototype navigation">
+        <button class="nav-item active" data-link="coach"><span class="nav-icon">+</span><span>Ask Arbor</span><span class="nav-badge">Live</span></button>
+        <button class="nav-item" data-link="framework"><span class="nav-icon">#</span><span>Development Map</span><span></span></button>
+        <button class="nav-item" data-link="memory"><span class="nav-icon">M</span><span>Memory Review</span><span></span></button>
+        <button class="nav-item" data-link="handoff"><span class="nav-icon">H</span><span>Handoff Note</span><span></span></button>
+        <button class="nav-item" data-link="evals"><span class="nav-icon">E</span><span>AI Evals</span><span></span></button>
+      </nav>
+
+      <div class="nav-section"><span>Guardrail</span><span></span><span class="nav-section-num">02</span></div>
+      <p class="sidebar-note">Observation and parent support only. No diagnosis, no treatment, no unsupervised child chat.</p>
+    </aside>
+
+    <main class="canvas">
+      <header class="canvas-head">
+        <div>
+          <div class="greeting">Sunday / May 24 / Private beta</div>
+          <h1>Field note for a hard <em class="serif">morning</em>.</h1>
+        </div>
+        <div class="actions">
+          <button class="btn ghost" id="resetButton">Reset case</button>
+          <button class="btn primary" id="generateButton">Generate plan</button>
+          <button class="btn clay" data-jump="handoff">Prepare handoff</button>
+        </div>
+      </header>
+
+      <section class="today-grid" aria-label="Today overview">
+        <div>
+          <article class="insight-card">
+            <div class="eyebrow"><span class="pulse"></span> Today's developmental read</div>
+            <h2 class="insight-title">Rushed transitions are becoming Dylan's <em class="serif">stress signal</em>.</h2>
+            <p class="insight-body">Arbor reads this as a monitor-level pattern, not a diagnosis. The useful move today is to make arrival predictable, reduce negotiation at the classroom door, and log recovery time after teacher handoff.</p>
+            <div class="actions" style="margin-top: 26px;">
+              <button class="btn primary" data-jump="coach">View plan</button>
+              <button class="btn ghost" data-jump="framework">See routing</button>
+            </div>
+          </article>
+
+          <div class="metric-row" aria-label="Beta metrics">
+            <div class="metric-tile">
+              <div class="metric-label">Risk route</div>
+              <div class="metric-value" id="riskMetric">Monitor</div>
+              <div class="metric-delta">Escalation visible</div>
+            </div>
+            <div class="metric-tile">
+              <div class="metric-label">Domains</div>
+              <div class="metric-value">4</div>
+              <div class="metric-delta">Regulation led</div>
+            </div>
+            <div class="metric-tile">
+              <div class="metric-label">Memory</div>
+              <div class="metric-value">3</div>
+              <div class="metric-delta">Pending approval</div>
+            </div>
+            <div class="metric-tile">
+              <div class="metric-label">Plan</div>
+              <div class="metric-value">8m</div>
+              <div class="metric-delta">Today action</div>
+            </div>
+          </div>
+
+          <section class="quickask" aria-label="Quick ask">
+            <div class="eyebrow"><span class="pulse"></span> Quick ask</div>
+            <h3>Ask from the <em class="serif">moment</em>, not from panic.</h3>
+            <input class="ask-input" id="quickAsk" value="What should I say at the kindergarten door tomorrow?" />
+            <div class="ask-suggest">
+              <button type="button" data-suggestion="Create a 3-step visual ritual">3-step ritual</button>
+              <button type="button" data-suggestion="Make this teacher-safe">Teacher-safe</button>
+              <button type="button" data-suggestion="What should I avoid saying?">Avoid list</button>
+            </div>
+          </section>
+        </div>
+
+        <aside class="synthesis" aria-label="AI synthesis">
+          <div class="synthesis-head">
+            <div>
+              <div class="synthesis-meta">Synthesis / notebook style</div>
+              <h3 class="synthesis-title">Why this plan is <em class="serif">age-fit</em>.</h3>
+            </div>
+            <span class="status-pill warn" id="riskPill">Monitor</span>
+          </div>
+          <div class="synthesis-body">
+            <div class="synthesis-rail">
+              <button class="synthesis-tab active" data-synth="transition"><span class="synthesis-tab-num">01</span><span class="synthesis-tab-head">Transition pressure</span><span class="synthesis-tab-evidence">3 incidents / week</span></button>
+              <button class="synthesis-tab" data-synth="language"><span class="synthesis-tab-num">02</span><span class="synthesis-tab-head">Language load</span><span class="synthesis-tab-evidence">Hebrew home / English school</span></button>
+              <button class="synthesis-tab" data-synth="repair"><span class="synthesis-tab-num">03</span><span class="synthesis-tab-head">Repair opportunity</span><span class="synthesis-tab-evidence">Boundary plus warmth</span></button>
+            </div>
+            <div class="synthesis-detail">
+              <div>
+                <div class="synthesis-detail-bar"></div>
+                <p class="synthesis-detail-text" id="synthText">For a 3-5 year old, the task is not independent emotional mastery. The task is a predictable bridge from parent to teacher, repeated until the transition becomes familiar.</p>
+              </div>
+              <div class="actions">
+                <button class="btn ghost" data-jump="memory">Review memory</button>
+                <button class="btn ghost" data-jump="evals">Inspect evals</button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="app-grid" aria-label="Interactive beta workspace">
+        <section class="panel" aria-label="Parent intake">
+          <div class="panel-head">
+            <div>
+              <h3>Parent intake</h3>
+              <p class="synthesis-meta">Minimal context before AI routing</p>
+            </div>
+            <span class="status-pill">No diagnosis</span>
+          </div>
+          <div class="panel-body">
+            <div class="form-grid">
+              <div class="field">
+                <label for="ageBand">Age band</label>
+                <select id="ageBand">
+                  <option>0-12m</option>
+                  <option>12-36m</option>
+                  <option selected>3-5y</option>
+                  <option>6-8y</option>
+                  <option>9-12y</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="setting">Setting</label>
+                <select id="setting">
+                  <option selected>Kindergarten arrival</option>
+                  <option>Morning routine</option>
+                  <option>Bedtime</option>
+                  <option>Screen-time boundary</option>
+                  <option>Sibling conflict</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="urgency">Parent urgency</label>
+                <select id="urgency">
+                  <option selected>Routine support</option>
+                  <option>Monitor closely</option>
+                  <option>Ask professional</option>
+                  <option>Urgent concern</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="alreadyTried">Already tried</label>
+                <input id="alreadyTried" value="Reassurance, extra time, teacher handoff" />
+              </div>
+              <div class="field span-2">
+                <label for="concern">What happened?</label>
+                <textarea id="concern">Dylan cried and refused to enter kindergarten after a rushed morning. He recovered after the teacher sat with him, but this happened three times this week.</textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-label="AI app screens">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-screen="coach">Coach</button>
+            <button class="tab" data-screen="framework">Development map</button>
+            <button class="tab" data-screen="memory">Memory</button>
+            <button class="tab" data-screen="handoff">Handoff</button>
+            <button class="tab" data-screen="evals">Evals</button>
+          </div>
+
+          <div class="screen active" id="coach">
+            <div class="answer-section">
+              <div class="label">May be happening</div>
+              <div class="body" id="hypothesisText">A transition-stress pattern amplified by rushed mornings and language load.</div>
+            </div>
+            <div class="answer-section">
+              <div class="label">Today</div>
+              <div class="body" id="todayText">Use a visual three-step arrival ritual: bag, teacher hello, window wave.</div>
+            </div>
+            <div class="answer-section script">
+              <div class="label">Parent script</div>
+              <div class="body" id="scriptText">"This is hard, and you are safe. I will do one window wave, then your teacher will help you start."</div>
+            </div>
+            <div class="answer-section">
+              <div class="label">What to avoid</div>
+              <div class="body" id="avoidText">Avoid long negotiations at the door; they can make the transition feel less predictable.</div>
+            </div>
+            <div class="answer-section">
+              <div class="label">Escalate if</div>
+              <div class="body" id="escalateText">Ask a professional if refusal becomes daily, recovery takes longer, or distress appears in other settings.</div>
+            </div>
+            <div class="screen-actions">
+              <button class="btn primary" data-jump="memory">Review memory</button>
+              <button class="btn ghost" data-jump="handoff">Prepare handoff</button>
+            </div>
+          </div>
+
+          <div class="screen" id="framework">
+            <div class="domain-grid">
+              <div class="domain"><h4>Regulation</h4><p>Distress, repair, recovery time, parent response.</p><div class="bar"><span style="width: 88%"></span></div></div>
+              <div class="domain"><h4>Language</h4><p>Hebrew home language, English school phrases, expressive confidence.</p><div class="bar"><span style="width: 66%; background: var(--blue);"></span></div></div>
+              <div class="domain"><h4>Executive function</h4><p>Visual sequence, transition planning, inhibition at the door.</p><div class="bar"><span style="width: 72%; background: var(--ochre);"></span></div></div>
+              <div class="domain"><h4>Ecosystem</h4><p>Parent pace, teacher greeting, classroom arrival context.</p><div class="bar"><span style="width: 78%; background: var(--sage);"></span></div></div>
+            </div>
+            <div class="answer-section" style="margin-top: 16px;">
+              <div class="label">Next best challenge</div>
+              <div class="body">Dylan carries his bag to the classroom door, says one practiced phrase, and hands off to the teacher without a parent rescue loop.</div>
+            </div>
+            <div class="answer-section">
+              <div class="label">Serve and return</div>
+              <div class="body">Notice the cue, respond with one predictable phrase, wait, then repeat the same goodbye ritual once.</div>
+            </div>
+          </div>
+
+          <div class="screen" id="memory">
+            <div class="data-rows">
+              <label class="data-row"><input type="checkbox" checked><span><h4>Drop-off distress pattern</h4><p>Dylan cried at kindergarten arrival three times this week and recovered with teacher support.</p></span><span class="status-pill warn">30d</span></label>
+              <label class="data-row"><input type="checkbox" checked><span><h4>Helpful support</h4><p>Visual routine, teacher greeting, and a short goodbye phrase appear helpful.</p></span><span class="status-pill">Keep</span></label>
+              <label class="data-row"><input type="checkbox"><span><h4>Review prompt</h4><p>Ask parent in 30 days whether this concern is still active before retaining it.</p></span><span class="status-pill">Optional</span></label>
+            </div>
+            <div class="screen-actions">
+              <button class="btn primary" id="approveMemoryButton">Approve selected</button>
+              <button class="btn ghost">Edit before saving</button>
+            </div>
+          </div>
+
+          <div class="screen" id="handoff">
+            <div class="handoff">
+              <div class="handoff-row"><strong>Concern</strong><span>Morning separation distress after rushed transitions.</span></div>
+              <div class="handoff-row"><strong>Pattern</strong><span>Three incidents this week; recovery within 8 to 12 minutes with teacher support.</span></div>
+              <div class="handoff-row"><strong>Helps</strong><span>Visual arrival ritual, short goodbye phrase, known teacher greeting.</span></div>
+              <div class="handoff-row"><strong>Watch</strong><span>Escalate if refusal becomes daily, recovery lengthens, or distress appears outside arrival.</span></div>
+              <div class="handoff-row"><strong>Parent ask</strong><span>Can a teacher greet Dylan at the same spot for one week and note recovery time?</span></div>
+            </div>
+            <div class="screen-actions">
+              <button class="btn primary" id="copyHandoffButton">Copy summary</button>
+              <button class="btn ghost">Switch audience</button>
+            </div>
+          </div>
+
+          <div class="screen" id="evals">
+            <div class="eval-row"><strong>Safety triage</strong><span class="status-pill">Pass</span></div>
+            <div class="eval-row"><strong>No diagnosis behavior</strong><span class="status-pill">Pass</span></div>
+            <div class="eval-row"><strong>Age fit</strong><span class="status-pill">Pass</span></div>
+            <div class="eval-row"><strong>Practicality under 10 minutes</strong><span class="status-pill">Pass</span></div>
+            <div class="eval-row"><strong>Memory hygiene</strong><span class="status-pill">Pass</span></div>
+            <div class="eval-row"><strong>Teacher-safe handoff</strong><span class="status-pill">Pass</span></div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const screens = [...document.querySelectorAll(".screen")];
+    const tabs = [...document.querySelectorAll("[data-screen]")];
+    const navItems = [...document.querySelectorAll("[data-link]")];
+    const jumps = [...document.querySelectorAll("[data-jump]")];
+    const toast = document.querySelector("#toast");
+    const concern = document.querySelector("#concern");
+    const setting = document.querySelector("#setting");
+    const urgency = document.querySelector("#urgency");
+    const quickAsk = document.querySelector("#quickAsk");
+
+    const synthCopy = {
+      transition: "For a 3-5 year old, the task is not independent emotional mastery. The task is a predictable bridge from parent to teacher, repeated until the transition becomes familiar.",
+      language: "Because Dylan moves between Hebrew at home and English at school, entry moments need fewer words, more visual cues, and one practiced school phrase.",
+      repair: "The parent can keep the boundary and still repair. Warmth plus structure tells the child: the feeling is allowed, and the transition still happens."
+    };
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.setTimeout(() => toast.classList.remove("show"), 2600);
+    }
+
+    function activate(id) {
+      screens.forEach(screen => screen.classList.toggle("active", screen.id === id));
+      tabs.forEach(tab => tab.classList.toggle("active", tab.dataset.screen === id));
+      navItems.forEach(item => item.classList.toggle("active", item.dataset.link === id));
+    }
+
+    function setRisk(label) {
+      const riskPill = document.querySelector("#riskPill");
+      const riskMetric = document.querySelector("#riskMetric");
+      riskMetric.textContent = label;
+      riskPill.textContent = label;
+      riskPill.className = "status-pill" + (label === "Urgent" ? " urgent" : label === "Professional" || label === "Monitor" ? " warn" : "");
+    }
+
+    function generatePlan() {
+      const urgent = urgency.value === "Urgent concern" || /hurt|danger|unsafe|self-harm|abuse/i.test(concern.value);
+      const pro = urgency.value === "Ask professional";
+      const bedtime = setting.value === "Bedtime";
+      const screen = setting.value === "Screen-time boundary";
+
+      setRisk(urgent ? "Urgent" : pro ? "Professional" : "Monitor");
+
+      document.querySelector("#hypothesisText").textContent = bedtime
+        ? "A regulation pattern around separation, fatigue, and predictability at the end of the day."
+        : screen
+          ? "A boundary-friction pattern where the child needs structure, warning, and a replacement activity."
+          : "A transition-stress pattern amplified by rushed mornings and language load.";
+
+      document.querySelector("#todayText").textContent = bedtime
+        ? "Use a fixed two-step closing ritual: one story, one phrase, lights out."
+        : screen
+          ? "Use a timer, one warning, and a prepared next activity before the screen ends."
+          : "Use a visual three-step arrival ritual: bag, teacher hello, window wave.";
+
+      document.querySelector("#scriptText").textContent = bedtime
+        ? "\"Your body is learning bedtime. I will sit for two minutes, then you will practice resting.\""
+        : screen
+          ? "\"The screen is done. You can be upset, and the rule stays. Your next choice is blocks or drawing.\""
+          : "\"This is hard, and you are safe. I will do one window wave, then your teacher will help you start.\"";
+
+      document.querySelector("#avoidText").textContent = urgent
+        ? "Avoid waiting for the pattern to resolve on its own if safety, self-harm language, abuse disclosure, or medical emergency is present."
+        : "Avoid long negotiation loops; they can make the boundary or transition feel less predictable.";
+
+      document.querySelector("#escalateText").textContent = urgent
+        ? "Seek urgent local help now if there is immediate danger, self-harm language, abuse disclosure, or medical emergency."
+        : "Ask a professional if the pattern becomes daily, recovery takes longer, or distress spreads into other settings.";
+
+      activate("coach");
+      showToast("Plan regenerated with developmental routing and safety triage.");
+    }
+
+    tabs.forEach(tab => tab.addEventListener("click", () => activate(tab.dataset.screen)));
+    navItems.forEach(item => item.addEventListener("click", () => activate(item.dataset.link)));
+    jumps.forEach(button => button.addEventListener("click", () => activate(button.dataset.jump)));
+
+    document.querySelectorAll("[data-synth]").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll("[data-synth]").forEach(item => item.classList.remove("active"));
+        button.classList.add("active");
+        document.querySelector("#synthText").textContent = synthCopy[button.dataset.synth];
+      });
+    });
+
+    document.querySelectorAll("[data-suggestion]").forEach(button => {
+      button.addEventListener("click", () => {
+        quickAsk.value = button.dataset.suggestion;
+        showToast("Quick ask updated.");
+      });
+    });
+
+    document.querySelector("#generateButton").addEventListener("click", generatePlan);
+    document.querySelector("#approveMemoryButton").addEventListener("click", () => showToast("Selected observations approved for Dylan's profile."));
+    document.querySelector("#copyHandoffButton").addEventListener("click", () => showToast("Teacher handoff summary prepared."));
+    document.querySelector("#resetButton").addEventListener("click", () => {
+      concern.value = "Dylan cried and refused to enter kindergarten after a rushed morning. He recovered after the teacher sat with him, but this happened three times this week.";
+      setting.value = "Kindergarten arrival";
+      urgency.value = "Routine support";
+      generatePlan();
+    });
+  </script>
+</body>
+</html>

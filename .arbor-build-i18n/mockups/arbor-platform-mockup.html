@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arbor Private Beta Product Loop</title>
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --surface: #ffffff;
+      --surface-soft: #eef4f1;
+      --ink: #17201d;
+      --muted: #65716c;
+      --line: #d9ded8;
+      --green: #2f6f5e;
+      --green-dark: #214f44;
+      --amber: #b8792f;
+      --blue: #375f89;
+      --rose: #a94c4c;
+      --shadow: 0 18px 48px rgba(28, 39, 34, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 28px 22px;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, .84);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--green);
+      color: #fff;
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    h1, h2, h3, h4, p { margin-top: 0; }
+
+    .brand h1 {
+      margin-bottom: 0;
+      font-size: 25px;
+      letter-spacing: 0;
+    }
+
+    .brand p,
+    .muted {
+      color: var(--muted);
+    }
+
+    nav {
+      display: grid;
+      gap: 7px;
+    }
+
+    nav a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    nav a:hover,
+    nav a.active {
+      border-color: var(--line);
+      background: var(--surface-soft);
+      color: var(--ink);
+    }
+
+    main {
+      padding: 28px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(330px, .98fr);
+      gap: 28px;
+      align-items: stretch;
+      min-height: calc(100vh - 56px);
+      padding-bottom: 26px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 760px;
+    }
+
+    .eyebrow {
+      margin-bottom: 14px;
+      color: var(--green-dark);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      font-size: clamp(44px, 6vw, 82px);
+      line-height: .94;
+      letter-spacing: 0;
+    }
+
+    .hero-copy p {
+      max-width: 680px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      min-height: 44px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 11px 15px;
+      font: inherit;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .secondary {
+      border-color: var(--line);
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .product-shell {
+      align-self: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .app-topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfbf8;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #e7f0ec;
+      color: var(--green-dark);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .app-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .panel,
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .panel {
+      padding: 16px;
+    }
+
+    .panel.soft {
+      background: var(--surface-soft);
+    }
+
+    .field {
+      margin-top: 13px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 11px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .risk {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .risk-row {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .risk-row strong {
+      color: var(--green-dark);
+    }
+
+    .risk-row.monitor strong { color: var(--amber); }
+    .risk-row.urgent strong { color: var(--rose); }
+
+    section {
+      padding: 34px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+
+    .section-head h3 {
+      margin-bottom: 0;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      max-width: 640px;
+      margin-bottom: 0;
+      color: var(--muted);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      min-height: 178px;
+      padding: 18px;
+    }
+
+    .card h4 {
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      margin: 0 6px 6px 0;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+    }
+
+    .step {
+      min-height: 150px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .step b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--green-dark);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .handoff {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .report {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .report-row {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .report-row:last-child { border-bottom: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--surface-soft);
+      color: var(--green-dark);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    td { color: var(--muted); }
+    td:first-child { color: var(--ink); font-weight: 850; }
+
+    footer {
+      padding: 28px 0 10px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 1120px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { display: none; }
+      .hero,
+      .app-body,
+      .handoff { grid-template-columns: 1fr; }
+      .grid-4,
+      .workflow { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 720px) {
+      main { padding: 18px; }
+      .hero { min-height: auto; }
+      h2 { font-size: 44px; }
+      .section-head { display: block; }
+      .section-head h3 { margin-bottom: 10px; }
+      .grid-3,
+      .grid-4,
+      .workflow { grid-template-columns: 1fr; }
+      .report-row,
+      .risk-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <div class="brand">
+        <div class="logo">A</div>
+        <div>
+          <h1>Arbor</h1>
+          <p>Private beta product loop</p>
+        </div>
+      </div>
+      <nav>
+        <a class="active" href="#overview">Overview <span>Beta</span></a>
+        <a href="#loop">Product Loop</a>
+        <a href="#framework">Development</a>
+        <a href="#ai-engine">AI Engine</a>
+        <a href="#safety">Safety</a>
+        <a href="#memory">Child Memory</a>
+        <a href="#handoff">Handoff</a>
+        <a href="#roadmap">Roadmap</a>
+      </nav>
+    </aside>
+
+    <main>
+      <section id="overview" class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">Parent support MVP | Birth to age 12</div>
+          <h2>Turn one hard parenting moment into a safe next step.</h2>
+          <p>Arbor's first product should not try to launch the whole child-development platform. The private beta focuses on the trust loop: child-development routing, safety triage, practical plan, approved memory, follow-up log, and professional handoff.</p>
+          <div class="actions">
+            <button class="primary">Start Parent Intake</button>
+            <button class="secondary">Create Handoff Summary</button>
+            <button class="secondary">Review Saved Memory</button>
+          </div>
+        </div>
+
+        <div class="product-shell" aria-label="Arbor parent intake preview">
+          <div class="app-topbar">
+            <div>
+              <strong>Dylan, age 5</strong>
+              <div class="muted">Kindergarten transition | English practice | Morning routine</div>
+            </div>
+            <span class="status-pill">Private beta</span>
+          </div>
+          <div class="app-body">
+            <div class="panel">
+              <h3>Parent Intake</h3>
+              <div class="field">
+                <label for="concern">What happened?</label>
+                <textarea id="concern">Dylan cried and refused to enter kindergarten after a rushed morning.</textarea>
+              </div>
+              <div class="field">
+                <label for="urgency">Urgency</label>
+                <select id="urgency">
+                  <option>Routine support</option>
+                  <option>Monitor closely</option>
+                  <option>Ask professional</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="tried">Already tried</label>
+                <input id="tried" value="Reassurance, extra time, teacher handoff" />
+              </div>
+            </div>
+
+            <div class="panel soft">
+              <h3>Arbor Response</h3>
+              <div class="risk">
+                <div class="risk-row">
+                  <strong>Safe</strong>
+                  <span>Likely transition stress. No emergency signal from the parent intake.</span>
+                </div>
+                <div class="risk-row monitor">
+                  <strong>Monitor</strong>
+                  <span>Track frequency, duration, recovery time, and whether refusal spreads to other settings.</span>
+                </div>
+                <div class="risk-row urgent">
+                  <strong>Escalate</strong>
+                  <span>Seek professional advice if refusal persists, sleep or appetite changes, or distress intensifies.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="loop">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">MVP loop</div>
+            <h3>Six screens that prove retention</h3>
+          </div>
+          <p>The beta should make parents feel helped today and more understood tomorrow. Each step creates a reason to return.</p>
+        </div>
+        <div class="workflow">
+          <div class="step"><b>01 Intake</b><p>Capture child, age, setting, concern, urgency, and what the parent already tried.</p></div>
+          <div class="step"><b>02 Triage</b><p>Classify routine, monitor, professional advice, urgent care, or emergency guidance.</p></div>
+          <div class="step"><b>03 Plan</b><p>Give today action, exact script, avoid list, observation target, and follow-up prompt.</p></div>
+          <div class="step"><b>04 Memory</b><p>Ask parent which facts to save. Every memory stays editable and source-linked.</p></div>
+          <div class="step"><b>05 Log</b><p>Record what happened next, whether the script helped, and what changed.</p></div>
+          <div class="step"><b>06 Handoff</b><p>Create a compact summary for a teacher, therapist, doctor, or co-parent.</p></div>
+        </div>
+      </section>
+
+      <section id="framework">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Developmental framework</div>
+            <h3>The science becomes product behavior</h3>
+          </div>
+          <p>Every parent concern is routed through domains, age band, developmental task, safety boundary, and a practical intervention.</p>
+        </div>
+        <div class="grid-4">
+          <div class="card"><h4>Regulation</h4><p>Tracks distress, recovery time, repair, comfort-seeking, and parent response.</p><span class="tag">Attachment</span><span class="tag">Repair</span></div>
+          <div class="card"><h4>Language</h4><p>Supports expressive language, receptive language, multilingual exposure, and school phrases.</p><span class="tag">Serve-return</span><span class="tag">Practice</span></div>
+          <div class="card"><h4>Executive Function</h4><p>Turns routines into planning, inhibition, working memory, and flexibility practice.</p><span class="tag">Scaffold</span><span class="tag">Fade</span></div>
+          <div class="card"><h4>Ecosystem</h4><p>Connects home, school, language, culture, stressors, and caregiver capacity.</p><span class="tag">Context</span><span class="tag">Handoff</span></div>
+        </div>
+        <table style="margin-top: 14px;">
+          <thead>
+            <tr><th>Framework</th><th>Arbor Feature</th><th>Parent Output</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>CDC monitoring</td><td>Milestone-aware routing</td><td>Age-band expectation, screening boundary, and next observation</td></tr>
+            <tr><td>Harvard serve-and-return</td><td>Interaction coach</td><td>Notice, respond, name, wait, and repeat prompt</td></tr>
+            <tr><td>Vygotsky</td><td>Next Best Challenge</td><td>One task at the child's learning edge with scaffold and fade step</td></tr>
+            <tr><td>Bowlby and Winnicott</td><td>Repair coach</td><td>Connect, hold boundary, name feeling, and reconnect script</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="ai-engine">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">AI enhancement</div>
+            <h3>More than a chatbot response</h3>
+          </div>
+          <p>The parent sees one calm answer. Under the hood, Arbor classifies, retrieves, triages, plans, proposes memory, and logs eval signals.</p>
+        </div>
+        <div class="workflow">
+          <div class="step"><b>Classify</b><p>Intent, age band, domains, urgency, and missing context.</p></div>
+          <div class="step"><b>Triage</b><p>Routine, monitor, professional advice, urgent, or emergency guidance.</p></div>
+          <div class="step"><b>Retrieve</b><p>Use reviewed source cards by age range, country, domain, and risk.</p></div>
+          <div class="step"><b>Generate</b><p>Produce structured plan fields before rendering friendly guidance.</p></div>
+          <div class="step"><b>Remember</b><p>Suggest factual memories for parent approval, expiry, or deletion.</p></div>
+          <div class="step"><b>Evaluate</b><p>Run safety, age-fit, no-diagnosis, practicality, and handoff evals.</p></div>
+        </div>
+      </section>
+
+      <section id="safety">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Trust layer</div>
+            <h3>Safety is visible in the answer</h3>
+          </div>
+          <p>Parents should never wonder whether the app is diagnosing, minimizing risk, or pretending to replace a clinician.</p>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <h4>No diagnosis boundary</h4>
+            <p>Every response states that Arbor supports observation and planning, not diagnosis or treatment.</p>
+            <span class="tag">Required</span><span class="tag">Every answer</span>
+          </div>
+          <div class="card">
+            <h4>Escalation thresholds</h4>
+            <p>Risk guidance is explicit, including when to call emergency services or consult a professional.</p>
+            <span class="tag">Medical</span><span class="tag">Mental health</span>
+          </div>
+          <div class="card">
+            <h4>Expert review queue</h4>
+            <p>High-risk or ambiguous beta cases are flagged for manual review before scaling automation.</p>
+            <span class="tag">Beta ops</span><span class="tag">Governance</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="memory">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Child memory</div>
+            <h3>The moat starts as consented facts</h3>
+          </div>
+          <p>The MVP memory model should feel careful and legible: parents approve, edit, export, and delete what Arbor remembers.</p>
+        </div>
+        <div class="grid-4">
+          <div class="card"><h4>Saved context</h4><p>Language exposure, routines, school setting, strengths, sensitivities, and active plans.</p></div>
+          <div class="card"><h4>Evidence link</h4><p>Each saved fact points back to a parent intake, log, or imported document.</p></div>
+          <div class="card"><h4>Retention control</h4><p>Parents can remove stale details and keep private notes out of exports.</p></div>
+          <div class="card"><h4>Family access</h4><p>Co-parent support is architectural from day one, even if UI launches later.</p></div>
+        </div>
+      </section>
+
+      <section id="handoff">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Professional handoff</div>
+            <h3>One page, no oversharing</h3>
+          </div>
+          <p>The beta export should reduce parent cognitive load while protecting child privacy.</p>
+        </div>
+        <div class="handoff">
+          <div class="report">
+            <h3>Kindergarten Handoff</h3>
+            <div class="report-row"><strong>Concern</strong><span>Morning separation distress after rushed transitions.</span></div>
+            <div class="report-row"><strong>Pattern</strong><span>Three incidents this week, recovery within 8 to 12 minutes.</span></div>
+            <div class="report-row"><strong>Helps</strong><span>Visual routine, two choices, short goodbye ritual, known teacher greeting.</span></div>
+            <div class="report-row"><strong>Watch</strong><span>Escalate if refusal becomes daily or distress spreads beyond arrival.</span></div>
+          </div>
+          <div class="panel">
+            <h3>Export Controls</h3>
+            <p class="muted">Parents choose the audience before export. Teacher, therapist, pediatrician, and co-parent summaries use different detail levels.</p>
+            <div class="field">
+              <label for="audience">Audience</label>
+              <select id="audience">
+                <option>Teacher</option>
+                <option>Therapist</option>
+                <option>Pediatrician</option>
+                <option>Co-parent</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="include">Include</label>
+              <input id="include" value="Concern, pattern, tried scripts, questions, risk level" />
+            </div>
+            <div class="actions">
+              <button class="primary">Generate Summary</button>
+              <button class="secondary">Preview Data</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Build order</div>
+            <h3>Private beta before platform expansion</h3>
+          </div>
+          <p>The empire can wait. First prove a narrow, safe, repeatable parent-support workflow.</p>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Stage</th><th>Scope</th><th>Success signal</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Beta 0</td><td>Static prototype, interview script, expert review rubric</td><td>10 parent interviews and 3 expert reviewers</td></tr>
+            <tr><td>Beta 1</td><td>Intake, safety triage, parent plan, approved memory</td><td>20 invited families complete 3 support sessions</td></tr>
+            <tr><td>Beta 2</td><td>Follow-up logs, handoff summaries, export/delete controls</td><td>40 percent weekly return rate</td></tr>
+            <tr><td>V1</td><td>Milestones, routines, behavior analytics, multilingual support</td><td>Parent confidence improvement over 30 days</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <footer>Arbor private beta thesis: safer answers, approved child memory, practical scripts, and careful handoff create the first defensible loop.</footer>
+    </main>
+  </div>
+</body>
+</html>

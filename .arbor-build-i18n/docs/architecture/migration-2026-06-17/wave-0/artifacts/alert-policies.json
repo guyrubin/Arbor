@@ -1,0 +1,237 @@
+{
+  "_comment": "REL-5 multi-window multi-burn-rate alert policies — fast-burn (page) + slow-burn (ticket) per SLO. Uses the SLO-native select_slo_burn_rate filter, which is baseline-agnostic (operates on budget consumed, not raw error rate) so it works even for the 90% latency SLO where a raw-rate threshold would exceed 100% (see slis-slos-error-budget.md §4). BEFORE APPLY: (1) substitute ${PROJECT_ID}, ${SLO_*} resource names (projects/$PROJECT_ID/services/<svc>/serviceLevelObjectives/<sloId>), and ${NOTIFICATION_CHANNEL_ID} (projects/$PROJECT_ID/notificationChannels/XXXX). (2) Apply each policy separately: `gcloud alpha monitoring policies create --policy-from-file <one-policy.json> --project $PROJECT_ID`. Fast-burn: lookbackPeriod 3600s (1h) + burn rate >14.4. Slow-burn: lookbackPeriod 21600s (6h) + burn rate >6. (The short-window 'still-burning' guard is added as a second condition in the page policies; combined via combiner AND.) Route ALL alerts to ONE low-cost channel (email) at beta — add a paid PagerDuty channel id to the fast-burn policies' notificationChannels only when a B2G SLA requires 24/7 on-call.",
+  "policies": [
+    {
+      "displayName": "[PAGE] Arbor availability fast-burn (14.4x, 1h+5m)",
+      "combiner": "AND",
+      "conditions": [
+        {
+          "displayName": "availability budget burning >14.4x over 1h",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_AVAILABILITY}\", \"3600s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 14.4,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        },
+        {
+          "displayName": "availability budget still burning >14.4x over 5m",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_AVAILABILITY}\", \"300s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 14.4,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        }
+      ],
+      "notificationChannels": ["${NOTIFICATION_CHANNEL_ID}"],
+      "severity": "CRITICAL",
+      "documentation": { "content": "Availability error budget (SLO 99.5%) is burning >14.4x. ~2% of the 30-day budget will be gone within ~1h. See docs/ops/slo.md §4 + dr-runbook.md (REL-1). Likely causes: 5xx spike, Cloud Run instance unavailability (check REL-4 readiness), regional event.", "mimeType": "text/markdown" }
+    },
+    {
+      "displayName": "[TICKET] Arbor availability slow-burn (6x, 6h+30m)",
+      "combiner": "AND",
+      "conditions": [
+        {
+          "displayName": "availability budget burning >6x over 6h",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_AVAILABILITY}\", \"21600s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 6,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        },
+        {
+          "displayName": "availability budget still burning >6x over 30m",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_AVAILABILITY}\", \"1800s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 6,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        }
+      ],
+      "notificationChannels": ["${NOTIFICATION_CHANNEL_ID}"],
+      "severity": "WARNING",
+      "documentation": { "content": "Availability budget burning >6x over 6h — chronic degradation, fix this week. See docs/ops/slo.md §4.", "mimeType": "text/markdown" }
+    },
+    {
+      "displayName": "[PAGE] Arbor interactive-latency fast-burn (14.4x, 1h+5m)",
+      "combiner": "AND",
+      "conditions": [
+        {
+          "displayName": "interactive-latency budget burning >14.4x over 1h",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_LATENCY_INTERACTIVE}\", \"3600s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 14.4,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        },
+        {
+          "displayName": "interactive-latency budget still burning >14.4x over 5m",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_LATENCY_INTERACTIVE}\", \"300s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 14.4,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        }
+      ],
+      "notificationChannels": ["${NOTIFICATION_CHANNEL_ID}"],
+      "severity": "CRITICAL",
+      "documentation": { "content": "Interactive latency budget (SLO 95% <=1s) burning >14.4x. Likely cold-start storm or Firestore slowness. See docs/ops/slo.md §4/§6.", "mimeType": "text/markdown" }
+    },
+    {
+      "displayName": "[TICKET] Arbor interactive-latency slow-burn (6x, 6h+30m)",
+      "combiner": "AND",
+      "conditions": [
+        {
+          "displayName": "interactive-latency budget burning >6x over 6h",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_LATENCY_INTERACTIVE}\", \"21600s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 6,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        },
+        {
+          "displayName": "interactive-latency budget still burning >6x over 30m",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_LATENCY_INTERACTIVE}\", \"1800s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 6,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        }
+      ],
+      "notificationChannels": ["${NOTIFICATION_CHANNEL_ID}"],
+      "severity": "WARNING",
+      "documentation": { "content": "Interactive latency budget burning >6x over 6h. Consider min-instances>=1 if cold starts are the driver. See docs/ops/slo.md §3/§6.", "mimeType": "text/markdown" }
+    },
+    {
+      "displayName": "[PAGE] Arbor AI-latency fast-burn (14.4x, 1h+5m)",
+      "combiner": "AND",
+      "conditions": [
+        {
+          "displayName": "AI-latency budget burning >14.4x over 1h",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_LATENCY_AI}\", \"3600s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 14.4,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        },
+        {
+          "displayName": "AI-latency budget still burning >14.4x over 5m",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_LATENCY_AI}\", \"300s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 14.4,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        }
+      ],
+      "notificationChannels": ["${NOTIFICATION_CHANNEL_ID}"],
+      "severity": "CRITICAL",
+      "documentation": { "content": "AI-synchronous latency budget (SLO 90% <=8s) burning >14.4x. Vertex slowness; cross-check the AI-success SLO + REL-2 circuit-breaker state. See docs/ops/slo.md §4.", "mimeType": "text/markdown" }
+    },
+    {
+      "displayName": "[TICKET] Arbor AI-latency slow-burn (6x, 6h+30m)",
+      "combiner": "AND",
+      "conditions": [
+        {
+          "displayName": "AI-latency budget burning >6x over 6h",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_LATENCY_AI}\", \"21600s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 6,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        },
+        {
+          "displayName": "AI-latency budget still burning >6x over 30m",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_LATENCY_AI}\", \"1800s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 6,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        }
+      ],
+      "notificationChannels": ["${NOTIFICATION_CHANNEL_ID}"],
+      "severity": "WARNING",
+      "documentation": { "content": "AI-synchronous latency budget burning >6x over 6h. See docs/ops/slo.md §3/§4.", "mimeType": "text/markdown" }
+    },
+    {
+      "displayName": "[PAGE] Arbor AI-success fast-burn (14.4x, 1h+5m)",
+      "combiner": "AND",
+      "conditions": [
+        {
+          "displayName": "AI-success budget burning >14.4x over 1h",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_AI_SUCCESS}\", \"3600s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 14.4,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        },
+        {
+          "displayName": "AI-success budget still burning >14.4x over 5m",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_AI_SUCCESS}\", \"300s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 14.4,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        }
+      ],
+      "notificationChannels": ["${NOTIFICATION_CHANNEL_ID}"],
+      "severity": "CRITICAL",
+      "documentation": { "content": "AI-success budget (SLO 98% model_call=ok) burning >14.4x. Model outage: many timeout/circuit_open/error outcomes. Cross-check REL-2 breaker state and Vertex status; users are getting the graceful-degradation 503. See docs/ops/slo.md §4/§6.", "mimeType": "text/markdown" }
+    },
+    {
+      "displayName": "[TICKET] Arbor AI-success slow-burn (6x, 6h+30m)",
+      "combiner": "AND",
+      "conditions": [
+        {
+          "displayName": "AI-success budget burning >6x over 6h",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_AI_SUCCESS}\", \"21600s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 6,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        },
+        {
+          "displayName": "AI-success budget still burning >6x over 30m",
+          "conditionThreshold": {
+            "filter": "select_slo_burn_rate(\"${SLO_AI_SUCCESS}\", \"1800s\")",
+            "comparison": "COMPARISON_GT",
+            "thresholdValue": 6,
+            "duration": "0s",
+            "trigger": { "count": 1 }
+          }
+        }
+      ],
+      "notificationChannels": ["${NOTIFICATION_CHANNEL_ID}"],
+      "severity": "WARNING",
+      "documentation": { "content": "AI-success budget burning >6x over 6h — chronic model flakiness (also a leading indicator of a Firestore brownout via quota fail-open, see docs/ops/slo.md §6).", "mimeType": "text/markdown" }
+    }
+  ]
+}

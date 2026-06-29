@@ -1,0 +1,216 @@
+# Auto-deploy Arbor to GCP on push to main (A8).
+#
+# AUTH (SEC: prefer keyless WIF — see docs/ops/wif-migration.md):
+#   Repository VARS (Settings → Secrets and variables → Actions → Variables):
+#     GCP_WIF_PROVIDER   projects/<num>/locations/global/workloadIdentityPools/github/providers/arbor
+#     GCP_DEPLOY_SA      arbor-deployer@<project>.iam.gserviceaccount.com
+#   When GCP_WIF_PROVIDER is set, the workflow authenticates KEYLESSLY via
+#   Workload Identity Federation and GCP_SA_KEY is unused (delete it!).
+#   Until then it falls back to the long-lived key:
+#     GCP_SA_KEY         JSON key for a service account with roles:
+#                        Cloud Build Editor, Cloud Run Admin, Artifact
+#                        Registry Writer, Service Account User, Firebase
+#                        Admin, Datastore Owner.
+#
+# Required repository secrets:
+#   GCP_PROJECT_ID            e.g. arborprd-westeu
+#   VITE_FIREBASE_API_KEY    Firebase web config (baked into the client build)
+#   VITE_FIREBASE_APP_ID
+# Optional vars: VITE_FIREBASE_AUTH_DOMAIN / _PROJECT_ID / _STORAGE_BUCKET
+# default to <project>.firebaseapp.com / <project> / <project>.firebasestorage.app
+#
+# RELEASE PIPELINE (REL-ARBOR-001 — ROS-BACKLOG Theme O):
+#   No more blind 100%-to-prod. On push to main:
+#     job `deploy-candidate` (auto) → FULL green-gate (OPS-B3: tsc+test+framework+safety)
+#       → build+push API → deploy a 0%-traffic CANDIDATE revision (OPS-A3, see
+#       cloudbuild.prod.yaml --no-traffic --tag candidate) → smoke /healthz on the
+#       candidate tag URL (OPS-A2, scripts/post-deploy-smoke.mjs).
+#     job `promote` (GUY-GATED) → shifts 100% traffic to the proven candidate AND
+#       deploys hosting+firestore in the SAME job (no API/hosting split-brain).
+#   ►► THE GATE: configure Required Reviewers (= Guy) on the `production` GitHub
+#      Environment. The `promote` job then PAUSES for human approval before any live
+#      change. Until that is set, promote runs automatically — set it before relying
+#      on this as the prod gate. (CoS holds the Level-3 prod-promotion sign-off.)
+name: Arbor Deploy
+
+on:
+  push:
+    branches: [main]
+  # Manual trigger: once auth + project/Firebase secrets are set, deploy the
+  # current main from the Actions tab ("Run workflow") without needing a new commit.
+  workflow_dispatch:
+
+concurrency:
+  group: arbor-deploy
+  # Do NOT cancel an in-flight release (a running promote must finish, not be killed
+  # mid-traffic-shift by the next push). Serialize instead.
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Required for keyless WIF auth (OIDC token exchange); harmless for key auth.
+  id-token: write
+
+jobs:
+  # Stages 3–6: full green-gate, build, deploy a 0%-traffic CANDIDATE, smoke it.
+  # No live traffic changes happen here — safe to run automatically on every push.
+  deploy-candidate:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # FULL green-gate — parity with CI (OPS-B3). Was lint+test only; the two
+      # safety-specific checks (framework + safety eval) now gate the prod path too.
+      - run: npm ci
+        working-directory: app
+      - run: npm run lint
+        working-directory: app
+      - run: npm test
+        working-directory: app
+      - run: npm run check:framework
+        working-directory: app
+      - run: npm run eval:safety
+        working-directory: app
+
+      # Keyless auth via Workload Identity Federation (preferred — no stored key).
+      - id: auth-wif
+        if: vars.GCP_WIF_PROVIDER != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      # Fallback: long-lived SA key. Retire by setting GCP_WIF_PROVIDER + GCP_DEPLOY_SA
+      # vars (see docs/ops/wif-migration.md), then DELETE the GCP_SA_KEY secret + key.
+      - id: auth-key
+        if: vars.GCP_WIF_PROVIDER == ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # OPS-A3: build + deploy the API as a 0%-traffic CANDIDATE revision (tag `candidate`).
+      - name: Deploy API candidate (Cloud Run, no traffic)
+        run: |
+          gcloud builds submit \
+            --config cloudbuild.prod.yaml \
+            --substitutions=_REGION=europe-west4,_TAG=${GITHUB_SHA::7} \
+            --default-buckets-behavior=regional-user-owned-bucket \
+            --project "$PROJECT_ID"
+
+      # OPS-A2: smoke the candidate tag URL; fail the run (and block promote) if unhealthy.
+      - name: Smoke candidate
+        working-directory: app
+        run: |
+          CANDIDATE_URL=$(gcloud run services describe arbor-api \
+            --region europe-west4 --project "$PROJECT_ID" --format=json \
+            | jq -r '.status.traffic[] | select(.tag=="candidate") | .url' | head -n1)
+          echo "candidate URL: $CANDIDATE_URL"
+          test -n "$CANDIDATE_URL"
+          node scripts/post-deploy-smoke.mjs "$CANDIDATE_URL" "${GITHUB_SHA::7}"
+
+  # Stage 7: GUY-GATED prod promotion. The `production` Environment is where the human
+  # AUTO-PROMOTE by default: after canary+smoke pass, traffic shifts to 100% with NO manual
+  # approval ("automatically build up — it goes to production"). The safety is the full gate +
+  # canary + smoke, not a human click; your involvement is at the epic level (what gets merged),
+  # not per-deploy. ►► TO REQUIRE MANUAL APPROVAL instead: uncomment `environment: production`
+  # below + add a Required Reviewer in repo Settings → Environments, then approve each run in the
+  # Actions tab. Either mode still runs the full canary→smoke→promote cycle.
+  # Promotes traffic AND deploys hosting together (atomic — no new-client/old-API split).
+  promote:
+    needs: deploy-candidate
+    runs-on: ubuntu-latest
+    # environment: production   # ← uncomment this line for manual-approve mode
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+        working-directory: app
+
+      - id: auth-wif
+        if: vars.GCP_WIF_PROVIDER != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - id: auth-key
+        if: vars.GCP_WIF_PROVIDER == ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # OPS-A3 promote: shift 100% traffic to the smoke-proven candidate (= latest revision).
+      # Rollback = re-run `update-traffic --to-revisions=<prev>=100` (prior revision held
+      # 100% until this step, so it is the live rollback target).
+      - name: Promote candidate to 100%
+        run: |
+          gcloud run services update-traffic arbor-api \
+            --region europe-west4 --project "$PROJECT_ID" --to-latest
+
+      # Build + deploy hosting in the SAME gated job (avoids new-client / old-API split-brain).
+      - name: Build client
+        working-directory: app
+        env:
+          VITE_HAS_GEMINI_API: "true"
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN || format('{0}.firebaseapp.com', secrets.GCP_PROJECT_ID) }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET || format('{0}.firebasestorage.app', secrets.GCP_PROJECT_ID) }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: |
+          npm run build
+          rm -f dist/server.cjs dist/server.cjs.map
+          echo "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}" > dist/timestamp.txt
+
+      - name: Deploy Hosting + Firestore
+        env:
+          # Auth = the raw service-account key from GCP_SA_KEY, written to a temp file
+          # and exposed to firebase-tools as GOOGLE_APPLICATION_CREDENTIALS (ADC).
+          # firebase-tools >=11.1 honors ADC WITHOUT --token. Do NOT pass --token: a
+          # legacy token forces token-auth and overrides this SA key, which is what
+          # silently broke this step (runs #94/#95) — the SA key was valid but an
+          # expired/invalid FIREBASE_TOKEN won the auth contest. The SA in GCP_SA_KEY
+          # must hold Firebase Admin / Hosting Admin (arbor-deployer does).
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          KEY="$RUNNER_TEMP/firebase-sa-key.json"
+          printf '%s' "$GCP_SA_KEY" > "$KEY"
+          export GOOGLE_APPLICATION_CREDENTIALS="$KEY"
+          node -e "const k=JSON.parse(require('fs').readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,'utf8')); if(k.type!=='service_account'){console.error('::error::GCP_SA_KEY is not a service_account key (type='+(k.type||'unknown')+') — firebase needs a raw SA key JSON');process.exit(1)} console.log('✓ ADC via service_account key for '+k.client_email)"
+          npx --yes firebase-tools deploy \
+            --only hosting,firestore \
+            --project "$PROJECT_ID" \
+            --non-interactive
+
+      # NEVER-AGAIN GUARD: confirm the live site actually responds after the hosting deploy,
+      # so a silent hosting/auth failure can never again leave prod frozen on an old build
+      # while main advances. Fails the run loudly (red) if the live domain doesn't answer 200.
+      - name: Verify live site responds
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -fsS -o /dev/null -w '%{http_code}' https://arborparentingapp.com/ || true)
+            echo "attempt $i: https://arborparentingapp.com/ -> ${code:-no-response}"
+            [ "$code" = "200" ] && { echo "✓ live site responded 200 after deploy"; exit 0; }
+            sleep 10
+          done
+          echo "::error::Live site did not return 200 after deploy — hosting may not have propagated"; exit 1

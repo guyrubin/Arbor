@@ -1,0 +1,22 @@
+{
+  "_comment": "REL-5 log-based COUNTER metric feeding SLI-3 (AI success rate). Source = REL-2's logger.info('model_call', { route, provider, outcome, attempt, latencyMs }) emit (app/src/server/logger.ts shape). Apply: gcloud logging metrics create arbor_model_call_outcome --config-from-file=THIS_FILE --project $PROJECT_ID. REL-2 must be deployed first so 'model_call' lines exist. Labels are pulled from jsonPayload; keep cardinality bounded (outcome/provider/route are all enums).",
+  "name": "arbor_model_call_outcome",
+  "description": "Per-attempt Arbor model call outcomes (REL-2 model_call log event). outcome in {ok,retry,timeout,circuit_open,error}; provider in {gemini_dev,vertex_gemini,vertex_claude}. Feeds the AI-success SLO (REL-5).",
+  "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"arbor-api\" AND jsonPayload.message=\"model_call\"",
+  "metricDescriptor": {
+    "metricKind": "DELTA",
+    "valueType": "INT64",
+    "unit": "1",
+    "displayName": "Arbor model_call outcomes",
+    "labels": [
+      { "key": "outcome", "valueType": "STRING", "description": "ok | retry | timeout | circuit_open | error" },
+      { "key": "provider", "valueType": "STRING", "description": "gemini_dev | vertex_gemini | vertex_claude" },
+      { "key": "route", "valueType": "STRING", "description": "coach_high_stakes | analysis_structured | creative_low_risk" }
+    ]
+  },
+  "labelExtractors": {
+    "outcome": "EXTRACT(jsonPayload.outcome)",
+    "provider": "EXTRACT(jsonPayload.provider)",
+    "route": "EXTRACT(jsonPayload.route)"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "__doc__": [
+    "REL-6 composite-index ADDITIONS for Arbor Firestore.",
+    "",
+    "THIS FILE IS NOT THE DEPLOYABLE FILE. It is a merge artifact.",
+    "The live, deployable file is /firestore.indexes.json at the repo root.",
+    "Merge the two objects under `__additions__.indexes` into the `indexes`",
+    "array of the live file (append; do not reorder; do not remove the existing",
+    "memoryEvents (childId ASC, createdAt ASC) COLLECTION_GROUP index — it backs",
+    "the live listEvents() query in firestoreMemoryStore.ts:23 and removing it",
+    "reproduces the prior Gemini-outage COLLECTION_GROUP index bug).",
+    "",
+    "After merge, the root file's `indexes` array must contain THREE entries:",
+    "  1. memoryEvents (childId ASC, createdAt ASC)  <- EXISTING, keep verbatim",
+    "  2. memoryEvents (childId ASC, createdAt DESC) <- ADD (pre-emptive: desc UI sort)",
+    "  3. consultRequests (ownerUid ASC, createdAt DESC) <- ADD (pre-emptive: desc pagination)",
+    "",
+    "Both additions are PRE-EMPTIVE. As of 2026-06-17 the only composite-requiring",
+    "query in the codebase (memoryEvents childId+createdAt ASC) is already covered.",
+    "consultRequests.ts:58 (where ownerUid ==) and the listEvents() asc query sort",
+    "client-side / use the existing index, so neither addition is required to ship",
+    "today. They are declared NOW so that when the near-term UI features land",
+    "(reverse-chronological consult inbox; reverse-chronological memory timeline)",
+    "the query does not fail at runtime with a FAILED_PRECONDITION 'needs index'",
+    "error on grown data. Indexes are additive and a never-used index is safe to",
+    "delete, so pre-declaring carries no correctness risk — only marginal write",
+    "amplification + storage.",
+    "",
+    "TTL POLICY (aiQuota.expireAt) — NOT expressible in this file. See __ttl_note__.",
+    "Firestore TTL is a field operation set via gcloud, not an index/fieldOverride",
+    "doc. firebase deploy --only firestore:indexes will NOT set it. It must be run",
+    "by a human with GCP access (see INFRA-SNIPPETS.md applyStep)."
+  ],
+  "__ttl_note__": {
+    "field": "expireAt",
+    "collectionGroup": "aiQuota",
+    "written_by": "app/src/server/quotaStore.ts:76 (expireAt = new Date(resetAt + 24h))",
+    "status_today": "field is WRITTEN on every quota window doc, but NO TTL policy exists, so stale per-key+window docs accumulate forever",
+    "enable_command": "gcloud firestore fields ttls update expireAt --collection-group=aiQuota --enable-ttl --project <PROD_PROJECT_ID>",
+    "verify_command": "gcloud firestore fields ttls describe expireAt --collection-group=aiQuota --project <PROD_PROJECT_ID>",
+    "disable_command_rollback": "gcloud firestore fields ttls update expireAt --collection-group=aiQuota --disable-ttl --project <PROD_PROJECT_ID>",
+    "why": "Data-minimisation / storage-limitation control (GDPR/AVG Art.5(1)(e); IL Amendment 13 retention). Auto-purges per-user usage counters once their 24h window closes; net storage REDUCTION. Record in DPIA security-measures.",
+    "human_gate": true
+  },
+  "__memory_retention_note__": {
+    "scope": "children/{childId}/memoryEvents (the developmental memory ledger)",
+    "decision": "NO Firestore TTL is applied to memoryEvents in Wave-0.",
+    "rationale": [
+      "memoryEvents is the product's core durable record (the 'memory moat'); it is NOT ephemeral counter data like aiQuota and must NOT be auto-expired by a blanket TTL.",
+      "Retention/erasure for memoryEvents is already handled at the application layer by the GDPR/AVG erase path: routes/api.ts:1559 -> memoryStore.eraseChild(childId) deletes the child's memoryEvents on a Right-to-Erasure request (lib/api.ts:200 exposes /api/privacy/erase).",
+      "Export is available at routes/api.ts:1534 -> /api/privacy/export/{childId} (Right-to-Portability)."
+    ],
+    "future_work": "If a fixed-horizon retention policy for memoryEvents is contractually required (e.g. a B2G DPA caps retention at N years post-inactivity), implement it as an application-level scheduled purge keyed on createdAt + last-activity, NOT a raw Firestore TTL on expireAt — because memoryEvents docs intentionally have no expireAt field. Document the chosen horizon in the DPIA. This is out of scope for REL-6 / Wave-0.",
+    "human_gate": false
+  },
+  "__additions__": {
+    "indexes": [
+      {
+        "collectionGroup": "memoryEvents",
+        "queryScope": "COLLECTION_GROUP",
+        "fields": [
+          { "fieldPath": "childId", "order": "ASCENDING" },
+          { "fieldPath": "createdAt", "order": "DESCENDING" }
+        ]
+      },
+      {
+        "collectionGroup": "consultRequests",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "ownerUid", "order": "ASCENDING" },
+          { "fieldPath": "createdAt", "order": "DESCENDING" }
+        ]
+      }
+    ]
+  },
+  "__merged_preview__": {
+    "comment": "This is what /firestore.indexes.json should look like AFTER the human merge. Copy this whole object (minus this comment and the __ wrapper keys above) over the root file, OR hand-append the two __additions__ objects. fieldOverrides stays [].",
+    "indexes": [
+      {
+        "collectionGroup": "memoryEvents",
+        "queryScope": "COLLECTION_GROUP",
+        "fields": [
+          { "fieldPath": "childId", "order": "ASCENDING" },
+          { "fieldPath": "createdAt", "order": "ASCENDING" }
+        ]
+      },
+      {
+        "collectionGroup": "memoryEvents",
+        "queryScope": "COLLECTION_GROUP",
+        "fields": [
+          { "fieldPath": "childId", "order": "ASCENDING" },
+          { "fieldPath": "createdAt", "order": "DESCENDING" }
+        ]
+      },
+      {
+        "collectionGroup": "consultRequests",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "ownerUid", "order": "ASCENDING" },
+          { "fieldPath": "createdAt", "order": "DESCENDING" }
+        ]
+      }
+    ],
+    "fieldOverrides": []
+  }
+}

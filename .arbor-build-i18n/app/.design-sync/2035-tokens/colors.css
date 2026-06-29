@@ -1,0 +1,76 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Arbor 2035 — COLOR TOKENS (TARGET for the app reskin)
+   Source of truth: claude.ai/design project "Arbor Design System" (c3ac103a),
+   tokens/colors.css. Sapphire-blue primary + glassmorphic gradient surfaces +
+   blue-tinted shadows. Token NAMES are backward-compatible with the live app
+   (--arbor-clay is now sapphire, not green) so existing references re-skin in place.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ── Surfaces — glass + gradient, light mode ────────────────────────────── */
+  --arbor-paper:          linear-gradient(135deg, #f0f4f8 0%, #e8ecf5 100%);
+  --arbor-paper-elevated: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(248,250,252,0.5));
+  --arbor-paper-deep:     linear-gradient(135deg, rgba(240,244,248,0.6), rgba(232,236,245,0.4));
+  --arbor-paper-sunk:     rgba(232,236,245,0.3);
+
+  /* ── Text / ink ─────────────────────────────────────────────────────────── */
+  --arbor-ink:            #1a1a2e;
+  --arbor-ink-soft:       #2d3748;
+  --arbor-muted:          #475569;
+  --arbor-faint:          #64748b;
+
+  /* ── Hairlines — glass + precision ──────────────────────────────────────── */
+  --arbor-rule:           rgba(88, 166, 255, 0.15);
+  --arbor-rule-strong:    rgba(88, 166, 255, 0.25);
+
+  /* ── Primary — sapphire blue gradient (trust / growth) ──────────────────── */
+  --arbor-clay:           #58a6ff;   /* PRIMARY BLUE: logo, CTA, active nav */
+  --arbor-clay-deep:      #1f6feb;   /* hover / pressed primary */
+  --arbor-clay-dim:       rgba(88, 166, 255, 0.12);
+  --arbor-clay-soft:      linear-gradient(135deg, rgba(88,166,255,0.15), rgba(88,166,255,0.05));
+  --arbor-clay-glow:      0 0 20px rgba(88, 166, 255, 0.3);
+  --arbor-green-soft:     linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));
+  --arbor-green-ink:      #059669;   /* AA text on green-soft */
+  --arbor-sage:           #10b981;   /* emerald accent */
+
+  /* ── Jewel tone accents — base / -soft / -ink (AA) / -glow ──────────────── */
+  --arbor-peach:   #f97316;
+  --arbor-peach-soft:  linear-gradient(135deg, rgba(249,115,22,0.15), rgba(249,115,22,0.05));
+  --arbor-peach-ink:  #b45309;
+  --arbor-peach-glow: 0 0 16px rgba(249,115,22,0.2);
+  --arbor-lav:     #a78bfa;
+  --arbor-lav-soft:    linear-gradient(135deg, rgba(167,139,250,0.15), rgba(167,139,250,0.05));
+  --arbor-lav-ink:    #6d28d9;
+  --arbor-lav-glow:   0 0 16px rgba(167,139,250,0.2);
+  --arbor-yellow:  #fbbf24;
+  --arbor-yellow-soft: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(251,191,36,0.05));
+  --arbor-yellow-ink: #b45309;
+  --arbor-yellow-glow: 0 0 16px rgba(251,191,36,0.2);
+  --arbor-pink:    #ec4899;
+  --arbor-pink-soft:   linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05));
+  --arbor-pink-ink:   #be185d;
+  --arbor-pink-glow:  0 0 16px rgba(236,72,153,0.2);
+  --arbor-sky:     #0ea5e9;
+  --arbor-sky-soft:    linear-gradient(135deg, rgba(14,165,233,0.15), rgba(14,165,233,0.05));
+  --arbor-sky-ink:    #0369a1;
+  --arbor-sky-glow:   0 0 16px rgba(14,165,233,0.2);
+
+  /* ── Aliases used by older call sites (updated to 2035 palette) ────────── */
+  --arbor-blue:    #58a6ff;
+  --arbor-ochre:   #f59e0b;
+  --arbor-danger:  #ef4444;
+
+  /* ── Glass & blur effects ───────────────────────────────────────────────── */
+  --glass-blur:    blur(12px);
+  --glass-border:  1.5px solid rgba(88, 166, 255, 0.2);
+
+  /* ── Focus ring (brand-blue halo) ───────────────────────────────────────── */
+  --ring: 0 0 0 3px rgba(88, 166, 255, 0.18);
+
+  /* ── Shadow system (layered, blue-tinted, precise) ──────────────────────── */
+  --shadow-xs:     0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm:     0 4px 8px rgba(88,166,255,0.08);
+  --shadow-md:     0 8px 16px rgba(88,166,255,0.12);
+  --shadow-lg:     0 12px 32px rgba(88,166,255,0.15);
+  --shadow-xl:     0 20px 48px rgba(88,166,255,0.2);
+  --shadow-green:  0 0 24px rgba(52,211,153,0.25);
+}
