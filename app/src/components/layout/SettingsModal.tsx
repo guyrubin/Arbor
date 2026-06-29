@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift, Palette, Bell, FlaskConical } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
@@ -11,11 +11,12 @@ import { useEntitlement } from "../../hooks/useEntitlement";
 import { api } from "../../lib/api";
 import { T } from "../../lib/tokens";
 import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
+import type { UiLang } from "../../lib/i18n";
 
-/** Lightweight app settings — wired to real app state (AI language, AI Engines
- *  panel, account). Replaces the previously dead "Settings" sidebar button. */
+/** Lightweight app settings — wired to real app state (app language, trust panels,
+ *  notifications, billing, and account). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { aiLang, setAiLang, t } = useLanguage();
+  const { uiLang, setUiLang, t } = useLanguage();
   const { showAiRail, setShowAiRail, setActiveTab } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
@@ -27,6 +28,21 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const [adminOpen, setAdminOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [accentTheme, setAccentTheme] = useState<AccentTheme>(getSavedTheme);
+  const [draftUiLang, setDraftUiLang] = useState<UiLang>(uiLang);
+  const languageDirty = draftUiLang !== uiLang;
+
+  useEffect(() => {
+    if (open) setDraftUiLang(uiLang);
+  }, [open, uiLang]);
+
+  const handleSaveLanguage = () => {
+    setUiLang(draftUiLang);
+    toast(t("set.language.saved"), "success");
+  };
+
+  const handleCancelLanguage = () => {
+    setDraftUiLang(uiLang);
+  };
 
   const planLabel = isBeta
     ? t("set.plan.beta")
@@ -92,6 +108,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     <>
     <Modal open={open} onClose={onClose} title={t("set.title")}>
       <div className="space-y-5 text-sm">
+        <Section title={t("set.section.billing")} sub={t("set.section.billingSub")}>
         {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
         {/* m3-hex-sweep: #eef6f1 insight-wash start has no m2 token yet; left as-is
             per spec (would become --gradient-insight if m2 adds it). */}
@@ -165,16 +182,43 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </Row>
           <InviteCard />
         </div>
+        </Section>
 
-        {/* AI response language */}
-        <Row icon={<Languages className="w-4 h-4" />} title={t("set.aiLang.title")} sub={t("set.aiLang.sub")}>
-          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-            {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
-              <button key={k} onClick={() => setAiLang(k)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
-                style={aiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}>
-                {label}
+        <Section title={t("set.section.languageAppearance")} sub={t("set.section.languageAppearanceSub")}>
+        {/* App language */}
+        <Row icon={<Languages className="w-4 h-4" />} title={t("set.language.title")} sub={t("set.language.sub")}>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setDraftUiLang(k)}
+                  aria-pressed={draftUiLang === k}
+                  className="px-3 py-1 rounded-lg text-xs font-bold transition"
+                  style={draftUiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCancelLanguage}
+                disabled={!languageDirty}
+                className="text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-40"
+                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              >
+                {t("set.language.cancel")}
               </button>
-            ))}
+              <button
+                onClick={handleSaveLanguage}
+                disabled={!languageDirty}
+                className="text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-40"
+                style={{ background: "var(--arbor-clay)", color: T.onAccent }}
+              >
+                {t("set.language.save")}
+              </button>
+            </div>
           </div>
         </Row>
 
@@ -194,6 +238,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             ))}
           </div>
         </Row>
+        </Section>
+
+        <Section title={t("set.section.privacyTrust")} sub={t("set.section.privacyTrustSub")}>
 
         {/* AI Engines panel */}
         <Row icon={<Sparkles className="w-4 h-4" />} title={t("set.rail.title")} sub={t("set.rail.sub")}>
@@ -201,6 +248,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "end-[22px]" : "start-0.5"}`} />
           </button>
         </Row>
+        </Section>
+
+        <Section title={t("set.section.notifications")} sub={t("set.section.notificationsSub")}>
 
         {/* AP-058: Smart Reminders — parent nudge preferences over existing JITAI */}
         <Row icon={<Bell className="w-4 h-4" />} title={t("sr.title")} sub={t("sr.subtitle")}>
@@ -213,6 +263,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             {t("set.data.open")}
           </button>
         </Row>
+        </Section>
+
+        <Section title={t("set.section.childData")} sub={t("set.section.childDataSub")}>
 
         {/* AP-060: The Science — source-transparency page (static editorial, no child data) */}
         <Row icon={<FlaskConical className="w-4 h-4" />} title={t("sci.settings.title")} sub={t("sci.settings.sub")}>
@@ -232,6 +285,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             {t("set.data.open")}
           </button>
         </Row>
+        </Section>
 
         {/* ADM-1: founder-only single-pane dashboard (users, paying, token spend) */}
         {entitlement.isAdmin && (
@@ -271,9 +325,21 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   );
 }
 
+function Section({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl p-3 space-y-3" style={{ background: "rgba(255,255,255,0.62)", border: "1px solid var(--arbor-rule)" }}>
+      <div>
+        <h3 className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{title}</h3>
+        <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{sub}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function Row({ icon, title, sub, children }: { icon: React.ReactNode; title: string; sub: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="flex items-start gap-3 min-w-0">
         <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{icon}</span>
         <div className="min-w-0">
