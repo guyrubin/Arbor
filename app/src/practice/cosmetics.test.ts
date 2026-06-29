@@ -3,7 +3,7 @@ import { evaluateCosmetics, COSMETICS, type CosmeticStats } from "./cosmetics";
 
 const stats = (over: Partial<CosmeticStats> = {}): CosmeticStats => ({
   totalSessions: 0,
-  streakDays: 0,
+  daysPracticed: 0,
   domainsTouched: 0,
   ...over,
 });
@@ -18,11 +18,11 @@ describe("evaluateCosmetics", () => {
   });
 
   it("unlocks thresholds that are met and reports the nearest next", () => {
-    const s = evaluateCosmetics(stats({ totalSessions: 12, streakDays: 3, domainsTouched: 3 }));
+    const s = evaluateCosmetics(stats({ totalSessions: 12, daysPracticed: 3, domainsTouched: 3 }));
     const ids = s.unlocked.map((c) => c.id);
     expect(ids).toContain("sprout-frame");    // 12 ≥ 1
     expect(ids).toContain("bloom-frame");     // 12 ≥ 10
-    expect(ids).toContain("steady-title");    // streak 3
+    expect(ids).toContain("steady-title");    // 3 distinct days practiced
     expect(ids).toContain("explorer-badge");  // domains 3
     expect(ids).not.toContain("star-frame");  // needs 25
     // Active frame is the most-committed earned frame (Bloom > Sprout).
@@ -30,8 +30,8 @@ describe("evaluateCosmetics", () => {
   });
 
   it("picks the closest locked reward as next (by remaining)", () => {
-    // totalSessions 24 → star-frame needs 1 more; streak 0 → devoted needs 7.
-    const s = evaluateCosmetics(stats({ totalSessions: 24, domainsTouched: 5, streakDays: 0 }));
+    // totalSessions 24 → star-frame needs 1 more; daysPracticed 0 → devoted needs 7.
+    const s = evaluateCosmetics(stats({ totalSessions: 24, domainsTouched: 5, daysPracticed: 0 }));
     expect(s.next?.cosmetic.id).toBe("star-frame");
     expect(s.next?.remaining).toBe(1);
     expect(s.next?.progress).toBeCloseTo(24 / 25, 5);
@@ -39,7 +39,7 @@ describe("evaluateCosmetics", () => {
 
   it("returns next=null and the top frame when everything is earned", () => {
     const max = Math.max(...COSMETICS.map((c) => c.threshold));
-    const s = evaluateCosmetics(stats({ totalSessions: max, streakDays: max, domainsTouched: max }));
+    const s = evaluateCosmetics(stats({ totalSessions: max, daysPracticed: max, domainsTouched: max }));
     expect(s.locked).toHaveLength(0);
     expect(s.next).toBeNull();
     expect(s.activeFrame?.id).toBe("tree-frame"); // last/most-committed frame
