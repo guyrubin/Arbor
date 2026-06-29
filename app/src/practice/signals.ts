@@ -162,6 +162,33 @@ const MILESTONE_DOMAIN_MAP: Record<string, PracticeDomain> = {
   attachment_regulation: "emotional",
 };
 
+export interface DomainMilestoneCount {
+  reached: number;
+  total: number;
+}
+
+/**
+ * Per-practice-domain count of milestones a PARENT has noticed (checked) vs the
+ * total in that domain's checklist. This is the count register the clinical
+ * firewall allows: a parent-owned tally, never a 0–100 verdict on the child.
+ *
+ * Milestones carry a DevelopmentalDomainId; this maps each onto its practice
+ * domain via MILESTONE_DOMAIN_MAP so the keys line up with domainBands /
+ * DOMAIN_META. Domains with no mapped milestones (e.g. "speech") are absent.
+ */
+export function domainMilestoneCounts(milestones: Milestone[]): Map<PracticeDomain, DomainMilestoneCount> {
+  const map = new Map<PracticeDomain, DomainMilestoneCount>();
+  for (const m of milestones) {
+    const domain = MILESTONE_DOMAIN_MAP[m.domain];
+    if (!domain) continue;
+    const e = map.get(domain) ?? { reached: 0, total: 0 };
+    e.total += 1;
+    if (m.checked) e.reached += 1;
+    map.set(domain, e);
+  }
+  return map;
+}
+
 function toBand(signal: number): BandLevel {
   if (signal >= 75) return "strong";
   if (signal >= 55) return "on-track";
@@ -351,11 +378,29 @@ export function weekKey(d: Date): string {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
-/** Build this week's snapshot if none exists yet (the historical-progression record). */
-export function pendingSnapshot(existing: BandSnapshot[], bands: DomainBand[], today: string): BandSnapshot | null {
+/**
+ * Build this week's snapshot if none exists yet (the historical-progression record).
+ * Persists both the internal `signal`/`band` (escalation basis, never surfaced) and
+ * the count register (`reached`/`total` parent-noticed milestones per domain) so the
+ * Weekly history can render counts over time rather than a 0–100 verdict trend.
+ */
+export function pendingSnapshot(
+  existing: BandSnapshot[],
+  bands: DomainBand[],
+  today: string,
+  milestones: Milestone[] = []
+): BandSnapshot | null {
   const wk = weekKey(new Date(`${today}T12:00:00`));
   if (existing.some((s) => s.id === wk)) return null;
-  return { id: wk, date: today, bands: bands.map((b) => ({ domain: b.domain, signal: b.signal, band: b.band })) };
+  const counts = domainMilestoneCounts(milestones);
+  return {
+    id: wk,
+    date: today,
+    bands: bands.map((b) => {
+      const c = counts.get(b.domain);
+      return { domain: b.domain, signal: b.signal, band: b.band, reached: c?.reached ?? 0, total: c?.total ?? 0 };
+    }),
+  };
 }
 
 /** Per-domain change vs the previous snapshot (for trend arrows). */

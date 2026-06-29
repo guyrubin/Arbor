@@ -1,12 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { Check, Sparkles, RefreshCw, Brain, Eye, Plus, ExternalLink, PartyPopper, BookOpen, Trash2, Pencil, ChevronDown, Baby } from "lucide-react";
+import { Sparkles, RefreshCw, Brain, Eye, Plus, ExternalLink, PartyPopper, BookOpen, Trash2, Pencil, ChevronDown, ChevronLeft, ChevronRight, Baby, Gamepad2 } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
-import { ProgressRing } from "../ui/ProgressRing";
-import { cardCls } from "../ui/kit";
+import { cardCls, ProgressBar, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import { bandForAgeMonths, comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
@@ -32,7 +31,6 @@ export default function MilestonesTab() {
     addCustomMilestone,
     checkedMilestones,
     totalMilestones,
-    milestonesPercent,
     handleGenerateMilestoneScaffold,
     isAnalyzingMilestones,
     milestoneAnalysisOfGaps,
@@ -45,9 +43,12 @@ export default function MilestonesTab() {
     updateMilestoneTitle,
   } = useArbor();
 
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const isRtl = uiLang === "he";
   const domainOptions = framework.domains;
-  const [activeDomain, setActiveDomain] = useState<string>("all");
+  // openDomain === null → the "all domains" master list (the closed Map);
+  // set → the single-domain drill-in detail pane.
+  const [openDomain, setOpenDomain] = useState<string | null>(null);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [explaining, setExplaining] = useState<Record<string, boolean>>({});
 
@@ -126,8 +127,6 @@ export default function MilestonesTab() {
     }
     return map;
   }, [milestones, domainOptions]);
-
-  const visibleDomains = activeDomain === "all" ? domainOptions : domainOptions.filter((d) => d.id === activeDomain);
 
   const onToggle = (id: string, wasChecked: boolean) => {
     handleToggleMilestone(id);
@@ -254,194 +253,276 @@ export default function MilestonesTab() {
       .map(([months, v]) => ({ months, label: v.label, items: v.items }));
   };
 
+  /** The age-banded checklist for one domain — reused inside the drill-in pane.
+   *  Identical band/disclosure/renderItem behavior as before; only relocated. */
+  const renderDomainChecklist = (domId: string) => {
+    const itemsInDom = milestones.filter((m) => m.domain === domId);
+    const bands = groupByBand(itemsInDom);
+    if (itemsInDom.length === 0) {
+      return <p className="text-[10px] italic" style={{ color: "var(--arbor-muted)" }}>{t("ms.noMilestones")}</p>;
+    }
+    return (
+      <div className="space-y-2.5">
+        {bands.map((band) => {
+          const isCurrent = band.months === currentBand.months;
+          const isEarlier = band.months !== -1 && band.months < currentBand.months;
+          const isAhead = band.months !== -1 && band.months > currentBand.months;
+          const collapsed = isEarlier && !openEarlierBands[band.months];
+          const checkedInBand = band.items.filter((m) => m.checked).length;
+          return (
+            <div key={band.months} className="space-y-2">
+              <button
+                type="button"
+                onClick={() => { if (isEarlier) setOpenEarlierBands((p) => ({ ...p, [band.months]: !p[band.months] })); }}
+                aria-expanded={!collapsed}
+                className="w-full flex items-center justify-between gap-2 text-start"
+                style={{ cursor: isEarlier ? "pointer" : "default" }}
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: isCurrent ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{band.label}</span>
+                  {isCurrent && <span className="text-[8px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.currentBand")}</span>}
+                  {isAhead && <span className="text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.aheadBand")}</span>}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-bold" style={{ color: "var(--arbor-muted)" }}>{checkedInBand}/{band.items.length}</span>
+                  {isEarlier && (
+                    <ChevronDown className="w-3.5 h-3.5 transition-transform" style={{ color: "var(--arbor-muted)", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }} />
+                  )}
+                </span>
+              </button>
+              <AnimatePresence initial={false}>
+                {!collapsed && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden space-y-2">
+                    {band.items.map(renderItem)}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {collapsed && (
+                <button
+                  type="button"
+                  onClick={() => setOpenEarlierBands((p) => ({ ...p, [band.months]: true }))}
+                  className="text-[10px] font-bold"
+                  style={{ color: "var(--arbor-green-ink)" }}
+                >
+                  {t("ms.showEarlier")}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Loop-2 affordance: turn a Map domain into a playful kid quest. Routes to the
+  // existing Daily Play activity library (which surfaces in the child's world),
+  // seeded with the domain context — no new write path or capability invented.
+  const assignActivity = (domId: string, domLabel: string) => {
+    setChatInput(`Suggest one playful, age-appropriate activity I can assign ${childProfile.name || "my child"} to gently support "${domLabel}". Keep it to a single quest they'd enjoy.`);
+    setSelectedLens("Vygotsky's Scaffolding");
+    setActiveTab("daily-play");
+  };
+
+  const ChevStart = isRtl ? ChevronRight : ChevronLeft;
+  const ChevEnd = isRtl ? ChevronLeft : ChevronRight;
+  const firstName = (childProfile.name || "").split(" ")[0];
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          {/* The child's memory portrait — modest, no comic frame in the parent register. */}
-          <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
-          <div>
-            <h2 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h2>
-            <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("ms.subtitle")}</p>
-          </div>
-        </div>
-        <div className={`${cardCls} p-4 text-center`}>
-          <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</span>
-          <div className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{checkedMilestones} <span className="text-lg font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")}</span> {totalMilestones}</div>
-          <span className="text-[9px] block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.snapshotNotScore")}</span>
+      <div className="flex items-center gap-3.5">
+        {/* The child's memory portrait — modest, no comic frame in the parent register. */}
+        <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
+        <div>
+          <h2 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h2>
+          <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("ms.subtitle")}</p>
         </div>
       </div>
 
-      {/* B1 — Baby/toddler lead: name the current developmental stage, reassurance-first.
-          Only for under-2s, where "is my baby on track?" is the whole question. */}
-      {comparisonMonths < 24 && (
-        <div className={`${cardCls} p-5`} style={{ background: "var(--arbor-green-soft)" }}>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
-            <span className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{currentBand.label}</span>
-            {corrected.applied && (
-              <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "#fff" }}>
-                {t("ms.correctedBadge")} · {corrected.correctedMonths}m
-              </span>
-            )}
-          </div>
-          <p className="text-[13px] leading-relaxed mt-1.5 max-w-xl" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
-        </div>
-      )}
-
-      {/* Corrected-age (preterm) control + badge */}
-      <div className={`${cardCls} p-4`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-2.5">
-            <span className="p-1.5 rounded-lg flex items-center justify-center mt-0.5" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Baby className="w-4 h-4" /></span>
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ms.bornEarly")}</span>
-                {corrected.applied && (
-                  <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
-                    {t("ms.correctedBadge")} · {corrected.correctedMonths}m
-                  </span>
-                )}
+      {/* Master/detail spine: left rail = the persistent Development Map summary
+          (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
+          right pane = the seven-domain master list, or a single-domain drill-in. */}
+      <Split
+        ratio="1fr 1.4fr"
+        left={
+          <div className="space-y-5 md:sticky md:top-4">
+            {/* Development Map summary — count headline only, no verdict score. */}
+            <div className={`${cardCls} p-6`}>
+              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.developmentMap")}</span>
+              <div className="flex items-center gap-3.5 mt-4">
+                <HeroAvatar size={48} animate={false} ring={false} className="flex-shrink-0" />
+                <div>
+                  <div className="text-3xl font-extrabold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>
+                    {checkedMilestones} <span className="text-lg font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")}</span> {totalMilestones}
+                  </div>
+                  <div className="text-[10px] uppercase font-extrabold tracking-wider mt-1" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</div>
+                </div>
               </div>
-              <p className="text-[11px] leading-relaxed max-w-xl" style={{ color: "var(--arbor-muted)" }}>{t("ms.gestationHint")}</p>
+              <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.snapshotNotScore")}</p>
+
+              {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
+              {comparisonMonths < 24 && (
+                <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[9px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
+                    <span className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{currentBand.label}</span>
+                    {corrected.applied && (
+                      <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "#fff" }}>
+                        {t("ms.correctedBadge")} · {corrected.correctedMonths}m
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[12px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
+                </div>
+              )}
             </div>
-          </div>
-          {!showGestation && (
-            <button
-              type="button"
-              onClick={() => { setGestationDraft(gestationalWeeks ? String(gestationalWeeks) : ""); setShowGestation(true); }}
-              className="text-xs font-bold px-3 py-2 rounded-xl transition self-start whitespace-nowrap"
-              style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}
-            >
-              {gestationalWeeks ? `${gestationalWeeks}w · ${t("ms.gestationSave")}` : t("ms.gestationLabel")}
-            </button>
-          )}
-        </div>
-        {showGestation && (
-          <form
-            onSubmit={(e) => { e.preventDefault(); const n = Number(gestationDraft); saveGestation(Number.isFinite(n) && n > 0 ? n : null); }}
-            className="flex flex-col sm:flex-row gap-2 items-stretch mt-3"
-          >
-            <label className="flex-1 flex items-center gap-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-              {t("ms.gestationLabel")}
-              <input
-                autoFocus
-                type="number"
-                min={22}
-                max={42}
-                inputMode="numeric"
-                value={gestationDraft}
-                onChange={(e) => setGestationDraft(e.target.value)}
-                placeholder="40"
-                className="w-24 rounded-xl px-3 py-2 text-sm focus:outline-none"
-                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-              />
-            </label>
-            <button type="submit" disabled={savingGestation} className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
-              {savingGestation ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : t("ms.gestationSave")}
-            </button>
-            <button type="button" disabled={savingGestation} onClick={() => saveGestation(null)} className="text-xs px-3 py-2 rounded-xl" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{t("ms.gestationClear")}</button>
-            <button type="button" onClick={() => setShowGestation(false)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
-          </form>
-        )}
-      </div>
 
-      {/* Domain filter tabs with progress rings */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setActiveDomain("all")}
-          className="px-4 py-2 rounded-xl text-xs font-bold transition"
-          style={activeDomain === "all" ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-        >
-          {t("ms.all")} · {milestonesPercent}%
-        </button>
-        {domainOptions.map((dom) => {
-          const s = domainStats[dom.id] || { total: 0, checked: 0 };
-          const pct = s.total ? Math.round((s.checked / s.total) * 100) : 0;
-          const on = activeDomain === dom.id;
-          return (
-            <button
-              key={dom.id}
-              onClick={() => setActiveDomain(dom.id)}
-              className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
-              style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-            >
-              <ProgressRing value={pct} size={22} stroke={3} />
-              {dom.label.split(" ")[0]}
-              <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{s.checked}/{s.total}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Checklist domains */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-        {visibleDomains.map((dom) => {
-          const itemsInDom = milestones.filter((m) => m.domain === dom.id);
-          const bands = groupByBand(itemsInDom);
-          return (
-            <div key={dom.id} className={`${cardCls} p-5 space-y-3`}>
-              <h3 className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
-                <span className="p-1.5 rounded-lg flex items-center justify-center" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Check className="w-4 h-4" /></span>
-                {dom.label}
-              </h3>
-
-              <div className="space-y-2.5">
-                {bands.map((band) => {
-                  const isCurrent = band.months === currentBand.months;
-                  const isEarlier = band.months !== -1 && band.months < currentBand.months;
-                  const isAhead = band.months !== -1 && band.months > currentBand.months;
-                  // Earlier bands collapse by default (progressive disclosure);
-                  // the current band and anything ahead/other stay open.
-                  const collapsed = isEarlier && !openEarlierBands[band.months];
-                  const checkedInBand = band.items.filter((m) => m.checked).length;
-                  return (
-                    <div key={band.months} className="space-y-2">
-                      <button
-                        type="button"
-                        onClick={() => { if (isEarlier) setOpenEarlierBands((p) => ({ ...p, [band.months]: !p[band.months] })); }}
-                        aria-expanded={!collapsed}
-                        className="w-full flex items-center justify-between gap-2 text-start"
-                        style={{ cursor: isEarlier ? "pointer" : "default" }}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: isCurrent ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{band.label}</span>
-                          {isCurrent && <span className="text-[8px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.currentBand")}</span>}
-                          {isAhead && <span className="text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.aheadBand")}</span>}
+            {/* Corrected-age (preterm) control + badge — relocated into the rail. */}
+            <div className={`${cardCls} p-4`}>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-2.5">
+                  <span className="p-1.5 rounded-lg flex items-center justify-center mt-0.5" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Baby className="w-4 h-4" /></span>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ms.bornEarly")}</span>
+                      {corrected.applied && (
+                        <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
+                          {t("ms.correctedBadge")} · {corrected.correctedMonths}m
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-bold" style={{ color: "var(--arbor-muted)" }}>{checkedInBand}/{band.items.length}</span>
-                          {isEarlier && (
-                            <ChevronDown className="w-3.5 h-3.5 transition-transform" style={{ color: "var(--arbor-muted)", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }} />
-                          )}
-                        </span>
-                      </button>
-                      <AnimatePresence initial={false}>
-                        {!collapsed && (
-                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden space-y-2">
-                            {band.items.map(renderItem)}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                      {collapsed && (
-                        <button
-                          type="button"
-                          onClick={() => setOpenEarlierBands((p) => ({ ...p, [band.months]: true }))}
-                          className="text-[10px] font-bold"
-                          style={{ color: "var(--arbor-green-ink)" }}
-                        >
-                          {t("ms.showEarlier")}
-                        </button>
                       )}
                     </div>
+                    <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.gestationHint")}</p>
+                  </div>
+                </div>
+                {!showGestation && (
+                  <button
+                    type="button"
+                    onClick={() => { setGestationDraft(gestationalWeeks ? String(gestationalWeeks) : ""); setShowGestation(true); }}
+                    className="text-xs font-bold px-3 py-2 rounded-xl transition self-start whitespace-nowrap"
+                    style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}
+                  >
+                    {gestationalWeeks ? `${gestationalWeeks}w · ${t("ms.gestationSave")}` : t("ms.gestationLabel")}
+                  </button>
+                )}
+              </div>
+              {showGestation && (
+                <form
+                  onSubmit={(e) => { e.preventDefault(); const n = Number(gestationDraft); saveGestation(Number.isFinite(n) && n > 0 ? n : null); }}
+                  className="flex flex-col gap-2 items-stretch mt-3"
+                >
+                  <label className="flex-1 flex items-center gap-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                    {t("ms.gestationLabel")}
+                    <input
+                      autoFocus
+                      type="number"
+                      min={22}
+                      max={42}
+                      inputMode="numeric"
+                      value={gestationDraft}
+                      onChange={(e) => setGestationDraft(e.target.value)}
+                      placeholder="40"
+                      className="w-24 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                      style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+                    />
+                  </label>
+                  <div className="flex gap-2 items-stretch">
+                    <button type="submit" disabled={savingGestation} className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
+                      {savingGestation ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : t("ms.gestationSave")}
+                    </button>
+                    <button type="button" disabled={savingGestation} onClick={() => saveGestation(null)} className="text-xs px-3 py-2 rounded-xl" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{t("ms.gestationClear")}</button>
+                    <button type="button" onClick={() => setShowGestation(false)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        }
+        right={
+          openDomain === null ? (
+            /* ── Closed Map: the seven domains as tappable rows with COUNT bars ── */
+            <div className={`${cardCls} p-6`}>
+              <h3 className="text-[15px] font-extrabold mb-4" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.developmentMap")}</h3>
+              <div className="flex flex-col gap-3.5">
+                {domainOptions.map((dom) => {
+                  const s = domainStats[dom.id] || { total: 0, checked: 0 };
+                  const dv = domainVisual(dom.id);
+                  const Icon = dv.icon;
+                  return (
+                    <button
+                      key={dom.id}
+                      type="button"
+                      onClick={() => setOpenDomain(dom.id)}
+                      className="text-start rounded-[14px] p-3 transition hover:bg-[var(--arbor-paper-deep)]"
+                      style={{ border: "1px solid var(--arbor-rule)", minHeight: 44 }}
+                    >
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <Icon className="w-[18px] h-[18px] flex-shrink-0" style={{ color: PASTEL[dv.tone].ink }} />
+                        <span className="flex-1 text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{dom.label}</span>
+                        <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-muted)" }}>{s.checked}/{s.total} {t("ms.domainOf")}</span>
+                        <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
+                      </div>
+                      <ProgressBar value={s.checked} total={s.total} tone={dv.tone} height={9} />
+                    </button>
                   );
                 })}
-                {itemsInDom.length === 0 && <p className="text-[10px] italic" style={{ color: "var(--arbor-muted)" }}>{t("ms.noMilestones")}</p>}
               </div>
             </div>
-          );
-        })}
-      </div>
+          ) : (
+            /* ── Domain drill-in: back-link + header + banded checklist + hints ── */
+            (() => {
+              const dom = domainOptions.find((d) => d.id === openDomain) || domainOptions[0];
+              const s = domainStats[dom.id] || { total: 0, checked: 0 };
+              const dv = domainVisual(dom.id);
+              const Icon = dv.icon;
+              return (
+                <div className={`${cardCls} p-6 space-y-4 text-xs`}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenDomain(null)}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-extrabold rounded-lg px-2.5 py-1.5 transition"
+                    style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
+                  >
+                    <ChevStart className="w-4 h-4" /> {t("ms.allDomains")}
+                  </button>
+
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-[13px] flex items-center justify-center flex-shrink-0" style={{ width: 46, height: 46, background: PASTEL[dv.tone].soft }}>
+                      <Icon className="w-6 h-6" style={{ color: PASTEL[dv.tone].ink }} />
+                    </span>
+                    <div className="flex-1">
+                      <div className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{dom.label}</div>
+                      <div className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{s.checked}/{s.total} {t("ms.domainOf")}</div>
+                    </div>
+                  </div>
+                  <ProgressBar value={s.checked} total={s.total} tone={dv.tone} height={9} />
+
+                  {renderDomainChecklist(dom.id)}
+
+                  {/* Loop-2: assign a playful activity for this domain → kid quest. */}
+                  <button
+                    type="button"
+                    onClick={() => assignActivity(dom.id, dom.label)}
+                    className="w-full flex items-center gap-2.5 rounded-[13px] p-3 text-start transition"
+                    style={{ background: "var(--arbor-peach-soft)", border: "1px solid rgba(217,118,63,0.25)", minHeight: 44 }}
+                  >
+                    <Gamepad2 className="w-[18px] h-[18px] flex-shrink-0" style={{ color: "var(--arbor-peach-ink)" }} />
+                    <div className="flex-1">
+                      <div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-peach-ink)" }}>{t("ms.assignActivity")}</div>
+                      <div className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("ms.assignHint", { name: firstName || childProfile.name })}</div>
+                    </div>
+                    <ChevEnd className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-peach-ink)" }} />
+                  </button>
+
+                  {/* Connective-tissue hint: marking skills feeds Map/Academy/Care. */}
+                  <div className="flex items-start gap-2.5 rounded-[13px] p-3.5" style={{ background: "var(--arbor-sky-soft)" }}>
+                    <RefreshCw className="w-[18px] h-[18px] flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-sky-ink)" }} />
+                    <span className="text-[12px] leading-relaxed font-semibold" style={{ color: "var(--arbor-sky-ink)" }}>{t("ms.mapHint")}</span>
+                  </div>
+                </div>
+              );
+            })()
+          )
+        }
+      />
 
       {/* Add custom milestone */}
       <div className={`${cardCls} p-5`}>

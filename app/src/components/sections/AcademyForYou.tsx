@@ -31,7 +31,7 @@ import { computeDevScore } from "../../growth/devScore";
 import { MASTERCLASSES, FRAME_LABELS } from "../../lib/masterclasses";
 import type { FrameId } from "../../lib/masterclasses";
 import framework from "../../framework.json";
-import { cardCls } from "../ui/kit";
+import { cardCls, ProgressBar, RadialProgress, domainVisual, PASTEL } from "../ui/kit";
 
 // ── Domain label lookup (mirrors DevScoreCard + ScholarHubCard) ───────────────
 
@@ -329,47 +329,89 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
         )}
       </div>
 
-      {/* ── All-domains course roll-up ──────────────────────────────────────────
-          NOT rendered as a ranked deficit list — ordered alphabetically by domain id.
-          Each domain shows courses explored of available. */}
-      {domainRows.length > 0 && (
-        <div
-          className={`${cardCls} p-5`}
-          data-testid="academy-foryou-all-domains"
-        >
-          <h3
-            className="text-[13px] font-extrabold uppercase tracking-widest mb-4"
-            style={{ color: "var(--arbor-muted)" }}
+      {/* ── Learning Map — all-domains course roll-up ───────────────────────────
+          The design's "Learning Map" spine: an overall progress ring over a
+          per-domain list of COUNT bars (icon + dot + cleared "X of Y explored"
+          label + a count-based bar). NOT a ranked deficit list — ordered
+          alphabetically by domain id. The ring/bars render value/total COUNTS
+          (explored masterclasses of available), never a 0–100 competence verdict;
+          the cleared verbatim "X of Y explored" text is kept in ADDITION to the
+          bar. Ring accent is --arbor-green-ink via tone="mint" (never blue). */}
+      {domainRows.length > 0 && (() => {
+        const totalExplored = domainRows.reduce((s, r) => s + r.explored, 0);
+        const totalAvailable = domainRows.reduce((s, r) => s + r.available, 0);
+        return (
+          <div
+            className={`${cardCls} p-5`}
+            data-testid="academy-foryou-all-domains"
           >
-            {t("foryou.allDomainsHeader")}
-          </h3>
-          <div className="space-y-3">
-            {/* Alphabetical order only — never rendered as a ranked deficit list */}
-            {domainRows.map((row) => (
-              <div
-                key={row.domainId}
-                className="flex items-center justify-between gap-3"
-                data-testid={`academy-foryou-domain-row-${row.domainId}`}
-              >
-                <span
-                  className="text-[13px] font-bold truncate flex-1 min-w-0"
-                  style={{ color: "var(--arbor-ink)" }}
-                  title={labelFor(row.domainId)}
-                >
-                  {labelFor(row.domainId)}
+            <h3
+              className="text-[13px] font-extrabold uppercase tracking-widest mb-4"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              {t("foryou.allDomainsHeader")}
+            </h3>
+
+            {/* Overall ring — a COUNT of explored courses across domains, not a
+                competence score. Centre label shows the raw count, never "%". */}
+            <div className="flex items-center gap-4 mb-5">
+              <RadialProgress value={totalExplored} total={totalAvailable} tone="mint" size={88} thickness={9}>
+                <span className="text-center leading-none">
+                  <span className="block text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+                    {totalExplored}
+                  </span>
+                  <span className="block text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                    / {totalAvailable}
+                  </span>
                 </span>
-                {/* "[X] of [Y] explored" — VERBATIM cleared label */}
-                <span
-                  className="text-[12px] font-extrabold flex-shrink-0"
-                  style={{ color: "var(--arbor-muted)" }}
-                >
-                  {t("foryou.progress", { x: row.explored, y: row.available })}
-                </span>
-              </div>
-            ))}
+              </RadialProgress>
+              <p className="text-[13px] leading-relaxed min-w-0" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
+                {t("foryou.progress", { x: totalExplored, y: totalAvailable })}
+              </p>
+            </div>
+
+            <div className="space-y-3.5">
+              {/* Alphabetical order only — never rendered as a ranked deficit list */}
+              {domainRows.map((row) => {
+                const v = domainVisual(row.domainId);
+                const Icon = v.icon;
+                return (
+                  <div
+                    key={row.domainId}
+                    data-testid={`academy-foryou-domain-row-${row.domainId}`}
+                  >
+                    <div className="flex items-center gap-2.5 mb-1.5">
+                      {/* leading domain color dot + lucide icon */}
+                      <span
+                        className="inline-flex items-center justify-center rounded-lg flex-shrink-0"
+                        style={{ background: PASTEL[v.tone].soft, color: PASTEL[v.tone].ink, width: 26, height: 26 }}
+                      >
+                        <Icon className="w-3.5 h-3.5" aria-hidden />
+                      </span>
+                      <span
+                        className="text-[13px] font-bold truncate flex-1 min-w-0"
+                        style={{ color: "var(--arbor-ink)" }}
+                        title={labelFor(row.domainId)}
+                      >
+                        {labelFor(row.domainId)}
+                      </span>
+                      {/* "[X] of [Y] explored" — VERBATIM cleared label, kept in ADDITION to the bar */}
+                      <span
+                        className="text-[12px] font-extrabold flex-shrink-0"
+                        style={{ color: "var(--arbor-muted)" }}
+                      >
+                        {t("foryou.progress", { x: row.explored, y: row.available })}
+                      </span>
+                    </div>
+                    {/* COUNT bar (explored / available), domain-colored — not a verdict */}
+                    <ProgressBar value={row.explored} total={row.available} tone={v.tone} height={7} />
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Non-diagnostic provenance note */}
       <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-faint)" }}>

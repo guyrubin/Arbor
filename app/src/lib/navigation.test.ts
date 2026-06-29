@@ -1,32 +1,38 @@
 import { describe, it, expect } from "vitest";
-import { SECTIONS, sectionForTab, primaryTabOf } from "./navigation";
+import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection } from "./navigation";
+import { ALL_TABS } from "../context/ArborContext";
 
-/** Structural guard for the five-pillar information architecture — aligned to
- *  the "Arbor Web App" prototype: Today / My Child / Grow / Care / Academy.
- *  Ask Arbor (coach) is a top-bar action + Today coach card, NOT a sidebar row,
- *  but it stays a valid route whose fallback resolves to "today". Catches
- *  accidental drift: wrong section count, duplicate/colliding tabs, empty
- *  sections, a primary tab that doesn't belong, or a demoted leaf that no
- *  longer resolves. */
+/** Structural guard for the UC-1 EIGHT-category information architecture —
+ *  aligned to the "Arbor Web App" prototype: Today / Behaviors / Growth /
+ *  Journal / Academy / Ask Arbor / Care Network / Profile. Catches accidental
+ *  drift: wrong section count, duplicate/colliding tabs, empty sections, a
+ *  primary tab that doesn't belong, or a leaf that no longer resolves. */
 describe("navigation IA", () => {
-  it("exposes exactly five task-based pillars", () => {
-    expect(SECTIONS).toHaveLength(5);
-    expect(SECTIONS.map((s) => s.id)).toEqual(["today", "child", "grow", "care", "academy"]);
+  it("exposes exactly eight task-based categories", () => {
+    expect(SECTIONS).toHaveLength(8);
+    expect(SECTIONS.map((s) => s.id)).toEqual([
+      "today", "behaviors", "growth", "journal", "academy", "ask", "care", "profile",
+    ]);
   });
 
-  it("My Child collapses the development leaves into one Development hub", () => {
-    const child = SECTIONS.find((s) => s.id === "child");
-    const tabs = child?.items.map((i) => i.tab) ?? [];
-    expect(tabs).toEqual(["timeline", "development", "behaviors", "language"]);
+  it("Growth holds the Development hub + growth tools", () => {
+    const growth = SECTIONS.find((s) => s.id === "growth");
+    const tabs = growth?.items.map((i) => i.tab) ?? [];
+    expect(tabs).toEqual(["development", "milestones", "language", "daily-play", "practice", "plans"]);
   });
 
-  it("Grow holds Daily Play, the Practice hub, and Growth Plans", () => {
-    const grow = SECTIONS.find((s) => s.id === "grow");
-    const tabs = grow?.items.map((i) => i.tab) ?? [];
-    expect(tabs).toEqual(["daily-play", "practice", "plans"]);
+  it("Journal surfaces the new journal leaf and keeps the Story spine", () => {
+    const journal = SECTIONS.find((s) => s.id === "journal");
+    const tabs = journal?.items.map((i) => i.tab) ?? [];
+    expect(tabs).toEqual(["journal", "timeline"]);
   });
 
-  it("Care leads with the consolidated Consult flow", () => {
+  it("Ask Arbor is a first-class category leading with the coach", () => {
+    const ask = SECTIONS.find((s) => s.id === "ask");
+    expect(ask?.items[0].tab).toBe("coach");
+  });
+
+  it("Care leads with the consolidated Consult flow and keeps Safety", () => {
     const care = SECTIONS.find((s) => s.id === "care");
     expect(care?.items[0].tab).toBe("consult");
     expect(care?.items.some((i) => i.tab === "safety")).toBe(true);
@@ -54,26 +60,39 @@ describe("navigation IA", () => {
       for (const it of s.items) expect(sectionForTab(it.tab).id).toBe(s.id);
   });
 
+  it("subTabsForSection is Overview-first (the section's primary item leads)", () => {
+    for (const s of SECTIONS) {
+      const sub = subTabsForSection(s);
+      expect(sub[0].tab).toBe(primaryTabOf(s));
+    }
+  });
+
   it("primaryTabOf returns a tab that belongs to the section", () => {
     for (const s of SECTIONS) expect(s.items.some((i) => i.tab === primaryTabOf(s))).toBe(true);
   });
 
   it("demoted leaves still resolve to a section via fallback (nothing deleted)", () => {
-    // Former primary leaves are now reached via hubs/spines, but remain valid
-    // routes; sectionForTab must still map them so the sidebar highlights right.
-    expect(sectionForTab("copilot").id).toBe("child");   // → Development hub
-    expect(sectionForTab("profile").id).toBe("child");
-    expect(sectionForTab("milestones").id).toBe("child");
-    expect(sectionForTab("screening").id).toBe("child");
-    expect(sectionForTab("memory").id).toBe("child");
-    expect(sectionForTab("speech").id).toBe("grow");      // → Practice hub
-    expect(sectionForTab("adventures").id).toBe("grow");
-    expect(sectionForTab("reports").id).toBe("care");     // → Consult
+    expect(sectionForTab("copilot").id).toBe("growth");   // → Development hub
+    expect(sectionForTab("journey").id).toBe("growth");
+    expect(sectionForTab("screening").id).toBe("growth");
+    expect(sectionForTab("strengths").id).toBe("growth");
+    expect(sectionForTab("speech").id).toBe("growth");      // → Practice hub
+    expect(sectionForTab("adventures").id).toBe("growth");
+    expect(sectionForTab("weekly").id).toBe("profile");
+    expect(sectionForTab("scholar").id).toBe("ask");
+    expect(sectionForTab("reports").id).toBe("care");       // → Consult
     expect(sectionForTab("find-pro").id).toBe("care");
     expect(sectionForTab("handoff").id).toBe("care");
-    // Ask Arbor (coach) is folded into Today (top-bar action + coach card), not
-    // a sidebar row — but it stays a valid route and must resolve to "today".
-    expect(sectionForTab("coach").id).toBe("today");
-    expect(sectionForTab("scholar").id).toBe("today");
+  });
+
+  // UC-1 capability-floor enforcer: EVERY ActiveTab value (the full route
+  // registry) must resolve to a section so the sidebar always highlights and no
+  // leaf is orphaned. This is the 45-route floor guard.
+  it("sectionForTab resolves for EVERY ActiveTab value (no orphaned route)", () => {
+    for (const tab of ALL_TABS) {
+      const sec = sectionForTab(tab);
+      expect(sec, `tab "${tab}" did not resolve to a section`).toBeTruthy();
+      expect(SECTIONS.map((s) => s.id)).toContain(sec.id);
+    }
   });
 });

@@ -5,7 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import type { ShareGrant, ShareRole } from "../../types";
-import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey } from "../ui/kit";
+import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
 
 const ROLE_META: Record<ShareRole, { label: string; tone: PastelKey }> = {
@@ -111,9 +111,7 @@ export default function CareTeam() {
                   return (
                     <div key={g.id} className={`${cardCls} p-5`}>
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold" style={{ background: PASTEL[meta.tone].soft, color: PASTEL[meta.tone].ink, fontFamily: "var(--font-display)" }}>
-                          {g.recipientEmail.slice(0, 2).toUpperCase()}
-                        </div>
+                        <InitialsTile name={g.recipientEmail} tone={meta.tone} />
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-extrabold truncate" style={{ color: "var(--arbor-ink)" }}>{g.recipientEmail}</h3>
                           <p className="text-xs" style={{ color: PASTEL[meta.tone].ink }}>{meta.label}</p>

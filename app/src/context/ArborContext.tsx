@@ -74,6 +74,7 @@ export type ActiveTab =
   | "strengths"      // Child Intelligence › Strengths & Challenges
   | "screening"      // Child Intelligence › Development Check (non-diagnostic screener)
   | "timeline"       // Child Intelligence › Story (unified signal timeline)
+  | "journal"        // Journal › action-forward log + flat moment feed (UC-1; additive to timeline)
   | "find-pro"       // Care Network › Find a Professional
   | "care-team"      // Care Network › My Care Team
   | "appointments"   // Care Network › Appointments
@@ -121,7 +122,7 @@ export type ActiveTab =
 // working browser back/forward button.
 const VALID_TABS = new Set<string>([
   "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
-  "profile", "memory", "strengths", "screening", "timeline", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family", "comics",
+  "profile", "memory", "strengths", "screening", "timeline", "journal", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family", "comics",
   "speech", "mimic", "feelings", "journey", "adventures", "copilot",
   "development", "daily-play", "practice", "consult",
   "attribution",
@@ -508,6 +509,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   const milestonesPercent = totalMilestones > 0 ? Math.round((checkedMilestones / totalMilestones) * 100) : 0;
   const pendingMemoryItems = memoryReviewItems.filter((item) => item.status === "pending");
   const approvedMemoryItems = memoryReviewItems.filter((item) => item.status === "approved");
+  // UC-1: read-only unread-coach badge count for the Ask Arbor sidebar row.
+  // Honest signal: the coach's append-only review queue — facts the coach
+  // surfaced that still await the parent's approval. Never a fabricated "1".
+  const unreadCoachCount = pendingMemoryItems.length;
 
   // --- HANDLERS: SERVER API CALLS ---
 
@@ -1061,6 +1066,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     milestonesPercent,
     pendingMemoryItems,
     approvedMemoryItems,
+    unreadCoachCount,
     handleMemoryDecision,
     proposeMemory,
     handleCancelChat,

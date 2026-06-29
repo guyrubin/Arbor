@@ -61,10 +61,9 @@ export default function TopbarKidSwitcher() {
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: "6px",
-          width: "40px",
+          gap: "8px",
           height: "40px",
-          padding: "0 6px",
+          padding: "0 10px",
           borderRadius: "12px",
           background: "var(--arbor-paper-elevated)",
           border: "1px solid var(--arbor-rule)",
@@ -72,10 +71,25 @@ export default function TopbarKidSwitcher() {
           color: "var(--arbor-muted)",
           minWidth: "44px",      /* WCAG AA touch target */
           minHeight: "44px",
+          maxWidth: "180px",
           boxSizing: "border-box",
         }}
       >
         <Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={24} />
+        {/* UC-1: inline child name (avatar + name + chevron) */}
+        <span
+          style={{
+            fontSize: "var(--t-sm)",
+            fontWeight: 700,
+            color: "var(--arbor-ink)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+          }}
+        >
+          {activeChild.name}
+        </span>
         <ChevronDown
           aria-hidden="true"
           style={{

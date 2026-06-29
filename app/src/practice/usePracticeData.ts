@@ -150,7 +150,7 @@ export function useCopilot(
   const snapshotWritten = useRef<string | null>(null);
   useEffect(() => {
     if (!snapshotsCol.loaded || !data.speech.loaded) return;
-    const snap = pendingSnapshot(snapshotsCol.items, bands, data.today);
+    const snap = pendingSnapshot(snapshotsCol.items, bands, data.today, milestones);
     if (snap && snapshotWritten.current !== snap.id) {
       snapshotWritten.current = snap.id;
       void snapshotsCol.upsert(snap);

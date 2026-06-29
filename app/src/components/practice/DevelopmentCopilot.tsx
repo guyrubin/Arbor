@@ -7,6 +7,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
 import { DOMAIN_META } from "../../practice/content";
 import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
+import { domainMilestoneCounts } from "../../practice/signals";
 import { watchSignals } from "../../practice/watch";
 import type { ScreeningResult } from "../../lib/screening";
 import { track } from "../../lib/analytics";
@@ -39,16 +40,10 @@ export default function DevelopmentCopilot() {
   // Wave-3 (2026-06-27): the domain picture is now a flat COUNT of parent-
   // noticed milestones per domain (a parent-owned log), never the 0–100 band
   // signal. Mirrors DevScoreCard's parent-observed / count / mechanism register.
-  const domainCounts = useMemo(() => {
-    const map = new Map<string, { reached: number; total: number }>();
-    for (const m of milestones) {
-      const e = map.get(m.domain) ?? { reached: 0, total: 0 };
-      e.total += 1;
-      if (m.checked) e.reached += 1;
-      map.set(m.domain, e);
-    }
-    return map;
-  }, [milestones]);
+  // Keyed by PRACTICE domain (via MILESTONE_DOMAIN_MAP) so it lines up with the
+  // `bands` / DOMAIN_META keys the rows iterate; the same helper feeds the
+  // weekly-history count register so the live and historical views agree.
+  const domainCounts = useMemo(() => domainMilestoneCounts(milestones), [milestones]);
 
   const advCount = data.adventures.items.length;
   const advCorrect = data.adventures.items.filter((a) => a.correct).length;
@@ -221,14 +216,18 @@ export default function DevelopmentCopilot() {
       </SectionCard>
 
       <SectionCard title="Weekly history" icon={<History className="w-5 h-5" />} tone="sky">
-        {/* Wave-3 (2026-06-27): the longitudinal trend/sparkline block was removed —
-            it rendered a per-child "signal over time" trajectory, a verdict surface
-            the clinical firewall does not allow. The weekly snapshots below remain
-            for now; converting their 0–100 signal bars to the count register is a
-            larger data-shape change tracked in PRODUCT-BACKLOG (AP-CF-snapshots). */}
+        {/* AP-CF-snapshots (Wave-3, 2026-06-27): the weekly snapshots now render in
+            the COUNT register — parent-noticed milestones per domain over time —
+            never the 0–100 `signal` fill bars they used to. (The longitudinal
+            trend/sparkline block was already removed; the per-child "signal over
+            time" trajectory is a verdict surface the clinical firewall disallows.)
+            Snapshots persist `reached`/`total` (see signals.pendingSnapshot); older
+            snapshots without them fall back to the current milestone tally so the
+            view never reverts to a score. This is a conversation starter about what
+            you've noticed — never a diagnosis. */}
         {snapshots.length === 0 ? (
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-            The first weekly band snapshot will appear here once the dashboard has loaded practice data.
+            The first weekly snapshot will appear here once the dashboard has loaded practice data. It records how many milestones you&apos;ve noticed in each domain — a log, not a score.
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -238,22 +237,22 @@ export default function DevelopmentCopilot() {
                   <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{snap.id}</p>
                   <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{snap.date}</span>
                 </div>
-                <div className="space-y-2">
+                <ul className="space-y-1.5">
                   {snap.bands.map((b) => {
                     const meta = DOMAIN_META[b.domain];
+                    // Count register: prefer the snapshot's persisted parent-noticed
+                    // counts; fall back to the current tally for legacy snapshots.
+                    const fallback = domainCounts.get(b.domain);
+                    const reached = b.reached ?? fallback?.reached ?? 0;
+                    const total = b.total ?? fallback?.total ?? 0;
                     return (
-                      <div key={b.domain}>
-                        <div className="flex justify-between text-[10px] font-bold mb-1">
-                          <span style={{ color: meta.color }}>{meta.label}</span>
-                          <span style={{ color: "var(--arbor-muted)" }}>{Math.round(b.signal)}</span>
-                        </div>
-                        <div className="h-2 rounded-full" style={{ background: "rgba(41,51,63,0.08)" }}>
-                          <div className="h-2 rounded-full" style={{ width: `${b.signal}%`, background: meta.color }} />
-                        </div>
-                      </div>
+                      <li key={b.domain} className="flex items-baseline justify-between gap-2 text-[11px]">
+                        <span className="font-bold" style={{ color: meta.color }}>{meta.label}</span>
+                        <span style={{ color: "var(--arbor-muted)" }}>{reached} of {total} noticed</span>
+                      </li>
                     );
                   })}
-                </div>
+                </ul>
               </div>
             ))}
           </div>
