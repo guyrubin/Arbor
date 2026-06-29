@@ -107,6 +107,19 @@ describe("Kid Mode overlay — no child-data write contract", () => {
     }
   });
 
+  // The dashboard reads already-saved data through usePracticeData (a read hook);
+  // it must never itself write child data. The hold-exit button is pure UI.
+  it.each(["KidDashboard.tsx", "HoldExitButton.tsx"])(
+    "%s does not call any Firestore write helper",
+    (file) => {
+      const src = readSelf(file);
+      const writePaths = ["upsert(", "addDoc(", "setDoc(", "updateDoc(", "deleteDoc(", "writeBatch"];
+      for (const wp of writePaths) {
+        expect(src, `${file} must not call ${wp}`).not.toContain(wp);
+      }
+    },
+  );
+
   it("KidModeOverlay.tsx contains no raw hex literals", () => {
     const src = readSelf("KidModeOverlay.tsx");
     // Match 3/4/6-digit hex color literals that are NOT inside var(--...) calls
