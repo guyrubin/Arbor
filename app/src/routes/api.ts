@@ -28,7 +28,7 @@ import { billingCheckoutUrl } from "../server/billing.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
-import { buildWaitlistEntry, isValidEmail, type WaitlistStore } from "../server/waitlist.js";
+import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
 
 type ApiDeps = {
   config: ArborConfig;
@@ -43,6 +43,7 @@ type ApiDeps = {
   consultStore: ConsultStore;
   adminMetrics: AdminMetricsStore;
   waitlistStore: WaitlistStore;
+  waitlistNotifier?: WaitlistNotifier | null;
   /** C2: push token store (FCM). Off-by-default client-side via VITE_FIREBASE_VAPID_KEY. */
   pushTokenStore?: import("../server/pushTokens.js").PushTokenStore;
 };
@@ -78,7 +79,7 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, pushTokenStore }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore }: ApiDeps) => {
   const router = express.Router();
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
@@ -1969,7 +1970,11 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
     try {
       const isDuplicate = await waitlistStore.has(email);
       if (!isDuplicate) {
-        await waitlistStore.add(buildWaitlistEntry({ email, source, market }));
+        const entry = await waitlistStore.add(buildWaitlistEntry({ email, source, market }));
+        // WAITLIST-DECOUPLE: lead is now saved. Founder notification is best-effort —
+        // a delivery failure is logged but never fails the parent's request.
+        await notifyWaitlistSafely(waitlistNotifier, entry, (notifyError) =>
+          logger.error("Arbor Waitlist Notify Error", notifyError, { requestId: requestIdOf(req) }));
       }
       res.json({ ok: true, duplicate: isDuplicate });
     } catch (error: any) {

@@ -8,8 +8,8 @@
  *   4. duplicate email                 → idempotent ok + duplicate: true, no second record
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
-import { LocalWaitlistStore, buildWaitlistEntry, isValidEmail } from "./waitlist.js";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { LocalWaitlistStore, buildWaitlistEntry, createResendWaitlistNotifier, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier } from "./waitlist.js";
 
 // ── isValidEmail ──────────────────────────────────────────────────────────────
 
@@ -94,6 +94,92 @@ describe("LocalWaitlistStore", () => {
     const entry = buildWaitlistEntry({ email: "p@test.com" });
     const keys = Object.keys(entry);
     expect(keys.sort()).toEqual(["consentAt", "email", "id", "market", "source"].sort());
+  });
+});
+
+// ── Waitlist notification ─────────────────────────────────────────────────────
+
+describe("createResendWaitlistNotifier", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns null when email delivery is not configured", () => {
+    expect(createResendWaitlistNotifier({})).toBeNull();
+    expect(createResendWaitlistNotifier({ resendApiKey: "rk_test", notifyTo: "team@arbor.app" })).toBeNull();
+    expect(createResendWaitlistNotifier({ resendApiKey: "rk_test", notifyFrom: "Arbor <hello@arbor.app>" })).toBeNull();
+  });
+
+  it("sends a founder notification email for a new waitlist lead", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "email_123" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const notifier = createResendWaitlistNotifier({
+      resendApiKey: "rk_test",
+      notifyTo: "founder@arbor.app",
+      notifyFrom: "Arbor <waitlist@arbor.app>",
+    });
+
+    await notifier?.notify(buildWaitlistEntry({ email: "Parent@Example.com", source: "login-access", market: "il" }));
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    const [url, init] = calls[0];
+    expect(url).toBe("https://api.resend.com/emails");
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer rk_test");
+    const body = JSON.parse(String(init.body));
+    expect(body).toMatchObject({
+      from: "Arbor <waitlist@arbor.app>",
+      to: ["founder@arbor.app"],
+      subject: "New Arbor access request — parent@example.com",
+    });
+    expect(body.text).toContain("Email: parent@example.com");
+    expect(body.text).toContain("Source: login-access");
+    expect(body.text).toContain("Market: il");
+  });
+
+  it("raises an actionable error when the provider rejects delivery", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("bad api key", { status: 401 })));
+    const notifier = createResendWaitlistNotifier({
+      resendApiKey: "rk_bad",
+      notifyTo: "founder@arbor.app",
+      notifyFrom: "Arbor <waitlist@arbor.app>",
+    });
+
+    await expect(notifier?.notify(buildWaitlistEntry({ email: "parent@example.com" })))
+      .rejects.toThrow("Waitlist notification email failed: 401 bad api key");
+  });
+});
+
+// ── Decoupled best-effort notify (WAITLIST-DECOUPLE) ──────────────────────────
+//
+// The route saves the lead first, then notifies the founder best-effort. A notify
+// failure must NEVER throw out of that path (else the parent — whose lead saved —
+// is told it failed, and the retry hits dedup and silently drops the notification).
+
+describe("notifyWaitlistSafely", () => {
+  const entry = () => buildWaitlistEntry({ email: "parent@example.com", source: "login-access", market: "il" });
+
+  it("no-ops (returns false, no error) when no notifier is configured", async () => {
+    const errors: unknown[] = [];
+    await expect(notifyWaitlistSafely(null, entry(), (e) => errors.push(e))).resolves.toBe(false);
+    expect(errors).toHaveLength(0);
+  });
+
+  it("swallows a notifier failure: logs once, never throws, returns false (lead still succeeds)", async () => {
+    const errors: unknown[] = [];
+    const boom: WaitlistNotifier = { notify: async () => { throw new Error("resend down"); } };
+    await expect(notifyWaitlistSafely(boom, entry(), (e) => errors.push(e))).resolves.toBe(false);
+    expect(errors).toHaveLength(1);
+    expect((errors[0] as Error).message).toBe("resend down");
+  });
+
+  it("returns true and does not log when delivery succeeds", async () => {
+    const errors: unknown[] = [];
+    const ok: WaitlistNotifier = { notify: vi.fn(async () => {}) };
+    await expect(notifyWaitlistSafely(ok, entry(), (e) => errors.push(e))).resolves.toBe(true);
+    expect(ok.notify).toHaveBeenCalledOnce();
+    expect(errors).toHaveLength(0);
   });
 });
 

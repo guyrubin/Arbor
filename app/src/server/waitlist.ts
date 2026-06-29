@@ -29,6 +29,11 @@ export interface WaitlistStore {
   has(email: string): Promise<boolean>;
 }
 
+export interface WaitlistNotifier {
+  /** Notify the product/founder inbox that a new parent requested access. */
+  notify(entry: WaitlistEntry): Promise<void>;
+}
+
 // ── In-memory (dev) ──────────────────────────────────────────────────────────
 
 export class LocalWaitlistStore implements WaitlistStore {
@@ -87,6 +92,82 @@ export const createWaitlistStore = (config: ArborConfig): WaitlistStore =>
   config.memoryAdapter === "firestore"
     ? new FirestoreWaitlistStore(config)
     : new LocalWaitlistStore();
+
+// ── Email notification (prod opt-in) ──────────────────────────────────────────
+
+export const createResendWaitlistNotifier = (input: {
+  resendApiKey?: string;
+  notifyTo?: string;
+  notifyFrom?: string;
+}): WaitlistNotifier | null => {
+  const resendApiKey = input.resendApiKey?.trim();
+  const notifyTo = input.notifyTo?.trim();
+  const notifyFrom = input.notifyFrom?.trim();
+  if (!resendApiKey || !notifyTo || !notifyFrom) return null;
+
+  return {
+    async notify(entry: WaitlistEntry) {
+      const text = [
+        "New Arbor access request",
+        "",
+        `Email: ${entry.email}`,
+        `Source: ${entry.source || "unknown"}`,
+        `Market: ${entry.market || "unknown"}`,
+        `Consent recorded: ${entry.consentAt}`,
+        `Waitlist id: ${entry.id}`,
+      ].join("\n");
+
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: notifyFrom,
+          to: [notifyTo],
+          subject: `New Arbor access request — ${entry.email}`,
+          text,
+        }),
+      });
+
+      if (!response.ok) {
+        const details = (await response.text()).slice(0, 500);
+        throw new Error(`Waitlist notification email failed: ${response.status} ${details}`.trim());
+      }
+    },
+  };
+};
+
+export const createWaitlistNotifierFromEnv = (): WaitlistNotifier | null =>
+  createResendWaitlistNotifier({
+    resendApiKey: process.env.RESEND_API_KEY,
+    notifyTo: process.env.WAITLIST_NOTIFY_EMAIL || process.env.ARBOR_WAITLIST_NOTIFY_EMAIL,
+    notifyFrom: process.env.WAITLIST_NOTIFY_FROM || process.env.ARBOR_WAITLIST_NOTIFY_FROM,
+  });
+
+/**
+ * WAITLIST-DECOUPLE: best-effort founder notification. The parent's lead is ALREADY
+ * durably saved by the time we notify, so a delivery failure must never fail the
+ * parent's request (returning 502 would tell a parent whose signup succeeded that it
+ * failed, and the inevitable retry hits the dedup path and silently drops the notify).
+ * This swallows the error into `onError` and resolves — it never throws.
+ * Returns true iff the notification was delivered.
+ */
+export const notifyWaitlistSafely = async (
+  notifier: WaitlistNotifier | null | undefined,
+  entry: WaitlistEntry,
+  onError: (err: unknown) => void,
+): Promise<boolean> => {
+  if (!notifier) return false;
+  try {
+    await notifier.notify(entry);
+    return true;
+  } catch (err) {
+    onError(err);
+    return false;
+  }
+};
 
 // ── Builder ──────────────────────────────────────────────────────────────────
 
