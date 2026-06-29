@@ -16,7 +16,7 @@ import type { UiLang } from "../../lib/i18n";
 /** Lightweight app settings — wired to real app state (app language, trust panels,
  *  notifications, billing, and account). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { uiLang, setUiLang, t } = useLanguage();
+  const { uiLang, aiLang, setUiLang, t } = useLanguage();
   const { showAiRail, setShowAiRail, setActiveTab } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
@@ -29,7 +29,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const [busy, setBusy] = useState(false);
   const [accentTheme, setAccentTheme] = useState<AccentTheme>(getSavedTheme);
   const [draftUiLang, setDraftUiLang] = useState<UiLang>(uiLang);
-  const languageDirty = draftUiLang !== uiLang;
+  const languageDirty = draftUiLang !== uiLang || draftUiLang !== aiLang;
 
   useEffect(() => {
     if (open) setDraftUiLang(uiLang);
@@ -194,7 +194,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   key={k}
                   onClick={() => setDraftUiLang(k)}
                   aria-pressed={draftUiLang === k}
-                  className="px-3 py-1 rounded-lg text-xs font-bold transition"
+                  className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
                   style={draftUiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
                 >
                   {label}

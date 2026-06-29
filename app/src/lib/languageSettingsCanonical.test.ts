@@ -33,6 +33,8 @@ describe("language settings canonical surface", () => {
       expect(i18n).toContain(key);
     }
     expect(settings).toContain("draftUiLang");
+    expect(settings).toContain("draftUiLang !== uiLang || draftUiLang !== aiLang");
+    expect(settings).toContain("min-h-[44px] min-w-[44px]");
     expect(settings).toContain("handleSaveLanguage");
     expect(settings).toContain("handleCancelLanguage");
   });
