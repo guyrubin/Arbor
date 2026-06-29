@@ -10,6 +10,7 @@ import {
 } from "firebase/auth";
 import { auth, firebaseEnabled } from "../lib/firebase";
 import { setAuthTokenProvider } from "../lib/api";
+import { initNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
 
 export type AuthUser = {
@@ -129,6 +130,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setAuthTokenProvider(getIdToken);
     setAnalyticsUser(() => user?.uid);
+    // Epic A: activate the neural-voice engine when built with VITE_TTS_PROVIDER
+    // and the server reports /api/tts configured. No-op otherwise (browser floor).
+    void initNaturalVoice();
   }, [user?.uid]);
 
   const value: AuthContextValue = {
