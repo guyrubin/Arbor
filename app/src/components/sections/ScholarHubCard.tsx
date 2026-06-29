@@ -13,7 +13,8 @@
  */
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { BookOpen, Clock, ArrowLeft, ArrowRight, X } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { computeDevScore } from "../../growth/devScore";
@@ -66,7 +67,7 @@ export default function ScholarHubCard() {
             className="inline-flex items-center justify-center rounded-2xl flex-shrink-0"
             style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", width: 40, height: 40 }}
           >
-            <BookOpen className="w-5 h-5" aria-hidden />
+            <Icon name="menu_book" size={20} />
           </span>
           <span
             className="text-[11px] uppercase tracking-widest font-bold"
@@ -112,7 +113,7 @@ export default function ScholarHubCard() {
               className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
               style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
             >
-              <BookOpen className="w-3.5 h-3.5" aria-hidden />
+              <Icon name="menu_book" size={15} />
               {t("hub.scholar.eyebrow")}
             </span>
             <span
@@ -125,7 +126,7 @@ export default function ScholarHubCard() {
               className="inline-flex items-center gap-1 text-[11px] font-bold"
               style={{ color: "var(--arbor-muted)" }}
             >
-              <Clock className="w-3 h-3" aria-hidden />
+              <Icon name="schedule" size={13} />
               {t("hub.scholar.readMin", { n: article.readingMinutes })}
             </span>
           </div>
@@ -168,7 +169,7 @@ export default function ScholarHubCard() {
           className="inline-flex items-center justify-center rounded-2xl flex-shrink-0"
           style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", width: 40, height: 40 }}
         >
-          <BookOpen className="w-5 h-5" aria-hidden />
+          <Icon name="menu_book" size={20} />
         </span>
         <span
           className="text-[11px] uppercase tracking-widest font-bold"
@@ -209,7 +210,7 @@ export default function ScholarHubCard() {
             className="inline-flex items-center gap-1 text-[11px] font-bold"
             style={{ color: "var(--arbor-muted)" }}
           >
-            <Clock className="w-3 h-3" aria-hidden />
+            <Icon name="schedule" size={13} />
             {t("hub.scholar.readMin", { n: article.readingMinutes })}
           </span>
         </div>

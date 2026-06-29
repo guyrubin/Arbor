@@ -1,5 +1,6 @@
 import React, { lazy, useState, useEffect, useCallback } from "react";
-import { Gauge, CheckCircle2, UserCircle, CalendarDays, ClipboardCheck } from "lucide-react";
+import { Gauge, CheckCircle2, UserCircle, CalendarDays } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import HubTabs from "../ui/HubTabs";
 import DevScoreCard from "../sections/DevScoreCard";
@@ -93,7 +94,7 @@ export default function DevelopmentTab() {
           className="inline-flex items-center gap-2 rounded-2xl px-4 text-sm font-bold"
           style={{ minHeight: 44, background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
         >
-          <ClipboardCheck className="w-4 h-4" /> {t("mychild.quickcheck.cta")}
+          <Icon name="assignment_turned_in" size={16} /> {t("mychild.quickcheck.cta")}
         </button>
       </div>
       <ScreeningSheet open={checkOpen} onClose={() => setCheckOpen(false)} />

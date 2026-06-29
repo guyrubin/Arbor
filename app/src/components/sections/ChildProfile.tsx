@@ -1,10 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import {
-  UserCircle, CheckCircle2, Activity, Languages, Gem, Sprout, ArrowRight, Sparkles,
-  BookMarked, Waypoints, ClipboardCheck, Sliders, Users, UserPlus, RefreshCw, ListChecks,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
@@ -82,11 +79,11 @@ export default function ChildProfile() {
   // from data already in context (parent-logged moments, approved memory, plan
   // progress). Each row deep-links into its full tool. Counts only, no verdict.
   const activity = useMemo(() => {
-    type Row = { key: string; icon: LucideIcon; tone: PastelKey; title: string; sub?: string; tab: Parameters<typeof setActiveTab>[0]; ts: number };
+    type Row = { key: string; icon: string; tone: PastelKey; title: string; sub?: string; tab: Parameters<typeof setActiveTab>[0]; ts: number };
     const rows: Row[] = [];
     behaviorLogs.slice(0, 3).forEach((l) => {
       rows.push({
-        key: `b-${l.id}`, icon: Activity, tone: "coral", tab: "behaviors",
+        key: `b-${l.id}`, icon: "monitoring", tone: "coral", tab: "behaviors",
         title: t("cp.activity.moment"),
         sub: t("cp.activity.momentSub", { type: l.behaviorType, context: l.context }),
         ts: new Date(l.timestamp).getTime(),
@@ -94,7 +91,7 @@ export default function ChildProfile() {
     });
     approvedMemoryItems.slice(0, 2).forEach((m) => {
       rows.push({
-        key: `m-${m.memoryId}`, icon: BookMarked, tone: "lav", tab: "memory",
+        key: `m-${m.memoryId}`, icon: "bookmark", tone: "lav", tab: "memory",
         title: t("cp.activity.memory"), sub: m.fact,
         ts: new Date(m.createdAt).getTime(),
       });
@@ -104,7 +101,7 @@ export default function ChildProfile() {
       let done = 0, total = 0;
       plan.phases.forEach((ph) => ph.steps.forEach((s) => { total += 1; if (s.completed) done += 1; }));
       if (done > 0) rows.push({
-        key: `p-${plan.id ?? "active"}`, icon: ListChecks, tone: "mint", tab: "plans",
+        key: `p-${plan.id ?? "active"}`, icon: "checklist", tone: "mint", tab: "plans",
         title: t("cp.activity.plan"), sub: t("cp.activity.planSub", { done, total }), ts: Date.now(),
       });
     }
@@ -139,7 +136,7 @@ export default function ChildProfile() {
               {!hasHero && (
                 <button onClick={() => setActiveTab("profile")} className="mt-3 text-start block">
                   <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
-                    <Sparkles className="w-4 h-4 inline-block me-1 -mt-0.5" /> {t("cp.hero.create", { name: heroName })}
+                    <Icon name="auto_awesome" size={16} className="inline-block me-1 -mt-0.5" style={{ verticalAlign: "middle" }} /> {t("cp.hero.create", { name: heroName })}
                   </span>
                   <span className="block text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span>
                 </button>
@@ -149,7 +146,7 @@ export default function ChildProfile() {
 
           {/* Family Circle — reads live ShareGrants (the SAME source Trusted Sharing
               uses); "Add a member" routes there rather than duplicating its form. */}
-          <SectionCard title={t("cp.family.title")} icon={<Users className="w-5 h-5" />} tone="mint">
+          <SectionCard title={t("cp.family.title")} icon={<Icon name="group" size={20} />} tone="mint">
             <p className="text-xs -mt-2 mb-3" style={{ color: "var(--arbor-muted)" }}>{t("cp.family.sub", { name: first })}</p>
             <div className="space-y-2">
               {/* The account holder is always the first member. */}
@@ -170,7 +167,7 @@ export default function ChildProfile() {
                 className="w-full flex items-center gap-3 rounded-2xl p-2 text-start transition hover:-translate-y-0.5"
               >
                 <span className="inline-flex items-center justify-center flex-shrink-0 rounded-[15px]" style={{ width: 42, height: 42, background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-                  <UserPlus className="w-5 h-5" />
+                  <Icon name="person_add" size={20} />
                 </span>
                 <span className="text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{t("cp.family.add")}</span>
               </button>
@@ -181,9 +178,9 @@ export default function ChildProfile() {
         {/* Activity feed — real kid+parent moments from the shared profile. */}
         <SectionCard
           title={t("cp.activity.title", { name: first })}
-          icon={<Activity className="w-5 h-5" />}
+          icon={<Icon name="monitoring" size={20} />}
           tone="sky"
-          action={hasRecent ? <Badge tone="sky">{t("cp.activity.live")}</Badge> : <RefreshCw className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} aria-hidden />}
+          action={hasRecent ? <Badge tone="sky">{t("cp.activity.live")}</Badge> : <Icon name="sync" size={16} style={{ color: "var(--arbor-muted)" }} />}
         >
           {activity.length > 0 ? (
             <div className="space-y-2">
@@ -194,13 +191,13 @@ export default function ChildProfile() {
                   className="w-full flex items-center gap-3 rounded-2xl p-2 text-start transition hover:-translate-y-0.5"
                 >
                   <span className="inline-flex items-center justify-center flex-shrink-0 rounded-[12px]" style={{ width: 42, height: 42, background: PASTEL[r.tone].soft, color: PASTEL[r.tone].ink }}>
-                    <r.icon className="w-5 h-5" />
+                    <Icon name={r.icon} size={20} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-extrabold truncate" style={{ color: "var(--arbor-ink)" }}>{r.title}</span>
                     {r.sub && <span className="block text-xs truncate" style={{ color: "var(--arbor-muted)" }} dir="auto">{r.sub}</span>}
                   </span>
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: PASTEL[r.tone].ink }} aria-hidden />
+                  <Icon name="check_circle" size={16} fill={1} className="flex-shrink-0" style={{ color: PASTEL[r.tone].ink }} />
                 </button>
               ))}
             </div>
@@ -216,13 +213,13 @@ export default function ChildProfile() {
         subtitle={t("cp.subtitle", { name: first })}
         action={
           <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--shadow-green)" }}>
-            <Sparkles className="w-4 h-4" /> {t("cp.askAbout", { name: first })}
+            <Icon name="auto_awesome" size={16} /> {t("cp.askAbout", { name: first })}
           </button>
         }
       />
 
       {/* Chapter 1 — who {first} is */}
-      <SectionCard title={t("cp.ch.who", { name: first, age: childProfile.age })} icon={<UserCircle className="w-5 h-5" />} tone="mint">
+      <SectionCard title={t("cp.ch.who", { name: first, age: childProfile.age })} icon={<Icon name="person" size={20} />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} />
           <Field label={t("cp.f.school")} value={childProfile.schoolContext || "—"} />
@@ -260,7 +257,7 @@ export default function ChildProfile() {
       </SectionCard>
 
       {/* Chapter 2 — right now: this week's real moments */}
-      <SectionCard title={t("cp.ch.now")} icon={<Activity className="w-5 h-5" />} tone="coral">
+      <SectionCard title={t("cp.ch.now")} icon={<Icon name="monitoring" size={20} />} tone="coral">
         {week.count > 0 ? (
           <div className="space-y-3">
             <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
@@ -288,7 +285,7 @@ export default function ChildProfile() {
       </SectionCard>
 
       {/* Chapter 3 — milestones */}
-      <SectionCard title={t("cp.ch.milestones")} icon={<CheckCircle2 className="w-5 h-5" />} tone="mint">
+      <SectionCard title={t("cp.ch.milestones")} icon={<Icon name="check_circle" size={20} fill={1} />} tone="mint">
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
@@ -319,7 +316,7 @@ export default function ChildProfile() {
 
       {/* Chapter 4 — strengths & where to support */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <SectionCard title={t("cp.ch.strengths")} icon={<Gem className="w-5 h-5" />} tone="mint">
+        <SectionCard title={t("cp.ch.strengths")} icon={<Icon name="diamond" size={20} fill={1} />} tone="mint">
           <ul className="space-y-3">
             {childProfile.strengths.map((s) => (
               <li key={s} className="flex items-start gap-3">
@@ -330,7 +327,7 @@ export default function ChildProfile() {
             {childProfile.strengths.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.strengths.empty")}</li>}
           </ul>
         </SectionCard>
-        <SectionCard title={t("cp.ch.support")} icon={<Sprout className="w-5 h-5" />} tone="coral">
+        <SectionCard title={t("cp.ch.support")} icon={<Icon name="eco" size={20} />} tone="coral">
           <ul className="space-y-3">
             {childProfile.challenges.map((c) => (
               <li key={c} className={`${cardCls} p-3.5 flex items-start justify-between gap-3`}>
@@ -346,7 +343,7 @@ export default function ChildProfile() {
       </div>
 
       {/* Chapter 5 — language & communication */}
-      <SectionCard title={t("cp.ch.language")} icon={<Languages className="w-5 h-5" />} tone="sky">
+      <SectionCard title={t("cp.ch.language")} icon={<Icon name="translate" size={20} />} tone="sky">
         <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
           {childProfile.languages.length > 1
             ? t("cp.lang.multi", { name: first, langs: childProfile.languages.join(t("cp.lang.and")) })
@@ -356,7 +353,7 @@ export default function ChildProfile() {
       </SectionCard>
 
       {/* Chapter 6 — what Arbor remembers (the parent-approved memory) */}
-      <SectionCard title={t("cp.ch.memory")} icon={<BookMarked className="w-5 h-5" />} tone="lav">
+      <SectionCard title={t("cp.ch.memory")} icon={<Icon name="bookmark" size={20} />} tone="lav">
         {approvedMemoryItems.length > 0 ? (
           <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
             {approvedMemoryItems.slice(0, 5).map((m) => (
@@ -377,7 +374,7 @@ export default function ChildProfile() {
       </SectionCard>
 
       {/* Chapter 7 — the next step */}
-      <SectionCard title={t("cp.ch.next")} icon={activePlan ? <Sliders className="w-5 h-5" /> : <ClipboardCheck className="w-5 h-5" />} tone="yellow">
+      <SectionCard title={t("cp.ch.next")} icon={activePlan ? <Icon name="tune" size={20} /> : <Icon name="fact_check" size={20} />} tone="yellow">
         {activePlan && planProgress ? (
           <>
             <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
@@ -398,9 +395,9 @@ export default function ChildProfile() {
       {/* Footer jump strip — the deep tools, one tap away */}
       <div className="grid sm:grid-cols-3 gap-3">
         {([
-          { tab: "timeline" as const, tone: "sky" as const, icon: <Waypoints className="w-4 h-4" />, label: t("cp.footer.story", { name: first }) },
-          { tab: "behaviors" as const, tone: "coral" as const, icon: <Activity className="w-4 h-4" />, label: t("cp.footer.moments") },
-          { tab: "memory" as const, tone: "lav" as const, icon: <BookMarked className="w-4 h-4" />, label: t("cp.footer.memory") },
+          { tab: "timeline" as const, tone: "sky" as const, icon: <Icon name="route" size={18} />, label: t("cp.footer.story", { name: first }) },
+          { tab: "behaviors" as const, tone: "coral" as const, icon: <Icon name="monitoring" size={18} />, label: t("cp.footer.moments") },
+          { tab: "memory" as const, tone: "lav" as const, icon: <Icon name="bookmark" size={18} />, label: t("cp.footer.memory") },
         ]).map((l) => (
           <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} p-4 text-start flex items-center gap-3 transition hover:-translate-y-0.5`}>
             <IconBadge tone={l.tone}>{l.icon}</IconBadge>

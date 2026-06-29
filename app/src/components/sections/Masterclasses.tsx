@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { GraduationCap, Clock, ArrowLeft, Check, MessageSquareQuote, MoonStar, PenLine } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import confetti from "canvas-confetti";
+import { Icon } from "../ui/Icon";
 import { PageHeader, cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
 import { BRAND_CONFETTI } from "../../lib/tokens";
 import { useLanguage } from "../../context/LanguageContext";
@@ -128,7 +129,7 @@ export default function Masterclasses() {
                     style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
                   >
                     {he ? c.titleHe : c.title}
-                    {done[c.id] && <Check className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />}
+                    {done[c.id] && <Icon name="check" size={15} fill={1} style={{ color: "var(--arbor-green-ink)" }} />}
                   </button>
                 ))}
               </div>
@@ -165,7 +166,7 @@ export default function Masterclasses() {
                   className={`${cardCls} flex flex-col text-start overflow-hidden transition motion-safe:hover:-translate-y-0.5`}
                 >
                   {/* Gradient header band — pulled from FRAME_TONE → PASTEL (soft→
-                      elevated). No raw hex; lucide GraduationCap centred. */}
+                      elevated). No raw hex; Material Symbols "school" centred. */}
                   <div
                     className="relative flex items-center justify-center"
                     style={{
@@ -174,7 +175,7 @@ export default function Masterclasses() {
                     }}
                   >
                     <span className="inline-flex items-center justify-center rounded-2xl" style={{ background: p.soft, color: p.ink, width: 44, height: 44 }}>
-                      <GraduationCap className="w-6 h-6" aria-hidden />
+                      <Icon name="school" size={24} />
                     </span>
                   </div>
 
@@ -189,7 +190,7 @@ export default function Masterclasses() {
                     </h3>
                     {/* meta line */}
                     <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                      <Clock className="w-3 h-3" aria-hidden /> {c.durationMin} {t("master.min")}
+                      <Icon name="schedule" size={13} /> {c.durationMin} {t("master.min")}
                     </span>
                     <p className="text-[12.5px] leading-relaxed line-clamp-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
                       {he ? c.hookHe : c.hook}
@@ -211,7 +212,7 @@ export default function Masterclasses() {
                         }
                       >
                         {isCardDone
-                          ? <><Check className="w-3.5 h-3.5" aria-hidden /> {t("master.done")}</>
+                          ? <><Icon name="check" size={15} fill={1} /> {t("master.done")}</>
                           : <>{t("master.read")} →</>}
                       </span>
                     </div>
@@ -245,9 +246,9 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
 
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <IconBadge tone={tone}><GraduationCap className="w-5 h-5" /></IconBadge>
+          <IconBadge tone={tone}><Icon name="school" size={20} /></IconBadge>
           <span className="text-[10.5px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{frameLabel}</span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}><Clock className="w-3 h-3" /> {m.durationMin} {t("master.min")}</span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={13} /> {m.durationMin} {t("master.min")}</span>
         </div>
         <h1 className="text-2xl md:text-[1.9rem] leading-tight tracking-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {he ? m.titleHe : m.title}
@@ -269,15 +270,15 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
       {/* What to say — the verbatim parent script */}
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
         <p className="text-[11px] uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-          <MessageSquareQuote className="w-3.5 h-3.5" /> {t("master.whatToSay")}
+          <Icon name="format_quote" size={15} fill={1} /> {t("master.whatToSay")}
         </p>
-        <p className="text-[14px] leading-relaxed italic" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? m.parentScriptHe : m.parentScript}</p>
+        <p className="text-[15px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontStyle: "italic" }}>{he ? m.parentScriptHe : m.parentScript}</p>
       </div>
 
       {/* Try tonight */}
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
         <p className="text-[11px] uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
-          <MoonStar className="w-3.5 h-3.5" /> {t("master.tryTonight")}
+          <Icon name="bedtime" size={15} fill={1} /> {t("master.tryTonight")}
         </p>
         <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? m.tryTonightHe : m.tryTonight}</p>
       </div>
@@ -285,7 +286,7 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
       {/* Wave-8: private parent reflection — client-only localStorage, never sent or stored server-side. */}
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
         <p className="text-[11px] uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-muted)" }}>
-          <PenLine className="w-3.5 h-3.5" /> {t("master.reflect.label")}
+          <Icon name="edit_note" size={16} fill={1} /> {t("master.reflect.label")}
         </p>
         <textarea
           value={reflection}
@@ -301,11 +302,11 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
 
       {isDone ? (
         <div className="text-center text-sm font-bold inline-flex items-center justify-center gap-2 w-full" style={{ color: "var(--arbor-green-ink)" }}>
-          <Check className="w-4 h-4" /> {t("master.markedComplete")}
+          <Icon name="check" size={17} fill={1} /> {t("master.markedComplete")}
         </div>
       ) : (
         <button onClick={onComplete} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]" style={{ background: "var(--gradient-cta)" }}>
-          <Check className="w-4 h-4" /> {t("master.markComplete")}
+          <Icon name="check" size={17} fill={1} /> {t("master.markComplete")}
         </button>
       )}
     </motion.div>

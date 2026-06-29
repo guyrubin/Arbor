@@ -1,6 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { RefreshCw, X, Check, Trash2, Copy, ClipboardList, ListPlus, ArrowRight, ArrowLeft, Plus, MessageSquare, Camera, FileText, Mic, Square, Users, Stethoscope, ChevronRight, ChevronLeft, AlertTriangle } from "lucide-react";
+// Directional glyphs (Arrow*/Chevron*) stay on lucide: they are mirrored by
+// uiLang for RTL, and Material Symbols are LTR-fixed. All non-directional icons
+// move to the Material Symbols <Icon> for the UC-2 visual-match.
+import { ArrowRight, ArrowLeft, ChevronRight, ChevronLeft } from "lucide-react";
+import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -372,7 +376,7 @@ export default function CoachTab() {
           className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full transition"
           style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
         >
-          <Plus className="w-3.5 h-3.5" /> {t("coach.new")}
+          <Icon name="add" size={14} /> {t("coach.new")}
         </button>
         {conversations.map((c) => {
           const on = c.id === activeConversationId;
@@ -383,10 +387,10 @@ export default function CoachTab() {
               style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, border: "1px solid var(--arbor-rule)" }}
             >
               <button onClick={() => openConversation(c.id)} className="flex items-center gap-1.5 text-[11px] font-bold max-w-[160px] truncate" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
-                <MessageSquare className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{c.title}</span>
+                <Icon name="chat" size={12} className="flex-shrink-0" /> <span className="truncate">{c.title}</span>
               </button>
               <button onClick={() => deleteConversation(c.id)} aria-label={t("aria.deleteConversation")} className="transition" style={{ color: "var(--arbor-muted)" }}>
-                <Trash2 className="w-3 h-3" />
+                <Icon name="delete" size={12} />
               </button>
             </div>
           );
@@ -507,7 +511,7 @@ export default function CoachTab() {
                       aria-label={t("coach.action.copy")}
                       className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
                     >
-                      <Copy className="w-3 h-3" aria-hidden /> {t("coach.action.copy")}
+                      <Icon name="content_copy" size={12} /> {t("coach.action.copy")}
                     </button>
                     <button
                       onClick={() => {
@@ -518,7 +522,7 @@ export default function CoachTab() {
                       aria-label={t("coach.action.log")}
                       className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
                     >
-                      <ClipboardList className="w-3 h-3" aria-hidden /> {t("coach.action.log")}
+                      <Icon name="assignment" size={12} /> {t("coach.action.log")}
                     </button>
                     <button
                       onClick={() => {
@@ -529,7 +533,7 @@ export default function CoachTab() {
                       aria-label={t("coach.action.plan")}
                       className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
                     >
-                      <ListPlus className="w-3 h-3" aria-hidden /> {t("coach.action.plan")}
+                      <Icon name="playlist_add" size={12} /> {t("coach.action.plan")}
                     </button>
                     {/* mk-p0-3: 1-tap branded share of a settled answer (not while streaming). */}
                     {idx > (revealedRef.current ?? -1) ? null : (
@@ -578,7 +582,7 @@ export default function CoachTab() {
           {isChatLoading && (
             <div className="flex gap-3 max-w-[85%] me-auto">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold animate-spin" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach)" }} aria-hidden>
-                <RefreshCw className="w-4 h-4" />
+                <Icon name="sync" size={16} />
               </div>
               <div className="p-4 rounded-2xl text-xs flex items-center gap-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                 <span className="animate-pulse" aria-live="polite">{chatStreamStatus || t("coach.loading")}</span>
@@ -588,7 +592,7 @@ export default function CoachTab() {
                   className="px-2 py-1 rounded-lg font-bold flex items-center gap-1"
                   style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 >
-                  <X className="w-3 h-3" /> {t("coach.stop")}
+                  <Icon name="close" size={12} /> {t("coach.stop")}
                 </button>
               </div>
             </div>
@@ -601,7 +605,7 @@ export default function CoachTab() {
               className="flex items-start gap-3 rounded-2xl p-4 me-auto max-w-[85%]"
               style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
             >
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden />
+              <Icon name="warning" size={16} className="flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
                 <p className="text-xs leading-relaxed font-bold">{t("coach.error")}</p>
                 {lastUserText && (
@@ -611,7 +615,7 @@ export default function CoachTab() {
                     className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-xs font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                     style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
                   >
-                    <RefreshCw className="w-3.5 h-3.5" aria-hidden /> {t("coach.retry")}
+                    <Icon name="sync" size={14} /> {t("coach.retry")}
                   </button>
                 )}
               </div>
@@ -631,7 +635,7 @@ export default function CoachTab() {
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
               style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
-              <Camera className="w-3.5 h-3.5" /> {t("coach.photo")}
+              <Icon name="photo_camera" size={14} /> {t("coach.photo")}
             </button>
             <button
               type="button"
@@ -639,7 +643,7 @@ export default function CoachTab() {
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
               style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
             >
-              <FileText className="w-3.5 h-3.5" /> {t("coach.document")}
+              <Icon name="description" size={14} /> {t("coach.document")}
             </button>
             <button
               type="button"
@@ -651,7 +655,7 @@ export default function CoachTab() {
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
                 : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
-              {voicePhase === "off" ? <Mic className="w-3.5 h-3.5" aria-hidden /> : <Square className="w-3.5 h-3.5" aria-hidden />} {voiceLabel}
+              {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
               {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
             </button>
           </div>
@@ -687,7 +691,7 @@ export default function CoachTab() {
               className="font-extrabold text-sm px-4 py-3 rounded-xl transition flex items-center gap-2 flex-shrink-0 disabled:opacity-50"
               style={{ background: T.paperElevated, border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }}
             >
-              <Users className="w-4 h-4" aria-hidden /> <span className="hidden sm:inline">{t("coach.council")}</span>
+              <Icon name="group" size={16} /> <span className="hidden sm:inline">{t("coach.council")}</span>
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--arbor-muted)" }}>
@@ -720,7 +724,7 @@ export default function CoachTab() {
               className="inline-flex items-center gap-1.5 min-h-[44px] py-2 text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
               style={{ color: "var(--arbor-muted)" }}
             >
-              <Stethoscope className="w-3.5 h-3.5" aria-hidden style={{ color: "var(--arbor-green-ink)" }} />
+              <Icon name="stethoscope" size={14} style={{ color: "var(--arbor-green-ink)" }} />
               <span>{t("coach.specialist.lead")}</span>
               <span style={{ color: "var(--arbor-green-ink)" }}>{t("coach.specialist.cta")}</span>
               {uiLang === "he"
@@ -788,7 +792,7 @@ export default function CoachTab() {
                         className="flex-1 text-white font-extrabold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
                         style={{ background: "var(--arbor-clay)" }}
                       >
-                        <Check className="w-3.5 h-3.5" /> {t("coach.approve")}
+                        <Icon name="check" size={14} /> {t("coach.approve")}
                       </button>
                       <button
                         onClick={() => handleMemoryDecision(item.memoryId, "rejected")}
@@ -796,7 +800,7 @@ export default function CoachTab() {
                         className="flex-1 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
                         style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> {t("coach.reject")}
+                        <Icon name="delete" size={14} /> {t("coach.reject")}
                       </button>
                     </div>
                   )}
@@ -807,7 +811,7 @@ export default function CoachTab() {
                       className="w-full font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
                       style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                     >
-                      <Trash2 className="w-3.5 h-3.5" /> {t("coach.deleteActive")}
+                      <Icon name="delete" size={14} /> {t("coach.deleteActive")}
                     </button>
                   )}
                 </div>

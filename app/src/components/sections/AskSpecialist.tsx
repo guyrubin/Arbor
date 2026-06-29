@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
-import { Stethoscope, ShieldCheck, Copy, Download, Send, Check, FileText, ChevronDown, NotebookPen, Star } from "lucide-react";
+import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -158,7 +158,7 @@ export default function AskSpecialist() {
   // existing consult transaction is reused, not re-implemented.
   const ProsRail = (
     <aside className="space-y-3.5">
-      <h2 className="text-[15px] font-extrabold" style={{ color: INK }}>{t("care.pros.title")}</h2>
+      <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("care.pros.title")}</h2>
       <div className="flex flex-col gap-3.5">
         {railPros.map((p) => (
           <div
@@ -170,12 +170,12 @@ export default function AskSpecialist() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-[15px] font-extrabold truncate" style={{ color: INK }}>{p.name}</span>
-                {p.verified && <ShieldCheck className="w-4 h-4 flex-shrink-0" style={{ color: GREEN }} aria-label="Verified by Arbor" />}
+                {p.verified && <Icon name="verified" size={16} fill={1} style={{ color: GREEN }} aria-label="Verified by Arbor" />}
               </div>
               <div className="text-[12px] font-bold mt-px" style={{ color: GREEN }}>{p.role}</div>
               <div className="text-[11px] font-semibold mt-0.5 inline-flex items-center gap-1" style={{ color: MUTED }}>
                 {p.langs?.split(" · ")[0] || p.langs} · {/online|remote/i.test(`${p.mode} ${p.city}`) ? "Online" : p.mode}
-                <span className="inline-flex items-center gap-0.5" style={{ color: "var(--arbor-yellow-ink)" }}><Star className="w-3 h-3 fill-current" /> {p.rating}</span>
+                <span className="inline-flex items-center gap-0.5" style={{ color: "var(--arbor-yellow-ink)" }}><Icon name="star" size={13} fill={1} /> {p.rating}</span>
               </div>
             </div>
             <button
@@ -202,7 +202,7 @@ export default function AskSpecialist() {
     <motion.div {...motionProps} className="space-y-5 max-w-[1180px]">
       <header>
         <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-          <Stethoscope className="w-3.5 h-3.5" /> {t("consult.eyebrow")}
+          <Icon name="stethoscope" size={15} /> {t("consult.eyebrow")}
         </span>
         <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
           {t("consult.title")}
@@ -216,9 +216,9 @@ export default function AskSpecialist() {
         /* Empty state — new profile with nothing to summarise yet. */
         <div className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
-            <NotebookPen className="w-6 h-6" />
+            <Icon name="edit_note" size={26} />
           </span>
-          <h2 className="text-[17px] font-extrabold mt-3" style={{ color: INK }}>{t("consult.empty.title")}</h2>
+          <h2 className="text-[17px] font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("consult.empty.title")}</h2>
           <p className="text-sm mt-1.5 leading-relaxed max-w-[420px] mx-auto" style={{ color: MUTED }}>{t("consult.empty.body")}</p>
           <button
             onClick={() => setActiveTab("behaviors")}
@@ -237,7 +237,7 @@ export default function AskSpecialist() {
                 snapshot); each item is a label/value inset row with an
                 include-toggle. The GDPR/COPPA trust row lives inside the card. */}
             <section className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
-              <h2 className="text-[15px] font-extrabold" style={{ color: INK }}>{t("care.packet.title")}</h2>
+              <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("care.packet.title")}</h2>
               <p className="text-[12px] font-semibold mt-1.5 leading-relaxed" style={{ color: MUTED }}>{t("care.lead", { name: firstName })}</p>
 
               <div className="flex flex-col gap-2.5 mt-4">
@@ -259,7 +259,7 @@ export default function AskSpecialist() {
                               className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition self-start mt-0.5"
                               style={on ? { background: GREEN, color: "#fff" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
                             >
-                              {on && <Check className="w-3.5 h-3.5" />}
+                              {on && <Icon name="check" size={14} weight={600} />}
                             </button>
                           }
                         />
@@ -272,7 +272,7 @@ export default function AskSpecialist() {
               {/* Trust row (Safety L3) — the GDPR/COPPA promise, INSIDE the card,
                   green tokens (never the design's blue). */}
               <div className="flex items-start gap-2.5 rounded-[13px] p-3 mt-3.5" style={{ background: GREEN_SOFT }}>
-                <ShieldCheck className="w-[19px] h-[19px] flex-shrink-0" style={{ color: GREEN }} />
+                <Icon name="verified_user" size={19} fill={1} style={{ color: GREEN }} />
                 <span className="text-[11.5px] font-semibold leading-relaxed" style={{ color: GREEN }}>{t("care.trust")}</span>
               </div>
             </section>
@@ -289,12 +289,12 @@ export default function AskSpecialist() {
             <button onClick={copy} disabled={noneSelected}
               className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
               style={{ background: GREEN_SOFT, color: GREEN }}>
-              <Copy className="w-4 h-4" /> {t("consult.copy")}
+              <Icon name="content_copy" size={17} /> {t("consult.copy")}
             </button>
             <button onClick={download} disabled={noneSelected}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
               style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}>
-              <Download className="w-4 h-4" /> {t("consult.download")}
+              <Icon name="download" size={18} /> {t("consult.download")}
             </button>
 
             {/* Export as PDF ▾ — menu replacing the standalone Reports grid. */}
@@ -307,7 +307,7 @@ export default function AskSpecialist() {
                 aria-expanded={menuOpen}
                 className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
                 style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}>
-                <FileText className="w-4 h-4" /> {t("consult.exportPdf")} <ChevronDown className="w-3.5 h-3.5" />
+                <Icon name="description" size={17} /> {t("consult.exportPdf")} <Icon name="expand_more" size={15} />
               </button>
               <AnimatePresence>
                 {menuOpen && (
@@ -345,7 +345,7 @@ export default function AskSpecialist() {
               disabled={noneSelected}
               className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
               style={{ background: "var(--arbor-paper-sunk)", color: GREEN, border: "1px solid rgba(52,178,119,0.30)" }}>
-              <Send className="w-4 h-4" /> {t("consult.send")}
+              <Icon name="send" size={17} /> {t("consult.send")}
             </button>
           </div>
         </>

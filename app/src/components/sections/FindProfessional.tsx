@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
-import { Search, ShieldCheck, Globe, MapPin, Languages as LangIcon, Star, Send, FileText, RefreshCw, CheckCircle2, Mail } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import Icon from "../ui/Icon";
 import { PageHeader, cardCls, Chip, PASTEL, InitialsTile } from "../ui/kit";
 import type { PastelKey } from "../ui/kit";
 import { Modal } from "../ui/Modal";
@@ -145,7 +146,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
       {/* Search + filters */}
       <div className={`${cardCls} p-5 space-y-4`}>
         <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)" }}>
-          <Search className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} />
+          <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -160,7 +161,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
             return (
               <button key={f} onClick={() => toggle(f)} className="rounded-full px-3 py-1.5 text-xs font-bold transition inline-flex items-center gap-1"
                 style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                {f === "Verified by Arbor" && <ShieldCheck className="w-3.5 h-3.5" />}{f}
+                {f === "Verified by Arbor" && <Icon name="verified_user" size={15} fill={on ? 1 : 0} />}{f}
               </button>
             );
           })}
@@ -188,19 +189,19 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
                 <InitialsTile name={p.name} tone={(p.tone in PASTEL ? p.tone : "sky") as PastelKey} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-base font-extrabold" style={{ color: "var(--arbor-ink)" }}>{p.name}</h3>
-                    {p.verified && <Chip tone="mint" icon={<ShieldCheck className="w-3.5 h-3.5" />}>Verified by Arbor</Chip>}
+                    <h3 className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{p.name}</h3>
+                    {p.verified && <Chip tone="mint" icon={<Icon name="verified" size={15} fill={1} />}>Verified by Arbor</Chip>}
                   </div>
                   <p className="text-sm font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{p.role}</p>
                   <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{p.creds}</p>
                 </div>
-                <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-yellow-ink)" }}><Star className="w-3.5 h-3.5 fill-current" /> {p.rating}</span>
+                <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-yellow-ink)" }}><Icon name="star" size={15} fill={1} /> {p.rating}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
-                <span className="inline-flex items-center gap-1.5"><LangIcon className="w-3.5 h-3.5" /> {p.langs}</span>
-                <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {p.city}</span>
-                <span className="inline-flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> {p.mode}</span>
+                <span className="inline-flex items-center gap-1.5"><Icon name="translate" size={15} /> {p.langs}</span>
+                <span className="inline-flex items-center gap-1.5"><Icon name="location_on" size={15} /> {p.city}</span>
+                <span className="inline-flex items-center gap-1.5"><Icon name="language" size={15} /> {p.mode}</span>
                 <span>Ages {p.ages} · {p.price}</span>
               </div>
               <p className="text-xs mt-3 leading-relaxed" style={{ color: "var(--arbor-ink)" }}><b>Handles:</b> {p.handles}</p>
@@ -212,14 +213,14 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
                   className="flex-1 inline-flex items-center justify-center gap-1.5 text-white font-bold text-xs rounded-xl py-2.5"
                   style={{ background: "var(--arbor-gradient-primary)" }}
                 >
-                  <Send className="w-3.5 h-3.5" /> Request consultation
+                  <Icon name="send" size={15} /> Request consultation
                 </button>
                 <button
                   onClick={() => { toast("Build a shareable summary in Consult.", "info"); setActiveTab("consult"); }}
                   className="inline-flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl px-3 py-2.5 bg-white"
                   style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
                 >
-                  <FileText className="w-3.5 h-3.5" /> Share Arbor summary
+                  <Icon name="description" size={15} /> Share Arbor summary
                 </button>
               </div>
             </div>
@@ -233,7 +234,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
         {consultDone ? (
           <div className="space-y-4 text-sm">
             <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)" }}>
-              <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} />
+              <Icon name="check_circle" size={20} fill={1} style={{ color: "var(--arbor-green-ink)" }} />
               <div>
                 <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>Request recorded</p>
                 <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
@@ -244,11 +245,11 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
             <div className="flex flex-wrap gap-2">
               {consultDone.mailto && (
                 <a href={consultDone.mailto} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 text-white" style={{ background: "var(--arbor-clay)" }}>
-                  <Mail className="w-3.5 h-3.5" /> Send the intro email
+                  <Icon name="mail" size={15} /> Send the intro email
                 </a>
               )}
               <button onClick={() => { setConsultPro(null); setActiveTab("consult"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
-                <FileText className="w-3.5 h-3.5" /> Prepare a shareable summary
+                <Icon name="description" size={15} /> Prepare a shareable summary
               </button>
               <button onClick={() => { setConsultPro(null); setActiveTab("appointments"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
                 Track it in Appointments
@@ -284,7 +285,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
               Nothing from {first}'s profile is shared automatically — only the note above. You stay in control of any reports you choose to share.
             </p>
             <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
-              {consultBusy ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Sending…</>) : (<><Send className="w-4 h-4" /> Send the request</>)}
+              {consultBusy ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Sending…</>) : (<><Icon name="send" size={18} /> Send the request</>)}
             </button>
           </div>
         )}

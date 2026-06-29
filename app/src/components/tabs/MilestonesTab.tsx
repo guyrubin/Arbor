@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { Sparkles, RefreshCw, Brain, Eye, Plus, ExternalLink, PartyPopper, BookOpen, Trash2, Pencil, ChevronDown, ChevronLeft, ChevronRight, Baby, Gamepad2 } from "lucide-react";
+import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
@@ -170,7 +171,7 @@ export default function MilestonesTab() {
                 className="text-[9px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
-                <Pencil className="w-2.5 h-2.5" />
+                <Icon name="edit" size={11} />
               </button>
             )}
             {item.custom && (
@@ -181,12 +182,12 @@ export default function MilestonesTab() {
                 className="text-[9px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
-                <Trash2 className="w-2.5 h-2.5" />
+                <Icon name="delete" size={11} />
               </button>
             )}
             {item.references?.map((r, i) => (
               <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold flex items-center gap-0.5" style={{ color: "var(--arbor-sky-ink)" }}>
-                {r.label} <ExternalLink className="w-2.5 h-2.5" />
+                {r.label} <Icon name="open_in_new" size={11} />
               </a>
             ))}
             {!item.custom && DOMAIN_REFERENCES[item.domain] && (
@@ -198,7 +199,7 @@ export default function MilestonesTab() {
                 className="text-[9px] font-bold flex items-center gap-0.5"
                 style={{ color: "var(--arbor-sky-ink)" }}
               >
-                {DOMAIN_REFERENCES[item.domain].label} <ExternalLink className="w-2.5 h-2.5" />
+                {DOMAIN_REFERENCES[item.domain].label} <Icon name="open_in_new" size={11} />
               </a>
             )}
             <button
@@ -208,7 +209,7 @@ export default function MilestonesTab() {
               className="text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
               style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
             >
-              {explaining[item.id] ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <BookOpen className="w-2.5 h-2.5" />}
+              {explaining[item.id] ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <Icon name="menu_book" size={11} />}
               {explanations[item.id] ? t("ms.hide") : t("ms.explain")}
             </button>
           </div>
@@ -218,7 +219,7 @@ export default function MilestonesTab() {
             {/* Memory portrait — a quiet reminder this is a moment in the child's record. */}
             <HeroAvatar size={28} animate={false} ring={false} className="flex-shrink-0" />
             <button type="button" onClick={(e) => { e.preventDefault(); celebrate(); }} title="Celebrate" className="transition" style={{ color: "var(--arbor-peach-ink)" }}>
-              <PartyPopper className="w-4 h-4" />
+              <Icon name="celebration" size={16} />
             </button>
           </div>
         )}
@@ -286,7 +287,7 @@ export default function MilestonesTab() {
                 <span className="flex items-center gap-1.5">
                   <span className="text-[9px] font-bold" style={{ color: "var(--arbor-muted)" }}>{checkedInBand}/{band.items.length}</span>
                   {isEarlier && (
-                    <ChevronDown className="w-3.5 h-3.5 transition-transform" style={{ color: "var(--arbor-muted)", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }} />
+                    <Icon name="expand_more" size={16} className="transition-transform" style={{ color: "var(--arbor-muted)", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }} />
                   )}
                 </span>
               </button>
@@ -364,7 +365,7 @@ export default function MilestonesTab() {
                 <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[9px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
-                    <span className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{currentBand.label}</span>
+                    <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{currentBand.label}</span>
                     {corrected.applied && (
                       <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "#fff" }}>
                         {t("ms.correctedBadge")} · {corrected.correctedMonths}m
@@ -380,7 +381,7 @@ export default function MilestonesTab() {
             <div className={`${cardCls} p-4`}>
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-2.5">
-                  <span className="p-1.5 rounded-lg flex items-center justify-center mt-0.5" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Baby className="w-4 h-4" /></span>
+                  <span className="p-1.5 rounded-lg flex items-center justify-center mt-0.5" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="child_care" size={16} /></span>
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ms.bornEarly")}</span>
@@ -504,7 +505,7 @@ export default function MilestonesTab() {
                     className="w-full flex items-center gap-2.5 rounded-[13px] p-3 text-start transition"
                     style={{ background: "var(--arbor-peach-soft)", border: "1px solid rgba(217,118,63,0.25)", minHeight: 44 }}
                   >
-                    <Gamepad2 className="w-[18px] h-[18px] flex-shrink-0" style={{ color: "var(--arbor-peach-ink)" }} />
+                    <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-peach-ink)" }} />
                     <div className="flex-1">
                       <div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-peach-ink)" }}>{t("ms.assignActivity")}</div>
                       <div className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("ms.assignHint", { name: firstName || childProfile.name })}</div>
@@ -514,7 +515,7 @@ export default function MilestonesTab() {
 
                   {/* Connective-tissue hint: marking skills feeds Map/Academy/Care. */}
                   <div className="flex items-start gap-2.5 rounded-[13px] p-3.5" style={{ background: "var(--arbor-sky-soft)" }}>
-                    <RefreshCw className="w-[18px] h-[18px] flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-sky-ink)" }} />
+                    <Icon name="sync" size={18} className="mt-0.5" style={{ color: "var(--arbor-sky-ink)" }} />
                     <span className="text-[12px] leading-relaxed font-semibold" style={{ color: "var(--arbor-sky-ink)" }}>{t("ms.mapHint")}</span>
                   </div>
                 </div>
@@ -528,7 +529,7 @@ export default function MilestonesTab() {
       <div className={`${cardCls} p-5`}>
         {!showAdd ? (
           <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
-            <Plus className="w-4 h-4" /> {t("ms.addMilestone")}
+            <Icon name="add" size={16} /> {t("ms.addMilestone")}
           </button>
         ) : (
           <form onSubmit={submitCustom} className="flex flex-col sm:flex-row gap-2 items-stretch">
@@ -547,12 +548,12 @@ export default function MilestonesTab() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h4 className="text-base font-extrabold flex items-center gap-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> {t("ms.nurtureNext")}
+              <Icon name="auto_awesome" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("ms.nurtureNext")}
             </h4>
             <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.nurtureDesc")}</p>
           </div>
           <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ms-auto sm:ms-0 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
-            {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("ms.findingSteps")}</>) : (<><Brain className="w-3.5 h-3.5" /> {t("ms.findSteps")}</>)}
+            {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("ms.findingSteps")}</>) : (<><Icon name="psychology" size={15} /> {t("ms.findSteps")}</>)}
           </button>
         </div>
 
@@ -573,7 +574,7 @@ export default function MilestonesTab() {
       </div>
 
       <div className="p-5 rounded-2xl flex items-start gap-4 text-xs" style={{ background: "var(--arbor-yellow-soft)" }}>
-        <Eye className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-yellow-ink)" }} />
+        <Icon name="visibility" size={20} className="mt-0.5" style={{ color: "var(--arbor-yellow-ink)" }} />
         <div className="space-y-1 leading-relaxed">
           <strong className="text-sm block" style={{ color: "var(--arbor-ink)" }}>{t("ms.watchPoints")}</strong>
           <p style={{ color: "var(--arbor-muted)" }}>

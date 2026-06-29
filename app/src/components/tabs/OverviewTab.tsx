@@ -1,10 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import {
-  MessageSquare, Plus, RefreshCw, Sun, Sunrise, Moon, ArrowRight,
-  Sparkles, RotateCw, CheckCircle, CalendarDays, ChevronRight,
-  Clock, Gamepad2, NotebookPen, Award, CheckCircle2,
-} from "lucide-react";
+import { Gamepad2 } from "lucide-react";
+import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
@@ -158,9 +155,9 @@ export default function OverviewTab() {
   // ── Living, time-aware Today ──
   const dayPart: DayPart = dayPartFor(new Date().getHours());
   const greeting =
-    dayPart === "morning" ? { text: t("ov.greeting.morning"), icon: <Sunrise className="w-4 h-4" /> }
-    : dayPart === "afternoon" ? { text: t("ov.greeting.afternoon"), icon: <Sun className="w-4 h-4" /> }
-    : { text: t("ov.greeting.evening"), icon: <Moon className="w-4 h-4" /> };
+    dayPart === "morning" ? { text: t("ov.greeting.morning"), icon: <Icon name="wb_twilight" size={16} /> }
+    : dayPart === "afternoon" ? { text: t("ov.greeting.afternoon"), icon: <Icon name="light_mode" size={16} /> }
+    : { text: t("ov.greeting.evening"), icon: <Icon name="bedtime" size={16} /> };
   const heroEyebrow = t(`today.part.${dayPart}.eyebrow`, { name: firstName });
 
   const recentCount = useMemo(
@@ -258,7 +255,7 @@ export default function OverviewTab() {
       rows.push({
         id: `beh.${l.id}`,
         at,
-        icon: <NotebookPen className="w-[21px] h-[21px]" />,
+        icon: <Icon name="edit_note" size={21} />,
         tone: { soft: PASTEL.lav.soft, ink: PASTEL.lav.ink },
         title: t("today.feed.logged"),
         sub: t("today.feed.loggedSub", { context: l.context ?? t("ov.logMoment"), time: fmtTime(at) }),
@@ -270,7 +267,7 @@ export default function OverviewTab() {
       rows.push({
         id: "milestone.crossing",
         at: Date.now(),
-        icon: <Award className="w-[21px] h-[21px]" />,
+        icon: <Icon name="workspace_premium" size={21} fill={1} />,
         tone: { soft: GREEN_SOFT, ink: GREEN },
         title: t("today.feed.noticed"),
         // Firewall-safe: a calm factual sub, never the threshold/score that
@@ -323,7 +320,7 @@ export default function OverviewTab() {
               legibility scrim so the title reads on a calm base over the gradient. */}
           <div className="relative h-[188px]" style={{ background: "var(--arbor-hero-grad)" }}>
             <div className="absolute inset-0" style={{ background: "radial-gradient(60% 80% at 86% 4%, rgba(255,255,255,0.34), transparent 60%)" }}></div>
-            <Sparkles className="absolute bottom-[14px] text-[88px] opacity-[0.16]" style={{ color: "#fff", insetInlineEnd: 22 }} aria-hidden="true" />
+            <Icon name="self_improvement" size={92} fill={1} className="absolute bottom-[14px]" style={{ color: "rgba(255,255,255,0.16)", insetInlineEnd: 22 }} />
             {/* Legibility scrim: darken from the bottom up so text sits on a readable base */}
             <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(13,28,52,0.5), transparent 64%)" }} aria-hidden="true"></div>
             <div className="relative h-full flex flex-col justify-between" style={{ padding: "20px" }}>
@@ -341,7 +338,7 @@ export default function OverviewTab() {
               <span className="inline-flex items-center gap-1.5 text-[12px] font-bold" style={{ color: "rgba(255,255,255,0.92)" }}>
                 {greeting.icon} {greeting.text}
               </span>
-              <h1 className="text-[26px] font-extrabold leading-[1.12] mt-1" style={{ color: "#fff", maxWidth: "88%", letterSpacing: "-0.5px", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}>
+              <h1 className="text-[27px] leading-[1.12] mt-1" style={{ color: "#fff", maxWidth: "88%", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}>
                 {pulse}
               </h1>
             </div>
@@ -351,14 +348,14 @@ export default function OverviewTab() {
               microcopy + a single dark "Begin" CTA that drops into today's focus. */}
           <div className="flex items-center justify-between gap-3 px-5 py-[14px]" style={{ borderBottom: `1px solid ${RULE}` }}>
             <span className="inline-flex items-center gap-2 text-[13px] font-bold" style={{ color: "var(--arbor-faint)" }}>
-              <Clock className="w-4 h-4" /> {t("today.meta")}
+              <Icon name="schedule" size={18} /> {t("today.meta")}
             </span>
             <button
               onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
               className="inline-flex items-center gap-1.5 text-white font-extrabold text-[13px] rounded-xl px-5 py-2.5 transition active:scale-[0.98]"
               style={{ background: "var(--arbor-ink)", boxShadow: "0 8px 18px -6px rgba(20,34,90,0.5)" }}
             >
-              {t("today.begin")} <ArrowRight className="w-4 h-4 rtl:-scale-x-100" />
+              {t("today.begin")} <Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
             </button>
           </div>
           {/* Action band: streak + name row → AI focus recommendation → primary CTAs */}
@@ -375,7 +372,7 @@ export default function OverviewTab() {
                 <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
               ) : focus ? (
                 <div>
-                  <p className={`text-[15px] leading-relaxed font-medium ${focusOpen ? "" : "line-clamp-3"}`} style={{ color: "var(--arbor-ink)", textWrap: "pretty" } as React.CSSProperties}>{focus.text}</p>
+                  <p className={`text-[16.5px] leading-relaxed ${focusOpen ? "" : "line-clamp-3"}`} style={{ color: "var(--arbor-ink)", textWrap: "pretty", fontFamily: uiLang === "he" ? undefined : "var(--font-editorial)", fontWeight: uiLang === "he" ? 500 : 400 } as React.CSSProperties}>{focus.text}</p>
                   <div className="flex items-center gap-2 mt-1.5">
                     {focus.text.length > 160 && (
                       <button onClick={() => setFocusOpen((v) => !v)} className="text-[12px] font-bold inline-flex items-center min-h-[36px] px-1 transition" style={{ color: "var(--arbor-clay)" }}>
@@ -383,7 +380,7 @@ export default function OverviewTab() {
                       </button>
                     )}
                     <button onClick={() => void regenerate()} disabled={focusLoading} title={t("ov.focus.regenerate")} aria-label={t("ov.focus.regenerate")} className="inline-flex items-center justify-center w-9 h-9 rounded-xl transition disabled:opacity-50" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
-                      <RefreshCw className={`w-4 h-4 ${focusLoading ? "animate-spin" : ""}`} />
+                      <Icon name="refresh" size={18} className={focusLoading ? "animate-spin" : undefined} />
                     </button>
                   </div>
                 </div>
@@ -396,10 +393,10 @@ export default function OverviewTab() {
             {/* Primary actions */}
             <div className="flex flex-wrap items-center gap-2.5 mt-4">
               <button onClick={() => setQuickLog(true)} aria-label={t("ov.logMoment")} className="inline-flex items-center gap-2 text-white font-extrabold text-[13px] rounded-xl px-5 py-3 transition active:scale-[0.98]" style={{ background: "var(--arbor-ink)", boxShadow: "0 8px 18px -6px rgba(20,34,90,0.5)" }}>
-                <Plus className="w-4 h-4" /> {t("ov.logMoment")}
+                <Icon name="add" size={18} /> {t("ov.logMoment")}
               </button>
               <button onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }} className="inline-flex items-center gap-2 font-bold text-[13px] rounded-xl px-4 py-3 transition" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
-                <MessageSquare className="w-4 h-4" /> {t("ov.askArbor")}
+                <Icon name="forum" size={18} /> {t("ov.askArbor")}
               </button>
             </div>
           </div>
@@ -465,7 +462,7 @@ export default function OverviewTab() {
         {/* ── Kid activity sync card (spans 2 cols) ─────────────────────────── */}
         <section className="lg:col-span-2 rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
           <div className="flex items-center gap-2 mb-4">
-            <RotateCw className="w-5 h-5" style={{ color: "var(--arbor-clay)" }} />
+            <Icon name="sync_alt" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} />
             <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.reco.play.title")}</span>
             {/* Live pill reflects REAL recent activity (kid + parent events in 48h). */}
             {hasRecentActivity && (
@@ -497,7 +494,7 @@ export default function OverviewTab() {
             ) : (
               <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
                 <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
-                  <Sparkles className="w-5 h-5" />
+                  <Icon name="auto_awesome" size={20} fill={1} />
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoLoading", { name: firstName })}</div>
@@ -509,13 +506,13 @@ export default function OverviewTab() {
             {rhythm.confidence !== "none" && (
               <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
                 <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay-deep)" }}>
-                  <CalendarDays className="w-5 h-5" />
+                  <Icon name="calendar_month" size={20} fill={1} />
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("dw.cta")}</div>
                   <div className="text-[11px] mt-0.5" style={{ color: "var(--arbor-faint)" }}>{rhythm.frictionPeak ? t("rhythm.peak", { hour: hourLabel(rhythm.frictionPeak.hour) }) : t("rhythm.steady")}</div>
                 </div>
-                <CheckCircle className="w-5 h-5" style={{ color: "var(--arbor-success)" }} />
+                <Icon name="check_circle" size={20} fill={1} style={{ color: "var(--arbor-success)" }} />
               </div>
             )}
             {/* ── Unified ActivityRow feed (Loops 1+3+5) — kid quest/play
@@ -530,7 +527,7 @@ export default function OverviewTab() {
                   <div className="text-[13.5px] font-extrabold truncate" style={{ color: "var(--arbor-ink)" }}>{row.title}</div>
                   <div className="text-[11px] mt-0.5 truncate" style={{ color: "var(--arbor-faint)" }}>{row.sub}</div>
                 </div>
-                <CheckCircle2 className="w-5 h-5 flex-none" style={{ color: "var(--arbor-success)" }} />
+                <Icon name="check_circle" size={20} fill={1} className="flex-none" style={{ color: "var(--arbor-success)" }} />
               </div>
             ))}
           </div>
@@ -557,7 +554,7 @@ export default function OverviewTab() {
             {t("coach.ready", { name: firstName })}
           </div>
           <button className="mt-4 bg-white text-center rounded-xl py-3 text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
-            <MessageSquare className="w-4 h-4" /> {t("today.coach.reply")}
+            <Icon name="forum" size={18} /> {t("today.coach.reply")}
           </button>
         </section>
       </div>
@@ -566,14 +563,14 @@ export default function OverviewTab() {
       {nudge && (
         <section className="rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: PASTEL[nudge.tone].soft, border: `1px solid ${RULE}` }}>
           <span className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style={{ background: "var(--arbor-paper-elevated)", color: PASTEL[nudge.tone].ink }}>
-            {nudge.kind === "calm" ? <Moon className="w-5 h-5" /> : nudge.kind === "log" ? <Plus className="w-5 h-5" /> : nudge.kind === "practice" ? <Sparkles className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+            {nudge.kind === "calm" ? <Icon name="bedtime" size={20} fill={1} /> : nudge.kind === "log" ? <Icon name="add" size={20} /> : <Icon name="auto_awesome" size={20} fill={1} />}
           </span>
           <div className="flex-1 min-w-[200px]">
             <p className="text-[15px] font-extrabold" style={{ color: INK }}>{t(nudge.headlineKey, nudge.vars)}</p>
             <p className="text-[13px] mt-0.5 leading-snug" style={{ color: MUTED }}>{t(nudge.bodyKey, nudge.vars)}</p>
           </div>
           <button onClick={onNudge} className="inline-flex items-center justify-center gap-1.5 font-bold text-sm rounded-full px-4 min-h-[44px] flex-shrink-0 text-white transition active:scale-[0.98]" style={{ background: PASTEL[nudge.tone].ink }}>
-            {t(nudge.ctaKey, nudge.vars)} <ArrowRight className="w-4 h-4" />
+            {t(nudge.ctaKey, nudge.vars)} <Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
           </button>
         </section>
       )}
@@ -599,7 +596,7 @@ export default function OverviewTab() {
           <h2 className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>{t("ov.dailyTools")}</h2>
           <span className="lg:hidden inline-flex items-center gap-1 text-xs font-bold" style={{ color: GREEN }}>
             {showTools ? t("ov.tools.hide") : t("ov.tools.show")}
-            <ChevronRight className={`w-4 h-4 transition-transform ${showTools ? "rotate-90" : ""}`} />
+            <Icon name="chevron_right" size={18} className={`transition-transform rtl:-scale-x-100 ${showTools ? "rotate-90" : ""}`} />
           </span>
         </button>
         <div className={`${showTools ? "" : "hidden"} lg:block`}>

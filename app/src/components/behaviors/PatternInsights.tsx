@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Activity, MapPin, CalendarDays, Clock, CheckCircle2, type LucideIcon } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { BehaviorLog } from "../../types";
 import { timeBand } from "../../lib/behaviorUtils";
 import { useLanguage } from "../../context/LanguageContext";
@@ -56,13 +56,15 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
       : t("beh.pattern.empty");
 
   const Row = ({
-    icon: Icon,
+    iconName,
+    fill = 0,
     tone,
     label,
     value,
     sub,
   }: {
-    icon: LucideIcon;
+    iconName: string;
+    fill?: 0 | 1;
     tone: PastelKey;
     label: string;
     value: string;
@@ -75,7 +77,7 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
           className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
           style={{ width: 40, height: 40, background: p.soft, color: p.ink }}
         >
-          <Icon className="w-4 h-4" />
+          <Icon name={iconName} size={20} fill={fill} />
         </span>
         <div className="min-w-0 flex-1 text-start">
           <div className="text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{value}</div>
@@ -88,21 +90,21 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
   return (
     <div className="rounded-2xl p-5 space-y-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center gap-2">
-        <Activity className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} />
+        <Icon name="monitoring" size={18} style={{ color: "var(--arbor-green-ink)" }} />
         <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.pattern.title")}</span>
       </div>
-      <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>{headline}</p>
+      <p className="text-base leading-snug" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{headline}</p>
       <div className="space-y-3">
         {insights.context && (
-          <Row icon={MapPin} tone="sky" label={t("beh.pattern.place")} value={insights.context.label} sub={t("beh.pattern.placeSub", { count: insights.context.n })} />
+          <Row iconName="place" tone="sky" label={t("beh.pattern.place")} value={insights.context.label} sub={t("beh.pattern.placeSub", { count: insights.context.n })} />
         )}
         {insights.day && (
-          <Row icon={CalendarDays} tone="lav" label={t("beh.pattern.day")} value={insights.day.label} sub={t("beh.pattern.daySub", { count: insights.day.n })} />
+          <Row iconName="calendar_month" tone="lav" label={t("beh.pattern.day")} value={insights.day.label} sub={t("beh.pattern.daySub", { count: insights.day.n })} />
         )}
         {insights.time && (
-          <Row icon={Clock} tone="yellow" label={t("beh.pattern.time")} value={insights.time.label} sub={t("beh.pattern.timeSub", { count: insights.time.n })} />
+          <Row iconName="schedule" tone="yellow" label={t("beh.pattern.time")} value={insights.time.label} sub={t("beh.pattern.timeSub", { count: insights.time.n })} />
         )}
-        <Row icon={CheckCircle2} tone="mint" label={t("beh.pattern.resolved")} value={`${insights.resolved}/${insights.total}`} sub={t("beh.pattern.resolvedSub", { count: insights.resolved, total: insights.total })} />
+        <Row iconName="check_circle" fill={1} tone="mint" label={t("beh.pattern.resolved")} value={`${insights.resolved}/${insights.total}`} sub={t("beh.pattern.resolvedSub", { count: insights.resolved, total: insights.total })} />
       </div>
     </div>
   );
