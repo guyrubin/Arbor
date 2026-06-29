@@ -10,6 +10,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { ShareButton } from "../ui/ShareButton";
+import { TrustPanel } from "../ui/TrustPanel";
 import { runAvatarGeneration } from "./avatarGate";
 
 /**
@@ -138,7 +139,7 @@ export default function AvatarCreator({
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>A friendly, hand-illustrated character — not a real photo.</p>
+            <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>{t("trust.avatar.notRealPhoto")}</p>
 
             {/* Mode toggle */}
             <div className="grid grid-cols-2 gap-2 mb-4">
@@ -189,9 +190,16 @@ export default function AvatarCreator({
                   <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-clay)" }} />
                   <span className="text-[11px] leading-snug" style={{ color: "var(--arbor-green-ink)" }}>
                     <ShieldCheck className="w-3.5 h-3.5 inline me-1" />
-                    I consent to Arbor using this photo to create a cartoon character. The original is used once, then <strong>immediately discarded — never stored and never used to train AI.</strong>
+                    {t("trust.avatar.consent.pre")} <strong>{t("trust.avatar.consent.claim")}</strong>
                   </span>
                 </label>
+                {/* P0.5 — reusable trust pattern: uses / stores / you control (localized HE+EN) */}
+                <TrustPanel
+                  tone="panel"
+                  uses={[t("trust.avatar.uses.1")]}
+                  stores={[t("trust.avatar.stores.1")]}
+                  controls={[t("trust.avatar.controls.1")]}
+                />
                 <label className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition ${consent ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`} style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
                   <Camera className="w-3.5 h-3.5" /> {refPhoto ? "Choose a different photo" : "Choose a photo"}
                   <input type="file" accept="image/*" className="hidden" disabled={!consent} onChange={(e) => onPickPhoto(e.target.files?.[0])} />

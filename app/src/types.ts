@@ -9,6 +9,15 @@ export interface ChildProfile {
   strengths: string[];
   challenges: string[];
   riskLevel: 'Low' | 'Moderate' | 'High';
+  /**
+   * P0.4 — explicit onboarding completion. `false` is stamped when the profile is
+   * created at the start of OnboardingFlow and flipped to `true` only when the flow
+   * truly finishes. ABSENT/undefined means "completed under the legacy implicit
+   * model" — existing users must NOT be re-onboarded, so all gating uses a STRICT
+   * `=== false` check, never `!onboardingComplete`.
+   */
+  onboardingComplete?: boolean;
+  onboardingCompletedAt?: string;
   /** Optional profile image — a generated stylized avatar, or a raw photo
    *  (Firebase Storage URL, or an inlined data URL fallback). Rendered by `Avatar`. */
   photoUrl?: string;

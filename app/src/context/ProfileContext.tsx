@@ -7,6 +7,7 @@ import { defaultChildProfile } from "../initialData";
 import { eraseEverything } from "../lib/childData";
 import { trackProfileCreated } from "../lib/loopEvents";
 import { bandForAge } from "../lib/screening";
+import { computeNeedsOnboarding } from "../lib/onboardingGate";
 
 const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
@@ -173,7 +174,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const activeChild =
     profiles.find((p) => p.id === activeChildId) || profiles[0] || defaultChildProfile;
 
-  const needsOnboarding = useFirestore && !loading && profiles.length === 0;
+  const needsOnboarding = computeNeedsOnboarding(useFirestore, loading, profiles);
 
   const value: ProfileContextValue = {
     profiles,
