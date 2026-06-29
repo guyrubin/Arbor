@@ -21,8 +21,51 @@ export type OutputScreenVerdict = {
   reason: string | null;
 };
 
-const CONDITIONS =
-  "autism|autistic|adhd|add\\b|asperger|ocd|odd\\b|bipolar|depress(?:ion|ive)|anxiety disorder|dyslexia|dyspraxia|apraxia|intellectual disability|developmental delay|sensory processing disorder|attachment disorder|conduct disorder|ptsd|tourette";
+const CONDITION_TOKENS = [
+  "autism", "autistic", "adhd", "add\\b", "asperger", "ocd", "odd\\b", "bipolar",
+  "depress(?:ion|ive)", "anxiety disorder", "dyslexia", "dyspraxia", "apraxia",
+  "intellectual disability", "developmental delay", "sensory processing disorder",
+  "attachment disorder", "conduct disorder", "ptsd", "tourette",
+];
+const CONDITIONS = CONDITION_TOKENS.join("|");
+
+/**
+ * Expand a regex source so its ASCII letters match case-insensitively (ADHD/adhd)
+ * WITHOUT a global `/i` flag — escapes like `\b` are left intact. Used to embed the
+ * condition vocabulary inside the case-SENSITIVE proper-name floor below, where the
+ * leading name token must stay capitalization-sensitive (the `/i` flag would make
+ * `\p{Lu}`/`[A-Z]` match lowercase too, defeating the "capitalized name" guard).
+ */
+const ciSource = (src: string): string =>
+  src.replace(/\\?[A-Za-z]/g, (m) => (m[0] === "\\" ? m : `[${m.toLowerCase()}${m.toUpperCase()}]`));
+
+// Proper-name subject: screenModelOutput runs on the ALIAS-RESTORED, child-facing
+// text (routes/api.ts restoreDeep → screen), so a diagnostic claim's subject is
+// usually the child's real FIRST NAME — not a pronoun or the [Child] alias — and the
+// story / bedtime / hero-journey routes lean on the name heavily. "Mia has autism" /
+// "Noah is autistic" must trip the floor (the semantic classifier is OFF by default
+// and fails open). Case-SENSITIVE (no `/i`): the subject must be Capitalized (\p{Lu}),
+// which keeps mid-sentence common nouns ("behavior is odd") out. The short homographs
+// add/odd are dropped from this pattern so sentence-initial words ("Something is odd")
+// don't false-positive — the pronoun/your-child patterns above still catch those acronyms.
+const NAME_SUBJECT = "\\p{Lu}[\\p{L}\\u2019'\\-]*";
+// Includes past tense (had/was/were/suffered) — the story/bedtime/hero-journey
+// routes narrate in the past ("Olivia had developmental delay …").
+const NAME_VERB = "(?:has|have|had|is|are|was|were|suffers? from|suffered from|shows? signs of having)";
+const CONDITIONS_NAME = ciSource(
+  CONDITION_TOKENS.filter((c) => c !== "add\\b" && c !== "odd\\b").join("|"),
+);
+
+// Hebrew/RTL diagnosis floor: Hebrew has no capitalization, so the name-subject trick
+// does not apply — instead match the explicit Hebrew diagnostic frames around a
+// clinical condition. Latin acronyms (ADHD/OCD/…) inside Hebrew text are case-folded.
+const HE_CONDITIONS = ciSource(
+  [
+    "אוטיזם", "אוטיסט(?:ית|ים)?", "אספרגר", "היפראקטיביות", "הפרעת קשב",
+    "דיכאון", "דיסלקציה", "דיספרקסיה", "אפרקסיה", "פיגור שכלי", "עיכוב התפתחותי",
+    "תסמונת טורט", "OCD", "ADHD", "ADD", "PTSD",
+  ].join("|"),
+);
 
 const DIAGNOSIS_PATTERNS = [
   // "your child has ADHD", "she is autistic", "this is autism", "he suffers from OCD"
@@ -35,6 +78,14 @@ const DIAGNOSIS_PATTERNS = [
   // A bare "appears to be" alone is fine — a CONDITION token within two words is required,
   // so non-clinical phrasing ("the strategy appears to be working") never matches.
   new RegExp(`(?:\\blooks? like|\\bseems? like|\\bsounds? like|\\bappears? to be|(?:\\bis|'s) (?:likely|probably)|\\bpoints? to|\\bsuggests?)\\s+(?:\\w+\\s){0,3}(?:${CONDITIONS})`, "i"),
+  // Proper-name subject (alias-restored, child-facing): "Mia has autism", "Noah is
+  // autistic", "Liam suffers from OCD", "Ava shows signs of having ADHD". Case-sensitive.
+  new RegExp(`\\b${NAME_SUBJECT}\\s+${NAME_VERB}\\s+(?:\\w+\\s){0,2}(?:${CONDITIONS_NAME})`, "u"),
+  // Hebrew/RTL diagnostic frames:
+  new RegExp(`יש\\s+ל\\p{L}+\\s+(?:${HE_CONDITIONS})`, "u"), // "יש למיה אוטיזם" — X has …
+  new RegExp(`סובל(?:ת|ים|ות)?\\s+מ?(?:${HE_CONDITIONS})`, "u"), // "מיה סובלת מאוטיזם" — X suffers from …
+  new RegExp(`אובח(?:ן|נה|נו)\\s+(?:עם\\s+|ב)?(?:${HE_CONDITIONS})`, "u"), // "אובחן עם …" — diagnosed with …
+  new RegExp(`(?<!\\p{L})(?:הוא|היא)\\s+(?:${HE_CONDITIONS})`, "u"), // "מיה היא אוטיסטית" — X is …
 ];
 
 const MEDICATION_PATTERNS = [

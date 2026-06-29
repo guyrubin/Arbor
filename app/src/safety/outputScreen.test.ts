@@ -150,3 +150,92 @@ describe("output safety screen (CI-13) — hedged-inference label leaks", () => 
     expect(screenModelOutputLexical(bufferedVoiceReply).flagged).toBe(true);
   });
 });
+
+describe("output safety screen — proper-name subject leaks (alias-restored, child-facing)", () => {
+  // screenModelOutput runs AFTER restoreDeep, so the diagnostic subject is the child's
+  // real first name, not a pronoun or [Child]. The story / bedtime / hero-journey routes
+  // use the name heavily, and the semantic classifier is OFF by default + fails open —
+  // so the lexical floor is the only guaranteed gate for "Mia has autism".
+  it("flags a definitive diagnosis with a proper-name subject", () => {
+    const named = [
+      "Mia has autism.",
+      "Noah is autistic, which explains the meltdowns.",
+      "Liam suffers from OCD.",
+      "Based on her babbling, Ava shows signs of having ADHD.",
+      "Honestly, Sam has autism spectrum disorder.",
+      "Aoife has apraxia of speech.",
+      "Jean-Luc is autistic.",
+      "Once upon a time, Olivia had developmental delay and her parents worried.",
+    ];
+    for (const text of named) {
+      expect(screenModelOutputLexical(text).flagged, text).toBe(true);
+      expect(screenModelOutputLexical(text).category, text).toBe("diagnosis");
+    }
+  });
+
+  it("flags a name-subject leak inside a hero-journey / bedtime narrative concat", () => {
+    const story =
+      "Captain Mia zoomed past the rings of Saturn. Back on Earth, the doctor said Mia has ADHD. Then she flew home for dinner.";
+    expect(screenModelOutputLexical(story).category).toBe("diagnosis");
+  });
+
+  it("exercises the route path: a name-subject leak via async screenModelOutput", async () => {
+    const verdict = await screenModelOutput(throwingProvider, "Noah is autistic and needs therapy.");
+    expect(verdict.flagged).toBe(true);
+    expect(verdict.category).toBe("diagnosis");
+  });
+
+  it("does NOT false-positive on benign sentences with a capitalized leading word", () => {
+    const clean = [
+      // sentence-initial common words that look like a "subject" but carry no condition
+      "Something is odd today, but that's normal for this age.",
+      "That is odd — let's keep the routine steady.",
+      "Transitions are hard at this age. Name the feeling and offer two choices.",
+      "Goodbyes are the hardest part of her day; naming the feeling helps.",
+      // proper names in fully benign contexts (the why-line / story shapes)
+      "A good fit for where Sam is right now. Developmentally informed, grounded in CDC/AAP/ASHA/WHO.",
+      "Picked because you're working on big feelings with Sam.",
+      "Chosen because Mia loves Space — and because it fits this stage.",
+      "Emma is happy and calm today after a good nap.",
+      "Noah loves dinosaurs and zoomed around the living room.",
+      // informational sentences ABOUT a condition (condition is the subject, not the object)
+      "Autism is a spectrum, not a single thing.",
+      "ADHD is manageable with the right support from professionals.",
+      "Anxiety is something many toddlers feel; it usually passes.",
+    ];
+    for (const text of clean) {
+      expect(screenModelOutputLexical(text).flagged, text).toBe(false);
+    }
+  });
+});
+
+describe("output safety screen — Hebrew / RTL diagnosis floor", () => {
+  it("flags Hebrew diagnostic claims", () => {
+    const named = [
+      "יש למיה אוטיזם.", // Mia has autism
+      "נועה סובלת מאוטיזם.", // Noah suffers from autism
+      "הילד אובחן עם ADHD.", // the child was diagnosed with ADHD
+      "היא אובחנה באספרגר.", // she was diagnosed with Asperger
+      "מיה היא אוטיסטית.", // Mia is autistic
+      "לדעתי יש לדני OCD.", // I think Danny has OCD
+    ];
+    for (const text of named) {
+      expect(screenModelOutputLexical(text).flagged, text).toBe(true);
+      expect(screenModelOutputLexical(text).category, text).toBe("diagnosis");
+    }
+  });
+
+  it("does NOT false-positive on benign Hebrew parent-coaching text", () => {
+    const clean = [
+      "חכי שלוש שניות אחרי שהילד שלך משמיע צליל — תני לו מקום.", // wait three seconds…
+      "כדאי להעלות את זה מול רופא הילדים שלך.", // worth raising with your pediatrician
+      "ספרי לתינוק שלך מה את עושה בזמן האמבטיה.", // narrate what you're doing
+      "מעברים הם החלק הקשה ביום שלה.", // transitions are the hardest part
+      "היא שמחה ורגועה היום.", // she is happy and calm today
+      "נועה אוהבת חלל ודינוזאורים.", // Noah loves space and dinosaurs
+    ];
+    for (const text of clean) {
+      expect(screenModelOutputLexical(text).flagged, text).toBe(false);
+    }
+  });
+});
