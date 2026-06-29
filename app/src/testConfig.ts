@@ -28,6 +28,10 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   billingCheckoutUrls: {},
   childAsrProvider: "none",
   whisperModel: "whisper-1",
+  ttsProvider: "none",
+  ttsVoiceEn: "",
+  ttsVoiceHe: "",
+  ttsDisabled: false,
   referralSecret: "test-referral-salt",
   referralMaxGrants: 5,
   ...overrides

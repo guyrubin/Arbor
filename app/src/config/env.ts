@@ -52,6 +52,16 @@ export type ArborConfig = {
   /** SoapBox Labs kid-ASR endpoint + key (phoneme-level; primary when licensed). */
   soapboxApiUrl?: string;
   soapboxApiKey?: string;
+  /** Neural text-to-speech provider for natural read-aloud (Epic A). "google" =
+   *  Google Cloud Text-to-Speech on the SAME GCP project via ADC (no new vendor);
+   *  "none" (default) = the browser SpeechSynthesis floor only, so the app ships
+   *  unchanged until this is deliberately enabled. */
+  ttsProvider: "none" | "google";
+  /** Cloud TTS voice names per locale; empty → the API's default voice for the locale. */
+  ttsVoiceEn: string;
+  ttsVoiceHe: string;
+  /** Hard kill-switch: when true, /api/tts is disabled regardless of ttsProvider. */
+  ttsDisabled: boolean;
   /** mk-p0-2 referral loop: secret salt for the per-user HMAC referral code, and
    *  the max number of referral months a single referrer can ever earn. */
   referralSecret: string;
@@ -141,6 +151,10 @@ export const loadConfig = (): ArborConfig => {
     whisperModel: process.env.WHISPER_MODEL || "whisper-1",
     soapboxApiUrl: process.env.SOAPBOX_API_URL,
     soapboxApiKey: process.env.SOAPBOX_API_KEY,
+    ttsProvider: (process.env.TTS_PROVIDER || "none").toLowerCase() === "google" ? "google" : "none",
+    ttsVoiceEn: process.env.TTS_VOICE_EN || "",
+    ttsVoiceHe: process.env.TTS_VOICE_HE || "",
+    ttsDisabled: boolFromEnv(process.env.TTS_DISABLED, false),
     // No PII goes into the code; the salt only makes the code non-enumerable.
     referralSecret: process.env.REFERRAL_SECRET || "arbor-referral-dev-salt",
     referralMaxGrants: Number(process.env.REFERRAL_MAX_GRANTS || 5),
