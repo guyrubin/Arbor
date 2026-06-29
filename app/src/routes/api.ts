@@ -28,7 +28,7 @@ import { billingCheckoutUrl } from "../server/billing.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
-import { buildWaitlistEntry, isValidEmail, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
+import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
 
 type ApiDeps = {
   config: ArborConfig;
@@ -1969,18 +1969,12 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
 
     try {
       const isDuplicate = await waitlistStore.has(email);
-      let entry = null;
       if (!isDuplicate) {
-        entry = await waitlistStore.add(buildWaitlistEntry({ email, source, market }));
-        if (waitlistNotifier) {
-          try {
-            await waitlistNotifier.notify(entry);
-          } catch (notifyError: any) {
-            logger.error("Arbor Waitlist Notify Error", notifyError, { requestId: requestIdOf(req) });
-            res.status(502).json({ error: "Access request saved but notification email failed" });
-            return;
-          }
-        }
+        const entry = await waitlistStore.add(buildWaitlistEntry({ email, source, market }));
+        // WAITLIST-DECOUPLE: lead is now saved. Founder notification is best-effort —
+        // a delivery failure is logged but never fails the parent's request.
+        await notifyWaitlistSafely(waitlistNotifier, entry, (notifyError) =>
+          logger.error("Arbor Waitlist Notify Error", notifyError, { requestId: requestIdOf(req) }));
       }
       res.json({ ok: true, duplicate: isDuplicate });
     } catch (error: any) {

@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { LocalWaitlistStore, buildWaitlistEntry, createResendWaitlistNotifier, isValidEmail } from "./waitlist.js";
+import { LocalWaitlistStore, buildWaitlistEntry, createResendWaitlistNotifier, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier } from "./waitlist.js";
 
 // ── isValidEmail ──────────────────────────────────────────────────────────────
 
@@ -148,6 +148,38 @@ describe("createResendWaitlistNotifier", () => {
 
     await expect(notifier?.notify(buildWaitlistEntry({ email: "parent@example.com" })))
       .rejects.toThrow("Waitlist notification email failed: 401 bad api key");
+  });
+});
+
+// ── Decoupled best-effort notify (WAITLIST-DECOUPLE) ──────────────────────────
+//
+// The route saves the lead first, then notifies the founder best-effort. A notify
+// failure must NEVER throw out of that path (else the parent — whose lead saved —
+// is told it failed, and the retry hits dedup and silently drops the notification).
+
+describe("notifyWaitlistSafely", () => {
+  const entry = () => buildWaitlistEntry({ email: "parent@example.com", source: "login-access", market: "il" });
+
+  it("no-ops (returns false, no error) when no notifier is configured", async () => {
+    const errors: unknown[] = [];
+    await expect(notifyWaitlistSafely(null, entry(), (e) => errors.push(e))).resolves.toBe(false);
+    expect(errors).toHaveLength(0);
+  });
+
+  it("swallows a notifier failure: logs once, never throws, returns false (lead still succeeds)", async () => {
+    const errors: unknown[] = [];
+    const boom: WaitlistNotifier = { notify: async () => { throw new Error("resend down"); } };
+    await expect(notifyWaitlistSafely(boom, entry(), (e) => errors.push(e))).resolves.toBe(false);
+    expect(errors).toHaveLength(1);
+    expect((errors[0] as Error).message).toBe("resend down");
+  });
+
+  it("returns true and does not log when delivery succeeds", async () => {
+    const errors: unknown[] = [];
+    const ok: WaitlistNotifier = { notify: vi.fn(async () => {}) };
+    await expect(notifyWaitlistSafely(ok, entry(), (e) => errors.push(e))).resolves.toBe(true);
+    expect(ok.notify).toHaveBeenCalledOnce();
+    expect(errors).toHaveLength(0);
   });
 });
 

@@ -22,7 +22,7 @@ import { initUsageRollup } from "./usageRollup.js";
 import { createConsultStore } from "./consultRequests.js";
 import { createWaitlistNotifierFromEnv, createWaitlistStore } from "./waitlist.js";
 import { createPushTokenStore } from "./pushTokens.js";
-import { requestObservability } from "./logger.js";
+import { requestObservability, logger } from "./logger.js";
 import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
 import { healthzHandler } from "./healthz.js";
 
@@ -84,6 +84,9 @@ export const createApp = (config: ArborConfig) => {
   // B2: pre-auth waitlist capture — no AI, no entitlement dependency.
   const waitlistStore = createWaitlistStore(config);
   const waitlistNotifier = createWaitlistNotifierFromEnv();
+  // WAITLIST-OPS-DOCS: make the prod-arming state observable (a mistyped env var
+  // silently disables founder notifications otherwise).
+  logger.info(`Waitlist founder notifications ${waitlistNotifier ? "enabled" : "disabled"}`);
   // C2: push token store. Always created (firebase-admin is an existing dep);
   // the feature is gated client-side by VITE_FIREBASE_VAPID_KEY, not by this.
   const pushTokenStore = createPushTokenStore(config);

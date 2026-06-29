@@ -146,6 +146,29 @@ export const createWaitlistNotifierFromEnv = (): WaitlistNotifier | null =>
     notifyFrom: process.env.WAITLIST_NOTIFY_FROM || process.env.ARBOR_WAITLIST_NOTIFY_FROM,
   });
 
+/**
+ * WAITLIST-DECOUPLE: best-effort founder notification. The parent's lead is ALREADY
+ * durably saved by the time we notify, so a delivery failure must never fail the
+ * parent's request (returning 502 would tell a parent whose signup succeeded that it
+ * failed, and the inevitable retry hits the dedup path and silently drops the notify).
+ * This swallows the error into `onError` and resolves — it never throws.
+ * Returns true iff the notification was delivered.
+ */
+export const notifyWaitlistSafely = async (
+  notifier: WaitlistNotifier | null | undefined,
+  entry: WaitlistEntry,
+  onError: (err: unknown) => void,
+): Promise<boolean> => {
+  if (!notifier) return false;
+  try {
+    await notifier.notify(entry);
+    return true;
+  } catch (err) {
+    onError(err);
+    return false;
+  }
+};
+
 // ── Builder ──────────────────────────────────────────────────────────────────
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

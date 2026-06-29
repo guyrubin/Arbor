@@ -3,7 +3,7 @@ import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift, Palette, Bel
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
 import InviteCard from "../referral/InviteCard";
-import { useLanguage } from "../../context/LanguageContext";
+import { useLanguage, type AiLang } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -16,7 +16,7 @@ import type { UiLang } from "../../lib/i18n";
 /** Lightweight app settings — wired to real app state (app language, trust panels,
  *  notifications, billing, and account). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { uiLang, aiLang, setUiLang, t } = useLanguage();
+  const { uiLang, aiLang, setUiLang, setAiLang, t } = useLanguage();
   const { showAiRail, setShowAiRail, setActiveTab } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
@@ -29,19 +29,32 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const [busy, setBusy] = useState(false);
   const [accentTheme, setAccentTheme] = useState<AccentTheme>(getSavedTheme);
   const [draftUiLang, setDraftUiLang] = useState<UiLang>(uiLang);
-  const languageDirty = draftUiLang !== uiLang || draftUiLang !== aiLang;
+  // LANG-ADV-OVERRIDE: bilingual parents (e.g. Hebrew interface, English clinical
+  // guidance) can opt the AI response language away from the app language. When the
+  // toggle is off, the AI language follows the app language (the default cascade).
+  const [draftAiDifferent, setDraftAiDifferent] = useState<boolean>(aiLang !== uiLang);
+  const [draftAiLang, setDraftAiLang] = useState<AiLang>(aiLang);
+  const effectiveAiLang: AiLang = draftAiDifferent ? draftAiLang : draftUiLang;
+  const languageDirty = draftUiLang !== uiLang || effectiveAiLang !== aiLang;
 
   useEffect(() => {
-    if (open) setDraftUiLang(uiLang);
-  }, [open, uiLang]);
+    if (open) {
+      setDraftUiLang(uiLang);
+      setDraftAiDifferent(aiLang !== uiLang);
+      setDraftAiLang(aiLang);
+    }
+  }, [open, uiLang, aiLang]);
 
   const handleSaveLanguage = () => {
-    setUiLang(draftUiLang);
+    setUiLang(draftUiLang); // sets uiLang AND aiLang := draftUiLang (whole-app cascade)
+    if (effectiveAiLang !== draftUiLang) setAiLang(effectiveAiLang); // override AI only when it should differ
     toast(t("set.language.saved"), "success");
   };
 
   const handleCancelLanguage = () => {
     setDraftUiLang(uiLang);
+    setDraftAiDifferent(aiLang !== uiLang);
+    setDraftAiLang(aiLang);
   };
 
   const planLabel = isBeta
@@ -222,6 +235,36 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </div>
         </Row>
 
+        {/* LANG-ADV-OVERRIDE: advanced — let the AI answer in a different language than the UI */}
+        <Row icon={<Languages className="w-4 h-4" />} title={t("set.aiLang.title")} sub={t("set.aiLang.sub")}>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              onClick={() => setDraftAiDifferent((v) => !v)}
+              aria-pressed={draftAiDifferent}
+              aria-label={t("set.aiLang.toggle")}
+              className="w-11 h-6 rounded-full transition relative"
+              style={{ background: draftAiDifferent ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${draftAiDifferent ? "end-[22px]" : "start-0.5"}`} />
+            </button>
+            {draftAiDifferent && (
+              <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setDraftAiLang(k)}
+                    aria-pressed={draftAiLang === k}
+                    className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
+                    style={draftAiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </Row>
+
         {/* AP-052: Accent theme picker */}
         <Row icon={<Palette className="w-4 h-4" />} title={t("set.theme.title")} sub={t("set.theme.sub")}>
           <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -287,22 +330,22 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         </Row>
         </Section>
 
-        {/* ADM-1: founder-only single-pane dashboard (users, paying, token spend) */}
+        {/* P0.2 (SET-ADMIN): operator-only tools isolated in their own section */}
         {entitlement.isAdmin && (
-          <Row icon={<BarChart3 className="w-4 h-4" />} title="Founder dashboard" sub="Users, paying plans, and AI spend today">
-            <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
-              Open
-            </button>
-          </Row>
-        )}
-
-        {/* P0-5: attribution + UTM funnel dashboard (operator-only) */}
-        {entitlement.isAdmin && (
-          <Row icon={<BarChart3 className="w-4 h-4" />} title="Attribution & funnel" sub="Install → activation → paid, by channel and market">
-            <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              Open
-            </button>
-          </Row>
+          <Section title={t("set.section.admin")} sub={t("set.section.adminSub")}>
+            {/* ADM-1: founder-only single-pane dashboard (users, paying, token spend) */}
+            <Row icon={<BarChart3 className="w-4 h-4" />} title={t("set.admin.founder.title")} sub={t("set.admin.founder.sub")}>
+              <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+                {t("set.admin.open")}
+              </button>
+            </Row>
+            {/* P0-5: attribution + UTM funnel dashboard (operator-only) */}
+            <Row icon={<BarChart3 className="w-4 h-4" />} title={t("set.admin.attribution.title")} sub={t("set.admin.attribution.sub")}>
+              <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+                {t("set.admin.open")}
+              </button>
+            </Row>
+          </Section>
         )}
 
         {firebaseEnabled && user && (
@@ -329,8 +372,9 @@ function Section({ title, sub, children }: { title: string; sub: string; childre
   return (
     <section className="rounded-2xl p-3 space-y-3" style={{ background: "rgba(255,255,255,0.62)", border: "1px solid var(--arbor-rule)" }}>
       <div>
-        <h3 className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{title}</h3>
-        <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{sub}</p>
+        {/* GREEN-DRIFT-SETTINGS: neutral eyebrow, not emerald, in the sapphire 2035 chrome */}
+        <h3 className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{title}</h3>
+        <p className="text-xs mt-0.5" style={{ color: "var(--arbor-faint)" }}>{sub}</p>
       </div>
       {children}
     </section>

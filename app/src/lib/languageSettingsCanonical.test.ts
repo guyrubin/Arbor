@@ -17,6 +17,9 @@ describe("language settings canonical surface", () => {
     expect(coach).not.toContain("coach.aiLang.label");
     expect(settings).toContain("set.language.title");
     expect(settings).toContain("setUiLang(");
+    // The advanced AI-language override must live INSIDE Settings (never a Coach/topbar switch).
+    expect(settings).toContain("setAiLang(");
+    expect(settings).toContain("set.aiLang.toggle");
   });
 
   it("makes Settings an explicit save/cancel system-control panel", () => {
@@ -33,9 +36,24 @@ describe("language settings canonical surface", () => {
       expect(i18n).toContain(key);
     }
     expect(settings).toContain("draftUiLang");
-    expect(settings).toContain("draftUiLang !== uiLang || draftUiLang !== aiLang");
+    // Dirty when the app language changed OR the effective AI language changed.
+    expect(settings).toContain("draftUiLang !== uiLang || effectiveAiLang !== aiLang");
     expect(settings).toContain("min-h-[44px] min-w-[44px]");
     expect(settings).toContain("handleSaveLanguage");
     expect(settings).toContain("handleCancelLanguage");
+  });
+
+  it("offers an in-Settings advanced AI-language override (decoupled from app language)", () => {
+    const settings = src("components", "layout", "SettingsModal.tsx");
+    const i18n = src("lib", "i18n.ts");
+    // Override state + effective-language derivation present.
+    expect(settings).toContain("draftAiDifferent");
+    expect(settings).toContain("effectiveAiLang");
+    // Reuses the (previously orphaned) AI-language strings; toggle label exists in both dicts.
+    expect(i18n).toContain("set.aiLang.toggle");
+    expect(i18n).toContain("set.aiLang.title");
+    // The dead Coach/topbar language keys are gone (consolidation stays clean).
+    expect(i18n).not.toContain("coach.aiLang.label");
+    expect(i18n).not.toContain('"top.language"');
   });
 });
