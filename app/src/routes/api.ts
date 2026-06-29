@@ -15,6 +15,7 @@ import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/profession
 import { Type } from "@google/genai";
 import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../server/redaction.js";
 import { screenModelOutput, renderBlockedOutputMarkdown } from "../safety/outputScreen.js";
+import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.js";
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { requireConsent } from "../server/requireConsent.js";
@@ -1404,6 +1405,23 @@ ${languageDirective}`;
           }
         }
       })) as Record<string, unknown>;
+
+      // AI-2: output-side safety screen. Every other generative route screens its
+      // model output; the hero journey emits model-authored narration/dialogue/sfx/
+      // titles/choices/reflection, so screen ALL of those (on the alias-restored,
+      // child-facing text) before returning. Fails closed → blocked fallback. This
+      // is also the precondition for ever voicing this span (neural TTS).
+      const heroScreenable = assembleHeroJourneyScreenable(render);
+      const outputVerdict = await screenModelOutput(modelProvider, heroScreenable);
+      if (outputVerdict.flagged) {
+        logger.warn("Hero journey output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        res.json({ text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category });
+        return;
+      }
 
       res.json({
         storyId: story.id,
