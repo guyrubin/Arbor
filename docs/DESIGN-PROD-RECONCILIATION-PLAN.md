@@ -1,5 +1,3 @@
-#2b7fff` is real, `--glass-blur:none`, navy ink `#14225a`. I have enough ground truth to resolve the audit conflict decisively. Writing the plan.
-
 # Arbor Design ↔ Production Reconciliation Plan
 
 ## 1. The diagnosis (why prod looks nothing like the design)
