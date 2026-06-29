@@ -134,7 +134,7 @@ export default function Shell() {
   const { activeTab, setActiveTab, showAiRail, setShowAiRail, showSandboxBanner, childProfile } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
-  const { t, uiLang, setUiLang } = useLanguage();
+  const { t } = useLanguage();
   const ActiveTabComponent = tabRegistry[activeTab];
   const section = sectionForTab(activeTab);
   const focusLabel = childProfile.languages.length > 1
@@ -214,25 +214,12 @@ export default function Shell() {
             </span>}
             actions={<div className="flex items-center gap-2">
               <AskArborButton compact />
-              {/* Whole-app language switch (UI + AI). Hebrew flips the app to RTL.
-                  UC-1: relocated to the sidebar account-row popover on desktop; this
-                  in-content toggle is now MOBILE-ONLY (sidebar is hidden below md) so
-                  mobile users keep a language path. */}
-              {/* VIS-2: language switcher — min 44px hit area via min-h/padding; visual stays compact */}
-              <div className="md:hidden flex items-center rounded-xl p-0.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} title={t("top.language")}>
-                {(["en", "he"] as const).map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => setUiLang(l)}
-                    aria-label={l === "en" ? "Switch to English" : "Switch to Hebrew"}
-                    aria-pressed={uiLang === l}
-                    className="px-3 min-h-[44px] min-w-[44px] rounded-lg text-[11px] font-extrabold transition inline-flex items-center justify-center"
-                    style={uiLang === l ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}
-                  >
-                    {l === "en" ? "EN" : "עב"}
-                  </button>
-                ))}
-              </div>
+              {/* UC-1 + main consolidation: the whole-app language switch is canonical
+                  inside Settings ONLY (see languageSettingsCanonical guard test). On
+                  desktop it lives in the sidebar account-row popover; on mobile the
+                  md:hidden Settings button below opens the same SettingsModal language
+                  panel — so the mobile language path is preserved without a duplicate
+                  in-content toggle. */}
               <button
                 onClick={() => setSearchOpen(true)}
                 aria-label={t("top.search")}

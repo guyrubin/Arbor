@@ -93,7 +93,7 @@ export default function CoachTab() {
     apiError,
   } = useArbor();
   const { toast } = useToast();
-  const { aiLang, setAiLang, t, uiLang } = useLanguage();
+  const { aiLang, t, uiLang } = useLanguage();
   const { user } = useAuth();
   const childFirst = (childProfile.name || "").split(" ")[0];
   const reducedMotion = usePrefersReducedMotion();
@@ -256,29 +256,7 @@ export default function CoachTab() {
           <div>
             <h2 className="text-2xl md:text-[2rem] leading-[1.12]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("nav.tab.coach")}</h2>
             <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline" style={{ color: "var(--arbor-muted)" }}>{t("coach.aiLang.label")}</span>
-            <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              <button
-                onClick={() => setAiLang("en")}
-                aria-pressed={aiLang === "en"}
-                aria-label={t("coach.aiLang.en")}
-                className="min-w-[44px] min-h-[44px] px-2.5 rounded-lg text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={aiLang === "en" ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
-              >
-                EN
-              </button>
-              <button
-                onClick={() => setAiLang("he")}
-                aria-pressed={aiLang === "he"}
-                aria-label={t("coach.aiLang.he")}
-                className="min-w-[44px] min-h-[44px] px-2.5 rounded-lg text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={aiLang === "he" ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
-              >
-                עב
-              </button>
-            </div>
+            <p className="text-xs mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("coach.languageManaged")}</p>
           </div>
         </div>
 

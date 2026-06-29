@@ -5,6 +5,7 @@ import {
   ShieldCheck, RefreshCw, ChevronLeft,
 } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
+import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
@@ -561,12 +562,18 @@ function StepReady({
  *  All child data writes go through ProfileContext.addChild (no schema change).
  *  Step 4 (Avatar) enforces face_processing consent via AvatarCreator's gated path. */
 export default function OnboardingFlow() {
-  const { addChild, updateChild } = useProfile();
+  const { addChild, updateChild, profiles } = useProfile();
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  // Navigation
-  const [step, setStep] = useState<Step>(1);
+  // P0.4 — resume: if a profile was created but onboarding never finished
+  // (onboardingComplete === false), pick up where the parent left off instead of
+  // creating a duplicate child. Computed once at mount (the gate only renders this
+  // flow when profiles is loaded).
+  const resumeChild = findIncompleteOnboardingChild(profiles);
+
+  // Navigation — resume past the create step (Step 3) when continuing an in-flight setup.
+  const [step, setStep] = useState<Step>(resumeChild ? 3 : 1);
 
   /**
    * REPLAY / DEMO MODE (AP-049 AC-1):
@@ -589,7 +596,8 @@ export default function OnboardingFlow() {
   // Step 4 state (avatar)
   const [avatarResult, setAvatarResult] = useState<AvatarResult | null>(null);
   // childId is available after addChild; for Avatar step we create the profile first.
-  const [createdChildId, setCreatedChildId] = useState<string | null>(null);
+  // On resume, preset it to the in-flight child so we never create a duplicate.
+  const [createdChildId, setCreatedChildId] = useState<string | null>(resumeChild?.id ?? null);
 
   // Step 5 state
   const [saving, setSaving] = useState(false);
@@ -613,6 +621,13 @@ export default function OnboardingFlow() {
       return;
     }
 
+    // RESUME / RE-ENTRY GUARD (P0.4): the profile already exists (resumed in-flight
+    // setup, or we stepped back to Step 2). Never create a second child — just advance.
+    if (createdChildId) {
+      goNext();
+      return;
+    }
+
     // Create the child profile now so step 4 (AvatarCreator) has a real childId.
     const birthDate = birthDateFromAgeMonths(totalAgeMonths);
     try {
@@ -626,6 +641,9 @@ export default function OnboardingFlow() {
         strengths: [],
         challenges: [],
         riskLevel: "Low",
+        // P0.4: mark setup as in-flight so the gate keeps the flow mounted through
+        // every step and resumes (not restarts) if interrupted. Flipped true at submit.
+        onboardingComplete: false,
       });
       setCreatedChildId(child.id);
       goNext();
@@ -656,15 +674,17 @@ export default function OnboardingFlow() {
         return d ? t(d.nameKey) : id;
       });
 
-      // Patch the existing profile with domain choices and avatar (if set).
-      const patch: Record<string, unknown> = {};
+      // Patch the existing profile with domain choices and avatar (if set), and
+      // P0.4: stamp explicit completion. This patch always has the two completion
+      // keys, so the write always runs — flipping the gate from "in-flight" to done.
+      const patch: Record<string, unknown> = {
+        onboardingComplete: true,
+        onboardingCompletedAt: new Date().toISOString(),
+      };
       if (challenges.length) patch.challenges = challenges;
       if (avatarResult) patch.avatar = avatarResult.dataUrl;
 
-      // Write patch via updateChild if there is anything to patch.
-      if (Object.keys(patch).length > 0) {
-        await updateChild(createdChildId, patch as Parameters<typeof updateChild>[1]);
-      }
+      await updateChild(createdChildId, patch as Parameters<typeof updateChild>[1]);
 
       // Seed the coach if domains were picked.
       if (selectedDomains.length > 0) {

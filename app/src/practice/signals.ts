@@ -73,7 +73,10 @@ function daysAgo(today: string, n: number): string {
   return dayKey(d);
 }
 
-/** Consecutive practice days ending today or yesterday (any completed mission counts). */
+/** Consecutive practice days ending today or yesterday (any completed mission counts).
+ *  NOTE: this is a streak (loss-framed, resettable). It must NEVER drive a
+ *  child-facing reward or counter — that is streak-anxiety. Parent-side context
+ *  only. Child-facing consistency uses daysPracticed (monotonic) instead. */
 export function streakDays(missions: MissionRecord[], today: string): number {
   const done = new Set(missions.filter((m) => m.completed).map((m) => m.date));
   let start = 0;
@@ -84,6 +87,14 @@ export function streakDays(missions: MissionRecord[], today: string): number {
   let streak = 0;
   for (let i = start; done.has(daysAgo(today, i)); i++) streak++;
   return streak;
+}
+
+/** Lifetime count of distinct days with a completed practice mission. MONOTONIC:
+ *  it only ever grows as history accrues, never resets and never decreases — so
+ *  it celebrates consistency with zero loss-aversion. This is the child-safe
+ *  replacement for streakDays in any reward/counter the child sees. */
+export function daysPracticed(missions: MissionRecord[]): number {
+  return new Set(missions.filter((m) => m.completed).map((m) => m.date)).size;
 }
 
 export interface WeeklyActivity {

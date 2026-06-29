@@ -1,19 +1,21 @@
-/** Thin wrapper around the browser SpeechSynthesis API for reading stories aloud. */
+/**
+ * Legacy read-aloud API, now a thin shim over the central voice controller
+ * (`lib/voice.ts`). Existing callers (the coach voice pump, EarlyReadingTrack)
+ * keep this exact surface, but every utterance now flows through the one
+ * controller — so a new utterance cleanly interrupts the prior one and the
+ * neural-TTS engine can swap in centrally. New UI should use `<SpeakButton>` /
+ * `useArborVoice` instead of calling these directly.
+ */
+import { speakText, stopVoice, voiceSupported } from "./voice";
 
 export function ttsSupported(): boolean {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
+  return voiceSupported();
 }
 
 export function speak(text: string, onend?: () => void) {
-  if (!ttsSupported()) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.92;
-  utterance.pitch = 1;
-  utterance.onend = () => onend?.();
-  window.speechSynthesis.speak(utterance);
+  speakText(text, { onEnd: onend });
 }
 
 export function stopSpeaking() {
-  if (ttsSupported()) window.speechSynthesis.cancel();
+  stopVoice();
 }

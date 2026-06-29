@@ -7,10 +7,12 @@
 export type CosmeticKind = "frame" | "badge" | "title";
 
 export interface CosmeticStats {
-  /** Lifetime practice interactions across all modules. */
+  /** Lifetime practice interactions across all modules. Monotonic. */
   totalSessions: number;
-  /** Current consecutive-day practice streak. */
-  streakDays: number;
+  /** Lifetime count of distinct days the child has practiced. MONOTONIC —
+   *  never resets, never decreases. The child-safe consistency signal that
+   *  replaced the old consecutive-day streak (no loss-aversion, no streak-shame). */
+  daysPracticed: number;
   /** Distinct developmental domains touched this week (0–5). */
   domainsTouched: number;
 }
@@ -29,10 +31,10 @@ export interface Cosmetic {
 export const COSMETICS: Cosmetic[] = [
   { id: "sprout-frame", kind: "frame", label: "Sprout", emoji: "🌱", metric: "totalSessions", threshold: 1, requirement: "Try your first activity" },
   { id: "explorer-badge", kind: "badge", label: "Explorer", emoji: "🧭", metric: "domainsTouched", threshold: 3, requirement: "Play across 3 areas in a week" },
-  { id: "steady-title", kind: "title", label: "Steady", emoji: "🪴", metric: "streakDays", threshold: 3, requirement: "Practice 3 days in a row" },
+  { id: "steady-title", kind: "title", label: "Steady", emoji: "🪴", metric: "daysPracticed", threshold: 3, requirement: "Practice on 3 different days" },
   { id: "bloom-frame", kind: "frame", label: "Bloom", emoji: "🌸", metric: "totalSessions", threshold: 10, requirement: "Complete 10 activities" },
   { id: "allrounder-badge", kind: "badge", label: "All-rounder", emoji: "🌈", metric: "domainsTouched", threshold: 5, requirement: "Play across all 5 areas in a week" },
-  { id: "devoted-title", kind: "title", label: "Devoted", emoji: "🔥", metric: "streakDays", threshold: 7, requirement: "Practice 7 days in a row" },
+  { id: "devoted-title", kind: "title", label: "Devoted", emoji: "💛", metric: "daysPracticed", threshold: 7, requirement: "Practice on 7 different days" },
   { id: "star-frame", kind: "frame", label: "Star", emoji: "⭐", metric: "totalSessions", threshold: 25, requirement: "Complete 25 activities" },
   { id: "tree-frame", kind: "frame", label: "Mighty tree", emoji: "🌳", metric: "totalSessions", threshold: 50, requirement: "Complete 50 activities" },
 ];

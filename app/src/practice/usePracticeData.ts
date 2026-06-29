@@ -14,6 +14,7 @@ import { useChildCollection, type ChildCollection } from "../hooks/useChildColle
 import {
   bandTrend,
   dayKey,
+  daysPracticed,
   developmentScore,
   domainBands,
   domainConfidence,
@@ -41,7 +42,10 @@ export interface PracticeData {
   stats: SoundStats[];
   week: WeeklyActivity;
   score: number;
+  /** Consecutive-day streak — PARENT-SIDE context only, never a child reward. */
   streak: number;
+  /** Lifetime distinct days practiced — monotonic, child-safe consistency signal. */
+  daysPracticed: number;
 }
 
 /**
@@ -85,8 +89,9 @@ export function usePracticeData(childId: string): PracticeData {
   );
   const score = useMemo(() => developmentScore(week), [week]);
   const streak = useMemo(() => streakDays(missions.items, today), [missions.items, today]);
+  const days = useMemo(() => daysPracticed(missions.items), [missions.items]);
 
-  return { speech, mimic, missions, adventures, events, today, stats, week, score, streak };
+  return { speech, mimic, missions, adventures, events, today, stats, week, score, streak, daysPracticed: days };
 }
 
 export interface CopilotData {

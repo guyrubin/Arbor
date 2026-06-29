@@ -6,6 +6,7 @@ import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
+import { buildNewChildInput, type ChildGender } from "../../lib/childProfileInput";
 
 const LANGUAGE_OPTIONS = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
@@ -18,7 +19,8 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
   const atChildLimit = entitlement.enforced && profiles.length >= entitlement.limits.maxChildren;
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
-  const [age, setAge] = useState<number>(4);
+  const [ageMonths, setAgeMonths] = useState<number>(48);
+  const [gender, setGender] = useState<ChildGender>("unspecified");
   const [languages, setLanguages] = useState<string[]>([]);
   const [strengths, setStrengths] = useState("");
   const [challenges, setChallenges] = useState("");
@@ -27,7 +29,8 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
   const reset = () => {
     setStep(1);
     setName("");
-    setAge(4);
+    setAgeMonths(48);
+    setGender("unspecified");
     setLanguages([]);
     setStrengths("");
     setChallenges("");
@@ -42,22 +45,12 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
   const toggleLanguage = (lang: string) =>
     setLanguages((prev) => (prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]));
 
-  const toLines = (text: string) =>
-    text.split("\n").map((s) => s.trim()).filter(Boolean);
-
   const finish = async () => {
     setSaving(true);
     try {
-      const childName = name.trim() || "New Child";
-      await addChild({
-        name: childName,
-        age,
-        languages: languages.length ? languages : ["English"],
-        schoolContext: "",
-        strengths: toLines(strengths),
-        challenges: toLines(challenges),
-        riskLevel: "Low",
-      });
+      const input = buildNewChildInput({ name, ageMonths, gender, languages, strengthsText: strengths, challengesText: challenges });
+      const childName = input.name;
+      await addChild(input);
       toast(t("ac.addedToast", { name: childName }), "success");
       close();
     } finally {
@@ -112,8 +105,39 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.age")} <span style={{ color: "var(--arbor-green-ink)" }}>{age}</span></label>
-              <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.ageMonths")}</label>
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={216}
+                  value={ageMonths}
+                  onChange={(e) => setAgeMonths(Math.max(0, Math.min(216, Number(e.target.value) || 0)))}
+                  className="w-full rounded-xl px-4 py-2.5 focus:outline-none"
+                  style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+                />
+                <span className="text-xs font-bold whitespace-nowrap" style={{ color: "var(--arbor-green-ink)" }}>{t("ac.agePreview", { years: Math.floor(ageMonths / 12), months: ageMonths % 12 })}</span>
+              </div>
+              <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ac.ageHelp")}</p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.gender")}</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(["girl", "boy", "other", "unspecified"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setGender(option)}
+                    className="px-3 py-2 rounded-xl text-xs font-bold transition"
+                    style={gender === option
+                      ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
+                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                  >
+                    {t(`ac.gender.${option}`)}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

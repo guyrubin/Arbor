@@ -60,6 +60,10 @@ jobs:
         run: npm run build
       - name: Sync Capacitor (iOS)
         run: npx cap sync ios
+      - name: Set unique build number (CFBundleVersion)
+        working-directory: app/ios/App
+        # Each TestFlight upload needs a unique, increasing build number.
+        run: agvtool new-version -all ${{ github.run_number }}
 
       # ── Signed build + TestFlight upload (when Apple secrets are configured) ──
       - name: Build signed IPA + upload to TestFlight

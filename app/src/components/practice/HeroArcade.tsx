@@ -91,7 +91,7 @@ export default function HeroArcade() {
     totalSessions:
       data.speech.items.length + data.mimic.items.length + data.adventures.items.length +
       data.events.items.length + data.missions.items.filter((m) => m.completed).length,
-    streakDays: data.streak,
+    daysPracticed: data.daysPracticed,
     domainsTouched: data.week.domainsTouched.length,
   }), [data]);
 

@@ -32,6 +32,11 @@ jobs:
       VITE_FIREBASE_STORAGE_BUCKET: arborprd-westeu.firebasestorage.app
       VITE_FIREBASE_MESSAGING_SENDER_ID: '628681500167'
       VITE_FIREBASE_APP_ID: '1:628681500167:web:f78b93f5f692e174d2aca2'
+      # Upload-keystore secrets (set these to produce a SIGNED, Play-submittable AAB).
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,11 +54,19 @@ jobs:
         run: npm run build
       - name: Sync Capacitor (Android)
         run: npx cap sync android
+      - name: Decode upload keystore (only when the secret is set)
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.keystore" >> "$GITHUB_ENV"
       - name: Gradle build (debug APK + release AAB)
         working-directory: app/android
+        # -PversionCode keeps each Play upload's build number unique + monotonic.
         run: |
           chmod +x ./gradlew
-          ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --stacktrace
+          ./gradlew :app:assembleDebug :app:bundleRelease \
+            -PversionCode=${{ github.run_number }} \
+            --no-daemon --stacktrace
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
