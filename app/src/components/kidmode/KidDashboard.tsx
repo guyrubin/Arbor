@@ -17,6 +17,12 @@
  * per-game levels (P3), the parent-mediated share loop (P4). The quest banner
  * therefore shows no fabricated progress and tiles carry no fake level badges.
  *
+ * KNOWN FOLLOW-UP (tracked, must land before the Hebrew/IL flagship market is
+ * pointed at this view): the visible strings here are English-only. Localizing
+ * them needs the i18n system (lib/i18n.ts) + the native-voice transcreation gate
+ * for child Hebrew copy — deliberately NOT machine-translated inline. See
+ * docs/KID-MODE-VIRAL-REDESIGN-PLAN.md.
+ *
  * Firewall: the star reads a MONOTONIC field (lifetime sessions), never a
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
@@ -40,7 +46,9 @@ const ACCENT_BG: Record<Accent, string> = {
 };
 const ACCENT_INK: Record<Accent, string> = {
   green: "var(--arbor-green-ink)",
-  clay: "var(--arbor-clay)",
+  // `clay` resolves to a LIGHT blue (#58a6ff) — white text/icons over it fail WCAG-AA.
+  // Use the dark blue ink as its companion so titles, icons and scrims pass contrast.
+  clay: "var(--arbor-sky-ink)",
   lav: "var(--arbor-lav-ink)",
   peach: "var(--arbor-peach-ink)",
   sky: "var(--arbor-sky-ink)",
@@ -84,7 +92,8 @@ const GAMES: GameDef[] = [
 /** A calm, one-shot count-up of an already-earned number. Reveals on mount only —
  *  never a live ticker. Respects prefers-reduced-motion (snaps to the total). */
 function StarMeter({ value }: { value: number }) {
-  const [shown, setShown] = useState(value);
+  // Start at 0 so the count-up never flashes the final total for one frame on mount.
+  const [shown, setShown] = useState(0);
   const rafRef = useRef<number | null>(null);
   useEffect(() => {
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -225,7 +234,7 @@ export default function KidDashboard({
       <header style={{ display: "flex", alignItems: "center", gap: "14px" }}>
         <HeroAvatar size={56} mood="wave" ring decorative />
         <div style={{ minInlineSize: 0 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-2xl)", color: "var(--arbor-clay)", lineHeight: 1.05 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-2xl)", color: "var(--arbor-sky-ink)", lineHeight: 1.05 }}>
             Hi {hero.name}!
           </div>
           <div style={{ fontSize: "var(--t-sm)", color: "var(--arbor-muted)" }}>You're doing amazing today</div>
@@ -254,13 +263,13 @@ export default function KidDashboard({
         }}
       >
         <WorldScene worldId="kid-quest" imagePrompt="building a glowing blanket-fort calm corner with warm fairy lights, cozy and magical" heroUrl={hero.url ?? undefined}>
-          <span aria-hidden="true" style={{ color: "var(--arbor-clay)", opacity: 0.9 }}>
+          <span aria-hidden="true" style={{ color: "var(--arbor-sky-ink)", opacity: 0.9 }}>
             <Sparkles className="w-10 h-10" />
           </span>
         </WorldScene>
         <span
           aria-hidden="true"
-          style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, color-mix(in oklab, var(--arbor-clay) 92%, transparent), color-mix(in oklab, var(--arbor-clay) 35%, transparent) 42%, transparent 70%)" }}
+          style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, color-mix(in oklab, var(--arbor-sky-ink) 92%, transparent), color-mix(in oklab, var(--arbor-sky-ink) 35%, transparent) 42%, transparent 70%)" }}
         />
         <span style={{ position: "absolute", insetInline: 0, insetBlockEnd: 0, padding: "18px", display: "flex", alignItems: "flex-end", gap: "14px" }}>
           <span style={{ flex: 1, minInlineSize: 0 }}>
