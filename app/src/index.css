@@ -738,4 +738,14 @@ body {
 
   /* ── Background: flat canvas, no radial-gradient wash ─────────────────── */
   background: var(--arbor-paper) !important;
+
+  /* ── UC-1 shell chrome tokens (serial-append after .arbor-parent) ────────
+     The sapphire-tinted topbar band (#eef3fb-equivalent, mapped — no raw hex
+     leakage to TSX) and the navy active sub-tab pill fill / ink. The inactive
+     pill stays white with a hairline border (existing --arbor-rule). These map
+     the design's #eef3fb band + #14225a navy pill onto the parent scope so the
+     shell refactor never ships a raw literal. */
+  --arbor-topbar-band:    #eef3fb;   /* sapphire-tinted topbar surface */
+  --arbor-subtab-active:  #14225a;   /* navy active sub-tab pill fill */
+  --arbor-subtab-on-ink:  #ffffff;   /* ink on the active navy pill */
 }

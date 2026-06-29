@@ -108,14 +108,14 @@ export default function TopbarSearch() {
   return (
     <div
       ref={containerRef}
-      style={{ position: "relative", width: "200px" }}
+      style={{ position: "relative", width: "230px" }}
       aria-label={t("aria.globalSearch")}
     >
       {/* ── Input ────────────────────────────────────────────────────────── */}
       <div
         className="flex items-center rounded-xl px-3"
         style={{
-          width: "200px",
+          width: "230px",
           height: "40px",
           background: "var(--arbor-paper-elevated)",
           border: open
