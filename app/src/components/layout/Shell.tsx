@@ -266,7 +266,7 @@ export default function Shell() {
               with a hairline border. Pinned to the top of the scroll region
               (sticky) so it stays visible above the content. Tokens are mapped
               (no raw hex). The first pill of each section is its Overview/hub. */}
-          {section.items.length > 1 && (
+          {subTabsForSection(section).length > 1 && (
             <div
               role="tablist"
               aria-label={`${section.label} sections`}
