@@ -32,6 +32,7 @@ import { MASTERCLASSES, FRAME_LABELS } from "../../lib/masterclasses";
 import type { FrameId } from "../../lib/masterclasses";
 import framework from "../../framework.json";
 import { cardCls } from "../ui/kit";
+import { ProgressRing } from "../ui/ProgressRing";
 
 // ── Domain label lookup (mirrors DevScoreCard + ScholarHubCard) ───────────────
 
@@ -127,6 +128,12 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
 
   // Domain rows for the course roll-up
   const domainRows = useMemo(() => buildDomainRows(explored), [explored]);
+
+  // Learning Map overall totals (design's hero ring). Positive, count-framed —
+  // the ring visualizes the SAME cleared "X of Y explored" data, never a "%
+  // complete" / deficit. No new read: derived from domainRows.
+  const totalExplored = useMemo(() => domainRows.reduce((s, r) => s + r.explored, 0), [domainRows]);
+  const totalAvailable = useMemo(() => domainRows.reduce((s, r) => s + r.available, 0), [domainRows]);
 
   // The recommended domain label
   const focusDomain = score.focusDomain;
@@ -343,6 +350,35 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
           >
             {t("foryou.allDomainsHeader")}
           </h3>
+          {/* Learning Map hero ring — overall courses explored (design handoff).
+              Center shows the X/Y COUNT (not a "% complete") to preserve the
+              board-cleared positive framing; fill is proportional. */}
+          {totalAvailable > 0 && (
+            <div className="flex flex-col items-center mb-5">
+              <ProgressRing
+                value={(totalExplored / totalAvailable) * 100}
+                size={128}
+                stroke={14}
+                color="var(--arbor-clay)"
+                trackColor="var(--arbor-track)"
+              >
+                <span
+                  className="font-extrabold leading-none"
+                  style={{ fontSize: "var(--t-2xl)", color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}
+                  aria-hidden
+                >
+                  {totalExplored}
+                  <span style={{ color: "var(--arbor-faint)" }}>/{totalAvailable}</span>
+                </span>
+              </ProgressRing>
+              <p
+                className="text-[11.5px] font-semibold text-center mt-3"
+                style={{ color: "var(--arbor-faint)" }}
+              >
+                {t("foryou.progress", { x: totalExplored, y: totalAvailable })}
+              </p>
+            </div>
+          )}
           <div className="space-y-3">
             {/* Alphabetical order only — never rendered as a ranked deficit list */}
             {domainRows.map((row) => (
