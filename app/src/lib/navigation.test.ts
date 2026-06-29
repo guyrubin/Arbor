@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection } from "./navigation";
+import { SECTIONS, TOOLS, sectionForTab, primaryTabOf, subTabsForSection } from "./navigation";
 import { ALL_TABS } from "../context/ArborContext";
 
 /** Structural guard for the UC-1 EIGHT-category information architecture —
@@ -64,6 +64,50 @@ describe("navigation IA", () => {
     for (const s of SECTIONS) {
       const sub = subTabsForSection(s);
       expect(sub[0].tab).toBe(primaryTabOf(s));
+    }
+  });
+
+  // UC-3 fluid IA: the pill row is the CURATED primaryTabs (the wireframe's
+  // short CATFEAT row), NOT the full items list. Every primaryTab must be a
+  // real item of its section, and the row stays short (hub + at most 2 leaves).
+  it("subTabsForSection returns the curated primaryTabs (short, hub-first, subset of items)", () => {
+    for (const s of SECTIONS) {
+      const sub = subTabsForSection(s);
+      expect(sub).toBe(s.primaryTabs);
+      expect(sub.length).toBeLessThanOrEqual(3); // hub + ≤2 primary leaves
+      for (const it of sub) expect(s.items.some((i) => i.tab === it.tab)).toBe(true);
+    }
+  });
+
+  // UC-3: at least one category must have been trimmed (pill row shorter than
+  // its full items) — otherwise the "fluid" reorg did nothing.
+  it("trims at least one over-stuffed category's pill row", () => {
+    const trimmed = SECTIONS.some((s) => s.primaryTabs.length < s.items.length);
+    expect(trimmed).toBe(true);
+  });
+
+  // UC-3 zero-regression floor: EVERY ActiveTab must be REACHABLE by the user —
+  // via a category hub (primaryTabOf), a curated primary sub-tab, the global
+  // TOOLS drawer, or a fallback whose owning category surfaces a route that
+  // reaches it. Concretely: the union of {all primaryTabs} ∪ {all TOOLS tabs}
+  // must cover every tab that resolves DIRECTLY (is in some section's items);
+  // tabs that only resolve via TAB_SECTION_FALLBACK are reached through their
+  // category hub. This guards against demoting a leaf into a dead end.
+  it("every directly-owned ActiveTab is reachable via a primary sub-tab or the TOOLS drawer", () => {
+    const reachable = new Set<string>([
+      ...SECTIONS.flatMap((s) => s.primaryTabs.map((i) => i.tab)),
+      ...TOOLS.map((tl) => tl.tab),
+    ]);
+    for (const s of SECTIONS)
+      for (const it of s.items)
+        expect(reachable.has(it.tab), `tab "${it.tab}" is owned by a section but not reachable via any primary sub-tab or TOOLS`).toBe(true);
+  });
+
+  it("TOOLS entries are well-formed and every tab is a real ActiveTab", () => {
+    for (const tl of TOOLS) {
+      expect(tl.label.trim().length).toBeGreaterThan(0);
+      expect(tl.icon).toBeTruthy();
+      expect(ALL_TABS).toContain(tl.tab);
     }
   });
 
