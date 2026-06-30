@@ -15,8 +15,8 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   /** Optional Material Symbols Rounded ligature for the shared <Icon> component
-   *  (UC-2 visual-match). Used by the Sidebar TOOLS drawer; lucide `icon`
-   *  remains the fallback / pill-row glyph. */
+   *  (UC-2 visual-match). Carried on a hub's `tools` items for the contextual
+   *  pill row; lucide `icon` remains the fallback / pill-row glyph. */
   msIcon?: string;
 };
 /** Generalized sidebar badge: the two legacy app-state badges
@@ -40,10 +40,16 @@ export type NavSection = {
    *  in the sub-tab pill row — see `primaryTabs`. */
   items: NavItem[];
   /** UC-3: the CURATED, short sub-tab pill row (the wireframe's CATFEAT feel):
-   *  the hub/Overview item first + at most 1–2 truly primary leaves. Secondary
-   *  capabilities are demoted to the global TOOLS drawer. subTabsForSection()
-   *  returns THIS (never the full `items`), keeping the pill row fluid. */
+   *  the hub/Overview item first + at most 1–2 truly primary leaves. The hub's
+   *  secondary capabilities live in `tools` below (NOT a global drawer).
+   *  subTabsForSection() returns THIS; hubTabsForSection() returns primary +
+   *  primaryTabs + tools as the full contextual pill set. */
   primaryTabs: NavItem[];
+  /** UC-6: the hub's OWN secondary capabilities — the tools that used to live in
+   *  the (now-removed) global TOOLS drawer, folded into the hub they belong to.
+   *  Rendered as contextual pills (after the primary sub-tabs) when you are in
+   *  this hub, so tools feel integrated rather than a separate drawer. */
+  tools: NavItem[];
 };
 
 /**
@@ -51,15 +57,15 @@ export type NavSection = {
  * to the "Arbor Web App" wireframe (claude.ai/design 6ddac523): TODAY ·
  * BEHAVIORS · GROWTH · JOURNAL · ACADEMY · ASK ARBOR · CARE NETWORK · PROFILE.
  *
- * The wireframe presents capabilities fluidly: each category exposes only a
- * SHORT sub-tab set (its CATFEAT row), and ALL secondary capabilities live in a
- * single global TOOLS drawer in the sidebar. UC-1/UC-2 over-stuffed every pill
- * row with the full `items[]`; UC-3 trims the pill row to `primaryTabs` and
- * moves the demoted leaves into the exported TOOLS list below.
+ * Each category exposes a SHORT primary sub-tab set (its CATFEAT row) plus its
+ * own `tools` (secondary capabilities). UC-6 REMOVED the global TOOLS drawer:
+ * each hub's tools are now folded into that hub and rendered as contextual pills
+ * (hubTabsForSection = primary + sub-tabs + tools), so the sidebar is the eight
+ * hubs only and tools feel integrated rather than a separate drawer.
  *
- * NOTHING is dropped: the union of (category hubs) + (primaryTabs) + (TOOLS) +
- * (TAB_SECTION_FALLBACK) covers EVERY one of the 45 ActiveTab routes — the
- * navigation guard test enforces this 45-route floor.
+ * NOTHING is dropped: the union of (category hubs) + (primaryTabs) + (per-hub
+ * tools) + (TAB_SECTION_FALLBACK) covers EVERY one of the 45 ActiveTab routes —
+ * the navigation guard test enforces this 45-route floor.
  */
 export const SECTIONS: NavSection[] = [
   {
@@ -72,10 +78,14 @@ export const SECTIONS: NavSection[] = [
       { tab: "day-windows", label: "Day Windows", icon: Map },
       { tab: "smart-reminders", label: "Smart Reminders", icon: Calendar },
     ],
-    // Today is a single-surface hub; its tools (Day Windows, Reminders) live in
-    // the TOOLS drawer — keeps the dashboard pill row clean (no row renders).
+    // Today is a single-surface hub; its tools (Day Windows, Reminders) render as
+    // contextual pills inside the hub (folded out of the old global drawer).
     primaryTabs: [
       { tab: "overview", label: "Overview", icon: LayoutDashboard },
+    ],
+    tools: [
+      { tab: "day-windows", label: "Day Windows", icon: Clock, msIcon: "schedule" },
+      { tab: "smart-reminders", label: "Reminders", icon: Bell, msIcon: "notifications" },
     ],
   },
   {
@@ -89,6 +99,7 @@ export const SECTIONS: NavSection[] = [
     primaryTabs: [
       { tab: "behaviors", label: "Behaviors", icon: Activity },
     ],
+    tools: [],
   },
   {
     id: "growth",
@@ -104,12 +115,17 @@ export const SECTIONS: NavSection[] = [
       { tab: "practice", label: "Practice", icon: Target },
       { tab: "plans", label: "Growth Plans", icon: Sliders },
     ],
-    // Hub + the two clinical spines (milestones, language). Daily Play, Practice
-    // and Growth Plans are demoted to TOOLS.
+    // Hub + the two clinical spines (milestones, language). Practice, Routines
+    // and Growth Plans are the hub's contextual tools (folded out of the drawer).
     primaryTabs: [
       { tab: "development", label: "Development", icon: Gauge },
       { tab: "milestones", label: "Milestones", icon: Sprout },
       { tab: "language", label: "Language & Communication", icon: Languages },
+    ],
+    tools: [
+      { tab: "practice", label: "Practice", icon: Target, msIcon: "target" },
+      { tab: "plans", label: "Growth Plans", icon: Sliders, msIcon: "tune" },
+      { tab: "daily-play", label: "Routines", icon: ListChecks, msIcon: "checklist" },
     ],
   },
   {
@@ -125,6 +141,7 @@ export const SECTIONS: NavSection[] = [
       { tab: "journal", label: "Journal", icon: NotebookPen },
       { tab: "timeline", label: "Story", icon: Waypoints },
     ],
+    tools: [],
   },
   {
     id: "academy",
@@ -140,10 +157,14 @@ export const SECTIONS: NavSection[] = [
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
       { tab: "bedtime-stories", label: "Bedtime Story", icon: Moon },
     ],
-    // Hub (Masterclasses) + Story Journeys. Bedtime Story is demoted to TOOLS.
+    // Hub (Masterclasses) + Story Journeys. Bedtime Stories is the hub's
+    // contextual tool (folded out of the drawer).
     primaryTabs: [
       { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
+    ],
+    tools: [
+      { tab: "bedtime-stories", label: "Bedtime Stories", icon: Moon, msIcon: "auto_stories" },
     ],
   },
   {
@@ -158,6 +179,7 @@ export const SECTIONS: NavSection[] = [
     primaryTabs: [
       { tab: "coach", label: "Ask Arbor", icon: MessageCircle },
     ],
+    tools: [],
   },
   {
     id: "care",
@@ -173,10 +195,17 @@ export const SECTIONS: NavSection[] = [
       { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
     ],
     // Hub (Consult) + Safety (the load-bearing escalation surface). School Brief,
-    // Care Team, Trusted Sharing and Appointments are demoted to TOOLS.
+    // Care Team, Trusted Sharing and Appointments are the hub's contextual tools
+    // (folded out of the drawer).
     primaryTabs: [
       { tab: "consult", label: "Consult", icon: FileBarChart },
       { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
+    ],
+    tools: [
+      { tab: "school-brief", label: "School Brief", icon: School, msIcon: "school" },
+      { tab: "care-team", label: "My Care Team", icon: Users, msIcon: "groups" },
+      { tab: "sharing", label: "Trusted Sharing", icon: Share2, msIcon: "share" },
+      { tab: "appointments", label: "Appointments", icon: Calendar, msIcon: "calendar_month" },
     ],
   },
   {
@@ -188,63 +217,18 @@ export const SECTIONS: NavSection[] = [
       { tab: "profile", label: "Development Profile", icon: UserCircle },
       { tab: "memory", label: "Child Memory", icon: Waypoints },
     ],
-    // Hub only; Child Memory is demoted to TOOLS.
+    // Hub only; Child Memory, The Science and the Weekly Report are the hub's
+    // contextual tools (folded out of the drawer). weekly + science resolve to
+    // Profile via TAB_SECTION_FALLBACK (they are not category `items`).
     primaryTabs: [
       { tab: "profile", label: "Development Profile", icon: UserCircle },
     ],
+    tools: [
+      { tab: "memory", label: "Child Memory", icon: Waypoints, msIcon: "neurology" },
+      { tab: "science", label: "The Science", icon: BadgeCheck, msIcon: "verified" },
+      { tab: "weekly", label: "Weekly Report", icon: BarChart3, msIcon: "bar_chart" },
+    ],
   },
-];
-
-/**
- * UC-4 global TOOLS drawer — the HOME for every secondary capability that is
- * NOT a category and NOT a section pill, rendered in the Sidebar below the
- * eight category rows (quieter than primary nav). The drawer is deliberately
- * lean: it no longer echoes any category. INVARIANT (guard-tested): no TOOLS
- * tab equals any section's primaryTabOf.
- *
- * Wireframe/route map for the kept entries:
- *   Day Windows    → day-windows
- *   Routines       → daily-play   (nearest existing route to "routines")
- *   Weekly Report  → weekly
- *   Bedtime Stories→ bedtime-stories
- *   Reminders      → smart-reminders
- *   Practice       → practice
- *   Growth Plans   → plans
- *   School Brief   → school-brief
- *   My Care Team   → care-team
- *   Trusted Sharing→ sharing
- *   Appointments   → appointments
- *   Child Memory   → memory
- *   The Science    → science       (re-homed to Profile via fallback)
- *
- * REMOVED in UC-4 (de-dup): "Log a Moment" and "Behavior Logs" (both → the
- * `behaviors` category — Log a Moment is now a topbar quick-action); "Arbor
- * Plus" (→ Profile › Settings); "Hero Comics" + "Family Formation" (→ in-hub
- * tiles in Academy). All stay reachable; none crowds the drawer.
- *
- * `msIcon` carries the wireframe's Material Symbols ligature for the <Icon>
- * component; `icon` (lucide) is the structural fallback.
- */
-export const TOOLS: NavItem[] = [
-  // UC-4: lean TOOLS drawer — genuinely-global secondary actions ONLY. None is a
-  // category or a section primaryTabOf. The category-duplicating entries
-  // ("Log a Moment" → behaviors, "Behavior Logs" → behaviors) were removed:
-  // behaviors IS the Behaviors category; Log a Moment moved to a topbar
-  // quick-action. Arbor Plus → Profile › Settings; Hero Comics / Family Formation
-  // → in-hub tiles in Academy. The Science re-homed to Profile (see fallback).
-  { tab: "day-windows", label: "Day Windows", icon: Clock, msIcon: "schedule" },
-  { tab: "daily-play", label: "Routines", icon: ListChecks, msIcon: "checklist" },
-  { tab: "weekly", label: "Weekly Report", icon: BarChart3, msIcon: "bar_chart" },
-  { tab: "bedtime-stories", label: "Bedtime Stories", icon: Moon, msIcon: "auto_stories" },
-  { tab: "smart-reminders", label: "Reminders", icon: Bell, msIcon: "notifications" },
-  { tab: "practice", label: "Practice", icon: Target, msIcon: "target" },
-  { tab: "plans", label: "Growth Plans", icon: Sliders, msIcon: "tune" },
-  { tab: "school-brief", label: "School Brief", icon: School, msIcon: "school" },
-  { tab: "care-team", label: "My Care Team", icon: Users, msIcon: "groups" },
-  { tab: "sharing", label: "Trusted Sharing", icon: Share2, msIcon: "share" },
-  { tab: "appointments", label: "Appointments", icon: Calendar, msIcon: "calendar_month" },
-  { tab: "memory", label: "Child Memory", icon: Waypoints, msIcon: "neurology" },
-  { tab: "science", label: "The Science", icon: BadgeCheck, msIcon: "verified" },
 ];
 
 /**
@@ -305,10 +289,32 @@ export function primaryTabOf(section: NavSection): ActiveTab {
 /**
  * UC-3: the CURATED Overview-first sub-tab pill row for a section — the section's
  * primary (hub/Overview) item first, followed by at most 1–2 truly primary
- * leaves (the wireframe's CATFEAT feel). Secondary capabilities live in the
- * global TOOLS drawer, NOT here. Shell renders this as the navy/white pill row;
- * a single-item result renders no row.
+ * leaves (the wireframe's CATFEAT feel). The hub's secondary capabilities live
+ * in `section.tools` (surfaced by hubTabsForSection), NOT a global drawer.
  */
 export function subTabsForSection(section: NavSection): NavItem[] {
   return section.primaryTabs;
+}
+
+/**
+ * UC-6: the hub's FULL contextual pill set — primary first, then its remaining
+ * primary sub-tabs, then its own tools (the secondary capabilities that used to
+ * live in the global TOOLS drawer, now folded into the owning hub). De-duped by
+ * tab. Shell renders this row when length > 1, so a hub shows ALL its
+ * capabilities as contextual pills and tools feel integrated, not a separate
+ * drawer.
+ *
+ * Order: [primaryTabOf] + (primaryTabs minus primary) + tools.
+ */
+export function hubTabsForSection(section: NavSection): NavItem[] {
+  const primary = section.primaryTabs[0];
+  const ordered = [primary, ...section.primaryTabs.slice(1), ...section.tools];
+  const seen = new Set<ActiveTab>();
+  const out: NavItem[] = [];
+  for (const it of ordered) {
+    if (seen.has(it.tab)) continue;
+    seen.add(it.tab);
+    out.push(it);
+  }
+  return out;
 }

@@ -5,7 +5,7 @@ import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { sectionForTab, subTabsForSection } from "../../lib/navigation";
+import { sectionForTab, hubTabsForSection } from "../../lib/navigation";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import KidModeButton from "./KidModeButton";
@@ -274,18 +274,20 @@ export default function Shell() {
             </div>
           }/>
 
-          {/* UC-1 Overview-first sub-tab pill row — navy active fill / white inactive
-              with a hairline border. Pinned to the top of the scroll region
-              (sticky) so it stays visible above the content. Tokens are mapped
-              (no raw hex). The first pill of each section is its Overview/hub. */}
-          {subTabsForSection(section).length > 1 && (
+          {/* UC-6 hub contextual pill row — the hub's FULL capability set: its
+              primary/hub view + sub-tabs + its own folded tools (no global TOOLS
+              drawer any more). Navy active fill / white inactive with a hairline
+              border, sticky to the top of the scroll region. The first pill of
+              each section is its Overview/hub. Renders only when there is more
+              than one capability. */}
+          {hubTabsForSection(section).length > 1 && (
             <div
               role="tablist"
               aria-label={`${section.label} sections`}
               className="sticky top-0 z-20 flex gap-2 overflow-x-auto mb-6 -mx-1 px-1 py-2 no-scrollbar"
               style={{ background: "var(--arbor-paper)" }}
             >
-              {subTabsForSection(section).map((it) => {
+              {hubTabsForSection(section).map((it) => {
                 const on = it.tab === activeTab;
                 const PillIcon = it.icon;
                 return (

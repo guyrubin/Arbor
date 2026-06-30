@@ -7,7 +7,7 @@ import { ArborMark } from "../ui/ArborMark";
 import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
 import SettingsModal from "./SettingsModal";
-import { SECTIONS, TOOLS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/navigation";
+import { SECTIONS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/navigation";
 
 /** Resolve the generalized sidebar badge to its display string from app state.
  *  Returns "" when the badge should not render. */
@@ -91,39 +91,10 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* UC-3 TOOLS drawer — the global home for secondary capabilities, quieter
-          than the primary category rows (wireframe's TOOLS section). */}
-      <div className="flex flex-col gap-0.5">
-        <p
-          className="px-3 pb-1 text-[10.5px] font-extrabold uppercase tracking-[0.08em]"
-          style={{ color: "var(--arbor-muted)" }}
-        >
-          {t("nav.tools")}
-        </p>
-        {TOOLS.map((tool, i) => {
-          const active = tool.tab === activeTab;
-          return (
-            <button
-              key={`${tool.tab}-${i}`}
-              onClick={() => setActiveTab(tool.tab)}
-              aria-current={active ? "page" : undefined}
-              className="flex items-center gap-3 rounded-[11px] text-start transition min-w-0"
-              style={{
-                padding: "8px 13px",
-                fontSize: "13px",
-                ...(active
-                  ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)", fontWeight: 700 }
-                  : { color: "var(--arbor-muted)", fontWeight: 600 }),
-              }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--arbor-paper-deep)"; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
-            >
-              <Icon name={tool.msIcon ?? "circle"} size={18} fill={active ? 1 : 0} />
-              <span className="truncate">{t("nav.tool." + i)}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* UC-6: the global TOOLS drawer is REMOVED. The sidebar is now exactly the
+          eight hubs + the account row. Each hub's secondary capabilities are
+          folded into its own contextual pill row (Shell › hubTabsForSection), so
+          tools feel integrated with their hub rather than a separate drawer. */}
 
       {/* Account row + upward popover (Language toggle + Settings) — UC-1 */}
       <div ref={accountRef} className="mt-auto pt-4 relative" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
