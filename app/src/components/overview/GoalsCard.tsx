@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Target, Plus, Check, Trash2 } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -31,7 +31,7 @@ export default function GoalsCard() {
     <div className={`${cardCls} p-6 space-y-4`}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-          <Target className="w-3.5 h-3.5" /> Focus goals
+          <Icon name="target" size={14} /> Focus goals
         </span>
         {goals.length > 0 && <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{achievedCount}/{goals.length} achieved</span>}
       </div>
@@ -45,11 +45,11 @@ export default function GoalsCard() {
               className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition"
               style={g.achieved ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { border: "1px solid var(--arbor-rule-strong)", color: "transparent" }}
             >
-              <Check className="w-3.5 h-3.5" />
+              <Icon name="check" size={14} />
             </button>
             <span className="flex-1 text-sm" style={{ color: g.achieved ? "var(--arbor-muted)" : "var(--arbor-ink)", textDecoration: g.achieved ? "line-through" : "none" }}>{g.title}</span>
             <button onClick={() => void goalsCol.remove(g.id)} aria-label={t("aria.deleteGoal")} className="transition" style={{ color: "var(--arbor-muted)" }}>
-              <Trash2 className="w-3.5 h-3.5" />
+              <Icon name="delete" size={14} />
             </button>
           </div>
         ))}
@@ -64,7 +64,7 @@ export default function GoalsCard() {
           className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none"
           style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
         />
-        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
+        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /></button>
       </form>
     </div>
   );

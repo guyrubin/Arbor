@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { FileBarChart, Download, FileText } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -54,11 +54,11 @@ export default function Reports() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader eyebrow="Care Network" title={t("sec.reports.title")} subtitle={t("sec.reports.sub", { name: childProfile.name.split(" ")[0] })} />
 
-      <SectionCard title="Exportable reports" icon={<FileBarChart className="w-5 h-5" />} tone="mint">
+      <SectionCard title="Exportable reports" icon={<Icon name="assessment" size={20} />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-3">
           {REPORTS.map((r) => (
             <div key={r.title} className={`${cardCls} p-4 flex items-start gap-3`}>
-              <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: PASTEL[r.tone].soft, color: PASTEL[r.tone].ink }}><FileText className="w-4.5 h-4.5" /></span>
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: PASTEL[r.tone].soft, color: PASTEL[r.tone].ink }}><Icon name="description" size={18} /></span>
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{r.title}</h3>
                 <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{r.desc}</p>
@@ -69,7 +69,7 @@ export default function Reports() {
                 style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}
                 aria-label={`Export ${r.title} as PDF`}
               >
-                <Download className="w-3.5 h-3.5" /> PDF
+                <Icon name="download" size={14} /> PDF
               </button>
             </div>
           ))}

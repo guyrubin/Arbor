@@ -1,10 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import {
-  Activity, CheckCircle2, Sprout, BookMarked, MessageSquare,
-  Sparkles, Camera, BarChart2,
-  ShieldCheck, ClipboardCheck, Feather, Download,
-} from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
@@ -17,13 +13,15 @@ import ScreeningSheet from "../sections/ScreeningSheet";
 import { composeChildStory, childStoryToText } from "../../lib/childStory";
 import { track } from "../../lib/analytics";
 
-const KIND_ICON: Record<SignalKind, React.ComponentType<{ className?: string }>> = {
-  moment: Activity,
-  milestone: CheckCircle2,
-  plan: Sprout,
-  memory: BookMarked,
-  coach: MessageSquare,
-  play: Sprout,
+/** Per-kind Material Symbols ligature — mirrors JournalTab's domain glyphs so the
+ *  unified timeline re-skins onto the shared <Icon> system (no lucide). */
+const KIND_ICON: Record<SignalKind, string> = {
+  moment: "bolt",
+  milestone: "check_circle",
+  plan: "eco",
+  memory: "bookmark",
+  coach: "chat_bubble",
+  play: "eco",
 };
 
 const KIND_LABEL: Record<SignalKind, string> = {
@@ -71,7 +69,7 @@ function IntensityDots({ value }: { value: number }) {
 }
 
 function SignalRow({ signal }: { signal: TimelineSignal }) {
-  const Icon = KIND_ICON[signal.kind];
+  const ms = KIND_ICON[signal.kind];
   const tone = signal.tone as SignalTone as PastelKey;
   return (
     <div className="relative ps-12">
@@ -79,7 +77,7 @@ function SignalRow({ signal }: { signal: TimelineSignal }) {
       <span className="absolute start-[14px] top-1.5 -translate-x-1/2 w-3 h-3 rounded-full ring-4 ring-[var(--arbor-paper)]" style={{ background: PASTEL[tone].ink }} />
       <div className={`${cardCls} p-3.5`}>
         <div className="flex items-start gap-3">
-          <IconBadge tone={tone} size={34}><Icon className="w-4 h-4" /></IconBadge>
+          <IconBadge tone={tone} size={34}><Icon name={ms} size={18} fill={1} /></IconBadge>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL[tone].ink }}>{KIND_LABEL[signal.kind]}</span>
@@ -185,21 +183,21 @@ export default function StoryTimelineTab() {
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
               style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
             >
-              <ClipboardCheck className="w-4 h-4" /> {t("mychild.quickcheck.short")}
+              <Icon name="fact_check" size={18} /> {t("mychild.quickcheck.short")}
             </button>
             <button
               onClick={() => setActiveTab("weekly")}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition bg-white"
               style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
             >
-              <BarChart2 className="w-4 h-4" /> Weekly insight
+              <Icon name="monitoring" size={18} /> Weekly insight
             </button>
             <button
               onClick={() => setActiveTab("behaviors")}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold transition hover:-translate-y-0.5"
               style={{ background: PASTEL.coral.ink, color: "#fff" }}
             >
-              <Camera className="w-4 h-4" /> Capture a moment
+              <Icon name="photo_camera" size={18} /> Capture a moment
             </button>
           </div>
         }
@@ -209,7 +207,7 @@ export default function StoryTimelineTab() {
           facts + momentum; parent-owned, exportable as plain text. */}
       <SectionCard
         title={story.title}
-        icon={<Feather className="w-5 h-5" />}
+        icon={<Icon name="edit_note" size={20} fill={1} />}
         tone="lav"
         action={!story.empty && (
           <button
@@ -217,7 +215,7 @@ export default function StoryTimelineTab() {
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-bold transition bg-white"
             style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}
           >
-            <Download className="w-4 h-4" /> Save story
+            <Icon name="download" size={18} /> Save story
           </button>
         )}
       >
@@ -248,20 +246,20 @@ export default function StoryTimelineTab() {
           counts, no verdict). */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatTile
-          tone="coral" icon={<Activity className="w-5 h-5" />}
+          tone="coral" icon={<Icon name="bolt" size={20} fill={1} />}
           value={momentum.momentsThisWeek} label="Moments this week"
           foot={<span style={{ color: "var(--arbor-muted)" }}>
             {momentum.momentsPrevWeek > 0 ? `vs ${momentum.momentsPrevWeek} last week` : "first week"}
           </span>}
         />
         <StatTile
-          tone="sky" icon={<Sprout className="w-5 h-5" />}
+          tone="sky" icon={<Icon name="eco" size={20} fill={1} />}
           value={`${momentum.planSteps.done}/${momentum.planSteps.total || 0}`}
           label="Plan steps done"
           foot={<span style={{ color: "var(--arbor-muted)" }}>{momentum.winsThisWeek} win{momentum.winsThisWeek === 1 ? "" : "s"} this week</span>}
         />
         <StatTile
-          tone="lav" icon={<CheckCircle2 className="w-5 h-5" />}
+          tone="lav" icon={<Icon name="check_circle" size={20} fill={1} />}
           value={`${momentum.milestones.observed}/${momentum.milestones.total || 0}`}
           label="Milestones observed"
         />
@@ -270,7 +268,7 @@ export default function StoryTimelineTab() {
       {/* Proactive next-best-step — the timeline feeding the coach */}
       {nextStep && (
         <div className="rounded-[22px] p-5 flex flex-col sm:flex-row sm:items-center gap-4" style={{ background: PASTEL.coral.soft }}>
-          <IconBadge tone="coral" size={44}><Sparkles className="w-5 h-5" /></IconBadge>
+          <IconBadge tone="coral" size={44}><Icon name="auto_awesome" size={20} fill={1} /></IconBadge>
           <div className="flex-1 min-w-0">
             <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL.coral.ink }}>Arbor noticed</span>
             <p className="text-sm font-bold mt-0.5" style={{ color: "var(--arbor-ink)" }}>{nextStep.message}</p>
@@ -294,7 +292,7 @@ export default function StoryTimelineTab() {
       {pendingMemoryItems.length > 0 && (
         <SectionCard
           title={t("mychild.memoryreview.title", { count: pendingMemoryItems.length })}
-          icon={<ShieldCheck className="w-5 h-5" />}
+          icon={<Icon name="verified_user" size={20} fill={1} />}
           tone="yellow"
         >
           <div className="space-y-3">
@@ -343,7 +341,7 @@ export default function StoryTimelineTab() {
       {/* Timeline */}
       {shown.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>
-          <IconBadge tone="coral" size={52}><Camera className="w-6 h-6" /></IconBadge>
+          <IconBadge tone="coral" size={52}><Icon name="photo_camera" size={24} fill={1} /></IconBadge>
           <h3 className="text-lg font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {firstName}'s story starts here
           </h3>
@@ -355,7 +353,7 @@ export default function StoryTimelineTab() {
             className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold mt-4 transition hover:-translate-y-0.5"
             style={{ background: PASTEL.coral.ink, color: "#fff" }}
           >
-            <Camera className="w-4 h-4" /> Capture the first moment
+            <Icon name="photo_camera" size={18} /> Capture the first moment
           </button>
         </div>
       ) : (

@@ -1,19 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import confetti from "canvas-confetti";
-import {
-  Sparkles,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  Maximize2,
-  X,
-  Check,
-  Library,
-  Trophy,
-  ArrowLeft,
-  Play,
-} from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
@@ -92,7 +80,7 @@ const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
 };
 
 export default function HeroJourneyTab() {
-  const { childProfile } = useArbor();
+  const { childProfile, setActiveTab } = useArbor();
   const { aiLang, t } = useLanguage();
   const { toast } = useToast();
 
@@ -249,7 +237,7 @@ export default function HeroJourneyTab() {
         className="disabled:opacity-30 flex items-center gap-1 text-sm"
         style={{ color: "var(--arbor-muted)" }}
       >
-        <ChevronLeft className="w-4 h-4" /> Back
+        <Icon name="chevron_left" size={16} /> Back
       </button>
       <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>
         {activeStory && `${sceneIndex + 1} / ${activeStory.beats.length}`}
@@ -261,7 +249,7 @@ export default function HeroJourneyTab() {
           className="disabled:opacity-30 flex items-center gap-1 text-sm font-bold"
           style={{ color: "var(--arbor-green-ink)" }}
         >
-          Next <ChevronRight className="w-4 h-4" />
+          Next <Icon name="chevron_right" size={16} />
         </button>
       ) : (
         <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "var(--arbor-green-ink)" }}>The End</span>
@@ -329,6 +317,47 @@ export default function HeroJourneyTab() {
           <div className="comic-panel px-4 py-3 text-[14px] font-extrabold" dir="auto">
             {he ? `${name}, הפכו לגיבור של כל סיפור!` : `Pick a story, hero — ${name} stars in every one!`}
           </div>
+        </div>
+
+        {/* IN-HUB TILES (UC-4) — Hero Comics + Family Formation live inside the
+            Academy / Story Journeys surface, not as their own sidebar doors. */}
+        <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+          <button
+            className="world-tile text-start"
+            onClick={() => setActiveTab("comics")}
+            aria-label={he ? "קומיקס גיבור" : "Hero Comics"}
+          >
+            <div className="comic-halftone relative grid place-items-center" style={{ height: 96, background: "var(--arbor-peach)", borderBottom: "var(--comic-line)" }}>
+              <Icon name="auto_stories" size={44} style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} />
+              <span className="comic-sfx absolute bottom-1 z-[3] text-[20px] -rotate-6" style={{ insetInlineStart: 8 }} aria-hidden="true">{he ? "פאו!" : "POW!"}</span>
+            </div>
+            <div className="p-3.5">
+              <p className="font-black text-[16.5px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+                {he ? "קומיקס גיבור" : "Hero Comics"}
+              </p>
+              <p className="text-[12.5px] font-bold mt-1" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
+                {he ? `${name} כוכב הקומיקס של כל סיפור` : `${name} stars in every story's comic`}
+              </p>
+            </div>
+          </button>
+
+          <button
+            className="world-tile text-start"
+            onClick={() => setActiveTab("family")}
+            aria-label={he ? "מגילת המשפחה" : "Family Formation"}
+          >
+            <div className="comic-halftone relative grid place-items-center" style={{ height: 96, background: "var(--arbor-yellow)", borderBottom: "var(--comic-line)" }}>
+              <Icon name="history_edu" size={44} style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.3))" }} />
+            </div>
+            <div className="p-3.5">
+              <p className="font-black text-[16.5px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+                {he ? "מגילת המשפחה" : "Family Formation"}
+              </p>
+              <p className="text-[12.5px] font-bold mt-1" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
+                {he ? "הערכים שמכוונים את הסיפורים שלכם" : "The values that steer your stories"}
+              </p>
+            </div>
+          </button>
         </div>
 
         {/* PACK FILTER — comic chips */}
@@ -425,9 +454,9 @@ export default function HeroJourneyTab() {
                       </span>
                       <span className="ms-auto inline-flex items-center gap-1 text-[13px] font-black" style={{ color: w.ink }}>
                         {isLoading ? (
-                          <><RefreshCw className="w-4 h-4 animate-spin" /> {he ? "טוען…" : "Loading…"}</>
+                          <><Icon name="autorenew" size={16} className="animate-spin" /> {he ? "טוען…" : "Loading…"}</>
                         ) : (
-                          <>{he ? "שחקו" : "Play"} <Play className="w-4 h-4" fill="currentColor" /></>
+                          <>{he ? "שחקו" : "Play"} <Icon name="play_arrow" size={16} fill={1} /></>
                         )}
                       </span>
                     </div>
@@ -441,7 +470,7 @@ export default function HeroJourneyTab() {
         {/* JOURNEY LIBRARY */}
         <div>
           <h2 className="font-black mb-3 inline-flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
-            <Library className="w-5 h-5" /> {he ? `הספרייה (${runs.length})` : `Library (${runs.length})`}
+            <Icon name="auto_stories" size={20} /> {he ? `הספרייה (${runs.length})` : `Library (${runs.length})`}
           </h2>
           {!runsCol.loaded ? (
             <p className="text-[13px] font-bold" style={{ color: "var(--arbor-muted)" }}>{he ? "טוען…" : "Loading…"}</p>
@@ -520,7 +549,7 @@ export default function HeroJourneyTab() {
                   className="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1"
                   style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
                 >
-                  <Check className="w-3 h-3" /> {p}
+                  <Icon name="check" size={12} /> {p}
                 </span>
               ))}
             </div>
@@ -541,7 +570,7 @@ export default function HeroJourneyTab() {
                   className="mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 text-white"
                   style={{ background: questionsChecked[i] ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
                 >
-                  {questionsChecked[i] && <Check className="w-3 h-3" />}
+                  {questionsChecked[i] && <Icon name="check" size={12} />}
                 </span>
                 <span dir="auto" className="text-xs">
                   {q}
@@ -556,11 +585,11 @@ export default function HeroJourneyTab() {
               className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
               style={{ background: T.gradientCta }}
             >
-              <Trophy className="w-4 h-4" /> {aiLang === "he" ? `סיימו ושמרו את ההתפתחות של ${childProfile.name}` : `Finish & save ${childProfile.name}'s development`}
+              <Icon name="emoji_events" size={16} /> {aiLang === "he" ? `סיימו ושמרו את ההתפתחות של ${childProfile.name}` : `Finish & save ${childProfile.name}'s development`}
             </button>
           ) : (
             <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
-              <Check className="w-4 h-4" /> {aiLang === "he" ? `נשמר להתפתחות של ${childProfile.name}` : `Saved to ${childProfile.name}'s development`}
+              <Icon name="check" size={16} /> {aiLang === "he" ? `נשמר להתפתחות של ${childProfile.name}` : `Saved to ${childProfile.name}'s development`}
             </div>
           )}
         </div>
@@ -574,7 +603,7 @@ export default function HeroJourneyTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <div className="flex items-center justify-between">
         <button onClick={exitJourney} className="flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
-          <ArrowLeft className="w-4 h-4" /> All journeys
+          <Icon name="arrow_back" size={16} /> All journeys
         </button>
         <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>
         <button
@@ -582,7 +611,7 @@ export default function HeroJourneyTab() {
           className="flex items-center gap-1.5 text-sm font-bold"
           style={{ color: "var(--arbor-muted)" }}
         >
-          <Maximize2 className="w-4 h-4" /> <span className="hidden sm:inline">Immersive</span>
+          <Icon name="fullscreen" size={16} /> <span className="hidden sm:inline">Immersive</span>
         </button>
       </div>
 
@@ -596,7 +625,7 @@ export default function HeroJourneyTab() {
           <div className="flex items-center justify-between px-6 py-4">
             <span className="text-xs font-bold tracking-wider uppercase" style={{ color: "var(--arbor-muted)" }}>{render.title}</span>
             <button onClick={() => setImmersive(false)} aria-label={t("aria.exitImmersive")} style={{ color: "var(--arbor-muted)" }}>
-              <X className="w-5 h-5" />
+              <Icon name="close" size={20} />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto flex items-center justify-center px-6 py-8">

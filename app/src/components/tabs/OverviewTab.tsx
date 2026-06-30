@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Gamepad2 } from "lucide-react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -243,7 +242,7 @@ export default function OverviewTab() {
       rows.push({
         id: `play.${p.id}`,
         at,
-        icon: <Gamepad2 className="w-[21px] h-[21px]" />,
+        icon: <Icon name="sports_esports" size={21} />,
         tone: { soft: "var(--arbor-tint)", ink: "var(--arbor-clay)" },
         title: t("today.feed.played", { title: p.title }),
         sub: t("today.feed.playedSub", { domain: playDomainLabel(p.domain, uiLang === "he" ? "he" : "en") }),
@@ -600,6 +599,31 @@ export default function OverviewTab() {
           </span>
         </button>
         <div className={`${showTools ? "" : "hidden"} lg:block`}>
+          {/* UC-4: Day Windows + Reminders surfaced as Today dashboard cards —
+              quick doors into the same routes the TOOLS drawer exposes. */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            {([
+              { tab: "day-windows" as const, glyph: "calendar_month", title: t("today.card.windows.title"), desc: t("today.card.windows.desc") },
+              { tab: "smart-reminders" as const, glyph: "notifications", title: t("today.card.reminders.title"), desc: t("today.card.reminders.desc") },
+            ]).map((c) => (
+              <button
+                key={c.tab}
+                type="button"
+                onClick={() => setActiveTab(c.tab)}
+                className="flex items-center gap-3 rounded-[22px] p-5 text-start transition hover:-translate-y-0.5"
+                style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)", minHeight: 72 }}
+              >
+                <span className="w-11 h-11 rounded-xl flex items-center justify-center flex-none" style={{ background: GREEN_SOFT, color: GREEN }}>
+                  <Icon name={c.glyph} size={22} />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[14px] font-extrabold" style={{ color: INK }}>{c.title}</span>
+                  <span className="block text-[12px] mt-0.5 leading-snug" style={{ color: MUTED }}>{c.desc}</span>
+                </span>
+                <Icon name="chevron_right" size={18} className="flex-none rtl:-scale-x-100" style={{ color: GREEN }} />
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <DailyCheckinCard />
             <GoalsCard />

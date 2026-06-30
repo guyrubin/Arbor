@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useReducedMotion } from "motion/react";
-import { Activity, Moon, Sparkles } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import type { RhythmPrediction, RhythmTone } from "../../rhythm/predict";
 import { hourLabel } from "../../rhythm/predict";
@@ -107,7 +107,7 @@ export default function RhythmStrip({
       <div className="px-6 pt-5 pb-4 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-            <Activity className="w-3.5 h-3.5" /> {t("rhythm.eyebrow")}
+            <Icon name="monitoring" size={14} /> {t("rhythm.eyebrow")}
           </span>
           <h2 className="text-lg font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK }}>
             {learning ? t("rhythm.learningTitle", { name: childName }) : t("rhythm.title", { name: childName })}
@@ -170,7 +170,7 @@ export default function RhythmStrip({
                 className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-[44px] text-[12.5px] font-bold transition active:scale-[0.98]"
                 style={{ background: TONE.friction.bg, color: TONE.friction.ink }}
               >
-                <Sparkles className="w-3.5 h-3.5" /> {t("rhythm.prep", { time: hourLabel(frictionPeak.hour) })}
+                <Icon name="auto_awesome" size={14} /> {t("rhythm.prep", { time: hourLabel(frictionPeak.hour) })}
               </button>
             )}
             {windDownHour != null && (
@@ -180,7 +180,7 @@ export default function RhythmStrip({
                 aria-label={t("rhythm.windDownAction", { time: hourLabel(windDownHour) })}
                 className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-[44px] text-[12.5px] font-bold transition active:scale-[0.98]"
                 style={{ background: "var(--arbor-paper-deep)", color: INK, border: `1px solid ${RULE}` }}>
-                <Moon className="w-3.5 h-3.5" style={{ color: "var(--arbor-lav-ink)" }} /> {t("rhythm.windDown", { time: hourLabel(windDownHour) })}
+                <Icon name="bedtime" size={14} style={{ color: "var(--arbor-lav-ink)" }} /> {t("rhythm.windDown", { time: hourLabel(windDownHour) })}
               </button>
             )}
             {calmWindow && (

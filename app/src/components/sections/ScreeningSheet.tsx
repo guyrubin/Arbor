@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { X } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { TrustSafetyBar } from "../ui/kit";
 import { ScreeningFlow } from "./Screening";
@@ -92,7 +92,7 @@ export default function ScreeningSheet({ open, onClose }: { open: boolean; onClo
                 style={{ width: 44, height: 44, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 aria-label={t("aria.close")}
               >
-                <X className="w-5 h-5" />
+                <Icon name="close" size={20} />
               </button>
             </div>
 

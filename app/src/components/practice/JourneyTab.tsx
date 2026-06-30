@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "motion/react";
-import { CalendarDays, CheckCircle2, History, Sparkles, Target, Trophy } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor, type ActiveTab } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -117,7 +117,7 @@ export default function JourneyTab() {
         </div>
       </div>
 
-      <SectionCard title="This week" icon={<CalendarDays className="w-5 h-5" />} tone="mint"
+      <SectionCard title="This week" icon={<Icon name="calendar_month" size={20} />} tone="mint"
         action={<Chip tone="mint">Focus: {DOMAIN_META[copilot.recommendation.domain].label}</Chip>}>
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
           {week.map((day) => {
@@ -142,7 +142,7 @@ export default function JourneyTab() {
                   className="mt-auto inline-flex items-center justify-center gap-1.5 text-[11px] font-extrabold px-3 py-2 rounded-xl"
                   style={done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {done ? "Done" : "Mark done"}
+                  <Icon name="check_circle" size={14} /> {done ? "Done" : "Mark done"}
                 </button>
                 <button
                   onClick={() => setActiveTab(extraTab)}
@@ -159,10 +159,10 @@ export default function JourneyTab() {
         </div>
       </SectionCard>
 
-      <SectionCard title={`${month} objectives`} icon={<Target className="w-5 h-5" />} tone="coral"
+      <SectionCard title={`${month} objectives`} icon={<Icon name="target" size={20} />} tone="coral"
         action={!startedObjectives && (
           <button onClick={startObjectives} className="inline-flex items-center gap-2 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-peach-ink)" }}>
-            <Sparkles className="w-3.5 h-3.5" /> Start these
+            <Icon name="auto_awesome" size={14} /> Start these
           </button>
         )}>
         <p className="text-[11px] mb-4" style={{ color: "var(--arbor-muted)" }}>
@@ -175,7 +175,7 @@ export default function JourneyTab() {
               <button key={obj.id} onClick={() => toggleObjective(obj)} className={`${cardCls} p-4 text-start transition hover:shadow-md`}>
                 <span className="inline-flex items-center gap-2">
                   <span className="w-8 h-8 rounded-xl inline-flex items-center justify-center" style={{ background: meta.soft, color: meta.color }}>
-                    <CheckCircle2 className="w-4 h-4" />
+                    <Icon name="check_circle" size={16} />
                   </span>
                   <Chip tone={obj.domain === "speech" ? "mint" : obj.domain === "language" ? "sky" : obj.domain === "cognition" ? "lav" : obj.domain === "social" ? "yellow" : "pink"}>
                     {meta.label}
@@ -189,7 +189,7 @@ export default function JourneyTab() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Achievements" icon={<Trophy className="w-5 h-5" />} tone="yellow">
+      <SectionCard title="Achievements" icon={<Icon name="trophy" size={20} />} tone="yellow">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {achievements.map((a) => (
             <div key={a.id} className={`${cardCls} p-4`} style={{ opacity: a.earned ? 1 : 0.58 }}>
@@ -206,7 +206,7 @@ export default function JourneyTab() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Historical progression" icon={<History className="w-5 h-5" />} tone="sky">
+      <SectionCard title="Historical progression" icon={<Icon name="history" size={20} />} tone="sky">
         {snapshots.length === 0 ? (
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>
             Arbor will keep one weekly snapshot once practice data loads — a count of how many milestones you&apos;ve noticed in each domain. It&apos;s historical context and a conversation starter, never a diagnostic chart.

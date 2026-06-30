@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -209,7 +209,7 @@ export default function MilestonesTab() {
               className="text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
               style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
             >
-              {explaining[item.id] ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <Icon name="menu_book" size={11} />}
+              {explaining[item.id] ? <Icon name="progress_activity" size={11} className="animate-spin" /> : <Icon name="menu_book" size={11} />}
               {explanations[item.id] ? t("ms.hide") : t("ms.explain")}
             </button>
           </div>
@@ -427,7 +427,7 @@ export default function MilestonesTab() {
                   </label>
                   <div className="flex gap-2 items-stretch">
                     <button type="submit" disabled={savingGestation} className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
-                      {savingGestation ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : t("ms.gestationSave")}
+                      {savingGestation ? <Icon name="progress_activity" size={14} className="animate-spin" /> : t("ms.gestationSave")}
                     </button>
                     <button type="button" disabled={savingGestation} onClick={() => saveGestation(null)} className="text-xs px-3 py-2 rounded-xl" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{t("ms.gestationClear")}</button>
                     <button type="button" onClick={() => setShowGestation(false)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
@@ -553,7 +553,7 @@ export default function MilestonesTab() {
             <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.nurtureDesc")}</p>
           </div>
           <button type="button" onClick={handleGenerateMilestoneScaffold} disabled={isAnalyzingMilestones} className="text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ms-auto sm:ms-0 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
-            {isAnalyzingMilestones ? (<><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t("ms.findingSteps")}</>) : (<><Icon name="psychology" size={15} /> {t("ms.findSteps")}</>)}
+            {isAnalyzingMilestones ? (<><Icon name="progress_activity" size={14} className="animate-spin" /> {t("ms.findingSteps")}</>) : (<><Icon name="psychology" size={15} /> {t("ms.findSteps")}</>)}
           </button>
         </div>
 

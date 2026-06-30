@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { HeartPulse, Moon, Utensils } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { cardCls } from "../ui/kit";
@@ -21,7 +21,7 @@ export default function DailyCheckinCard() {
   return (
     <div className={`${cardCls} p-6 space-y-4`}>
       <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-        <HeartPulse className="w-3.5 h-3.5" /> Today&apos;s check-in
+        <Icon name="favorite" size={14} /> Today&apos;s check-in
       </span>
 
       <div className="space-y-1.5">
@@ -43,11 +43,11 @@ export default function DailyCheckinCard() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Moon className="w-3 h-3" /> Sleep: <span style={{ color: "var(--arbor-green-ink)" }}>{cur.sleepHours}h</span></span>
+          <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Icon name="bedtime" size={12} /> Sleep: <span style={{ color: "var(--arbor-green-ink)" }}>{cur.sleepHours}h</span></span>
           <input type="range" min={4} max={16} value={cur.sleepHours} onChange={(e) => save({ sleepHours: parseInt(e.target.value) })} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
         </div>
         <div className="space-y-1">
-          <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Utensils className="w-3 h-3" /> Appetite</span>
+          <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Icon name="restaurant" size={12} /> Appetite</span>
           <div className="flex gap-1">
             {(["good", "ok", "poor"] as const).map((a) => (
               <button

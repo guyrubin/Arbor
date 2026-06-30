@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
-import { BarChart3, RefreshCw, Lock } from "lucide-react";
+import Icon from "../ui/Icon";
 import { db, firebaseEnabled } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
@@ -100,7 +100,7 @@ export default function AttributionTab() {
       <div>
         <PageHeader title={t("attr.title") || "Attribution"} />
         <EmptyState
-          icon={<Lock className="w-8 h-8" />}
+          icon={<Icon name="lock" size={32} />}
           headline={t("attr.locked.title") || "Internal dashboard"}
           body={t("attr.locked.body") || "This funnel dashboard is available to Arbor operators only."}
         />
@@ -124,7 +124,7 @@ export default function AttributionTab() {
             className="inline-flex items-center justify-center gap-2 font-bold text-xs rounded-2xl px-4 min-h-[44px] transition disabled:opacity-60"
             style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> {t("attr.refresh") || "Refresh"}
+            <Icon name="refresh" size={16} className={loading ? "animate-spin" : ""} /> {t("attr.refresh") || "Refresh"}
           </button>
         }
       />
@@ -177,7 +177,7 @@ export default function AttributionTab() {
 
       {!loading && !error && rows.length === 0 && (
         <EmptyState
-          icon={<BarChart3 className="w-8 h-8" />}
+          icon={<Icon name="bar_chart" size={32} />}
           headline={t("attr.empty.title") || "No events yet"}
           body={t("attr.empty.body") || "Share a tagged link to start measuring. Tag outbound links with the UTM scheme, e.g."}
           action={

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { ArrowLeft } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Icon } from "../ui/Icon";
 import { PageHeader, cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
@@ -241,7 +240,7 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 max-w-[760px]">
       <button onClick={onBack} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <ArrowLeft className="w-4 h-4" /> {t("master.all")}
+        <Icon name="arrow_back" size={16} /> {t("master.all")}
       </button>
 
       <div>

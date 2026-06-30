@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { BookMarked, Trash2, Clock, Link2, ShieldCheck, Check, X, Loader2 } from "lucide-react";
+import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import type { MemoryReviewItem } from "../../types";
@@ -22,7 +22,7 @@ export default function ChildMemory() {
 
       {/* Pending review first — this is the parent's action queue */}
       {pendingMemoryItems.length > 0 && (
-        <SectionCard title={`Pending your review (${pendingMemoryItems.length})`} icon={<ShieldCheck className="w-5 h-5" />} tone="yellow">
+        <SectionCard title={`Pending your review (${pendingMemoryItems.length})`} icon={<Icon name="verified_user" size={20} />} tone="yellow">
           <div className="space-y-3">
             {pendingMemoryItems.map((m: MemoryReviewItem) => (
               <MemoryRow
@@ -37,7 +37,7 @@ export default function ChildMemory() {
         </SectionCard>
       )}
 
-      <SectionCard title="Approved memory" icon={<BookMarked className="w-5 h-5" />} tone="lav">
+      <SectionCard title="Approved memory" icon={<Icon name="bookmark" size={20} />} tone="lav">
         {approvedMemoryItems.length > 0 ? (
           <div className="space-y-3">
             {approvedMemoryItems.map((m: MemoryReviewItem) => (
@@ -52,7 +52,7 @@ export default function ChildMemory() {
         ) : (
           <div className="text-center py-8">
             <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-              <BookMarked className="w-6 h-6" />
+              <Icon name="bookmark" size={24} />
             </div>
             <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>No memory yet</p>
             <p className="text-xs mt-1 max-w-sm mx-auto" style={{ color: "var(--arbor-muted)" }}>
@@ -78,24 +78,24 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget }: {
     <div className={`${cardCls} p-4 ${busy ? "opacity-60" : ""}`}>
       <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>{m.fact}</p>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-        {m.source && <span className="inline-flex items-center gap-1"><Link2 className="w-3 h-3" /> {m.source}</span>}
-        {dated && <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {dated}</span>}
+        {m.source && <span className="inline-flex items-center gap-1"><Icon name="link" size={12} /> {m.source}</span>}
+        {dated && <span className="inline-flex items-center gap-1"><Icon name="schedule" size={12} /> {dated}</span>}
         {timeBoxed && <Chip tone="pink">Time-boxed · {m.retention}</Chip>}
         <span className="flex-1" />
-        {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+        {busy && <Icon name="progress_activity" size={14} className="animate-spin" />}
         {onApprove && !busy && (
           <button onClick={onApprove} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-            <Check className="w-3.5 h-3.5" /> Approve
+            <Icon name="check" size={14} /> Approve
           </button>
         )}
         {onReject && !busy && (
           <button onClick={onReject} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-muted)" }}>
-            <X className="w-3.5 h-3.5" /> Dismiss
+            <Icon name="close" size={14} /> Dismiss
           </button>
         )}
         {onForget && !busy && (
           <button onClick={onForget} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-pink-ink)" }}>
-            <Trash2 className="w-3.5 h-3.5" /> Forget
+            <Icon name="delete" size={14} /> Forget
           </button>
         )}
       </div>

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { RefreshCw } from "lucide-react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -74,7 +73,7 @@ export default function CareTeam() {
 
       {loading ? (
         <div className={`${cardCls} p-6 flex items-center gap-2 text-sm`} style={{ color: "var(--arbor-muted)" }}>
-          <RefreshCw className="w-4 h-4 animate-spin" /> Loading your care team…
+          <Icon name="progress_activity" size={16} className="animate-spin" /> Loading your care team…
         </div>
       ) : error ? (
         <ErrorState

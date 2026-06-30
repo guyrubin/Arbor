@@ -27,10 +27,7 @@
  *     and padding tokens are RTL-safe via logical CSS or Tailwind).
  */
 import React, { useMemo, useState } from "react";
-import {
-  MessageCircle, Mic, BookOpen, RefreshCw, Check, Share2,
-  type LucideIcon,
-} from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
@@ -51,11 +48,11 @@ import {
   type LangModuleId,
 } from "../../practice/wordWorld";
 
-/* ─── Icon map (lucide names → components) ─────────────────────────────── */
-const ICON_MAP: Record<string, LucideIcon> = {
-  MessageCircle,
-  Mic,
-  BookOpen,
+/* ─── Icon map (module icon keys → Material Symbols ligatures) ──────────── */
+const ICON_MAP: Record<string, string> = {
+  MessageCircle: "chat",
+  Mic: "mic",
+  BookOpen: "menu_book",
 };
 
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
@@ -82,7 +79,7 @@ interface ModuleCardProps {
 }
 
 function ModuleCard({ module, selected, onSelect }: ModuleCardProps) {
-  const Icon = ICON_MAP[module.icon] ?? BookOpen;
+  const iconName = ICON_MAP[module.icon] ?? "menu_book";
   return (
     <button
       onClick={onSelect}
@@ -95,7 +92,7 @@ function ModuleCard({ module, selected, onSelect }: ModuleCardProps) {
       }}
     >
       <IconBadge tone="sky" size={44}>
-        <Icon className="w-5 h-5" aria-hidden="true" />
+        <Icon name={iconName} size={20} />
       </IconBadge>
       <p
         className="font-extrabold text-[15px] leading-snug"
@@ -193,7 +190,7 @@ export default function WordWorldTab() {
   return (
     <div className="space-y-5 pb-6">
       {/* ── Module picker ─────────────────────────────────────────────── */}
-      <SectionCard title="Word World" icon={<BookOpen className="w-5 h-5" />} tone="mint">
+      <SectionCard title="Word World" icon={<Icon name="menu_book" size={20} />} tone="mint">
         <p className="text-[12px] mb-4" style={{ color: "var(--arbor-muted)" }}>
           {t("wordworld.sourceFraming")}
         </p>
@@ -241,7 +238,7 @@ export default function WordWorldTab() {
                 style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 aria-label={t("aria.showDifferentPrompt")}
               >
-                <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> {t("wordworld.refresh")}
+                <Icon name="refresh" size={14} /> {t("wordworld.refresh")}
               </button>
             )}
           </div>
@@ -267,7 +264,7 @@ export default function WordWorldTab() {
               }}
               aria-label={confirmed ? LOG_CONFIRMATION : WE_TRIED_LABEL}
             >
-              {confirmed && <Check className="w-4 h-4" aria-hidden="true" />}
+              {confirmed && <Icon name="check" size={16} />}
               {confirmed ? LOG_CONFIRMATION : WE_TRIED_LABEL}
             </button>
 
@@ -328,7 +325,7 @@ export default function WordWorldTab() {
           style={{ color: "var(--arbor-clay)" }}
           aria-label={t("aria.shareNoteWithPro")}
         >
-          <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
+          <Icon name="share" size={14} />
           {shareFlash ? t("wordworld.copied") : "Share note"}
         </button>
       </div>

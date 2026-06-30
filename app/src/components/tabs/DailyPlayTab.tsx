@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Sprout, BookOpen, Target } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -215,7 +215,7 @@ export default function DailyPlayTab() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-              <Sprout className="w-3.5 h-3.5" /> {t("play.libEyebrow")}
+              <Icon name="eco" size={14} /> {t("play.libEyebrow")}
             </span>
             <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               {t("play.libTitle", { name: firstName })}
@@ -235,7 +235,7 @@ export default function DailyPlayTab() {
               border: `1px solid ${activeGoals.length > 0 ? "var(--arbor-clay-border)" : "var(--arbor-rule)"}`,
             }}
           >
-            <Target className="w-3.5 h-3.5" />
+            <Icon name="target" size={14} />
             {activeGoals.length > 0 ? `${activeGoals.length} goal${activeGoals.length !== 1 ? "s" : ""} active` : "Set a focus"}
           </button>
         </div>
@@ -338,7 +338,7 @@ export default function DailyPlayTab() {
         className="inline-flex items-center gap-2 text-[13px] font-bold rounded-full px-4 py-2.5"
         style={{ background: "var(--arbor-clay)", color: "#fff", minHeight: 44 }}
       >
-        <BookOpen className="w-4 h-4" /> Turn today&apos;s practice into a comic →
+        <Icon name="menu_book" size={16} /> Turn today&apos;s practice into a comic →
       </button>
 
       {/* CI-28: Goal Builder modal — opened via Goals chip in the header */}

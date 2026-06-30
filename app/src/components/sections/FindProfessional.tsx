@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
-import { RefreshCw } from "lucide-react";
 import Icon from "../ui/Icon";
 import { PageHeader, cardCls, Chip, PASTEL, InitialsTile } from "../ui/kit";
 import type { PastelKey } from "../ui/kit";
@@ -285,7 +284,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
               Nothing from {first}'s profile is shared automatically — only the note above. You stay in control of any reports you choose to share.
             </p>
             <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
-              {consultBusy ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Sending…</>) : (<><Icon name="send" size={18} /> Send the request</>)}
+              {consultBusy ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> Sending…</>) : (<><Icon name="send" size={18} /> Send the request</>)}
             </button>
           </div>
         )}

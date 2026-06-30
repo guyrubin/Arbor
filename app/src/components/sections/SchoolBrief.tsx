@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { School, Sparkles, RefreshCw, ShieldAlert, Download, Languages, Heart, ArrowRightLeft, ClipboardList, Pencil, Check, Plus, X } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
@@ -183,7 +183,7 @@ export default function SchoolBrief() {
     <motion.div {...motionProps} className="space-y-5 max-w-[760px]">
       <header>
         <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-          <School className="w-3.5 h-3.5" /> {t("schoolBrief.eyebrow")}
+          <Icon name="school" size={14} /> {t("schoolBrief.eyebrow")}
         </span>
         <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
           {t("schoolBrief.title")}
@@ -200,7 +200,7 @@ export default function SchoolBrief() {
 
       {/* Non-diagnostic framing line. */}
       <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: GREEN_SOFT }}>
-        <Heart className="w-5 h-5 flex-shrink-0" style={{ color: GREEN }} />
+        <Icon name="favorite" size={20} fill={1} style={{ color: GREEN }} />
         <p className="text-[13px] leading-relaxed" style={{ color: GREEN }}>
           {t("schoolBrief.nonDiagnostic", { name: firstName })}
         </p>
@@ -209,7 +209,7 @@ export default function SchoolBrief() {
       {!draft ? (
         <div className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto" style={{ background: GREEN_SOFT, color: GREEN }}>
-            <School className="w-6 h-6" />
+            <Icon name="school" size={26} />
           </span>
           <h2 className="text-[17px] font-extrabold mt-3" style={{ color: INK }}>{t("schoolBrief.empty.title")}</h2>
           <p className="text-sm mt-1.5 leading-relaxed max-w-[440px] mx-auto" style={{ color: MUTED }}>{t("schoolBrief.empty.body", { name: firstName })}</p>
@@ -220,8 +220,8 @@ export default function SchoolBrief() {
             style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
           >
             {generating
-              ? (<><RefreshCw className="w-4 h-4 animate-spin" /> {t("schoolBrief.generating")}</>)
-              : (<><Sparkles className="w-4 h-4" /> {t("schoolBrief.generate", { name: firstName })}</>)}
+              ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
+              : (<><Icon name="auto_awesome" size={16} /> {t("schoolBrief.generate", { name: firstName })}</>)}
           </button>
         </div>
       ) : (
@@ -232,7 +232,7 @@ export default function SchoolBrief() {
 
           {/* The rendered brief — curated sections only (editable when `editing`). */}
           <div className="rounded-2xl p-5 md:p-6 space-y-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
-            <Section icon={<ClipboardList className="w-4 h-4" />} title={sectionLabels.overview}>
+            <Section icon={<Icon name="assignment" size={16} />} title={sectionLabels.overview}>
               {editing ? (
                 <textarea
                   value={draft.overview}
@@ -248,17 +248,17 @@ export default function SchoolBrief() {
 
             {editing ? (
               <>
-                <EditableListSection icon={<Heart className="w-4 h-4" />} title={sectionLabels.strengths} items={draft.keyStrengths} field="keyStrengths" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
-                <EditableListSection icon={<ArrowRightLeft className="w-4 h-4" />} title={sectionLabels.challenges} items={draft.classroomChallenges} field="classroomChallenges" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
-                <EditableListSection icon={<Languages className="w-4 h-4" />} title={sectionLabels.language} items={draft.languageSupportPlan} field="languageSupportPlan" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
-                <EditableListSection icon={<School className="w-4 h-4" />} title={sectionLabels.strategies} items={draft.suggestedTeacherStrategies} field="suggestedTeacherStrategies" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
+                <EditableListSection icon={<Icon name="favorite" size={16} />} title={sectionLabels.strengths} items={draft.keyStrengths} field="keyStrengths" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
+                <EditableListSection icon={<Icon name="sync_alt" size={16} />} title={sectionLabels.challenges} items={draft.classroomChallenges} field="classroomChallenges" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
+                <EditableListSection icon={<Icon name="translate" size={16} />} title={sectionLabels.language} items={draft.languageSupportPlan} field="languageSupportPlan" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
+                <EditableListSection icon={<Icon name="school" size={16} />} title={sectionLabels.strategies} items={draft.suggestedTeacherStrategies} field="suggestedTeacherStrategies" onUpdate={updateListItem} onAdd={addListItem} onRemove={removeListItem} addItemLabel={t("schoolBrief.addItem")} removeAria={t("schoolBrief.removeItem")} />
               </>
             ) : (
               <>
-                <ListSection icon={<Heart className="w-4 h-4" />} title={sectionLabels.strengths} items={draft.keyStrengths} />
-                <ListSection icon={<ArrowRightLeft className="w-4 h-4" />} title={sectionLabels.challenges} items={draft.classroomChallenges} />
-                <ListSection icon={<Languages className="w-4 h-4" />} title={sectionLabels.language} items={draft.languageSupportPlan} />
-                <ListSection icon={<School className="w-4 h-4" />} title={sectionLabels.strategies} items={draft.suggestedTeacherStrategies} />
+                <ListSection icon={<Icon name="favorite" size={16} />} title={sectionLabels.strengths} items={draft.keyStrengths} />
+                <ListSection icon={<Icon name="sync_alt" size={16} />} title={sectionLabels.challenges} items={draft.classroomChallenges} />
+                <ListSection icon={<Icon name="translate" size={16} />} title={sectionLabels.language} items={draft.languageSupportPlan} />
+                <ListSection icon={<Icon name="school" size={16} />} title={sectionLabels.strategies} items={draft.suggestedTeacherStrategies} />
               </>
             )}
             <p className="text-[12px] leading-relaxed pt-1" style={{ color: "var(--arbor-faint)" }}>{t("schoolBrief.bilingualNote")}</p>
@@ -271,7 +271,7 @@ export default function SchoolBrief() {
               className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px] disabled:opacity-50"
               style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
             >
-              <RefreshCw className={`w-4 h-4 ${generating ? "animate-spin" : ""}`} /> {t("schoolBrief.regenerate")}
+              <Icon name="refresh" size={16} className={generating ? "animate-spin" : undefined} /> {t("schoolBrief.regenerate")}
             </button>
             {/* Per-section edit toggle — keeps the default view calm; full edit power on demand. */}
             <button
@@ -280,7 +280,7 @@ export default function SchoolBrief() {
               className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
               style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
             >
-              {editing ? (<><Check className="w-4 h-4" style={{ color: GREEN }} /> {t("schoolBrief.editDone")}</>) : (<><Pencil className="w-4 h-4" /> {t("schoolBrief.edit")}</>)}
+              {editing ? (<><Icon name="check" size={16} style={{ color: GREEN }} /> {t("schoolBrief.editDone")}</>) : (<><Icon name="edit" size={16} /> {t("schoolBrief.edit")}</>)}
             </button>
             {/* Opening the review is NOT an export — export only fires after approve. */}
             <button
@@ -288,7 +288,7 @@ export default function SchoolBrief() {
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
               style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
             >
-              <Download className="w-4 h-4" /> {t("schoolBrief.download")}
+              <Icon name="download" size={16} /> {t("schoolBrief.download")}
             </button>
           </div>
         </>
@@ -302,7 +302,7 @@ export default function SchoolBrief() {
 
           {/* Condition 5: outside-erase-reach notice — plainly stated. */}
           <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: "var(--arbor-pink-soft)" }}>
-            <ShieldAlert className="w-5 h-5 flex-shrink-0" style={{ color: "var(--arbor-pink-ink)" }} />
+            <Icon name="gpp_maybe" size={20} style={{ color: "var(--arbor-pink-ink)" }} />
             <p className="text-[13px] leading-relaxed font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>
               {t(OUTSIDE_ERASE_REACH_NOTICE_KEY)}
             </p>
@@ -321,7 +321,7 @@ export default function SchoolBrief() {
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 min-h-[44px]"
               style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
             >
-              <Download className="w-4 h-4" /> {t(APPROVE_EXPORT_CTA_KEY)}
+              <Icon name="download" size={16} /> {t(APPROVE_EXPORT_CTA_KEY)}
             </button>
           </div>
         </div>
@@ -381,7 +381,7 @@ function EditableListSection({ icon, title, items, field, onUpdate, onAdd, onRem
               className="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg mt-0.5"
               style={{ color: MUTED, border: `1px solid ${RULE}` }}
             >
-              <X className="w-3.5 h-3.5" />
+              <Icon name="close" size={14} />
             </button>
           </div>
         ))}
@@ -391,7 +391,7 @@ function EditableListSection({ icon, title, items, field, onUpdate, onAdd, onRem
           className="inline-flex items-center gap-1.5 text-[13px] font-bold mt-1"
           style={{ color: GREEN }}
         >
-          <Plus className="w-3.5 h-3.5" /> {addItemLabel}
+          <Icon name="add" size={14} /> {addItemLabel}
         </button>
       </div>
     </Section>

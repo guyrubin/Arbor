@@ -13,7 +13,6 @@
  */
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -34,7 +33,6 @@ export default function ScholarHubCard() {
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const he = aiLang === "he";
   const isRtl = uiLang === "he";
-  const BackGlyph = isRtl ? ArrowRight : ArrowLeft;
 
   const [open, setOpen] = useState(false);
 
@@ -103,7 +101,8 @@ export default function ScholarHubCard() {
             style={{ color: "var(--arbor-muted)" }}
             aria-label={t("hub.scholar.close")}
           >
-            <BackGlyph className="w-4 h-4" aria-hidden />
+            {/* Back glyph mirrors in RTL via CSS (single Material Symbol). */}
+            <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" />
             {t("hub.scholar.close")}
           </button>
 

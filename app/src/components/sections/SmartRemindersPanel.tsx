@@ -23,7 +23,7 @@
  */
 import React, { useState, useMemo, useCallback } from "react";
 import { motion } from "motion/react";
-import { ArrowLeft, Bell, BellOff, Clock, Zap, CheckCircle2 } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { nextNudge } from "../../lib/jitai";
@@ -171,7 +171,7 @@ export default function SmartRemindersPanel() {
         style={{ minHeight: 44, color: GREEN, background: GREEN_SOFT }}
         aria-label={t("sr.back")}
       >
-        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+        <Icon name="arrow_back" size={16} />
         {t("sr.back")}
       </button>
 
@@ -201,7 +201,7 @@ export default function SmartRemindersPanel() {
           style={{ width: 36, height: 36, background: PAPER, color: CLAY }}
           aria-hidden="true"
         >
-          <Bell className="w-4 h-4" />
+          <Icon name="notifications" size={18} />
         </span>
         <p className="text-[13px] leading-relaxed font-medium" style={{ color: INK }}>
           {t("sr.max2")}
@@ -209,7 +209,7 @@ export default function SmartRemindersPanel() {
       </div>
 
       {/* NEXT NUDGE CARD (AC-1) */}
-      <Section title={t("sr.nextNudge.label")} icon={<Zap className="w-4 h-4" />}>
+      <Section title={t("sr.nextNudge.label")} icon={<Icon name="bolt" size={16} />}>
         <div
           className="rounded-2xl p-4"
           style={{ background: PAPER_DEEP, border: `1px solid ${RULE}` }}
@@ -222,7 +222,7 @@ export default function SmartRemindersPanel() {
                 style={{ width: 36, height: 36, background: GREEN_SOFT, color: GREEN }}
                 aria-hidden="true"
               >
-                <Bell className="w-4 h-4" />
+                <Icon name="notifications" size={18} />
               </span>
               <div className="min-w-0">
                 <p className="text-[14px] font-bold" style={{ color: INK }}>
@@ -240,7 +240,7 @@ export default function SmartRemindersPanel() {
                 style={{ width: 36, height: 36, background: PAPER, color: FAINT }}
                 aria-hidden="true"
               >
-                <BellOff className="w-4 h-4" />
+                <Icon name="notifications_off" size={18} />
               </span>
               <p className="text-[13px]" style={{ color: MUTED }}>
                 {t("sr.nextNudge.none")}
@@ -251,7 +251,7 @@ export default function SmartRemindersPanel() {
       </Section>
 
       {/* PER-TYPE TOGGLES (AC-2) */}
-      <Section title={t("sr.types.heading")} icon={<Bell className="w-4 h-4" />}>
+      <Section title={t("sr.types.heading")} icon={<Icon name="notifications" size={16} />}>
         <div className="space-y-3">
           {NUDGE_TYPES.map(({ key, labelKey, descKey, tone, toneSoft }) => {
             const on = prefs.types[key];
@@ -287,7 +287,7 @@ export default function SmartRemindersPanel() {
       </Section>
 
       {/* QUIET HOURS (AC-3) */}
-      <Section title={t("sr.quiet.heading")} icon={<Clock className="w-4 h-4" />}>
+      <Section title={t("sr.quiet.heading")} icon={<Icon name="schedule" size={16} />}>
         <div
           className="rounded-2xl p-4 space-y-4"
           style={{ background: PAPER_DEEP, border: `1px solid ${RULE}` }}
@@ -373,7 +373,7 @@ export default function SmartRemindersPanel() {
       </Section>
 
       {/* CALM-WINDOW SCHEDULING (AC-4) */}
-      <Section title={t("sr.calm.heading")} icon={<Zap className="w-4 h-4" />}>
+      <Section title={t("sr.calm.heading")} icon={<Icon name="bolt" size={16} />}>
         <div
           className="rounded-2xl p-4 flex items-center justify-between gap-4"
           style={{
@@ -412,7 +412,7 @@ export default function SmartRemindersPanel() {
           aria-live="polite"
           data-testid="sr-saved-flash"
         >
-          <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+          <Icon name="check_circle" size={16} />
           {t("sr.saved")}
         </motion.div>
       )}

@@ -29,7 +29,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { BookOpen, Info, Plus, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -165,7 +165,7 @@ function PhraseLogForm({
           style={{ background: T.greenInk, color: T.onAccent }}
           aria-label={t("vl.logSave")}
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Icon name="add" size={14} />
           {t("vl.logSave")}
         </button>
       </div>
@@ -247,14 +247,14 @@ export default function LanguageLabVocabView() {
           className="inline-flex items-center gap-1.5 text-xs font-bold min-h-[44px]"
           style={{ color: T.muted }}
         >
-          <Info className="w-3.5 h-3.5" />
+          <Icon name="info" size={14} />
           {t("vl.disclaimerToggle")}
         </button>
       )}
 
       <SectionCard
         title={t("vl.sectionTitle")}
-        icon={<BookOpen className="w-5 h-5" />}
+        icon={<Icon name="menu_book" size={20} />}
         tone="sky"
       >
         <div className="space-y-5">
@@ -347,7 +347,7 @@ export default function LanguageLabVocabView() {
       {/* ── Vocabulary trend (last 90 days) ── */}
       <SectionCard
         title={t("vl.trendTitle")}
-        icon={<BookOpen className="w-5 h-5" />}
+        icon={<Icon name="menu_book" size={20} />}
         tone="mint"
       >
         {total === 0 ? (
@@ -407,7 +407,7 @@ export default function LanguageLabVocabView() {
       {/* ── Ideas for both languages ── */}
       <SectionCard
         title={t("vl.activitiesTitle")}
-        icon={<BookOpen className="w-5 h-5" />}
+        icon={<Icon name="menu_book" size={20} />}
         tone="sky"
         action={
           <button
@@ -416,7 +416,7 @@ export default function LanguageLabVocabView() {
             style={{ color: T.muted }}
             aria-expanded={showActivities}
           >
-            {showActivities ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {showActivities ? <Icon name="expand_less" size={16} /> : <Icon name="expand_more" size={16} />}
           </button>
         }
       >

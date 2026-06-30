@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "motion/react";
-import { RefreshCw, Sparkles, MessageSquare, Sliders, ListChecks, CheckCircle2 } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Skeleton } from "../ui/Skeleton";
@@ -90,7 +90,7 @@ export default function PlansTab() {
                 className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1.5"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
               >
-                <Sparkles className="w-3 h-3" /> {s.topic.split("—")[0].trim()}
+                <Icon name="auto_awesome" size={12} /> {s.topic.split("—")[0].trim()}
               </button>
             ))}
           </div>
@@ -111,7 +111,7 @@ export default function PlansTab() {
             className="text-white font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
             style={{ background: "var(--arbor-gradient-primary)" }}
           >
-            {isPlanGenerating ? (<><RefreshCw className="w-4 h-4 animate-spin" /> {t("plan.creating")}</>) : (<><Sparkles className="w-4 h-4" /> {t("plan.createBtn")}</>)}
+            {isPlanGenerating ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("plan.creating")}</>) : (<><Icon name="auto_awesome" size={16} /> {t("plan.createBtn")}</>)}
           </button>
         </div>
       </div>
@@ -123,7 +123,7 @@ export default function PlansTab() {
       )}
       {plansLoaded && actionPlans.length === 0 && (
         <EmptyState
-          icon={<Sliders className="w-8 h-8" />}
+          icon={<Icon name="tune" size={32} />}
           headline={t("plan.empty.head")}
           body={t("plan.empty.body")}
         />
@@ -140,8 +140,8 @@ export default function PlansTab() {
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <p className="text-sm font-extrabold flex items-center gap-2" style={{ color: "var(--arbor-ink)" }}>
                     {prog.planComplete
-                      ? <><CheckCircle2 className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.complete")}</>
-                      : <><ListChecks className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.focusThisWeek")}</>}
+                      ? <><Icon name="check_circle" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.complete")}</>
+                      : <><Icon name="checklist" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("plan.focusThisWeek")}</>}
                   </p>
                   <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("plan.stepsCount", { done: prog.doneSteps, total: prog.totalSteps, pct: prog.pct })}</span>
                 </div>
@@ -179,7 +179,7 @@ export default function PlansTab() {
             <div className={`${cardCls} p-6 space-y-5`}>
               <div className="space-y-3 p-4 rounded-2xl" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
-                  <MessageSquare className="w-3.5 h-3.5" style={{ color: "var(--arbor-peach-ink)" }} /> {t("plan.whatToSay")}
+                  <Icon name="chat" size={14} style={{ color: "var(--arbor-peach-ink)" }} /> {t("plan.whatToSay")}
                 </h4>
                 <div className="space-y-3 text-xs">
                   {plan.scripts.map((sc, scIdx) => (
@@ -203,7 +203,7 @@ export default function PlansTab() {
                     className="text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
                     style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                   >
-                    <Sparkles className="w-3 h-3" /> {t("plan.refine")}
+                    <Icon name="auto_awesome" size={12} /> {t("plan.refine")}
                   </button>
                 </div>
               </div>
