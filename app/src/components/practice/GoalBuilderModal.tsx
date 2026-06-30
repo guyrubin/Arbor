@@ -20,20 +20,7 @@
 
 import React, { useState, useMemo } from "react";
 import { motion } from "motion/react";
-import {
-  X,
-  Check,
-  Trash2,
-  Plus,
-  ListChecks,
-  DoorOpen,
-  Users,
-  Utensils,
-  Moon,
-  Heart,
-  MessageCircle,
-  RefreshCw,
-} from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { createPortal } from "react-dom";
 import { AnimatePresence } from "motion/react";
 import {
@@ -50,14 +37,14 @@ import { useLanguage } from "../../context/LanguageContext";
 // ── Icon map (tile icon names → Lucide components) ───────────────────────────
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-  ListChecks: <ListChecks className="w-5 h-5" />,
-  DoorOpen: <DoorOpen className="w-5 h-5" />,
-  Users: <Users className="w-5 h-5" />,
-  Utensils: <Utensils className="w-5 h-5" />,
-  Moon: <Moon className="w-5 h-5" />,
-  Heart: <Heart className="w-5 h-5" />,
-  MessageCircle: <MessageCircle className="w-5 h-5" />,
-  RefreshCw: <RefreshCw className="w-5 h-5" />,
+  ListChecks: <Icon name="checklist" size={20} />,
+  DoorOpen: <Icon name="door_open" size={20} />,
+  Users: <Icon name="group" size={20} />,
+  Utensils: <Icon name="restaurant" size={20} />,
+  Moon: <Icon name="dark_mode" size={20} />,
+  Heart: <Icon name="favorite" size={20} />,
+  MessageCircle: <Icon name="chat_bubble" size={20} />,
+  RefreshCw: <Icon name="refresh" size={20} />,
 };
 
 // ── Token shorthands ─────────────────────────────────────────────────────────
@@ -240,7 +227,7 @@ export default function GoalBuilderModal({
                 className="flex-shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg ms-3 transition"
                 style={{ border: `1px solid ${RULE}`, color: MUTED }}
               >
-                <X className="w-4 h-4" />
+                <Icon name="close" size={16} />
               </button>
             </div>
 
@@ -279,7 +266,7 @@ export default function GoalBuilderModal({
                               className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition"
                               style={{ color: MUTED }}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Icon name="delete" size={16} />
                             </button>
                           )}
                         </div>
@@ -336,7 +323,7 @@ export default function GoalBuilderModal({
                       className="inline-flex items-center gap-1.5 text-[13px] font-bold transition"
                       style={{ color: GREEN }}
                     >
-                      <Plus className="w-4 h-4" /> Add another focus
+                      <Icon name="add" size={16} /> Add another focus
                     </button>
                   )}
 
@@ -399,9 +386,9 @@ export default function GoalBuilderModal({
                             }}
                           >
                             {isSelected ? (
-                              <Check className="w-4 h-4" />
+                              <Icon name="check" size={16} />
                             ) : (
-                              ICON_MAP[tile.icon] ?? <Heart className="w-5 h-5" />
+                              ICON_MAP[tile.icon] ?? <Icon name="favorite" size={20} />
                             )}
                           </span>
                           <span
@@ -436,7 +423,7 @@ export default function GoalBuilderModal({
                       boxShadow: "var(--shadow-green)",
                     }}
                   >
-                    <Check className="w-5 h-5" />
+                    <Icon name="check" size={20} />
                     Save {selected.length} focus{selected.length !== 1 ? "es" : ""}
                   </button>
                 </motion.div>

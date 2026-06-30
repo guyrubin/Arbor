@@ -1,8 +1,5 @@
 import React, { lazy, Suspense, useMemo, useState } from "react";
-import {
-  Mic, Smile, HeartPulse, Map as MapIcon, Brain, BookOpen, Music, PersonStanding, Shapes,
-  ArrowLeft, Star, Flame, Lock, Camera, type LucideIcon,
-} from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
@@ -38,7 +35,8 @@ interface World {
   id: string;
   name: string;
   tag: string;
-  icon: LucideIcon;
+  /** Material Symbols glyph name for the world's icon. */
+  icon: string;
   color: WorldColor;
   /** Scene description for the illustrated card — the hero is composited in (I1). */
   imagePrompt: string;
@@ -57,24 +55,24 @@ const COLOR: Record<WorldColor, { bg: string; ink: string }> = {
 };
 
 const WORLDS: World[] = [
-  { id: "speech", name: "Sound Lab", tag: "Speech", icon: Mic, color: "sky", imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes", Comp: SpeechCoachTab, count: (d) => d.speech.items.length },
-  { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: HeartPulse, color: "lav", imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky", Comp: FeelingsLabTab, count: (d) => d.events.items.length },
-  { id: "adventures", name: "Story Quest", tag: "Adventure", icon: MapIcon, color: "peach", imagePrompt: "an adventurous storybook landscape, holding a treasure map with a compass on a cliff", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
-  { id: "mimic", name: "Mimic Studio", tag: "Mimic", icon: Smile, color: "clay", imagePrompt: "a playful mirror studio making a silly happy face, sparkles around", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
-  { id: "memory", name: "Mind Vault", tag: "Memory", icon: Brain, color: "pink", imagePrompt: "opening a glowing memory vault full of colorful matching cards", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
-  { id: "reading", name: "Spell Forge", tag: "Reading", icon: BookOpen, color: "yellow", imagePrompt: "a magical letter forge where glowing letters become words", Comp: SpellForgeWorld, count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
-  { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: Music, color: "clay", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
-  { id: "pose", name: "Hero Pose", tag: "Move", icon: PersonStanding, color: "sky", imagePrompt: "a dynamic superhero action pose with bold motion lines", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
-  { id: "pattern", name: "Pattern Power", tag: "Logic", icon: Shapes, color: "lav", imagePrompt: "a puzzle world of glowing shapes arranged in patterns", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
-  { id: "word-world", name: "Word World", tag: "Language", icon: BookOpen, color: "sky", imagePrompt: "a warm cozy reading nook with open books, speech bubbles, and colorful letters floating gently", isNew: true, Comp: WordWorldTab, count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
+  { id: "speech", name: "Sound Lab", tag: "Speech", icon: "mic", color: "sky", imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes", Comp: SpeechCoachTab, count: (d) => d.speech.items.length },
+  { id: "feelings", name: "Mood Mountain", tag: "Feelings", icon: "favorite", color: "lav", imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky", Comp: FeelingsLabTab, count: (d) => d.events.items.length },
+  { id: "adventures", name: "Story Quest", tag: "Adventure", icon: "map", color: "peach", imagePrompt: "an adventurous storybook landscape, holding a treasure map with a compass on a cliff", Comp: AdventuresTab, count: (d) => d.adventures.items.length },
+  { id: "mimic", name: "Mimic Studio", tag: "Mimic", icon: "mood", color: "clay", imagePrompt: "a playful mirror studio making a silly happy face, sparkles around", Comp: MimicStudioTab, count: (d) => d.mimic.items.length },
+  { id: "memory", name: "Mind Vault", tag: "Memory", icon: "psychology", color: "pink", imagePrompt: "opening a glowing memory vault full of colorful matching cards", Comp: MindVaultWorld, count: (d) => d.events.items.filter((e) => e.kind === "memory").length },
+  { id: "reading", name: "Spell Forge", tag: "Reading", icon: "menu_book", color: "yellow", imagePrompt: "a magical letter forge where glowing letters become words", Comp: SpellForgeWorld, count: (d) => d.events.items.filter((e) => READING_KINDS.has(e.kind)).length },
+  { id: "beat", name: "Beat Keeper", tag: "Rhythm", icon: "music_note", color: "clay", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes", isNew: true, Comp: BeatKeeperWorld, count: (d) => d.events.items.filter((e) => e.kind === "rhythm").length },
+  { id: "pose", name: "Hero Pose", tag: "Move", icon: "accessibility_new", color: "sky", imagePrompt: "a dynamic superhero action pose with bold motion lines", isNew: true, Comp: HeroPoseWorld, count: (d) => d.events.items.filter((e) => e.kind === "pose").length },
+  { id: "pattern", name: "Pattern Power", tag: "Logic", icon: "category", color: "lav", imagePrompt: "a puzzle world of glowing shapes arranged in patterns", isNew: true, Comp: PatternPowerWorld, count: (d) => d.events.items.filter((e) => e.kind === "pattern").length },
+  { id: "word-world", name: "Word World", tag: "Language", icon: "menu_book", color: "sky", imagePrompt: "a warm cozy reading nook with open books, speech bubbles, and colorful letters floating gently", isNew: true, Comp: WordWorldTab, count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
 ];
 
 function Stars({ n }: { n: number }) {
   return (
     <div className="flex gap-0.5 mt-2" aria-label={`${n} of 3 stars`}>
       {[0, 1, 2].map((i) => (
-        <Star key={i} className="w-3.5 h-3.5" style={{ color: i < n ? "var(--arbor-yellow)" : "#cdc8bd" }}
-          fill={i < n ? "var(--arbor-yellow)" : "none"} strokeWidth={2.5} aria-hidden="true" />
+        <Icon key={i} name="star" size={14} fill={i < n ? 1 : 0}
+          style={{ color: i < n ? "var(--arbor-yellow)" : "#cdc8bd" }} />
       ))}
     </div>
   );
@@ -109,7 +107,7 @@ export default function HeroArcade() {
         <button onClick={() => setOpenId(null)}
           className="play-pressable inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-extrabold"
           style={{ background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
-          <ArrowLeft className="w-4 h-4" /> All worlds
+          <Icon name="arrow_back" size={16} /> All worlds
         </button>
         <Suspense fallback={<TabSkeleton />}><Comp /></Suspense>
       </div>
@@ -150,7 +148,7 @@ export default function HeroArcade() {
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-2xl px-3 py-2"
               style={{ background: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
-              <Flame className="w-5 h-5" style={{ color: "var(--arbor-peach)" }} fill="var(--arbor-peach)" />
+              <Icon name="local_fire_department" size={20} fill={1} style={{ color: "var(--arbor-peach)" }} />
               <b className="text-[18px]" style={{ fontFamily: "var(--font-display)" }}>{data.streak}</b>
               <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink-soft)" }}>day streak</span>
             </div>
@@ -171,7 +169,7 @@ export default function HeroArcade() {
         <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>Choose your world</h2>
         <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
           {WORLDS.map((w) => {
-            const Icon = w.icon;
+            const glyph = w.icon;
             const live = !!w.Comp;
             const stars = w.count ? Math.min(3, Math.floor(w.count(data) / 3)) : 0;
             const c = COLOR[w.color];
@@ -185,7 +183,7 @@ export default function HeroArcade() {
                 )}
                 <div className="comic-halftone relative overflow-hidden" style={{ height: 120, background: c.bg, borderBottom: "var(--comic-line)" }}>
                   <WorldScene worldId={w.id} imagePrompt={w.imagePrompt} heroUrl={hero.url ?? undefined}>
-                    <Icon className="w-12 h-12" style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} strokeWidth={2.5} aria-hidden="true" />
+                    <Icon name={glyph} size={48} fill={1} style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} />
                   </WorldScene>
                 </div>
                 <div className="p-3">
@@ -194,7 +192,7 @@ export default function HeroArcade() {
                     style={{ border: "2px solid var(--comic-ink)", color: c.ink }}>{w.tag}</span>
                   {live ? <Stars n={stars} /> : (
                     <span className="flex items-center gap-1 mt-2 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                      <Lock className="w-3.5 h-3.5" aria-hidden="true" /> Soon
+                      <Icon name="lock" size={14} /> Soon
                     </span>
                   )}
                 </div>
@@ -219,7 +217,7 @@ export default function HeroArcade() {
             {next && (
               <span className="inline-flex items-center gap-1.5 text-[13px] font-bold px-3 py-2 rounded-2xl"
                 style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "3px dashed var(--comic-ink)" }}>
-                <Lock className="w-3.5 h-3.5" aria-hidden="true" /> {next.cosmetic.label} · {next.cosmetic.requirement}
+                <Icon name="lock" size={14} /> {next.cosmetic.label} · {next.cosmetic.requirement}
               </span>
             )}
           </div>
@@ -243,7 +241,7 @@ export default function HeroArcade() {
         <button onClick={() => setActiveTab("comics")}
           className="play-pressable inline-flex items-center gap-2 rounded-full px-6 py-3 font-black text-[16px]"
           style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", boxShadow: "0 6px 0 0 var(--comic-ink)", fontFamily: "var(--font-display)" }}>
-          <Camera className="w-5 h-5" /> {hero.hasHero ? "Create comic page" : "Create my hero"}
+          <Icon name="photo_camera" size={20} /> {hero.hasHero ? "Create comic page" : "Create my hero"}
         </button>
       </section>
     </div>

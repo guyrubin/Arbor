@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Compass, RotateCcw, Sparkles, Wand2 } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { fillTemplate, scenariosForAge, type AdventureScenario } from "../../practice/content";
@@ -124,14 +124,14 @@ export default function AdventuresTab() {
       {!scenario && (
         <PlayPanel tone="lav" className="flex flex-wrap items-center gap-4">
           <span className="grid place-items-center w-14 h-14 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-            <Wand2 className="w-7 h-7" />
+            <Icon name="auto_fix_high" size={28} />
           </span>
           <div className="flex-1 min-w-[200px]">
             <p className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Make a brand-new adventure</p>
             <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>A fresh comprehension story, made just for {first}.</p>
           </div>
           <PlayButton onClick={createAdventure} disabled={generating} tone="lav">
-            <Sparkles className="w-4 h-4" /> {generating ? "Creating…" : "Create"}
+            <Icon name="auto_awesome" size={16} /> {generating ? "Creating…" : "Create"}
           </PlayButton>
           {genError && <p className="w-full text-[13px] font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{genError}</p>}
         </PlayPanel>
@@ -237,13 +237,13 @@ export default function AdventuresTab() {
             subtitle={`${sessionCorrect} of ${scenario.scenes.length} first-try answers — and every answer taught us something for ${first}'s development picture.`}
           >
             <PlayButton variant="soft" tone="lav" onClick={() => openScenario(scenario.id)}>
-              <RotateCcw className="w-4 h-4" /> Play again
+              <Icon name="replay" size={16} /> Play again
             </PlayButton>
             <PlayButton variant="soft" tone="clay" onClick={() => setActiveId(null)}>
-              <Compass className="w-4 h-4" /> More adventures
+              <Icon name="explore" size={16} /> More adventures
             </PlayButton>
             <PlayButton tone="lav" onClick={() => setActiveTab("comics")}>
-              <Sparkles className="w-4 h-4" /> Make a hero comic
+              <Icon name="auto_awesome" size={16} /> Make a hero comic
             </PlayButton>
           </Celebrate>
         </PlayPanel>

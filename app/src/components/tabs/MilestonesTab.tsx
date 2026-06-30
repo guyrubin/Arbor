@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -324,8 +323,18 @@ export default function MilestonesTab() {
     setActiveTab("daily-play");
   };
 
-  const ChevStart = isRtl ? ChevronRight : ChevronLeft;
-  const ChevEnd = isRtl ? ChevronLeft : ChevronRight;
+  // RTL-aware directional chevrons via the shared Material Symbols <Icon>.
+  // (Declared as components so they slot into the existing <ChevStart/> /
+  // <ChevEnd/> render sites, including the domain-map scopes where a local
+  // `Icon` shadows the import.)
+  const chevStartName = isRtl ? "chevron_right" : "chevron_left";
+  const chevEndName = isRtl ? "chevron_left" : "chevron_right";
+  const ChevStart = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <Icon name={chevStartName} size={16} className={className} style={style} />
+  );
+  const ChevEnd = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    <Icon name={chevEndName} size={16} className={className} style={style} />
+  );
   const firstName = (childProfile.name || "").split(" ")[0];
 
   return (

@@ -166,7 +166,7 @@ export default function JourneyTab() {
           </button>
         )}>
         <p className="text-[11px] mb-4" style={{ color: "var(--arbor-muted)" }}>
-          Objectives are suggested from the current weakest and strongest domains. They are coaching targets, not clinical goals.
+          Objectives focus on the areas your current goals point to — coaching targets, not clinical goals.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {objectives.map((obj) => {

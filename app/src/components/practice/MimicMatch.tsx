@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Camera, ShieldCheck, SkipForward, Sparkles, Star } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { MIMIC_FACES, scoreFaceMatch, matchToStars, blendshapesToMap } from "../../practice/faceMatch";
 import { getFaceLandmarker } from "../../lib/faceLandmarker";
@@ -124,7 +124,7 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
     <div className="rounded-[var(--play-radius-lg,24px)] p-5 bg-white shadow-[0_4px_20px_rgba(41,51,63,0.06)]">
       <div className="flex items-center gap-3 mb-2">
         <span className="grid place-items-center w-11 h-11 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-          <Sparkles className="w-6 h-6" />
+          <Icon name="auto_awesome" size={24} />
         </span>
         <div className="flex-1 min-w-0">
           <h3 className="text-lg font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("prac.mimic.face.title")}</h3>
@@ -133,7 +133,7 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
       </div>
 
       <div className="rounded-2xl p-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] mb-4" style={{ background: "var(--arbor-green-soft)" }}>
-        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><ShieldCheck className="w-3.5 h-3.5" /> {t("prac.mimic.face.privacyTag")}</span>
+        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="verified_user" size={14} /> {t("prac.mimic.face.privacyTag")}</span>
         <span style={{ color: "var(--arbor-muted)" }}>{t("prac.mimic.face.privacy")}</span>
       </div>
 
@@ -158,7 +158,7 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
                   className="play-pressable absolute top-3 end-3 z-20 inline-flex items-center gap-1.5 text-[12px] font-extrabold px-3 py-2 rounded-xl text-white"
                   style={{ background: "rgba(28,34,43,0.6)", backdropFilter: "blur(4px)", minHeight: 44 }}
                 >
-                  <SkipForward className="w-4 h-4" /> {t("prac.mimic.face.skip")}
+                  <Icon name="skip_next" size={16} /> {t("prac.mimic.face.skip")}
                 </button>
               )}
               {/* live match meter */}
@@ -171,7 +171,7 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
                 <div className="absolute inset-0 z-20 grid place-items-center" style={{ background: "rgba(28,34,43,0.55)" }}>
                   <div className="text-center">
                     <div className="flex justify-center gap-1 mb-1">
-                      {[1, 2, 3].map((n) => <Star key={n} className="w-7 h-7" style={{ color: n <= won ? "var(--arbor-yellow)" : "rgba(255,255,255,0.35)", fill: n <= won ? "var(--arbor-yellow)" : "transparent" }} />)}
+                      {[1, 2, 3].map((n) => <Icon key={n} name="star" size={28} fill={n <= won ? 1 : 0} style={{ color: n <= won ? "var(--arbor-yellow)" : "rgba(255,255,255,0.35)" }} />)}
                     </div>
                     <p className="text-white font-extrabold" style={{ fontFamily: "var(--font-display)" }}>{t("prac.mimic.face.win")}</p>
                   </div>
@@ -182,10 +182,10 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
 
           {status !== "live" && (
             <div className="text-center p-6 relative z-10">
-              <Camera className="w-8 h-8 mx-auto mb-3" style={{ color: "#a8a093" }} />
+              <Icon name="photo_camera" size={32} className="mx-auto mb-3" style={{ color: "#a8a093" }} />
               {status === "idle" && (
                 <button onClick={start} className="play-pressable inline-flex items-center gap-2 text-sm font-extrabold px-5 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-lav-ink)" }}>
-                  <Sparkles className="w-4 h-4" /> {t("prac.mimic.face.start")}
+                  <Icon name="auto_awesome" size={16} /> {t("prac.mimic.face.start")}
                 </button>
               )}
               {status === "loading" && <p className="text-xs" style={{ color: "#a8a093" }}>{t("prac.mimic.face.warming")}</p>}

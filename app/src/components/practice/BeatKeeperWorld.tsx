@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Music } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { BEAT_ROUNDS, scoreBeatTaps, gradeStars } from "../../practice/newGames";
@@ -102,7 +102,7 @@ export default function BeatKeeperWorld() {
       )}
 
       <p className="flex items-center justify-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <Music className="w-3.5 h-3.5" aria-hidden="true" /> Timing, focus &amp; self-regulation
+        <Icon name="music_note" size={14} /> Timing, focus &amp; self-regulation
       </p>
     </div>
   );

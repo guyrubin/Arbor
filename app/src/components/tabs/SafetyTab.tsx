@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { ShieldAlert, Phone, Plus, Trash2, CalendarCheck, AlertTriangle, BrainCircuit, Stethoscope, Lock, Users } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -81,7 +81,7 @@ export default function SafetyTab() {
 
       {/* Risk banner */}
       <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: riskP.soft }}>
-        <ShieldAlert className="w-6 h-6 flex-shrink-0" style={{ color: riskP.ink }} />
+        <Icon name="gpp_maybe" size={24} className="flex-shrink-0" style={{ color: riskP.ink }} />
         <div>
           <span className="text-[10px] uppercase font-extrabold tracking-widest" style={{ color: riskP.ink }}>Current risk level</span>
           <div className="text-xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{riskLabel}</div>
@@ -94,7 +94,7 @@ export default function SafetyTab() {
       {/* Crisis script (pinned) */}
       <div className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-soft)" }}>
         <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-pink-ink)" }}>
-          <AlertTriangle className="w-4 h-4" /> Crisis script — say this
+          <Icon name="warning" size={16} /> Crisis script — say this
         </span>
         <p className="text-sm leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>
           “I am here. You are safe. I am not going anywhere. We will get through this moment together, and then we will figure out the next step — you don&apos;t have to do it alone.”
@@ -104,7 +104,7 @@ export default function SafetyTab() {
 
       {/* Escalation checklist + last reviewed */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <SectionCard title="Escalation checklist — warning signs" icon={<AlertTriangle className="w-5 h-5" />} tone="coral">
+        <SectionCard title="Escalation checklist — warning signs" icon={<Icon name="warning" size={20} />} tone="coral">
           <div className="space-y-2">
             {WARNING_SIGNS.map((sign, i) => (
               <label key={i} className={`${cardCls} flex items-start gap-3 p-2.5 transition cursor-pointer text-xs`}>
@@ -116,7 +116,7 @@ export default function SafetyTab() {
           <p className="text-[11px] mt-3" style={{ color: "var(--arbor-muted)" }}>Any checked sign is a prompt to consult a professional promptly.</p>
         </SectionCard>
 
-        <SectionCard title="Safety review" icon={<CalendarCheck className="w-5 h-5" />} tone="sky"
+        <SectionCard title="Safety review" icon={<Icon name="event_available" size={20} />} tone="sky"
           action={
             <button onClick={markReviewed} className="font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>Mark reviewed</button>
           }
@@ -133,7 +133,7 @@ export default function SafetyTab() {
       </div>
 
       {/* Emergency contacts */}
-      <SectionCard title="Emergency contacts" icon={<Phone className="w-5 h-5" />} tone="mint">
+      <SectionCard title="Emergency contacts" icon={<Icon name="call" size={20} />} tone="mint">
         {contacts.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
             {contacts.map((c) => (
@@ -144,7 +144,7 @@ export default function SafetyTab() {
                   {c.notes && <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>{c.notes}</p>}
                 </div>
                 <button onClick={() => void contactsCol.remove(c.id)} className="transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.removeContact")}>
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Icon name="delete" size={14} />
                 </button>
               </div>
             ))}
@@ -157,13 +157,13 @@ export default function SafetyTab() {
           <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className={inputCls} style={inputStyle} />
           <div className="flex gap-2">
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes" className={`flex-1 ${inputCls}`} style={inputStyle} />
-            <button type="submit" aria-label={t("aria.addContact")} className="text-white font-extrabold px-3 rounded-lg flex items-center" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
+            <button type="submit" aria-label={t("aria.addContact")} className="text-white font-extrabold px-3 rounded-lg flex items-center" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /></button>
           </div>
         </form>
       </SectionCard>
 
       {/* What Arbor knows (approved memory) */}
-      <SectionCard title={`What Arbor knows about ${first}`} icon={<BrainCircuit className="w-5 h-5" />} tone="lav">
+      <SectionCard title={`What Arbor knows about ${first}`} icon={<Icon name="neurology" size={20} />} tone="lav">
         <p className="text-xs mb-3" style={{ color: "var(--arbor-muted)" }}>Only parent-approved observations become active memory. Forget any of them at any time.</p>
         {approvedMemoryItems.length === 0 ? (
           <p className={`${cardCls} text-xs p-3`} style={{ color: "var(--arbor-muted)" }}>No approved memory yet. Approve observations from the Child Memory queue.</p>
@@ -189,9 +189,9 @@ export default function SafetyTab() {
       {/* Static safeguards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
         {[
-          { icon: <Stethoscope className="w-5 h-5" />, tone: "yellow" as PastelKey, title: "Medical escalation safeguard", body: "The Parent Coach screens high-risk terms (fever, injury, self-harm, abuse, regression, severe distress) and routes parents toward professional or urgent support." },
-          { icon: <Lock className="w-5 h-5" />, tone: "sky" as PastelKey, title: "GDPR & data minimization", body: "Arbor is designed for GDPR-aligned children's data minimization. No unsupervised AI interaction for children; details are stored as parent-approved observations." },
-          { icon: <Users className="w-5 h-5" />, tone: "mint" as PastelKey, title: "Multi-professional handoff", body: "The printable summary bridges home observations with specialized care profiles, giving teachers and clinics non-diagnosing observational context instantly." },
+          { icon: <Icon name="stethoscope" size={20} />, tone: "yellow" as PastelKey, title: "Medical escalation safeguard", body: "The Parent Coach screens high-risk terms (fever, injury, self-harm, abuse, regression, severe distress) and routes parents toward professional or urgent support." },
+          { icon: <Icon name="lock" size={20} />, tone: "sky" as PastelKey, title: "GDPR & data minimization", body: "Arbor is designed for GDPR-aligned children's data minimization. No unsupervised AI interaction for children; details are stored as parent-approved observations." },
+          { icon: <Icon name="group" size={20} />, tone: "mint" as PastelKey, title: "Multi-professional handoff", body: "The printable summary bridges home observations with specialized care profiles, giving teachers and clinics non-diagnosing observational context instantly." },
         ].map((s) => (
           <div key={s.title} className={`${cardCls} p-5 space-y-3`}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: PASTEL[s.tone].soft, color: PASTEL[s.tone].ink }}>{s.icon}</div>

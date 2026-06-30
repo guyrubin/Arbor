@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Brain, RotateCcw } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { PlayPanel, PlayButton, Celebrate } from "../ui/playkit";
 import { MEMORY_EMOJI_SETS } from "../../practice/playContent";
 import { memoryGridSize, memoryMaxCards, memorySetIndexForAge } from "../../practice/signals";
@@ -129,7 +129,7 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
     <PlayPanel>
       <div className="flex items-center gap-3 mb-2">
         <span className="grid place-items-center w-12 h-12 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-          <Brain className="w-6 h-6" />
+          <Icon name="psychology" size={24} />
         </span>
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Memory Match</h2>
@@ -159,7 +159,7 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
           subtitle={`Solved in ${moves} moves. ${recommendedSize > size ? "Next round gets a little bigger!" : recommendedSize < size ? "We'll keep it comfy next round." : "Nicely done."}`}
         >
           <PlayButton tone="lav" onClick={() => reset()}>
-            <RotateCcw className="w-4 h-4" /> Play again
+            <Icon name="refresh" size={16} /> Play again
           </PlayButton>
         </Celebrate>
       ) : (
@@ -183,7 +183,7 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
           </div>
           <div className="text-center mt-5">
             <PlayButton variant="ghost" size="md" onClick={() => reset()}>
-              <RotateCcw className="w-4 h-4" /> Shuffle &amp; restart
+              <Icon name="refresh" size={16} /> Shuffle &amp; restart
             </PlayButton>
           </div>
         </>
