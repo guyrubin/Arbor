@@ -600,7 +600,7 @@ export default function OverviewTab() {
         </button>
         <div className={`${showTools ? "" : "hidden"} lg:block`}>
           {/* UC-4: Day Windows + Reminders surfaced as Today dashboard cards —
-              quick doors into the same routes the TOOLS drawer exposes. */}
+              quick doors into the same routes the Today hub's contextual pills expose. */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             {([
               { tab: "day-windows" as const, glyph: "calendar_month", title: t("today.card.windows.title"), desc: t("today.card.windows.desc") },

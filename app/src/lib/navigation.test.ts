@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SECTIONS, TOOLS, sectionForTab, primaryTabOf, subTabsForSection } from "./navigation";
+import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection } from "./navigation";
 import { ALL_TABS } from "../context/ArborContext";
 
 /** Structural guard for the UC-1 EIGHT-category information architecture —
@@ -86,46 +86,66 @@ describe("navigation IA", () => {
     expect(trimmed).toBe(true);
   });
 
-  // UC-3 zero-regression floor: EVERY ActiveTab must be REACHABLE by the user —
-  // via a category hub (primaryTabOf), a curated primary sub-tab, the global
-  // TOOLS drawer, or a fallback whose owning category surfaces a route that
-  // reaches it. Concretely: the union of {all primaryTabs} ∪ {all TOOLS tabs}
-  // must cover every tab that resolves DIRECTLY (is in some section's items);
-  // tabs that only resolve via TAB_SECTION_FALLBACK are reached through their
-  // category hub. This guards against demoting a leaf into a dead end.
-  it("every directly-owned ActiveTab is reachable via a primary sub-tab or the TOOLS drawer", () => {
-    const reachable = new Set<string>([
-      ...SECTIONS.flatMap((s) => s.primaryTabs.map((i) => i.tab)),
-      ...TOOLS.map((tl) => tl.tab),
+  // UC-6 hub contextual pills: hubTabsForSection = primary + sub-tabs + the
+  // hub's own tools, deduped. The pill set leads with the hub primary and has
+  // no duplicate tabs (so a hub never shows the same capability twice).
+  it("hubTabsForSection is hub-first and has no duplicate tabs", () => {
+    for (const s of SECTIONS) {
+      const pills = hubTabsForSection(s);
+      expect(pills[0].tab).toBe(primaryTabOf(s));
+      const tabs = pills.map((p) => p.tab);
+      expect(new Set(tabs).size).toBe(tabs.length);
+    }
+  });
+
+  // UC-6 no-duplicate-nav guard: the global TOOLS drawer is gone. Each tool now
+  // lives in exactly ONE hub's contextual pill set, and a hub's tools never echo
+  // its own primary/sub-tabs (the de-dup the helper guarantees). Concretely: the
+  // union of {all primaryTabs} ∪ {all hub tools} must be collision-free — no tab
+  // appears in two hubs' (primaryTabs ∪ tools), and no tool equals a category
+  // primary (locks out the category-duplicating drawer bug this UC removes).
+  it("every owned tool lives in exactly one hub (primaryTabs ∪ tools), no cross-hub dup", () => {
+    const owned = SECTIONS.flatMap((s) => [
+      ...s.primaryTabs.map((i) => i.tab),
+      ...s.tools.map((i) => i.tab),
     ]);
+    expect(new Set(owned).size, "a tab is owned by more than one hub's primaryTabs/tools").toBe(owned.length);
+  });
+
+  it("no hub tool equals any section's primaryTabOf (tools never echo a category)", () => {
+    const categoryPrimaries = new Set(SECTIONS.map((s) => primaryTabOf(s)));
+    for (const s of SECTIONS)
+      for (const tl of s.tools)
+        expect(
+          categoryPrimaries.has(tl.tab),
+          `tool "${tl.label}" (${tl.tab}) duplicates a category primary view`,
+        ).toBe(false);
+  });
+
+  // UC-6 zero-regression floor: EVERY directly-owned ActiveTab (in some section's
+  // items) must be REACHABLE — via a hub primary or one of its contextual pills
+  // (primaryTabs ∪ tools). Guards against folding a leaf into a dead end.
+  it("every directly-owned ActiveTab is reachable via a hub primary or a contextual pill", () => {
+    const reachable = new Set<string>(
+      SECTIONS.flatMap((s) => hubTabsForSection(s).map((i) => i.tab)),
+    );
     for (const s of SECTIONS)
       for (const it of s.items)
-        expect(reachable.has(it.tab), `tab "${it.tab}" is owned by a section but not reachable via any primary sub-tab or TOOLS`).toBe(true);
+        expect(reachable.has(it.tab), `tab "${it.tab}" is owned by a section but not reachable via any hub pill`).toBe(true);
   });
 
-  // UC-4 no-duplicate-nav guard: the TOOLS drawer must NOT echo any category.
-  // Locks out the re-introduction of a category-duplicating drawer entry (the
-  // bug this UC fixes — e.g. "Log a Moment"/"Behavior Logs" both → behaviors).
-  it("no TOOLS tab equals any section's primaryTabOf (drawer never echoes a category)", () => {
-    const categoryPrimaries = new Set(SECTIONS.map((s) => primaryTabOf(s)));
-    for (const tl of TOOLS)
-      expect(
-        categoryPrimaries.has(tl.tab),
-        `TOOLS entry "${tl.label}" (${tl.tab}) duplicates a category primary view`,
-      ).toBe(false);
-  });
-
-  // UC-4: The Science trust page is re-homed from Care → Profile.
+  // UC-4/6: The Science trust page is re-homed from Care → Profile.
   it("The Science resolves to Profile (re-homed from Care)", () => {
     expect(sectionForTab("science").id).toBe("profile");
   });
 
-  it("TOOLS entries are well-formed and every tab is a real ActiveTab", () => {
-    for (const tl of TOOLS) {
-      expect(tl.label.trim().length).toBeGreaterThan(0);
-      expect(tl.icon).toBeTruthy();
-      expect(ALL_TABS).toContain(tl.tab);
-    }
+  it("hub tool entries are well-formed and every tab is a real ActiveTab", () => {
+    for (const s of SECTIONS)
+      for (const tl of s.tools) {
+        expect(tl.label.trim().length).toBeGreaterThan(0);
+        expect(tl.icon).toBeTruthy();
+        expect(ALL_TABS).toContain(tl.tab);
+      }
   });
 
   it("primaryTabOf returns a tab that belongs to the section", () => {
