@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Check, Heart, RotateCcw, Smile, Sparkles, Wind } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
@@ -119,7 +119,7 @@ export default function FeelingsLabTab() {
         <div className="flex items-center justify-between mb-4 gap-3">
           <div className="flex items-center gap-3">
             <span className="grid place-items-center w-11 h-11 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>
-              <Smile className="w-6 h-6" />
+              <Icon name="mood" size={24} />
             </span>
             <h2 className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Emotion match</h2>
           </div>
@@ -195,7 +195,7 @@ export default function FeelingsLabTab() {
         )}
       </PlayPanel>
 
-      <SectionCard title="Why feelings happen" icon={<Heart className="w-5 h-5" />} tone="pink">
+      <SectionCard title="Why feelings happen" icon={<Icon name="favorite" size={20} />} tone="pink">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {EMOTIONS.map((emotion) => (
             <div key={emotion.id} className={`${cardCls} p-4`}>
@@ -207,7 +207,7 @@ export default function FeelingsLabTab() {
                   <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Looks like:</b> {emotion.looksLike}</p>
                   <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>Helps:</b> {emotion.helps}</p>
                   <button onClick={() => markTalked(emotion.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
-                    {talkedEmotion === emotion.id ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    {talkedEmotion === emotion.id ? <Icon name="check" size={14} /> : <Icon name="auto_awesome" size={14} />}
                     {talkedEmotion === emotion.id ? "Logged" : "We talked this through"}
                   </button>
                 </div>
@@ -217,7 +217,7 @@ export default function FeelingsLabTab() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Calm-down practice" icon={<Wind className="w-5 h-5" />} tone="sky">
+      <SectionCard title="Calm-down practice" icon={<Icon name="air" size={20} />} tone="sky">
         <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>
           Practice these during calm moments. That is when the body learns the route back.
         </p>
@@ -231,7 +231,7 @@ export default function FeelingsLabTab() {
                 In {pattern.inhale}s, hold {pattern.hold}s, out {pattern.exhale}s x {pattern.rounds}
               </p>
               <button onClick={() => completeCalm(pattern.id)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
-                {completedCalm === pattern.id ? <Check className="w-3.5 h-3.5" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                {completedCalm === pattern.id ? <Icon name="check" size={14} /> : <Icon name="replay" size={14} />}
                 {completedCalm === pattern.id ? "Logged" : "Complete one round"}
               </button>
             </div>

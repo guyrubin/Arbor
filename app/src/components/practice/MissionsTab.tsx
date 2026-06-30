@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { CalendarCheck, Check, Compass, Flame, MessageSquare, Sparkles, Target } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
@@ -50,7 +50,7 @@ export function MissionCard({
           className="inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-3.5 min-h-[44px] rounded-xl transition flex-shrink-0 active:scale-[0.98]"
           style={done ? { background: "var(--arbor-clay)", color: "#fff" } : { background: meta.soft, color: meta.color }}
         >
-          <Check className="w-3.5 h-3.5" aria-hidden="true" /> {done ? "Done!" : "Mark done"}
+          <Icon name="check" size={14} /> {done ? "Done!" : "Mark done"}
         </button>
       </div>
       <ol className="space-y-1.5 text-xs list-decimal list-inside" style={{ color: "var(--arbor-ink)" }}>
@@ -59,7 +59,7 @@ export function MissionCard({
         ))}
       </ol>
       <button onClick={() => onCoach(m)} className="inline-flex items-center gap-1 text-[11px] font-bold min-h-[44px] transition" style={{ color: "var(--arbor-muted)" }}>
-        <MessageSquare className="w-3 h-3" aria-hidden="true" /> Coach me through this
+        <Icon name="chat" size={12} /> Coach me through this
       </button>
     </div>
   );
@@ -162,7 +162,7 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
       >
         <div className="flex items-center justify-between gap-3 mb-4">
           <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-            <Target className="w-3.5 h-3.5" aria-hidden="true" /> {t("ov.mission.title")}
+            <Icon name="target" size={14} /> {t("ov.mission.title")}
           </span>
           <span
             className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold flex-shrink-0"
@@ -213,7 +213,7 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
         </div>
         <div className={`${cardCls} p-5 flex items-center gap-4`}>
           <span className="inline-flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-peach-soft)", width: 56, height: 56 }}>
-            <Flame className="w-6 h-6" style={{ color: "var(--arbor-peach-ink)" }} />
+            <Icon name="local_fire_department" size={24} style={{ color: "var(--arbor-peach-ink)" }} />
           </span>
           <div>
             <p className="text-2xl font-extrabold leading-none" style={{ color: "var(--arbor-ink)" }}>{data.streak}<span className="text-sm font-bold ms-1">day{data.streak === 1 ? "" : "s"}</span></p>
@@ -222,7 +222,7 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
         </div>
         <div className={`${cardCls} p-5 flex items-center gap-4`}>
           <span className="inline-flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", width: 56, height: 56 }}>
-            <CalendarCheck className="w-6 h-6" style={{ color: "var(--arbor-sky-ink)" }} />
+            <Icon name="event_available" size={24} style={{ color: "var(--arbor-sky-ink)" }} />
           </span>
           <div>
             <p className="text-2xl font-extrabold leading-none" style={{ color: "var(--arbor-ink)" }}>{completedThisWeek}</p>
@@ -235,9 +235,9 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
       {focusCards.length > 0 && (
         <SectionCard
           title={`This week's focus for ${first}`}
-          icon={<Target className="w-5 h-5" />}
+          icon={<Icon name="target" size={20} />}
           tone="lav"
-          action={<Chip tone="lav" icon={<Sparkles className="w-3 h-3" />}>{hasMilestoneTargets ? "From milestones" : "Balanced week"}</Chip>}
+          action={<Chip tone="lav" icon={<Icon name="auto_awesome" size={12} />}>{hasMilestoneTargets ? "From milestones" : "Balanced week"}</Chip>}
         >
           <p className="text-[11px] mb-4" style={{ color: "var(--arbor-muted)" }}>
             {hasMilestoneTargets
@@ -266,7 +266,7 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
       {/* Copilot re-aim (feature 10 hook) */}
       {recommendedMission.id !== todaysMission.id && (
         <div className="rounded-2xl p-4 flex flex-wrap items-center gap-3 text-xs" style={{ background: DOMAIN_META[recommendation.domain].soft }}>
-          <Compass className="w-4 h-4 flex-shrink-0" style={{ color: DOMAIN_META[recommendation.domain].color }} />
+          <Icon name="explore" size={16} className="flex-shrink-0" style={{ color: DOMAIN_META[recommendation.domain].color }} />
           <span style={{ color: "var(--arbor-ink)" }}>
             <b>Copilot suggestion:</b> {recommendation.headline.toLowerCase()} — the <b>{recommendedMission.title}</b> mission below is aimed exactly there.
           </span>
@@ -277,13 +277,13 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
       )}
 
       {/* Today's mission (feature 6) */}
-      <SectionCard title="Today's mission" icon={<Target className="w-5 h-5" />} tone="mint"
-        action={<Chip tone="mint" icon={<Sparkles className="w-3 h-3" />}>Day {cycleDay + 1} of 5</Chip>}>
+      <SectionCard title="Today's mission" icon={<Icon name="target" size={20} />} tone="mint"
+        action={<Chip tone="mint" icon={<Icon name="auto_awesome" size={12} />}>Day {cycleDay + 1} of 5</Chip>}>
         <MissionCard m={todaysMission} featured done={recordFor(todaysMission)?.completed ?? false} onToggle={toggleMission} onCoach={askCoach} />
       </SectionCard>
 
       {/* Full cycle — do extra missions any day; recommended one highlighted */}
-      <SectionCard title="The 5-day rotation" icon={<CalendarCheck className="w-5 h-5" />} tone="sky">
+      <SectionCard title="The 5-day rotation" icon={<Icon name="event_available" size={20} />} tone="sky">
         <p className="text-[11px] mb-4" style={{ color: "var(--arbor-muted)" }}>
           Did today&apos;s already? Any mission can be done any day — breadth across domains is what grows the score.
         </p>

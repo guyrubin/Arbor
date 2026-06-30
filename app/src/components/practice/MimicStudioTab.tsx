@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Camera, CameraOff, ChevronLeft, ChevronRight, ShieldCheck, Smile, Star } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
@@ -118,7 +118,7 @@ export default function MimicStudioTab() {
       />
 
       <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
-        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><ShieldCheck className="w-4 h-4" /> Camera privacy</span>
+        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="verified_user" size={16} /> Camera privacy</span>
         <span style={{ color: "var(--arbor-muted)" }}>The mirror is local-only: nothing is recorded, stored, or uploaded — ever. Only your star rating is saved.</span>
       </div>
 
@@ -136,7 +136,7 @@ export default function MimicStudioTab() {
               <p className="text-[10.5px] mt-0.5 leading-snug" style={{ color: "var(--arbor-muted)" }}>{p.blurb}</p>
               <div className="flex items-center gap-1.5 mt-2">
                 <ProgressPips total={p.prompts.length} current={done - 1} tone="clay" />
-                {done === p.prompts.length && <Star className="w-3.5 h-3.5 ms-1" style={{ color: "var(--arbor-yellow)", fill: "var(--arbor-yellow)" }} />}
+                {done === p.prompts.length && <Icon name="star" size={14} fill={1} className="ms-1" style={{ color: "var(--arbor-yellow)" }} />}
               </div>
             </button>
           );
@@ -144,7 +144,7 @@ export default function MimicStudioTab() {
       </div>
 
       {/* The round: model card + mirror */}
-      <SectionCard title={`${pack.emoji} ${pack.title} — round ${promptIdx + 1} of ${pack.prompts.length}`} icon={<Smile className="w-5 h-5" />} tone="coral">
+      <SectionCard title={`${pack.emoji} ${pack.title} — round ${promptIdx + 1} of ${pack.prompts.length}`} icon={<Icon name="mood" size={20} />} tone="coral">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Model card — the parent demonstrates, big and theatrical */}
           <div className={`${cardCls} p-6 text-center flex flex-col items-center justify-center`} style={{ background: "var(--arbor-paper-deep)", minHeight: 260 }}>
@@ -153,15 +153,15 @@ export default function MimicStudioTab() {
             </motion.span>
             <p className="text-lg font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{prompt.title}</p>
             <p className="text-sm mt-2 max-w-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{prompt.instruction}</p>
-            <Chip tone="coral" icon={<Smile className="w-3 h-3" />}>{prompt.focus}</Chip>
+            <Chip tone="coral" icon={<Icon name="mood" size={12} />}>{prompt.focus}</Chip>
             <div className="flex gap-2 mt-4">
               <button onClick={() => setPromptIdx((i) => (i - 1 + pack.prompts.length) % pack.prompts.length)} aria-label={t("aria.previousRound")}
                 className="p-2 rounded-xl" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
-                <ChevronLeft className="w-4 h-4" />
+                <Icon name="chevron_left" size={16} />
               </button>
               <button onClick={() => setPromptIdx((i) => (i + 1) % pack.prompts.length)} aria-label={t("aria.nextRound")}
                 className="p-2 rounded-xl" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
-                <ChevronRight className="w-4 h-4" />
+                <Icon name="chevron_right" size={16} />
               </button>
             </div>
             {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "var(--arbor-clay)" }}>✓ Already played — replays still count</p>}
@@ -172,19 +172,19 @@ export default function MimicStudioTab() {
             <video ref={videoRef} muted playsInline className="w-full h-full object-cover absolute inset-0" style={{ transform: "scaleX(-1)", display: mirrorOn ? "block" : "none" }} />
             {!mirrorOn && (
               <div className="text-center p-6 relative z-10">
-                <Camera className="w-8 h-8 mx-auto mb-3" style={{ color: T.onDarkMuted }} />
+                <Icon name="photo_camera" size={32} className="mx-auto mb-3" style={{ color: T.onDarkMuted }} />
                 <p className="text-xs mb-4 max-w-[260px] mx-auto" style={{ color: T.onDarkMuted }}>
                   Turn on the mirror so {first} can watch their own mouth while copying you. Local-only — never recorded.
                 </p>
                 <PlayButton onClick={() => void startMirror()} tone="clay" size="md">
-                  <Camera className="w-4 h-4" /> Turn on mirror
+                  <Icon name="photo_camera" size={16} /> Turn on mirror
                 </PlayButton>
                 {camError && <p className="text-[11px] mt-3" style={{ color: "var(--arbor-pink)" }}>{camError}</p>}
               </div>
             )}
             {mirrorOn && (
               <button onClick={stopMirror} className="absolute top-3 end-3 z-10 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "rgba(28,34,43,0.75)" }}>
-                <CameraOff className="w-3.5 h-3.5" /> Mirror off
+                <Icon name="no_photography" size={14} /> Mirror off
               </button>
             )}
           </div>

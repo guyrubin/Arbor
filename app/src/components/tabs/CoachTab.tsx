@@ -1,9 +1,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
-// Directional glyphs (Arrow*/Chevron*) stay on lucide: they are mirrored by
-// uiLang for RTL, and Material Symbols are LTR-fixed. All non-directional icons
-// move to the Material Symbols <Icon> for the UC-2 visual-match.
-import { ArrowRight, ArrowLeft, ChevronRight, ChevronLeft } from "lucide-react";
+// Directional glyphs are RTL-aware: the caller already picks the start/end
+// variant by uiLang (he ⇒ left, otherwise right), so the Material Symbols
+// <Icon> stays correct in both directions. All icons use the shared <Icon>
+// (Material Symbols) for the UC-2 visual-match.
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
@@ -276,8 +276,8 @@ export default function CoachTab() {
             >
               <span>{t("coach.lens.browseAll")}</span>
               {uiLang === "he"
-                ? <ChevronLeft className="w-3.5 h-3.5" aria-hidden />
-                : <ChevronRight className="w-3.5 h-3.5" aria-hidden />}
+                ? <Icon name="chevron_left" size={14} />
+                : <Icon name="chevron_right" size={14} />}
             </button>
           </div>
           {(() => {
@@ -572,8 +572,8 @@ export default function CoachTab() {
                 >
                   {t(q.labelKey)}
                   {uiLang === "he"
-                    ? <ArrowLeft className="w-3 h-3" aria-hidden />
-                    : <ArrowRight className="w-3 h-3" aria-hidden />}
+                    ? <Icon name="arrow_back" size={12} />
+                    : <Icon name="arrow_forward" size={12} />}
                 </button>
               ))}
             </div>
@@ -680,8 +680,8 @@ export default function CoachTab() {
               style={{ width: 48, height: 48, background: T.gradientCta }}
             >
               {uiLang === "he"
-                ? <ArrowLeft className="w-5 h-5" aria-hidden />
-                : <ArrowRight className="w-5 h-5" aria-hidden />}
+                ? <Icon name="arrow_back" size={20} />
+                : <Icon name="arrow_forward" size={20} />}
             </button>
             <button
               onClick={() => handleCouncilSend()}
@@ -728,8 +728,8 @@ export default function CoachTab() {
               <span>{t("coach.specialist.lead")}</span>
               <span style={{ color: "var(--arbor-green-ink)" }}>{t("coach.specialist.cta")}</span>
               {uiLang === "he"
-                ? <ChevronLeft className="w-3.5 h-3.5" aria-hidden style={{ color: "var(--arbor-green-ink)" }} />
-                : <ChevronRight className="w-3.5 h-3.5" aria-hidden style={{ color: "var(--arbor-green-ink)" }} />}
+                ? <Icon name="chevron_left" size={14} style={{ color: "var(--arbor-green-ink)" }} />
+                : <Icon name="chevron_right" size={14} style={{ color: "var(--arbor-green-ink)" }} />}
             </button>
           </div>
         </div>

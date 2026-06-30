@@ -15,7 +15,7 @@
  * activity, a secondary CTA links there (no new data, just a tab switch).
  */
 import React, { useMemo } from "react";
-import { Eye, CheckCircle2, ExternalLink } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { deriveMonitoring, pickHighestWatchSignal, monitoredDomainToPlayHint } from "../../lib/monitoring";
@@ -79,7 +79,7 @@ export default function ArborNoticedCard() {
   const isCalm = signal.level === "on_track";
   const bgColor = isCalm ? GREEN_SOFT : PEACH_SOFT;
   const accentColor = isCalm ? GREEN : PEACH_INK;
-  const Icon = isCalm ? CheckCircle2 : Eye;
+  const eyebrowGlyph = isCalm ? "check_circle" : "visibility";
 
   // Build the body copy for the monitor state using the translation keys.
   function buildMonitorBody(): string {
@@ -108,7 +108,7 @@ export default function ArborNoticedCard() {
     >
       {/* Eyebrow */}
       <div className="flex items-center gap-1.5 mb-3">
-        <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: accentColor }} aria-hidden="true" />
+        <Icon name={eyebrowGlyph} size={14} className="flex-shrink-0" style={{ color: accentColor }} />
         <span className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
           {t("noticed.eyebrow")}
         </span>
@@ -145,7 +145,7 @@ export default function ArborNoticedCard() {
           }}
           aria-label={t("noticed.activity.aria", { area: t("noticed.domain." + signal!.domain) })}
         >
-          <ExternalLink className="w-3 h-3" aria-hidden="true" />
+          <Icon name="open_in_new" size={12} />
           {t("noticed.activity.cta")}
         </button>
       )}

@@ -11,7 +11,7 @@
  */
 
 import React from "react";
-import { Target, X } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 
 const GREEN = "var(--arbor-green-ink)";
@@ -47,7 +47,7 @@ export default function GoalBuilderPromptCard({
         className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
         style={{ background: "var(--arbor-clay-dim)", color: GREEN }}
       >
-        <Target className="w-5 h-5" />
+        <Icon name="target" size={20} />
       </span>
 
       {/* Content */}
@@ -86,7 +86,7 @@ export default function GoalBuilderPromptCard({
         className="flex-shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition"
         style={{ color: MUTED, border: `1px solid ${RULE}` }}
       >
-        <X className="w-3.5 h-3.5" />
+        <Icon name="close" size={14} />
       </button>
     </div>
   );

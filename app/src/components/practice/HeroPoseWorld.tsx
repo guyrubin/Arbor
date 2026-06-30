@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { PersonStanding } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { PlayHeader, MascotSay, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
@@ -55,7 +55,7 @@ export default function HeroPoseWorld() {
       )}
 
       <p className="flex items-center justify-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <PersonStanding className="w-3.5 h-3.5" aria-hidden="true" /> Big-body movement &amp; imitation
+        <Icon name="accessibility_new" size={14} /> Big-body movement &amp; imitation
       </p>
     </div>
   );

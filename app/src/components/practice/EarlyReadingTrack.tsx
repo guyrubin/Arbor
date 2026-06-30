@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { BookOpen, Check, PenLine, Sparkles, Volume2 } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, cardCls, Chip } from "../ui/kit";
 import { ProgressPips, celebrateBurst } from "../ui/playkit";
@@ -127,7 +127,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
     <div className={`${cardCls} p-5`}>
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
-          <PenLine className="w-4 h-4" style={{ color: "var(--arbor-lav-ink)" }} />
+          <Icon name="edit" size={16} style={{ color: "var(--arbor-lav-ink)" }} />
           <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("prac.read.trace.title")}</p>
         </div>
         <Chip tone="lav">{letter.letter} · {letter.sound}</Chip>
@@ -178,7 +178,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
               </p>
               <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
                 <button onClick={() => sayAloud(letter.sound)} className="play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-4 min-h-[44px] rounded-full" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-                  <Volume2 className="w-4 h-4" /> {t("prac.read.trace.hearShort")}
+                  <Icon name="volume_up" size={16} /> {t("prac.read.trace.hearShort")}
                 </button>
                 <button onClick={nextLetter} className="play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-5 min-h-[44px] rounded-full text-white" style={{ background: "var(--arbor-clay)" }}>
                   {t("prac.read.trace.next")}
@@ -199,7 +199,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
               {totalStrokes > 1 && <ProgressPips total={totalStrokes} current={Math.min(strokeIdx, totalStrokes - 1)} tone="lav" />}
               <div className="flex flex-wrap gap-2 mt-4">
                 <button onClick={() => sayAloud(letter.sound)} className="play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-4 min-h-[44px] rounded-full" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-                  <Volume2 className="w-4 h-4" /> {t("prac.read.trace.hear")}
+                  <Icon name="volume_up" size={16} /> {t("prac.read.trace.hear")}
                 </button>
                 <button onClick={() => reset(strokeIdx)} className="play-pressable text-xs font-extrabold px-4 min-h-[44px] rounded-full" style={{ background: "#fff", color: "var(--arbor-muted)", border: "2px solid var(--arbor-rule)" }}>
                   {t("prac.read.trace.restart")}
@@ -266,7 +266,7 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
 
   return (
     <div className="arbor-play">
-    <SectionCard title={t("prac.read.title")} icon={<BookOpen className="w-5 h-5" />} tone="lav"
+    <SectionCard title={t("prac.read.title")} icon={<Icon name="menu_book" size={20} />} tone="lav"
       action={<Chip tone="lav">{t("prac.read.tag")}</Chip>}>
       <p className="text-xs rounded-xl p-3 mb-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
         {t("prac.read.intro", { first })}
@@ -299,7 +299,7 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
               {t("prac.read.phonics.says", { letter: phonics.letter, sound: phonics.sound, keyword: phonics.keyword })}
             </p>
             <button onClick={() => sayAloud(phonics.sound)} className="mt-3 play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-4 min-h-[44px] rounded-full" style={{ background: "#fff", color: "var(--arbor-lav-ink)", border: "2px solid var(--arbor-lav-soft)" }}>
-              <Volume2 className="w-4 h-4" /> {t("prac.read.phonics.hear")}
+              <Icon name="volume_up" size={16} /> {t("prac.read.phonics.hear")}
             </button>
           </div>
           <div className="flex flex-col justify-center">
@@ -307,7 +307,7 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
               <b>{t("prac.read.phonics.model")}</b> {phonics.cue}
             </p>
             <button onClick={heardPhonics} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
-              {saved === "phonics" ? <Check className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+              {saved === "phonics" ? <Icon name="check" size={16} /> : <Icon name="auto_awesome" size={16} />}
               {saved === "phonics" ? t("prac.read.saved") : t("prac.read.phonics.cta", { first })}
             </button>
           </div>
@@ -325,7 +325,7 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
               {t("prac.read.sight.help")}
             </p>
             <button onClick={readSight} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-sky-ink)" }}>
-              {saved === "sight" ? <Check className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+              {saved === "sight" ? <Icon name="check" size={16} /> : <Icon name="auto_awesome" size={16} />}
               {saved === "sight" ? t("prac.read.saved") : t("prac.read.sight.cta", { first })}
             </button>
           </div>
@@ -342,7 +342,7 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
               <b>{t("prac.read.reading.together")}</b> {line.tip}
             </p>
             <button onClick={readLine} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
-              {saved === "read" ? <Check className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+              {saved === "read" ? <Icon name="check" size={16} /> : <Icon name="auto_awesome" size={16} />}
               {saved === "read" ? t("prac.read.saved") : t("prac.read.reading.cta")}
             </button>
           </div>

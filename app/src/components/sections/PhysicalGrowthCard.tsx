@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Ruler, Plus, X, Trash2 } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -446,7 +446,7 @@ export default function PhysicalGrowthCard() {
             className="inline-flex items-center gap-1.5 text-[13px] font-bold"
             style={{ color: GREEN }}
           >
-            <Ruler className="w-3.5 h-3.5" />
+            <Icon name="straighten" size={14} />
             {t("growth.eyebrow")}
           </span>
           {!isEmpty && !adding && (
@@ -461,7 +461,7 @@ export default function PhysicalGrowthCard() {
               onClick={() => setAdding(true)}
               aria-label={t("growth.add.cta")}
             >
-              <Plus className="w-3.5 h-3.5" /> {t("growth.add.cta")}
+              <Icon name="add" size={14} /> {t("growth.add.cta")}
             </button>
           )}
         </div>
@@ -491,7 +491,7 @@ export default function PhysicalGrowthCard() {
               }}
               onClick={() => setAdding(true)}
             >
-              <Plus className="w-4 h-4" /> {t("growth.empty.cta")}
+              <Icon name="add" size={16} /> {t("growth.empty.cta")}
             </button>
           </div>
         )}
@@ -578,7 +578,7 @@ export default function PhysicalGrowthCard() {
                       onClick={() => setConfirmDeleteId(e.id)}
                       aria-label={t("growth.delete.confirm")}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Icon name="delete" size={14} />
                     </button>
                   </div>
                 ))}
@@ -606,7 +606,7 @@ export default function PhysicalGrowthCard() {
                   style={{ color: MUTED, background: "none", border: "none" }}
                   onClick={() => setConfirmDeleteId(null)}
                 >
-                  <X className="w-4 h-4" />
+                  <Icon name="close" size={16} />
                 </button>
               </div>
             )}

@@ -1,5 +1,5 @@
 import React, { lazy, useState, useEffect, useCallback } from "react";
-import { Gauge, CheckCircle2, UserCircle, CalendarDays } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import HubTabs from "../ui/HubTabs";
@@ -13,6 +13,15 @@ import ScreeningSheet from "../sections/ScreeningSheet";
    internal facets. Each panel is the existing, unchanged tab component.
    b2: a quiet inline "Quick development check" opens the screener sheet here,
    replacing the former standalone Screening leaf. */
+
+// HubTabs renders its `icon` prop as `<Icon className="w-3.5 h-3.5" />` (a
+// LucideIcon-shaped call). These thin wrappers adapt the shared Material
+// Symbols <Icon> to that call shape so the hub facets match the wireframe
+// glyphs (UC-2 visual-match) without touching HubTabs itself.
+const NowGlyph = (({ className }: { className?: string }) => <Icon name="speed" size={14} className={className} />) as unknown as LucideIcon;
+const MilestonesGlyph = (({ className }: { className?: string }) => <Icon name="check_circle" size={14} className={className} />) as unknown as LucideIcon;
+const ProfileGlyph = (({ className }: { className?: string }) => <Icon name="account_circle" size={14} className={className} />) as unknown as LucideIcon;
+const JourneyGlyph = (({ className }: { className?: string }) => <Icon name="calendar_month" size={14} className={className} />) as unknown as LucideIcon;
 
 const DevelopmentCopilot = lazy(() => import("../practice/DevelopmentCopilot"));
 const MilestonesTab = lazy(() => import("./MilestonesTab"));
@@ -109,10 +118,10 @@ export default function DevelopmentTab() {
       <HubTabs
         ariaLabel="Development facets"
         panels={[
-          { id: "now", label: t("hub.now"), icon: Gauge, Comp: DevelopmentCopilot },
-          { id: "milestones", label: t("hub.milestones"), icon: CheckCircle2, Comp: MilestonesTab },
-          { id: "profile", label: t("hub.profile"), icon: UserCircle, Comp: ChildProfile },
-          { id: "journey", label: t("hub.journey"), icon: CalendarDays, Comp: JourneyTab },
+          { id: "now", label: t("hub.now"), icon: NowGlyph, Comp: DevelopmentCopilot },
+          { id: "milestones", label: t("hub.milestones"), icon: MilestonesGlyph, Comp: MilestonesTab },
+          { id: "profile", label: t("hub.profile"), icon: ProfileGlyph, Comp: ChildProfile },
+          { id: "journey", label: t("hub.journey"), icon: JourneyGlyph, Comp: JourneyTab },
         ]}
       />
     </div>

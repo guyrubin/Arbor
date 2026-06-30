@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Shapes } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { PlayHeader, MascotSay, ChoiceTile, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { PATTERN_PUZZLES, gradeStars } from "../../practice/newGames";
@@ -81,7 +81,7 @@ export default function PatternPowerWorld() {
       )}
 
       <p className="flex items-center justify-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <Shapes className="w-3.5 h-3.5" aria-hidden="true" /> Logic &amp; sequencing
+        <Icon name="category" size={14} /> Logic &amp; sequencing
       </p>
     </div>
   );
