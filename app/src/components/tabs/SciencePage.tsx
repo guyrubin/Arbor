@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ExternalLink, ChevronDown, ChevronUp, ShieldCheck, BookOpen, Microscope, Users } from "lucide-react";
+import Icon from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 
 /**
@@ -80,7 +80,7 @@ function StatTile({ value, label }: { value: string; label: string }) {
 function CitationRow({ citation, noteText }: { citation: typeof CITATIONS[number]; noteText?: string }) {
   return (
     <li className="flex items-start gap-3 py-3" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
-      <BookOpen className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-clay)" }} />
+      <Icon name="menu_book" size={16} className="flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-clay)" }} />
       <div className="flex-1 min-w-0">
         <a
           href={citation.url}
@@ -90,7 +90,7 @@ function CitationRow({ citation, noteText }: { citation: typeof CITATIONS[number
           style={{ color: "var(--arbor-green-ink)" }}
         >
           {citation.label}
-          <ExternalLink className="w-3 h-3 flex-shrink-0" aria-label="(opens in new tab)" />
+          <Icon name="open_in_new" size={12} className="flex-shrink-0" aria-label="(opens in new tab)" />
         </a>
         {noteText && (
           <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
@@ -134,8 +134,8 @@ function Section({
           {title}
         </span>
         {open
-          ? <ChevronUp className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} />
-          : <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
+          ? <Icon name="expand_less" size={16} className="flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }} />
+          : <Icon name="expand_more" size={16} className="flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
         }
       </button>
       {open && (
@@ -192,7 +192,7 @@ export default function SciencePage() {
         aria-label={t("sci.disclaimer.aria")}
         data-testid="science-disclaimer"
       >
-        <ShieldCheck className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-green-ink)" }} />
+        <Icon name="verified_user" size={20} className="flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-green-ink)" }} />
         <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-green-ink)" }}>
           {disclaimer}
         </p>
@@ -235,7 +235,7 @@ export default function SciencePage() {
       </div>
 
       {/* ── Framework sources ─────────────────────────────────────────────── */}
-      <Section icon={<BookOpen className="w-4 h-4" />} title={t("sci.sources.title")} defaultOpen>
+      <Section icon={<Icon name="menu_book" size={16} />} title={t("sci.sources.title")} defaultOpen>
         <ul className="mt-1 divide-y divide-transparent" role="list" aria-label={t("sci.sources.aria")}>
           {CITATIONS.map((c) => (
             <CitationRow
@@ -252,7 +252,7 @@ export default function SciencePage() {
       </Section>
 
       {/* ── How we built it ───────────────────────────────────────────────── */}
-      <Section icon={<Microscope className="w-4 h-4" />} title={t("sci.howbuilt.title")}>
+      <Section icon={<Icon name="biotech" size={16} />} title={t("sci.howbuilt.title")}>
         <p className="text-sm leading-relaxed mt-2" style={{ color: "var(--arbor-muted)" }}>
           {t("sci.howbuilt.body")}
         </p>
@@ -261,7 +261,7 @@ export default function SciencePage() {
       {/* ── FIREWALL: Board-composition line — VERBATIM ───────────────────── */}
       {/* AP-060 gate: board note must use the cleared "internal developmental reviewers /
           not licensed clinicians" copy. "clinical" MUST NOT modify board/review/validation/approval. */}
-      <Section icon={<Users className="w-4 h-4" />} title={t("sci.board.title")} data-testid="science-board-section">
+      <Section icon={<Icon name="group" size={16} />} title={t("sci.board.title")} data-testid="science-board-section">
         <p
           className="text-sm leading-relaxed mt-2"
           style={{ color: "var(--arbor-muted)" }}

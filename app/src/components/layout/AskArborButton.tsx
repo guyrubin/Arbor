@@ -1,4 +1,4 @@
-import { MessageSquare } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -34,7 +34,7 @@ export default function AskArborButton({ compact = false }: { compact?: boolean 
         className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
         style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
       >
-        <MessageSquare className="w-4 h-4" />
+        <Icon name="forum" size={18} />
       </button>
     );
   }
@@ -65,7 +65,7 @@ export default function AskArborButton({ compact = false }: { compact?: boolean 
         transition: "background 120ms, transform 120ms",
       }}
     >
-      <MessageSquare aria-hidden="true" style={{ width: "16px", height: "16px", flexShrink: 0 }} />
+      <Icon name="forum" size={16} />
       <span>{t("nav.ask")}</span>
     </button>
   );

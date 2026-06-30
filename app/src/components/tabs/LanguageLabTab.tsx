@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Languages, Sparkles, MessageSquare, Mic } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, cardCls, Chip, PastelKey } from "../ui/kit";
@@ -91,7 +91,7 @@ export default function LanguageLabTab() {
         subtitle={t("lang.subtitle", { first })}
         action={
           <button onClick={() => setActiveTab("speech")} className="inline-flex items-center gap-1.5 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
-            <Mic className="w-3.5 h-3.5" /> {t("lang.soundPractice")}
+            <Icon name="mic" size={14} /> {t("lang.soundPractice")}
           </button>
         }
       />
@@ -115,7 +115,7 @@ export default function LanguageLabTab() {
           <LanguageLabVocabView />
 
           {/* Language profile */}
-          <SectionCard title={t("lang.profileTitle", { first, age: childProfile.age })} icon={<Languages className="w-5 h-5" />} tone="sky">
+          <SectionCard title={t("lang.profileTitle", { first, age: childProfile.age })} icon={<Icon name="translate" size={20} />} tone="sky">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
               {profileCards.map((c, i) => (
                 <div key={i} className={`${cardCls} p-4 space-y-2`}>
@@ -136,7 +136,7 @@ export default function LanguageLabTab() {
           {/* Daily practice */}
           <SectionCard
             title={t("lang.routinesTitle", { target })}
-            icon={<Sparkles className="w-5 h-5" />}
+            icon={<Icon name="auto_awesome" size={20} />}
             tone="mint"
             action={
               <button
@@ -148,7 +148,7 @@ export default function LanguageLabTab() {
                 className="inline-flex items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
               >
-                <Sparkles className="w-3.5 h-3.5" /> {t("lang.weekPlanCta")}
+                <Icon name="auto_awesome" size={14} /> {t("lang.weekPlanCta")}
               </button>
             }
           >
@@ -175,7 +175,7 @@ export default function LanguageLabTab() {
                       className="inline-flex items-center gap-1 text-[10px] font-bold transition"
                       style={{ color: "var(--arbor-muted)" }}
                     >
-                      <MessageSquare className="w-3 h-3" /> {t("lang.coachMe")}
+                      <Icon name="chat" size={12} /> {t("lang.coachMe")}
                     </button>
                   </div>
                 </div>

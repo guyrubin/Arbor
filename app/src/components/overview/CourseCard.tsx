@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Route, Check, ChevronDown, MessageSquare, Sparkles } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity, type PlayActivity } from "../../playbank/content";
 import { localizeCourse, courseActivities, courseProgress, type PlayCourse } from "../../playbank/courses";
@@ -38,7 +38,7 @@ export default function CourseCard({
     <section className="rounded-[22px] overflow-hidden" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
       <div className="p-6">
         <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-          <Route className="w-3.5 h-3.5" /> {t("course.eyebrow")}
+          <Icon name="route" size={14} /> {t("course.eyebrow")}
         </span>
         <h2 className="text-[1.35rem] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
           {loc.title}
@@ -59,7 +59,7 @@ export default function CourseCard({
 
         {progress.complete && (
           <p className="mt-3 text-[13px] font-bold inline-flex items-center gap-1.5" style={{ color: GREEN }}>
-            <Sparkles className="w-3.5 h-3.5" /> {t("course.complete")}
+            <Icon name="auto_awesome" size={14} /> {t("course.complete")}
           </p>
         )}
 
@@ -79,7 +79,7 @@ export default function CourseCard({
                     className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition"
                     style={done ? { background: CLAY, color: "#fff" } : { background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}
                   >
-                    {done ? <Check className="w-3.5 h-3.5" /> : <span className="text-[11px] font-extrabold" style={{ color: MUTED }}>{i + 1}</span>}
+                    {done ? <Icon name="check" size={14} /> : <span className="text-[11px] font-extrabold" style={{ color: MUTED }}>{i + 1}</span>}
                   </button>
                   <button
                     onClick={() => setOpenId(open ? null : a.id)}
@@ -90,7 +90,7 @@ export default function CourseCard({
                       <span className="block text-[14px] font-bold" style={{ color: INK, textDecoration: done ? "line-through" : "none" }}>{a.title}</span>
                       {isNext && <span className="text-[11px] font-bold" style={{ color: GREEN }}>{t("course.next")}</span>}
                     </span>
-                    <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: MUTED, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+                    <Icon name="expand_more" size={16} style={{ color: MUTED, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
                   </button>
                 </div>
                 {open && (
@@ -117,14 +117,14 @@ export default function CourseCard({
                         className="inline-flex items-center justify-center gap-2 font-bold text-[13px] rounded-xl px-4 py-2.5 transition active:scale-[0.98]"
                         style={done ? { background: GREEN_SOFT, color: GREEN } : { background: "var(--arbor-gradient-primary)", color: "#fff", boxShadow: "var(--arbor-clay-glow)" }}
                       >
-                        <Check className="w-4 h-4" /> {done ? t("play.added", { name: childName }) : t("play.did")}
+                        <Icon name="check" size={16} /> {done ? t("play.added", { name: childName }) : t("play.did")}
                       </button>
                       <button
                         onClick={() => onCoach(a)}
                         className="inline-flex items-center justify-center gap-2 font-bold text-[13px] rounded-xl px-4 py-2.5 transition"
                         style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: `1px solid ${RULE}` }}
                       >
-                        <MessageSquare className="w-4 h-4" /> {t("play.coach")}
+                        <Icon name="chat_bubble" size={16} /> {t("play.coach")}
                       </button>
                     </div>
                   </div>

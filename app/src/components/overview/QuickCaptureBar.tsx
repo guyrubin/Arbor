@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Plus } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 
 /* Quick Capture — the always-present door into logging a moment. Pinned to the
@@ -44,7 +44,7 @@ export default function QuickCaptureBar({
           ["--tw-ring-color" as string]: GREEN,
         } as React.CSSProperties}
       >
-        <Plus className="w-5 h-5" aria-hidden="true" /> {t("today.capture.cta")}
+        <Icon name="add" size={20} /> {t("today.capture.cta")}
       </button>
     </motion.div>
   );

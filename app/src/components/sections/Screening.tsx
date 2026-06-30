@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ClipboardCheck, ShieldCheck, Check, AlertTriangle, RefreshCw, FileText, Search, ArrowRight, CheckCircle2, Eye } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -52,7 +52,7 @@ export default function Screening() {
       {/* Passive developmental-monitoring layer — surveillance, never a test or diagnosis. */}
       <SectionCard
         title={t("monitor.title")}
-        icon={<Eye className="w-5 h-5" />}
+        icon={<Icon name="visibility" size={20} />}
         tone={monitoring.elevated ? "yellow" : "mint"}
         action={
           monitoring.elevated ? (
@@ -61,7 +61,7 @@ export default function Screening() {
               className="inline-flex items-center gap-2 font-bold text-xs rounded-xl px-3.5 py-2 bg-white"
               style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
             >
-              <FileText className="w-3.5 h-3.5" /> {t("monitor.export")}
+              <Icon name="description" size={14} /> {t("monitor.export")}
             </button>
           ) : undefined
         }
@@ -75,7 +75,7 @@ export default function Screening() {
             {monitoring.watchAreas.map((d) => (
               <div key={d.domain} className="rounded-2xl p-3.5" style={{ background: "var(--arbor-yellow-soft)" }}>
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-3.5 h-3.5" style={{ color: "var(--arbor-clay-deep)" }} />
+                  <Icon name="warning" size={14} style={{ color: "var(--arbor-clay-deep)" }} />
                   <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{d.label}</span>
                 </div>
                 <p className="text-[12.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{d.note}</p>
@@ -84,7 +84,7 @@ export default function Screening() {
           </div>
         ) : (
           <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-bold" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-            <Check className="w-3.5 h-3.5" /> {t("monitor.ontrack")}
+            <Icon name="check" size={14} /> {t("monitor.ontrack")}
           </div>
         )}
       </SectionCard>
@@ -130,13 +130,13 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
   return (
     <div className="space-y-4">
       {phase === "intro" && (
-        <SectionCard title={`Check for ${first} · ${band.label}`} icon={<ClipboardCheck className="w-5 h-5" />} tone="mint">
+        <SectionCard title={`Check for ${first} · ${band.label}`} icon={<Icon name="fact_check" size={20} />} tone="mint">
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
             You'll answer {band.items.length} quick questions about everyday things you can observe. It takes under 4 minutes.
             There's no score and no labels, just whether any area is worth keeping an eye on. Children develop at their own pace.
           </p>
           <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-            <ShieldCheck className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />
+            <Icon name="verified_user" size={14} style={{ color: "var(--arbor-green-ink)" }} />
             Based on widely-used developmental guidance (CDC / AAP-style milestones). Non-diagnostic.
           </div>
           {last && (
@@ -153,7 +153,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
             className="mt-4 inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3"
             style={{ background: "var(--arbor-gradient-primary)" }}
           >
-            <ClipboardCheck className="w-4 h-4" /> Start the check
+            <Icon name="fact_check" size={16} /> Start the check
           </button>
         </SectionCard>
       )}
@@ -195,7 +195,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-50"
               style={{ background: "var(--arbor-gradient-primary)" }}
             >
-              See result <ArrowRight className="w-4 h-4" />
+              See result <Icon name="arrow_forward" size={16} />
             </button>
           </div>
         </div>
@@ -208,7 +208,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
             <div className="rounded-[22px] p-6" style={{ background: result.elevated ? "var(--arbor-yellow-soft)" : "var(--arbor-green-soft)" }}>
               <div className="flex items-center gap-3">
                 <IconBadge tone={result.elevated ? "yellow" : "mint"}>
-                  {result.elevated ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+                  {result.elevated ? <Icon name="warning" size={20} /> : <Icon name="check_circle" size={20} />}
                 </IconBadge>
                 <div>
                   <h3 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
@@ -229,27 +229,27 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                 <div key={d.domain} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
                   <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{d.label}</span>
                   {d.status === "watch"
-                    ? <Chip tone="yellow" icon={<AlertTriangle className="w-3.5 h-3.5" />}>Worth a conversation</Chip>
-                    : <Chip tone="mint" icon={<Check className="w-3.5 h-3.5" />}>On track</Chip>}
+                    ? <Chip tone="yellow" icon={<Icon name="warning" size={14} />}>Worth a conversation</Chip>
+                    : <Chip tone="mint" icon={<Icon name="check" size={14} />}>On track</Chip>}
                 </div>
               ))}
             </div>
 
             {/* Next steps */}
-            <SectionCard title="Your next step" icon={<ShieldCheck className="w-5 h-5" />} tone="sky">
+            <SectionCard title="Your next step" icon={<Icon name="verified_user" size={20} />} tone="sky">
               <div className="flex flex-wrap gap-2">
                 {result.elevated && (
                   <>
                     <button onClick={() => { routeTo("reports"); toast("Build a handoff to share this with a professional", "info"); }} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
-                      <FileText className="w-4 h-4" /> Prepare a professional summary
+                      <Icon name="description" size={16} /> Prepare a professional summary
                     </button>
                     <button onClick={() => routeTo("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
-                      <Search className="w-4 h-4" /> Find a professional
+                      <Icon name="search" size={16} /> Find a professional
                     </button>
                   </>
                 )}
                 <button onClick={() => { toast(`We'll remind you to re-check ${first} in a few weeks`, "success"); }} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
-                  <RefreshCw className="w-4 h-4" /> Remind me to re-check
+                  <Icon name="notifications" size={16} /> Remind me to re-check
                 </button>
                 <button onClick={restart} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                   Retake

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Sparkles, Wand2, Download, RefreshCw, ShieldCheck, Layers, Check } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api, PaywallError } from "../../lib/api";
@@ -228,7 +228,7 @@ export default function HeroComicsTab() {
             Make {name} into their own comic superhero — then they star in every Academy story, comic and adventure across Arbor.
           </p>
           <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
-            <Sparkles className="w-4 h-4" /> Create {name}&apos;s hero
+            <Icon name="auto_awesome" size={16} /> Create {name}&apos;s hero
           </PlayButton>
         </PlayPanel>
       </PlayShell>
@@ -253,14 +253,14 @@ export default function HeroComicsTab() {
           <div className="flex flex-wrap items-center gap-2.5">
             <PlayButton tone="clay" onClick={makeAll} disabled={busy || madeCount >= stories.length}>
               {batch ? (
-                <><RefreshCw className="w-4 h-4 animate-spin" /> Drawing {batch.done}/{batch.total}…</>
+                <><Icon name="autorenew" size={16} className="animate-spin" /> Drawing {batch.done}/{batch.total}…</>
               ) : (
-                <><Layers className="w-4 h-4" /> Generate all {stories.length}</>
+                <><Icon name="layers" size={16} /> Generate all {stories.length}</>
               )}
             </PlayButton>
             {madeCount > 1 && (
               <PlayButton variant="soft" tone="clay" onClick={downloadAll} disabled={busy}>
-                <Download className="w-4 h-4" /> Save all
+                <Icon name="download" size={16} /> Save all
               </PlayButton>
             )}
           </div>
@@ -287,7 +287,7 @@ export default function HeroComicsTab() {
                   <img src={comic} alt={`${name}'s ${he ? s.titleHe : s.title} comic`} className="w-full h-full object-cover" />
                 ) : isBusy ? (
                   <div className="comic-halftone absolute inset-0 flex flex-col items-center justify-center gap-2" style={{ background: w.bg }}>
-                    <Wand2 className="w-9 h-9 animate-pulse" style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} />
+                    <Icon name="auto_fix_high" size={36} className="animate-pulse" style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} />
                     <p className="text-[12.5px] font-black" style={{ color: "#fff" }} dir="auto">{he ? `מצייר את ${name}…` : `Drawing ${name}…`}</p>
                   </div>
                 ) : (
@@ -306,7 +306,7 @@ export default function HeroComicsTab() {
                       className="absolute bottom-2 inline-flex items-center gap-1 text-[12px] font-black rounded-full px-3 py-1"
                       style={{ insetInlineStart: 8, background: "#fff", border: "var(--comic-line)", color: "var(--arbor-ink)" }}
                     >
-                      <Sparkles className="w-3.5 h-3.5" /> {he ? "צרו קומיקס" : "Make comic"}
+                      <Icon name="auto_awesome" size={14} /> {he ? "צרו קומיקס" : "Make comic"}
                     </span>
                   </button>
                 )}
@@ -325,13 +325,13 @@ export default function HeroComicsTab() {
                 {comic && (
                   <div className="flex flex-wrap items-center gap-2 mt-3">
                     <PlayButton tone="clay" variant="soft" onClick={() => makeOne(s.id)} disabled={busy}>
-                      <RefreshCw className="w-3.5 h-3.5" /> {he ? "צייר שוב" : "Redraw"}
+                      <Icon name="autorenew" size={14} /> {he ? "צייר שוב" : "Redraw"}
                     </PlayButton>
                     <PlayButton tone="clay" variant="soft" onClick={() => download(s.id, he ? s.titleHe : s.title)} disabled={busy}>
-                      <Download className="w-3.5 h-3.5" /> {he ? "שמור" : "Save"}
+                      <Icon name="download" size={14} /> {he ? "שמור" : "Save"}
                     </PlayButton>
                     <span className="ms-auto inline-flex items-center gap-1 text-[11px] font-black" style={{ color: "var(--arbor-green-ink)" }}>
-                      <Check className="w-3.5 h-3.5" /> {he ? "מוכן" : "Made"}
+                      <Icon name="check" size={14} /> {he ? "מוכן" : "Made"}
                     </span>
                   </div>
                 )}
@@ -344,7 +344,7 @@ export default function HeroComicsTab() {
       {error && <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{error}</p>}
 
       <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
-        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><ShieldCheck className="w-4 h-4" /> Safe &amp; private</span>
+        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="verified_user" size={16} /> Safe &amp; private</span>
         <span style={{ color: "var(--arbor-muted)" }}>Comics use {name}&apos;s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.</span>
       </div>
     </PlayShell>

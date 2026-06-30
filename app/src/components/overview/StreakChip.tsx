@@ -1,4 +1,4 @@
-import { Sprout } from "lucide-react";
+import { Icon } from "../ui/Icon";
 
 /**
  * V4 — the gentle "days of moments" chip on Today.
@@ -21,7 +21,7 @@ export function StreakChip({ days, lang }: { days: number; lang: "en" | "he" }) 
       className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold mt-2"
       style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
     >
-      <Sprout className="w-3.5 h-3.5" aria-hidden />
+      <Icon name="psychiatry" size={14} />
       {label}
     </span>
   );

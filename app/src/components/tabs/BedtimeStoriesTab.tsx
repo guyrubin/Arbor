@@ -23,7 +23,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Moon, Sparkles, RefreshCw, BookOpen, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
@@ -139,7 +139,7 @@ export default function BedtimeStoriesTab() {
           className="inline-flex items-center justify-center rounded-2xl w-11 h-11"
           style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}
         >
-          <AlertTriangle className="w-5 h-5" aria-hidden />
+          <Icon name="warning" size={20} />
         </div>
         <h2
           className="text-[16px] font-extrabold"
@@ -199,7 +199,7 @@ export default function BedtimeStoriesTab() {
                 height: 40,
               }}
             >
-              <Moon className="w-5 h-5" aria-hidden />
+              <Icon name="bedtime" size={20} />
             </span>
             <h1
               className="text-[16px] font-extrabold leading-snug"
@@ -266,7 +266,7 @@ export default function BedtimeStoriesTab() {
               }}
               data-testid="bedtime-story-done"
             >
-              <Moon className="w-4 h-4" aria-hidden />
+              <Icon name="bedtime" size={16} />
               {he ? "לילה טוב" : "Good night"}
             </button>
           ) : (
@@ -349,7 +349,7 @@ export default function BedtimeStoriesTab() {
               height: 40,
             }}
           >
-            <Moon className="w-5 h-5" aria-hidden />
+            <Icon name="bedtime" size={20} />
           </span>
           <div>
             <h1
@@ -408,7 +408,7 @@ export default function BedtimeStoriesTab() {
                   style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}
                   aria-label={he ? "הסירו אירוע" : "Remove event"}
                 >
-                  <Trash2 className="w-4 h-4" aria-hidden />
+                  <Icon name="delete" size={16} />
                 </button>
               )}
             </div>
@@ -425,7 +425,7 @@ export default function BedtimeStoriesTab() {
           }}
           data-testid="bedtime-add-event"
         >
-          <Plus className="w-4 h-4" aria-hidden />
+          <Icon name="add" size={16} />
           {he ? "הוסיפו רגע נוסף" : "Add another moment"}
         </button>
       </div>
@@ -442,12 +442,12 @@ export default function BedtimeStoriesTab() {
       >
         {loading ? (
           <>
-            <RefreshCw className="w-5 h-5 animate-spin" aria-hidden />
+            <Icon name="autorenew" size={20} className="animate-spin" />
             {he ? "יוצר סיפור…" : "Creating story…"}
           </>
         ) : (
           <>
-            <Sparkles className="w-5 h-5" aria-hidden />
+            <Icon name="auto_awesome" size={20} />
             {he ? `צרו את הסיפור של ${name}` : `Create ${name}'s story`}
           </>
         )}
@@ -458,7 +458,7 @@ export default function BedtimeStoriesTab() {
         className="rounded-xl px-4 py-3 flex items-start gap-2.5"
         style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
       >
-        <BookOpen className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} aria-hidden />
+        <Icon name="menu_book" size={16} className="mt-0.5" style={{ color: "var(--arbor-muted)" }} />
         <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }} dir="auto">
           {he
             ? "הסיפורים נוצרים ומוצגים בלבד — לא נשמרים ולא משמשים לאימון. היום של ילדכם שייך לכם בלבד."

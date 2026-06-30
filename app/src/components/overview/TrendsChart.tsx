@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { BookOpen } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { BehaviorLog, BehaviorContext } from "../../types";
 import { cardCls } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
@@ -52,7 +52,7 @@ export default function TrendsChart({ logs }: { logs: BehaviorLog[] }) {
     <div className={`${cardCls} p-6 space-y-3`}>
       <div className="flex items-center gap-2">
         <span className="text-xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-          <BookOpen className="w-3.5 h-3.5" /> {t("trends.eyebrow")}
+          <Icon name="menu_book" size={14} /> {t("trends.eyebrow")}
         </span>
       </div>
       <h3 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>

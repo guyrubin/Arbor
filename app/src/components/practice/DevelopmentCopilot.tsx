@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Activity, AlertTriangle, Check, ClipboardCopy, Compass, FileBarChart, Gauge, History } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -136,7 +136,7 @@ export default function DevelopmentCopilot() {
           the per-domain trend glyphs — all verdicts on a child. Now mirrors
           DevScoreCard: count / mechanism / route-to-pro. Emits nothing about
           the child as a verdict. */}
-      <SectionCard title={`Domain picture — age ${childProfile.age}`} icon={<Gauge className="w-5 h-5" />} tone="mint">
+      <SectionCard title={`Domain picture — age ${childProfile.age}`} icon={<Icon name="monitoring" size={20} />} tone="mint">
         <ul className="space-y-2.5">
           {bands.map((b) => {
             const meta = DOMAIN_META[b.domain];
@@ -164,7 +164,7 @@ export default function DevelopmentCopilot() {
       </SectionCard>
 
       {/* Feature 10a: the weekly recommendation */}
-      <SectionCard title="This week's focus" icon={<Compass className="w-5 h-5" />} tone="coral"
+      <SectionCard title="This week's focus" icon={<Icon name="explore" size={20} />} tone="coral"
         action={
           <button onClick={() => setActiveTab("overview")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl text-white transition" style={{ background: "var(--arbor-peach-ink)" }}>
             Today&apos;s mission →
@@ -172,7 +172,7 @@ export default function DevelopmentCopilot() {
         }>
         <div className="flex items-start gap-4">
           <span className="inline-flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: DOMAIN_META[recommendation.domain].soft, width: 52, height: 52 }}>
-            <Activity className="w-6 h-6" style={{ color: DOMAIN_META[recommendation.domain].color }} />
+            <Icon name="monitor_heart" size={24} style={{ color: DOMAIN_META[recommendation.domain].color }} />
           </span>
           <div>
             <p className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{recommendation.headline}</p>
@@ -181,7 +181,7 @@ export default function DevelopmentCopilot() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Watch signals" icon={<AlertTriangle className="w-5 h-5" />} tone={watch.some((w) => w.level === "discuss") ? "yellow" : "mint"}>
+      <SectionCard title="Watch signals" icon={<Icon name="warning" size={20} />} tone={watch.some((w) => w.level === "discuss") ? "yellow" : "mint"}>
         {watch.length === 0 ? (
           <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)" }}>
             <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>No watch signals yet.</p>
@@ -215,7 +215,7 @@ export default function DevelopmentCopilot() {
         )}
       </SectionCard>
 
-      <SectionCard title="Weekly history" icon={<History className="w-5 h-5" />} tone="sky">
+      <SectionCard title="Weekly history" icon={<Icon name="history" size={20} />} tone="sky">
         {/* AP-CF-snapshots (Wave-3, 2026-06-27): the weekly snapshots now render in
             the COUNT register — parent-noticed milestones per domain over time —
             never the 0–100 `signal` fill bars they used to. (The longitudinal
@@ -276,11 +276,11 @@ export default function DevelopmentCopilot() {
       </div>
 
       {/* Feature 10b: clinician summary */}
-      <SectionCard title="Share with a professional" icon={<FileBarChart className="w-5 h-5" />} tone="sky"
+      <SectionCard title="Share with a professional" icon={<Icon name="description" size={20} />} tone="sky"
         action={
           <div className="flex gap-2">
             <button onClick={() => void copySummary()} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
-              {copied ? <Check className="w-3.5 h-3.5" /> : <ClipboardCopy className="w-3.5 h-3.5" />} {copied ? "Copied" : "Copy summary"}
+              {copied ? <Icon name="check" size={14} /> : <Icon name="content_copy" size={14} />} {copied ? "Copied" : "Copy summary"}
             </button>
             <button onClick={() => setActiveTab("reports")} className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
               Full reports →

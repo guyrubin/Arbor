@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import framework from "../../framework.json";
@@ -35,7 +35,7 @@ export default function DevScoreStrip() {
 
   const reached = score.domains.reduce((n, d) => n + d.reached, 0);
   const total = score.domains.reduce((n, d) => n + d.total, 0);
-  const Chevron = rtl ? ChevronLeft : ChevronRight;
+  const chevronGlyph = rtl ? "chevron_left" : "chevron_right";
 
   return (
     <button
@@ -54,7 +54,7 @@ export default function DevScoreStrip() {
         </span>
         <span className="block text-[12.5px] mt-0.5 truncate" style={{ color: MUTED }}>{t("devscore.mechanism.short")}</span>
       </span>
-      <Chevron className="w-4 h-4 flex-shrink-0" style={{ color: GREEN }} aria-hidden="true" />
+      <Icon name={chevronGlyph} size={16} style={{ color: GREEN }} />
     </button>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Bell, BellOff } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
@@ -92,7 +92,7 @@ export default function RemindersCard() {
   return (
     <div className={`${cardCls} p-6 space-y-4`}>
       <div className="flex items-center gap-2">
-        {anyOn ? <Bell className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> : <BellOff className="w-4 h-4" style={{ color: "var(--arbor-muted)" }} />}
+        {anyOn ? <Icon name="notifications" size={16} style={{ color: "var(--arbor-green-ink)" }} /> : <Icon name="notifications_off" size={16} style={{ color: "var(--arbor-muted)" }} />}
         <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>Reminders</span>
       </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sprout, Clock, ChevronDown, Check, MessageSquare } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity } from "../../playbank/content";
 import type { DailyPlan } from "../../practice/dailyPlan";
@@ -95,7 +95,7 @@ export default function DailyPlanCard({
             className="inline-flex items-center gap-1.5 text-[13px] font-bold"
             style={{ color: GREEN }}
           >
-            <Sprout className="w-3.5 h-3.5" />
+            <Icon name="psychiatry" size={14} />
             {t("plan.card.eyebrow")}
           </span>
           <p className="text-[14px] leading-relaxed" style={{ color: MUTED }}>
@@ -155,7 +155,7 @@ export default function DailyPlanCard({
             className="inline-flex items-center gap-1.5 text-[13px] font-bold"
             style={{ color: GREEN }}
           >
-            <Sprout className="w-3.5 h-3.5" />
+            <Icon name="psychiatry" size={14} />
             {t("plan.card.eyebrow")}
           </span>
           <h2
@@ -218,7 +218,7 @@ export default function DailyPlanCard({
             className="inline-flex items-center gap-1.5 text-[13px] font-bold"
             style={{ color: GREEN }}
           >
-            <Sprout className="w-3.5 h-3.5" />
+            <Icon name="psychiatry" size={14} />
             {t("plan.card.eyebrow")}
           </span>
           <h2
@@ -232,14 +232,14 @@ export default function DailyPlanCard({
             className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3"
             style={{ background: GREEN_SOFT, color: GREEN }}
           >
-            <Check className="w-4 h-4" />
+            <Icon name="check" size={16} />
             {t("play.did")}
           </button>
           <span
             className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1"
             style={{ background: GREEN_SOFT, color: GREEN }}
           >
-            <Check className="w-3 h-3" />
+            <Icon name="check" size={12} />
             {t("plan.card.observationLogged")}
           </span>
           <p className="text-[12px] mt-1" style={{ color: "var(--arbor-faint)" }}>
@@ -269,7 +269,7 @@ export default function DailyPlanCard({
             className="inline-flex items-center gap-1.5 text-[13px] font-bold"
             style={{ color: GREEN }}
           >
-            <Sprout className="w-3.5 h-3.5" />
+            <Icon name="psychiatry" size={14} />
             {t("plan.card.eyebrow")}
           </span>
           <span
@@ -280,7 +280,7 @@ export default function DailyPlanCard({
               border: `1px solid ${RULE}`,
             }}
           >
-            <Clock className="w-3 h-3" />
+            <Icon name="schedule" size={12} />
             {durationLabel}
           </span>
         </div>
@@ -351,8 +351,10 @@ export default function DailyPlanCard({
           style={{ color: GREEN }}
         >
           {stepsOpen ? t("play.hide") : t("play.how")}
-          <ChevronDown
-            className="w-4 h-4 transition"
+          <Icon
+            name="expand_more"
+            size={16}
+            className="transition"
             style={{ transform: stepsOpen ? "rotate(180deg)" : "none" }}
           />
         </button>
@@ -394,7 +396,7 @@ export default function DailyPlanCard({
               boxShadow: "var(--shadow-green)",
             }}
           >
-            <Check className="w-4 h-4" />
+            <Icon name="check" size={16} />
             {t("play.did")}
           </button>
 
@@ -404,7 +406,7 @@ export default function DailyPlanCard({
             className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition"
             style={{ background: GREEN_SOFT, color: GREEN }}
           >
-            <MessageSquare className="w-4 h-4" />
+            <Icon name="chat_bubble" size={16} />
             {t("play.coach")}
           </button>
         </div>

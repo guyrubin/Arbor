@@ -1,6 +1,5 @@
 import React from "react";
 import { motion } from "motion/react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -11,15 +10,14 @@ const TONES: PastelKey[] = ["mint", "sky", "lav", "coral", "yellow", "pink"];
 
 export default function ScholarTab() {
   const { setSelectedLens, setChatInput, setActiveTab, childProfile } = useArbor();
-  const { t, uiLang } = useLanguage();
+  const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
-  // Back-link glyph follows reading direction (LTR ← / RTL →).
-  const BackGlyph = uiLang === "he" ? ArrowRight : ArrowLeft;
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-1.5 min-h-[44px] text-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg" style={{ color: "var(--arbor-muted)" }}>
-        <BackGlyph className="w-4 h-4" aria-hidden /> {t("scholar.back")}
+        {/* Back-link glyph mirrors in RTL via CSS (single Material Symbol). */}
+        <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" /> {t("scholar.back")}
       </button>
       <PageHeader
         eyebrow={t("scholar.eyebrow")}

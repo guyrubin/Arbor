@@ -1,6 +1,5 @@
 import React from "react";
 import { motion } from "motion/react";
-import { ArrowRight } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -34,7 +33,7 @@ export default function Strengths() {
               <li key={c} className={`${cardCls} p-3.5 flex items-start justify-between gap-3`}>
                 <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{c}</span>
                 <button onClick={() => setActiveTab("plans")} className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
-                  Build a plan <ArrowRight className="w-3.5 h-3.5" />
+                  Build a plan <Icon name="arrow_forward" size={14} />
                 </button>
               </li>
             ))}

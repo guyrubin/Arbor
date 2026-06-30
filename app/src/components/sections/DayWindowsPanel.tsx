@@ -19,7 +19,7 @@
  */
 import React, { useMemo } from "react";
 import { motion } from "motion/react";
-import { ArrowLeft, Sun, Moon, AlertCircle } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
@@ -78,7 +78,7 @@ export default function DayWindowsPanel() {
         style={{ minHeight: 44, color: GREEN, background: GREEN_SOFT }}
         aria-label={t("dw.back")}
       >
-        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+        <Icon name="arrow_back" size={16} />
         {t("dw.back")}
       </button>
 
@@ -115,7 +115,7 @@ export default function DayWindowsPanel() {
                 const isCalmer = w.label === "usually-calmer";
                 const bg  = isCalmer ? CALMER_BG  : TRICKIER_BG;
                 const ink = isCalmer ? CALMER_INK : TRICKIER_INK;
-                const Icon = isCalmer ? Sun : Moon;
+                const glyph = isCalmer ? "wb_sunny" : "bedtime";
                 const label = isCalmer ? t("dw.label.calmer") : t("dw.label.trickier");
                 const ariaLabel = t("dw.window.aria", {
                   label,
@@ -141,7 +141,7 @@ export default function DayWindowsPanel() {
                       }}
                       aria-hidden="true"
                     >
-                      <Icon className="w-5 h-5" />
+                      <Icon name={glyph} size={20} />
                     </span>
                     <div className="min-w-0">
                       <p className="text-[13px] font-bold" style={{ color: ink }}>
@@ -199,7 +199,7 @@ export default function DayWindowsPanel() {
               }}
               aria-hidden="true"
             >
-              <AlertCircle className="w-5 h-5" />
+              <Icon name="error" size={20} />
             </span>
             <div>
               <p

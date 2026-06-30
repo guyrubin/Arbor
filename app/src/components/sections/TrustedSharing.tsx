@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
-import { RefreshCw } from "lucide-react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -148,7 +147,7 @@ export default function TrustedSharing() {
             </div>
           </div>
           <button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
-            {busy === "create" ? <><RefreshCw className="w-4 h-4 animate-spin" /> Sharing…</> : "Approve & share"}
+            {busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> Sharing…</> : "Approve & share"}
           </button>
         </div>
       )}
@@ -156,7 +155,7 @@ export default function TrustedSharing() {
       <SectionCard title="Active shares" icon={<Icon name="share" size={20} />} tone="mint">
         <div className="space-y-3">
           {loading ? (
-            <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><RefreshCw className="w-4 h-4 animate-spin" /> Loading shares…</p>
+            <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><Icon name="progress_activity" size={16} className="animate-spin" /> Loading shares…</p>
           ) : shares.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>Nothing is shared right now. Add a co-parent or a teacher to get started.</p>
           ) : shares.map((s) => (
@@ -167,7 +166,7 @@ export default function TrustedSharing() {
                   <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{roleLabel(s.role)}</p>
                 </div>
                 <button onClick={() => revoke(s)} disabled={busy === s.id} className="inline-flex items-center gap-1 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>
-                  {busy === s.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Icon name="close" size={15} />} Revoke access
+                  {busy === s.id ? <Icon name="progress_activity" size={14} className="animate-spin" /> : <Icon name="close" size={15} />} Revoke access
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-3">

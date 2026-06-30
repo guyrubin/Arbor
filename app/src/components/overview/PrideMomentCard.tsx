@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, X } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { prefersReducedMotion } from "../../lib/devscore";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
@@ -34,14 +34,14 @@ export default function PrideMomentCard() {
         className="absolute flex items-center justify-center rounded-full"
         style={{ insetInlineEnd: 10, top: 10, width: 36, height: 36, color: "var(--arbor-green-ink)" }}
       >
-        <X className="w-4 h-4" />
+        <Icon name="close" size={18} />
       </button>
       <div className="flex items-center gap-3 pe-9">
         <span
           className="flex items-center justify-center flex-shrink-0 rounded-2xl"
           style={{ width: 44, height: 44, background: "#fff", color: "var(--arbor-green-ink)" }}
         >
-          <Sparkles className="w-5 h-5" />
+          <Icon name="auto_awesome" size={20} />
         </span>
         <div className="min-w-0">
           <p

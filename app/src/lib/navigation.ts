@@ -1,12 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Home, Sparkles, Sprout, HeartHandshake, GraduationCap,
+  Home, Sprout, HeartHandshake, GraduationCap,
   LayoutDashboard, Activity, Languages,
   Users, FileBarChart, Calendar,
-  Share2, BookOpen, Heart, Sliders, Waypoints, ShieldAlert,
+  Share2, BookOpen, Sliders, Waypoints, ShieldAlert,
   Target, Map, Gauge, School, Moon,
   MessageCircle, NotebookPen, UserCircle,
-  Clock, ListChecks, BarChart3, Bell, BadgeCheck, Crown,
+  Clock, ListChecks, BarChart3, Bell, BadgeCheck,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -133,15 +133,14 @@ export const SECTIONS: NavSection[] = [
     msIcon: "school",
     items: [
       // Story Journeys render AS personalized comics starring the child's hero.
-      // Hero Comics is the batch studio (the viral surface).
+      // UC-4: Hero Comics + Family Formation are IN-HUB tiles reached from the
+      // Academy surfaces (not category items, not drawer entries) — they resolve
+      // to Academy via TAB_SECTION_FALLBACK so the sidebar still highlights.
       { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
       { tab: "bedtime-stories", label: "Bedtime Story", icon: Moon },
-      { tab: "comics", label: "Hero Comics", icon: Sparkles },
-      { tab: "family", label: "Family Formation", icon: Heart },
     ],
-    // Hub (Masterclasses) + Story Journeys. Bedtime Story, Hero Comics and
-    // Family Formation are demoted to TOOLS / reached from their surfaces.
+    // Hub (Masterclasses) + Story Journeys. Bedtime Story is demoted to TOOLS.
     primaryTabs: [
       { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
@@ -197,49 +196,55 @@ export const SECTIONS: NavSection[] = [
 ];
 
 /**
- * UC-3 global TOOLS drawer — the HOME for every secondary capability (the
- * wireframe's 9-item TOOLS section, rendered in the Sidebar below the eight
- * category rows, quieter than primary nav).
+ * UC-4 global TOOLS drawer — the HOME for every secondary capability that is
+ * NOT a category and NOT a section pill, rendered in the Sidebar below the
+ * eight category rows (quieter than primary nav). The drawer is deliberately
+ * lean: it no longer echoes any category. INVARIANT (guard-tested): no TOOLS
+ * tab equals any section's primaryTabOf.
  *
- * This list is the reachability home for every leaf demoted from a category's
- * primaryTabs, PLUS the wireframe's tool entries. Wireframe label → our route:
- *   Log a Moment   → behaviors
+ * Wireframe/route map for the kept entries:
  *   Day Windows    → day-windows
  *   Routines       → daily-play   (nearest existing route to "routines")
  *   Weekly Report  → weekly
- *   Behavior Logs  → behaviors
  *   Bedtime Stories→ bedtime-stories
  *   Reminders      → smart-reminders
- *   The Science    → science
- *   Arbor Plus     → profile      (billing/Plus entry — Settings › Arbor Plus)
- * Plus the remaining demoted leaves so NOTHING is orphaned: Practice, Growth
- * Plans, Hero Comics, Family Formation, School Brief, Care Team, Trusted
- * Sharing, Appointments, Child Memory.
+ *   Practice       → practice
+ *   Growth Plans   → plans
+ *   School Brief   → school-brief
+ *   My Care Team   → care-team
+ *   Trusted Sharing→ sharing
+ *   Appointments   → appointments
+ *   Child Memory   → memory
+ *   The Science    → science       (re-homed to Profile via fallback)
+ *
+ * REMOVED in UC-4 (de-dup): "Log a Moment" and "Behavior Logs" (both → the
+ * `behaviors` category — Log a Moment is now a topbar quick-action); "Arbor
+ * Plus" (→ Profile › Settings); "Hero Comics" + "Family Formation" (→ in-hub
+ * tiles in Academy). All stay reachable; none crowds the drawer.
  *
  * `msIcon` carries the wireframe's Material Symbols ligature for the <Icon>
  * component; `icon` (lucide) is the structural fallback.
  */
 export const TOOLS: NavItem[] = [
-  // ── Wireframe's nine ──
-  { tab: "behaviors", label: "Log a Moment", icon: NotebookPen, msIcon: "edit_note" },
+  // UC-4: lean TOOLS drawer — genuinely-global secondary actions ONLY. None is a
+  // category or a section primaryTabOf. The category-duplicating entries
+  // ("Log a Moment" → behaviors, "Behavior Logs" → behaviors) were removed:
+  // behaviors IS the Behaviors category; Log a Moment moved to a topbar
+  // quick-action. Arbor Plus → Profile › Settings; Hero Comics / Family Formation
+  // → in-hub tiles in Academy. The Science re-homed to Profile (see fallback).
   { tab: "day-windows", label: "Day Windows", icon: Clock, msIcon: "schedule" },
   { tab: "daily-play", label: "Routines", icon: ListChecks, msIcon: "checklist" },
   { tab: "weekly", label: "Weekly Report", icon: BarChart3, msIcon: "bar_chart" },
-  { tab: "behaviors", label: "Behavior Logs", icon: Activity, msIcon: "fact_check" },
   { tab: "bedtime-stories", label: "Bedtime Stories", icon: Moon, msIcon: "auto_stories" },
   { tab: "smart-reminders", label: "Reminders", icon: Bell, msIcon: "notifications" },
-  { tab: "science", label: "The Science", icon: BadgeCheck, msIcon: "verified" },
-  { tab: "profile", label: "Arbor Plus", icon: Crown, msIcon: "workspace_premium" },
-  // ── Remaining demoted leaves (kept reachable; no wireframe slot) ──
   { tab: "practice", label: "Practice", icon: Target, msIcon: "target" },
   { tab: "plans", label: "Growth Plans", icon: Sliders, msIcon: "tune" },
-  { tab: "comics", label: "Hero Comics", icon: Sparkles, msIcon: "auto_awesome" },
-  { tab: "family", label: "Family Formation", icon: Heart, msIcon: "favorite" },
   { tab: "school-brief", label: "School Brief", icon: School, msIcon: "school" },
   { tab: "care-team", label: "My Care Team", icon: Users, msIcon: "groups" },
   { tab: "sharing", label: "Trusted Sharing", icon: Share2, msIcon: "share" },
   { tab: "appointments", label: "Appointments", icon: Calendar, msIcon: "calendar_month" },
   { tab: "memory", label: "Child Memory", icon: Waypoints, msIcon: "neurology" },
+  { tab: "science", label: "The Science", icon: BadgeCheck, msIcon: "verified" },
 ];
 
 /**
@@ -268,6 +273,11 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   // Ask Arbor — coach is now a first-class section; scholar lens lives inside it.
   scholar: "ask",
 
+  // Academy — Hero Comics (batch studio) + Family Formation are IN-HUB tiles
+  // reached from the Academy surfaces; they resolve to Academy for highlight.
+  comics: "academy",
+  family: "academy",
+
   // Care — the former handoff/reports/find-pro doors live inside Consult; they
   // stay valid, deep-linkable routes mapped to Care so the sidebar highlights.
   reports: "care",
@@ -275,8 +285,10 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   "find-pro": "care",
   // Internal/admin: attribution dashboard reached by deep link / admin Settings.
   attribution: "care",
-  // The Science trust page — reached from the TOOLS drawer; nearest home = Care.
-  science: "care",
+  // UC-4: The Science is a product trust/editorial page, not a care surface —
+  // re-homed to Profile (Profile › The Science) so the TOOLS entry and the
+  // sidebar highlight agree.
+  science: "profile",
 };
 
 export function sectionForTab(tab: ActiveTab): NavSection {

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { ArrowRight } from "lucide-react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -333,7 +332,7 @@ export default function ChildProfile() {
               <li key={c} className={`${cardCls} p-3.5 flex items-start justify-between gap-3`}>
                 <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{c}</span>
                 <button onClick={() => setActiveTab("plans")} className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
-                  {t("cp.buildPlan")} <ArrowRight className="w-3.5 h-3.5" />
+                  {t("cp.buildPlan")} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
                 </button>
               </li>
             ))}
@@ -402,7 +401,7 @@ export default function ChildProfile() {
           <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} p-4 text-start flex items-center gap-3 transition hover:-translate-y-0.5`}>
             <IconBadge tone={l.tone}>{l.icon}</IconBadge>
             <span className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
-              {l.label} <ArrowRight className="w-3.5 h-3.5" style={{ color: PASTEL[l.tone].ink }} />
+              {l.label} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" style={{ color: PASTEL[l.tone].ink }} />
             </span>
           </button>
         ))}
@@ -437,7 +436,7 @@ function MemberRow({ name, roleLine, tone }: { name: string; roleLine: string; t
 function JumpLink({ onClick, color, children }: { onClick: () => void; color: string; children: React.ReactNode }) {
   return (
     <button onClick={onClick} className="inline-flex items-center gap-1 text-xs font-bold" style={{ color }}>
-      {children} <ArrowRight className="w-3.5 h-3.5" />
+      {children} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
     </button>
   );
 }

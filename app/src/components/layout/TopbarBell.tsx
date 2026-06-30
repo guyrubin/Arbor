@@ -15,7 +15,6 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Info, ArrowRight } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useNotifications, writeReadSet } from "../../hooks/useNotifications";
@@ -118,7 +117,7 @@ function NotificationItem({
           marginBlockStart: "1px",
         }}
       >
-        <Info style={{ width: "14px", height: "14px" }} />
+        <Icon name="info" size={16} />
       </span>
 
       {/* Text block */}
@@ -156,9 +155,10 @@ function NotificationItem({
         </span>
       </span>
 
-      <ArrowRight
-        aria-hidden="true"
-        style={{ width: "14px", height: "14px", flexShrink: 0, color: accentColor, marginBlockStart: "4px" }}
+      <Icon
+        name="arrow_forward"
+        size={16}
+        style={{ flexShrink: 0, color: accentColor, marginBlockStart: "4px" }}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sprout, Check, MessageSquare, ChevronDown, Clock, Heart } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity } from "../../playbank/content";
 import type { ScoredActivity, SessionLength } from "../../playbank/select";
@@ -87,7 +87,7 @@ export default function DailyPlayCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
-              <Sprout className="w-3.5 h-3.5" /> {t("play.eyebrow")}
+              <Icon name="eco" size={16} /> {t("play.eyebrow")}
             </span>
             <h2 className="text-[1.35rem] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
               {activity.title}
@@ -95,7 +95,7 @@ export default function DailyPlayCard({
           </div>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold flex-shrink-0"
             style={{ background: "var(--arbor-paper-deep)", color: MUTED, border: `1px solid ${RULE}` }}>
-            <Clock className="w-3 h-3" /> {durationLabel}
+            <Icon name="schedule" size={14} /> {durationLabel}
           </span>
         </div>
 
@@ -107,7 +107,7 @@ export default function DailyPlayCard({
             className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold mt-2"
             style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
           >
-            <Heart className="w-3 h-3" />
+            <Icon name="favorite" size={14} />
             {t("play.interestMatchChip", { name: childName, interest: matchedInterest })}
           </span>
         )}
@@ -165,7 +165,7 @@ export default function DailyPlayCard({
           style={{ color: GREEN }}
         >
           {open ? t("play.hide") : t("play.how")}
-          <ChevronDown className="w-4 h-4 transition" style={{ transform: open ? "rotate(180deg)" : "none" }} />
+          <Icon name="expand_more" size={18} className="transition" style={{ transform: open ? "rotate(180deg)" : "none" }} />
         </button>
         {open && (
           <ol className="mt-3 space-y-2.5">
@@ -190,14 +190,14 @@ export default function DailyPlayCard({
               ? { background: GREEN_SOFT, color: GREEN }
               : { background: "var(--arbor-gradient-primary)", color: "#fff", boxShadow: "var(--shadow-green)" }}
           >
-            <Check className="w-4 h-4" /> {done ? t("play.added", { name: childName }) : t("play.did")}
+            <Icon name="check" size={18} /> {done ? t("play.added", { name: childName }) : t("play.did")}
           </button>
           <button
             onClick={() => onCoach(pick)}
             className="inline-flex items-center justify-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition"
             style={{ background: GREEN_SOFT, color: GREEN }}
           >
-            <MessageSquare className="w-4 h-4" /> {t("play.coach")}
+            <Icon name="forum" size={18} /> {t("play.coach")}
           </button>
         </div>
 
