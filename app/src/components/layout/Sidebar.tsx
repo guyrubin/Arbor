@@ -29,6 +29,9 @@ export default function Sidebar() {
   const activeSectionId = sectionForTab(activeTab).id;
   const [showSettings, setShowSettings] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  // TOOLS drawer collapsed by default so the rail stays a clean 8-hub list;
+  // auto-open only when the user is actually on a tool page.
+  const [toolsOpen, setToolsOpen] = useState(() => TOOLS.some((tl) => tl.tab === activeTab));
   const accountRef = useRef<HTMLDivElement>(null);
 
   // Close the account popover on outside click / Escape.
@@ -94,13 +97,21 @@ export default function Sidebar() {
       {/* UC-3 TOOLS drawer — the global home for secondary capabilities, quieter
           than the primary category rows (wireframe's TOOLS section). */}
       <div className="flex flex-col gap-0.5">
-        <p
-          className="px-3 pb-1 text-[10.5px] font-extrabold uppercase tracking-[0.08em]"
+        <button
+          onClick={() => setToolsOpen((o) => !o)}
+          aria-expanded={toolsOpen}
+          className="flex items-center justify-between gap-2 px-3 pb-1 pt-1 text-[10.5px] font-extrabold uppercase tracking-[0.08em] transition rounded-[11px]"
           style={{ color: "var(--arbor-muted)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--arbor-paper-deep)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
         >
-          {t("nav.tools")}
-        </p>
-        {TOOLS.map((tool, i) => {
+          <span className="flex items-center gap-1.5">
+            {t("nav.tools")}
+            <span className="tracking-normal font-bold opacity-60">· {TOOLS.length}</span>
+          </span>
+          <Icon name={toolsOpen ? "expand_less" : "expand_more"} size={16} />
+        </button>
+        {toolsOpen && TOOLS.map((tool, i) => {
           const active = tool.tab === activeTab;
           return (
             <button
