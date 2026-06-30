@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Languages, Sparkles, LogOut, ShieldCheck, BarChart3, Gift, Palette, Bell, FlaskConical } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
 import InviteCard from "../referral/InviteCard";
@@ -128,7 +128,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={18} /></span>
               <div className="min-w-0">
                 <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>
                   {t("set.plan.your", { plan: planLabel })}
@@ -190,7 +190,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         {/* mk-p0-2 referral loop: invite a parent, both earn a free Plus month */}
         <div>
-          <Row icon={<Gift className="w-4 h-4" />} title={t("set.referral.title")} sub={t("set.referral.sub")}>
+          <Row icon={<Icon name="redeem" size={18} />} title={t("set.referral.title")} sub={t("set.referral.sub")}>
             <span />
           </Row>
           <InviteCard />
@@ -199,7 +199,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         <Section title={t("set.section.languageAppearance")} sub={t("set.section.languageAppearanceSub")}>
         {/* App language */}
-        <Row icon={<Languages className="w-4 h-4" />} title={t("set.language.title")} sub={t("set.language.sub")}>
+        <Row icon={<Icon name="language" size={18} />} title={t("set.language.title")} sub={t("set.language.sub")}>
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
               {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
@@ -236,7 +236,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         </Row>
 
         {/* LANG-ADV-OVERRIDE: advanced — let the AI answer in a different language than the UI */}
-        <Row icon={<Languages className="w-4 h-4" />} title={t("set.aiLang.title")} sub={t("set.aiLang.sub")}>
+        <Row icon={<Icon name="language" size={18} />} title={t("set.aiLang.title")} sub={t("set.aiLang.sub")}>
           <div className="flex flex-col items-end gap-2">
             <button
               onClick={() => setDraftAiDifferent((v) => !v)}
@@ -266,7 +266,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         </Row>
 
         {/* AP-052: Accent theme picker */}
-        <Row icon={<Palette className="w-4 h-4" />} title={t("set.theme.title")} sub={t("set.theme.sub")}>
+        <Row icon={<Icon name="palette" size={18} />} title={t("set.theme.title")} sub={t("set.theme.sub")}>
           <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             {(ACCENT_THEMES as readonly AccentTheme[]).map((theme) => (
               <button
@@ -286,7 +286,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Section title={t("set.section.privacyTrust")} sub={t("set.section.privacyTrustSub")}>
 
         {/* AI Engines panel */}
-        <Row icon={<Sparkles className="w-4 h-4" />} title={t("set.rail.title")} sub={t("set.rail.sub")}>
+        <Row icon={<Icon name="auto_awesome" size={18} />} title={t("set.rail.title")} sub={t("set.rail.sub")}>
           <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 h-6 rounded-full transition relative" style={{ background: showAiRail ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}>
             <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "end-[22px]" : "start-0.5"}`} />
           </button>
@@ -296,7 +296,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Section title={t("set.section.notifications")} sub={t("set.section.notificationsSub")}>
 
         {/* AP-058: Smart Reminders — parent nudge preferences over existing JITAI */}
-        <Row icon={<Bell className="w-4 h-4" />} title={t("sr.title")} sub={t("sr.subtitle")}>
+        <Row icon={<Icon name="notifications" size={18} />} title={t("sr.title")} sub={t("sr.subtitle")}>
           <button
             onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
             className="text-xs font-bold rounded-xl px-3 py-2"
@@ -311,7 +311,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Section title={t("set.section.childData")} sub={t("set.section.childDataSub")}>
 
         {/* AP-060: The Science — source-transparency page (static editorial, no child data) */}
-        <Row icon={<FlaskConical className="w-4 h-4" />} title={t("sci.settings.title")} sub={t("sci.settings.sub")}>
+        <Row icon={<Icon name="science" size={18} />} title={t("sci.settings.title")} sub={t("sci.settings.sub")}>
           <button
             onClick={() => { onClose(); setActiveTab("science"); }}
             className="text-xs font-bold rounded-xl px-3 py-2"
@@ -323,7 +323,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         </Row>
 
         {/* Data & privacy → profile editor (export / delete live there) */}
-        <Row icon={<ShieldCheck className="w-4 h-4" />} title={t("set.data.title")} sub={t("set.data.sub")}>
+        <Row icon={<Icon name="verified_user" size={18} />} title={t("set.data.title")} sub={t("set.data.sub")}>
           <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
             {t("set.data.open")}
           </button>
@@ -334,13 +334,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         {entitlement.isAdmin && (
           <Section title={t("set.section.admin")} sub={t("set.section.adminSub")}>
             {/* ADM-1: founder-only single-pane dashboard (users, paying, token spend) */}
-            <Row icon={<BarChart3 className="w-4 h-4" />} title={t("set.admin.founder.title")} sub={t("set.admin.founder.sub")}>
+            <Row icon={<Icon name="bar_chart" size={18} />} title={t("set.admin.founder.title")} sub={t("set.admin.founder.sub")}>
               <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                 {t("set.admin.open")}
               </button>
             </Row>
             {/* P0-5: attribution + UTM funnel dashboard (operator-only) */}
-            <Row icon={<BarChart3 className="w-4 h-4" />} title={t("set.admin.attribution.title")} sub={t("set.admin.attribution.sub")}>
+            <Row icon={<Icon name="bar_chart" size={18} />} title={t("set.admin.attribution.title")} sub={t("set.admin.attribution.sub")}>
               <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                 {t("set.admin.open")}
               </button>
@@ -356,7 +356,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 {user.email && <p className="text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
               </div>
               <button onClick={() => void signOut()} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
-                <LogOut className="w-3.5 h-3.5" /> {t("set.signOut")}
+                <Icon name="logout" size={16} /> {t("set.signOut")}
               </button>
             </div>
           </div>

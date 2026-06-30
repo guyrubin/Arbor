@@ -1,4 +1,4 @@
-import { Gamepad2 } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useKidMode } from "../kidmode/KidModeContext";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -26,7 +26,7 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
         className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
         style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
       >
-        <Gamepad2 className="w-4 h-4" />
+        <Icon name="sports_esports" size={18} />
       </button>
     );
   }
@@ -56,7 +56,7 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
         transition: "background 120ms",
       }}
     >
-      <Gamepad2 aria-hidden="true" style={{ width: "16px", height: "16px", flexShrink: 0 }} />
+      <Icon name="sports_esports" size={16} />
       <span>Kid Mode</span>
     </button>
   );

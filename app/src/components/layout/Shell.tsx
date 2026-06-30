@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Sparkles, AlertTriangle, LogOut, Search, ShieldCheck, Settings as SettingsIcon } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -214,6 +214,18 @@ export default function Shell() {
             </span>}
             actions={<div className="flex items-center gap-2">
               <AskArborButton compact />
+              {/* UC-4: Log a Moment — the primary capture quick-action (replaces the
+                  two category-duplicating TOOLS drawer entries). Opens the Behaviors
+                  hub, whose in-hub composer is the canonical capture surface. */}
+              <button
+                onClick={() => { void selectionHaptic(); setActiveTab("behaviors"); }}
+                aria-label={t("top.logMoment")}
+                title={t("top.logMoment")}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
+                style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+              >
+                <Icon name="edit_note" size={16} /> <span className="hidden sm:inline">{t("top.logMoment")}</span>
+              </button>
               {/* UC-1 + main consolidation: the whole-app language switch is canonical
                   inside Settings ONLY (see languageSettingsCanonical guard test). On
                   desktop it lives in the sidebar account-row popover; on mobile the
@@ -227,7 +239,7 @@ export default function Shell() {
                 className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-bold transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
-                <Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t("top.search")}</span>
+                <Icon name="search" size={16} /> <span className="hidden sm:inline">{t("top.search")}</span>
               </button>
               {!showAiRail && (
                 <button
@@ -235,7 +247,7 @@ export default function Shell() {
                   className="hidden xl:flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
                   style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
                 >
-                  <ShieldCheck className="w-3.5 h-3.5" /> {t("top.howHelps")}
+                  <Icon name="verified_user" size={16} /> {t("top.howHelps")}
                 </button>
               )}
               <KidModeButton compact />
@@ -246,7 +258,7 @@ export default function Shell() {
                 className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
-                <SettingsIcon className="w-4 h-4" />
+                <Icon name="settings" size={18} />
               </button>
               {firebaseEnabled && user && (
                 <button
@@ -256,7 +268,7 @@ export default function Shell() {
                   className="md:hidden flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-bold transition bg-white"
                   style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
-                  <LogOut className="w-3.5 h-3.5" /> Sign out
+                  <Icon name="logout" size={16} /> Sign out
                 </button>
               )}
             </div>
@@ -275,7 +287,7 @@ export default function Shell() {
             >
               {subTabsForSection(section).map((it) => {
                 const on = it.tab === activeTab;
-                const Icon = it.icon;
+                const PillIcon = it.icon;
                 return (
                   <button
                     key={it.tab}
@@ -287,7 +299,7 @@ export default function Shell() {
                       ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
                       : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                   >
-                    <Icon className="w-3.5 h-3.5" /> {t("nav.tab." + it.tab)}
+                    <PillIcon className="w-3.5 h-3.5" /> {t("nav.tab." + it.tab)}
                   </button>
                 );
               })}
@@ -298,7 +310,7 @@ export default function Shell() {
           {showSandboxBanner && (
             <div className="mb-6 p-4 rounded-2xl text-xs flex items-center justify-between gap-4" style={{ background: "var(--arbor-peach-soft)", color: "#8a5326" }}>
               <span className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                <Icon name="warning" size={20} className="flex-shrink-0" />
                 <span>
                   <strong>Sandbox mode:</strong> live AI is off. Sample data lets you explore the product. Add a key in <code>.env.local</code> to connect real models.
                 </span>

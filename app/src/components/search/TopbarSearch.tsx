@@ -18,7 +18,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { X } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { searchIndex, type SearchEntry } from "../../lib/searchIndex";
@@ -186,7 +185,7 @@ export default function TopbarSearch() {
               color: "var(--arbor-faint)",
             }}
           >
-            <X style={{ width: "13px", height: "13px" }} aria-hidden="true" />
+            <Icon name="close" size={16} />
           </button>
         )}
       </div>

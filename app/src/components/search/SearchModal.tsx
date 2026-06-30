@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Modal } from "../ui/Modal";
-import { Clock, Brain, CheckCircle2, Sliders, Search, CornerDownLeft, BarChart2, FileText, Compass } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor, type ActiveTab } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS } from "../../lib/navigation";
@@ -9,9 +9,9 @@ import { SECTIONS } from "../../lib/navigation";
 // kept searchable so nothing becomes undiscoverable. Labels are translated at
 // render via the i18n key suffixed by `key`.
 const EXTRA_COMMANDS: { tab: ActiveTab; key: string; icon: React.ReactNode }[] = [
-  { tab: "weekly", key: "weekly", icon: <BarChart2 className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> },
-  { tab: "handoff", key: "handoff", icon: <FileText className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> },
-  { tab: "scholar", key: "scholar", icon: <Compass className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> },
+  { tab: "weekly", key: "weekly", icon: <Icon name="bar_chart" size={16} style={{ color: "var(--arbor-green-ink)" }} /> },
+  { tab: "handoff", key: "handoff", icon: <Icon name="description" size={16} style={{ color: "var(--arbor-green-ink)" }} /> },
+  { tab: "scholar", key: "scholar", icon: <Icon name="explore" size={16} style={{ color: "var(--arbor-green-ink)" }} /> },
 ];
 
 type Result = { kind: string; icon: React.ReactNode; label: string; sub: string; go: () => void };
@@ -28,10 +28,9 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     const out: Result[] = [];
     SECTIONS.forEach((sec) => {
       sec.items.forEach((it) => {
-        const Icon = it.icon;
         out.push({
           kind: t("sm.kind.go"),
-          icon: <Icon className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />,
+          icon: <Icon name={sec.msIcon} size={16} style={{ color: "var(--arbor-green-ink)" }} />,
           label: t("nav.tab." + it.tab),
           sub: t("nav." + sec.id),
           go: () => setActiveTab(it.tab),
@@ -53,19 +52,19 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     const out: Result[] = [];
     behaviorLogs.forEach((l) => {
       if (`${l.behaviorType} ${l.trigger} ${l.response} ${l.notes || ""}`.toLowerCase().includes(term))
-        out.push({ kind: t("sm.kind.log"), icon: <Clock className="w-3.5 h-3.5" style={{ color: "var(--arbor-sky-ink)" }} />, label: l.behaviorType, sub: l.trigger, go: () => setActiveTab("behaviors") });
+        out.push({ kind: t("sm.kind.log"), icon: <Icon name="schedule" size={16} style={{ color: "var(--arbor-sky-ink)" }} />, label: l.behaviorType, sub: l.trigger, go: () => setActiveTab("behaviors") });
     });
     conversations.forEach((c) => {
       if (c.title.toLowerCase().includes(term) || c.messages.some((m) => m.text.toLowerCase().includes(term)))
-        out.push({ kind: t("sm.kind.thread"), icon: <Brain className="w-3.5 h-3.5" style={{ color: "var(--arbor-peach-ink)" }} />, label: c.title, sub: t("sm.threadSub"), go: () => { openConversation(c.id); setActiveTab("coach"); } });
+        out.push({ kind: t("sm.kind.thread"), icon: <Icon name="psychology" size={16} style={{ color: "var(--arbor-peach-ink)" }} />, label: c.title, sub: t("sm.threadSub"), go: () => { openConversation(c.id); setActiveTab("coach"); } });
     });
     milestones.forEach((m) => {
       if (m.title.toLowerCase().includes(term))
-        out.push({ kind: t("sm.kind.milestone"), icon: <CheckCircle2 className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />, label: m.title, sub: m.description, go: () => setActiveTab("milestones") });
+        out.push({ kind: t("sm.kind.milestone"), icon: <Icon name="check_circle" size={16} style={{ color: "var(--arbor-green-ink)" }} />, label: m.title, sub: m.description, go: () => setActiveTab("milestones") });
     });
     actionPlans.forEach((p) => {
       if (`${p.title} ${p.issue}`.toLowerCase().includes(term))
-        out.push({ kind: t("sm.kind.plan"), icon: <Sliders className="w-3.5 h-3.5" style={{ color: "var(--arbor-lav-ink)" }} />, label: p.title, sub: p.issue, go: () => setActiveTab("plans") });
+        out.push({ kind: t("sm.kind.plan"), icon: <Icon name="tune" size={16} style={{ color: "var(--arbor-lav-ink)" }} />, label: p.title, sub: p.issue, go: () => setActiveTab("plans") });
     });
     return out.slice(0, 20);
   }, [q, behaviorLogs, milestones, actionPlans, conversations, setActiveTab, openConversation, t]);
@@ -82,7 +81,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
     <Modal open={open} onClose={onClose} title={t("sm.title")}>
       <div className="space-y-3">
         <div className="relative">
-          <Search className="w-4 h-4 absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
+          <Icon name="search" size={18} className="absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
           <input
             autoFocus
             value={q}
@@ -111,7 +110,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
                 <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{r.label}</span>
                 <span className="text-[11px] truncate block" style={{ color: "var(--arbor-muted)" }}>{r.sub}</span>
               </span>
-              {i === 0 && <CornerDownLeft className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100" style={{ color: "var(--arbor-muted)" }} />}
+              {i === 0 && <Icon name="keyboard_return" size={16} className="opacity-0 group-hover:opacity-100" style={{ color: "var(--arbor-muted)" }} />}
               <span className="text-[9px] uppercase font-black tracking-wider flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>{r.kind}</span>
             </button>
           ))}

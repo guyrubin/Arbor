@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Check, ChevronRight, ShieldCheck, Lock, ArrowRight } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -19,7 +19,7 @@ export default function AiRail() {
       <div className="flex items-center justify-between pb-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
         <div className="flex items-center gap-2.5">
           <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-            <ShieldCheck className="w-[18px] h-[18px]" />
+            <Icon name="verified_user" size={18} />
           </span>
           <div>
             <h3 className="font-extrabold text-sm" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("airail.title")}</h3>
@@ -28,7 +28,7 @@ export default function AiRail() {
         </div>
         {/* VIS-2: icon-only → min 44×44 hit area */}
         <button onClick={() => setShowAiRail(false)} title={t("aria.hidePanel")} aria-label={t("aria.hidePanel")} className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition" style={{ color: "var(--arbor-muted)" }}>
-          <ChevronRight className="w-4 h-4" />
+          <Icon name="chevron_right" size={18} />
         </button>
       </div>
 
@@ -36,7 +36,7 @@ export default function AiRail() {
         {BEHIND.map((b) => (
           <li key={b} className="flex items-start gap-3 rounded-2xl p-3.5" style={{ background: "var(--arbor-paper-deep)" }}>
             <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
-              <Check className="w-3.5 h-3.5" />
+              <Icon name="check" size={16} />
             </span>
             <span className="min-w-0">
               <span className="block text-[13px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("airail.b." + b + ".label")}</span>
@@ -48,14 +48,14 @@ export default function AiRail() {
 
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)" }}>
         <div className="flex items-center gap-2">
-          <Lock className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} />
+          <Icon name="lock" size={16} style={{ color: "var(--arbor-green-ink)" }} />
           <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{t("airail.privacy.title")}</span>
         </div>
         <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: "#1f6f4b" }}>
           {t("airail.privacy.body")}
         </p>
         <button onClick={() => setActiveTab("memory")} className="inline-flex items-center gap-1 text-[12px] font-bold mt-2.5" style={{ color: "var(--arbor-green-ink)" }}>
-          {t("airail.seeMemory")} <ArrowRight className="w-3.5 h-3.5" />
+          {t("airail.seeMemory")} <Icon name="arrow_forward" size={16} />
         </button>
       </div>
 
@@ -64,7 +64,7 @@ export default function AiRail() {
         className="w-full inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl py-3"
         style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
-        <Sparkles className="w-4 h-4" /> {t("airail.askCta")}
+        <Icon name="auto_awesome" size={18} /> {t("airail.askCta")}
       </button>
     </aside>
   );

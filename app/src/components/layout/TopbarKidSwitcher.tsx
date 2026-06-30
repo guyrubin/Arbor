@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Check, Plus } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -171,9 +170,10 @@ export default function TopbarKidSwitcher() {
                   </span>
                 </div>
                 {p.id === activeChild.id && (
-                  <Check
-                    aria-hidden="true"
-                    style={{ width: "14px", height: "14px", color: "var(--arbor-clay)", flexShrink: 0 }}
+                  <Icon
+                    name="check"
+                    size={16}
+                    style={{ color: "var(--arbor-clay)", flexShrink: 0 }}
                   />
                 )}
               </button>
@@ -215,7 +215,7 @@ export default function TopbarKidSwitcher() {
                   flexShrink: 0,
                 }}
               >
-                <Plus style={{ width: "14px", height: "14px" }} />
+                <Icon name="add" size={16} />
               </span>
               <span style={{ fontSize: "var(--t-sm)", fontWeight: 700 }}>Add child</span>
             </button>

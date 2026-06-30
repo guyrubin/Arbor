@@ -103,6 +103,23 @@ describe("navigation IA", () => {
         expect(reachable.has(it.tab), `tab "${it.tab}" is owned by a section but not reachable via any primary sub-tab or TOOLS`).toBe(true);
   });
 
+  // UC-4 no-duplicate-nav guard: the TOOLS drawer must NOT echo any category.
+  // Locks out the re-introduction of a category-duplicating drawer entry (the
+  // bug this UC fixes — e.g. "Log a Moment"/"Behavior Logs" both → behaviors).
+  it("no TOOLS tab equals any section's primaryTabOf (drawer never echoes a category)", () => {
+    const categoryPrimaries = new Set(SECTIONS.map((s) => primaryTabOf(s)));
+    for (const tl of TOOLS)
+      expect(
+        categoryPrimaries.has(tl.tab),
+        `TOOLS entry "${tl.label}" (${tl.tab}) duplicates a category primary view`,
+      ).toBe(false);
+  });
+
+  // UC-4: The Science trust page is re-homed from Care → Profile.
+  it("The Science resolves to Profile (re-homed from Care)", () => {
+    expect(sectionForTab("science").id).toBe("profile");
+  });
+
   it("TOOLS entries are well-formed and every tab is a real ActiveTab", () => {
     for (const tl of TOOLS) {
       expect(tl.label.trim().length).toBeGreaterThan(0);
