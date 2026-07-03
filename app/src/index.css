@@ -207,14 +207,12 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* ─── App Shell — soft daylight canvas with a faint, calming wash ─────────── */
+/* ─── App Shell — flat clinical canvas (W0: radial wash dropped for the flat
+   design-system surface; --arbor-paper now resolves flat via .arbor-app scope) ── */
 .arbor-app {
   font-family: var(--font-sans);
   color: var(--arbor-ink);
-  background:
-    radial-gradient(1100px 620px at 8% -6%, rgba(52,178,119,0.06), transparent 60%),
-    radial-gradient(900px 600px at 102% 0%, rgba(63,140,201,0.045), transparent 55%),
-    var(--arbor-paper);
+  background: var(--arbor-paper);
   background-attachment: fixed;
 }
 
@@ -690,6 +688,14 @@ body {
    components (OverviewTab, DevelopmentTab, etc.) need ZERO edits.
    Serial chain position: APPENDED after [data-theme="blue"] (end of file).
    ════════════════════════════════════════════════════════════════════════════ */
+/* W0 token-unify (redesign wave 5): the flat-sapphire design system shipped here
+   but was scoped to <main> only, leaving the shell chrome (sidebar/topbar/nav) and
+   canvas on the old glass :root — the "flat content inside blue-glass chrome" seam.
+   Promoting the scope to .arbor-app applies the flat tokens app-wide (chrome +
+   canvas + content) so there is one consistent surface. The glass :root stays as
+   the fallback for out-of-app surfaces (login/marketing); rollback = drop .arbor-app
+   from this selector. */
+.arbor-app,
 .arbor-parent {
   /* ── Surfaces: warm sage canvas + flat-white cards, zero glass ─────────────
      UC-2 visual-match: the app canvas warms from the cool #eef3fb to the mock's
@@ -728,6 +734,11 @@ body {
   --arbor-clay-deep:  #1a6be8;   /* hover/pressed (slightly darker for contrast) */
   --arbor-clay-dim:   rgba(43,127,255,0.10);
   --arbor-clay-border: rgba(43,127,255,0.18);
+
+  /* ── Success / growth: flat solid (the flat scope must redefine these or it
+     leaks the glass-gradient green from :root — the Today translucent-blob bug). */
+  --arbor-green-soft: #e7f6ef;
+  --arbor-green-ink:  #047857;
 
   /* ── P1.0 token sweep — gradients, tints, wells, track, success ──────────
      Folds the scattered hex literals on Today (and reusable across the parent
