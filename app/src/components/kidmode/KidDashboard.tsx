@@ -8,10 +8,12 @@
  * Avatar-everywhere (P1): each tile + the banner use <WorldScene> — the same
  * production component HeroArcade ships — to generate a themed scene STARRING the
  * child's hero (the avatar is the consistency reference). Generation is lazy
- * (IntersectionObserver), cached (sceneCache cost-guard) and degrades gracefully
- * to the themed icon tile when there is no hero / it's still loading / it fails.
- * So a child with no generated avatar (e.g. before AvatarCreator) sees the clean
- * themed icon tiles — zero regression, never a blank or a blocked first paint.
+ * (IntersectionObserver) + cached (sceneCache cost-guard).
+ * DEFAULT (no custom avatar): the tile shows the pre-made comic-hero art from the
+ * image repository (public/visuals/cards, served as ~70KB WebP thumbnails in
+ * /sm/) — so the grid is rich comic art out of the box. A custom avatar then
+ * personalizes each tile via generation. The themed icon is the ultimate
+ * fallback if the image fails. Never a blank or a blocked first paint.
  *
  * Still deferred: the unified theme registry (P2), the bounded daily quest +
  * per-game levels (P3), the parent-mediated share loop (P4). The quest banner
@@ -54,6 +56,10 @@ const ACCENT_INK: Record<Accent, string> = {
   sky: "var(--arbor-sky-ink)",
 };
 
+// `art` = the pre-made comic-hero card image (the existing image repository in
+// public/visuals/cards). It is the DEFAULT tile art shown when the child has no
+// custom avatar yet — so the grid is rich comic art out of the box, never bare
+// icons. A custom avatar then personalizes each tile via WorldScene generation.
 interface AdventureDef {
   id: string;
   worldId: string;
@@ -61,6 +67,7 @@ interface AdventureDef {
   sub: string;
   accent: Accent;
   imagePrompt: string;
+  art: string;
   Icon: React.ComponentType<{ className?: string }>;
   surface: KidSurface;
 }
@@ -69,24 +76,24 @@ interface AdventureDef {
 // to the arcade for now; the exact games↔worlds mapping is a confirmed-with-Guy
 // decision (plan §9.5) before per-game deep-links land.
 const ADVENTURES: AdventureDef[] = [
-  { id: "playbank", worldId: "kid-playbank", title: "Playbank", sub: "Play, learn & grow", accent: "green", Icon: Gamepad2, surface: "arcade", imagePrompt: "a joyful playroom full of colorful building blocks, learning toys and a friendly little dinosaur" },
-  { id: "hero", worldId: "kid-hero", title: "Hero Stories", sub: "You're the star", accent: "clay", Icon: BookOpen, surface: "journeys", imagePrompt: "an epic storybook castle on a hill with a glowing open magic book and a brave flowing cape" },
-  { id: "feelings", worldId: "kid-feelings", title: "Feelings", sub: "Explore & understand", accent: "lav", Icon: HeartPulse, surface: "feelings", imagePrompt: "a gentle dreamy landscape of friendly emotion characters under a warm glowing sky" },
-  { id: "studio", worldId: "kid-studio", title: "Studio", sub: "Create & express", accent: "peach", Icon: Palette, surface: "arcade", imagePrompt: "a bright art studio with paints, a tall easel and a colorful rocket-ship drawing" },
+  { id: "playbank", worldId: "kid-playbank", title: "Playbank", sub: "Play, learn & grow", accent: "green", Icon: Gamepad2, surface: "arcade", art: "/visuals/cards/sm/game-adventures.webp", imagePrompt: "a joyful playroom full of colorful building blocks, learning toys and a friendly little dinosaur" },
+  { id: "hero", worldId: "kid-hero", title: "Hero Stories", sub: "You're the star", accent: "clay", Icon: BookOpen, surface: "journeys", art: "/visuals/cards/sm/game-courage-steps.webp", imagePrompt: "an epic storybook castle on a hill with a glowing open magic book and a brave flowing cape" },
+  { id: "feelings", worldId: "kid-feelings", title: "Feelings", sub: "Explore & understand", accent: "lav", Icon: HeartPulse, surface: "feelings", art: "/visuals/cards/sm/game-feelings.webp", imagePrompt: "a gentle dreamy landscape of friendly emotion characters under a warm glowing sky" },
+  { id: "studio", worldId: "kid-studio", title: "Studio", sub: "Create & express", accent: "peach", Icon: Palette, surface: "arcade", art: "/visuals/cards/sm/game-mimic.webp", imagePrompt: "a bright art studio with paints, a tall easel and a colorful rocket-ship drawing" },
 ];
 
 // Games grid. In the shell every game opens the arcade; per-game deep-links land
 // once the games↔worlds mapping is confirmed. No level badges yet (P3).
-interface GameDef { id: string; worldId: string; title: string; sub: string; accent: Accent; imagePrompt: string }
+interface GameDef { id: string; worldId: string; title: string; sub: string; accent: Accent; imagePrompt: string; art: string }
 const GAMES: GameDef[] = [
-  { id: "memory-match", worldId: "kid-memory", title: "Memory Match", sub: "Find the pairs", accent: "sky", imagePrompt: "a table of glowing colorful matching picture cards" },
-  { id: "feelings-detective", worldId: "kid-detective", title: "Feelings Detective", sub: "Spot the feeling", accent: "green", imagePrompt: "a playful detective scene spotting cheerful emoji feelings with a big magnifying glass" },
-  { id: "mimic-studio", worldId: "kid-mimic", title: "Mimic Studio", sub: "Copy the moves", accent: "lav", imagePrompt: "a fun mirror studio copying silly happy poses, sparkles all around" },
-  { id: "sound-explorer", worldId: "kid-sound", title: "Sound Explorer", sub: "Listen & match", accent: "peach", imagePrompt: "a bright sound studio with big headphones and floating musical notes" },
-  { id: "sequence-quest", worldId: "kid-sequence", title: "Sequence Quest", sub: "What comes next?", accent: "clay", imagePrompt: "glowing stars, moons and shapes arranged in a magical sequence" },
-  { id: "calm-builder", worldId: "kid-calm", title: "Calm Builder", sub: "Design your space", accent: "sky", imagePrompt: "a cozy blanket-fort calm corner glowing with warm fairy lights" },
-  { id: "rhythm-hero", worldId: "kid-rhythm", title: "Rhythm Hero", sub: "Tap the beat", accent: "lav", imagePrompt: "a colorful music stage with drums and bouncing musical notes" },
-  { id: "puzzle-planet", worldId: "kid-puzzle", title: "Puzzle Planet", sub: "Piece it together", accent: "green", imagePrompt: "a friendly planet made of colorful glowing jigsaw pieces in space" },
+  { id: "memory-match", worldId: "kid-memory", title: "Memory Match", sub: "Find the pairs", accent: "sky", art: "/visuals/cards/sm/game-memory.webp", imagePrompt: "a table of glowing colorful matching picture cards" },
+  { id: "feelings-detective", worldId: "kid-detective", title: "Feelings Detective", sub: "Spot the feeling", accent: "green", art: "/visuals/cards/sm/game-feelings.webp", imagePrompt: "a playful detective scene spotting cheerful emoji feelings with a big magnifying glass" },
+  { id: "mimic-studio", worldId: "kid-mimic", title: "Mimic Studio", sub: "Copy the moves", accent: "lav", art: "/visuals/cards/sm/game-mimic.webp", imagePrompt: "a fun mirror studio copying silly happy poses, sparkles all around" },
+  { id: "sound-explorer", worldId: "kid-sound", title: "Sound Explorer", sub: "Listen & match", accent: "peach", art: "/visuals/cards/sm/game-speech.webp", imagePrompt: "a bright sound studio with big headphones and floating musical notes" },
+  { id: "sequence-quest", worldId: "kid-sequence", title: "Sequence Quest", sub: "What comes next?", accent: "clay", art: "/visuals/cards/sm/game-pattern.webp", imagePrompt: "glowing stars, moons and shapes arranged in a magical sequence" },
+  { id: "calm-builder", worldId: "kid-calm", title: "Calm Builder", sub: "Design your space", accent: "sky", art: "/visuals/cards/sm/game-feelings.webp", imagePrompt: "a cozy blanket-fort calm corner glowing with warm fairy lights" },
+  { id: "rhythm-hero", worldId: "kid-rhythm", title: "Rhythm Hero", sub: "Tap the beat", accent: "lav", art: "/visuals/cards/sm/game-beat.webp", imagePrompt: "a colorful music stage with drums and bouncing musical notes" },
+  { id: "puzzle-planet", worldId: "kid-puzzle", title: "Puzzle Planet", sub: "Piece it together", accent: "green", art: "/visuals/cards/sm/game-order-builder.webp", imagePrompt: "a friendly planet made of colorful glowing jigsaw pieces in space" },
 ];
 
 /** A calm, one-shot count-up of an already-earned number. Reveals on mount only —
@@ -148,6 +155,7 @@ function SceneTile({
   title,
   sub,
   imagePrompt,
+  art,
   heroUrl,
   onClick,
   big,
@@ -159,6 +167,7 @@ function SceneTile({
   title: string;
   sub: string;
   imagePrompt: string;
+  art: string;
   heroUrl?: string;
   onClick: () => void;
   big?: boolean;
@@ -180,10 +189,16 @@ function SceneTile({
         animationDelay: `${index * 40}ms`,
       }}
     >
-      {/* Avatar-in-scene art (or the themed icon fallback). */}
+      {/* Default = the pre-made comic-hero art (image repository). It shows when
+          there's no custom avatar, and as the loading/fallback under a generated
+          avatar scene. The themed icon sits behind it as the ultimate fallback if
+          the image fails to load. */}
       <WorldScene worldId={worldId} imagePrompt={imagePrompt} heroUrl={heroUrl}>
-        <span aria-hidden="true" style={{ color: ACCENT_INK[accent], opacity: 0.9 }}>
-          <Icon className={big ? "w-10 h-10" : "w-8 h-8"} />
+        <span className="relative block w-full h-full">
+          <span aria-hidden="true" className="absolute inset-0 grid place-items-center" style={{ color: ACCENT_INK[accent], opacity: 0.9 }}>
+            <Icon className={big ? "w-10 h-10" : "w-8 h-8"} />
+          </span>
+          <img src={art} alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
         </span>
       </WorldScene>
       {/* Legibility scrim — dark at the bottom so white text reads over art OR icon. */}
@@ -263,8 +278,11 @@ export default function KidDashboard({
         }}
       >
         <WorldScene worldId="kid-quest" imagePrompt="building a glowing blanket-fort calm corner with warm fairy lights, cozy and magical" heroUrl={hero.url ?? undefined}>
-          <span aria-hidden="true" style={{ color: "var(--arbor-sky-ink)", opacity: 0.9 }}>
-            <Sparkles className="w-10 h-10" />
+          <span className="relative block w-full h-full">
+            <span aria-hidden="true" className="absolute inset-0 grid place-items-center" style={{ color: "var(--arbor-sky-ink)", opacity: 0.9 }}>
+              <Sparkles className="w-10 h-10" />
+            </span>
+            <img src="/visuals/cards/sm/game-feelings.webp" alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
           </span>
         </WorldScene>
         <span
@@ -293,7 +311,7 @@ export default function KidDashboard({
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
           {ADVENTURES.map((a, i) => (
-            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={a.title} sub={a.sub} imagePrompt={a.imagePrompt} heroUrl={hero.url ?? undefined} big index={i} onClick={() => onOpenSurface(a.surface)} />
+            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={a.title} sub={a.sub} imagePrompt={a.imagePrompt} art={a.art} heroUrl={hero.url ?? undefined} big index={i} onClick={() => onOpenSurface(a.surface)} />
           ))}
         </div>
       </section>
@@ -314,7 +332,7 @@ export default function KidDashboard({
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px" }}>
           {GAMES.map((g, i) => (
-            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={Gamepad2} title={g.title} sub={g.sub} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade")} />
+            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={Gamepad2} title={g.title} sub={g.sub} imagePrompt={g.imagePrompt} art={g.art} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade")} />
           ))}
         </div>
       </section>
