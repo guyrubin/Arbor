@@ -1,6 +1,10 @@
 # Arbor — Parenting AI Platform PRD
 
-**Version:** 1.2 (2026-06-03 — Information Architecture v2: six-capability model; see "Information Architecture v2" below)
+**Version:** 1.3 (2026-06-29 — additive enrichment: evidence-base grounding + capability depth + Third Age sibling note; see Changelog)
+
+### Changelog
+- **1.3 (2026-06-29)** — Additive only; no existing content changed. Added **"Developmental Frameworks (Evidence Base)"** (grounds each capability in child-development science with decision logic + escalation), **"Capability Depth"** (specifies the under-specified modules: medical guardrail, screening-instrument strategy, engagement/avatar surface, consent/capacity, safety-threshold governance, eval gate, age-band engine, life-stage abstraction), and a **"Sibling product: Arbor Third Age"** cross-reference. Source: the deep multi-agent investigation that produced `PAI/projects/arbor-third-age/SPEC.md`, which found this PRD thin on framework grounding.
+- **1.2 (2026-06-03)** — Information Architecture v2: six-capability model (see "Information Architecture v2" below).
 **Product type:** AI-powered child-development, parenting, co-therapy, and school-support platform
 **Age range:** Birth to 12
 **Markets:** Israel, Netherlands, Belgium, later broader EU
@@ -357,6 +361,42 @@ Arbor's MVP should route every concern through one or more of these domains: att
 The same issue should produce different guidance for different ages. A toddler refusing a transition, a five-year-old refusing school entry, and a ten-year-old avoiding schoolwork require different explanations, scripts, responsibility levels, and escalation thresholds.
 
 The detailed implementation model lives in `docs/developmental-ai-operating-model.md`.
+
+---
+
+## Developmental Frameworks (Evidence Base)
+
+> Added 1.3. The Scholar-Inspired table above names *which* theories Arbor draws on; this section makes each **build- and eval-able** — evidence base, age-band content, the decision logic it drives, and its firewall/escalation rule. The product is a multi-theory engine, so capabilities are grounded, not vibes.
+
+**Formation-side firewall rule (the mirror of Third Age's dignity firewall):** Arbor computes developmental signals but a parent is **never** shown a child's milestone *deficit score, percentile, or "behind" label*. Bars are milestone **counts** and participation, never a number that reduces a child to a ranking. Deficit data lives only in the clinician/professional handoff layer, consented.
+
+| # | Framework | Evidence base | Age-band content | Decision logic it drives | Firewall + escalation |
+|---|---|---|---|---|---|
+| **F1** | **Attachment & co-regulation** | Bowlby; Ainsworth Strange Situation; Harvard Center Serve-&-Return | 0–3 primacy; persists across bands | Reframes "behavior" as a connection/regulation need first; scripts repair after rupture | Parent-facing as connection, never an "insecure-attachment" label; disclosed harsh-care / fear → safety escalation |
+| **F2** | **Cognitive stage & the learning edge** | Piaget stages; Vygotsky ZPD + scaffolding | Stage-matched expectations 0–12 | Sets the "Next Best Challenge" so tasks sit just above current mastery; flags mismatch (task too far ahead = avoidance) | No IQ/percentile shown; persistent stage-lag pattern → professional-screening prompt |
+| **F3** | **Psychosocial formation** | Erikson (autonomy/initiative/industry); developmental arc | Per-band: autonomy (toddler) → initiative (preschool) → industry (school) | Tunes responsibility-ladder pacing (when to step the parent OUT) per stage | Framed as growth, never a "stage failure" |
+| **F4** | **Emotional co-regulation → self-regulation** | Affective neuroscience; trauma-informed development | Co-regulation early → graduated self-regulation | Distinguishes won't from can't; prescribes regulation scaffolding before consequence | Trauma/chronic-stress signals → Family Stress & Resilience monitor + escalation |
+| **F5** | **Executive-function development** | EF science (planning, inhibition, working memory, flexibility) | Builds across childhood, individually variable | Targets the specific EF sub-skill behind a complaint (e.g. transition refusal = flexibility) | EF support is skill-building, never an "ADHD" claim; pattern → non-diagnostic screening |
+| **F6** | **Milestone evidence & red-flag screening rigor** | CDC/WHO milestone norms; validated tools (ASQ-3, M-CHAT-R/F, Vanderbilt, CSHQ) | Band-specific milestone sets + screen triggers | Routine milestone tracking + structured red-flag detection → "worth a professional look" | **Non-diagnostic**: surfaces, never diagnoses; licensed-instrument + MDR posture per CD-2; positive screen → handoff |
+
+**Strongest-evidence, build/eval-first:** Serve-&-Return interaction coaching, ZPD scaffolding, EF self-regulation builder, and validated red-flag screening — these have the firmest evidence and the clearest eval scenarios; build and eval them before the softer coaching frames.
+
+## Capability Depth
+
+> Added 1.3. The Core Product Modules above are described at one paragraph each; the investigation found eight under-specified. Each item below **extends** (does not replace) its module.
+
+- **CD-1 — Medical Guidance Guardrail (extends Module 6):** a **two-firewall** model — a real-time red-flag router (deterministic, pre-generation, fail-closed on acute pediatric emergencies: high fever in infants, dehydration, self-harm) **and** a hardened no-diagnosis/no-dosage output screen applied server-side before display. Plus a grounding requirement (answers cite vetted AI-Wiki source-cards, not free-generated) and a clinician reviewer for safety content.
+- **CD-2 — Screening-instrument strategy (extends Modules 7 & F6):** license-aware use of validated tools, explicitly **non-diagnostic**, with a documented medical-device (MDR/SaMD) posture — child developmental screening sits closer to the regulated line than general guidance and must be scoped deliberately.
+- **CD-3 — Engagement / avatar (kid) surface (currently under-documented in this PRD):** the kid-mode avatar/engagement layer + the Child-ASR pronunciation seam belong in the PRD with their register/aesthetic abstraction. **Flag:** any streak/"🔥 N-day" mechanic is a banned dark pattern (already surfaced in kid-mode work) — engagement must not exploit a child.
+- **CD-4 — Consent & capacity (extends Compliance):** today a binary guardian-approved model. Document it as a **consent/capacity model** with a "the subject is also a user" mode, which future-proofs the teen-transition (a 12-year-old aging up gains agency) — and is the exact primitive the Third Age sibling inverts to a senior-root capacity-state machine.
+- **CD-5 — Safety-threshold governance artifact (ship-blocker):** every `escalateIf` threshold and red-flag rule carries a documented source + clinical-reviewer sign-off + validation record. This governance artifact was missing and is mandatory before release.
+- **CD-6 — Eval gate (ship-blocker):** a versioned eval corpus + baselines + red-team set wired to every AI-facing route as a CI gate (`check:acceptance`). The investigation rated eval the weakest area; it must become a hard ship-blocker, not optional.
+- **CD-7 — Parameterized age-band engine:** the age-band operating logic (`developmental-ai-operating-model.md`) specified as a parameterized engine with a clear extension mechanism, not a fixed three-band hardcode.
+- **CD-8 — Life-stage abstraction layer:** a thin interface separating *formation* (gaining function) from *maintenance/decline* (preserving function), so the same memory + safety + consent spine serves child-Arbor and Arbor Third Age without a fork of the core.
+
+## Sibling product: Arbor Third Age
+
+> Added 1.3. This PRD stays scoped to **Birth-to-12**. Arbor Third Age (65+) is the **firewall-inversion sibling**: the same longitudinal-memory engine, safety/privacy spine, and expert-veto governance, with the developmental arc reversed (formation → maintenance/decline) and the consent root inverted (parent-over-child → self-sovereign-adult-with-proxy). The CD-4 consent/capacity and CD-8 life-stage-abstraction work here **de-risk both products**. Canonical spec: `PAI/projects/arbor-third-age/SPEC.md`.
 
 ---
 
