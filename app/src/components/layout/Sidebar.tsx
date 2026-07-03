@@ -10,20 +10,22 @@ import SettingsModal from "./SettingsModal";
 import { SECTIONS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/navigation";
 
 /** Resolve the generalized sidebar badge to its display string from app state.
- *  Returns "" when the badge should not render. */
+ *  Returns "" when the badge should not render. Clinical firewall: the milestone
+ *  badge is a COUNT of parent-noticed milestones, never a percentage/score. */
 function badgeText(
   badge: NavBadge | undefined,
-  state: { milestonesPercent: number; plansCount: number; unreadCoachCount: number }
+  state: { milestonesNoticed: number; plansCount: number; unreadCoachCount: number }
 ): string {
   if (!badge) return "";
-  if (badge === "milestone") return `${state.milestonesPercent}%`;
+  if (badge === "milestone") return state.milestonesNoticed ? String(state.milestonesNoticed) : "";
   if (badge === "plans") return state.plansCount ? String(state.plansCount) : "";
   if (badge.kind === "count") return state.unreadCoachCount ? String(state.unreadCoachCount) : "";
   return ""; // { kind: "dot" } handled by the caller
 }
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab, milestonesPercent, actionPlans, unreadCoachCount } = useArbor();
+  const { activeTab, setActiveTab, milestones, actionPlans, unreadCoachCount } = useArbor();
+  const milestonesNoticed = milestones.filter((m) => m.checked).length;
   const { user, signOut, firebaseEnabled } = useAuth();
   const { t, uiLang, setUiLang } = useLanguage();
   const activeSectionId = sectionForTab(activeTab).id;
@@ -58,7 +60,7 @@ export default function Sidebar() {
       <nav className="flex flex-col gap-1 flex-1">
         {SECTIONS.map((sec) => {
           const active = sec.id === activeSectionId;
-          const text = badgeText(sec.badge, { milestonesPercent, plansCount: actionPlans.length, unreadCoachCount });
+          const text = badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, unreadCoachCount });
           const showDot = typeof sec.badge === "object" && sec.badge.kind === "dot";
           return (
             <button

@@ -30,6 +30,10 @@ const DEMOTED_SURFACES = [
   "components/overview/TrendsChart.tsx",
   "components/overview/DevScoreStrip.tsx",
   "components/sections/DevScoreCard.tsx",
+  // 2026-07-04 release audit: the sidebar milestone badge rendered
+  // `milestonesPercent%` — parent-facing chrome is firewall scope too.
+  // Badge is now a parent-noticed COUNT; keep the whole shell scanned.
+  "components/layout/Sidebar.tsx",
 ];
 
 // Tokens that NEVER belong on a child metric in the demoted surfaces. (Accent-

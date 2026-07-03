@@ -7,6 +7,7 @@ import {
   Target, Map, Gauge, School, Moon,
   MessageCircle, NotebookPen, UserCircle,
   Clock, ListChecks, BarChart3, Bell, BadgeCheck,
+  Sparkles, Heart,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -126,6 +127,9 @@ export const SECTIONS: NavSection[] = [
       { tab: "practice", label: "Practice", icon: Target, msIcon: "target" },
       { tab: "plans", label: "Growth Plans", icon: Sliders, msIcon: "tune" },
       { tab: "daily-play", label: "Routines", icon: ListChecks, msIcon: "checklist" },
+      // M4 surfacing (IA masterplan): the quick-check screener was fallback-only
+      // (reachable via one ChildProfile JumpLink) — now a visible Growth pill.
+      { tab: "screening", label: "Development Check", icon: ShieldAlert, msIcon: "fact_check" },
     ],
   },
   {
@@ -165,6 +169,10 @@ export const SECTIONS: NavSection[] = [
     ],
     tools: [
       { tab: "bedtime-stories", label: "Bedtime Stories", icon: Moon, msIcon: "auto_stories" },
+      // M4 surfacing (IA masterplan): Hero Comics is THE viral surface and Family
+      // Formation a real capability — both were in-hub tiles only; now one click.
+      { tab: "comics", label: "Hero Comics", icon: Sparkles, msIcon: "auto_awesome" },
+      { tab: "family", label: "Family Formation", icon: Heart, msIcon: "favorite" },
     ],
   },
   {
