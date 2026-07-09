@@ -24,6 +24,10 @@ export const en: Record<string, string> = {
   "elev.hero.academy.stat.courses": "courses",
   "elev.hero.academy.stat.completed": "completed",
   "elev.hero.academy.stat.minNext": "min to next",
+
+  // ── Development screen deep-dive link cards (the former inner-tab facets)
+  "elev.growth.link.milestones.sub": "The full checklist — mark what you've noticed",
+  "elev.growth.link.journey.sub": "The month-by-month development timeline",
 };
 
 export const he: Record<string, string> = {
@@ -42,4 +46,7 @@ export const he: Record<string, string> = {
   "elev.hero.academy.stat.courses": "קורסים",
   "elev.hero.academy.stat.completed": "הושלמו",
   "elev.hero.academy.stat.minNext": "דק׳ לקורס הבא",
+
+  "elev.growth.link.milestones.sub": "הרשימה המלאה — סמנו מה ששמתם לב אליו",
+  "elev.growth.link.journey.sub": "ציר ההתפתחות חודש אחר חודש",
 };

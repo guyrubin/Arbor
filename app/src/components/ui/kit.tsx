@@ -74,7 +74,12 @@ export function TrustSafetyBar({ risk = "Low", note, onEscalate }: { risk?: "Low
   const elevated = risk !== "Low";
   return (
     <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[var(--t-sm)]" style={{ background: PASTEL[tone].soft, color: "var(--arbor-ink)" }}>
-      <span className="font-extrabold" style={{ color: PASTEL[tone].ink }}>Risk: {risk}</span>
+      {/* Clinical firewall: never a graded child verdict ("Risk: Low") on a
+          parent surface — the tone wash + escalate button carry the attention,
+          the text stays a posture line, not a grade. */}
+      <span className="font-extrabold" style={{ color: PASTEL[tone].ink }}>
+        {elevated ? "Worth a conversation with a professional" : "Parent observations — not a diagnosis"}
+      </span>
       <span style={{ color: "var(--arbor-muted)" }}>Non-diagnostic guidance</span>
       <span style={{ color: "var(--arbor-muted)" }}>Escalation available</span>
       {note && <span style={{ color: "var(--arbor-muted)" }}>· {note}</span>}

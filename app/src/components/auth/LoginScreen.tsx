@@ -82,12 +82,38 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="arbor-app min-h-screen flex items-center justify-center px-6 antialiased text-sans relative overflow-hidden">
-      <motion.div
+    <div className="arbor-app min-h-screen flex items-center justify-center px-6 py-10 antialiased text-sans relative overflow-hidden">
+      <div className="w-full max-w-5xl grid md:grid-cols-[1fr_minmax(0,28rem)] gap-10 md:gap-14 items-center relative z-10">
+        {/* The value promise — the pre-wow front door says WHY before HOW.
+            (The auth card alone answered nothing; blind-test F7/F10.) */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="text-center md:text-start space-y-5"
+        >
+          <h2
+            className="text-3xl md:text-4xl font-black tracking-tight text-balance"
+            style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
+          >
+            {t("elev.auth.headline")}
+          </h2>
+          <ul className="space-y-2.5 text-sm font-semibold inline-block text-start" style={{ color: "var(--arbor-muted)" }}>
+            {(["elev.auth.p1", "elev.auth.p2", "elev.auth.p3"] as const).map((k) => (
+              <li key={k} className="flex items-center gap-2.5">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
+                {t(k)}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }}>{t("elev.auth.evidence")}</p>
+        </motion.div>
+
+        <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-md bg-white rounded-3xl p-8 md:p-10 space-y-7 relative z-10"
+        className="w-full max-w-md bg-white rounded-3xl p-8 md:p-10 space-y-7 relative z-10 mx-auto"
         style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 60px rgba(41,51,63,0.12)" }}
       >
         <div className="flex flex-col items-center text-center space-y-3">
@@ -196,6 +222,7 @@ export default function LoginScreen() {
           {accessMsg && <p aria-live="polite" style={{ color: "var(--arbor-green-ink)" }}>{accessMsg}</p>}
         </div>
       </motion.div>
+      </div>
     </div>
   );
 }

@@ -36,6 +36,18 @@ const DEMOTED_SURFACES = [
   "components/layout/Sidebar.tsx",
 ];
 
+// 2026-07-09: TrustSafetyBar in the shared kit rendered a graded child verdict
+// ("Risk: Low/Moderate/High") onto 8 parent surfaces. The kit hosts legitimate
+// non-child rings (course progress = parent effort), so it gets a TARGETED
+// assertion instead of the full demoted-surface token scan: no component may
+// interpolate a risk grade into visible text.
+describe("shared kit — no graded child verdict text", () => {
+  const code = stripComments(read("components/ui/kit.tsx"));
+  it("TrustSafetyBar renders no 'Risk: <grade>' text", () => {
+    expect(code, "kit.tsx interpolates a risk grade into visible text").not.toMatch(/Risk:\s*\{|Risk:\s*[LMH]/);
+  });
+});
+
 // Tokens that NEVER belong on a child metric in the demoted surfaces. (Accent-
 // safe word-boundary checks; we allow these words to appear in COMMENTS only —
 // the test scans code lines, stripping /* … */ and // comments first.)

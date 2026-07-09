@@ -19,6 +19,7 @@
 
 // ── Module imports: ONE line per module, ALPHABETICAL by module name. ─────────
 import * as agechips from "./agechips";
+import * as auth from "./auth";
 import * as careprofile from "./careprofile";
 import * as celebrate from "./celebrate";
 import * as foundation from "./foundation";
@@ -34,6 +35,7 @@ import * as wow from "./wow";
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
 const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, string> }> = [
   agechips,
+  auth,
   careprofile,
   celebrate,
   foundation,

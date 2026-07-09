@@ -1,5 +1,5 @@
-import React, { lazy, useState, useEffect, useCallback, useMemo } from "react";
-import { Sprout, type LucideIcon } from "lucide-react";
+import React, { lazy, Suspense, useState, useEffect, useCallback, useMemo } from "react";
+import { Sprout } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
@@ -7,31 +7,20 @@ import { HubHero } from "../ui/HubHero";
 import { SpineRibbon } from "../ui/SpineRibbon";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { countSince, WEEK_MS } from "../../lib/pulse";
-import HubTabs from "../ui/HubTabs";
 import DevScoreCard from "../sections/DevScoreCard";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
 import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
 
-/* My Child › Development — the four confusable "Development *" leaves
-   (Dashboard, Milestones, Profile, Journey) collapsed into one place with
-   internal facets. Each panel is the existing, unchanged tab component.
-   b2: a quiet inline "Quick development check" opens the screener sheet here,
-   replacing the former standalone Screening leaf. */
-
-// HubTabs renders its `icon` prop as `<Icon className="w-3.5 h-3.5" />` (a
-// LucideIcon-shaped call). These thin wrappers adapt the shared Material
-// Symbols <Icon> to that call shape so the hub facets match the wireframe
-// glyphs (UC-2 visual-match) without touching HubTabs itself.
-const NowGlyph = (({ className }: { className?: string }) => <Icon name="speed" size={14} className={className} />) as unknown as LucideIcon;
-const MilestonesGlyph = (({ className }: { className?: string }) => <Icon name="check_circle" size={14} className={className} />) as unknown as LucideIcon;
-const ProfileGlyph = (({ className }: { className?: string }) => <Icon name="account_circle" size={14} className={className} />) as unknown as LucideIcon;
-const JourneyGlyph = (({ className }: { className?: string }) => <Icon name="calendar_month" size={14} className={className} />) as unknown as LucideIcon;
+/* Growth › Development — ONE coherent screen, no inner tab layer (masterplan
+   L2: category → pill is the only navigation; deeper capabilities appear as
+   visible cards). The former HubTabs facets are re-homed: the "Now" copilot
+   strip renders inline below the hero; Milestones and Journey are visible
+   link cards to their own routes (the Growth pill row already carries
+   Milestones); the child Profile belongs to the Profile category. Every old
+   route (#/copilot, #/milestones, #/journey, #/profile) stays valid. */
 
 const DevelopmentCopilot = lazy(() => import("../practice/DevelopmentCopilot"));
-const MilestonesTab = lazy(() => import("./MilestonesTab"));
-const ChildProfile = lazy(() => import("../sections/ChildProfile"));
-const JourneyTab = lazy(() => import("../practice/JourneyTab"));
 
 /** Inline push opt-in toggle — renders null unless pushCapable() (no VAPID key). */
 function PushOptInToggle({
@@ -136,22 +125,43 @@ export default function DevelopmentTab() {
           <EvidenceChip />
         </div>
       </div>
+      {/* "Now" — the copilot's next-best-action strip, directly visible (was
+          hidden behind an inner tab). */}
+      <Suspense fallback={null}>
+        <DevelopmentCopilot />
+      </Suspense>
+      {/* The Map — the record's home (ring + domains; counts only). */}
       <DevScoreCard />
       {/* C1 — Arbor Noticed: weekly in-app monitoring card, grounded in the
           child's own logged milestones and moments. Non-diagnostic. */}
       <ArborNoticedCard />
+      {/* Deep-dive doors — visible cards, not a second tab layer. Each is a
+          real route (also reachable from the Growth pill row / fallbacks). */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {([
+          { tab: "milestones", glyph: "check_circle", label: t("hub.milestones"), sub: t("elev.growth.link.milestones.sub") },
+          { tab: "journey", glyph: "calendar_month", label: t("hub.journey"), sub: t("elev.growth.link.journey.sub") },
+        ] as const).map((l) => (
+          <button
+            key={l.tab}
+            onClick={() => setActiveTab(l.tab)}
+            className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-start transition"
+            style={{ minHeight: 44, background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+          >
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
+              <Icon name={l.glyph} size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{l.label}</span>
+              <span className="block text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{l.sub}</span>
+            </span>
+            <Icon name="chevron_right" size={18} className="rtl:rotate-180 flex-shrink-0" />
+          </button>
+        ))}
+      </div>
       {/* C4 — Physical growth: parent-logged measurements → longitudinal
           trajectory. Raw data only; pediatrician holds the reference charts. */}
       <PhysicalGrowthCard />
-      <div>
-        <button
-          onClick={() => setCheckOpen(true)}
-          className="inline-flex items-center gap-2 rounded-2xl px-4 text-sm font-bold"
-          style={{ minHeight: 44, background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
-        >
-          <Icon name="assignment_turned_in" size={16} /> {t("mychild.quickcheck.cta")}
-        </button>
-      </div>
       <ScreeningSheet open={checkOpen} onClose={() => setCheckOpen(false)} />
       {/* C2 — parent-facing push opt-in. Hidden unless pushCapable(). AADC: no guilt framing. */}
       <PushOptInToggle
@@ -161,23 +171,13 @@ export default function DevelopmentTab() {
         label={t("push.optin.label")}
         sublabel={t("push.optin.sublabel")}
       />
-      {/* E3 — spine ribbon: what a noticed skill feeds (one direction:
-          → Academy). Sits by the milestone-checklist facets below. */}
+      {/* E3 — spine ribbon: what a noticed skill feeds (one direction: → Academy). */}
       <SpineRibbon
         tone="mint"
         icon="school"
         text={t("elev.spine.growth")}
         onFollow={() => setActiveTab("masterclasses")}
         testId="growth-spine-ribbon"
-      />
-      <HubTabs
-        ariaLabel="Development facets"
-        panels={[
-          { id: "now", label: t("hub.now"), icon: NowGlyph, Comp: DevelopmentCopilot },
-          { id: "milestones", label: t("hub.milestones"), icon: MilestonesGlyph, Comp: MilestonesTab },
-          { id: "profile", label: t("hub.profile"), icon: ProfileGlyph, Comp: ChildProfile },
-          { id: "journey", label: t("hub.journey"), icon: JourneyGlyph, Comp: JourneyTab },
-        ]}
       />
     </div>
   );
