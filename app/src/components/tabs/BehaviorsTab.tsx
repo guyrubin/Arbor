@@ -1,12 +1,14 @@
 import React, { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { HeartHandshake } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Skeleton } from "../ui/Skeleton";
-import { PageHeader, cardCls, PASTEL, type PastelKey } from "../ui/kit";
+import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
+import { HubHero } from "../ui/HubHero";
 import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
 import { speechSupported, startDictation } from "../../lib/speech";
@@ -228,17 +230,15 @@ export default function BehaviorsTab() {
     return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
   }, [filtered]);
 
-  // Hero stat strip — flat counts only (clinical-firewall safe): events in the
-  // last 7d, avg intensity over that current window (a flat number, NEVER a
-  // sparkline/trend), and resolved/total. No time axis, no verdict.
+  // E2 hero stat trio — THIS-WEEK FLAT COUNTS ONLY (clinical firewall): logged,
+  // resolved and still-open moments in the last 7 days. The prior avg-intensity
+  // figure is out (an intensity average on a child metric reads as a trend/
+  // verdict); per-log intensity stays fully visible in the meter + filters.
   const heroStats = useMemo(() => {
     const now = Date.now();
     const last7 = behaviorLogs.filter((l) => now - new Date(l.timestamp).getTime() < 7 * DAY);
-    const avg = last7.length > 0
-      ? (last7.reduce((s, l) => s + l.intensity, 0) / last7.length).toFixed(1)
-      : "—";
-    const resolved = behaviorLogs.filter((l) => l.resolved).length;
-    return { events: last7.length, avg, resolved, total: behaviorLogs.length };
+    const resolvedWeek = last7.filter((l) => l.resolved).length;
+    return { events: last7.length, resolvedWeek, openWeek: last7.length - resolvedWeek };
   }, [behaviorLogs]);
 
   // Per-type 30-day FLAT COUNT (Wave-3 clinical subtraction, 2026-06-26).
@@ -310,38 +310,26 @@ export default function BehaviorsTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
-      <PageHeader
-        eyebrow={t("beh.eyebrow")}
-        title={t("nav.tab.behaviors")}
-        subtitle={t("beh.subtitle", { name: behFirst })}
+      {/* E2 — the shared hub-hero grammar (replaces PageHeader + the hand-rolled
+          coral hero; same job, one kit). Warm tone; stat trio = this-week flat
+          counts only — no averages, no trends (clinical firewall). */}
+      <HubHero
+        tone="coral"
+        icon={HeartHandshake}
+        eyebrow={t("elev.hero.behaviors.eyebrow")}
+        title={t("elev.hero.behaviors.title", { name: behFirst })}
+        subtitle={t("elev.hero.behaviors.sub")}
+        cta={{ label: t("elev.hero.behaviors.cta"), onClick: focusForm, testId: "behaviors-hero-cta" }}
+        stats={[
+          { value: heroStats.events, label: t("elev.stat.behaviors.week") },
+          { value: heroStats.resolvedWeek, label: t("elev.stat.behaviors.resolvedWeek") },
+          { value: heroStats.openWeek, label: t("elev.stat.behaviors.openWeek") },
+        ]}
+        testId="behaviors-hub-hero"
       />
 
-      {/* Row 1 — coral hero (with docked 3-stat strip) + QuickLog tiles */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6">
-        {/* Coral hero — mapped to the existing CTA gradient (peach/clay), no new hue */}
-        <div className="relative rounded-[22px] overflow-hidden p-6 flex flex-col justify-between text-white" style={{ background: T.gradientCta, minHeight: 188 }}>
-          {/* faint oversized background icon */}
-          <Icon name="monitoring" size={180} className="absolute pointer-events-none" style={{ top: -28, insetInlineEnd: -28, opacity: 0.14 }} />
-          <div className="relative">
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.18em]" style={{ color: "rgba(255,255,255,0.85)" }}>{t("beh.hero.tag")}</span>
-            <h2 className="text-[1.75rem] leading-tight mt-1" style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>{t("beh.hero.title", { name: behFirst })}</h2>
-            <p className="text-base mt-1.5 max-w-md" style={{ fontFamily: "var(--font-editorial)", color: "rgba(255,255,255,0.92)" }}>{t("beh.hero.sub")}</p>
-          </div>
-          {/* docked 3-stat strip — flat counts only */}
-          <div className="relative grid grid-cols-3 gap-2 mt-5">
-            {[
-              { label: t("beh.stats.events"), value: String(heroStats.events) },
-              { label: t("beh.stats.avgIntensity"), value: heroStats.avg },
-              { label: t("beh.stats.resolved"), value: `${heroStats.resolved}/${heroStats.total}` },
-            ].map((s) => (
-              <div key={s.label} className="rounded-2xl px-3 py-2.5 text-center" style={{ background: "rgba(255,255,255,0.16)" }}>
-                <div className="text-xl font-extrabold leading-none">{s.value}</div>
-                <div className="text-[10px] font-bold uppercase tracking-wider mt-1.5" style={{ color: "rgba(255,255,255,0.85)" }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
+      {/* Row 1 — QuickLog tiles (full width under the hero) */}
+      <div className="grid grid-cols-1">
         {/* QuickLog mode tiles — Voice / Photo / Text */}
         <div className={`${cardCls} p-5 flex flex-col`}>
           <span className="text-xs font-extrabold uppercase tracking-wider mb-3" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.logMoment")}</span>

@@ -40,7 +40,7 @@ export default function Screening() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[920px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[920px]">
       <PageHeader
         eyebrow="My Child"
         title={t("sec.screen.title")}
@@ -203,7 +203,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
 
       <AnimatePresence>
         {phase === "result" && result && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
             {/* Headline */}
             <div className="rounded-[22px] p-6" style={{ background: result.elevated ? "var(--arbor-yellow-soft)" : "var(--arbor-green-soft)" }}>
               <div className="flex items-center gap-3">

@@ -12,7 +12,7 @@ export default function Strengths() {
   const first = childProfile.name.split(" ")[0];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader eyebrow="My Child" title={t("sec.strengths.title")} subtitle={t("sec.strengths.sub", { name: first })} />
 
       <div className="grid lg:grid-cols-2 gap-5">

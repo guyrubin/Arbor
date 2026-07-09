@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import confetti from "canvas-confetti";
+import { GraduationCap } from "lucide-react";
 import { Icon } from "../ui/Icon";
+import { HubHero } from "../ui/HubHero";
+import { EvidenceChip } from "../ui/EvidenceChip";
 import { PageHeader, cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
 import { BRAND_CONFETTI } from "../../lib/tokens";
 import { useLanguage } from "../../context/LanguageContext";
@@ -86,8 +89,45 @@ export default function Masterclasses() {
   const allDone = doneCount >= total;
   const childName = (childProfile.name || "").split(" ")[0] || (he ? "ילדכם" : "your child");
 
+  // E2 hero — the next unfinished course drives the ONE CTA and the
+  // minutes-to-next count. CLINICAL FIREWALL: the stat trio is counts and a
+  // plain duration fact only (total courses / completed / minutes to next).
+  // There is no per-course "started" state in the app — we render the honest
+  // catalog count instead of fabricating one.
+  const nextCourse = MASTERCLASSES.find((m) => !done[m.id]);
+  const heroStats = [
+    { value: total, label: t("elev.hero.academy.stat.courses") },
+    { value: doneCount, label: t("elev.hero.academy.stat.completed") },
+    ...(nextCourse ? [{ value: nextCourse.durationMin, label: t("elev.hero.academy.stat.minNext") }] : []),
+  ];
+
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
+    <>
+      {/* E2 — Academy hub hero: sits ABOVE the existing page (outside the
+          page's motion wrapper — HubHero runs its own reduced-motion-gated
+          entrance). E8: EvidenceChip on the hero's meta row. */}
+      <div className="max-w-[1180px]">
+        <HubHero
+          tone="sky"
+          icon={GraduationCap}
+          eyebrow={t("elev.hero.academy.eyebrow")}
+          title={t("elev.hero.academy.title", { name: childName })}
+          subtitle={t("elev.hero.academy.sub")}
+          cta={nextCourse ? {
+            label: t("elev.hero.academy.cta"),
+            onClick: () => setOpenId(nextCourse.id),
+            icon: <Icon name="school" size={16} />,
+            testId: "academy-hero-cta",
+          } : undefined}
+          stats={heroStats}
+          testId="academy-hub-hero"
+        />
+        {/* Meta row — pulled up under the hero (hero carries its own mb-6). */}
+        <div className="-mt-3 mb-6 flex items-center px-1">
+          <EvidenceChip />
+        </div>
+      </div>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader title={t("sec.master.title")} subtitle={t("sec.master.sub")} />
 
       {/* Design's two-column shell: left = the Learning Map rail (the explicit
@@ -223,6 +263,7 @@ export default function Masterclasses() {
         </div>
       </div>
     </motion.div>
+    </>
   );
 }
 
@@ -238,7 +279,7 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
     onDone();
   };
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 max-w-[760px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5 max-w-[760px]">
       <button onClick={onBack} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
         <Icon name="arrow_back" size={16} /> {t("master.all")}
       </button>

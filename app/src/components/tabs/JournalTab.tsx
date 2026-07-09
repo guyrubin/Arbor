@@ -1,10 +1,16 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { motion } from "motion/react";
+import { BookHeart } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildTimeline, type SignalKind, type TimelineSignal } from "../../lib/signalTimeline";
-import { PageHeader, PASTEL, IconBadge, Chip, cardCls, domainVisual } from "../ui/kit";
+import { PASTEL, IconBadge, Chip, cardCls, domainVisual } from "../ui/kit";
+import { HubHero } from "../ui/HubHero";
+import { WEEK_MS, tsMs } from "../../lib/pulse";
+import { dailyPromptKeys } from "../../lib/promptBank";
+import { weekStartKey } from "../../lib/behaviorUtils";
+import { prefersReducedMotion } from "../../lib/devscore";
 import type { DevelopmentalDomainId } from "../../types";
 import type { PlayDomain } from "../../playbank/content";
 
@@ -169,11 +175,34 @@ function JournalRow({
 
 export default function JournalTab() {
   const {
-    childProfile, setActiveTab,
+    childProfile, setActiveTab, setNewLogNotes,
     behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
+  const firstName = (childProfile.name || "").split(" ")[0];
+
+  // E2 hero CTA target — scroll the composer into view and focus its first tile.
+  const composeRef = useRef<HTMLDivElement | null>(null);
+  const firstTileRef = useRef<HTMLButtonElement | null>(null);
+  const focusComposer = () => {
+    composeRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+    firstTileRef.current?.focus({ preventScroll: true });
+  };
+
+  // E9 — today's 3 guiding-question keys: deterministic per child + local day
+  // (promptBank derives everything from the passed date; no clock reads inside).
+  const promptKeys = useMemo(
+    () => dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id, date: new Date() }),
+    [childProfile.age, childProfile.id],
+  );
+
+  // Tapping a prompt pre-seeds the EXISTING capture flow (the Behaviors composer
+  // note field) with the question, then routes there — same path as the tiles.
+  const startFromPrompt = (key: string) => {
+    setNewLogNotes(t(key));
+    setActiveTab("behaviors");
+  };
 
   // Reuse the shared timeline engine — the journal reads the SAME real data as
   // StoryTimelineTab. No new fetch, no new write path.
@@ -198,31 +227,83 @@ export default function JournalTab() {
   const ongoingLabel = t("journal.ongoing");
   const autoLabel = t("journal.auto");
 
+  // E2 hero stat trio — COUNTS ONLY (clinical firewall): moments this week,
+  // total moments in the story, and distinct calendar weeks holding ≥1 moment.
+  // No %, no verdicts, no deltas.
+  const heroStats = useMemo(() => {
+    const nowMs = Date.now();
+    let week = 0;
+    const weekKeys = new Set<string>();
+    for (const s of signals) {
+      if (!s.at) continue;
+      const at = tsMs(s.at);
+      if (nowMs - at < WEEK_MS && at <= nowMs) week++;
+      weekKeys.add(weekStartKey(s.at));
+    }
+    return { week, total: signals.length, weeks: weekKeys.size };
+  }, [signals]);
+
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-[840px] mx-auto flex flex-col gap-[18px]">
-      <PageHeader
-        title={t("nav.title.journal")}
-        subtitle={t("nav.sub.journal", { name: childProfile.name })}
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-[840px] mx-auto flex flex-col gap-[18px]">
+      {/* E2 — the shared hub-hero grammar (replaces PageHeader; same info, one kit) */}
+      <HubHero
+        tone="lav"
+        icon={BookHeart}
+        eyebrow={t("elev.hero.journal.eyebrow")}
+        title={t("elev.hero.journal.title", { name: firstName })}
+        subtitle={t("elev.hero.journal.sub")}
+        cta={{ label: t("elev.hero.journal.cta"), onClick: focusComposer, testId: "journal-hero-cta" }}
+        stats={[
+          { value: heroStats.week, label: t("elev.stat.journal.week") },
+          { value: heroStats.total, label: t("elev.stat.journal.total") },
+          { value: heroStats.weeks, label: t("elev.stat.journal.weeks") },
+        ]}
+        testId="journal-hub-hero"
       />
 
       {/* Compose card — three modality tiles. All three trigger the EXISTING
           capture flow (BehaviorsTab) since there is no modality-hint capability
           to pre-select; the Voice/Photo/Text split is an entry affordance, not a
           new capture path. */}
-      <div className={`${cardCls} p-[18px]`}>
+      <div ref={composeRef} className={`${cardCls} p-[18px]`}>
         <div className="flex items-center gap-2.5 mb-3.5">
           <IconBadge tone="lav" size={32}><Icon name="edit_note" size={18} fill={1} /></IconBadge>
           <h2 className="text-[16px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("journal.compose.title")}
           </h2>
         </div>
+
+        {/* E9 — today's 3 guiding-question chips (deterministic rotation).
+            Tapping pre-seeds the capture flow with the question. Chips are
+            plain invitations — never assessments (clinical firewall). */}
+        <div className="mb-3.5">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-lav-ink)" }}>
+            {t("elev.prompt.lead")}
+          </span>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {promptKeys.map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => startFromPrompt(k)}
+                className="min-h-[44px] rounded-2xl px-4 py-2 text-[12.5px] font-bold text-start transition active:scale-[0.98] motion-reduce:transition-none motion-reduce:transform-none"
+                style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink, border: "1px solid var(--arbor-rule)" }}
+                dir="auto"
+              >
+                {t(k)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-3 gap-2.5">
-          {MODE_TILES.map(({ ms, key }) => (
+          {MODE_TILES.map(({ ms, key }, i) => (
             <button
               key={key}
+              ref={i === 0 ? firstTileRef : undefined}
               type="button"
               onClick={() => setActiveTab("behaviors")}
-              className="flex items-center justify-center gap-2 rounded-[13px] py-3.5 text-[12.5px] font-extrabold transition hover:-translate-y-0.5"
+              className="flex items-center justify-center gap-2 rounded-[13px] py-3.5 min-h-[44px] text-[12.5px] font-extrabold transition hover:-translate-y-0.5"
               style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
             >
               <Icon name={ms} size={21} fill={1} style={{ color: "var(--arbor-green-ink)" }} />

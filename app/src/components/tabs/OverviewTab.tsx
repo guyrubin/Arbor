@@ -1,6 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
+import { Gamepad2, NotebookPen } from "lucide-react";
 import Icon from "../ui/Icon";
+import { HubHero } from "../ui/HubHero";
+import { usePulses, pickCountKey } from "../../lib/pulse";
+import { useKidMode } from "../kidmode/KidModeContext";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
@@ -18,7 +22,7 @@ import { nextNudge } from "../../lib/jitai";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import GoalBuilderPromptCard from "../practice/GoalBuilderPromptCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
-import { PASTEL } from "../ui/kit";
+import { PASTEL, type PastelKey } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { computeDevScore } from "../../growth/devScore";
@@ -37,12 +41,19 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 /**
- * TODAY — reconciled to the "Arbor Web App" prototype (claude.ai/design 6ddac523).
+ * TODAY — reconciled to the "Arbor Web App" prototype (claude.ai/design 6ddac523),
+ * then choreographed by the Elevation Wave (E4 "Today as conductor", 2026-07-09).
  *
- * The prototype's Today is four calm cards in two rows:
- *   Row 1 (1.6fr + 1fr): guidance hero · dev-map ring
- *   Row 2 (1fr+1fr+1fr) : kid-activity sync (span 2) · coach
- * Plus one well-timed JITAI nudge and the conditional goal-builder prompt.
+ * Conductor order (NOTHING dropped — grammar added around what exists):
+ *   1. ONE time-aware HubHero — the rhythm engine picks the daily answer
+ *      (calm/morning → today's play quest; wind-down/evening → 1-tap capture).
+ *   2. Coach card.
+ *   3. "The whole picture" — live mini-cards, one per remaining hub
+ *      (behaviors · growth · academy · care · profile · kid mode), each showing
+ *      its usePulses() line and deep-linking into the hub.
+ *   4. Everything that was already here keeps rendering below, unchanged:
+ *      guidance hero + dev-map count card, kid-activity sync feed, JITAI nudge,
+ *      goal-builder prompt, and the YOUR-DAILY-TOOLS disclosure.
  *
  * Everything else that used to live on Today (practice launcher, the duplicate
  * daily-play "spine", how-your-child-is-doing tiles, day-windows door, things-to-
@@ -296,15 +307,161 @@ export default function OverviewTab() {
     return { focus, domains: domainsWithProgress, week: weekActivity };
   }, [activeGoals.length, milestones, behaviorLogs, playLogs]);
 
+  // ── E4 · Today as conductor — time-aware hero + family-system mini-cards ──
+  const pulses = usePulses();
+  const { openKidMode } = useKidMode();
+
+  // The daily answer, picked off the signals this file ALREADY computes:
+  // evening (dayPart) or a rhythm-known wind-down that has started → capture;
+  // otherwise (morning / calm window) → today's play quest.
+  const heroMode: "play" | "capture" = useMemo(() => {
+    const nowHour = new Date().getHours();
+    const windDownStarted =
+      rhythm.confidence !== "none" && rhythm.windDownHour != null && nowHour >= rhythm.windDownHour;
+    return dayPart === "evening" || windDownStarted ? "capture" : "play";
+  }, [rhythm, dayPart]);
+
+  const playsToday = useMemo(() => {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    return playLogs.filter((p) => new Date(p.timestamp).getTime() >= start.getTime()).length;
+  }, [playLogs]);
+  // Counts only (clinical firewall): captured today / this week / story total.
+  // Brand rule: no streak framing on the hero — a "0 day streak" is a guilt
+  // mechanic, the opposite of Arbor's no-pressure positioning. The trio's third
+  // number is the monotonic album size (only ever grows).
+  const capturedToday = loggedTodayCount + playsToday;
+  const momentsTotal = behaviorLogs.length + playLogs.length;
+
+  // Kid Mode pulse: quest completions today (playLogs is the kid's quest log).
+  const kidPulse =
+    playsToday > 0
+      ? t(pickCountKey("elev.pulse.kidmode.quests", playsToday), { count: playsToday })
+      : t("elev.pulse.kidmode.empty");
+
+  // One live mini-card per remaining hub — pulse line + deep link (kid mode
+  // opens the overlay; every other card lands on the hub's primary tab).
+  const familyCards: Array<{
+    id: string; glyph: string; tone: PastelKey; label: string; pulse: string; onOpen: () => void;
+  }> = [
+    { id: "behaviors", glyph: "monitoring", tone: "sky", label: t("elev.today.hub.behaviors"), pulse: t(pulses.behaviors.key, pulses.behaviors.params), onOpen: () => setActiveTab("behaviors") },
+    { id: "growth", glyph: "eco", tone: "mint", label: t("elev.today.hub.growth"), pulse: t(pulses.growth.key, pulses.growth.params), onOpen: () => setActiveTab("development") },
+    { id: "academy", glyph: "school", tone: "yellow", label: t("elev.today.hub.academy"), pulse: t(pulses.academy.key, pulses.academy.params), onOpen: () => setActiveTab("masterclasses") },
+    { id: "care", glyph: "diversity_1", tone: "pink", label: t("elev.today.hub.care"), pulse: t(pulses.care.key, pulses.care.params), onOpen: () => setActiveTab("consult") },
+    { id: "profile", glyph: "person", tone: "lav", label: t("elev.today.hub.profile"), pulse: t(pulses.profile.key, pulses.profile.params), onOpen: () => setActiveTab("profile") },
+    { id: "kidmode", glyph: "sports_esports", tone: "coral", label: t("elev.today.hub.kidmode"), pulse: kidPulse, onOpen: openKidMode },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       className="space-y-5 md:space-y-7 relative max-w-[1080px]"
     >
+      {/* ── E4 zone 1 — ONE time-aware hero: the rhythm engine's daily answer.
+             Counts only in the stat trio (clinical firewall). HubHero gates its
+             own entrance on prefers-reduced-motion. ── */}
+      {heroMode === "play" ? (
+        <HubHero
+          tone="mint"
+          icon={Gamepad2}
+          eyebrow={t("elev.hero.today.play.eyebrow")}
+          title={t("elev.hero.today.play.title", { name: firstName })}
+          subtitle={t(pulses.today.key, pulses.today.params)}
+          cta={{
+            label: t("elev.hero.today.play.cta"),
+            onClick: () => setActiveTab("daily-play"),
+            icon: <Icon name="sports_esports" size={18} />,
+            testId: "today-hero-cta",
+          }}
+          stats={[
+            { value: capturedToday, label: t("elev.hero.today.stat.captured") },
+            { value: devStats.week, label: t("elev.hero.today.stat.week") },
+            { value: momentsTotal, label: t("elev.hero.today.stat.story") },
+          ]}
+          testId="today-hero"
+        />
+      ) : (
+        <HubHero
+          tone="lav"
+          icon={NotebookPen}
+          eyebrow={t("elev.hero.today.capture.eyebrow")}
+          title={t("elev.hero.today.capture.title")}
+          subtitle={t(pulses.today.key, pulses.today.params)}
+          cta={{
+            label: t("elev.hero.today.capture.cta"),
+            onClick: () => setActiveTab("journal"),
+            icon: <Icon name="edit_note" size={18} />,
+            testId: "today-hero-cta",
+          }}
+          stats={[
+            { value: capturedToday, label: t("elev.hero.today.stat.captured") },
+            { value: devStats.week, label: t("elev.hero.today.stat.week") },
+            { value: momentsTotal, label: t("elev.hero.today.stat.story") },
+          ]}
+          testId="today-hero"
+        />
+      )}
+
       {/* ── R3 — Milestone pride moment: a calm celebration on a new crossing
              (renders nothing when there is none) ── */}
       <PrideMomentCard />
+
+      {/* ── E4 zone 2 — Coach card (moved up from the old Row-2 grid, unchanged) ── */}
+      <section
+        onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
+        className="rounded-[22px] p-5 flex flex-col transition motion-safe:hover:-translate-y-0.5 cursor-pointer"
+        style={{ background: "var(--arbor-coach-grad)", boxShadow: "var(--shadow-sm)" }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-[16px] font-extrabold" style={{ background: "var(--arbor-avatar-grad)", color: "#fff" }}>
+            {firstName.charAt(0)}
+          </div>
+          <div>
+            <div className="text-[14px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.title")}</div>
+            <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-success)" }} /> {t("coach.online")}
+            </div>
+          </div>
+        </div>
+        <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "var(--arbor-ink-soft)" }}>
+          {t("coach.ready", { name: firstName })}
+        </div>
+        <button className="mt-4 bg-white text-center rounded-xl py-3 min-h-[44px] text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
+          <Icon name="forum" size={18} /> {t("today.coach.reply")}
+        </button>
+      </section>
+
+      {/* ── E4 zone 3 — "The whole picture": live mini-cards, one per remaining
+             hub, each carrying its usePulses() line (counts / plain activity
+             facts only) and deep-linking into the hub. ── */}
+      <section aria-labelledby="ov-family-heading">
+        <div className="mb-3">
+          <h2 id="ov-family-heading" className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>
+            {t("elev.today.family.title")}
+          </h2>
+          <p className="text-[12px] mt-0.5" style={{ color: MUTED }}>{t("elev.today.family.sub")}</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {familyCards.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={c.onOpen}
+              className="flex items-center gap-3 rounded-[22px] p-4 text-start transition motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-[0.99]"
+              style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)", minHeight: 72 }}
+            >
+              <span className="w-11 h-11 rounded-xl flex items-center justify-center flex-none" style={{ background: PASTEL[c.tone].soft, color: PASTEL[c.tone].ink }}>
+                <Icon name={c.glyph} size={22} />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[14px] font-extrabold" style={{ color: INK }}>{c.label}</span>
+                <span className="block text-[12px] mt-0.5 leading-snug truncate" style={{ color: MUTED }}>{c.pulse}</span>
+              </span>
+              <Icon name="chevron_right" size={18} className="flex-none rtl:-scale-x-100" style={{ color: PASTEL[c.tone].ink }} />
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* ── PROTOTYPE GRID LAYOUT: Row 1 (2-col, 1.6fr + 1fr) ─────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">
@@ -456,10 +613,9 @@ export default function OverviewTab() {
         })()}
       </div>
 
-      {/* ── PROTOTYPE GRID LAYOUT: Row 2 (3-col, 1fr + 1fr + 1fr) ─────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* ── Kid activity sync card (spans 2 cols) ─────────────────────────── */}
-        <section className="lg:col-span-2 rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
+      {/* ── Kid activity sync card (full width — its old Row-2 neighbor, the
+             coach card, now renders in E4 zone 2 above) ─────────────────────── */}
+        <section className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
           <div className="flex items-center gap-2 mb-4">
             <Icon name="sync_alt" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} />
             <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.reco.play.title")}</span>
@@ -531,32 +687,6 @@ export default function OverviewTab() {
             ))}
           </div>
         </section>
-
-        {/* ── Coach card (1 col) ──────────────────────────────────────────── */}
-        <section
-          onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
-          className="rounded-[22px] p-5 flex flex-col transition hover:-translate-y-0.5 cursor-pointer"
-          style={{ background: "var(--arbor-coach-grad)", boxShadow: "var(--shadow-sm)" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-[16px] font-extrabold" style={{ background: "var(--arbor-avatar-grad)", color: "#fff" }}>
-              {firstName.charAt(0)}
-            </div>
-            <div>
-              <div className="text-[14px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.title")}</div>
-              <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-success)" }} /> {t("coach.online")}
-              </div>
-            </div>
-          </div>
-          <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "var(--arbor-ink-soft)" }}>
-            {t("coach.ready", { name: firstName })}
-          </div>
-          <button className="mt-4 bg-white text-center rounded-xl py-3 text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
-            <Icon name="forum" size={18} /> {t("today.coach.reply")}
-          </button>
-        </section>
-      </div>
 
       {/* ── JITAI nudge — one well-timed nudge off the child's rhythm ──────── */}
       {nudge && (

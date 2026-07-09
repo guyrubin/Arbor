@@ -40,7 +40,7 @@ export default function FamilyFormation() {
   const remove = (v: string) => setValues((p) => p.filter((x) => x !== v));
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader title={t("sec.family.title")} subtitle={t("sec.family.sub")} />
 
       {/* Family Charter — the real, editable tool (names the family's aim) */}

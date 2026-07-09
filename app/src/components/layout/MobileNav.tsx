@@ -4,6 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
 import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
+import { usePulses, type HubId } from "../../lib/pulse";
 
 /**
  * Bottom tab bar shown on mobile (< md). The UC-1 IA has EIGHT categories, which
@@ -15,6 +16,7 @@ const PRIMARY_COUNT = 4;
 export default function MobileNav() {
   const { activeTab, setActiveTab } = useArbor();
   const { t } = useLanguage();
+  const pulses = usePulses(); // E1 living pulses — shown on the More-sheet rows
   const activeSectionId = sectionForTab(activeTab).id;
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -93,16 +95,31 @@ export default function MobileNav() {
             <div className="grid grid-cols-2 gap-2">
               {overflow.map((sec) => {
                 const on = sec.id === activeSectionId;
+                // E1 living pulse — informational line under the label (counts/
+                // activity only; firewall lives in usePulses). Hidden when empty.
+                const pulse = pulses[sec.id as HubId];
+                const pulseText = pulse ? t(pulse.key, pulse.params) : "";
                 return (
                   <button
                     key={sec.id}
                     onClick={() => go(sec.id)}
-                    className="flex items-center gap-2.5 px-3 py-3 rounded-2xl text-start text-sm font-bold transition"
+                    className="flex items-center gap-2.5 px-3 py-3 rounded-2xl text-start text-sm font-bold transition min-w-0"
                     style={on
                       ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
                       : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                   >
-                    <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} /> {t("nav.cat." + sec.id)}
+                    <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} />
+                    <span className="min-w-0 flex flex-col">
+                      <span className="truncate">{t("nav.cat." + sec.id)}</span>
+                      {pulseText ? (
+                        <span
+                          className="truncate text-[11px] leading-snug"
+                          style={{ color: "var(--arbor-muted)", fontWeight: 500 }}
+                        >
+                          {pulseText}
+                        </span>
+                      ) : null}
+                    </span>
                   </button>
                 );
               })}

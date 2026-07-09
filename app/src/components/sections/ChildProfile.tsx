@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
+import { Album } from "lucide-react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { PageHeader, SectionCard, Chip, IconBadge, InitialsTile, Badge, cardCls, PASTEL, type PastelKey } from "../ui/kit";
+import { HubHero } from "../ui/HubHero";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { api } from "../../lib/api";
 import type { ShareGrant } from "../../types";
@@ -21,7 +23,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export default function ChildProfile() {
   const {
     childProfile, milestones, milestonesPercent, checkedMilestones, totalMilestones,
-    behaviorLogs, actionPlans, approvedMemoryItems, pendingMemoryItems, setActiveTab,
+    behaviorLogs, playLogs, actionPlans, approvedMemoryItems, pendingMemoryItems, setActiveTab,
   } = useArbor();
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -114,7 +116,32 @@ export default function ChildProfile() {
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[1180px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
+      {/* ── E2 hub hero — the family-album job sentence + one CTA (add a member,
+          via the SAME Trusted Sharing route the Family Circle card uses) + a
+          living count trio. FIREWALL: counts only — the child in this profile,
+          people in the circle (account holder + live ShareGrants), and total
+          captured moments (behavior + play logs, the album motif). ─────────── */}
+      <HubHero
+        tone="yellow"
+        icon={Album}
+        eyebrow={t("elev.hero.profile.eyebrow")}
+        title={t("elev.hero.profile.title")}
+        subtitle={t("elev.hero.profile.sub", { name: first })}
+        cta={{
+          label: t("elev.hero.profile.cta"),
+          icon: <Icon name="person_add" size={16} />,
+          onClick: () => setActiveTab("sharing"),
+          testId: "profile-hero-cta",
+        }}
+        stats={[
+          { value: 1, label: t("elev.stat.children") },
+          { value: shares.length + 1, label: t("elev.stat.family") },
+          { value: behaviorLogs.length + playLogs.length, label: t("elev.stat.moments") },
+        ]}
+        testId="profile-hub-hero"
+      />
+
       {/* ── Identity masthead (UC-1) — who/identity on the left, recent activity on
           the right — sits ABOVE the full developmental narrative below. Additive:
           every chapter is preserved beneath it. ─────────────────────────────── */}

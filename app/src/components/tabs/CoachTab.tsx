@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
+import { MessagesSquare } from "lucide-react";
 // Directional glyphs are RTL-aware: the caller already picks the start/end
 // variant by uiLang (he ⇒ left, otherwise right), so the Material Symbols
 // <Icon> stays correct in both directions. All icons use the shared <Icon>
@@ -18,6 +19,8 @@ import { TrustSafetyBar, cardCls } from "../ui/kit";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import { ShareButton } from "../ui/ShareButton";
+import { HubHero } from "../ui/HubHero";
+import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
 import { api, streamVoice, getAiLanguage } from "../../lib/api";
 import type { BehaviorContext } from "../../types";
@@ -114,6 +117,9 @@ export default function CoachTab() {
 
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
+
+  // E2 hero CTA target — focusing the input also scrolls it into view.
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   // Realtime voice coach: prefers Gemini Live (true bidirectional audio) when the
   // server reports it's available, and falls back to a hands-free browser loop —
@@ -256,22 +262,37 @@ export default function CoachTab() {
     <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       {/* Header section with lens selector */}
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl md:text-[2rem] leading-[1.12]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("nav.tab.coach")}</h2>
-            <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
-            <p className="text-xs mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("coach.languageManaged")}</p>
-          </div>
+        {/* E2 hub hero (slim: no stat trio) — the job sentence + one CTA that
+            drops the parent straight into the input. Everything below stays. */}
+        <div>
+          <HubHero
+            tone="mint"
+            icon={MessagesSquare}
+            eyebrow={t("elev.hero.ask.eyebrow")}
+            title={t("elev.hero.ask.title")}
+            subtitle={t("coach.subtitle")}
+            cta={{
+              label: t("elev.hero.ask.cta"),
+              icon: <Icon name="chat" size={16} />,
+              onClick: () => chatInputRef.current?.focus(),
+              testId: "ask-hero-cta",
+            }}
+            testId="ask-hub-hero"
+          />
+          {/* -mt-4 tucks the note under the hero's built-in mb-6. */}
+          <p className="text-xs max-w-2xl -mt-4" style={{ color: "var(--arbor-muted)" }}>{t("coach.languageManaged")}</p>
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.lens")}</span>
+            {/* E8: the research-anchored trust chip lives beside the lens row. */}
+            <EvidenceChip />
             {/* IA: the inline picker selects between lenses; the library browses/learns them. */}
             <button
               type="button"
               onClick={() => setActiveTab("scholar")}
-              className="inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+              className="ms-auto inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
               style={{ color: "var(--arbor-muted)" }}
             >
               <span>{t("coach.lens.browseAll")}</span>
@@ -663,6 +684,7 @@ export default function CoachTab() {
             {/* Capsule input + circular send. The send arrow is logical (Arrow
                 flips Left/Right by uiLang) so it never points backwards in RTL. */}
             <input
+              ref={chatInputRef}
               type="text"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}

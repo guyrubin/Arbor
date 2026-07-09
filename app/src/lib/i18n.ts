@@ -7,6 +7,8 @@
  * NOTE: Hebrew strings are a solid first draft; a native review is recommended
  * before wide release (child-health product).
  */
+import { elevationEn, elevationHe } from "./i18nElevation";
+
 export type UiLang = "en" | "he";
 
 type Dict = Record<string, string>;
@@ -3335,7 +3337,13 @@ export const he: Dict = {
   "handoff.delete": "מחיקה",
 };
 
-const DICTS: Record<UiLang, Dict> = { en, he };
+// Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and
+// are spread UNDER the base dictionaries — existing keys always win, elevation
+// modules must use new namespaced "elev.*" keys.
+const DICTS: Record<UiLang, Dict> = {
+  en: { ...elevationEn, ...en },
+  he: { ...elevationHe, ...he },
+};
 
 export function translate(lang: UiLang, key: string, vars?: Record<string, string | number>): string {
   let s = DICTS[lang][key] ?? DICTS.en[key] ?? key;

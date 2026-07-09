@@ -15,7 +15,7 @@ export default function ChildMemory() {
   const first = childProfile.name.split(" ")[0];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[920px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[920px]">
       <PageHeader eyebrow="My Child" title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />
 
       <TrustSafetyBar note="You control everything here. Nothing is shared without your approval." />

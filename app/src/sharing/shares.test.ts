@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { isShareActive, expiryFromDuration, buildGrant, LocalShareStore } from "./shares.js";
 
-const NOW = new Date("2026-06-06T12:00:00Z").getTime();
+// Time-relative, not pinned: LocalShareStore filters with real Date.now(), so a
+// pinned NOW turns "live" grants into expired ones once the wall clock passes
+// NOW+30d (this test time-bombed on 2026-07-06).
+const NOW = Date.now();
 
 describe("server-enforced sharing expiry", () => {
   it("isShareActive: live grant is active", () => {

@@ -1,7 +1,11 @@
-import React, { lazy, useState, useEffect, useCallback } from "react";
-import type { LucideIcon } from "lucide-react";
+import React, { lazy, useState, useEffect, useCallback, useMemo } from "react";
+import { Sprout, type LucideIcon } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
+import { useArbor } from "../../context/ArborContext";
+import { HubHero } from "../ui/HubHero";
+import { EvidenceChip } from "../ui/EvidenceChip";
+import { countSince, WEEK_MS } from "../../lib/pulse";
 import HubTabs from "../ui/HubTabs";
 import DevScoreCard from "../sections/DevScoreCard";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
@@ -59,7 +63,20 @@ function PushOptInToggle({
 
 export default function DevelopmentTab() {
   const { t } = useLanguage();
+  const { milestones, behaviorLogs, playLogs } = useArbor();
   const [checkOpen, setCheckOpen] = useState(false);
+
+  // E2 hero stat trio — CLINICAL FIREWALL: counts and plain activity facts
+  // only ("x of y noticed", active-domain count, moments-this-week count).
+  // Never percentages, verdicts, or trend deltas on this surface.
+  const heroStats = useMemo(() => {
+    const noticed = milestones.filter((m) => m.checked).length;
+    const domainsActive = new Set(milestones.filter((m) => m.checked).map((m) => m.domain)).size;
+    const nowMs = Date.now();
+    const weekAgo = nowMs - WEEK_MS;
+    const momentsWeek = countSince(behaviorLogs, weekAgo, nowMs) + countSince(playLogs, weekAgo, nowMs);
+    return { noticed, total: milestones.length, domainsActive, momentsWeek };
+  }, [milestones, behaviorLogs, playLogs]);
 
   // C2 — push opt-in state. The toggle is hidden when pushCapable() is false
   // (no VITE_FIREBASE_VAPID_KEY in the build).
@@ -90,6 +107,34 @@ export default function DevelopmentTab() {
 
   return (
     <div className="space-y-5">
+      {/* E2 — Growth hub hero: eyebrow → job sentence → ONE CTA (quick check)
+          → count trio. Sits ABOVE the existing cards; ring/domain internals
+          below are untouched. E8: EvidenceChip on the hero's meta row. */}
+      <div>
+        <HubHero
+          tone="mint"
+          icon={Sprout}
+          eyebrow={t("elev.hero.growth.eyebrow")}
+          title={t("elev.hero.growth.title")}
+          subtitle={t("elev.hero.growth.sub")}
+          cta={{
+            label: t("elev.hero.growth.cta"),
+            onClick: () => setCheckOpen(true),
+            icon: <Icon name="assignment_turned_in" size={16} />,
+            testId: "growth-hero-cta",
+          }}
+          stats={[
+            { value: heroStats.noticed, label: t("elev.hero.growth.stat.noticed", { total: heroStats.total }) },
+            { value: heroStats.domainsActive, label: t("elev.hero.growth.stat.domains") },
+            { value: heroStats.momentsWeek, label: t("elev.hero.growth.stat.week") },
+          ]}
+          testId="growth-hub-hero"
+        />
+        {/* Meta row — pulled up under the hero (hero carries its own mb-6). */}
+        <div className="-mt-3 flex items-center px-1">
+          <EvidenceChip />
+        </div>
+      </div>
       <DevScoreCard />
       {/* C1 — Arbor Noticed: weekly in-app monitoring card, grounded in the
           child's own logged milestones and moments. Non-diagnostic. */}

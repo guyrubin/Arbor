@@ -32,7 +32,7 @@ export default function Appointments() {
   const addQ = () => { if (q.trim()) { void questionsCol.upsert({ id: `q${Date.now()}`, text: q.trim() }); setQ(""); } };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-[980px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[980px]">
       <PageHeader
         eyebrow="Care Network"
         title={t("sec.appt.title")}

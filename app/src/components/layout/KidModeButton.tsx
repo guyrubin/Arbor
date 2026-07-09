@@ -17,11 +17,15 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
   const { openKidMode } = useKidMode();
   const { t } = useLanguage();
 
+  // E10: the parent-lock safety line — ships true because kid-mode exit is
+  // gated by the parent challenge (hold → question/PIN → exit).
+  const lockedLine = t("elev.kidmode.locked");
+
   if (compact) {
     return (
       <button
         onClick={openKidMode}
-        aria-label={t("aria.kidMode")}
+        aria-label={`${t("aria.kidMode")} — ${lockedLine}`}
         title="Kid Mode — hand the device to your child"
         className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
         style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
@@ -34,15 +38,14 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
   return (
     <button
       onClick={openKidMode}
-      aria-label={t("aria.launchKidMode")}
+      aria-label={`${t("aria.launchKidMode")} — ${lockedLine}`}
       title="Kid Mode — hand the device to your child"
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: "6px",
         paddingInline: "14px",
-        paddingBlock: "0",
-        height: "40px",
+        paddingBlock: "4px",
         minHeight: "44px",
         minWidth: "44px",
         borderRadius: "var(--r)",
@@ -54,10 +57,20 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
         cursor: "pointer",
         whiteSpace: "nowrap",
         transition: "background 120ms",
+        textAlign: "start",
       }}
     >
       <Icon name="sports_esports" size={16} />
-      <span>Kid Mode</span>
+      <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
+        <span>Kid Mode</span>
+        {/* Safety line — visible on wide topbars; always in the aria-label. */}
+        <span
+          className="hidden xl:block"
+          style={{ fontSize: "var(--t-xs)", fontWeight: 600, opacity: 0.8 }}
+        >
+          {lockedLine}
+        </span>
+      </span>
     </button>
   );
 }

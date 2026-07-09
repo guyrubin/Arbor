@@ -24,6 +24,8 @@ import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
 import { KidModeProvider } from "../kidmode/KidModeContext";
 import KidModeOverlay from "../kidmode/KidModeOverlay";
+// E11: first-steps rail for new accounts (parent register only, dismissible)
+import FirstStepsRail from "../onboarding/FirstStepsRail";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -326,6 +328,10 @@ export default function Shell() {
               </button>
             </div>
           )}
+
+          {/* E11: first-steps rail — above the tab content, parent register only
+              (inside .arbor-parent <main>); self-hides when done/dismissed. */}
+          <FirstStepsRail />
 
           <Suspense fallback={<TabSkeleton />}>
             <AnimatePresence mode="wait">
