@@ -4,6 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { HubHero } from "../ui/HubHero";
+import { SpineRibbon } from "../ui/SpineRibbon";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { countSince, WEEK_MS } from "../../lib/pulse";
 import HubTabs from "../ui/HubTabs";
@@ -63,7 +64,7 @@ function PushOptInToggle({
 
 export default function DevelopmentTab() {
   const { t } = useLanguage();
-  const { milestones, behaviorLogs, playLogs } = useArbor();
+  const { milestones, behaviorLogs, playLogs, setActiveTab } = useArbor();
   const [checkOpen, setCheckOpen] = useState(false);
 
   // E2 hero stat trio — CLINICAL FIREWALL: counts and plain activity facts
@@ -159,6 +160,15 @@ export default function DevelopmentTab() {
         onToggle={handlePushToggle}
         label={t("push.optin.label")}
         sublabel={t("push.optin.sublabel")}
+      />
+      {/* E3 — spine ribbon: what a noticed skill feeds (one direction:
+          → Academy). Sits by the milestone-checklist facets below. */}
+      <SpineRibbon
+        tone="mint"
+        icon="school"
+        text={t("elev.spine.growth")}
+        onFollow={() => setActiveTab("masterclasses")}
+        testId="growth-spine-ribbon"
       />
       <HubTabs
         ariaLabel="Development facets"

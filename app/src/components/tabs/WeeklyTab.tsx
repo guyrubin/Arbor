@@ -9,6 +9,7 @@ import { scholarsInfo } from "../../initialData";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { api, getAiLanguage, type WeeklyDigest } from "../../lib/api";
 import { PageHeader, SectionCard, cardCls, IconBadge } from "../ui/kit";
+import { HeroAvatar } from "../ui/HeroAvatar";
 
 const DAY = 86_400_000;
 
@@ -133,21 +134,33 @@ export default function WeeklyTab() {
       <button onClick={() => setActiveTab("timeline")} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
         <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" /> {t("wk.backStory", { first })}
       </button>
-      <PageHeader
-        eyebrow="My Child"
-        title={t("wk.title", { first })}
-        subtitle={selected ? `${selected.weekLabel} · ${selected.id}` : `${currentLabel} · ${currentId}`}
-        action={
-          <button
-            onClick={() => void generate()}
-            disabled={generating}
-            className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
-            style={{ background: "var(--arbor-gradient-primary)" }}
-          >
-            {generating ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>) : (<><Icon name="auto_awesome" size={16} /> {reports.some((r) => r.id === currentId) ? t("wk.regenerate") : t("wk.generate")}</>)}
-          </button>
-        }
-      />
+      {/* E6a — the child fronts their own week: small portrait through the ONE
+          shared HeroAvatar engine (identity resolution + Sprout fallback live
+          inside the engine; we never re-composite). Parent register: no idle
+          bob (animate={false}), calm mascot mood, and `decorative` because the
+          name is already spoken by the "{first}'s week" title right beside it. */}
+      <div className="flex items-start gap-4">
+        <HeroAvatar size={48} mood="calm" animate={false} decorative className="mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-extrabold uppercase mb-1" style={{ color: "var(--arbor-muted)", letterSpacing: "0.14em" }}>
+            {t("elev.personal.weekly.eyebrow")}
+          </p>
+          <PageHeader
+            title={t("wk.title", { first })}
+            subtitle={selected ? `${selected.weekLabel} · ${selected.id}` : `${currentLabel} · ${currentId}`}
+            action={
+              <button
+                onClick={() => void generate()}
+                disabled={generating}
+                className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
+                style={{ background: "var(--arbor-gradient-primary)" }}
+              >
+                {generating ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>) : (<><Icon name="auto_awesome" size={16} /> {reports.some((r) => r.id === currentId) ? t("wk.regenerate") : t("wk.generate")}</>)}
+              </button>
+            }
+          />
+        </div>
+      </div>
 
       {/* History strip */}
       {reports.length > 0 && (

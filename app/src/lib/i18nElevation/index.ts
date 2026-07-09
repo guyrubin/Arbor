@@ -18,22 +18,28 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 // ── Module imports: ONE line per module, ALPHABETICAL by module name. ─────────
+import * as agechips from "./agechips";
 import * as careprofile from "./careprofile";
 import * as foundation from "./foundation";
 import * as gate from "./gate";
 import * as growth from "./growth";
 import * as journal from "./journal";
+import * as personal from "./personal";
 import * as sidebar from "./sidebar";
+import * as spine from "./spine";
 import * as today from "./today";
 
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
 const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, string> }> = [
+  agechips,
   careprofile,
   foundation,
   gate,
   growth,
   journal,
+  personal,
   sidebar,
+  spine,
   today,
 ];
 

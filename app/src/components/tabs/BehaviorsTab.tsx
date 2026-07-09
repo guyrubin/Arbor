@@ -9,6 +9,7 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Skeleton } from "../ui/Skeleton";
 import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
 import { HubHero } from "../ui/HubHero";
+import { SpineRibbon } from "../ui/SpineRibbon";
 import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
 import { speechSupported, startDictation } from "../../lib/speech";
@@ -329,7 +330,7 @@ export default function BehaviorsTab() {
       />
 
       {/* Row 1 — QuickLog tiles (full width under the hero) */}
-      <div className="grid grid-cols-1">
+      <div className="grid grid-cols-1 gap-3">
         {/* QuickLog mode tiles — Voice / Photo / Text */}
         <div className={`${cardCls} p-5 flex flex-col`}>
           <span className="text-xs font-extrabold uppercase tracking-wider mb-3" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.logMoment")}</span>
@@ -352,6 +353,17 @@ export default function BehaviorsTab() {
             })}
           </div>
         </div>
+
+        {/* E3 — spine ribbon: what a logged moment feeds (one direction:
+            → Development Map). Sits by the log action; the richer right-rail
+            DevMap card below stays untouched (zero regression). */}
+        <SpineRibbon
+          tone="coral"
+          icon="account_tree"
+          text={t("elev.spine.behaviors")}
+          onFollow={() => setActiveTab("development")}
+          testId="behaviors-spine-ribbon"
+        />
       </div>
 
       {/* Row 2 — events main column + right rail (patterns + DevMap link) */}

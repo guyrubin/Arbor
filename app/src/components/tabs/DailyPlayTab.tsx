@@ -11,7 +11,7 @@ import GoalBuilderModal from "../practice/GoalBuilderModal";
 import SessionLengthChips from "../practice/SessionLengthChips";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { recommendCourse, READINESS_COURSES, localizeCourse } from "../../playbank/courses";
-import { type PlayActivity, playDomainLabel } from "../../playbank/content";
+import { type PlayActivity, bandForAge, playDomainLabel } from "../../playbank/content";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { buildDailyPlan, buildGoalObservation, estimateLoggedDayCount, type DailyPlan } from "../../practice/dailyPlan";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -20,6 +20,22 @@ import type { GoalObservation } from "../../practice/dailyPlan";
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
    matched to their band and recently-logged concerns. The single hero pick also
    appears on Today; here the parent can browse a few ideas for the day. */
+
+/* E6 (age-tuning visibility): every card below is already selected against the
+   child's age band — this chip just RENDERS that existing fact ("for age 5").
+   Clinical firewall: the age is a plain fact, never a verdict or claim.
+   Styling mirrors the existing duration badge chip on DailyPlayCard. */
+function AgeChip({ age }: { age: number }) {
+  const { t } = useLanguage();
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold"
+      style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+    >
+      {t("elev.agechips.card", { age })}
+    </span>
+  );
+}
 
 export default function DailyPlayTab() {
   const { behaviorLogs, childProfile, setChatInput, setActiveTab, logPlayCompletion, updateChild } = useArbor();
@@ -53,6 +69,11 @@ export default function DailyPlayTab() {
     setSessionLength(v);
     try { localStorage.setItem(`arbor.play.sessionLength.${childProfile.id}`, v); } catch { /* ignore */ }
   };
+
+  // E6: the child's band — the SAME derivation selectDailyPlay applies to
+  // childProfile.age; used only to gate the age chip on course cards so the
+  // chip is never rendered on a course outside the child's band (truthful fact).
+  const childBand = useMemo(() => bandForAge(childProfile.age), [childProfile.age]);
 
   const concernDomains = useMemo(
     () => concernDomainsFromLogs(
@@ -245,6 +266,8 @@ export default function DailyPlayTab() {
           No new tab, no new sidebar item, no new tab registration.
           Post-activity observation writes to goalObservations sub-collection (COPPA-reviewed path). */}
       <div className="max-w-[640px]">
+        {/* E6: plan comes from the band-matched picks — render the age fact. */}
+        {dailyPlan && <div className="mb-1.5"><AgeChip age={childProfile.age} /></div>}
         <DailyPlanCard
           plan={dailyPlan}
           noGoal={activeGoals.length === 0}
@@ -260,6 +283,8 @@ export default function DailyPlayTab() {
       </div>
 
       <div className="max-w-[640px]">
+        {/* E6: shown only when the course's bands include this child's band. */}
+        {course.bands.includes(childBand) && <div className="mb-1.5"><AgeChip age={childProfile.age} /></div>}
         <CourseCard
           course={course}
           childName={firstName}
@@ -294,6 +319,8 @@ export default function DailyPlayTab() {
             );
           })}
         </div>
+        {/* E6: readiness tracks are parent-chosen — chip only when band-true. */}
+        {readinessCourse.bands.includes(childBand) && <div className="mb-1.5"><AgeChip age={childProfile.age} /></div>}
         <CourseCard
           course={readinessCourse}
           childName={firstName}
@@ -314,21 +341,24 @@ export default function DailyPlayTab() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {picks.map((p) => (
-          <DailyPlayCard
-            key={p.activity.id}
-            pick={p}
-            childName={firstName}
-            done={doneIds.includes(p.activity.id)}
-            onDid={markDone}
-            onCoach={coach}
-            concernLabel={p.reason === "concern-match" ? playDomainLabel(p.activity.domain, uiLang) : undefined}
-            goalLabel={
-              p.reason === "goal-match"
-                ? activeGoals.find((g) => g.domainId === p.activity.domain)?.label
-                : undefined
-            }
-            sessionLength={sessionLength}
-          />
+          <div key={p.activity.id}>
+            {/* E6: each pick was selected with childProfile.age — render the fact. */}
+            <div className="mb-1.5"><AgeChip age={childProfile.age} /></div>
+            <DailyPlayCard
+              pick={p}
+              childName={firstName}
+              done={doneIds.includes(p.activity.id)}
+              onDid={markDone}
+              onCoach={coach}
+              concernLabel={p.reason === "concern-match" ? playDomainLabel(p.activity.domain, uiLang) : undefined}
+              goalLabel={
+                p.reason === "goal-match"
+                  ? activeGoals.find((g) => g.domainId === p.activity.domain)?.label
+                  : undefined
+              }
+              sessionLength={sessionLength}
+            />
+          </div>
         ))}
       </div>
 

@@ -7,6 +7,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { buildTimeline, type SignalKind, type TimelineSignal } from "../../lib/signalTimeline";
 import { PASTEL, IconBadge, Chip, cardCls, domainVisual } from "../ui/kit";
 import { HubHero } from "../ui/HubHero";
+import { SpineRibbon } from "../ui/SpineRibbon";
 import { WEEK_MS, tsMs } from "../../lib/pulse";
 import { dailyPromptKeys } from "../../lib/promptBank";
 import { weekStartKey } from "../../lib/behaviorUtils";
@@ -312,6 +313,15 @@ export default function JournalTab() {
           ))}
         </div>
       </div>
+
+      {/* E3 — spine ribbon: what a saved moment feeds (one direction: → Story). */}
+      <SpineRibbon
+        tone="lav"
+        icon="auto_stories"
+        text={t("elev.spine.journal", { name: firstName })}
+        onFollow={() => setActiveTab("timeline")}
+        testId="journal-spine-ribbon"
+      />
 
       {/* Flat single-column feed */}
       {signals.length === 0 ? (

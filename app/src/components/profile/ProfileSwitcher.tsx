@@ -38,6 +38,12 @@ export default function ProfileSwitcher() {
         </button>
       </div>
 
+      {/* E6 (age-tuning visibility): quiet factual line — everything shown is
+          selected for this child's age. A fact, never a clinical claim. */}
+      <p className="mt-1.5 ps-1 text-[11px] text-start" style={{ color: "var(--arbor-faint)" }}>
+        {t("elev.agechips.switcher", { age: activeChild.age })}
+      </p>
+
       <AnimatePresence>
         {open && (
           <>

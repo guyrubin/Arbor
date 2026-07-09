@@ -153,7 +153,9 @@ export default function ChildProfile() {
             <div className="h-[90px]" style={{ background: "var(--arbor-gradient-primary)" }} aria-hidden />
             <div className="px-5 pb-5">
               <div className="-mt-[38px] mb-3">
-                <HeroAvatar size={72} mood="wave" ring />
+                {/* `decorative`: the child's name is the h2 right below, so the
+                    portrait must not double-announce (engine-documented pattern). */}
+                <HeroAvatar size={72} mood="wave" ring decorative />
               </div>
               <h2 className="text-xl font-extrabold leading-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                 {childProfile.name}
