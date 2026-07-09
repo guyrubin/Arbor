@@ -1,6 +1,6 @@
 # Arbor Elevation Wave — clarity by raising everything, not by hiding anything
 
-**Version:** 2.0 (v1 "spotlight 3 hubs" approach REJECTED by Guy — too basic; nothing gets demoted) · **Date:** 2026-07-09 · **Status:** PLAN
+**Version:** 2.0 (v1 "spotlight 3 hubs" approach REJECTED by Guy — too basic; nothing gets demoted) · **Date:** 2026-07-09 · **Status:** EXECUTED to production (Rounds 1–3, 2026-07-09) — E0–E11 live; E8 purchase-CTA (billing gate) + E12 (MKT) remain
 **Source:** Maytal Doron feedback ×2 (own review + blind test, 2026-07-09) · **Builds on:** ARBOR-IA-WIREFRAME-MASTERPLAN-2026-07-03.md (live at `f068133`) + the 6ddac523 prototype block grammar.
 
 ## 1. Diagnosis (unchanged) and the corrected philosophy

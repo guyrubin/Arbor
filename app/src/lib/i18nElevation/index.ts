@@ -20,6 +20,7 @@
 // ── Module imports: ONE line per module, ALPHABETICAL by module name. ─────────
 import * as agechips from "./agechips";
 import * as careprofile from "./careprofile";
+import * as celebrate from "./celebrate";
 import * as foundation from "./foundation";
 import * as gate from "./gate";
 import * as growth from "./growth";
@@ -28,11 +29,13 @@ import * as personal from "./personal";
 import * as sidebar from "./sidebar";
 import * as spine from "./spine";
 import * as today from "./today";
+import * as wow from "./wow";
 
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
 const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, string> }> = [
   agechips,
   careprofile,
+  celebrate,
   foundation,
   gate,
   growth,
@@ -41,6 +44,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   sidebar,
   spine,
   today,
+  wow,
 ];
 
 /** Merged Elevation dictionaries, consumed once by src/lib/i18n.ts. */

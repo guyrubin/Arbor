@@ -26,6 +26,10 @@ import { KidModeProvider } from "../kidmode/KidModeContext";
 import KidModeOverlay from "../kidmode/KidModeOverlay";
 // E11: first-steps rail for new accounts (parent register only, dismissible)
 import FirstStepsRail from "../onboarding/FirstStepsRail";
+// E0: hero-comic wow onboarding — the front door for brand-new accounts only
+// (children.length === 0 or localStorage "arbor.wowPending"); self-gating,
+// existing accounts are marked seen on first render and never see it.
+import WowOnboarding from "../onboarding/WowOnboarding";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -362,6 +366,10 @@ export default function Shell() {
           Desktop-only entry point (Topbar button is hidden md:flex). The overlay
           itself is responsive; MobileNav is byte-unchanged. */}
       <KidModeOverlay />
+      {/* E0: full-screen wow-onboarding overlay (z-45 — under the reused
+          Modal/AvatarCreator it drives, over the app chrome). Renders null for
+          every account that has seen it or already has children. */}
+      <WowOnboarding />
     </div>
     </KidModeProvider>
   );
