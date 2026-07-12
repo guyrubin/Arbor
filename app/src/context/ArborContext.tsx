@@ -184,7 +184,10 @@ function useArborState() {
     try { if (window.location.hash.replace(/^#\/?/, "") !== t) window.location.hash = `/${t}`; } catch { /* noop */ }
     try { track("view_tab", { tab: t }); } catch { /* noop */ }
   };
-  const [showAiRail, setShowAiRail] = useState<boolean>(() => readLS("arbor.aiRail") !== "false");
+  // UC-wireframe: the right-hand AI "how Arbor helps" rail is a third column the
+  // wireframe does not have. Default it OFF (opt-in via the topbar toggle) so the
+  // content column breathes; the parent's choice still persists in localStorage.
+  const [showAiRail, setShowAiRail] = useState<boolean>(() => readLS("arbor.aiRail") === "true");
 
   // App Core States — persisted per child (Firestore when authed, localStorage in sandbox)
   const logsCol = useChildCollection<BehaviorLog>(childProfile.id, "behaviorLogs", {

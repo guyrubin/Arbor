@@ -211,8 +211,12 @@ export default function Shell() {
             <span className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</span>
           </div>
 
-          {/* Top workspace accessories header row */}
+          {/* Mobile-only workspace accessories strip. On md+ the topbar is the
+              self-sufficient control band (search · Kid Mode · rail toggle · bell ·
+              child switcher), so this row would duplicate it — it is hidden there.
+              On mobile (topbar is md:flex, hidden) this remains the control surface. */}
           <ChildContextHeader
+            className="md:hidden"
             identity={<span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
               <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
               <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {t("top.age")} {childProfile.age}</strong>
@@ -220,18 +224,10 @@ export default function Shell() {
             </span>}
             actions={<div className="flex w-full sm:w-auto items-center gap-2 overflow-x-auto no-scrollbar">
               <AskArborButton compact />
-              {/* UC-4: Log a Moment — the primary capture quick-action (replaces the
-                  two category-duplicating TOOLS drawer entries). Opens the Behaviors
-                  hub, whose in-hub composer is the canonical capture surface. */}
-              <button
-                onClick={() => { void selectionHaptic(); setActiveTab("behaviors"); }}
-                aria-label={t("top.logMoment")}
-                title={t("top.logMoment")}
-                className="flex flex-shrink-0 items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
-                style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
-              >
-                <Icon name="edit_note" size={16} /> <span className="hidden sm:inline">{t("top.logMoment")}</span>
-              </button>
+              {/* Capture ("log a moment") is NOT a global chrome button — it has
+                  two canonical homes: the Behaviors hub composer and the Journal
+                  compose card, both one tap away in the bottom nav. Duplicating it
+                  here put the same action on every screen; removed. */}
               {/* UC-1 + main consolidation: the whole-app language switch is canonical
                   inside Settings ONLY (see languageSettingsCanonical guard test). On
                   desktop it lives in the sidebar account-row popover; on mobile the
@@ -247,15 +243,6 @@ export default function Shell() {
               >
                 <Icon name="search" size={16} /> <span className="hidden sm:inline">{t("top.search")}</span>
               </button>
-              {!showAiRail && (
-                <button
-                  onClick={() => setShowAiRail(true)}
-                  className="hidden xl:flex flex-shrink-0 items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
-                  style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
-                >
-                  <Icon name="verified_user" size={16} /> {t("top.howHelps")}
-                </button>
-              )}
               <KidModeButton compact />
               <button
                 onClick={() => setSettingsOpen(true)}

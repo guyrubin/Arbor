@@ -231,15 +231,21 @@ export default function BehaviorsTab() {
     return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
   }, [filtered]);
 
-  // E2 hero stat trio — THIS-WEEK FLAT COUNTS ONLY (clinical firewall): logged,
-  // resolved and still-open moments in the last 7 days. The prior avg-intensity
-  // figure is out (an intensity average on a child metric reads as a trend/
-  // verdict); per-log intensity stays fully visible in the meter + filters.
+  // E2 hero stat trio — THIS-WEEK aggregates of PARENT-LOGGED events (last 7d):
+  // events · avg intensity · resolved (N/total). These are aggregates of the
+  // parent's own observations, NOT a child clinical score, so they clear the
+  // firewall: no %, no 0–100, no verdict. "Resolved" stays in COUNT form
+  // (`N/total`), never a resolution %.
   const heroStats = useMemo(() => {
     const now = Date.now();
     const last7 = behaviorLogs.filter((l) => now - new Date(l.timestamp).getTime() < 7 * DAY);
     const resolvedWeek = last7.filter((l) => l.resolved).length;
-    return { events: last7.length, resolvedWeek, openWeek: last7.length - resolvedWeek };
+    const avg = last7.length ? last7.reduce((s, l) => s + l.intensity, 0) / last7.length : 0;
+    return {
+      events: last7.length,
+      avgIntensity: last7.length ? avg.toFixed(1) : "—",
+      resolved: `${resolvedWeek}/${last7.length}`,
+    };
   }, [behaviorLogs]);
 
   // Per-type 30-day FLAT COUNT (Wave-3 clinical subtraction, 2026-06-26).
@@ -317,14 +323,13 @@ export default function BehaviorsTab() {
       <HubHero
         tone="coral"
         icon={HeartHandshake}
-        eyebrow={t("elev.hero.behaviors.eyebrow")}
-        title={t("elev.hero.behaviors.title", { name: behFirst })}
-        subtitle={t("elev.hero.behaviors.sub")}
-        cta={{ label: t("elev.hero.behaviors.cta"), onClick: focusForm, testId: "behaviors-hero-cta" }}
+        eyebrow={t("beh.hero.tag")}
+        title={t("beh.hero.title", { name: behFirst })}
+        subtitle={t("beh.hero.sub")}
         stats={[
-          { value: heroStats.events, label: t("elev.stat.behaviors.week") },
-          { value: heroStats.resolvedWeek, label: t("elev.stat.behaviors.resolvedWeek") },
-          { value: heroStats.openWeek, label: t("elev.stat.behaviors.openWeek") },
+          { value: heroStats.events, label: t("beh.stats.events") },
+          { value: heroStats.avgIntensity, label: t("beh.stats.avgIntensity") },
+          { value: heroStats.resolved, label: t("beh.stats.resolved") },
         ]}
         testId="behaviors-hub-hero"
       />
@@ -333,7 +338,7 @@ export default function BehaviorsTab() {
       <div className="grid grid-cols-1 gap-3">
         {/* QuickLog mode tiles — Voice / Photo / Text */}
         <div className={`${cardCls} p-5 flex flex-col`}>
-          <span className="text-xs font-extrabold uppercase tracking-wider mb-3" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.logMoment")}</span>
+          <span className="text-xs font-extrabold uppercase tracking-wider mb-3" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.captureTitle")}</span>
           <div className="grid grid-cols-3 gap-3 flex-1">
             {quickModes.map((m) => {
               const p = PASTEL[m.tone];
@@ -552,7 +557,9 @@ export default function BehaviorsTab() {
                                         {/* co-regulation script */}
                                         <div className="pt-2.5 mt-1 flex flex-col gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                                           <div className="flex justify-between items-center">
-                                            <span className="text-[9px] font-semibold font-mono" style={{ color: "var(--arbor-muted)" }}>{t("beh.parentScriptLayer")}</span>
+                                            <span className="text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
+                                              <Icon name="record_voice_over" size={14} fill={1} /> {t("beh.coRegScript")}
+                                            </span>
                                             <button type="button" onClick={() => handleGetInlineCoRegulationScript(log)} disabled={isGeneratingInlineScript[log.id]} className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
                                               {isGeneratingInlineScript[log.id] ? (<><Icon name="progress_activity" size={13} className="animate-spin" /> {t("beh.analyzing")}</>) : inlineCoRegulationScripts[log.id] ? (<><Icon name="auto_awesome" size={13} fill={1} /> {t("beh.regenerateScript")}</>) : (<><Icon name="auto_awesome" size={13} fill={1} /> {t("beh.generateScript")}</>)}
                                             </button>
@@ -737,22 +744,22 @@ export default function BehaviorsTab() {
         <div className="space-y-6">
           <PatternInsights logs={behaviorLogs} />
 
-          {/* Linked to Development Map — connective card. Dark token (clay-deep),
+          {/* Linked to Development Map — connective card. Navy token (--arbor-ink),
               not a new hue. Resolved moments feed Self-Regulation / Journal /
               Coach; CTA opens the Growth hub (the 'development' route). */}
           <button
             type="button"
             onClick={() => setActiveTab("development")}
             className="w-full text-start rounded-[22px] p-5 text-white transition active:scale-[0.99]"
-            style={{ background: "var(--arbor-clay-deep)" }}
+            style={{ background: "var(--arbor-ink)" }}
           >
             <div className="flex items-start gap-3">
               <span className="inline-flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 40, height: 40, background: "rgba(255,255,255,0.16)" }}>
                 <Icon name="account_tree" size={22} />
               </span>
               <div className="min-w-0 flex-1">
-                <div className="font-extrabold text-sm">{t("beh.devMap.title")}</div>
-                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.85)" }}>{t("beh.devMap.body")}</p>
+                <div className="text-[11px] font-extrabold uppercase" style={{ letterSpacing: "0.12em" }}>{t("beh.devMap.title")}</div>
+                <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.85)" }}>{t("beh.devMap.body")}</p>
                 <span className="inline-flex items-center gap-1.5 mt-3 text-xs font-extrabold">
                   {t("beh.devMap.cta")} <Icon name="arrow_forward" size={15} className="rtl:rotate-180" />
                 </span>

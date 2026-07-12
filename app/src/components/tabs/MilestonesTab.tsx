@@ -5,7 +5,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
-import { cardCls, ProgressBar, Split, domainVisual, PASTEL } from "../ui/kit";
+import { cardCls, ProgressBar, RadialProgress, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import { bandForAgeMonths, comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
@@ -358,16 +358,21 @@ export default function MilestonesTab() {
             {/* Development Map summary — count headline only, no verdict score. */}
             <div className={`${cardCls} p-6`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.developmentMap")}</span>
-              <div className="flex items-center gap-3.5 mt-4">
-                <HeroAvatar size={48} animate={false} ring={false} className="flex-shrink-0" />
-                <div>
-                  <div className="text-3xl font-extrabold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>
-                    {checkedMilestones} <span className="text-lg font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")}</span> {totalMilestones}
-                  </div>
-                  <div className="text-[10px] uppercase font-extrabold tracking-wider mt-1" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</div>
+              {/* Ring/dial visual — CLINICAL FIREWALL: the number inside is a COUNT of
+                  noticed milestones (never a %/score/verdict); the ring fill is only the
+                  checked/total count-proportion, and it is not labelled as competence. */}
+              <div className="flex items-center gap-4 mt-4">
+                <RadialProgress value={checkedMilestones} total={totalMilestones} tone="mint" size={92} thickness={10}>
+                  <span className="text-center leading-none">
+                    <span className="block text-[26px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{checkedMilestones}</span>
+                    <span className="block text-[10px] font-bold mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")} {totalMilestones}</span>
+                  </span>
+                </RadialProgress>
+                <div className="min-w-0">
+                  <div className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</div>
+                  <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.snapshotNotScore")}</p>
                 </div>
               </div>
-              <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.snapshotNotScore")}</p>
 
               {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
               {comparisonMonths < 24 && (

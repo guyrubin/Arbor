@@ -1,52 +1,49 @@
-import React, { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { motion } from "motion/react";
-import { BookHeart } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildTimeline, type SignalKind, type TimelineSignal } from "../../lib/signalTimeline";
 import { PASTEL, IconBadge, Chip, cardCls, domainVisual } from "../ui/kit";
-import { HubHero } from "../ui/HubHero";
-import { SpineRibbon } from "../ui/SpineRibbon";
-import { WEEK_MS, tsMs } from "../../lib/pulse";
-import { dailyPromptKeys } from "../../lib/promptBank";
-import { weekStartKey } from "../../lib/behaviorUtils";
-import { prefersReducedMotion } from "../../lib/devscore";
 import type { DevelopmentalDomainId } from "../../types";
 import type { PlayDomain } from "../../playbank/content";
 
 /**
- * UC-1 Journal (Wave 2) — the action-forward log surface.
+ * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
  *
- * ADDITIVE: StoryTimelineTab/ChildMemory stay fully intact. This view reuses the
- * SAME shared engine (buildTimeline) and the MemoryRow ledger READ-only — it
- * never forks memory-approval logic and never writes a new event type.
+ * ADDITIVE + READ-ONLY: StoryTimelineTab/ChildMemory stay fully intact. This view
+ * reuses the SAME shared engine (buildTimeline) and reads the ledger READ-only —
+ * it never forks memory-approval logic and never writes a new event type.
  *
- * Anatomy:
- *  - a persistent COMPOSE card at top: Voice / Photo / Text tiles that trigger the
- *    EXISTING capture flow (setActiveTab('behaviors')) — no invented capture logic.
- *  - a flat single-column feed (~840px) of moment rows. Each row carries an
- *    AUTO(Arbor)-vs-MANUAL(You) provenance badge, a per-entry 7-domain chip, and a
- *    right-aligned relative time. Auto entries include kid-side moments
- *    (auto-detected milestones, coach-derived facts, approved memory, play).
+ * Anatomy (top → bottom), reconciled to the wireframe's "Journal" screen:
+ *  1. a COMPOSE card — "Log a moment" with three capture-mode tiles
+ *     (Voice / Photo / Text) that route into the EXISTING capture flow
+ *     (setActiveTab('behaviors')); the split is an entry affordance, not a new
+ *     capture path.
+ *  2. a flat single-column FEED (~840px) of moment rows. Each row carries a
+ *     colored domain icon tile, an AUTO(Arbor)-vs-MANUAL(You) provenance badge, a
+ *     per-entry 7-domain chip, and a right-aligned relative time. Auto entries
+ *     mix in kid-side moments (auto-detected milestones, coach-derived facts,
+ *     approved memory, play).
+ *
+ * Removed vs. the old dashboard-y Journal: the stat-trio hero, the spine ribbon,
+ * the "story draft" CTA card, and the guiding-prompt strip — all duplicated
+ * capabilities that live elsewhere (Story lives behind the timeline tab).
  *
  * CLINICAL FIREWALL: domain chips are DESCRIPTIVE, never evaluative; no 0–100
  * score, verdict tag, intensity-trend coloring, or weakest-domain pointer.
  */
 
-/** Compose modality tiles — Material Symbols glyphs matched to the Claude Design
- *  mock's behLogModes (mic / photo_camera / keyboard). */
+/** Compose modality tiles — Material Symbols glyphs (mic / photo_camera / keyboard). */
 const MODE_TILES: { ms: string; key: "voice" | "photo" | "text" }[] = [
   { ms: "mic", key: "voice" },
   { ms: "photo_camera", key: "photo" },
   { ms: "keyboard", key: "text" },
 ];
 
-/** Per-domain Material Symbols glyph for the descriptive entry chip. Mirrors the
- *  kit's lucide DOMAIN_VISUALS one-for-one (Heart→favorite, Languages→translate,
- *  Brain→psychology, Users→group, Sprout→eco, Hand→sign_language, Globe→public)
- *  so the journal chip re-skins without forking the domain taxonomy. Descriptive
- *  only — no verdict, score, or trend is ever attached. */
+/** Per-domain Material Symbols glyph for the colored icon tile + descriptive chip.
+ *  Mirrors the kit's lucide DOMAIN_VISUALS one-for-one so the journal re-skins
+ *  without forking the domain taxonomy. Descriptive only — never a verdict. */
 const DOMAIN_MS: Record<DevelopmentalDomainId, string> = {
   attachment_regulation: "favorite",
   language_communication: "translate",
@@ -76,9 +73,10 @@ const KIND_DOMAIN: Record<SignalKind, DevelopmentalDomainId> = {
   play: "cognition_executive_function",
 };
 
-/** Parent-logged moments are hand-written (manual). Everything Arbor derives —
- *  auto-detected milestones, coach-session facts, approved memory, logged play —
- *  is AUTO. Mirrors the design's j.auto provenance flag. */
+/** Provenance is DERIVED read-only from the entry's actor: a parent-logged moment
+ *  is hand-written (MANUAL); everything Arbor derives — auto-detected milestones,
+ *  coach-session facts, approved memory, logged play — is AUTO. No new flag is
+ *  written to the ledger; this maps the existing signal kind at render time. */
 const isAuto = (kind: SignalKind): boolean => kind !== "moment";
 
 /** A locale-aware, human relative-time label for the right-aligned timestamp:
@@ -114,42 +112,42 @@ function JournalRow({
   domain,
   auto,
   when,
-  autoLabel,
+  provLabel,
   domainLabel,
 }: {
   signal: TimelineSignal;
   domain: DevelopmentalDomainId;
   auto: boolean;
   when: string;
-  autoLabel: string;
+  provLabel: string;
   domainLabel: string;
 }) {
   const dv = domainVisual(domain);
   const tone = dv.tone;
   const p = PASTEL[tone];
-  // Auto entries lead with the "auto_awesome" (Arbor noticed) glyph; manual
-  // entries lead with the hand-written "edit_note" glyph — matching the mock's
-  // j.icon provenance. Filled to read as a confident, rounded tile mark; tone
-  // follows the entry's domain.
-  const leadMs = auto ? "auto_awesome" : "edit_note";
   return (
     <div className={`${cardCls} p-4 flex gap-3.5`}>
+      {/* Colored domain icon tile — tone + glyph follow the entry's domain. */}
       <span
         className="inline-flex items-center justify-center rounded-[13px] flex-shrink-0"
         style={{ width: 42, height: 42, background: p.soft, color: p.ink }}
       >
-        <Icon name={leadMs} size={22} fill={1} />
+        <Icon name={DOMAIN_MS[domain]} size={22} fill={1} />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          {auto && (
-            <span
-              className="text-[var(--t-xs)] font-extrabold uppercase tracking-wide rounded-md px-2 py-0.5"
-              style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
-            >
-              {autoLabel}
-            </span>
-          )}
+          {/* Provenance badge — AUTO gets the accent "Arbor" mark, MANUAL a neutral one. */}
+          <span
+            className="inline-flex items-center gap-1 text-[var(--t-xs)] font-extrabold uppercase tracking-wide rounded-md px-2 py-0.5"
+            style={
+              auto
+                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
+                : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+            }
+          >
+            {auto && <Icon name="auto_awesome" size={12} fill={1} />}
+            {provLabel}
+          </span>
           <Chip tone={tone} icon={<Icon name={DOMAIN_MS[domain]} size={13} fill={1} />}>{domainLabel}</Chip>
           <span className="text-[11px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
         </div>
@@ -176,34 +174,11 @@ function JournalRow({
 
 export default function JournalTab() {
   const {
-    childProfile, setActiveTab, setNewLogNotes,
+    setActiveTab,
     behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
-  const firstName = (childProfile.name || "").split(" ")[0];
-
-  // E2 hero CTA target — scroll the composer into view and focus its first tile.
-  const composeRef = useRef<HTMLDivElement | null>(null);
-  const firstTileRef = useRef<HTMLButtonElement | null>(null);
-  const focusComposer = () => {
-    composeRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
-    firstTileRef.current?.focus({ preventScroll: true });
-  };
-
-  // E9 — today's 3 guiding-question keys: deterministic per child + local day
-  // (promptBank derives everything from the passed date; no clock reads inside).
-  const promptKeys = useMemo(
-    () => dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id, date: new Date() }),
-    [childProfile.age, childProfile.id],
-  );
-
-  // Tapping a prompt pre-seeds the EXISTING capture flow (the Behaviors composer
-  // note field) with the question, then routes there — same path as the tiles.
-  const startFromPrompt = (key: string) => {
-    setNewLogNotes(t(key));
-    setActiveTab("behaviors");
-  };
 
   // Reuse the shared timeline engine — the journal reads the SAME real data as
   // StoryTimelineTab. No new fetch, no new write path.
@@ -227,46 +202,14 @@ export default function JournalTab() {
 
   const ongoingLabel = t("journal.ongoing");
   const autoLabel = t("journal.auto");
-
-  // E2 hero stat trio — COUNTS ONLY (clinical firewall): moments this week,
-  // total moments in the story, and distinct calendar weeks holding ≥1 moment.
-  // No %, no verdicts, no deltas.
-  const heroStats = useMemo(() => {
-    const nowMs = Date.now();
-    let week = 0;
-    const weekKeys = new Set<string>();
-    for (const s of signals) {
-      if (!s.at) continue;
-      const at = tsMs(s.at);
-      if (nowMs - at < WEEK_MS && at <= nowMs) week++;
-      weekKeys.add(weekStartKey(s.at));
-    }
-    return { week, total: signals.length, weeks: weekKeys.size };
-  }, [signals]);
+  const manualLabel = t("journal.manual");
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-[840px] mx-auto flex flex-col gap-[18px]">
-      {/* E2 — the shared hub-hero grammar (replaces PageHeader; same info, one kit) */}
-      <HubHero
-        tone="lav"
-        icon={BookHeart}
-        eyebrow={t("elev.hero.journal.eyebrow")}
-        title={t("elev.hero.journal.title", { name: firstName })}
-        subtitle={t("elev.hero.journal.sub")}
-        cta={{ label: t("elev.hero.journal.cta"), onClick: focusComposer, testId: "journal-hero-cta" }}
-        stats={[
-          { value: heroStats.week, label: t("elev.stat.journal.week") },
-          { value: heroStats.total, label: t("elev.stat.journal.total") },
-          { value: heroStats.weeks, label: t("elev.stat.journal.weeks") },
-        ]}
-        testId="journal-hub-hero"
-      />
-
-      {/* Compose card — three modality tiles. All three trigger the EXISTING
-          capture flow (BehaviorsTab) since there is no modality-hint capability
-          to pre-select; the Voice/Photo/Text split is an entry affordance, not a
-          new capture path. */}
-      <div ref={composeRef} className={`${cardCls} p-[18px]`}>
+      {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
+          EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
+          entry affordance, not a new capture path. */}
+      <div className={`${cardCls} p-[18px]`}>
         <div className="flex items-center gap-2.5 mb-3.5">
           <IconBadge tone="lav" size={32}><Icon name="edit_note" size={18} fill={1} /></IconBadge>
           <h2 className="text-[16px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
@@ -274,34 +217,10 @@ export default function JournalTab() {
           </h2>
         </div>
 
-        {/* E9 — today's 3 guiding-question chips (deterministic rotation).
-            Tapping pre-seeds the capture flow with the question. Chips are
-            plain invitations — never assessments (clinical firewall). */}
-        <div className="mb-3.5">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-lav-ink)" }}>
-            {t("elev.prompt.lead")}
-          </span>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {promptKeys.map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => startFromPrompt(k)}
-                className="min-h-[44px] rounded-2xl px-4 py-2 text-[12.5px] font-bold text-start transition active:scale-[0.98] motion-reduce:transition-none motion-reduce:transform-none"
-                style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink, border: "1px solid var(--arbor-rule)" }}
-                dir="auto"
-              >
-                {t(k)}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="grid grid-cols-3 gap-2.5">
-          {MODE_TILES.map(({ ms, key }, i) => (
+          {MODE_TILES.map(({ ms, key }) => (
             <button
               key={key}
-              ref={i === 0 ? firstTileRef : undefined}
               type="button"
               onClick={() => setActiveTab("behaviors")}
               className="flex items-center justify-center gap-2 rounded-[13px] py-3.5 min-h-[44px] text-[12.5px] font-extrabold transition hover:-translate-y-0.5"
@@ -313,35 +232,6 @@ export default function JournalTab() {
           ))}
         </div>
       </div>
-
-      {/* E3 — spine ribbon: what a saved moment feeds (one direction: → Story). */}
-      <SpineRibbon
-        tone="lav"
-        icon="auto_stories"
-        text={t("elev.spine.journal", { name: firstName })}
-        onFollow={() => setActiveTab("timeline")}
-        testId="journal-spine-ribbon"
-      />
-
-      <section className={`${cardCls} p-4 flex flex-col sm:flex-row sm:items-center gap-3`}>
-        <IconBadge tone="sky" size={42}><Icon name="auto_stories" size={22} fill={1} /></IconBadge>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {t("journal.storyDraft.title")}
-          </h2>
-          <p className="text-[12.5px] leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>
-            {t("journal.storyDraft.body", { name: firstName, week: heroStats.week, total: heroStats.total })}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setActiveTab("timeline")}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 min-h-[44px] text-[12px] font-extrabold"
-          style={{ background: PASTEL.sky.soft, color: PASTEL.sky.ink, border: "1px solid var(--arbor-rule)" }}
-        >
-          {t("journal.storyDraft.cta")} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
-        </button>
-      </section>
 
       {/* Flat single-column feed */}
       {signals.length === 0 ? (
@@ -367,7 +257,7 @@ export default function JournalTab() {
                 domain={domain}
                 auto={auto}
                 when={relativeWhen(s.at, locale, ongoingLabel)}
-                autoLabel={autoLabel}
+                provLabel={auto ? autoLabel : manualLabel}
                 domainLabel={t(`journal.domain.${domain}`)}
               />
             );
