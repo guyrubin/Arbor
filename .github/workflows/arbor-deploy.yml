@@ -77,6 +77,8 @@ jobs:
         working-directory: app
       - run: npm run check:framework
         working-directory: app
+      - run: npm run check:floors
+        working-directory: app
       - run: npm run eval:safety
         working-directory: app
 

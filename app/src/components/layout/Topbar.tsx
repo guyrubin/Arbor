@@ -33,7 +33,7 @@ export default function Topbar() {
 
   return (
     <header
-      className="hidden md:flex items-center gap-4 px-7 flex-none"
+      className="hidden md:flex items-center gap-4 px-5 xl:px-7 flex-none min-w-0"
       style={{
         height: "74px",
         background: "var(--arbor-topbar-band)",
@@ -56,11 +56,17 @@ export default function Topbar() {
 
       {/* Right zone (UC-1 order): search → bell → child switcher.
           Ask Arbor + Kid Mode stay mounted as secondary entries. */}
-      <div className="flex items-center gap-2.5">
-        <AskArborButton />
-        <KidModeButton />
+      <div className="hidden lg:flex min-w-0 flex-shrink-0 items-center gap-2.5">
+        <div className="hidden 2xl:block">
+          <AskArborButton />
+        </div>
+        <div className="hidden 2xl:block">
+          <KidModeButton />
+        </div>
         {/* Search slot — AP-045 */}
-        <TopbarSearch />
+        <div className="hidden xl:block">
+          <TopbarSearch />
+        </div>
         {/* Notification bell slot — AP-046 */}
         <TopbarBell />
         {/* Kid-switcher slot — AP-047 (now carries the child name) */}

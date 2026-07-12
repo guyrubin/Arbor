@@ -323,6 +323,26 @@ export default function JournalTab() {
         testId="journal-spine-ribbon"
       />
 
+      <section className={`${cardCls} p-4 flex flex-col sm:flex-row sm:items-center gap-3`}>
+        <IconBadge tone="sky" size={42}><Icon name="auto_stories" size={22} fill={1} /></IconBadge>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            {t("journal.storyDraft.title")}
+          </h2>
+          <p className="text-[12.5px] leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>
+            {t("journal.storyDraft.body", { name: firstName, week: heroStats.week, total: heroStats.total })}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab("timeline")}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 min-h-[44px] text-[12px] font-extrabold"
+          style={{ background: PASTEL.sky.soft, color: PASTEL.sky.ink, border: "1px solid var(--arbor-rule)" }}
+        >
+          {t("journal.storyDraft.cta")} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
+        </button>
+      </section>
+
       {/* Flat single-column feed */}
       {signals.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>

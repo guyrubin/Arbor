@@ -41,6 +41,7 @@ export default function AskSpecialist() {
   const exportReport = useReportExport();
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [reviewed, setReviewed] = useState(false);
 
   // Export-as-PDF popover state + a11y refs.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -92,11 +93,13 @@ export default function AskSpecialist() {
 
   const isEmpty = packet.sections.length === 0;
   const includedCount = countIncluded(packet, excluded);
-  const noneSelected = includedCount === 0;
+  const noneSelected = includedCount === 0 || !reviewed;
   const toggle = (id: string) =>
     setExcluded((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const markdown = useCallback(() => serializePacket(packet, excluded), [packet, excluded]);
+
+  useEffect(() => { setReviewed(false); }, [excluded, childProfile.id]);
 
   const copy = async () => {
     // Growth loop (P0-4): the consult packet is a `story` artifact shared to a
@@ -212,6 +215,21 @@ export default function AskSpecialist() {
         </p>
       </header>
 
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {([
+          { icon: "visibility", title: t("consult.contract.review"), body: t("consult.contract.reviewBody") },
+          { icon: "tune", title: t("consult.contract.control"), body: t("consult.contract.controlBody") },
+          { icon: "verified_user", title: t("consult.contract.share"), body: t("consult.contract.shareBody") },
+        ] as const).map((item) => (
+          <div key={item.icon} className="rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+            <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
+              <Icon name={item.icon} size={16} /> {item.title}
+            </span>
+            <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: MUTED }}>{item.body}</p>
+          </div>
+        ))}
+      </section>
+
       {isEmpty ? (
         /* Empty state — new profile with nothing to summarise yet. */
         <div className="rounded-2xl p-8 text-center" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
@@ -286,6 +304,15 @@ export default function AskSpecialist() {
             <span className="text-[13px] font-bold me-auto" style={{ color: MUTED }} aria-live="polite">
               {t("consult.selected", { n: includedCount })}
             </span>
+            <label className="flex items-start gap-2 min-w-[220px] text-[11.5px] font-bold leading-snug" style={{ color: MUTED }}>
+              <input
+                type="checkbox"
+                checked={reviewed}
+                onChange={(e) => setReviewed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 flex-shrink-0"
+              />
+              <span>{t("consult.reviewed")}</span>
+            </label>
             <button onClick={copy} disabled={noneSelected}
               className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
               style={{ background: GREEN_SOFT, color: GREEN }}>

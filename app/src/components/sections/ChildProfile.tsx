@@ -45,8 +45,7 @@ export default function ChildProfile() {
   const week = useMemo(() => {
     const cutoff = Date.now() - 7 * DAY_MS;
     const recent = behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= cutoff);
-    const avg = recent.length ? recent.reduce((s, l) => s + l.intensity, 0) / recent.length : null;
-    return { count: recent.length, avg, latest: recent[0] ?? null, resolved: recent.filter((l) => l.resolved).length };
+    return { count: recent.length, latest: recent[0] ?? null, resolved: recent.filter((l) => l.resolved).length };
   }, [behaviorLogs]);
 
   // Chapter 3 — the next milestones worth watching for this age.
@@ -235,6 +234,35 @@ export default function ChildProfile() {
         </SectionCard>
       </div>
 
+      <section
+        className="rounded-[22px] p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+        style={{ background: "var(--arbor-lav-soft)", border: "1px solid var(--arbor-rule)" }}
+      >
+        <span
+          className="inline-flex items-center justify-center flex-shrink-0 rounded-2xl"
+          style={{ width: 46, height: 46, background: "var(--arbor-paper-elevated)", color: "var(--arbor-lav-ink)" }}
+        >
+          <Icon name="bookmark" size={22} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            {t("cp.ch.memory")}
+          </h2>
+          <p className="text-xs leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>
+            <strong style={{ color: "var(--arbor-ink)" }}>{approvedMemoryItems.length}</strong> {t("coach.approved")} ·{" "}
+            <strong style={{ color: "var(--arbor-ink)" }}>{pendingMemoryItems.length}</strong> {t("coach.pending")}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab("memory")}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 min-h-[44px] text-[12px] font-extrabold"
+          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}
+        >
+          {t("cp.reviewMemory", { name: first })} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
+        </button>
+      </section>
+
       <PageHeader
         eyebrow={t("cp.eyebrow")}
         title={t("cp.title", { name: first })}
@@ -251,7 +279,6 @@ export default function ChildProfile() {
         <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} />
           <Field label={t("cp.f.school")} value={childProfile.schoolContext || "—"} />
-          <Field label={t("cp.f.risk")} value={childProfile.riskLevel} />
           <div>
             <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--arbor-muted)" }}>{t("cp.f.focus")}</p>
             <div className="flex flex-wrap gap-1.5">
@@ -292,7 +319,6 @@ export default function ChildProfile() {
               {week.count === 1
                 ? t("cp.now.countOne", { count: week.count })
                 : t("cp.now.countMany", { count: week.count })}
-              {week.avg !== null && <> {t("cp.now.avg", { avg: week.avg.toFixed(1) })}</>}
               {week.resolved > 0 && <> {t("cp.now.resolved", { count: week.resolved })}</>}.
             </p>
             {week.latest && (
@@ -320,7 +346,7 @@ export default function ChildProfile() {
               <div className="h-full rounded-full transition-all" style={{ width: `${milestonesPercent}%`, background: "var(--arbor-gradient-progress)" }} />
             </div>
             <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
-              <strong style={{ color: "var(--arbor-ink)" }}>{t("cp.ms.progress", { checked: checkedMilestones, total: totalMilestones, pct: milestonesPercent, age: childProfile.age })}</strong>
+              <strong style={{ color: "var(--arbor-ink)" }}>{t("cp.ms.progress", { checked: checkedMilestones, total: totalMilestones, age: childProfile.age })}</strong>
             </p>
           </div>
         </div>

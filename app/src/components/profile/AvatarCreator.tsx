@@ -5,7 +5,7 @@ import { X, Sparkles, Camera, Wand2, ShieldCheck } from "lucide-react";
 import { api, type AvatarStyle, type AvatarDescriptors } from "../../lib/api";
 import { fileToThumbnail } from "../../lib/image";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
-import { useArbor } from "../../context/ArborContext";
+import { useArborOptional } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
@@ -50,7 +50,11 @@ export default function AvatarCreator({
   const [refPhoto, setRefPhoto] = useState<string | undefined>();
   const [result, setResult] = useState<string | undefined>();
   const [photoError, setPhotoError] = useState<string | undefined>();
-  const { openPaywall } = useArbor();
+  // ONBOARDING-SAFE (the flow renders outside ArborProvider): useArbor() here
+  // crashed the whole onboarding at the avatar step with a blank screen. The
+  // optional hook returns null there; without a paywall to open, a 402 falls
+  // through to useAsyncAction's normal inline-error path instead.
+  const arbor = useArborOptional();
   const { t, uiLang } = useLanguage();
 
   // M4: loading + error + start/success/error analytics for the generation call.
@@ -66,7 +70,7 @@ export default function AvatarCreator({
     },
     {
       fallbackError: t("gen.avatar.fail"),
-      onPaywall: (err) => openPaywall(err.feature || "avatarGenerate", err.plan),
+      onPaywall: arbor ? (err) => arbor.openPaywall(err.feature || "avatarGenerate", err.plan) : undefined,
     },
   );
   const generating = avatar.loading;

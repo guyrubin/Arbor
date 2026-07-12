@@ -189,22 +189,22 @@ export default function Shell() {
     {/* select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility) */}
     <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
       <div
-        className={`page-shell grid grid-cols-1 md:grid-cols-[260px_1fr] ${
+        className={`page-shell grid grid-cols-1 md:grid-cols-[248px_minmax(0,1fr)] ${
           showAiRail
-            ? "xl:grid-cols-[290px_1fr_340px] 2xl:grid-cols-[290px_1fr_365px]"
-            : "xl:grid-cols-[290px_1fr]"
-        } min-h-screen relative z-10 transition-all duration-300`}
+            ? "xl:grid-cols-[270px_minmax(0,1fr)_minmax(300px,340px)] 2xl:grid-cols-[280px_minmax(0,1fr)_minmax(320px,360px)]"
+            : "xl:grid-cols-[280px_minmax(0,1fr)]"
+        } min-h-screen relative z-10 transition-all duration-300 max-w-full overflow-x-hidden`}
       >
         <Sidebar />
 
         {/* AP-044: Right column — topbar placeholder (desktop) + scrollable content area */}
-        <div className="flex flex-col min-h-0 md:h-screen">
+        <div className="flex flex-col min-h-0 min-w-0 md:h-screen overflow-hidden">
           <Topbar />
         {/* arbor-parent: scopes the flat-white clinical token overrides to the parent
             dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
             as a sibling of the grid — it carries its own .arbor-play scope and does
             NOT inherit from this <main>. See index.css .arbor-parent block. */}
-        <main className="arbor-parent px-5 py-6 pb-24 md:px-6 md:py-8 md:pb-10 xl:px-12 xl:py-10 overflow-y-auto flex-1 min-h-0">
+        <main className="arbor-parent w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 md:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
           {/* Mobile brand header (sidebar is hidden below md, so the logo lives here) */}
           <div className="flex md:hidden items-center gap-2.5 mb-5">
             <ArborMark size={34} />
@@ -218,7 +218,7 @@ export default function Shell() {
               <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {t("top.age")} {childProfile.age}</strong>
               {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></span>}</span>
             </span>}
-            actions={<div className="flex items-center gap-2">
+            actions={<div className="flex w-full sm:w-auto items-center gap-2 overflow-x-auto no-scrollbar">
               <AskArborButton compact />
               {/* UC-4: Log a Moment — the primary capture quick-action (replaces the
                   two category-duplicating TOOLS drawer entries). Opens the Behaviors
@@ -227,7 +227,7 @@ export default function Shell() {
                 onClick={() => { void selectionHaptic(); setActiveTab("behaviors"); }}
                 aria-label={t("top.logMoment")}
                 title={t("top.logMoment")}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
+                className="flex flex-shrink-0 items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
                 style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
               >
                 <Icon name="edit_note" size={16} /> <span className="hidden sm:inline">{t("top.logMoment")}</span>
@@ -242,7 +242,7 @@ export default function Shell() {
                 onClick={() => setSearchOpen(true)}
                 aria-label={t("top.search")}
                 title="Search (Ctrl/Cmd+K)"
-                className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-bold transition bg-white"
+                className="flex flex-shrink-0 items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-bold transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 <Icon name="search" size={16} /> <span className="hidden sm:inline">{t("top.search")}</span>
@@ -250,7 +250,7 @@ export default function Shell() {
               {!showAiRail && (
                 <button
                   onClick={() => setShowAiRail(true)}
-                  className="hidden xl:flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
+                  className="hidden xl:flex flex-shrink-0 items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-extrabold transition cursor-pointer"
                   style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
                 >
                   <Icon name="verified_user" size={16} /> {t("top.howHelps")}
@@ -261,7 +261,7 @@ export default function Shell() {
                 onClick={() => setSettingsOpen(true)}
                 aria-label={t("aria.settings")}
                 title="Settings"
-                className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
+                className="md:hidden flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-xl transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 <Icon name="settings" size={18} />
@@ -271,7 +271,7 @@ export default function Shell() {
                   onClick={() => void signOut()}
                   aria-label={t("aria.signout")}
                   title="Sign out"
-                  className="md:hidden flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-bold transition bg-white"
+                  className="md:hidden flex flex-shrink-0 items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-bold transition bg-white"
                   style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
                   <Icon name="logout" size={16} /> Sign out

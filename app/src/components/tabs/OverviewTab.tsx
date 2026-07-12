@@ -351,6 +351,16 @@ export default function OverviewTab() {
     { id: "kidmode", glyph: "sports_esports", tone: "coral", label: t("elev.today.hub.kidmode"), pulse: kidPulse, onOpen: openKidMode },
   ];
 
+  const intentTitle =
+    heroMode === "play"
+      ? (dailyPlay?.activity.title ?? t("today.intent.playFallback"))
+      : t("today.intent.captureTitle");
+  const intentWhy =
+    rhythm.confidence !== "none"
+      ? t("today.intent.whyRhythm")
+      : t("today.intent.whySimple");
+  const openIntent = () => setActiveTab(heroMode === "play" ? "daily-play" : "journal");
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -404,6 +414,45 @@ export default function OverviewTab() {
 
       {/* ── R3 — Milestone pride moment: a calm celebration on a new crossing
              (renders nothing when there is none) ── */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <button
+          type="button"
+          onClick={openIntent}
+          className="rounded-[22px] p-4 text-start transition motion-safe:hover:-translate-y-0.5"
+          style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
+        >
+          <span className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: GREEN }}>
+            <Icon name={heroMode === "play" ? "sports_esports" : "edit_note"} size={16} /> {t("today.intent.doNow")}
+          </span>
+          <span className="block text-[15px] font-extrabold mt-2 leading-snug" style={{ color: INK }}>{intentTitle}</span>
+          <span className="inline-flex items-center gap-1.5 text-[12px] font-extrabold mt-3" style={{ color: GREEN }}>
+            {heroMode === "play" ? t("today.intent.ctaPlay") : t("today.intent.ctaCapture")}
+            <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
+          </span>
+        </button>
+
+        <div className="rounded-[22px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
+          <span className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-sky-ink)" }}>
+            <Icon name="auto_awesome" size={16} fill={1} /> {t("today.intent.why")}
+          </span>
+          <p className="text-[13px] leading-relaxed mt-2" style={{ color: MUTED }}>{intentWhy}</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("profile")}
+          className="rounded-[22px] p-4 text-start transition motion-safe:hover:-translate-y-0.5"
+          style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
+        >
+          <span className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-lav-ink)" }}>
+            <Icon name="bookmark" size={16} /> {t("today.intent.remembers")}
+          </span>
+          <span className="block text-[13px] leading-relaxed mt-2" style={{ color: MUTED }}>
+            {t("today.intent.memoryLine", { captured: capturedToday, week: devStats.week, story: momentsTotal })}
+          </span>
+        </button>
+      </section>
+
       <PrideMomentCard />
 
       {/* ── E4 zone 2 — Coach card (moved up from the old Row-2 grid, unchanged) ── */}

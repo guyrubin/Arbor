@@ -174,7 +174,27 @@
 .content-col { width: 100%; max-width: var(--content-max); margin-inline: auto; }
 
 /* ─── Base ───────────────────────────────────────────────────────────────── */
-html, body, #root { min-height: 100%; }
+html, body, #root { min-height: 100%; overflow-x: hidden; }
+
+.arbor-app main,
+.arbor-app header,
+.arbor-app section,
+.arbor-app article,
+.arbor-app aside,
+.arbor-app nav { min-width: 0; }
+
+.arbor-app img,
+.arbor-app video,
+.arbor-app canvas,
+.arbor-app svg { max-width: 100%; }
+
+.arbor-app button,
+.arbor-app a { min-width: 0; }
+
+.arbor-app h1,
+.arbor-app h2,
+.arbor-app h3,
+.arbor-app p { overflow-wrap: anywhere; }
 
 /* ─── Hebrew / RTL ────────────────────────────────────────────────────────────
    Latin families (Fraunces/Nunito) have no Hebrew glyphs, so swap to a Hebrew
@@ -223,7 +243,7 @@ body {
   font-family: var(--font-display) !important;
   font-weight: 600 !important;
   font-optical-sizing: auto;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   line-height: 1.18;
   text-wrap: balance;
   color: var(--arbor-ink);
@@ -233,7 +253,7 @@ body {
 .arbor-app h6 {
   font-family: var(--font-sans) !important;
   font-weight: 700;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
 }
 .arbor-app p { text-wrap: pretty; }
 .arbor-app button,

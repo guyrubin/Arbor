@@ -26,9 +26,9 @@ export default function ChildContextHeader({
   className = "",
 }: ChildContextHeaderProps) {
   return (
-    <header className={`flex flex-wrap items-center justify-between gap-4 mb-5 ${className}`.trim()}>
-      <div className="flex items-center gap-2.5 min-w-0">{identity}</div>
-      {actions}
+    <header className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 min-w-0 ${className}`.trim()}>
+      <div className="flex w-full sm:flex-1 items-center gap-2.5 min-w-0">{identity}</div>
+      {actions && <div className="w-full sm:w-auto min-w-0 flex justify-start sm:justify-end">{actions}</div>}
     </header>
   );
 }

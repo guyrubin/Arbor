@@ -29,7 +29,7 @@
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Gamepad2, HeartPulse, Palette, Sparkles, Star, ChevronRight } from "lucide-react";
+import { BookOpen, Gamepad2, HeartPulse, Palette, Sparkles, Star, ChevronRight, ShieldCheck } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useHeroAvatar, HeroAvatar } from "../ui/HeroAvatar";
 import { usePracticeData } from "../../practice/usePracticeData";
@@ -261,6 +261,32 @@ export default function KidDashboard({
       </header>
 
       {/* ── Today's adventure banner ────────────────────────────────────── */}
+      <section
+        aria-label="Parent safety"
+        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}
+      >
+        {["Parent locked", "Private by default", "Stars, never streaks"].map((label) => (
+          <div
+            key={label}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 12px",
+              borderRadius: "16px",
+              background: "var(--arbor-paper-elevated)",
+              border: "1px solid var(--arbor-rule)",
+              color: "var(--arbor-muted)",
+              fontSize: "var(--t-sm)",
+              fontWeight: 800,
+            }}
+          >
+            <ShieldCheck className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-green-ink)", flexShrink: 0 }} />
+            {label}
+          </div>
+        ))}
+      </section>
+
       {/* P3 adds the bounded daily quest + real progress. Shell shows no
           fabricated progress numerals. */}
       <button

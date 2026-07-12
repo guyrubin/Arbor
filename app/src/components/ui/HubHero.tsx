@@ -69,7 +69,7 @@ export function HubHero({
   return (
     <section
       data-testid={testId}
-      className={`relative overflow-hidden rounded-[22px] p-6 md:p-7 mb-6 text-start ${className}`.trim()}
+      className={`relative max-w-full overflow-hidden rounded-[22px] p-5 md:p-7 mb-6 text-start ${className}`.trim()}
       style={{
         background: p.soft,
         border: "1px solid var(--arbor-rule)",
@@ -83,12 +83,12 @@ export function HubHero({
           aria-hidden="true"
           size={150}
           strokeWidth={1.1}
-          className="pointer-events-none absolute top-1/2 -translate-y-1/2"
+          className="pointer-events-none absolute top-1/2 -translate-y-1/2 hidden sm:block"
           style={{ insetInlineEnd: "-1.25rem", color: p.ink, opacity: 0.1 }}
         />
       )}
 
-      <div className="relative max-w-2xl" style={{ zIndex: 1 }}>
+      <div className="relative max-w-2xl min-w-0" style={{ zIndex: 1 }}>
         <div
           className="text-[11px] font-extrabold uppercase"
           style={{ color: p.ink, letterSpacing: "0.14em" }}
@@ -97,7 +97,7 @@ export function HubHero({
         </div>
 
         <h1
-          className="mt-2 text-xl md:text-2xl leading-[1.15]"
+          className="mt-2 text-xl md:text-2xl leading-[1.15] break-words"
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >
           {title}
@@ -114,7 +114,7 @@ export function HubHero({
             type="button"
             onClick={cta.onClick}
             data-testid={cta.testId}
-            className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-5 py-2.5 text-[var(--t-sm)] font-extrabold transition active:scale-[0.97]"
+            className="mt-4 inline-flex max-w-full min-h-[44px] items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-[var(--t-sm)] font-extrabold transition active:scale-[0.97] whitespace-normal text-center"
             style={{ background: p.ink, color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }}
           >
             {cta.icon}
@@ -123,11 +123,11 @@ export function HubHero({
         )}
 
         {trio.length > 0 && (
-          <div className="mt-5 flex flex-wrap gap-2.5">
+          <div className="mt-5 grid grid-cols-1 min-[420px]:grid-cols-3 gap-2.5">
             {trio.map((s, i) => (
               <div
                 key={i}
-                className="min-w-[84px] rounded-2xl px-4 py-2.5"
+                className="min-w-0 rounded-2xl px-4 py-2.5"
                 style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
               >
                 <div

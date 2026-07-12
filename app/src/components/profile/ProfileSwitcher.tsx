@@ -18,13 +18,13 @@ export default function ProfileSwitcher() {
   return (
     <div className="relative">
       <div className="rounded-2xl p-3 flex items-center justify-between gap-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 flex-1 text-start group">
-          <Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={36} ring />
+        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 flex-1 min-w-0 text-start group">
+          <span className="flex-shrink-0"><Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={36} ring /></span>
           <div className="min-w-0">
-            <h4 className="text-sm font-bold leading-tight truncate" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
-            <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>Age {activeChild.age}</p>
+            <h4 className="text-sm font-bold leading-tight truncate" dir="auto" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
+            <p className="text-[11px] whitespace-nowrap" style={{ color: "var(--arbor-muted)" }}>Age {activeChild.age}</p>
           </div>
-          <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
+          <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
         </button>
         {/* VIS-2/VIS-3: icon-only → min 44×44 hit area + explicit aria-label */}
         <button
@@ -65,10 +65,10 @@ export default function ProfileSwitcher() {
                   className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-start transition"
                   style={{ background: p.id === activeChild.id ? "var(--arbor-paper-deep)" : "transparent" }}
                 >
-                  <Avatar name={p.name} photoURL={p.photoUrl} size={28} />
+                  <span className="flex-shrink-0"><Avatar name={p.name} photoURL={p.photoUrl} size={28} /></span>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{p.name}</span>
-                    <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>Age {p.age}</span>
+                    <span className="text-sm font-bold truncate block" dir="auto" style={{ color: "var(--arbor-ink)" }}>{p.name}</span>
+                    <span className="text-[10px] whitespace-nowrap" style={{ color: "var(--arbor-muted)" }}>Age {p.age}</span>
                   </div>
                   {p.id === activeChild.id && <Check className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} />}
                 </button>

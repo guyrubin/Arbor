@@ -23,5 +23,6 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run check:framework
+      - run: npm run check:floors
       - run: npm run eval:safety
       - run: npm run build

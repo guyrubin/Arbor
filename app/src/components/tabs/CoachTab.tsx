@@ -283,6 +283,23 @@ export default function CoachTab() {
           <p className="text-xs max-w-2xl -mt-4" style={{ color: "var(--arbor-muted)" }}>{t("coach.languageManaged")}</p>
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
+          {([
+            { icon: "travel_explore", title: t("coach.contract.context"), body: t("coach.contract.contextBody") },
+            { icon: "fact_check", title: t("coach.contract.next"), body: t("coach.contract.nextBody") },
+            { icon: "bookmark", title: t("coach.contract.memory"), body: t("coach.contract.memoryBody") },
+            { icon: "stethoscope", title: t("coach.contract.care"), body: t("coach.contract.careBody") },
+          ] as const).map((item) => (
+            <div key={item.icon} className={`${cardCls} p-3.5`}>
+              <span className="inline-flex items-center justify-center rounded-xl mb-2" style={{ width: 34, height: 34, background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+                <Icon name={item.icon} size={18} />
+              </span>
+              <h2 className="text-[13px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>{item.title}</h2>
+              <p className="text-[11.5px] leading-relaxed mt-1" style={{ color: "var(--arbor-muted)" }}>{item.body}</p>
+            </div>
+          ))}
+        </div>
+
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.lens")}</span>

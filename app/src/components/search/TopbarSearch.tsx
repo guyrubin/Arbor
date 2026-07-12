@@ -108,14 +108,14 @@ export default function TopbarSearch() {
   return (
     <div
       ref={containerRef}
-      style={{ position: "relative", width: "230px" }}
+      style={{ position: "relative", width: "clamp(170px, 16vw, 230px)", maxWidth: "100%" }}
       aria-label={t("aria.globalSearch")}
     >
       {/* ── Input ────────────────────────────────────────────────────────── */}
       <div
         className="flex items-center rounded-xl px-3"
         style={{
-          width: "230px",
+          width: "100%",
           height: "40px",
           background: "var(--arbor-paper-elevated)",
           border: open
@@ -201,7 +201,7 @@ export default function TopbarSearch() {
             position: "absolute",
             top: "calc(100% + 6px)",
             insetInlineStart: 0,
-            width: "320px",
+            width: "min(320px, calc(100vw - 32px))",
             maxHeight: "320px",
             overflowY: "auto",
             background: "var(--arbor-paper-elevated)",
