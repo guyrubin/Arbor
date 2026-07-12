@@ -4,7 +4,6 @@ import confetti from "canvas-confetti";
 import { GraduationCap } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { HubHero } from "../ui/HubHero";
-import { SpineRibbon } from "../ui/SpineRibbon";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { PageHeader, cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
 import { BRAND_CONFETTI } from "../../lib/tokens";
@@ -195,15 +194,6 @@ export default function Masterclasses() {
           <h2 className="text-[15px] font-extrabold uppercase tracking-widest px-1" style={{ color: "var(--arbor-muted)" }}>
             {t("academy.courses.title")}
           </h2>
-          {/* E3 — spine ribbon: what feeds the course grid (one direction:
-              → Development Map). */}
-          <SpineRibbon
-            tone="sky"
-            icon="account_tree"
-            text={t("elev.spine.academy")}
-            onFollow={() => setActiveTab("development")}
-            testId="academy-spine-ribbon"
-          />
           <div className="grid sm:grid-cols-2 gap-4">
             {MASTERCLASSES.map((c) => {
               const p = PASTEL[FRAME_TONE[c.frame]];
