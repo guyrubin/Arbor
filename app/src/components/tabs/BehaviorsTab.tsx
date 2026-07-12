@@ -9,7 +9,6 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Skeleton } from "../ui/Skeleton";
 import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
 import { HubHero } from "../ui/HubHero";
-import { SpineRibbon } from "../ui/SpineRibbon";
 import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
 import { speechSupported, startDictation } from "../../lib/speech";
@@ -358,20 +357,9 @@ export default function BehaviorsTab() {
             })}
           </div>
         </div>
-
-        {/* E3 — spine ribbon: what a logged moment feeds (one direction:
-            → Development Map). Sits by the log action; the richer right-rail
-            DevMap card below stays untouched (zero regression). */}
-        <SpineRibbon
-          tone="coral"
-          icon="account_tree"
-          text={t("elev.spine.behaviors")}
-          onFollow={() => setActiveTab("development")}
-          testId="behaviors-spine-ribbon"
-        />
       </div>
 
-      {/* Row 2 — events main column + right rail (patterns + DevMap link) */}
+      {/* Row 2 — events main column + right rail (patterns) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
         {/* Main column: events + the full log form */}
         <div className="space-y-6">
@@ -740,32 +728,9 @@ export default function BehaviorsTab() {
           </form>
         </div>
 
-        {/* Right rail — detected patterns + Linked-to-Development-Map + flat-count card */}
+        {/* Right rail — detected patterns + flat-count card */}
         <div className="space-y-6">
           <PatternInsights logs={behaviorLogs} />
-
-          {/* Linked to Development Map — connective card. Navy token (--arbor-ink),
-              not a new hue. Resolved moments feed Self-Regulation / Journal /
-              Coach; CTA opens the Growth hub (the 'development' route). */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("development")}
-            className="w-full text-start rounded-[22px] p-5 text-white transition active:scale-[0.99]"
-            style={{ background: "var(--arbor-ink)" }}
-          >
-            <div className="flex items-start gap-3">
-              <span className="inline-flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 40, height: 40, background: "rgba(255,255,255,0.16)" }}>
-                <Icon name="account_tree" size={22} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-extrabold uppercase" style={{ letterSpacing: "0.12em" }}>{t("beh.devMap.title")}</div>
-                <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.85)" }}>{t("beh.devMap.body")}</p>
-                <span className="inline-flex items-center gap-1.5 mt-3 text-xs font-extrabold">
-                  {t("beh.devMap.cta")} <Icon name="arrow_forward" size={15} className="rtl:rotate-180" />
-                </span>
-              </div>
-            </div>
-          </button>
 
           {/* Per-type 30-day FLAT COUNT (Wave-3 clinical subtraction). Replaces
               the prior per-type intensity sparkline cluster — a behavior-intensity

@@ -5,7 +5,7 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
-import { PageHeader, SectionCard, Chip, IconBadge, InitialsTile, Badge, cardCls, PASTEL, type PastelKey } from "../ui/kit";
+import { PageHeader, SectionCard, Chip, IconBadge, InitialsTile, cardCls, PASTEL, type PastelKey } from "../ui/kit";
 import { HubHero } from "../ui/HubHero";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { api } from "../../lib/api";
@@ -75,45 +75,6 @@ export default function ChildProfile() {
     ? t("cp.card.subtitle", { langs: langs || "—", school: childProfile.schoolContext })
     : t("cp.card.subtitleNoSchool", { langs: langs || "—" });
 
-  // Activity feed — a scannable "what {first} did recently" surface built ONLY
-  // from data already in context (parent-logged moments, approved memory, plan
-  // progress). Each row deep-links into its full tool. Counts only, no verdict.
-  const activity = useMemo(() => {
-    type Row = { key: string; icon: string; tone: PastelKey; title: string; sub?: string; tab: Parameters<typeof setActiveTab>[0]; ts: number };
-    const rows: Row[] = [];
-    behaviorLogs.slice(0, 3).forEach((l) => {
-      rows.push({
-        key: `b-${l.id}`, icon: "monitoring", tone: "coral", tab: "behaviors",
-        title: t("cp.activity.moment"),
-        sub: t("cp.activity.momentSub", { type: l.behaviorType, context: l.context }),
-        ts: new Date(l.timestamp).getTime(),
-      });
-    });
-    approvedMemoryItems.slice(0, 2).forEach((m) => {
-      rows.push({
-        key: `m-${m.memoryId}`, icon: "bookmark", tone: "lav", tab: "memory",
-        title: t("cp.activity.memory"), sub: m.fact,
-        ts: new Date(m.createdAt).getTime(),
-      });
-    });
-    const plan = actionPlans[0];
-    if (plan) {
-      let done = 0, total = 0;
-      plan.phases.forEach((ph) => ph.steps.forEach((s) => { total += 1; if (s.completed) done += 1; }));
-      if (done > 0) rows.push({
-        key: `p-${plan.id ?? "active"}`, icon: "checklist", tone: "mint", tab: "plans",
-        title: t("cp.activity.plan"), sub: t("cp.activity.planSub", { done, total }), ts: Date.now(),
-      });
-    }
-    return rows.sort((a, b) => b.ts - a.ts).slice(0, 4);
-  }, [behaviorLogs, approvedMemoryItems, actionPlans, t]);
-
-  // "Live" only when there is genuinely recent (<7d) activity — not a faked badge.
-  const hasRecent = useMemo(
-    () => behaviorLogs.some((l) => new Date(l.timestamp).getTime() >= Date.now() - 7 * DAY_MS),
-    [behaviorLogs],
-  );
-
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       {/* ── E2 hub hero — the family-album job sentence + one CTA (add a member,
@@ -141,14 +102,13 @@ export default function ChildProfile() {
         testId="profile-hub-hero"
       />
 
-      {/* ── Identity masthead (UC-1) — who/identity on the left, recent activity on
-          the right — sits ABOVE the full developmental narrative below. Additive:
-          every chapter is preserved beneath it. ─────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4 items-start">
-        <div className="space-y-4 min-w-0">
-          {/* Child card — the framed identity hero. Avatar renders THROUGH the shared
-              HeroAvatar engine (Loop 4); we never re-composite the portrait. */}
-          <div className={`${cardCls} overflow-hidden`}>
+      {/* ── Identity masthead (UC-1) — the child identity card and the live Family
+          Circle sit side by side ABOVE the full developmental narrative below.
+          Additive: every chapter is preserved beneath it. ──────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {/* Child card — the framed identity hero. Avatar renders THROUGH the shared
+            HeroAvatar engine (Loop 4); we never re-composite the portrait. */}
+        <div className={`${cardCls} overflow-hidden min-w-0`}>
             <div className="h-[90px]" style={{ background: "var(--arbor-gradient-primary)" }} aria-hidden />
             <div className="px-5 pb-5">
               <div className="-mt-[38px] mb-3">
@@ -200,38 +160,6 @@ export default function ChildProfile() {
               </button>
             </div>
           </SectionCard>
-        </div>
-
-        {/* Activity feed — real kid+parent moments from the shared profile. */}
-        <SectionCard
-          title={t("cp.activity.title", { name: first })}
-          icon={<Icon name="monitoring" size={20} />}
-          tone="sky"
-          action={hasRecent ? <Badge tone="sky">{t("cp.activity.live")}</Badge> : <Icon name="sync" size={16} style={{ color: "var(--arbor-muted)" }} />}
-        >
-          {activity.length > 0 ? (
-            <div className="space-y-2">
-              {activity.map((r) => (
-                <button
-                  key={r.key}
-                  onClick={() => setActiveTab(r.tab)}
-                  className="w-full flex items-center gap-3 rounded-2xl p-2 text-start transition hover:-translate-y-0.5"
-                >
-                  <span className="inline-flex items-center justify-center flex-shrink-0 rounded-[12px]" style={{ width: 42, height: 42, background: PASTEL[r.tone].soft, color: PASTEL[r.tone].ink }}>
-                    <Icon name={r.icon} size={20} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-extrabold truncate" style={{ color: "var(--arbor-ink)" }}>{r.title}</span>
-                    {r.sub && <span className="block text-xs truncate" style={{ color: "var(--arbor-muted)" }} dir="auto">{r.sub}</span>}
-                  </span>
-                  <Icon name="check_circle" size={16} fill={1} className="flex-shrink-0" style={{ color: PASTEL[r.tone].ink }} />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.activity.empty", { name: first })}</p>
-          )}
-        </SectionCard>
       </div>
 
       <section

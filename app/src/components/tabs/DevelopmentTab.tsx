@@ -4,7 +4,6 @@ import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { HubHero } from "../ui/HubHero";
-import { SpineRibbon } from "../ui/SpineRibbon";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { countSince, WEEK_MS } from "../../lib/pulse";
 import DevScoreCard from "../sections/DevScoreCard";
@@ -170,14 +169,6 @@ export default function DevelopmentTab() {
         onToggle={handlePushToggle}
         label={t("push.optin.label")}
         sublabel={t("push.optin.sublabel")}
-      />
-      {/* E3 — spine ribbon: what a noticed skill feeds (one direction: → Academy). */}
-      <SpineRibbon
-        tone="mint"
-        icon="school"
-        text={t("elev.spine.growth")}
-        onFollow={() => setActiveTab("masterclasses")}
-        testId="growth-spine-ribbon"
       />
     </div>
   );
