@@ -5,7 +5,9 @@ import { timeBand } from "../../lib/behaviorUtils";
 import { useLanguage } from "../../context/LanguageContext";
 import { PASTEL, type PastelKey } from "../ui/kit";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+// Canonical day-of-week keys (getDay() index → i18n key). Grouping stays on the
+// stable key; the visible label is threaded through t() for He/En + RTL.
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 /** Surfaces correlations from behavior logs as a calm icon-row list (UC-1).
  *  Keeps the existing context/day/time/resolve-rate correlation logic, but
@@ -38,8 +40,8 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
     };
 
     const context = topBy((l) => l.context);
-    const day = topBy((l) => DAYS[new Date(l.timestamp).getDay()]);
-    const time = topBy((l) => timeBand(new Date(l.timestamp).getHours()));
+    const day = topBy((l) => DAY_KEYS[new Date(l.timestamp).getDay()]);
+    const time = topBy((l) => timeBand(new Date(l.timestamp).getHours()).toLowerCase());
     const resolved = logs.filter((l) => l.resolved).length;
 
     return { context, day, time, resolved, total: logs.length };
@@ -47,11 +49,15 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
 
   if (!insights) return null;
 
+  // Threaded through t(): day key → localized weekday, time-band key → localized band.
+  const dayLabel = insights.day ? t(`beh.day.${insights.day.label}`) : "";
+  const timeLabel = insights.time ? t(`beh.time.${insights.time.label}`) : "";
+
   const headline =
     insights.context && insights.day
       ? t("beh.pattern.headline", {
           place: insights.context.label.toLowerCase(),
-          day: insights.day.label,
+          day: dayLabel,
         })
       : t("beh.pattern.empty");
 
@@ -88,7 +94,7 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
   };
 
   return (
-    <div className="rounded-2xl p-5 space-y-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+    <div className="rounded-2xl p-5 space-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center gap-2">
         <Icon name="monitoring" size={18} style={{ color: "var(--arbor-green-ink)" }} />
         <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.pattern.title")}</span>
@@ -99,10 +105,10 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
           <Row iconName="place" tone="sky" label={t("beh.pattern.place")} value={insights.context.label} sub={t("beh.pattern.placeSub", { count: insights.context.n })} />
         )}
         {insights.day && (
-          <Row iconName="calendar_month" tone="lav" label={t("beh.pattern.day")} value={insights.day.label} sub={t("beh.pattern.daySub", { count: insights.day.n })} />
+          <Row iconName="calendar_month" tone="lav" label={t("beh.pattern.day")} value={dayLabel} sub={t("beh.pattern.daySub", { count: insights.day.n })} />
         )}
         {insights.time && (
-          <Row iconName="schedule" tone="yellow" label={t("beh.pattern.time")} value={insights.time.label} sub={t("beh.pattern.timeSub", { count: insights.time.n })} />
+          <Row iconName="schedule" tone="yellow" label={t("beh.pattern.time")} value={timeLabel} sub={t("beh.pattern.timeSub", { count: insights.time.n })} />
         )}
         <Row iconName="check_circle" fill={1} tone="mint" label={t("beh.pattern.resolved")} value={`${insights.resolved}/${insights.total}`} sub={t("beh.pattern.resolvedSub", { count: insights.resolved, total: insights.total })} />
       </div>

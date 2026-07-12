@@ -3,31 +3,26 @@ import TopbarKidSwitcher from "./TopbarKidSwitcher";
 import TopbarSearch from "../search/TopbarSearch";
 import TopbarBell from "./TopbarBell";
 import KidModeButton from "./KidModeButton";
-import AskArborButton from "./AskArborButton";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { sectionForTab } from "../../lib/navigation";
 
 /**
- * AP-044: Desktop topbar placeholder bar.
+ * Desktop topbar — the wireframe's lean control band (md+). Hidden on mobile,
+ * where the in-content accessories strip + bottom MobileNav cover the same jobs.
  *
- * Rendered above the main content area on md+ viewports. Hidden on mobile
- * (the mobile brand header inside the main scroll column covers that role,
- * and compact KidModeButton / AskArborButton entries live in the in-content
- * accessories row so mobile users can still reach both).
+ * Left zone = page TITLE + SUBTITLE keyed off the active section (nav.title.* /
+ * nav.sub.*): the topbar tells you WHERE you are, on the sapphire-tinted band.
  *
- * UC-1 left zone = a true page TITLE + SUBTITLE stack keyed off the active
- * section (nav.title.* / nav.sub.*) — the topbar now tells you WHERE you are
- * and what the view is for, on the design's sapphire-tinted band.
- *
- * Right zone (UC-1 order): search field → notification bell → child switcher
- * (with name). Ask Arbor + Kid Mode stay mounted (both routes valid; Kid Mode
- * is out-of-scope visually but the entry survives).
- *
- * All tokens are sourced from index.css; no raw hex values.
+ * Right zone mirrors the wireframe: search field → Kid Mode → "how Arbor helps"
+ * rail toggle → notification bell → child switcher. Ask Arbor is a first-class
+ * sidebar nav row, so it is NOT duplicated here (removed the redundant topbar
+ * button). The AI rail is off by default; this toggle is its single, discoverable
+ * desktop entry point. All tokens are sourced from index.css; no raw hex.
  */
 export default function Topbar() {
-  const { activeTab, childProfile } = useArbor();
+  const { activeTab, childProfile, showAiRail, setShowAiRail } = useArbor();
   const { t } = useLanguage();
   const section = sectionForTab(activeTab);
 
@@ -54,22 +49,28 @@ export default function Topbar() {
         </span>
       </div>
 
-      {/* Right zone (UC-1 order): search → bell → child switcher.
-          Ask Arbor + Kid Mode stay mounted as secondary entries. */}
-      <div className="hidden lg:flex min-w-0 flex-shrink-0 items-center gap-2.5">
-        <div className="hidden 2xl:block">
-          <AskArborButton />
-        </div>
-        <div className="hidden 2xl:block">
-          <KidModeButton />
-        </div>
-        {/* Search slot — AP-045 */}
-        <div className="hidden xl:block">
+      {/* Right zone: lean desktop control band (search → Kid Mode → rail toggle →
+          bell → child switcher). Ask Arbor lives in the sidebar, not here. */}
+      <div className="flex min-w-0 flex-shrink-0 items-center gap-2.5">
+        <div className="hidden md:block">
           <TopbarSearch />
         </div>
-        {/* Notification bell slot — AP-046 */}
+        <div className="hidden lg:block">
+          <KidModeButton />
+        </div>
+        <button
+          onClick={() => setShowAiRail(!showAiRail)}
+          aria-label={t("top.howHelps")}
+          aria-pressed={showAiRail}
+          title={t("top.howHelps")}
+          className="hidden xl:inline-flex items-center justify-center w-11 h-11 rounded-xl transition flex-shrink-0"
+          style={showAiRail
+            ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
+            : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+        >
+          <Icon name="verified_user" size={18} />
+        </button>
         <TopbarBell />
-        {/* Kid-switcher slot — AP-047 (now carries the child name) */}
         <TopbarKidSwitcher />
       </div>
     </header>

@@ -275,10 +275,6 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
           <Icon name="playlist_add" size={14} /> Save to plan
         </button>
-        <button onClick={onCreateLog}
-          className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-          <Icon name="assignment" size={14} /> Log a moment
-        </button>
         {contract.handoffNotes?.teacher && (
           <button onClick={() => { onAddToHandoff(contract.handoffNotes.teacher); copy(contract.handoffNotes.teacher, "handoff"); }}
             className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>

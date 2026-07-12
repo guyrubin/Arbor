@@ -8,7 +8,6 @@ import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
 import SettingsModal from "./SettingsModal";
 import { SECTIONS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/navigation";
-import { usePulses, type HubId } from "../../lib/pulse";
 
 /** Resolve the generalized sidebar badge to its display string from app state.
  *  Returns "" when the badge should not render. Clinical firewall: the milestone
@@ -29,7 +28,6 @@ export default function Sidebar() {
   const milestonesNoticed = milestones.filter((m) => m.checked).length;
   const { user, signOut, firebaseEnabled } = useAuth();
   const { t, uiLang, setUiLang } = useLanguage();
-  const pulses = usePulses(); // E1 living sidebar — one firewall-safe line per hub
   const activeSectionId = sectionForTab(activeTab).id;
   const [showSettings, setShowSettings] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -64,10 +62,6 @@ export default function Sidebar() {
           const active = sec.id === activeSectionId;
           const text = badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, unreadCoachCount });
           const showDot = typeof sec.badge === "object" && sec.badge.kind === "dot";
-          // E1 living pulse — informational line under the label (counts/activity
-          // only; the firewall lives in usePulses). Hidden when it resolves empty.
-          const pulse = pulses[sec.id as HubId];
-          const pulseText = pulse ? t(pulse.key, pulse.params) : "";
           return (
             <button
               key={sec.id}
@@ -86,17 +80,7 @@ export default function Sidebar() {
             >
               <span className="flex items-center gap-3 min-w-0">
                 <Icon name={sec.msIcon} size={22} fill={active ? 1 : 0} />
-                <span className="min-w-0 flex flex-col">
-                  <span className="truncate">{t("nav.cat." + sec.id)}</span>
-                  {pulseText ? (
-                    <span
-                      className="truncate text-[11px] leading-snug"
-                      style={{ color: "var(--arbor-muted)", fontWeight: 500 }}
-                    >
-                      {pulseText}
-                    </span>
-                  ) : null}
-                </span>
+                <span className="truncate">{t("nav.cat." + sec.id)}</span>
               </span>
               {showDot ? (
                 <span aria-hidden="true" className="rounded-full flex-shrink-0" style={{ width: 8, height: 8, background: "var(--arbor-clay)" }} />

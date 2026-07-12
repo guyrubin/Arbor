@@ -176,15 +176,18 @@ export default function AskSpecialist() {
                 {p.verified && <Icon name="verified" size={16} fill={1} style={{ color: GREEN }} aria-label="Verified by Arbor" />}
               </div>
               <div className="text-[12px] font-bold mt-px" style={{ color: GREEN }}>{p.role}</div>
-              <div className="text-[11px] font-semibold mt-0.5 inline-flex items-center gap-1" style={{ color: MUTED }}>
-                {p.langs?.split(" · ")[0] || p.langs} · {/online|remote/i.test(`${p.mode} ${p.city}`) ? "Online" : p.mode}
+              <div className="text-[11px] font-semibold mt-0.5 inline-flex items-center gap-1.5" style={{ color: MUTED }}>
+                <span>{p.langs?.split(" · ")[0] || p.langs}</span>
+                <span aria-hidden="true">·</span>
+                <span>{/online|remote/i.test(`${p.mode} ${p.city}`) ? "Online" : p.mode}</span>
+                <span aria-hidden="true">·</span>
                 <span className="inline-flex items-center gap-0.5" style={{ color: "var(--arbor-yellow-ink)" }}><Icon name="star" size={13} fill={1} /> {p.rating}</span>
               </div>
             </div>
             <button
               onClick={() => setSendOpen(true)}
               className="inline-flex items-center font-extrabold text-[12px] rounded-[11px] px-4 py-2.5 whitespace-nowrap min-h-[44px]"
-              style={{ background: "var(--arbor-clay-deep, var(--arbor-clay))", color: "#fff" }}
+              style={{ background: "var(--arbor-ink)", color: "#fff", boxShadow: "0 8px 18px -6px rgba(20,34,90,0.5)" }}
             >
               {t("care.request")}
             </button>
@@ -249,7 +252,7 @@ export default function AskSpecialist() {
       ) : (
         <>
           {/* Two-column: live redactable packet (left) + verified-pros rail (right). */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-5 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-5 items-start">
             {/* Left: the summary card (the moat read). Section titles mirror the
                 child record (incl. the 7 Development-Map domains in the dev
                 snapshot); each item is a label/value inset row with an

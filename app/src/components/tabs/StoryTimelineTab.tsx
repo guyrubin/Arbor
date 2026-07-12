@@ -192,13 +192,6 @@ export default function StoryTimelineTab() {
             >
               <Icon name="monitoring" size={18} /> Weekly insight
             </button>
-            <button
-              onClick={() => setActiveTab("behaviors")}
-              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold transition hover:-translate-y-0.5"
-              style={{ background: PASTEL.coral.ink, color: "#fff" }}
-            >
-              <Icon name="photo_camera" size={18} /> Capture a moment
-            </button>
           </div>
         }
       />

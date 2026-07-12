@@ -77,11 +77,6 @@ export default function CoachTab() {
     handleChatSend,
     handleCouncilSend,
     chatBottomRef,
-    memoryReviewItems,
-    pendingMemoryItems,
-    approvedMemoryItems,
-    handleMemoryDecision,
-    isMemoryUpdating,
     setActiveTab,
     setPlanChallengeTopic,
     setNewLogNotes,
@@ -117,6 +112,10 @@ export default function CoachTab() {
 
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
+
+  // Which answer's overflow ("…") menu is open. Only Copy stays inline; Log /
+  // Plan / Share fold into this menu so a settled answer reads as calm text.
+  const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
 
   // E2 hero CTA target — focusing the input also scrolls it into view.
   const chatInputRef = useRef<HTMLInputElement>(null);
@@ -259,7 +258,7 @@ export default function CoachTab() {
   const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
 
   return (
-    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 mx-auto max-w-[860px]">
       {/* Header section with lens selector */}
       <div className="space-y-4">
         {/* E2 hub hero (slim: no stat trio) — the job sentence + one CTA that
@@ -281,23 +280,6 @@ export default function CoachTab() {
           />
           {/* -mt-4 tucks the note under the hero's built-in mb-6. */}
           <p className="text-xs max-w-2xl -mt-4" style={{ color: "var(--arbor-muted)" }}>{t("coach.languageManaged")}</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
-          {([
-            { icon: "travel_explore", title: t("coach.contract.context"), body: t("coach.contract.contextBody") },
-            { icon: "fact_check", title: t("coach.contract.next"), body: t("coach.contract.nextBody") },
-            { icon: "bookmark", title: t("coach.contract.memory"), body: t("coach.contract.memoryBody") },
-            { icon: "stethoscope", title: t("coach.contract.care"), body: t("coach.contract.careBody") },
-          ] as const).map((item) => (
-            <div key={item.icon} className={`${cardCls} p-3.5`}>
-              <span className="inline-flex items-center justify-center rounded-xl mb-2" style={{ width: 34, height: 34, background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-                <Icon name={item.icon} size={18} />
-              </span>
-              <h2 className="text-[13px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>{item.title}</h2>
-              <p className="text-[11.5px] leading-relaxed mt-1" style={{ color: "var(--arbor-muted)" }}>{item.body}</p>
-            </div>
-          ))}
         </div>
 
         <div className="space-y-2">
@@ -387,18 +369,18 @@ export default function CoachTab() {
         </div>
       </div>
 
-      {/* Fast-start scenarios (IA-2) — shown on a fresh conversation */}
+      {/* Fast-start scenarios (IA-2) — calm bordered chips on a fresh conversation */}
       {chatMessages.length <= 1 && (
-        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-peach-soft)" }}>
-          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-peach)" }}>{t("coach.fastStart")}</span>
-          <div className="flex flex-wrap gap-2 mt-2.5">
+        <div className="space-y-2">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
+          <div className="flex flex-wrap gap-2">
             {SCENARIOS.map((s) => (
               <button
                 key={s.labelKey}
                 onClick={() => handleChatSend(s.prompt)}
                 disabled={isChatLoading}
                 className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={{ color: T.ink, border: "1px solid rgba(207,111,55,0.28)" }}
+                style={{ color: T.ink, border: "1px solid var(--arbor-rule)" }}
               >
                 <span aria-hidden>{s.emoji}</span> {t(s.labelKey)}
               </button>
@@ -481,10 +463,10 @@ export default function CoachTab() {
               {/* Asymmetric "tail" via logical radii so it flips correctly in RTL:
                   the speaker-side bottom corner is tightened to 6px. Coach bubbles
                   carry a soft shadow to lift the conversation off the canvas. */}
-              <div dir="auto" className="p-4 rounded-[18px] text-sm font-medium leading-[1.55]"
+              <div dir="auto" className={`p-4 rounded-[18px] text-sm font-medium leading-[1.55] ${msg.sender === "user" ? "text-white" : ""}`}
                 style={msg.sender === "user"
-                  ? { background: "var(--arbor-sky-soft)", color: "var(--arbor-ink)", borderEndEndRadius: 6 }
-                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", borderEndStartRadius: 6, boxShadow: "var(--shadow-sm)" }}>
+                  ? { background: T.gradientCta, borderEndEndRadius: 6 }
+                  : { background: T.paperElevated, color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderEndStartRadius: 6, boxShadow: "var(--shadow-sm)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
                     {t("coach.alignedWith", { lens: msg.lens })}
@@ -542,8 +524,10 @@ export default function CoachTab() {
                 )}
 
                 {msg.sender === "ai" && !msg.contract && (
+                  // Calm: answers read as text. Copy stays inline; everything else
+                  // folds into a single "…" overflow so it's not a toolbar.
                   // Touch: always visible. Desktop: calm hover reveal. Keyboard: focus reveals.
-                  <div className="flex items-center gap-3 mt-3 pt-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                  <div className="relative flex items-center gap-3 mt-3 pt-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                     <button
                       onClick={async () => { await navigator.clipboard?.writeText(msg.text); toast(t("coach.copied"), "success"); }}
                       aria-label={t("coach.action.copy")}
@@ -552,46 +536,67 @@ export default function CoachTab() {
                       <Icon name="content_copy" size={12} /> {t("coach.action.copy")}
                     </button>
                     <button
-                      onClick={() => {
-                        setNewLogNotes(msg.text.replace(/[#*]/g, "").trim().slice(0, 400));
-                        setActiveTab("behaviors");
-                        toast("Pre-filled a log from this guidance — review and save", "info");
-                      }}
-                      aria-label={t("coach.action.log")}
-                      className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
+                      onClick={() => setOpenMenuIdx(openMenuIdx === idx ? null : idx)}
+                      aria-label={t("coach.more")}
+                      aria-haspopup="menu"
+                      aria-expanded={openMenuIdx === idx}
+                      className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
                     >
-                      <Icon name="assignment" size={12} /> {t("coach.action.log")}
+                      <Icon name="more_horiz" size={16} />
                     </button>
-                    <button
-                      onClick={() => {
-                        setPlanChallengeTopic(msg.text.replace(/[#*]/g, "").slice(0, 140));
-                        setActiveTab("plans");
-                        toast("Seeded the plan generator — tap Generate", "info");
-                      }}
-                      aria-label={t("coach.action.plan")}
-                      className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
-                    >
-                      <Icon name="playlist_add" size={12} /> {t("coach.action.plan")}
-                    </button>
-                    {/* mk-p0-3: 1-tap branded share of a settled answer (not while streaming). */}
-                    {idx > (revealedRef.current ?? -1) ? null : (
-                      <ShareButton
-                        artifact="answer_card"
-                        surface="ask"
-                        childName={childFirst}
-                        getCardOpts={() => {
-                          const prior = chatMessages[idx - 1];
-                          const question = prior?.sender === "user" ? prior.text : "";
-                          return {
-                            question: question.replace(/[#*]/g, "").trim().slice(0, 160),
-                            takeaway: msg.text.replace(/[#*]/g, "").trim().slice(0, 220),
-                            imageUrl: childProfile.photoUrl,
-                            name: childFirst,
-                          };
-                        }}
-                        label={t("share.cta.answer")}
-                        variant="ghost"
-                      />
+                    {openMenuIdx === idx && (
+                      <>
+                        {/* Backdrop closes the menu on any outside tap. */}
+                        <button type="button" aria-hidden className="fixed inset-0 z-10 cursor-default" onClick={() => setOpenMenuIdx(null)} tabIndex={-1} />
+                        <div role="menu" className="absolute z-20 top-full mt-1 start-8 rounded-xl p-1 min-w-[180px]" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
+                          <button
+                            role="menuitem"
+                            onClick={() => {
+                              setNewLogNotes(msg.text.replace(/[#*]/g, "").trim().slice(0, 400));
+                              setActiveTab("behaviors");
+                              setOpenMenuIdx(null);
+                              toast("Pre-filled a log from this guidance — review and save", "info");
+                            }}
+                            className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-[40px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
+                          >
+                            <Icon name="assignment" size={14} style={{ color: "var(--arbor-muted)" }} /> {t("coach.action.log")}
+                          </button>
+                          <button
+                            role="menuitem"
+                            onClick={() => {
+                              setPlanChallengeTopic(msg.text.replace(/[#*]/g, "").slice(0, 140));
+                              setActiveTab("plans");
+                              setOpenMenuIdx(null);
+                              toast("Seeded the plan generator — tap Generate", "info");
+                            }}
+                            className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-[40px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
+                          >
+                            <Icon name="playlist_add" size={14} style={{ color: "var(--arbor-muted)" }} /> {t("coach.action.plan")}
+                          </button>
+                          {/* mk-p0-3: 1-tap branded share of a settled answer (not while streaming). */}
+                          {idx > (revealedRef.current ?? -1) ? null : (
+                            <div className="px-1 py-0.5" onClick={() => setOpenMenuIdx(null)}>
+                              <ShareButton
+                                artifact="answer_card"
+                                surface="ask"
+                                childName={childFirst}
+                                getCardOpts={() => {
+                                  const prior = chatMessages[idx - 1];
+                                  const question = prior?.sender === "user" ? prior.text : "";
+                                  return {
+                                    question: question.replace(/[#*]/g, "").trim().slice(0, 160),
+                                    takeaway: msg.text.replace(/[#*]/g, "").trim().slice(0, 220),
+                                    imageUrl: childProfile.photoUrl,
+                                    name: childFirst,
+                                  };
+                                }}
+                                label={t("share.cta.answer")}
+                                variant="ghost"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
@@ -696,6 +701,20 @@ export default function CoachTab() {
               {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
               {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
             </button>
+            {/* Council (multi-lens) — demoted from a second primary send to a subtle
+                secondary affordance beside the input. Sends the current question to
+                three scholars, then Arbor reconciles. One primary send remains below. */}
+            <button
+              type="button"
+              onClick={() => handleCouncilSend()}
+              disabled={isChatLoading}
+              title={t("coach.councilHint")}
+              aria-label={t("coach.councilHint")}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+            >
+              <Icon name="group" size={14} /> {t("coach.council")}
+            </button>
           </div>
           <div className="flex items-center gap-2">
             {/* Capsule input + circular send. The send arrow is logical (Arrow
@@ -721,36 +740,6 @@ export default function CoachTab() {
               {uiLang === "he"
                 ? <Icon name="arrow_back" size={20} />
                 : <Icon name="arrow_forward" size={20} />}
-            </button>
-            <button
-              onClick={() => handleCouncilSend()}
-              disabled={isChatLoading}
-              title={t("coach.councilHint")}
-              aria-label={t("coach.councilHint")}
-              className="font-extrabold text-sm px-4 py-3 rounded-xl transition flex items-center gap-2 flex-shrink-0 disabled:opacity-50"
-              style={{ background: T.paperElevated, border: "1px solid rgba(52,178,119,0.30)", color: "var(--arbor-green-ink)" }}
-            >
-              <Icon name="group" size={16} /> <span className="hidden sm:inline">{t("coach.council")}</span>
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--arbor-muted)" }}>
-            <span className="font-bold">{t("coach.suggested")}</span>
-            {/* Visible label is translated; the prompt sent to the model stays English. */}
-            <button
-              onClick={() => handleChatSend(`${childProfile.name.split(" ")[0]} screams and hides behind the couch during shoe departures.`)}
-              disabled={isChatLoading}
-              className="px-2 py-0.5 rounded transition"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-            >
-              {t("coach.suggest.shoe")}
-            </button>
-            <button
-              onClick={() => handleChatSend("Suggestions for switching Hebrew and English language routines.")}
-              disabled={isChatLoading}
-              className="px-2 py-0.5 rounded transition"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-            >
-              {t("coach.suggest.bilingual")}
             </button>
           </div>
           {/* ia-b6: persistent Ask-pillar door into the Ask-a-Specialist warm handoff.
@@ -783,82 +772,11 @@ export default function CoachTab() {
         />
       )}
 
-      {/* Parent-approved memory review */}
-      <div className={`${cardCls} p-5 space-y-4`}>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.memReview")}</span>
-            <h3 className="text-lg font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("coach.memQueue")}</h3>
-            <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
-              {t("coach.memDesc")}
-            </p>
-          </div>
-          <div className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-            <strong style={{ color: "var(--arbor-ink)" }}>{pendingMemoryItems.length}</strong> {t("coach.pending")} · <strong style={{ color: "var(--arbor-ink)" }}>{approvedMemoryItems.length}</strong> {t("coach.approved")}
-          </div>
-        </div>
-
-        {memoryReviewItems.length === 0 ? (
-          <div className="text-xs rounded-xl p-4" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>
-            {t("coach.memEmpty")}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {memoryReviewItems.slice(0, 6).map((item) => {
-              const statusStyle =
-                item.status === "approved" ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
-                : item.status === "rejected" ? { background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }
-                : { background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" };
-              return (
-                <div key={item.memoryId} className="rounded-xl p-4 space-y-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-1 rounded" style={statusStyle}>
-                      {item.status}
-                    </span>
-                    <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{new Date(item.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{item.fact}</p>
-                  <div className="text-[10px] space-y-1" style={{ color: "var(--arbor-muted)" }}>
-                    <p><strong style={{ color: "var(--arbor-ink)" }}>{t("coach.mem.source")}:</strong> {item.source}</p>
-                    <p><strong style={{ color: "var(--arbor-ink)" }}>{t("coach.mem.retention")}:</strong> {item.retention}</p>
-                    {item.frameRouting?.aim && <p><strong style={{ color: "var(--arbor-ink)" }}>{t("coach.mem.frame")}:</strong> {item.frameRouting.aim}</p>}
-                  </div>
-                  {item.status === "pending" && (
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={() => handleMemoryDecision(item.memoryId, "approved")}
-                        disabled={isMemoryUpdating === item.memoryId}
-                        className="flex-1 text-white font-extrabold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        style={{ background: "var(--arbor-clay)" }}
-                      >
-                        <Icon name="check" size={14} /> {t("coach.approve")}
-                      </button>
-                      <button
-                        onClick={() => handleMemoryDecision(item.memoryId, "rejected")}
-                        disabled={isMemoryUpdating === item.memoryId}
-                        className="flex-1 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-                      >
-                        <Icon name="delete" size={14} /> {t("coach.reject")}
-                      </button>
-                    </div>
-                  )}
-                  {item.status === "approved" && (
-                    <button
-                      onClick={() => handleMemoryDecision(item.memoryId, "deleted")}
-                      disabled={isMemoryUpdating === item.memoryId}
-                      className="w-full font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-                    >
-                      <Icon name="delete" size={14} /> {t("coach.deleteActive")}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {/* The parent-approved memory moderation queue was removed from Ask Arbor to
+          keep the chat calm. Its full capability (pending review + approve/reject/
+          forget of approved facts) lives in its real home: Profile › Child Memory
+          (route "memory" → src/components/sections/ChildMemory.tsx), which renders
+          the same pending/approved lists via the same handleMemoryDecision. */}
 
       <ArborVision
         open={!!visionMode}

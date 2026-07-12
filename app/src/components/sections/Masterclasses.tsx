@@ -208,6 +208,10 @@ export default function Masterclasses() {
             {MASTERCLASSES.map((c) => {
               const p = PASTEL[FRAME_TONE[c.frame]];
               const isCardDone = !!done[c.id];
+              // Lesson count = number of authored sections (an honest catalog
+              // fact, never a fabricated granular %). Pairs with duration in the
+              // meta line ("N lessons · M min").
+              const lessons = c.sections.length;
               return (
                 <button
                   key={c.id}
@@ -224,7 +228,7 @@ export default function Masterclasses() {
                     }}
                   >
                     <span className="inline-flex items-center justify-center rounded-2xl" style={{ background: p.soft, color: p.ink, width: 44, height: 44 }}>
-                      <Icon name="school" size={24} />
+                      <Icon name="school" size={24} fill={1} />
                     </span>
                   </div>
 
@@ -237,9 +241,11 @@ export default function Masterclasses() {
                     <h3 className="text-[15px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
                       {he ? c.titleHe : c.title}
                     </h3>
-                    {/* meta line */}
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                      <Icon name="schedule" size={13} /> {c.durationMin} {t("master.min")}
+                    {/* meta line — "N lessons · M min" (honest catalog facts) */}
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold flex-wrap" style={{ color: "var(--arbor-muted)" }}>
+                      <span className="inline-flex items-center gap-1"><Icon name="menu_book" size={13} /> {t("academy.lessons", { n: lessons })}</span>
+                      <span aria-hidden="true" style={{ opacity: 0.6 }}>·</span>
+                      <span className="inline-flex items-center gap-1"><Icon name="schedule" size={13} /> {c.durationMin} {t("master.min")}</span>
                     </span>
                     <p className="text-[12.5px] leading-relaxed line-clamp-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
                       {he ? c.hookHe : c.hook}
