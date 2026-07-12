@@ -126,7 +126,7 @@ export const SECTIONS: NavSection[] = [
     tools: [
       { tab: "practice", label: "Practice", icon: Target, msIcon: "target" },
       { tab: "plans", label: "Growth Plans", icon: Sliders, msIcon: "tune" },
-      { tab: "daily-play", label: "Routines", icon: ListChecks, msIcon: "checklist" },
+      { tab: "daily-play", label: "Daily Play", icon: ListChecks, msIcon: "checklist" },
       // M4 surfacing (IA masterplan): the quick-check screener was fallback-only
       // (reachable via one ChildProfile JumpLink) — now a visible Growth pill.
       { tab: "screening", label: "Development Check", icon: ShieldAlert, msIcon: "fact_check" },

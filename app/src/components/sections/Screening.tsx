@@ -42,7 +42,7 @@ export default function Screening() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[920px]">
       <PageHeader
-        eyebrow="My Child"
+        eyebrow="Growth"
         title={t("sec.screen.title")}
         subtitle={t("sec.screen.sub", { name: first })}
       />

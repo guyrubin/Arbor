@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Sprout } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
@@ -18,8 +18,6 @@ import ScreeningSheet from "../sections/ScreeningSheet";
    link cards to their own routes (the Growth pill row already carries
    Milestones); the child Profile belongs to the Profile category. Every old
    route (#/copilot, #/milestones, #/journey, #/profile) stays valid. */
-
-const DevelopmentCopilot = lazy(() => import("../practice/DevelopmentCopilot"));
 
 /** Inline push opt-in toggle — renders null unless pushCapable() (no VAPID key). */
 function PushOptInToggle({
@@ -124,11 +122,6 @@ export default function DevelopmentTab() {
           <EvidenceChip />
         </div>
       </div>
-      {/* "Now" — the copilot's next-best-action strip, directly visible (was
-          hidden behind an inner tab). */}
-      <Suspense fallback={null}>
-        <DevelopmentCopilot />
-      </Suspense>
       {/* The Map — the record's home (ring + domains; counts only). */}
       <DevScoreCard />
       {/* C1 — Arbor Noticed: weekly in-app monitoring card, grounded in the
@@ -140,6 +133,7 @@ export default function DevelopmentTab() {
         {([
           { tab: "milestones", glyph: "check_circle", label: t("hub.milestones"), sub: t("elev.growth.link.milestones.sub") },
           { tab: "journey", glyph: "calendar_month", label: t("hub.journey"), sub: t("elev.growth.link.journey.sub") },
+          { tab: "copilot", glyph: "center_focus_strong", label: t("elev.growth.link.copilot.label"), sub: t("elev.growth.link.copilot.sub") },
         ] as const).map((l) => (
           <button
             key={l.tab}

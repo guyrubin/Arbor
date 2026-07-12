@@ -119,7 +119,7 @@ export default function DevelopmentCopilot() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
-        eyebrow="My Child"
+        eyebrow="Growth"
         title={t("prac.copilot.title")}
         subtitle={t("prac.copilot.sub", { name: first })}
       />

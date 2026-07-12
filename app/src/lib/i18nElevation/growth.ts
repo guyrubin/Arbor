@@ -11,10 +11,10 @@ export const en: Record<string, string> = {
   "elev.hero.growth.eyebrow": "Growth",
   "elev.hero.growth.title": "Small moments become the growth story",
   "elev.hero.growth.sub": "Every milestone you notice is kept — Arbor remembers it for you.",
-  "elev.hero.growth.cta": "Notice a milestone",
+  "elev.hero.growth.cta": "Quick development check",
   "elev.hero.growth.stat.noticed": "of {total} noticed",
-  "elev.hero.growth.stat.domains": "domains active",
-  "elev.hero.growth.stat.week": "moments this week",
+  "elev.hero.growth.stat.domains": "areas (of 7)",
+  "elev.hero.growth.stat.week": "logged this week",
 
   // ── E2 · Academy hub hero
   "elev.hero.academy.eyebrow": "Academy",
@@ -28,16 +28,18 @@ export const en: Record<string, string> = {
   // ── Development screen deep-dive link cards (the former inner-tab facets)
   "elev.growth.link.milestones.sub": "The full checklist — mark what you've noticed",
   "elev.growth.link.journey.sub": "The month-by-month development timeline",
+  "elev.growth.link.copilot.label": "This week's focus",
+  "elev.growth.link.copilot.sub": "One clear next step from milestones and daily practice",
 };
 
 export const he: Record<string, string> = {
   "elev.hero.growth.eyebrow": "התפתחות",
   "elev.hero.growth.title": "כאן רגעים קטנים הופכים לסיפור ההתפתחות",
   "elev.hero.growth.sub": "כל אבן דרך ששמתם לב אליה נשמרת — ארבור זוכרת בשבילכם.",
-  "elev.hero.growth.cta": "סמנו אבן דרך",
+  "elev.hero.growth.cta": "בדיקת התפתחות מהירה",
   "elev.hero.growth.stat.noticed": "מתוך {total} אבני דרך",
-  "elev.hero.growth.stat.domains": "תחומים פעילים",
-  "elev.hero.growth.stat.week": "רגעים השבוע",
+  "elev.hero.growth.stat.domains": "תחומים (מ-7)",
+  "elev.hero.growth.stat.week": "תועד השבוע",
 
   "elev.hero.academy.eyebrow": "אקדמיה",
   "elev.hero.academy.title": "קורסים קצרים, מותאמים לשלב של {name}",
@@ -49,4 +51,6 @@ export const he: Record<string, string> = {
 
   "elev.growth.link.milestones.sub": "הרשימה המלאה — סמנו מה ששמתם לב אליו",
   "elev.growth.link.journey.sub": "ציר ההתפתחות חודש אחר חודש",
+  "elev.growth.link.copilot.label": "המיקוד של השבוע",
+  "elev.growth.link.copilot.sub": "צעד הבא ברור אחד מאבני דרך ותרגול יומי",
 };
