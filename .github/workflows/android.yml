@@ -49,6 +49,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: tools platform-tools platforms;android-36 build-tools;36.0.0
       - run: npm ci
       - name: Build web bundle
         run: npm run build
