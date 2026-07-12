@@ -66,6 +66,12 @@ function ProductionAuthConfigError() {
 /**
  * Routes a signed-in user to onboarding (new account, no children) or the app.
  */
+// Dev-only QA affordance: `?onboarding=1` forces the onboarding flow in the local
+// sandbox, where the Firestore gate never fires. `import.meta.env.DEV` is false in
+// production builds, so this is tree-shaken out of prod entirely.
+const forceOnboardingPreview =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).has("onboarding");
+
 function ProfileGate({ children }: { children: React.ReactNode }) {
   const { loading, needsOnboarding } = useProfile();
   const { t } = useLanguage();
@@ -82,7 +88,7 @@ function ProfileGate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (needsOnboarding) return <OnboardingFlow />;
+  if (needsOnboarding || forceOnboardingPreview) return <OnboardingFlow />;
   return <>{children}</>;
 }
 

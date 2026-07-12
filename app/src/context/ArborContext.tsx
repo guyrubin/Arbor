@@ -1128,3 +1128,14 @@ export function useArbor(): ArborContextValue {
   if (!ctx) throw new Error("useArbor must be used within an ArborProvider");
   return ctx;
 }
+
+/**
+ * Tolerant variant for components that mount both inside the app shell AND in
+ * the pre-shell onboarding flow, which renders OUTSIDE ArborProvider (see
+ * App.tsx ProfileGate). Returns null there instead of throwing — callers must
+ * degrade gracefully (e.g. AvatarCreator falls back to an inline error when it
+ * can't open the paywall).
+ */
+export function useArborOptional(): ArborContextValue | null {
+  return useContext(ArborContext);
+}

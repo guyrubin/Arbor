@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   Heart, MessageCircle, Users, Moon, BookOpen, Repeat2, Utensils,
   ShieldCheck, RefreshCw, ChevronLeft,
@@ -47,6 +47,40 @@ function ageString(totalMonths: number): string {
   const months = totalMonths % 12;
   if (months === 0) return `${years} year${years !== 1 ? "s" : ""}`;
   return `${years} year${years !== 1 ? "s" : ""} ${months} month${months !== 1 ? "s" : ""}`;
+}
+
+// ── Step error boundary ────────────────────────────────────────────────────
+// Onboarding is the one surface where a render crash is a permanent lockout:
+// the in-flight profile makes the gate re-open the flow on every reload, so a
+// crashing step would strand the account forever (this happened in prod when
+// the avatar step threw outside ArborProvider). The boundary keeps the card
+// shell — and the Back button — alive and offers a local retry.
+
+class StepErrorBoundary extends React.Component<
+  { retryLabel: string; message: string; children: React.ReactNode },
+  { crashed: boolean }
+> {
+  state = { crashed: false };
+  static getDerivedStateFromError() {
+    return { crashed: true };
+  }
+  render() {
+    if (!this.state.crashed) return this.props.children;
+    return (
+      <div className="flex flex-col items-center text-center space-y-4 py-6">
+        <ArborMark />
+        <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{this.props.message}</p>
+        <button
+          type="button"
+          onClick={() => this.setState({ crashed: false })}
+          className="px-6 py-2.5 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
+          style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+        >
+          {this.props.retryLabel}
+        </button>
+      </div>
+    );
+  }
 }
 
 // ── Progress dots ──────────────────────────────────────────────────────────
@@ -117,6 +151,7 @@ interface StepChildProps {
   setLanguages: (v: string[]) => void;
   controllerConsent: boolean;
   setControllerConsent: (v: boolean) => void;
+  creating: boolean;
   onNext: () => void;
 }
 
@@ -124,10 +159,32 @@ const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
 function StepChild({
   name, setName, ageYears, setAgeYears, ageMonthsPart, setAgeMonthsPart,
-  languages, setLanguages, controllerConsent, setControllerConsent, onNext,
+  languages, setLanguages, controllerConsent, setControllerConsent, creating, onNext,
 }: StepChildProps) {
   const { t } = useLanguage();
   const [showLangs, setShowLangs] = useState(false);
+
+  // Anti-trap: the continue button stays enabled; a tap with a missing field
+  // moves focus to that field and marks it, instead of silently doing nothing.
+  const nameRef = useRef<HTMLInputElement>(null);
+  const consentRef = useRef<HTMLInputElement>(null);
+  const [missing, setMissing] = useState<"name" | "consent" | null>(null);
+
+  const handleContinue = () => {
+    if (creating) return;
+    if (!name.trim()) {
+      setMissing("name");
+      nameRef.current?.focus();
+      return;
+    }
+    if (!controllerConsent) {
+      setMissing("consent");
+      consentRef.current?.focus();
+      return;
+    }
+    setMissing(null);
+    onNext();
+  };
 
   const isUnder3 = ageYears < 3;
 
@@ -172,11 +229,20 @@ function StepChild({
           <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.name")}</label>
           <input
             autoFocus
+            ref={nameRef}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (missing === "name" && e.target.value.trim()) setMissing(null);
+            }}
             placeholder={t("ob.namePlaceholder")}
+            aria-invalid={missing === "name"}
             className="w-full rounded-xl px-4 py-2.5 focus:outline-none"
-            style={inputStyle}
+            style={
+              missing === "name"
+                ? { ...inputStyle, border: "1.5px solid var(--arbor-clay)", boxShadow: "0 0 0 3px rgba(224,122,95,0.18)" }
+                : inputStyle
+            }
           />
         </div>
 
@@ -250,24 +316,44 @@ function StepChild({
       )}
 
       {/* Consent block */}
-      <div className="space-y-2.5 rounded-2xl p-3.5" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}>
+      <div
+        className="space-y-2.5 rounded-2xl p-3.5 transition-shadow"
+        style={{
+          background: "var(--arbor-green-soft)",
+          border: missing === "consent" ? "1px solid var(--arbor-clay)" : "1px solid rgba(52,178,119,0.30)",
+          boxShadow: missing === "consent" ? "0 0 0 3px rgba(224,122,95,0.18)" : "none",
+        }}
+      >
         <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
           <ShieldCheck className="w-3.5 h-3.5" /> {t("ob.consent.heading")}
         </span>
         <label className="flex items-start gap-2.5 cursor-pointer">
-          <input type="checkbox" checked={controllerConsent} onChange={(e) => setControllerConsent(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-green-ink)" }} />
+          <input
+            type="checkbox"
+            ref={consentRef}
+            checked={controllerConsent}
+            onChange={(e) => {
+              setControllerConsent(e.target.checked);
+              if (missing === "consent" && e.target.checked) setMissing(null);
+            }}
+            aria-invalid={missing === "consent"}
+            className="mt-0.5"
+            style={{ accentColor: "var(--arbor-green-ink)", width: 18, height: 18 }}
+          />
           <span className="text-[12px] leading-snug" style={{ color: "var(--arbor-ink)" }}>{t("ob.consent.controller")}</span>
         </label>
       </div>
 
       <button
         type="button"
-        onClick={onNext}
-        disabled={!name.trim() || !controllerConsent}
-        className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-50"
+        onClick={handleContinue}
+        disabled={creating}
+        aria-busy={creating}
+        className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
         style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
-        {t("ob.step.continue")}
+        {creating && <RefreshCw className="w-4 h-4 animate-spin" aria-hidden />}
+        {creating ? t("ob.settingUp") : t("ob.step.continue")}
       </button>
     </div>
   );
@@ -357,11 +443,13 @@ function StepDomains({
         {t("ob.step.domains.footer")}
       </p>
 
+      {/* Anti-trap: continue is never disabled. With zero picks it takes the skip
+          path (all areas stay in view), matching the "choose as many as you like"
+          copy instead of contradicting it with a dead button. */}
       <button
         type="button"
-        onClick={onNext}
-        disabled={selectedDomains.length === 0}
-        className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-50"
+        onClick={selectedDomains.length === 0 ? onSkip : onNext}
+        className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
         style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
         {t("ob.step.continue")}
@@ -371,7 +459,7 @@ function StepDomains({
         type="button"
         onClick={onSkip}
         className="w-full text-xs font-bold py-2"
-        style={{ color: "var(--arbor-muted)" }}
+        style={{ color: "var(--arbor-muted)", minHeight: 44 }}
       >
         {t("ob.step.domains.skip")}
       </button>
@@ -429,7 +517,7 @@ function StepAvatar({
         type="button"
         onClick={onSkip}
         className="w-full text-xs font-bold py-2"
-        style={{ color: "var(--arbor-muted)" }}
+        style={{ color: "var(--arbor-muted)", minHeight: 44 }}
       >
         {t("ob.step.avatar.skip")}
       </button>
@@ -571,6 +659,7 @@ export default function OnboardingFlow() {
   // creating a duplicate child. Computed once at mount (the gate only renders this
   // flow when profiles is loaded).
   const resumeChild = findIncompleteOnboardingChild(profiles);
+  const resumeMonths = resumeChild ? (resumeChild.ageMonths ?? resumeChild.age * 12) : 0;
 
   // Navigation — resume past the create step (Step 3) when continuing an in-flight setup.
   const [step, setStep] = useState<Step>(resumeChild ? 3 : 1);
@@ -583,12 +672,18 @@ export default function OnboardingFlow() {
    */
   const [replaying, setReplaying] = useState(false);
 
-  // Step 2 state (name + age + consent) — keep months-precise picker exactly
-  const [name, setName] = useState("");
-  const [ageYears, setAgeYears] = useState(0);
-  const [ageMonthsPart, setAgeMonthsPart] = useState(0);
-  const [languages, setLanguages] = useState<string[]>(["English"]);
-  const [controllerConsent, setControllerConsent] = useState(false);
+  // Step 2 state (name + age + consent) — keep months-precise picker exactly.
+  // On resume, hydrate from the in-flight profile: the parent already entered these
+  // (and gave consent — the profile exists), so stepping back to Step 2 must show
+  // their data, not blank fields behind a blocked continue.
+  const [name, setName] = useState(resumeChild?.name ?? "");
+  const [ageYears, setAgeYears] = useState(resumeChild ? Math.floor(resumeMonths / 12) : 0);
+  const [ageMonthsPart, setAgeMonthsPart] = useState(resumeChild ? resumeMonths % 12 : 0);
+  const [languages, setLanguages] = useState<string[]>(
+    resumeChild?.languages?.length ? resumeChild.languages : ["English"],
+  );
+  const [controllerConsent, setControllerConsent] = useState(resumeChild !== null);
+  const [creating, setCreating] = useState(false);
 
   // Step 3 state (domain multi-select)
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
@@ -613,7 +708,7 @@ export default function OnboardingFlow() {
 
   // After step 2 confirmed: create the profile so we have a childId for AvatarCreator.
   const handleStep2Next = async () => {
-    if (!name.trim() || !controllerConsent) return;
+    if (!name.trim() || !controllerConsent || creating) return;
 
     // DEMO-MODE GUARD: in replay mode skip all profile writes — just advance.
     if (replaying) {
@@ -629,7 +724,10 @@ export default function OnboardingFlow() {
     }
 
     // Create the child profile now so step 4 (AvatarCreator) has a real childId.
+    // `creating` holds the button in a visible busy state for the duration of the
+    // write and blocks the re-tap that would otherwise create a duplicate child.
     const birthDate = birthDateFromAgeMonths(totalAgeMonths);
+    setCreating(true);
     try {
       const child = await addChild({
         name: name.trim(),
@@ -649,6 +747,8 @@ export default function OnboardingFlow() {
       goNext();
     } catch {
       toast(t("ob.fail"), "error");
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -662,10 +762,14 @@ export default function OnboardingFlow() {
   // ── Final submit (step 5) ───────────────────────────────────────────────
 
   const submit = async () => {
-    // DEMO-MODE GUARD: replay pass — no profile writes, no updateChild call.
-    if (replaying) return;
+    // DEMO-MODE GUARD (AP-049 AC-1): the replay pass itself (steps 1–4) makes no
+    // writes. The final CTA is the demo's exit — it ends replay mode and falls
+    // through to the REAL submit for the already-created profile. (Previously this
+    // early-returned with replaying never reset, leaving the parent permanently
+    // stuck on step 5 with a dead button.)
+    if (replaying) setReplaying(false);
 
-    if (!createdChildId) return;
+    if (!createdChildId || saving) return;
     setSaving(true);
     try {
       // Build challenges from selected domains (maps domain ids to display names).
@@ -708,11 +812,12 @@ export default function OnboardingFlow() {
   // ── Shared card wrapper ─────────────────────────────────────────────────
 
   const canGoBack = step > 1;
+  const reduceMotion = useReducedMotion();
 
   return (
     <div className="arbor-app min-h-screen flex items-center justify-center px-4 py-10 antialiased text-sans">
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={reduceMotion ? false : { opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className="w-full max-w-lg bg-white rounded-3xl p-6 md:p-8 space-y-5"
@@ -724,28 +829,32 @@ export default function OnboardingFlow() {
             <button
               type="button"
               onClick={goBack}
-              className="p-1.5 rounded-lg transition"
-              style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+              className="rounded-lg transition flex items-center justify-center"
+              style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)", width: 36, height: 36 }}
               aria-label={t("ob.step.back")}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
           ) : (
-            <div className="w-8" />
+            <div style={{ width: 36 }} />
           )}
           <div className="flex-1">
             <ProgressDots step={step} total={5} />
           </div>
-          <div className="w-8" />
+          <div style={{ width: 36 }} />
         </div>
 
-        {/* Step content with slide animation */}
-        <AnimatePresence mode="wait">
+        {/* Step content with an entrance-only slide. Deliberately NO AnimatePresence
+            exit animation: mode="wait" gates the next step's mount on an exit
+            callback that never fires when rAF is throttled (backgrounded tab,
+            webview, low-power modes) — the dots advance but the screen freezes on
+            the old step. Entrance-only keeps the motion without the stuck-vector.
+            The boundary is keyed by step so navigating (Back) out of a crashed
+            step resets it. */}
+        <StepErrorBoundary key={step} retryLabel={t("err.retry")} message={t("ob.fail")}>
           <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 20 }}
+            initial={reduceMotion ? false : { opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.22 }}
           >
             {step === 1 && <StepWelcome onNext={goNext} />}
@@ -757,6 +866,7 @@ export default function OnboardingFlow() {
                 ageMonthsPart={ageMonthsPart} setAgeMonthsPart={setAgeMonthsPart}
                 languages={languages} setLanguages={setLanguages}
                 controllerConsent={controllerConsent} setControllerConsent={setControllerConsent}
+                creating={creating}
                 onNext={handleStep2Next}
               />
             )}
@@ -796,7 +906,7 @@ export default function OnboardingFlow() {
               />
             )}
           </motion.div>
-        </AnimatePresence>
+        </StepErrorBoundary>
 
         <p className="text-[11px] text-center" style={{ color: "var(--arbor-muted)" }}>
           {t("ob.footer")}
