@@ -89,6 +89,9 @@ const SchoolBriefSection = lazy(() => import("../sections/SchoolBrief")); // AP-
 // AP-057: Bedtime Stories — day-rooted, generate-and-discard, escalation-gated.
 const BedtimeStoriesTab = lazy(() => import("../tabs/BedtimeStoriesTab"));
 
+// Wireframe: Ready-made Routines — the research-backed routine library (Growth).
+const RoutinesTab = lazy(() => import("../tabs/RoutinesTab"));
+
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
   coach: CoachTab,
@@ -134,6 +137,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   science: SciencePage,              // AP-060: The Science trust page (static editorial, no child data)
   "school-brief": SchoolBriefSection, // AP-056: School Handoff Brief (parent-controlled, teacher-facing, curated)
   "bedtime-stories": BedtimeStoriesTab, // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
+  routines: RoutinesTab, // Wireframe: Ready-made Routines library (Growth › Routines)
 };
 
 export default function Shell() {

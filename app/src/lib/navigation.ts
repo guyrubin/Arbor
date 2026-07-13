@@ -130,7 +130,10 @@ export const SECTIONS: NavSection[] = [
       { tab: "language", label: "Language & Communication", icon: Languages },
     ],
     tools: [
-      { tab: "daily-play", label: "Daily Play", icon: ListChecks, msIcon: "checklist" },
+      // Wireframe: Ready-made Routines — the research-backed routine library
+      // (morning, goodbye, meal, tidy, screens, bedtime…), each a step board.
+      { tab: "routines", label: "Routines", icon: ListChecks, msIcon: "event_repeat" },
+      { tab: "daily-play", label: "Daily Play", icon: Map, msIcon: "playing_cards" },
       // M4 surfacing (IA masterplan): the quick-check screener was fallback-only
       // (reachable via one ChildProfile JumpLink) — now a visible Growth pill.
       { tab: "screening", label: "Development Check", icon: ShieldAlert, msIcon: "fact_check" },
@@ -260,6 +263,8 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   // routes resolving to Growth for deep-link highlighting, but are no longer
   // parent pills.
   practice: "growth",
+  // Wireframe: Ready-made Routines library — a Growth tool pill.
+  routines: "growth",
   speech: "growth",
   mimic: "growth",
   feelings: "growth",
