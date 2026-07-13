@@ -42,9 +42,11 @@ describe("content coverage", () => {
     expect(s.thinnestStages[0].domainsCovered).toBe(0); // a fully-empty stage is thinnest
   });
 
-  it("the seed bank meets the reviewed 40–60 target (c2 gate)", () => {
-    expect(PLAY_ACTIVITIES.length).toBeGreaterThanOrEqual(40);
-    expect(PLAY_ACTIVITIES.length).toBeLessThanOrEqual(60);
+  it("the play bank has been expanded past the reviewed seed toward the F11 floor (>=250)", () => {
+    // Content-expansion wave: the original reviewed seed (40–60) was grown with
+    // research-backed, bilingual activities across all 5 domains × 4 bands toward
+    // the capability floor (F11 >= 250). Lower bound is a sanity floor.
+    expect(PLAY_ACTIVITIES.length).toBeGreaterThanOrEqual(200);
   });
 
   it("every populated band×domain cell holds at least 2 activities (engine can't regress below playable)", () => {
@@ -67,11 +69,12 @@ describe("content coverage", () => {
     expect(missing).toEqual([]);
   });
 
-  it("the real bank leaves the 0–12 month stages largely empty (the known gap)", () => {
+  it("early-infant (0–12 month) coverage is now populated (gap closed by the content-expansion wave)", () => {
     const cells = buildCoverage(); // real PLAY_ACTIVITIES
     const infantCells = cells.filter((c) => ["0-3m", "3-6m", "6-9m", "9-12m"].includes(c.stage));
     const infantFilled = infantCells.filter((c) => c.count > 0).length;
-    // Sanity: the map exposes that early-infant coverage is thin (drives the backlog).
-    expect(infantFilled).toBeLessThan(infantCells.length);
+    // The early-infant gap that drove the backlog has been filled with infant-band
+    // activities across the domains — most early-infant cells now carry content.
+    expect(infantFilled).toBeGreaterThan(infantCells.length / 2);
   });
 });
