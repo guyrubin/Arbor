@@ -18,7 +18,7 @@ describe("navigation IA", () => {
   it("Growth holds the Development hub + growth tools", () => {
     const growth = SECTIONS.find((s) => s.id === "growth");
     const tabs = growth?.items.map((i) => i.tab) ?? [];
-    expect(tabs).toEqual(["development", "milestones", "language", "daily-play", "practice", "plans"]);
+    expect(tabs).toEqual(["development", "milestones", "language", "daily-play"]);
   });
 
   it("Journal surfaces the new journal leaf and keeps the Story spine", () => {

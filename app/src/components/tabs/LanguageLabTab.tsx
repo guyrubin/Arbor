@@ -111,29 +111,7 @@ export default function LanguageLabTab() {
         </div>
       ) : (
         <>
-          {/* AP-054 — Language Lab vocab view (combined-total-first, read-only over langObs) */}
-          <LanguageLabVocabView />
-
-          {/* Language profile */}
-          <SectionCard title={t("lang.profileTitle", { first, age: childProfile.age })} icon={<Icon name="translate" size={20} />} tone="sky">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              {profileCards.map((c, i) => (
-                <div key={i} className={`${cardCls} p-4 space-y-2`}>
-                  <span className="text-[10px] uppercase font-bold tracking-wide block" style={{ color: "var(--arbor-muted)" }}>{c.label}</span>
-                  <b className="block text-sm" style={{ color: "var(--arbor-ink)" }}>{c.value}</b>
-                  <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.note}</p>
-                  <Chip tone={c.tone}>{c.tag}</Chip>
-                </div>
-              ))}
-            </div>
-            {!second && (
-              <p className="text-[11px] italic mt-4" style={{ color: "var(--arbor-muted)" }}>
-                {t("lang.onlyOne", { first })}
-              </p>
-            )}
-          </SectionCard>
-
-          {/* Daily practice */}
+          {/* Daily practice — the hero: real, usable value every day */}
           <SectionCard
             title={t("lang.routinesTitle", { target })}
             icon={<Icon name="auto_awesome" size={20} />}
@@ -182,6 +160,30 @@ export default function LanguageLabTab() {
               ))}
             </div>
           </SectionCard>
+
+          {/* Language profile — the context that frames the activities */}
+          <SectionCard title={t("lang.profileTitle", { first, age: childProfile.age })} icon={<Icon name="translate" size={20} />} tone="sky">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              {profileCards.map((c, i) => (
+                <div key={i} className={`${cardCls} p-4 space-y-2`}>
+                  <span className="text-[10px] uppercase font-bold tracking-wide block" style={{ color: "var(--arbor-muted)" }}>{c.label}</span>
+                  <b className="block text-sm" style={{ color: "var(--arbor-ink)" }}>{c.value}</b>
+                  <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.note}</p>
+                  <Chip tone={c.tone}>{c.tag}</Chip>
+                </div>
+              ))}
+            </div>
+            {!second && (
+              <p className="text-[11px] italic mt-4" style={{ color: "var(--arbor-muted)" }}>
+                {t("lang.onlyOne", { first })}
+              </p>
+            )}
+          </SectionCard>
+
+          {/* AP-054 — Vocabulary log, now SECONDARY & optional. It sits below the
+              daily practice and profile so an empty counter is never the hero;
+              logging still works exactly as before. */}
+          <LanguageLabVocabView />
         </>
       )}
     </motion.div>

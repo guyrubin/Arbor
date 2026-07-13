@@ -50,9 +50,9 @@ export default function OverviewTab() {
 
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
-  // The wellness check-in is the only capability without a second home, so it is
-  // demoted (collapsed) rather than dropped.
-  const [showTools, setShowTools] = useState(false);
+  // The wellness check-in is the only genuinely interactive daily card and its
+  // only home, so it opens by default rather than hiding behind the disclosure.
+  const [showTools, setShowTools] = useState(true);
 
   // Parent-expressed goals (not a child assessment). Feed Daily Play selection
   // and the dev-map "Focus" count; goal editing itself lives in Growth › Daily Play.
@@ -301,21 +301,31 @@ export default function OverviewTab() {
                   </div>
                 </div>
               </div>
-              {/* COUNT-based 3-stat footer. Focus = parent-expressed goals;
-                  Domains = domains with a noticed milestone (of 7); Week = moments
-                  noticed in 7d. */}
-              <div className="flex gap-2 mt-auto pt-4">
-                {([
-                  { v: devStats.focus, label: t("devscore.stat.focus"), ink: "var(--arbor-clay)" },
-                  { v: devStats.domains, label: t("devscore.stat.domains"), ink: "var(--arbor-green-ink)" },
-                  { v: devStats.week, label: t("devscore.stat.week"), ink: "var(--arbor-clay-deep)" },
-                ] as const).map((s) => (
-                  <div key={s.label} className="flex-1 rounded-xl py-2.5 text-center" style={{ background: "var(--arbor-paper-deep)" }}>
-                    <div className="text-[17px] font-extrabold leading-none" style={{ color: s.ink }}>{s.v}</div>
-                    <div className="text-[9.5px] font-bold mt-1.5" style={{ color: "var(--arbor-faint)" }}>{s.label}</div>
+              {/* Empty state (no milestones noticed yet): a 3-zero footer is
+                  meaningless, so teach where the picture comes from instead. */}
+              {checkedMilestones === 0 ? (
+                <div className="mt-auto pt-4">
+                  <div className="rounded-xl px-3.5 py-3 text-[11.5px] font-semibold leading-relaxed" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-faint)" }}>
+                    {t("today.devmap.empty")}
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                /* COUNT-based 3-stat footer. Focus = parent-expressed goals;
+                   Domains = domains with a noticed milestone (of 7); Week = moments
+                   noticed in 7d. */
+                <div className="flex gap-2 mt-auto pt-4">
+                  {([
+                    { v: devStats.focus, label: t("devscore.stat.focus"), ink: "var(--arbor-clay)" },
+                    { v: devStats.domains, label: t("devscore.stat.domains"), ink: "var(--arbor-green-ink)" },
+                    { v: devStats.week, label: t("devscore.stat.week"), ink: "var(--arbor-clay-deep)" },
+                  ] as const).map((s) => (
+                    <div key={s.label} className="flex-1 rounded-xl py-2.5 text-center" style={{ background: "var(--arbor-paper-deep)" }}>
+                      <div className="text-[17px] font-extrabold leading-none" style={{ color: s.ink }}>{s.v}</div>
+                      <div className="text-[9.5px] font-bold mt-1.5" style={{ color: "var(--arbor-faint)" }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           );
         })()}
@@ -333,7 +343,12 @@ export default function OverviewTab() {
             <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("today.feed.title", { name: firstName })}</span>
             {/* Live pill reflects REAL recent activity (kid + parent events in 48h). */}
             {hasRecentActivity && (
-              <span className="ms-auto inline-flex items-center gap-1.5 text-[10px] font-extrabold rounded-full px-2.5 py-1" style={{ color: "var(--arbor-clay)", background: "var(--arbor-tint-2)" }}>
+              <span
+                title="Activity in the last 48 hours"
+                aria-label="Activity in the last 48 hours"
+                className="ms-auto inline-flex items-center gap-1.5 text-[10px] font-extrabold rounded-full px-2.5 py-1"
+                style={{ color: "var(--arbor-clay)", background: "var(--arbor-tint-2)" }}
+              >
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-clay)" }} /> {t("today.live")}
               </span>
             )}
@@ -382,6 +397,18 @@ export default function OverviewTab() {
                 <Icon name="check_circle" size={20} fill={1} style={{ color: "var(--arbor-success)" }} />
               </div>
             )}
+            {/* Empty state: no kid/parent events yet — one quiet teaching row so
+                the feed reads as "waiting for your first log", not broken. */}
+            {activityFeed.length === 0 && (
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-none" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
+                  <Icon name="history" size={20} fill={1} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>{t("today.feed.empty", { name: firstName })}</div>
+                </div>
+              </div>
+            )}
             {/* Unified activity feed rows (Loops 1+3+5). */}
             {activityFeed.map((row) => (
               <div key={row.id} className="flex items-center gap-3">
@@ -411,13 +438,15 @@ export default function OverviewTab() {
             </div>
             <div>
               <div className="text-[14px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.title")}</div>
-              <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-success)" }} /> {t("coach.online")}
+              {/* No live "online" dot — Arbor is guidance, not a live human on call.
+                  A calm always-available label, no presence signal. */}
+              <div className="text-[10.5px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>
+                {t("coach.online")}
               </div>
             </div>
           </div>
           <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "var(--arbor-ink-soft)" }}>
-            {t("coach.ready", { name: firstName })}
+            {focus?.text ? focus.text : t("coach.ready", { name: firstName })}
           </div>
           <button className="mt-4 bg-white text-center rounded-xl py-3 min-h-[44px] text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
             <Icon name="forum" size={18} /> {t("today.coach.reply")}
