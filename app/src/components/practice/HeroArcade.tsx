@@ -168,7 +168,7 @@ export default function HeroArcade() {
       <div>
         <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>Choose your world</h2>
         <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
-          {WORLDS.map((w) => {
+          {WORLDS.filter((w) => !w.isNew).map((w) => {
             const glyph = w.icon;
             const live = !!w.Comp;
             const stars = w.count ? Math.min(3, Math.floor(w.count(data) / 3)) : 0;

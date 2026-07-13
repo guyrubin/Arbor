@@ -96,11 +96,17 @@ export const SECTIONS: NavSection[] = [
     msIcon: "monitoring",
     items: [
       { tab: "behaviors", label: "Behaviors", icon: Activity },
+      { tab: "plans", label: "Action Plans", icon: Sliders },
     ],
     primaryTabs: [
       { tab: "behaviors", label: "Behaviors", icon: Activity },
     ],
-    tools: [],
+    // Action Plans moved here from Growth (clarity): every plan template is a
+    // behavior challenge (morning departure, screen shutdown, sibling conflict),
+    // so "turn a challenge into a step-by-step plan" is a Behaviors tool.
+    tools: [
+      { tab: "plans", label: "Action Plans", icon: Sliders, msIcon: "tune" },
+    ],
   },
   {
     id: "growth",
@@ -113,19 +119,17 @@ export const SECTIONS: NavSection[] = [
       { tab: "milestones", label: "Milestones", icon: Sprout },
       { tab: "language", label: "Language & Communication", icon: Languages },
       { tab: "daily-play", label: "Daily Play", icon: Map },
-      { tab: "practice", label: "Practice", icon: Target },
-      { tab: "plans", label: "Growth Plans", icon: Sliders },
     ],
-    // Hub + the two clinical spines (milestones, language). Practice, Routines
-    // and Growth Plans are the hub's contextual tools (folded out of the drawer).
+    // Growth is now purely developmental: Development hub + the two clinical
+    // spines (milestones, language), with Daily Play and the Development Check as
+    // tools. Action Plans moved to Behaviors; the Practice arcade is the child's
+    // world (Kid Mode) and is no longer a parent pill (still a valid route).
     primaryTabs: [
       { tab: "development", label: "Development", icon: Gauge },
       { tab: "milestones", label: "Milestones", icon: Sprout },
       { tab: "language", label: "Language & Communication", icon: Languages },
     ],
     tools: [
-      { tab: "practice", label: "Practice", icon: Target, msIcon: "target" },
-      { tab: "plans", label: "Growth Plans", icon: Sliders, msIcon: "tune" },
       { tab: "daily-play", label: "Daily Play", icon: ListChecks, msIcon: "checklist" },
       // M4 surfacing (IA masterplan): the quick-check screener was fallback-only
       // (reachable via one ChildProfile JumpLink) — now a visible Growth pill.
@@ -252,7 +256,10 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   journey: "growth",
   screening: "growth",
   strengths: "growth",
-  // Practice drills reached via the Practice hub (under Growth).
+  // Practice arcade + drills are the child's world (Kid Mode); they stay valid
+  // routes resolving to Growth for deep-link highlighting, but are no longer
+  // parent pills.
+  practice: "growth",
   speech: "growth",
   mimic: "growth",
   feelings: "growth",

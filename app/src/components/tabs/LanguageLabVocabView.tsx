@@ -258,21 +258,33 @@ export default function LanguageLabVocabView() {
         tone="sky"
       >
         <div className="space-y-5">
-          {/* ── COMBINED TOTAL LEADS (required by spec) ── */}
-          <div className="text-center py-2">
-            <p className="text-[10px] uppercase font-bold tracking-widest mb-1" style={{ color: T.muted }}>
-              {t("vl.totalLabel")}
-            </p>
-            <p
-              className="text-4xl font-extrabold"
-              style={{ fontFamily: T.fontDisplay, color: T.greenInk }}
-            >
-              {total}
-            </p>
-            <p className="text-xs mt-1" style={{ color: T.muted }}>
-              {total === 1 ? t("vl.totalCountOne") : t("vl.totalCount", { n: total })}
-            </p>
-          </div>
+          {total === 0 ? (
+            /* ── Teaching empty state — optional, private, never the hero ── */
+            <div className="text-center py-2 space-y-2">
+              <p className="text-sm leading-relaxed" style={{ color: T.ink }}>
+                {t("lang.vocabEmptyTitle", { first })}
+              </p>
+              <p className="text-xs" style={{ color: T.muted }}>
+                {t("lang.vocabEmptyNote")}
+              </p>
+            </div>
+          ) : (
+            /* ── COMBINED TOTAL LEADS (required by spec) ── */
+            <div className="text-center py-2">
+              <p className="text-[10px] uppercase font-bold tracking-widest mb-1" style={{ color: T.muted }}>
+                {t("vl.totalLabel")}
+              </p>
+              <p
+                className="text-4xl font-extrabold"
+                style={{ fontFamily: T.fontDisplay, color: T.greenInk }}
+              >
+                {total}
+              </p>
+              <p className="text-xs mt-1" style={{ color: T.muted }}>
+                {total === 1 ? t("vl.totalCountOne") : t("vl.totalCount", { n: total })}
+              </p>
+            </div>
+          )}
 
           {/* ── Mix display — SECONDARY neutral context ── */}
           {total > 0 && (
@@ -344,17 +356,13 @@ export default function LanguageLabVocabView() {
         </div>
       </SectionCard>
 
-      {/* ── Vocabulary trend (last 90 days) ── */}
-      <SectionCard
-        title={t("vl.trendTitle")}
-        icon={<Icon name="menu_book" size={20} />}
-        tone="mint"
-      >
-        {total === 0 ? (
-          <p className="text-xs py-4 text-center" style={{ color: T.muted }}>
-            {t("vl.trendEmpty")}
-          </p>
-        ) : (
+      {/* ── Vocabulary trend (last 90 days) — hidden until there's data to show ── */}
+      {total > 0 && (
+        <SectionCard
+          title={t("vl.trendTitle")}
+          icon={<Icon name="menu_book" size={20} />}
+          tone="mint"
+        >
           <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -401,8 +409,8 @@ export default function LanguageLabVocabView() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        )}
-      </SectionCard>
+        </SectionCard>
+      )}
 
       {/* ── Ideas for both languages ── */}
       <SectionCard
@@ -474,13 +482,6 @@ export default function LanguageLabVocabView() {
         onAdded={() => {}}
         t={t}
       />
-
-      {/* ── Empty state below log form ── */}
-      {total === 0 && (
-        <p className="text-xs text-center py-2" style={{ color: T.faint }}>
-          {t("vl.logEmpty")}
-        </p>
-      )}
     </div>
   );
 }

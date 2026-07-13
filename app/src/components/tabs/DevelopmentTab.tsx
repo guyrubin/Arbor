@@ -7,7 +7,6 @@ import { HubHero } from "../ui/HubHero";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { countSince, WEEK_MS } from "../../lib/pulse";
 import DevScoreCard from "../sections/DevScoreCard";
-import ArborNoticedCard from "../sections/ArborNoticedCard";
 import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
 
@@ -50,8 +49,9 @@ function PushOptInToggle({
 
 export default function DevelopmentTab() {
   const { t } = useLanguage();
-  const { milestones, behaviorLogs, playLogs, setActiveTab } = useArbor();
+  const { milestones, behaviorLogs, playLogs, childProfile, setActiveTab } = useArbor();
   const [checkOpen, setCheckOpen] = useState(false);
+  const firstName = (childProfile.name || "").split(" ")[0];
 
   // E2 hero stat trio — CLINICAL FIREWALL: counts and plain activity facts
   // only ("x of y noticed", active-domain count, moments-this-week count).
@@ -124,9 +124,29 @@ export default function DevelopmentTab() {
       </div>
       {/* The Map — the record's home (ring + domains; counts only). */}
       <DevScoreCard />
-      {/* C1 — Arbor Noticed: weekly in-app monitoring card, grounded in the
-          child's own logged milestones and moments. Non-diagnostic. */}
-      <ArborNoticedCard />
+      {/* C1 — Monitoring now lives in ONE home: Development Check (the
+          ScreeningSheet). The hub keeps only a slim, neutral pointer into it —
+          no scores, verdicts, or risk framing (CLINICAL FIREWALL). */}
+      <button
+        type="button"
+        onClick={() => setCheckOpen(true)}
+        data-testid="dev-watching-pointer"
+        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-start transition active:scale-[0.99]"
+        style={{ minHeight: 44, background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+      >
+        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
+          <Icon name="visibility" size={18} style={{ color: "var(--arbor-green-ink)" }} />
+        </span>
+        <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug" style={{ color: "var(--arbor-ink)" }}>
+          {firstName
+            ? t("dev.watching.line", { name: firstName })
+            : t("dev.watching.lineGeneric")}
+        </span>
+        <span className="inline-flex flex-shrink-0 items-center gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+          {t("dev.watching.cta")}
+          <Icon name="chevron_right" size={16} className="rtl:rotate-180" />
+        </span>
+      </button>
       {/* Deep-dive doors — visible cards, not a second tab layer. Each is a
           real route (also reachable from the Growth pill row / fallbacks). */}
       <div className="grid gap-3 sm:grid-cols-2">
