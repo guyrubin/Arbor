@@ -116,7 +116,11 @@ export type ActiveTab =
   // AP-057: Bedtime Stories — day-rooted AI-generated nightly story, avatar-starring,
   // HE/EN read-aloud. Distinct from Hero Journeys (stories route). Generate-and-discard
   // design (no persistent library); escalation screen + redaction enforced server-side.
-  | "bedtime-stories";
+  | "bedtime-stories"
+  // Wireframe: Ready-made Routines — a research-backed library of 7 named
+  // routines (morning, goodbye, meal, tidy, screens, bedtime…), each a
+  // checkable step board. Grows › Routines.
+  | "routines";
 
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
 // working browser back/forward button.
@@ -131,6 +135,7 @@ const VALID_TABS = new Set<string>([
   "science", // AP-060: The Science trust page (static editorial, no child data)
   "school-brief", // AP-056: School Handoff Brief (parent-controlled, teacher-facing, curated)
   "bedtime-stories", // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
+  "routines", // Wireframe: Ready-made Routines library (Growth › Routines)
 ]);
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this
