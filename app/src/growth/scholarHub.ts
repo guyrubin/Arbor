@@ -159,6 +159,124 @@ export const SCHOLAR_ARTICLES: ScholarArticle[] = [
     bodyHe:
       "ילד אינו מתפתח בבידוד — הוא מתפתח בתוך רשת של מערכות יחסים, שגרות ותנאים סביבתיים שיכולים לספוג מכות עבורו או להגביר כל מה שהוא מנווט בשלב מסוים. מעברים משפחתיים (אח/ות חדש, מעבר דירה, שינוי בגן/בית הספר, לחץ מטפל) אינם משגים את ההתפתחות — הם חלק מהקשר שכל משפחה עוברת. מה שמחקר חוסן משפחתי מראה בעקביות הוא שגורם ההגנה המרכזי אינו היעדר לחץ אלא יכולת המשפחה להישאר מתואמת במהלכו: שמירה על מספיק שגרות וטקסים שהילד מכיר, שמירה על תקשורת פתוחה לגבי מה משתנה, ומתן לילד תחושה קטנה אך אמיתית של עצמאות בנוגע למה שהוא יכול להשפיע עליו. יישור קו של הורים — שני המטפלים חולקים את אותה מסגרת בסיסית לגבי מה שקורה — הוא אחד הדברים המייצבים ביותר הזמינים בתקופות של מעבר.",
   },
+
+  // ── attachment_regulation (added) ───────────────────────────────────────
+  {
+    id: "serve-and-return-brain-architecture",
+    domain: "attachment_regulation",
+    titleEn: "Serve and return: the conversation that builds a brain",
+    titleHe: "מסירה והחזרה: השיחה שבונה מוח",
+    topicEn: "Attachment",
+    topicHe: "התקשרות",
+    readingMinutes: 4,
+    bodyEn:
+      "Long before a baby can talk, they are already starting conversations. A coo, a reach, a wide-eyed look, a pointed finger — each is a 'serve', an invitation for connection. When a caring adult 'returns' it by making eye contact, using words, mirroring the sound, or following the child's gaze, a back-and-forth exchange begins. The Center on the Developing Child at Harvard University describes this pattern of serve-and-return interaction as one of the ways early relationships help shape the developing architecture of a child's brain, laying groundwork for communication and social capacities. The beautiful part for parents is how ordinary this is: no special toys or curriculum are required, only noticing what the child is interested in and responding to it. Naming what the baby looks at, waiting for their reply, and letting them lead the rhythm turns everyday moments — a diaper change, a walk, a meal — into the exchanges through which connection is built.",
+    bodyHe:
+      "הרבה לפני שתינוק יכול לדבר, הוא כבר מתחיל שיחות. גרגור, הושטת יד, מבט בעיניים פעורות, אצבע מצביעה — כל אחד מהם הוא 'מסירה', הזמנה לחיבור. כשמבוגר מטפל 'מחזיר' אותה דרך יצירת קשר עין, שימוש במילים, שיקוף הצליל, או מעקב אחר מבט הילד, מתחיל חילופין של הלוך ושוב. המרכז להתפתחות הילד באוניברסיטת הרווארד מתאר את דפוס האינטראקציה הזה של מסירה והחזרה כאחת הדרכים שבהן מערכות יחסים מוקדמות מסייעות לעצב את הארכיטקטורה המתפתחת של מוח הילד, ומניחות תשתית ליכולות תקשורת וחברה. החלק היפה עבור הורים הוא כמה שזה יומיומי: אין צורך בצעצועים מיוחדים או בתוכנית לימודים, רק בשימת לב למה שמעניין את הילד ובתגובה אליו. לתת שם למה שהתינוק מביט בו, לחכות לתשובתו, ולתת לו להוביל את הקצב — כל אלה הופכים רגעים יומיומיים כמו החלפת חיתול, טיול או ארוחה לחילופין שדרכם נבנה החיבור.",
+  },
+  {
+    id: "name-it-to-tame-it",
+    domain: "attachment_regulation",
+    titleEn: "Name it to tame it: how words calm big feelings",
+    titleHe: "לתת שם כדי להרגיע: כיצד מילים מרגיעות רגשות גדולים",
+    topicEn: "Regulation",
+    topicHe: "ויסות",
+    readingMinutes: 3,
+    bodyEn:
+      "When a child is swept up in a wave of anger, fear, or disappointment, a parent's instinct is often to fix the problem or talk the child out of the feeling. Psychiatrist Dan Siegel offers a different starting point, captured in the phrase 'name it to tame it': gently putting the feeling into words. When a caregiver reflects back what they see — 'you were really hoping to stay longer, and now you feel disappointed' — they help the child connect the raw, wordless storm of sensation to language. Naming an emotion is thought to help bring the more reflective, verbal parts of the brain into contact with the more reactive, alarm-driven parts, so the feeling becomes something the child can observe rather than only be swept up in. This is not about talking a child out of an emotion or rushing them past it; it is about accompanying the feeling with words while it runs its course. Over time, hearing feelings named by a trusted adult helps a child build their own inner vocabulary for what is happening inside them.",
+    bodyHe:
+      "כשילד נסחף בגל של כעס, פחד או אכזבה, האינסטינקט של ההורה לרוב הוא לפתור את הבעיה או לשכנע את הילד לצאת מהרגש. הפסיכיאטר דן סיגל מציע נקודת פתיחה אחרת, המגולמת בביטוי 'לתת שם כדי להרגיע': להלביש בעדינות את הרגש במילים. כשמטפל משקף בחזרה את מה שהוא רואה — 'ממש קיווית להישאר עוד, ועכשיו אתה מרגיש אכזבה' — הוא מסייע לילד לחבר את סערת התחושות הגולמית וחסרת המילים אל השפה. מקובל לחשוב שמתן שם לרגש עוזר להביא את החלקים הרפלקטיביים והמילוליים יותר של המוח למגע עם החלקים הריאקטיביים ומונעי-האזעקה יותר, כך שהרגש הופך למשהו שהילד יכול להתבונן בו במקום רק להיסחף בו. אין מדובר בשכנוע הילד לצאת מהרגש או בהאצתו מעברו; מדובר בליווי הרגש במילים בזמן שהוא מתרחש. לאורך זמן, שמיעת רגשות מקבלים שם ממבוגר מהימן עוזרת לילד לבנות אוצר מילים פנימי משלו למה שקורה בתוכו.",
+  },
+
+  // ── sensory_motor_patterns (added) ──────────────────────────────────────
+  {
+    id: "routines-calm-nervous-system",
+    domain: "sensory_motor_patterns",
+    titleEn: "Why predictable rhythms settle a child's nervous system",
+    titleHe: "מדוע קצב צפוי מרגיע את מערכת העצבים של הילד",
+    topicEn: "Regulation & rhythm",
+    topicHe: "ויסות וקצב",
+    readingMinutes: 4,
+    bodyEn:
+      "A young child's nervous system is doing an enormous amount of work simply to make sense of a world that is still new. Much of a child's day is spent predicting what comes next — and when the world is predictable, that prediction is easy and the body can stay settled. When it is not, the nervous system has to stay on alert, scanning for what might happen. This is one reason familiar daily rhythms — a similar order to mornings, a recognisable wind-down before sleep, a few dependable rituals — often help children feel calmer and more cooperative. Predictability lowers the moment-to-moment load of anticipating the unknown, freeing the child's energy for play, curiosity, and connection. Routines do not have to be rigid schedules measured by the clock; what matters is the recognisable sequence — first this, then that. When life does need to change, a little advance warning and a familiar ritual carried into the new situation can help a child's body stay grounded through it.",
+    bodyHe:
+      "מערכת העצבים של ילד צעיר עושה עבודה עצומה רק כדי להבין עולם שעדיין חדש עבורו. חלק גדול מיומו של ילד מוקדש לחיזוי מה יבוא אחר כך — וכשהעולם צפוי, החיזוי קל והגוף יכול להישאר רגוע. כשהוא אינו צפוי, מערכת העצבים נאלצת להישאר בכוננות, סורקת מה עלול לקרות. זו אחת הסיבות שקצב יומי מוכר — סדר דומה לבקרים, שגרת הרגעה מזוהה לפני השינה, כמה טקסים אמינים — עוזר לעתים קרובות לילדים להרגיש רגועים ומשתפים פעולה יותר. צפיות מפחיתה את העומס הרגעי של ציפייה לבלתי-ידוע, ומשחררת את האנרגיה של הילד למשחק, סקרנות וחיבור. שגרות אינן חייבות להיות לוחות זמנים נוקשים הנמדדים בשעון; מה שחשוב הוא הרצף המזוהה — קודם זה, אחר כך זה. כשהחיים כן צריכים להשתנות, אזהרה קטנה מראש וטקס מוכר הנישא אל המצב החדש יכולים לעזור לגוף הילד להישאר יציב לאורכו.",
+  },
+
+  // ── cognition_executive_function (added) ────────────────────────────────
+  {
+    id: "science-of-play",
+    domain: "cognition_executive_function",
+    titleEn: "The serious science of play",
+    titleHe: "המדע הרציני של המשחק",
+    topicEn: "Play & learning",
+    topicHe: "משחק ולמידה",
+    readingMinutes: 4,
+    bodyEn:
+      "Play can look like the opposite of learning — unstructured, silly, going nowhere in particular. Developmental science tells a different story: play is one of the primary ways young children learn about the physical world, other people, and themselves. In free, child-led play, a child sets their own goals, tests ideas, adjusts when something does not work, and practises the give-and-take of imagination and negotiation. The American Academy of Pediatrics has emphasised, in its writing on the role of play, that unstructured playtime is a meaningful part of healthy development, not a break from it. Crucially, the richest play is often the least equipped: a box, some cushions, water, sticks, a few figures. Open-ended materials invite the child to supply the ideas, which is exactly where the developmental work happens. The adult's most useful role is frequently to protect time and space for play, join when invited, and resist the urge to direct it or turn every moment into a lesson.",
+    bodyHe:
+      "משחק יכול להיראות כהיפוכה של למידה — לא מובנה, שטותי, לא מוביל לשום מקום מסוים. המדע ההתפתחותי מספר סיפור אחר: משחק הוא אחת הדרכים העיקריות שבהן ילדים צעירים לומדים על העולם הפיזי, על אנשים אחרים ועל עצמם. במשחק חופשי ומונחה-ילד, הילד מציב לעצמו מטרות, בוחן רעיונות, מתאים כשמשהו לא עובד, ומתרגל את הנתינה והקבלה של דמיון ומשא ומתן. האקדמיה האמריקאית לרפואת ילדים הדגישה, בכתיבתה על תפקיד המשחק, שזמן משחק לא מובנה הוא חלק משמעותי מהתפתחות בריאה, ולא הפסקה ממנה. באופן מהותי, המשחק העשיר ביותר הוא לעתים קרובות המצויד ביותר במיעוט: קופסה, כמה כריות, מים, מקלות, כמה דמויות. חומרים פתוחים מזמינים את הילד לספק את הרעיונות, וזה בדיוק המקום שבו מתרחשת העבודה ההתפתחותית. תפקידו המועיל ביותר של המבוגר הוא לעתים קרובות להגן על זמן ומרחב למשחק, להצטרף כשמזמינים אותו, ולעמוד בפני הדחף לכוון אותו או להפוך כל רגע לשיעור.",
+  },
+
+  // ── ecosystem_stressors (added) ─────────────────────────────────────────
+  {
+    id: "temperament-goodness-of-fit",
+    domain: "ecosystem_stressors",
+    titleEn: "Temperament and 'goodness of fit'",
+    titleHe: "מזג ו'התאמה טובה'",
+    topicEn: "Temperament & fit",
+    topicHe: "מזג והתאמה",
+    readingMinutes: 4,
+    bodyEn:
+      "Children arrive with their own built-in style — how intensely they react, how quickly they warm to new people and places, how active or cautious they tend to be. In the pioneering work of Alexander Thomas and Stella Chess, this inborn style was called temperament, and their most enduring idea was 'goodness of fit': the degree to which the demands and expectations of a child's environment match the child they actually are. Their observation was that temperament on its own does not decide how things go — what matters more is the fit between the child and how the people and settings around them respond. A cautious child given time to warm up, or a spirited child given room to move, can flourish; the same children pressed to be someone they are not may struggle more. This reframes many everyday tensions not as something wrong with the child or the parent, but as a fit that can be adjusted — shaping the environment and expectations to work with a child's nature rather than against it.",
+    bodyHe:
+      "ילדים מגיעים עם סגנון מובנה משלהם — עד כמה הם מגיבים בעוצמה, כמה מהר הם מתחממים לאנשים ומקומות חדשים, עד כמה הם נוטים להיות פעילים או זהירים. בעבודתם פורצת הדרך של אלכסנדר תומס וסטלה צ'ס, סגנון מולד זה נקרא מזג, והרעיון המתמשך ביותר שלהם היה 'התאמה טובה': המידה שבה הדרישות והציפיות של סביבת הילד תואמות את הילד שהוא באמת. התצפית שלהם הייתה שהמזג כשלעצמו אינו קובע כיצד הדברים יתפתחו — מה שחשוב יותר הוא ההתאמה בין הילד לבין האופן שבו האנשים והמסגרות סביבו מגיבים. ילד זהיר שמקבל זמן להתחמם, או ילד תוסס שמקבל מרחב לנוע, יכולים לפרוח; אותם ילדים בדיוק, כשנלחצים להיות מי שאינם, עשויים להתקשות יותר. זה ממסגר מחדש מתחים יומיומיים רבים לא כמשהו שלא בסדר אצל הילד או ההורה, אלא כהתאמה שניתן לכוונן — עיצוב הסביבה והציפיות כך שיעבדו עם טבע הילד ולא נגדו.",
+  },
+
+  // ── social_development (added) ──────────────────────────────────────────
+  {
+    id: "special-time-child-led",
+    domain: "social_development",
+    titleEn: "The quiet power of 'special time'",
+    titleHe: "כוחו השקט של 'זמן מיוחד'",
+    topicEn: "Connection",
+    topicHe: "חיבור",
+    readingMinutes: 3,
+    bodyEn:
+      "Amid busy days full of instructions — hurry up, put that down, not now — children can go long stretches without the experience of an adult simply delighting in them. 'Special time' is a small, deliberate practice drawn from child-led play approaches used in parent-child relationship work: a short, protected window, even five or ten minutes, in which the parent follows the child's lead completely. The child chooses the activity; the adult narrates warmly, joins in, and holds back on questions, corrections, and teaching. The value lies precisely in the lack of agenda — the child experiences being enjoyed for who they are, not for what they achieve. Because it is predictable and repeated (rather than one grand outing), special time becomes a reliable deposit into the relationship that children can count on. Many caregivers find that a little regular, undivided, follow-the-child attention makes cooperation easier in the rest of the day, because connection has already been fed.",
+    bodyHe:
+      "בתוך ימים עמוסים מלאי הוראות — תזדרז, תניח את זה, לא עכשיו — ילדים יכולים לעבור פרקי זמן ארוכים בלי החוויה של מבוגר שפשוט נהנה מהם. 'זמן מיוחד' הוא תרגול קטן ומכוון השאוב מגישות משחק מונחה-ילד המשמשות בעבודה על יחסי הורה-ילד: חלון זמן קצר ומוגן, אפילו חמש או עשר דקות, שבו ההורה עוקב באופן מלא אחר הובלת הילד. הילד בוחר את הפעילות; המבוגר מתאר בחמימות, מצטרף, ונמנע משאלות, תיקונים והוראה. הערך טמון דווקא בהיעדר האג'נדה — הילד חווה שנהנים ממנו על מי שהוא, לא על מה שהוא משיג. מכיוון שהוא צפוי וחוזר (ולא בילוי גדול חד-פעמי), הזמן המיוחד הופך להפקדה אמינה במערכת היחסים שהילדים יכולים לסמוך עליה. מטפלים רבים מגלים שמעט תשומת לב סדירה, בלתי-מחולקת ומונחית-ילד מקלה על שיתוף הפעולה בשאר היום, כי החיבור כבר הוזן.",
+  },
+
+  // ── language_communication (added) ──────────────────────────────────────
+  {
+    id: "reading-aloud-dialogic",
+    domain: "language_communication",
+    titleEn: "Reading aloud as a two-way conversation",
+    titleHe: "קריאה בקול כשיחה דו-כיוונית",
+    topicEn: "Reading aloud",
+    topicHe: "קריאה בקול",
+    readingMinutes: 4,
+    bodyEn:
+      "Reading a picture book to a child is wonderful — and it becomes even richer when it turns from a monologue into a conversation. This is the idea behind dialogic reading, developed by Grover Whitehurst and colleagues, in which the adult reads less like a narrator and more like a partner, inviting the child to become the storyteller. Rather than reading straight through, the adult pauses to ask open questions ('what do you think is happening here?'), follows the child's answer, gently expands on it, and lets the child fill in a familiar line. The approach is often summarised with the prompts to complete, recall, ask open-ended and 'wh-' questions, and connect the book to the child's own life. What makes this powerful for language is the back-and-forth: the child is not just hearing words but producing them, being listened to, and having their contribution built upon. The same book, read many times, becomes a fresh conversation each time as the child takes on a bigger role in telling it.",
+    bodyHe:
+      "קריאת ספר מאויר לילד היא נפלאה — והיא נעשית עשירה עוד יותר כשהיא הופכת ממונולוג לשיחה. זהו הרעיון שמאחורי קריאה דיאלוגית, שפותחה על ידי גרובר וייטהרסט ועמיתיו, שבה המבוגר קורא פחות כמספר ויותר כשותף, ומזמין את הילד להפוך למספר הסיפור. במקום לקרוא ברצף, המבוגר עוצר כדי לשאול שאלות פתוחות ('מה לדעתך קורה כאן?'), עוקב אחר תשובת הילד, מרחיב אותה בעדינות, ומאפשר לילד להשלים שורה מוכרת. הגישה מסוכמת לעתים קרובות בהנחיות להשלים, להיזכר, לשאול שאלות פתוחות ושאלות 'מה/מי/למה', ולקשר את הספר לחיי הילד עצמו. מה שהופך זאת לרב-עוצמה עבור השפה הוא ההלוך ושוב: הילד לא רק שומע מילים אלא מפיק אותן, מוקשב לו, ותרומתו נבנית הלאה. אותו ספר, הנקרא פעמים רבות, הופך לשיחה רעננה בכל פעם ככל שהילד נוטל תפקיד גדול יותר בסיפורו.",
+  },
+
+  // ── independence_adaptive_skills (added) ────────────────────────────────
+  {
+    id: "toddler-autonomy-no",
+    domain: "independence_adaptive_skills",
+    titleEn: "The toddler 'no': autonomy in the making",
+    titleHe: "ה'לא' של הפעוט: עצמאות בהתהוות",
+    topicEn: "Autonomy",
+    topicHe: "עצמאות",
+    readingMinutes: 4,
+    bodyEn:
+      "The sudden arrival of a firm, frequent 'no' can feel like defiance, but it usually signals something developmentally healthy: a child discovering that they are a separate person with a will of their own. Erik Erikson framed the toddler years as a period centred on autonomy — the growing drive to do things oneself and to have some say over what happens. Saying 'no', insisting on the red cup, wanting to put on shoes unaided: these are early experiments in agency, not battles to be won or lost. Children of this age genuinely need real, safe opportunities to exercise choice, which is why offering bounded options ('grapes or apple?') so often works better than open-ended demands or head-on commands. The task for caregivers is not to crush the emerging will nor to hand over the whole household, but to hold clear limits warmly while making room for the child to practise deciding. A child who is allowed to exercise autonomy within safe boundaries is doing exactly the developmental work this stage is for.",
+    bodyHe:
+      "ההופעה הפתאומית של 'לא' נחרץ ותכוף יכולה להרגיש כמו התרסה, אך בדרך כלל היא מסמנת משהו בריא מבחינה התפתחותית: ילד המגלה שהוא אדם נפרד בעל רצון משלו. אריק אריקסון מיסגר את שנות הפעוטות כתקופה שבמרכזה עצמאות — הדחף הגובר לעשות דברים בעצמו ולומר משהו לגבי מה שקורה. לומר 'לא', להתעקש על הכוס האדומה, לרצות לנעול נעליים ללא עזרה: אלה ניסויים מוקדמים במסוגלות, לא קרבות שיש לנצח או להפסיד. ילדים בגיל זה באמת זקוקים להזדמנויות אמיתיות ובטוחות לתרגל בחירה, ולכן הצעת אפשרויות תחומות ('ענבים או תפוח?') לעתים קרובות עובדת טוב יותר מדרישות פתוחות או פקודות חזיתיות. המשימה של המטפלים אינה למחוץ את הרצון המתהווה ולא למסור את כל הבית, אלא להחזיק גבולות ברורים בחמימות תוך פינוי מקום לילד לתרגל החלטה. ילד שמורשה לתרגל עצמאות בתוך גבולות בטוחים עושה בדיוק את העבודה ההתפתחותית שהשלב הזה נועד לה.",
+  },
 ];
 
 /** Map domain id → best-match article id (one article per domain). */
