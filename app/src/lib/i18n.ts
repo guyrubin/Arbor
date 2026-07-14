@@ -360,6 +360,9 @@ export const en: Dict = {
   "coach.coachName": "Dr. Levi",
   "coach.coachStatus": "Online now",
   "coach.send.aria": "Send message",
+  // EU AI Act Art. 50 — persistent AI-interaction transparency line on the Ask
+  // surface (always visible under the input; non-diagnostic register).
+  "coach.aiDisclosure": "Arbor's guidance is AI-generated and doesn't replace professional advice. In an emergency, contact your care provider.",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "Integrated Balanced",
   "coach.lens.integratedHint": "The default: connection first, then the next achievable step, then the environment. Pick a named lens when one angle should lead.",
@@ -1768,6 +1771,8 @@ export const en: Dict = {
   "handoff.saved.item": "{audience} brief",
   "handoff.open": "Open",
   "handoff.delete": "Delete",
+  // EU AI Act Art. 50 — AI-generated artifact label on the exported/printed brief.
+  "handoff.aiFooter": "This summary was generated with AI assistance and approved by the parent.",
 };
 
 export const he: Dict = {
@@ -2098,6 +2103,8 @@ export const he: Dict = {
   "coach.coachName": "ד״ר לוי",
   "coach.coachStatus": "זמינה עכשיו",
   "coach.send.aria": "שליחת הודעה",
+  // EU AI Act Art. 50 — persistent AI-interaction transparency line (he).
+  "coach.aiDisclosure": "ההכוונה של ארבור נוצרת בבינה מלאכותית ואינה תחליף לייעוץ מקצועי. במקרה חירום פנו לגורם המטפל שלכם.",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "משולב מאוזן",
   "coach.lens.integratedHint": "ברירת המחדל: קשר תחילה, אחר כך הצעד הבא בר-השגה, ואז הסביבה. בחרו עדשה ממוקדת כשצריך להוביל מזווית אחת.",
@@ -3471,6 +3478,8 @@ export const he: Dict = {
   "handoff.saved.item": "סיכום {audience}",
   "handoff.open": "פתיחה",
   "handoff.delete": "מחיקה",
+  // EU AI Act Art. 50 — AI-generated artifact label on the exported/printed brief (he).
+  "handoff.aiFooter": "סיכום זה נוצר בסיוע בינה מלאכותית ואושר על ידי ההורה.",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and

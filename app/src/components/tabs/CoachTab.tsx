@@ -742,6 +742,11 @@ export default function CoachTab() {
                 : <Icon name="arrow_forward" size={20} />}
             </button>
           </div>
+          {/* EU AI Act Art. 50 — persistent AI-interaction transparency line. Always
+              visible on the Ask surface, calm and non-intrusive, never behind a toggle. */}
+          <p className="text-[10px] text-center leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+            {t("coach.aiDisclosure")}
+          </p>
           {/* ia-b6: persistent Ask-pillar door into the Ask-a-Specialist warm handoff.
               Navigation only — stays enabled while a coach answer is streaming. */}
           <div className="pt-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>

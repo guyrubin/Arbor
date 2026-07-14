@@ -122,6 +122,12 @@ export default function HandoffTab() {
             <div className="p-4 rounded-xl mt-4" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
               <strong>{t("handoff.crisis")}</strong> {schoolBrief.crisisEscalationTrigger}
             </div>
+
+            {/* EU AI Act Art. 50 — AI-generated artifact label. Lives inside the
+                printable-area so it travels with every printed/shared brief. */}
+            <p className="text-[10px] pt-4" style={{ color: "var(--arbor-muted)", borderTop: "1px solid var(--arbor-rule)" }}>
+              {t("handoff.aiFooter")}
+            </p>
           </div>
         ) : (
           <div className="text-center py-12 space-y-2">

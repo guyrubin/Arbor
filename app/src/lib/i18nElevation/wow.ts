@@ -18,6 +18,8 @@ export const en: Record<string, string> = {
   "elev.wow.dismiss": "Skip the tour",
   "elev.wow.stepOf": "Step {step} of {total}",
   "elev.wow.evidence": "Research-anchored — CDC/AAP 2022 milestones",
+  // EU AI Act Art. 50 — AI transparency where the AI features are introduced.
+  "elev.wow.aiNote": "Arbor's guidance and story art are AI-generated and don't replace professional advice.",
 
   // ── Step 1 · Add your child
   "elev.wow.child.title": "Let's meet your child",
@@ -46,6 +48,8 @@ export const he: Record<string, string> = {
   "elev.wow.dismiss": "לדלג על הסיור",
   "elev.wow.stepOf": "שלב {step} מתוך {total}",
   "elev.wow.evidence": "מעוגן במחקר — אבני דרך CDC/AAP 2022",
+  // EU AI Act Art. 50 — שקיפות בינה מלאכותית בנקודת ההיכרות עם היכולות.
+  "elev.wow.aiNote": "ההכוונה ואיורי הסיפור של ארבור נוצרים בבינה מלאכותית ואינם תחליף לייעוץ מקצועי.",
 
   "elev.wow.child.title": "רגע להכיר את הילד שלכם",
   "elev.wow.child.sub": "שם וגיל — זה כל מה שצריך. מכאן ארבור מתחילה להפוך רגעים קטנים מהיומיום לסיפור המשפחתי שלכם.",

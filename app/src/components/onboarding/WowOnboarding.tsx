@@ -441,6 +441,11 @@ export function WowOnboarding() {
           <p className="mt-4 text-center text-[var(--t-xs)] font-bold" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.wow.evidence")}
           </p>
+          {/* EU AI Act Art. 50 — one-time AI transparency note where the AI
+              features are first introduced (avatar + comic + coaching). */}
+          <p className="mt-1.5 text-center text-[var(--t-xs)]" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.wow.aiNote")}
+          </p>
         </div>
       </div>
 
