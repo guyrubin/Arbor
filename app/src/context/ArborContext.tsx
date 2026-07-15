@@ -15,6 +15,7 @@ import {
   PlayLog,
 } from "../types";
 import type { ScoredActivity } from "../playbank/select";
+import { ROUTE_IDS, type ActiveTab } from "../lib/routes";
 import {
   sampleBehaviorLogs,
   initialMilestones,
@@ -55,88 +56,13 @@ const renderApiConnectionError = (message: string) => {
   return `### Connection Error\nCould not fetch response from the server.\n\n**Reason:** ${reason}\n\n${authHint}`;
 };
 
-export type ActiveTab =
-  // existing leaf views (preserved)
-  | "overview"
-  | "coach"
-  | "behaviors"
-  | "milestones"
-  | "plans"
-  | "stories"
-  | "weekly"
-  | "scholar"
-  | "language"
-  | "handoff"
-  | "safety"
-  // new capability views (IA refactor)
-  | "profile"        // Child Intelligence › Development Profile
-  | "memory"         // Child Intelligence › Child Memory
-  | "strengths"      // Child Intelligence › Strengths & Challenges
-  | "screening"      // Child Intelligence › Development Check (non-diagnostic screener)
-  | "timeline"       // Child Intelligence › Story (unified signal timeline)
-  | "journal"        // Journal › action-forward log + flat moment feed (UC-1; additive to timeline)
-  | "find-pro"       // Care Network › Find a Professional
-  | "care-team"      // Care Network › My Care Team
-  | "appointments"   // Care Network › Appointments
-  | "sharing"        // Care Network › Trusted Sharing
-  | "reports"        // Care Network › Reports
-  | "masterclasses"  // Arbor Academy › Parent Masterclasses
-  | "family"         // Arbor Academy › Family Formation
-  | "comics"         // Arbor Academy › Hero Comics (child-as-hero comic generator)
-  // Practice Studio (Fall release: speech & language suite)
-  | "speech"         // Practice Studio › Speech Coach (articulation)
-  | "mimic"          // Practice Studio › Mimic Studio (imitation play)
-  | "feelings"       // Practice Studio › Feelings Lab (emotion coaching)
-  // (ia-b1) "missions" retired as a standalone route — the daily mission loop is
-  // now folded into Today (OverviewTab). Mission DATA still lives in usePracticeData.
-  | "journey"        // Practice Studio › Development Journey
-  | "adventures"     // Practice Studio › Cognitive Adventures
-  | "copilot"        // My Child › Development Dashboard (Copilot)
-  // IA v3: 6-pillar consolidation hubs (merge confusable/duplicate leaves)
-  | "development"    // My Child › Development (merges copilot+profile+milestones+journey)
-  | "daily-play"     // Grow › Daily Play (household-item activity library)
-  | "practice"       // Grow › Practice (hub over speech+mimic+feelings+adventures)
-  | "consult"        // Care › Consult (merges reports+handoff+find-pro)
-  // Internal / admin-only (P0-5): attribution + UTM funnel dashboard. Reachable
-  // by deep link (#/attribution) and from the admin-gated Settings entry; never
-  // surfaced in the parent-facing sidebar. The view itself enforces admin gating.
-  | "attribution"
-  // AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI.
-  // Read-only detail view, reachable from Today/Overview; does NOT replace the inline nudge.
-  | "day-windows"
-  // AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI engine.
-  // Parent-only surface (no child data, no consent surface, no redaction implication).
-  | "smart-reminders"
-  // AP-060: "The Science" — parent-facing trust/source-transparency page.
-  // Static editorial content — no child data read, captured, processed, or exported.
-  | "science"
-  // AP-056: School Handoff Brief — parent-controlled, teacher-facing, curated,
-  // non-diagnostic 1-page export. DISTINCT from the clinician Consult packet.
-  | "school-brief"
-  // AP-057: Bedtime Stories — day-rooted AI-generated nightly story, avatar-starring,
-  // HE/EN read-aloud. Distinct from Hero Journeys (stories route). Generate-and-discard
-  // design (no persistent library); escalation screen + redaction enforced server-side.
-  | "bedtime-stories"
-  // Wireframe: Ready-made Routines — a research-backed library of 7 named
-  // routines (morning, goodbye, meal, tidy, screens, bedtime…), each a
-  // checkable step board. Grows › Routines.
-  | "routines";
-
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
-// working browser back/forward button.
-const VALID_TABS = new Set<string>([
-  "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
-  "profile", "memory", "strengths", "screening", "timeline", "journal", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family", "comics",
-  "speech", "mimic", "feelings", "journey", "adventures", "copilot",
-  "development", "daily-play", "practice", "consult",
-  "attribution",
-  "day-windows", // AP-051: Day Windows detail panel (read-only, from Today)
-  "smart-reminders", // AP-058: Smart Reminders settings (parent prefs over existing JITAI)
-  "science", // AP-060: The Science trust page (static editorial, no child data)
-  "school-brief", // AP-056: School Handoff Brief (parent-controlled, teacher-facing, curated)
-  "bedtime-stories", // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
-  "routines", // Wireframe: Ready-made Routines library (Growth › Routines)
-]);
+// working browser back/forward button. The `ActiveTab` type and this runtime
+// guard both derive from the ROUTE_IDS single source of truth in lib/routes.ts —
+// re-exported here so existing `import { ActiveTab } from "../context/ArborContext"`
+// call sites keep working unchanged.
+export type { ActiveTab };
+const VALID_TABS = new Set<string>(ROUTE_IDS);
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this
  *  array is derived from VALID_TABS and is never read by any render path. */

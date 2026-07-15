@@ -55,7 +55,7 @@ export function buildReport(type: ReportType, ctx: ReportContext): ReportDoc {
 }
 
 function buildReportBody(type: ReportType, ctx: ReportContext): ReportDoc {
-  const { child, logs, plans, milestonesPercent, checkedMilestones, totalMilestones } = ctx;
+  const { child, logs, plans, checkedMilestones, totalMilestones } = ctx;
   const wk = recentLogs(logs, 7);
   const mo = recentLogs(logs, 28);
   const common = `${child.name}, age ${child.age}`;
@@ -64,7 +64,7 @@ function buildReportBody(type: ReportType, ctx: ReportContext): ReportDoc {
     case "weekly":
       return { title: "Weekly Insight", subtitle: common, sections: [
         { heading: "This week", body: [`${wk.length} moments logged`, `Average intensity: ${avgIntensity(wk)} / 5`, `Most-logged: ${topTrigger(wk)}`] },
-        { heading: "Development", body: [`Milestone readiness: ${milestonesPercent}% (${checkedMilestones}/${totalMilestones})`] },
+        { heading: "Development", body: [`${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
         { heading: "Suggested focus", body: child.challenges.slice(0, 2) },
       ]};
     case "teacher":
@@ -83,7 +83,6 @@ function buildReportBody(type: ReportType, ctx: ReportContext): ReportDoc {
         { heading: "Timeline & frequency", body: [`${mo.length} relevant moments in the last 28 days`, `Average intensity: ${avgIntensity(mo)} / 5`] },
         { heading: "Patterns", body: [`Most-logged: ${topTrigger(mo)}`] },
         { heading: "Parent-tried interventions", body: mo.map((l) => l.response).filter(Boolean).slice(0, 5) },
-        { heading: "Risk level", body: child.riskLevel },
         { heading: "Parent goals", body: child.challenges },
         { heading: "Non-diagnostic note", body: "This summary reflects parent observations only and is not a clinical diagnosis." },
       ]};
@@ -91,13 +90,13 @@ function buildReportBody(type: ReportType, ctx: ReportContext): ReportDoc {
       return { title: "Pediatrician Summary", subtitle: common, sections: [
         { heading: "Concern", body: child.challenges[0] || "Routine developmental check" },
         { heading: "Duration & frequency", body: [`${mo.length} logged moments in 28 days`, `Average intensity ${avgIntensity(mo)} / 5`] },
-        { heading: "Relevant milestones", body: `${milestonesPercent}% readiness for age ${child.age}` },
+        { heading: "Relevant milestones", body: `${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed (age ${child.age})` },
         { heading: "Parent observations", body: mo.slice(0, 4).map((l) => `${l.behaviorType}: ${l.trigger || ""}`.trim()) },
         { heading: "Non-diagnostic framing", body: "Shared to support a clinical conversation; Arbor does not diagnose." },
       ]};
     case "snapshot":
       return { title: "Development Snapshot", subtitle: common, sections: [
-        { heading: "At a glance", body: [`Age ${child.age}`, `Milestone readiness: ${milestonesPercent}%`, `Risk level: ${child.riskLevel}`] },
+        { heading: "At a glance", body: [`Age ${child.age}`, `${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
         { heading: "Strengths", body: child.strengths },
         { heading: "Where to support", body: child.challenges },
         { heading: "Languages", body: child.languages.join(" · ") },
