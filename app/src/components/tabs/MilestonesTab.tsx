@@ -37,6 +37,7 @@ export default function MilestonesTab() {
     setChatInput,
     setSelectedLens,
     setActiveTab,
+    seedCoach,
     childProfile,
     updateChild,
     deleteMilestone,
@@ -575,7 +576,7 @@ export default function MilestonesTab() {
           <div className="p-4 rounded-xl text-xs leading-relaxed space-y-3 select-text bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
             <MarkdownBlock text={milestoneAnalysisOfGaps} className="space-y-2" />
             <div className="pt-2.5 flex justify-end" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-              <button type="button" onClick={() => { setChatInput(`Regarding the scaffolding gap analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?`); setSelectedLens("Vygotsky's Scaffolding"); setActiveTab("coach"); }} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
+              <button type="button" onClick={() => seedCoach({ prompt: `Regarding the scaffolding gap analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?`, lens: "Vygotsky's Scaffolding", source: "milestones-gap" })} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
                 {t("ms.discussCoach")}
               </button>
             </div>

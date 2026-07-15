@@ -100,7 +100,7 @@ function SignalRow({ signal }: { signal: TimelineSignal }) {
 export default function StoryTimelineTab() {
   const {
     behaviorLogs, milestones, actionPlans, conversations, memoryReviewItems,
-    childProfile, setActiveTab, setChatInput,
+    childProfile, setActiveTab, seedCoach,
     pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
     playLogs,
   } = useArbor();
@@ -166,8 +166,7 @@ export default function StoryTimelineTab() {
   // count renders with a neutral "vs N last week" comparison (descriptive only).
 
   const handleCoach = (prompt: string) => {
-    setChatInput(prompt);
-    setActiveTab("coach");
+    seedCoach({ prompt, source: "story-timeline" });
   };
 
   return (

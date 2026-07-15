@@ -38,7 +38,7 @@ function AgeChip({ age }: { age: number }) {
 }
 
 export default function DailyPlayTab() {
-  const { behaviorLogs, childProfile, setChatInput, setActiveTab, logPlayCompletion, updateChild } = useArbor();
+  const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, updateChild, seedCoach } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
@@ -120,8 +120,7 @@ export default function DailyPlayTab() {
   const readinessCourse = READINESS_COURSES.find((c) => c.id === readinessId) ?? READINESS_COURSES[0];
 
   const coachActivity = (a: PlayActivity) => {
-    setChatInput(`We're going to try "${a.title}" with ${firstName} today (it builds ${a.domain}). How can I get the most out of it, and what should I watch for?`);
-    setActiveTab("coach");
+    seedCoach({ prompt: `We're going to try "${a.title}" with ${firstName} today (it builds ${a.domain}). How can I get the most out of it, and what should I watch for?`, source: "daily-play" });
   };
 
   const markDone = (p: ScoredActivity) => {
@@ -137,8 +136,7 @@ export default function DailyPlayTab() {
     toast(`Nice. Added to ${firstName}'s day.`, "success");
   };
   const coach = (p: ScoredActivity) => {
-    setChatInput(`We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`);
-    setActiveTab("coach");
+    seedCoach({ prompt: `We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`, source: "daily-play" });
   };
 
   // ── CI-30: Daily Plan Generator ───────────────────────────────────────────
@@ -198,10 +196,10 @@ export default function DailyPlayTab() {
 
   const handlePlanCoach = (plan: DailyPlan) => {
     const goal = plan.goal ? ` working on ${plan.goal.label}` : "";
-    setChatInput(
-      `We're going to try "${plan.scoredActivity.activity.title}" with ${firstName} today${goal}. How can I get the most out of it, and what should I watch for?`
-    );
-    setActiveTab("coach");
+    seedCoach({
+      prompt: `We're going to try "${plan.scoredActivity.activity.title}" with ${firstName} today${goal}. How can I get the most out of it, and what should I watch for?`,
+      source: "daily-plan",
+    });
   };
 
   const handlePlanObservation = async (text: string): Promise<void> => {

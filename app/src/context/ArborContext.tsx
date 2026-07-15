@@ -115,6 +115,22 @@ function useArborState() {
     try { if (window.location.hash.replace(/^#\/?/, "") !== t) window.location.hash = `/${t}`; } catch { /* noop */ }
     try { track("view_tab", { tab: t }); } catch { /* noop */ }
   };
+
+  /**
+   * The single seam for handing a prompt to Ask Arbor from anywhere in the app.
+   * Historically 18+ surfaces hand-rolled the same `setChatInput(...) +
+   * (setSelectedLens(...)) + setActiveTab("coach")` triple; that sprawl had no
+   * lens coordination and no provenance. Route every external coach entry point
+   * through here instead. `lens` is optional (a caller that wants to steer the
+   * scholar frame passes one; callers that respect the parent's current lens
+   * omit it). `source` tags where the seed came from for telemetry.
+   */
+  const seedCoach = (opts: { prompt?: string; lens?: string; source?: string }) => {
+    if (opts.prompt !== undefined) setChatInput(opts.prompt);
+    if (opts.lens) setSelectedLens(opts.lens);
+    setActiveTab("coach");
+    try { track("coach_seed", { source: opts.source ?? "unknown" }); } catch { /* noop */ }
+  };
   // UC-wireframe: the right-hand AI "how Arbor helps" rail is a third column the
   // wireframe does not have. Default it OFF (opt-in via the topbar toggle) so the
   // content column breathes; the parent's choice still persists in localStorage.
@@ -930,6 +946,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setSelectedLens,
     chatInput,
     setChatInput,
+    seedCoach,
     chatMessages,
     conversations,
     activeConversationId,

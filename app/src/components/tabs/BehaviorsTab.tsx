@@ -107,9 +107,7 @@ export default function BehaviorsTab() {
     inlineCoRegulationScripts,
     isGeneratingInlineScript,
     handleGetInlineCoRegulationScript,
-    setChatInput,
-    setSelectedLens,
-    setActiveTab,
+    seedCoach,
     childProfile,
     deleteLog,
     editingLogId,
@@ -427,8 +425,7 @@ export default function BehaviorsTab() {
                 <div className="flex flex-wrap gap-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                   <button
                     onClick={() => {
-                      setChatInput(`${t("beh.analyzeCoachPrompt", { name: behFirst })}\n\n${behaviorAnalysis.actionPlanSuggestion}`);
-                      setActiveTab("coach");
+                      seedCoach({ prompt: `${t("beh.analyzeCoachPrompt", { name: behFirst })}\n\n${behaviorAnalysis.actionPlanSuggestion}`, source: "behavior-analysis" });
                     }}
                     className="inline-flex items-center gap-2 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition active:scale-[0.98]"
                     style={{ background: T.gradientCta }}
@@ -558,7 +555,7 @@ export default function BehaviorsTab() {
                                               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-xl space-y-2 mt-1 text-[11px] leading-relaxed select-text overflow-hidden bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
                                                 <MarkdownBlock text={inlineCoRegulationScripts[log.id]} className="space-y-1.5" />
                                                 <div className="flex justify-end pt-1 gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                                                  <button type="button" onClick={() => { setChatInput(`Regarding the log event where the child did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${inlineCoRegulationScripts[log.id]}\n\nHow do I adapt this if they continue to resist or act physically aggressive?`); setSelectedLens("Bowlby's Attachment Model"); setActiveTab("coach"); }} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
+                                                  <button type="button" onClick={() => seedCoach({ prompt: `Regarding the log event where the child did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${inlineCoRegulationScripts[log.id]}\n\nHow do I adapt this if they continue to resist or act physically aggressive?`, lens: "Bowlby's Attachment Model", source: "behavior-coreg" })} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
                                                     {t("beh.discussCoach")} <Icon name="open_in_new" size={11} />
                                                   </button>
                                                 </div>

@@ -37,7 +37,7 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function DevScoreCard() {
-  const { milestones, childProfile, setChatInput, setActiveTab } = useArbor();
+  const { milestones, childProfile, seedCoach } = useArbor();
   const { t } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const key = `arbor.devscore.${childProfile.id}`;
@@ -105,8 +105,7 @@ export default function DevScoreCard() {
   // nurturing development generally. It is NOT a "your child is lowest in X"
   // pointer (that was a deficit verdict). The prompt is domain-agnostic.
   const coach = () => {
-    setChatInput(t("devscore.coach.prompt", { name: firstName }));
-    setActiveTab("coach");
+    seedCoach({ prompt: t("devscore.coach.prompt", { name: firstName }), source: "dev-score" });
   };
 
   return (
