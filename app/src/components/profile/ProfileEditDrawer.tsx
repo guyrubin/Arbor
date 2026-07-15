@@ -31,8 +31,6 @@ const INTEREST_SUGGESTION_KEYS = [
   "interest.nature",
 ] as const;
 
-const RISK_LEVELS: ChildProfile["riskLevel"][] = ["Low", "Moderate", "High"];
-
 export default function ProfileEditDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { activeChild, updateChild, deleteChild, profiles } = useProfile();
   const { user } = useAuth();
@@ -45,7 +43,6 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const [languages, setLanguages] = useState(activeChild.languages.join(", "));
   const [strengths, setStrengths] = useState(activeChild.strengths.join("\n"));
   const [challenges, setChallenges] = useState(activeChild.challenges.join("\n"));
-  const [riskLevel, setRiskLevel] = useState<ChildProfile["riskLevel"]>(activeChild.riskLevel);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(activeChild.photoUrl);
   const [avatarMeta, setAvatarMeta] = useState<ChildProfile["avatar"]>(activeChild.avatar);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -93,7 +90,6 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setLanguages(activeChild.languages.join(", "));
     setStrengths(activeChild.strengths.join("\n"));
     setChallenges(activeChild.challenges.join("\n"));
-    setRiskLevel(activeChild.riskLevel);
     setPhotoUrl(activeChild.photoUrl);
     setAvatarMeta(activeChild.avatar);
     // CI-29: restore saved interests on re-open.
@@ -158,7 +154,9 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
         strengths: strengths.split("\n").map((s) => s.trim()).filter(Boolean),
         challenges: challenges.split("\n").map((s) => s.trim()).filter(Boolean),
-        riskLevel,
+        // Firewall: riskLevel is no longer parent-authored (a verdict field has no
+        // place in the parent-facing editor); preserve any stored value untouched.
+        riskLevel: activeChild.riskLevel,
         photoUrl: photoUrl || "",
         ...(avatarMeta ? { avatar: avatarMeta } : {}),
         // CI-29: persist interests[] + ISO timestamp (parent-written only, COPPA-gated).
@@ -333,23 +331,6 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Challenges <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(one per line)</span></label>
                 <textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Risk level</label>
-                <div className="flex gap-2">
-                  {RISK_LEVELS.map((lvl) => (
-                    <button
-                      key={lvl}
-                      type="button"
-                      onClick={() => setRiskLevel(lvl)}
-                      className="flex-1 py-2 rounded-xl text-xs font-bold transition"
-                      style={riskLevel === lvl ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                    >
-                      {lvl}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <button
