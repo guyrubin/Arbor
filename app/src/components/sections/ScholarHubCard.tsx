@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { computeDevScore } from "../../growth/devScore";
+import { useDevScore } from "../../hooks/useDevScore";
 import { selectWeeklyArticle } from "../../growth/scholarHub";
 import framework from "../../framework.json";
 import { cardCls } from "../ui/kit";
@@ -28,7 +28,7 @@ const DOMAIN_LABEL: Record<string, string> = Object.fromEntries(
 const labelFor = (id: string) => DOMAIN_LABEL[id] ?? id;
 
 export default function ScholarHubCard() {
-  const { milestones, childProfile } = useArbor();
+  const { childProfile } = useArbor();
   const { t, uiLang, aiLang } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const he = aiLang === "he";
@@ -36,13 +36,10 @@ export default function ScholarHubCard() {
 
   const [open, setOpen] = useState(false);
 
-  // Read the EXISTING dev-score data (same computation as DevScoreCard).
-  // No prior snapshot needed for the focus domain — we only need focusDomain,
-  // which is derived from current milestone state regardless of trend history.
-  const score = useMemo(
-    () => computeDevScore(milestones.map((m) => ({ domain: m.domain, checked: m.checked }))),
-    [milestones]
-  );
+  // The ONE shared dev-score derivation (hooks/useDevScore). No prior snapshot
+  // is needed here: we only read focusDomain, which comes from current milestone
+  // state regardless of trend history.
+  const score = useDevScore();
 
   const { article, isDefault } = useMemo(
     () => selectWeeklyArticle(score.focusDomain),

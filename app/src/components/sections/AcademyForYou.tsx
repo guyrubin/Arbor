@@ -27,7 +27,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { computeDevScore } from "../../growth/devScore";
+import { useDevScore } from "../../hooks/useDevScore";
 import { MASTERCLASSES, FRAME_LABELS } from "../../lib/masterclasses";
 import type { FrameId } from "../../lib/masterclasses";
 import framework from "../../framework.json";
@@ -114,13 +114,9 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
   // "Why" expansion state
   const [whyOpen, setWhyOpen] = useState(false);
 
-  // Read the EXISTING dev-score data. Same computation as DevScoreCard +
-  // ScholarHubCard. No prior snapshot needed — only focusDomain is required.
-  // No new Firestore read: computeDevScore is a pure function of milestones.
-  const score = useMemo(
-    () => computeDevScore(milestones.map((m) => ({ domain: m.domain, checked: m.checked }))),
-    [milestones]
-  );
+  // The ONE shared dev-score derivation (hooks/useDevScore) — the same result
+  // DevScoreCard and ScholarHubCard read. Only focusDomain is required here.
+  const score = useDevScore();
 
   // Course exploration state from localStorage (same key as Masterclasses.tsx).
   const explored = useMemo(() => loadExplored(), []);

@@ -11,7 +11,7 @@ import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import { PASTEL } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
-import { computeDevScore } from "../../growth/devScore";
+import { useDevScore } from "../../hooks/useDevScore";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
@@ -50,6 +50,10 @@ export default function OverviewTab() {
 
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // The ONE shared dev-score derivation (hooks/useDevScore) — the same result
+  // the Development hub and the other picture surfaces read. Hoisted here
+  // because the dev-map card below renders it inside a JSX callback.
+  const devScore = useDevScore();
   // The wellness check-in is the only genuinely interactive daily card and its
   // only home, so it opens by default rather than hiding behind the disclosure.
   const [showTools, setShowTools] = useState(true);
@@ -274,7 +278,7 @@ export default function OverviewTab() {
             footer (Focus / Domains / Week). NO 0–100 ring, no per-domain %, no
             on-track verdict, no weakest-domain pointer. Click → Growth. */}
         {(() => {
-          const score = computeDevScore(milestones.map((m) => ({ domain: m.domain, checked: m.checked })));
+          const score = devScore;
           if (score.confidence === "none") return null;
           return (
             <section
