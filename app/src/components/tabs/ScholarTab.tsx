@@ -9,7 +9,7 @@ import { PageHeader, cardCls, PASTEL, PastelKey } from "../ui/kit";
 const TONES: PastelKey[] = ["mint", "sky", "lav", "coral", "yellow", "pink"];
 
 export default function ScholarTab() {
-  const { setSelectedLens, setChatInput, setActiveTab, childProfile } = useArbor();
+  const { setActiveTab, childProfile, seedCoach } = useArbor();
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
@@ -55,25 +55,25 @@ export default function ScholarTab() {
 
               <div className="space-y-2">
                 <button
-                  onClick={() => {
-                    setSelectedLens(sch.name);
+                  onClick={() => seedCoach({
                     // AI-input seed (sent to the model in aiLang) — intentionally English; the
                     // model localizes its reply via getAiLanguage(). Do not translate.
-                    setChatInput(`Using ${sch.name}'s ${sch.concept} lens, give me practical, non-diagnostic guidance for ${childProfile.name} (age ${childProfile.age}) — what to notice and two things to try this week.`);
-                    setActiveTab("coach");
-                  }}
+                    prompt: `Using ${sch.name}'s ${sch.concept} lens, give me practical, non-diagnostic guidance for ${childProfile.name} (age ${childProfile.age}) — what to notice and two things to try this week.`,
+                    lens: sch.name,
+                    source: "scholar-apply",
+                  })}
                   className="w-full min-h-[44px] py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                 >
                   <Icon name="auto_awesome" size={15} fill={1} /> {t("scholar.apply", { name: first })}
                 </button>
                 <button
-                  onClick={() => {
-                    setSelectedLens(sch.name);
+                  onClick={() => seedCoach({
                     // AI-input seed prompt — kept English on purpose (model replies in aiLang).
-                    setChatInput(sch.examplePrompt);
-                    setActiveTab("coach");
-                  }}
+                    prompt: sch.examplePrompt,
+                    lens: sch.name,
+                    source: "scholar-example",
+                  })}
                   className="w-full min-h-[44px] py-2 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 >

@@ -37,7 +37,7 @@ const LADDER: { level: SpeechLevel; labelKey: string; hintKey: string }[] = [
 ];
 
 export default function SpeechCoachTab() {
-  const { childProfile, setChatInput, setActiveTab } = useArbor();
+  const { childProfile, setActiveTab, seedCoach } = useArbor();
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
@@ -236,8 +236,7 @@ export default function SpeechCoachTab() {
   const bands: SoundEntry["band"][] = ["early", "middle", "late"];
 
   const askCoach = (prompt: string) => {
-    setChatInput(prompt);
-    setActiveTab("coach");
+    seedCoach({ prompt, source: "speech-coach" });
   };
 
   const RESULT_BTN: { result: SpeechAttempt["result"]; labelKey: string; tone: PastelKey }[] = [

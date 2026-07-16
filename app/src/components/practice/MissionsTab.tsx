@@ -89,7 +89,7 @@ function useMissionVars() {
  *    No PlayShell, no score grid (that density belongs to Development).
  */
 export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full" }) {
-  const { childProfile, milestones, setChatInput, setActiveTab } = useArbor();
+  const { childProfile, milestones, setActiveTab, seedCoach } = useArbor();
   const { t } = useLanguage();
   const { toast } = useToast();
   const data = usePracticeData(childProfile.id);
@@ -145,8 +145,7 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
   };
 
   const askCoach = (m: MissionTemplate) => {
-    setChatInput(fillTemplate(m.coachPrompt, vars));
-    setActiveTab("coach");
+    seedCoach({ prompt: fillTemplate(m.coachPrompt, vars), source: "missions" });
   };
 
   const completedThisWeek = data.missions.items.filter(

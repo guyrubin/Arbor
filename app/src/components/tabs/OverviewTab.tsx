@@ -44,7 +44,7 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 export default function OverviewTab() {
   const {
     setActiveTab, milestones, milestonesPercent, checkedMilestones, totalMilestones,
-    behaviorLogs, childProfile, setChatInput,
+    behaviorLogs, childProfile, seedCoach,
     donePlayIds, logPlayCompletion, playLogs,
   } = useArbor();
 
@@ -100,8 +100,7 @@ export default function OverviewTab() {
   }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains, sessionLength]);
 
   const coachOnPlay = (p: ScoredActivity) => {
-    setChatInput(`We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`);
-    setActiveTab("coach");
+    seedCoach({ prompt: `We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`, source: "today-play" });
   };
   const markPlayDone = (p: ScoredActivity) => {
     logPlayCompletion(p, "today");
@@ -135,8 +134,7 @@ export default function OverviewTab() {
   });
 
   const beginGuidance = () => {
-    if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`);
-    setActiveTab("coach");
+    seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-guidance" });
   };
 
   // ── Kid activity feed (Loops 1+3+5) — kid-originated + parent-logged events
@@ -428,7 +426,7 @@ export default function OverviewTab() {
         {/* ── Coach card — the ONE coach entry: identity + one coaching line +
                single "Continue chat" CTA into Ask Arbor. ── */}
         <section
-          onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
+          onClick={() => seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-coach-card" })}
           className="rounded-[22px] p-5 flex flex-col transition motion-safe:hover:-translate-y-0.5 cursor-pointer"
           style={{ background: "var(--arbor-coach-grad)", boxShadow: "var(--shadow-sm)" }}
         >
