@@ -10,7 +10,7 @@
  */
 import { useCallback, useMemo, useState } from "react";
 import { useArbor } from "../context/ArborContext";
-import { computeDevScore } from "../growth/devScore";
+import { useDevScore } from "./useDevScore";
 import {
   detectPrideCrossings,
   pickCelebration,
@@ -67,10 +67,8 @@ export function usePrideMoment(): PrideMomentResult {
   const firstName = (childProfile?.name || "").split(" ")[0] || undefined;
 
   const checkedCount = useMemo(() => milestones.filter((m) => m.checked).length, [milestones]);
-  const current = useMemo(
-    () => computeDevScore(milestones.map((m) => ({ domain: m.domain, checked: m.checked }))),
-    [milestones]
-  );
+  // The ONE shared dev-score derivation (hooks/useDevScore).
+  const current = useDevScore();
 
   const [dismissed, setDismissed] = useState(false);
 

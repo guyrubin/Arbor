@@ -3,7 +3,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import framework from "../../framework.json";
-import { computeDevScore } from "../../growth/devScore";
+import { useDevScore } from "../../hooks/useDevScore";
 
 /* Today — a compact, read-only glance at the Development picture (PRD C4).
    A pointer, not a panel. Wave-3 clinical subtraction (2026-06-26): the prior
@@ -21,14 +21,12 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function DevScoreStrip() {
-  const { milestones, setActiveTab } = useArbor();
+  const { setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const rtl = uiLang === "he";
 
-  const score = useMemo(
-    () => computeDevScore(milestones.map((m) => ({ domain: m.domain, checked: m.checked }))),
-    [milestones]
-  );
+  // The ONE shared dev-score derivation (hooks/useDevScore).
+  const score = useDevScore();
 
   // Today stays uncluttered until there is something honest to glance at.
   if (score.confidence === "none") return null;

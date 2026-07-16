@@ -3,12 +3,13 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
+import { useDevScore } from "../../hooks/useDevScore";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import framework from "../../framework.json";
 import type { StoredDevScoreSnapshot } from "../../types";
 import { isoWeekKey, prefersReducedMotion } from "../../lib/devscore";
 import {
-  computeDevScore, toSnapshot, shouldSnapshot, type DevScoreSnapshot,
+  toSnapshot, shouldSnapshot, type DevScoreSnapshot,
 } from "../../growth/devScore";
 
 // Domain id → human label, resolved from the framework (e.g. social_development
@@ -62,10 +63,9 @@ export default function DevScoreCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshots.items, childProfile.id]);
 
-  const score = useMemo(
-    () => computeDevScore(milestones.map((m) => ({ domain: m.domain, checked: m.checked })), prior),
-    [milestones, prior]
-  );
+  // The ONE shared dev-score derivation (hooks/useDevScore). This is the only
+  // caller that passes `prior` — it owns the weekly snapshot log.
+  const score = useDevScore(prior);
 
   // Record a fresh weekly snapshot so the parent keeps an honest log of progress
   // over time (Wave-3: this is a parent-owned log; no verdict renders from it).
