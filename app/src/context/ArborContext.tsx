@@ -63,6 +63,10 @@ const renderApiConnectionError = (message: string) => {
 // call sites keep working unchanged.
 export type { ActiveTab };
 const VALID_TABS = new Set<string>(ROUTE_IDS);
+
+/** The modality a "log a moment" entry tile promises; the capture surface opens
+ *  in this mode when a request is pending. */
+export type CaptureMode = "voice" | "photo" | "text";
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this
  *  array is derived from VALID_TABS and is never read by any render path. */
@@ -115,6 +119,16 @@ function useArborState() {
     try { if (window.location.hash.replace(/^#\/?/, "") !== t) window.location.hash = `/${t}`; } catch { /* noop */ }
     try { track("view_tab", { tab: t }); } catch { /* noop */ }
   };
+
+  /**
+   * Capture hand-off: a surface that offers "log a moment" entry tiles (Journal)
+   * can name the modality it promised, and the capture surface (Behaviors) opens
+   * in that mode and clears the request. Without this the entry tiles were
+   * decoys — a bare setActiveTab("behaviors") that ignored the chosen mode.
+   */
+  const [pendingCaptureMode, setPendingCaptureMode] = useState<CaptureMode | null>(null);
+  const requestCapture = (mode: CaptureMode) => setPendingCaptureMode(mode);
+  const consumeCaptureRequest = () => setPendingCaptureMode(null);
 
   /**
    * The single seam for handing a prompt to Ask Arbor from anywhere in the app.
@@ -947,6 +961,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     chatInput,
     setChatInput,
     seedCoach,
+    pendingCaptureMode,
+    requestCapture,
+    consumeCaptureRequest,
     chatMessages,
     conversations,
     activeConversationId,

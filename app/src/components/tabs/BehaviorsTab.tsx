@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { HeartHandshake } from "lucide-react";
 import { Icon } from "../ui/Icon";
@@ -108,6 +108,8 @@ export default function BehaviorsTab() {
     isGeneratingInlineScript,
     handleGetInlineCoRegulationScript,
     seedCoach,
+    pendingCaptureMode,
+    consumeCaptureRequest,
     childProfile,
     deleteLog,
     editingLogId,
@@ -311,6 +313,15 @@ export default function BehaviorsTab() {
     { key: "photo", icon: "photo_camera", label: t("beh.mode.photo"), onClick: openPhoto, tone: "sky" },
     { key: "text", icon: "keyboard", label: t("beh.mode.text"), onClick: focusForm, tone: "coral" },
   ];
+
+  // A capture entry tile elsewhere (Journal) named the modality it promised —
+  // open that mode here, then clear the request so it fires exactly once.
+  useEffect(() => {
+    if (!pendingCaptureMode) return;
+    quickModes.find((m) => m.key === pendingCaptureMode)?.onClick();
+    consumeCaptureRequest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCaptureMode]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">

@@ -21,10 +21,14 @@ describe("navigation IA", () => {
     expect(tabs).toEqual(["development", "milestones", "language", "daily-play"]);
   });
 
-  it("Journal surfaces the new journal leaf and keeps the Story spine", () => {
+  // Journal + Story render the SAME buildTimeline stream, so they are two
+  // densities of one surface (TimelineTab), not two capabilities. The hub owns a
+  // single leaf; the Story density is reached by the in-surface toggle and stays
+  // a valid deep-link route that resolves back to Journal.
+  it("Journal owns one timeline leaf; Story is a density that still resolves here", () => {
     const journal = SECTIONS.find((s) => s.id === "journal");
-    const tabs = journal?.items.map((i) => i.tab) ?? [];
-    expect(tabs).toEqual(["journal", "timeline"]);
+    expect(journal?.items.map((i) => i.tab)).toEqual(["journal"]);
+    expect(sectionForTab("timeline").id).toBe("journal");
   });
 
   it("Ask Arbor is a first-class category leading with the coach", () => {
