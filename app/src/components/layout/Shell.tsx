@@ -48,8 +48,8 @@ const ChildProfile = lazy(() => import("../sections/ChildProfile"));
 const ChildMemory = lazy(() => import("../sections/ChildMemory"));
 const Strengths = lazy(() => import("../sections/Strengths"));
 const Screening = lazy(() => import("../sections/Screening"));
-const StoryTimelineTab = lazy(() => import("../tabs/StoryTimelineTab"));
-const JournalTab = lazy(() => import("../tabs/JournalTab")); // UC-1: additive Journal surface
+// One timeline surface, two densities (Feed #/journal · Story #/timeline).
+const TimelineTab = lazy(() => import("../tabs/TimelineTab"));
 const FindProfessional = lazy(() => import("../sections/FindProfessional"));
 const CareTeam = lazy(() => import("../sections/CareTeam"));
 const Appointments = lazy(() => import("../sections/Appointments"));
@@ -111,8 +111,8 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   memory: ChildMemory,
   strengths: Strengths,
   screening: Screening,
-  timeline: StoryTimelineTab,
-  journal: JournalTab,
+  timeline: TimelineTab,
+  journal: TimelineTab,
   "find-pro": FindProfessional,
   "care-team": CareTeam,
   appointments: Appointments,

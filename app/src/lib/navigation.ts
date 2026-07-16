@@ -144,13 +144,18 @@ export const SECTIONS: NavSection[] = [
     label: "Journal",
     icon: NotebookPen,
     msIcon: "edit_note",
+    // Journal and Story are two DENSITIES of one timeline surface (TimelineTab),
+    // not two capabilities: they render the same ledger stream. The density
+    // toggle lives IN the surface, so the hub exposes a single capability — a
+    // pill row switching the same thing would re-create the duplication this
+    // collapse removes. `timeline` is therefore no longer a separately-navigable
+    // leaf; it stays a valid deep-link route that resolves back to this section
+    // via TAB_SECTION_FALLBACK.
     items: [
       { tab: "journal", label: "Journal", icon: NotebookPen },
-      { tab: "timeline", label: "Story", icon: Waypoints },
     ],
     primaryTabs: [
       { tab: "journal", label: "Journal", icon: NotebookPen },
-      { tab: "timeline", label: "Story", icon: Waypoints },
     ],
     tools: [],
   },
@@ -269,6 +274,10 @@ export const TAB_SECTION_FALLBACK: Record<string, string> = {
   mimic: "growth",
   feelings: "growth",
   adventures: "growth",
+
+  // Journal — Story is the rich DENSITY of the one timeline surface, reached by
+  // the in-surface density toggle (and deep links), not by its own pill.
+  timeline: "journal",
 
   // Profile — the development profile is the Profile category; weekly snapshot
   // surfaces from the Story/Journal spine but resolves to Profile.
