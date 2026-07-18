@@ -57,7 +57,9 @@ const TrustedSharing = lazy(() => import("../sections/TrustedSharing"));
 const Reports = lazy(() => import("../sections/Reports"));
 const Masterclasses = lazy(() => import("../sections/Masterclasses"));
 const FamilyFormation = lazy(() => import("../sections/FamilyFormation"));
-const HeroComicsTab = lazy(() => import("../tabs/HeroComicsTab"));
+// W5.3: the comics route mounts the bookshelf host (multi-page ComicReader
+// books); it replaces HeroComicsTab (single-panel generator) as the target.
+const ComicsTab = lazy(() => import("../tabs/ComicsTab"));
 
 // Practice Studio (Fall release: speech & language suite).
 const SpeechCoachTab = lazy(() => import("../practice/SpeechCoachTab"));
@@ -120,7 +122,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   reports: Reports,
   masterclasses: Masterclasses,
   family: FamilyFormation,
-  comics: HeroComicsTab,
+  comics: ComicsTab,
   speech: SpeechCoachTab,
   mimic: MimicStudioTab,
   feelings: FeelingsLabTab,
