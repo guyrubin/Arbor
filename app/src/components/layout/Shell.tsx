@@ -261,11 +261,11 @@ export default function Shell() {
                 <button
                   onClick={() => void signOut()}
                   aria-label={t("aria.signout")}
-                  title="Sign out"
+                  title={t("nav.signout")}
                   className="md:hidden flex flex-shrink-0 items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-bold transition bg-white"
                   style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
-                  <Icon name="logout" size={16} /> Sign out
+                  <Icon name="logout" size={16} /> {t("nav.signout")}
                 </button>
               )}
             </div>

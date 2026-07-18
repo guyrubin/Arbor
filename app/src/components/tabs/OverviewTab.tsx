@@ -249,8 +249,8 @@ export default function OverviewTab() {
                 <div className="space-y-2"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-6 w-1/2" /></div>
               ) : (
                 <h1
-                  className="text-[27px] leading-[1.12] line-clamp-3"
-                  style={{ color: "#fff", maxWidth: "92%", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}
+                  className="text-[20px] sm:text-[24px] lg:text-[27px] leading-[1.12] line-clamp-6 sm:line-clamp-3 sm:max-w-[92%]"
+                  style={{ color: "#fff", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}
                 >
                   {focus ? focus.text : t("ov.recoEmpty", { name: firstName })}
                 </h1>
