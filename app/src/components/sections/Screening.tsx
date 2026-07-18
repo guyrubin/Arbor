@@ -34,9 +34,15 @@ export default function Screening() {
   );
 
   const exportMonitoring = () => {
-    const doc = buildMonitoringReportDoc(monitoring, childProfile.name, childProfile.age);
-    openPrintableReport(doc, childProfile.name);
-    toast("Opening a provider-ready summary to print or save as PDF", "info");
+    // The builder is clinician-ceiling-bound (IA W4.5) and fail-closed: a
+    // blocked doc exports NOTHING.
+    try {
+      const doc = buildMonitoringReportDoc(monitoring, childProfile.name, childProfile.age);
+      openPrintableReport(doc, childProfile.name);
+      toast("Opening a provider-ready summary to print or save as PDF", "info");
+    } catch {
+      toast("This summary could not be exported — it did not pass Arbor's safety check.", "error");
+    }
   };
 
   return (

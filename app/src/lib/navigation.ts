@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Home, Sprout, HeartHandshake, GraduationCap,
   LayoutDashboard, Activity, Languages,
-  Users, FileBarChart, Calendar,
+  FileBarChart, Calendar,
   Share2, BookOpen, Sliders, Waypoints, ShieldAlert,
   Target, Map, Gauge, School, Moon,
   MessageCircle, NotebookPen, UserCircle,
@@ -209,21 +209,20 @@ export const SECTIONS: NavSection[] = [
     items: [
       { tab: "consult", label: "Consult", icon: FileBarChart },
       { tab: "school-brief", label: "School Brief", icon: School },
-      { tab: "care-team", label: "My Care Team", icon: Users },
       { tab: "sharing", label: "Trusted Sharing", icon: Share2 },
       { tab: "appointments", label: "Appointments", icon: Calendar },
       { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
     ],
     // Hub (Consult) + Safety (the load-bearing escalation surface). School Brief,
-    // Care Team, Trusted Sharing and Appointments are the hub's contextual tools
-    // (folded out of the drawer).
+    // Trusted Sharing and Appointments are the hub's contextual tools (folded out
+    // of the drawer). W4.4: My Care Team merged into Trusted Sharing — one
+    // roster surface over the same share grants.
     primaryTabs: [
       { tab: "consult", label: "Consult", icon: FileBarChart },
       { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
     ],
     tools: [
       { tab: "school-brief", label: "School Brief", icon: School, msIcon: "school" },
-      { tab: "care-team", label: "My Care Team", icon: Users, msIcon: "groups" },
       { tab: "sharing", label: "Trusted Sharing", icon: Share2, msIcon: "share" },
       { tab: "appointments", label: "Appointments", icon: Calendar, msIcon: "calendar_month" },
     ],
@@ -296,6 +295,9 @@ export const TAB_SECTION_FALLBACK: Record<string, string> = {
   reports: "care",
   handoff: "care",
   "find-pro": "care",
+  // W4.4: My Care Team merged into Trusted Sharing — #/care-team stays a valid
+  // deep-link route resolving to Care (Shell hosts it on TrustedSharing).
+  "care-team": "care",
   // Internal/admin: attribution dashboard reached by deep link / admin Settings.
   attribution: "care",
   // UC-4: The Science is a product trust/editorial page, not a care surface —

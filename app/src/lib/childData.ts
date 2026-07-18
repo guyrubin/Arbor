@@ -11,6 +11,9 @@ export const CHILD_SUBCOLLECTIONS = [
   "savedStories",
   "contacts",
   "weeklyReports",
+  // "briefs": the saved-brief writer (HandoffTab) was removed 2026-07-18, but
+  // erase/export coverage is retained DELIBERATELY so legacy saved briefs are
+  // still swept by GDPR deletion (Art. 17) and included in export (Art. 15/20).
   "briefs",
   "insights",
   // C4: parent-logged physical measurements (append-only longitudinal record).

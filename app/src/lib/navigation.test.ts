@@ -168,6 +168,9 @@ describe("navigation IA", () => {
     expect(sectionForTab("reports").id).toBe("care");       // → Consult
     expect(sectionForTab("find-pro").id).toBe("care");
     expect(sectionForTab("handoff").id).toBe("care");
+    // W4.4: My Care Team merged into Trusted Sharing — the deep-link route
+    // resolves via fallback to Care (Shell hosts it on TrustedSharing).
+    expect(sectionForTab("care-team").id).toBe("care");
   });
 
   // UC-1 capability-floor enforcer: EVERY ActiveTab value (the full route

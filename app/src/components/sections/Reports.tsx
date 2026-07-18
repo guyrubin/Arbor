@@ -4,7 +4,8 @@ import { Icon } from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { buildReport, openPrintableReport, ReportType } from "../../lib/reportExport";
+import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType } from "../../lib/reportExport";
+import { buildPresetPacket, presetPacketToPrintSections } from "../../consult/packet";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 
 /** The 8 clinical PDF report types. Exported so the single Consult export menu
@@ -22,22 +23,52 @@ export const REPORTS: { title: string; desc: string; tone: PastelKey; type: Repo
 
 /** Single clinical-PDF export seam: build a report doc from real child state and
  *  open it as a printable tab. b3's Consult menu and this page share this hook —
- *  no second export engine is introduced. */
+ *  no second export engine is introduced.
+ *
+ *  IA W4.2: professional audiences (teacher/therapist/pediatrician) build ONLY
+ *  through the consult preset serializer — audience data ceilings + the
+ *  fail-closed clinical scan run on every build AND at the print egress. Parent
+ *  redaction choices (excludedIds, from the Consult include-toggles) survive
+ *  into the PDF. Parent-record types stay on `buildReport`. */
 export function useReportExport() {
-  const { childProfile, behaviorLogs, actionPlans, milestonesPercent, checkedMilestones, totalMilestones } = useArbor();
+  const {
+    childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems,
+    checkedMilestones, totalMilestones,
+  } = useArbor();
   // The child's hero anchors the printed handoff to *this* child. Privacy gate:
   // embed ONLY the stylized descriptor hero (isGenerated) — never a real photo —
   // into a document the parent may forward to a clinician.
   const { url: heroUrl, isGenerated } = useHeroAvatar();
-  return (type: ReportType) => {
+  return (type: ReportType, excludedIds?: Set<string>) => {
+    const heroImageUrl = isGenerated && heroUrl ? heroUrl : undefined;
+    if (isProfessionalReportType(type)) {
+      const packet = buildPresetPacket(type, {
+        profile: {
+          name: childProfile.name, age: childProfile.age, languages: childProfile.languages,
+          schoolContext: childProfile.schoolContext, strengths: childProfile.strengths, challenges: childProfile.challenges,
+        },
+        logs: behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, intensity: l.intensity, timestamp: l.timestamp, resolved: l.resolved })),
+        milestones: milestones.map((m) => ({ domain: m.domain, title: m.title, checked: m.checked })),
+        plans: actionPlans.map((p) => ({ title: p.title, issue: p.issue })),
+        memory: approvedMemoryItems.map((m) => ({ fact: m.fact, status: m.status })),
+        nowMs: Date.now(),
+      });
+      const doc: ReportDoc = {
+        title: REPORTS.find((r) => r.type === type)!.title,
+        subtitle: `${childProfile.name}, age ${childProfile.age}`,
+        sections: presetPacketToPrintSections(type, packet, excludedIds),
+        heroImageUrl,
+      };
+      openPrintableReport(doc, childProfile.name);
+      return;
+    }
     const doc = buildReport(type, {
       child: childProfile,
       logs: behaviorLogs,
       plans: actionPlans,
-      milestonesPercent,
       checkedMilestones,
       totalMilestones,
-      heroImageUrl: isGenerated && heroUrl ? heroUrl : undefined,
+      heroImageUrl,
     });
     openPrintableReport(doc, childProfile.name);
   };

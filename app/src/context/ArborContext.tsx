@@ -6,7 +6,6 @@ import {
   ActionPlan,
   BedtimeStory,
   BehaviorAnalysis,
-  SchoolBrief,
   MemoryReviewItem,
   BehaviorContext,
   DevelopmentalDomainId,
@@ -276,14 +275,10 @@ function useArborState() {
   const [behaviorAnalysis, setBehaviorAnalysis] = useState<BehaviorAnalysis | null>(null);
   const [isAnalyzingBehavior, setIsAnalyzingBehavior] = useState<boolean>(false);
 
-  // Form states: School Brief
-  const [schoolBrief, setSchoolBrief] = useState<SchoolBrief | null>(null);
-  const [isGeneratingBrief, setIsGeneratingBrief] = useState<boolean>(false);
   const [memoryReviewItems, setMemoryReviewItems] = useState<MemoryReviewItem[]>([]);
   const [isMemoryUpdating, setIsMemoryUpdating] = useState<string | null>(null);
 
   // Embedded Interactive AI States and Helpers
-  const [handoffAudience, setHandoffAudience] = useState<"teacher" | "clinician" | "pediatrician">("teacher");
   const [milestoneAnalysisOfGaps, setMilestoneAnalysisOfGaps] = useState<string>("");
   const [isAnalyzingMilestones, setIsAnalyzingMilestones] = useState<boolean>(false);
   const [inlineCoRegulationScripts, setInlineCoRegulationScripts] = useState<{ [logId: string]: string }>({});
@@ -862,27 +857,6 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     }
   };
 
-  // Generate Handoff Brief Report
-  const handleGenerateBrief = async () => {
-    setIsGeneratingBrief(true);
-    setApiError(null);
-    try {
-      const briefData = await api.generateBrief({
-        childProfile,
-        logs: behaviorLogs,
-        milestones,
-        audience: handoffAudience,
-      });
-      setSchoolBrief(briefData);
-    } catch (err: any) {
-      console.error(err);
-      if (err instanceof PaywallError) openPaywall(err.feature || "professionalReports", err.plan);
-      else setApiError(err.message || "Failed to generate professional school ready brief.");
-    } finally {
-      setIsGeneratingBrief(false);
-    }
-  };
-
   // Mark a behavior log resolved / unresolved
   const toggleLogResolved = (id: string) => {
     const log = behaviorLogs.find((l) => l.id === id);
@@ -1014,13 +988,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     storyReadingProgress,
     behaviorAnalysis,
     isAnalyzingBehavior,
-    schoolBrief,
-    setSchoolBrief,
-    isGeneratingBrief,
     memoryReviewItems,
     isMemoryUpdating,
-    handoffAudience,
-    setHandoffAudience,
     milestoneAnalysisOfGaps,
     isAnalyzingMilestones,
     inlineCoRegulationScripts,
@@ -1044,7 +1013,6 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     handleAnalyzeBehaviors,
     handleGenerateActionPlan,
     handleGenerateStory,
-    handleGenerateBrief,
     handleToggleMilestone,
     addCustomMilestone,
     handleTogglePlanStep,

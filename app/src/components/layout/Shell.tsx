@@ -51,7 +51,6 @@ const Screening = lazy(() => import("../sections/Screening"));
 // One timeline surface, two densities (Feed #/journal · Story #/timeline).
 const TimelineTab = lazy(() => import("../tabs/TimelineTab"));
 const FindProfessional = lazy(() => import("../sections/FindProfessional"));
-const CareTeam = lazy(() => import("../sections/CareTeam"));
 const Appointments = lazy(() => import("../sections/Appointments"));
 const TrustedSharing = lazy(() => import("../sections/TrustedSharing"));
 const Reports = lazy(() => import("../sections/Reports"));
@@ -114,7 +113,10 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   timeline: TimelineTab,
   journal: TimelineTab,
   "find-pro": FindProfessional,
-  "care-team": CareTeam,
+  // W4.4: My Care Team merged into Trusted Sharing (both rendered the same
+  // listShares + sharedWithMe grants) — deep-links to #/care-team resolve into
+  // the one roster surface.
+  "care-team": TrustedSharing,
   appointments: Appointments,
   sharing: TrustedSharing,
   reports: Reports,

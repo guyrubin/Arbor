@@ -80,7 +80,6 @@ export function usePulses(): HubPulses {
     milestones,
     conversations,
     unreadCoachCount,
-    schoolBrief,
   } = useArbor();
   const { uiLang } = useLanguage();
 
@@ -148,10 +147,10 @@ export function usePulses(): HubPulses {
         ? { key: "elev.pulse.ask.continue", params: { title: lastConv.title } }
         : { key: "elev.pulse.ask.empty", params: { name } };
 
-    // ── Care: a generated brief is a shareable activity fact. ──────────────
-    const care: HubPulse = schoolBrief
-      ? { key: "elev.pulse.care.briefReady" }
-      : { key: "elev.pulse.care.empty" };
+    // ── Care: no context-held brief state since the handoff flow retired
+    //    (2026-07-18; briefs are transient in the AP-056 surface) — honest
+    //    standing line, like Academy. ─────────────────────────────────────────
+    const care: HubPulse = { key: "elev.pulse.care.empty" };
 
     // ── Profile: the album motif — total captured moments across time. ─────
     const albumTotal = behaviorLogs.length + playLogs.length;
@@ -169,7 +168,6 @@ export function usePulses(): HubPulses {
     milestones,
     conversations,
     unreadCoachCount,
-    schoolBrief,
     uiLang,
   ]);
 }
