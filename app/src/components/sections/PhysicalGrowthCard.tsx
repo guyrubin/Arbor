@@ -11,6 +11,7 @@ import {
   heightTrajectory,
   weightTrajectory,
 } from "../../growth/growthEntries";
+import { BRAND_HEX, TONES } from "../../lib/tokens";
 
 /* C4 — Physical growth tracking.
  *
@@ -23,9 +24,10 @@ import {
  * Framing: calm, non-diagnostic, parent-initiated. */
 
 // Literal hex values — SVG polyline stroke must use literals, not CSS vars.
-const HEX_GREEN = "#34b277";
-const HEX_CLAY_DEEP = "#2a9c66";
-const HEX_PEACH = "#d9763f";
+// Sourced from tokens.ts (byte-identical to the previous inline literals).
+const HEX_GREEN = BRAND_HEX.green;
+const HEX_CLAY_DEEP = TONES.clay.hex;
+const HEX_PEACH = BRAND_HEX.peach;
 
 // CSS var tokens (fine for non-chart SVG text / rect / fill)
 const INK = "var(--arbor-ink)";

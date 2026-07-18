@@ -11,6 +11,7 @@ import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import { bandForAgeMonths, comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
 // B0 — months-precise age spine
 import { ageMonthsFromProfile } from "../../lib/childAge";
+import { BRAND_HEX } from "../../lib/tokens";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import framework from "../../framework.json";
 import { DevelopmentalDomainId, Milestone } from "../../types";
@@ -20,7 +21,7 @@ function celebrate() {
     particleCount: 90,
     spread: 70,
     origin: { y: 0.6 },
-    colors: ["#34b277", "#5fce97", "#d9763f", "#3f8cc9"],
+    colors: [BRAND_HEX.green, BRAND_HEX.greenLight, BRAND_HEX.peach, BRAND_HEX.sky],
   });
 }
 
@@ -559,7 +560,7 @@ export default function MilestonesTab() {
       </div>
 
       {/* Interactive AI scaffolding gap analyzer */}
-      <div className="rounded-2xl p-6 space-y-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+      <div className="rounded-2xl p-6 space-y-4" style={{ background: `linear-gradient(120deg,${BRAND_HEX.paperTinted},var(--arbor-lav-soft))`, border: "1px solid var(--arbor-rule)" }}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h4 className="text-base font-extrabold flex items-center gap-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>

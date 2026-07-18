@@ -277,7 +277,7 @@ export default function TrustedSharing() {
         <SectionCard title="This session" icon={<Icon name="history" size={20} />} tone="sky">
           <ul className="space-y-2.5 text-xs max-h-44 overflow-y-auto" style={{ color: "var(--arbor-muted)" }}>
             {audit.length === 0 && <li>Share and revoke actions you take will appear here.</li>}
-            {audit.map((a, i) => <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "#69747f" }} />{a}</li>)}
+            {audit.map((a, i) => <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "var(--arbor-muted-alt)" }} />{a}</li>)}
           </ul>
         </SectionCard>
       </div>

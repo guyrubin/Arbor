@@ -4,6 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { PageHeader, SectionCard, cardCls } from "../ui/kit";
+import { BRAND_HEX } from "../../lib/tokens";
 
 /** Child Intelligence › Strengths & Challenges. */
 export default function Strengths() {
@@ -41,7 +42,7 @@ export default function Strengths() {
         </SectionCard>
       </div>
 
-      <div className="rounded-[22px] p-6 flex flex-col sm:flex-row items-center gap-5" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+      <div className="rounded-[22px] p-6 flex flex-col sm:flex-row items-center gap-5" style={{ background: `linear-gradient(120deg,${BRAND_HEX.paperTinted},var(--arbor-lav-soft))`, border: "1px solid var(--arbor-rule)" }}>
         <div className="flex-1 text-center sm:text-start">
           <h3 className="text-2xl" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)", lineHeight: 1.15 }}>Turn a challenge into a calm next step</h3>
           <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>Arbor reads {first}'s profile and proposes an age-aware plan or script.</p>

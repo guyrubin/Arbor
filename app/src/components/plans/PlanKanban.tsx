@@ -9,7 +9,7 @@ import { ActionPlan, StepStatus } from "../../types";
 type Item = { id: string; phaseIdx: number; stepIdx: number; text: string; status: StepStatus; phaseName: string };
 
 const COLUMNS: { status: StepStatus; label: string; tint: string }[] = [
-  { status: "todo", label: "Not Started", tint: "text-[#69747f]" },
+  { status: "todo", label: "Not Started", tint: "text-[var(--arbor-muted-alt)]" },
   { status: "doing", label: "In Progress", tint: "text-[var(--arbor-peach-ink)]" },
   { status: "done", label: "Completed", tint: "text-[var(--arbor-green-ink)]" },
 ];

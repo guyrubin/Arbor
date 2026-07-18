@@ -51,7 +51,7 @@ export default function AiRail() {
           <Icon name="lock" size={16} style={{ color: "var(--arbor-green-ink)" }} />
           <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{t("airail.privacy.title")}</span>
         </div>
-        <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: "#1f6f4b" }}>
+        <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-green-ink)" }}>
           {t("airail.privacy.body")}
         </p>
         <button onClick={() => setActiveTab("memory")} className="inline-flex items-center gap-1 text-[12px] font-bold mt-2.5" style={{ color: "var(--arbor-green-ink)" }}>

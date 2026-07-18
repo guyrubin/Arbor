@@ -311,7 +311,7 @@ export default function Shell() {
 
           {/* Sandbox banner if API key is missing */}
           {showSandboxBanner && (
-            <div className="mb-6 p-4 rounded-2xl text-xs flex items-center justify-between gap-4" style={{ background: "var(--arbor-peach-soft)", color: "#8a5326" }}>
+            <div className="mb-6 p-4 rounded-2xl text-xs flex items-center justify-between gap-4" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
               <span className="flex items-center gap-3">
                 <Icon name="warning" size={20} className="flex-shrink-0" />
                 <span>

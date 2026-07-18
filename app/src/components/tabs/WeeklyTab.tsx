@@ -224,7 +224,7 @@ export default function WeeklyTab() {
                   </ul>
                 )}
                 {selected.digest.watchFor.length > 0 && (
-                  <p className="text-xs leading-relaxed" style={{ color: "#9a5a2a" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-peach-ink)" }}>
                     <strong>{t("wk.watchFor")}</strong> {selected.digest.watchFor.join(" ")}
                   </p>
                 )}

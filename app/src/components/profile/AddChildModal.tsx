@@ -7,6 +7,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import { buildNewChildInput, type ChildGender } from "../../lib/childProfileInput";
+import { BRAND_HEX } from "../../lib/tokens";
 
 const LANGUAGE_OPTIONS = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
@@ -64,7 +65,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
     return (
       <Modal open={open} onClose={close} title={t("ac.title")}>
         <div className="space-y-4 text-sm">
-          <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+          <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: `linear-gradient(120deg,${BRAND_HEX.paperTinted},var(--arbor-lav-soft))`, border: "1px solid var(--arbor-rule)" }}>
             <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
             <div>
               <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ac.limitTitle")}</p>

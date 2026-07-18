@@ -6,6 +6,7 @@ import { getFaceLandmarker } from "../../lib/faceLandmarker";
 import { useLanguage } from "../../context/LanguageContext";
 import type { MimicSession } from "../../types";
 import { track } from "../../lib/analytics";
+import { BRAND_HEX } from "../../lib/tokens";
 
 /**
  * Face Match — on-device MediaPipe expression mimicry. The child copies a target
@@ -146,7 +147,7 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
         </div>
 
         {/* Camera + live match */}
-        <div className="rounded-2xl overflow-hidden relative flex items-center justify-center" style={{ minHeight: 240, background: "#1c222b" }}>
+        <div className="rounded-2xl overflow-hidden relative flex items-center justify-center" style={{ minHeight: 240, background: "var(--arbor-cam-stage)" }}>
           <video ref={videoRef} muted playsInline className="w-full h-full object-cover absolute inset-0" style={{ transform: "scaleX(-1)", display: status === "live" ? "block" : "none" }} />
 
           {status === "live" && (
@@ -164,7 +165,7 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
               {/* live match meter */}
               <div className="absolute left-3 right-3 bottom-3 z-10" role="progressbar" aria-label={t("prac.mimic.face.meterLabel")} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
                 <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.25)" }}>
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: pct >= SUCCESS_AT * 100 ? "#5fce97" : "var(--arbor-yellow)" }} />
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: pct >= SUCCESS_AT * 100 ? BRAND_HEX.greenLight : "var(--arbor-yellow)" }} />
                 </div>
               </div>
               {won && (
@@ -182,15 +183,15 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
 
           {status !== "live" && (
             <div className="text-center p-6 relative z-10">
-              <Icon name="photo_camera" size={32} className="mx-auto mb-3" style={{ color: "#a8a093" }} />
+              <Icon name="photo_camera" size={32} className="mx-auto mb-3" style={{ color: "var(--arbor-on-dark-muted)" }} />
               {status === "idle" && (
                 <button onClick={start} className="play-pressable inline-flex items-center gap-2 text-sm font-extrabold px-5 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-lav-ink)" }}>
                   <Icon name="auto_awesome" size={16} /> {t("prac.mimic.face.start")}
                 </button>
               )}
-              {status === "loading" && <p className="text-xs" style={{ color: "#a8a093" }}>{t("prac.mimic.face.warming")}</p>}
+              {status === "loading" && <p className="text-xs" style={{ color: "var(--arbor-on-dark-muted)" }}>{t("prac.mimic.face.warming")}</p>}
               {status === "unavailable" && (
-                <p className="text-xs max-w-[260px] mx-auto" style={{ color: "#a8a093" }}>
+                <p className="text-xs max-w-[260px] mx-auto" style={{ color: "var(--arbor-on-dark-muted)" }}>
                   {t("prac.mimic.face.unavailable")}
                 </p>
               )}

@@ -7,7 +7,7 @@ const tones: Record<Tone, string> = {
   blue: "bg-[var(--arbor-sky-soft)] text-[var(--arbor-sky-ink)] border-[var(--arbor-sky-soft)]",
   green: "bg-[var(--arbor-green-soft)] text-[var(--arbor-green-ink)] border-[var(--arbor-green-soft)]",
   red: "bg-[var(--arbor-pink-soft)] text-[var(--arbor-pink-ink)] border-[var(--arbor-pink-soft)]",
-  neutral: "bg-[#f4f8f5] text-[#69747f] border-[rgba(41,51,63,0.08)]",
+  neutral: "bg-[#f4f8f5] text-[var(--arbor-muted-alt)] border-[rgba(41,51,63,0.08)]",
 };
 
 export function Badge({

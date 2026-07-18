@@ -299,7 +299,7 @@ export default function GoalBuilderModal({
                             <button
                               onClick={() => handleRemove(goal.goalId)}
                               className="rounded-lg px-4 min-h-[44px] text-[12px] font-bold transition"
-                              style={{ background: "var(--arbor-danger, #d6566f)", color: "#fff" }}
+                              style={{ background: "var(--arbor-danger)", color: "#fff" }}
                             >
                               Yes, remove
                             </button>
@@ -365,13 +365,13 @@ export default function GoalBuilderModal({
                             background: isSelected
                               ? GREEN_SOFT
                               : isPrefill
-                              ? "var(--arbor-lav-soft, #ece9f9)"
+                              ? "var(--arbor-lav-soft)"
                               : PAPER_DEEP,
                             border: `1.5px solid ${
                               isSelected
                                 ? GREEN
                                 : isPrefill
-                                ? "var(--arbor-lav, #7a6bd8)"
+                                ? "var(--arbor-lav)"
                                 : RULE
                             }`,
                             opacity: isDisabled ? 0.45 : 1,
