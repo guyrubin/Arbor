@@ -12,7 +12,7 @@ export function EmotionAvatar({
   photoURL,
   emotionEmoji,
   emotionLabel,
-  color = "var(--arbor-clay)",
+  color = "var(--arbor-primary)",
   size = 72,
 }: {
   name?: string | null;

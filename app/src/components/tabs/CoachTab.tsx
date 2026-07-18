@@ -434,7 +434,7 @@ export default function CoachTab() {
             </p>
           </div>
           <span className="text-[11px] font-bold flex items-center gap-1.5 flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>
-            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
+            {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-primary)" }} aria-hidden />}
             <span className="truncate max-w-[160px]">{t("coach.lensLabel")}: {selectedLens}</span>
           </span>
         </div>
@@ -699,7 +699,7 @@ export default function CoachTab() {
                 : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
             >
               {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
-              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
+              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-primary)" }} aria-hidden />}
             </button>
             {/* Council (multi-lens) — demoted from a second primary send to a subtle
                 secondary affordance beside the input. Sends the current question to

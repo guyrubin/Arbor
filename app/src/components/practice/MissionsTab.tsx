@@ -48,7 +48,7 @@ export function MissionCard({
           onClick={() => onToggle(m)}
           aria-pressed={done}
           className="inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-3.5 min-h-[44px] rounded-xl transition flex-shrink-0 active:scale-[0.98]"
-          style={done ? { background: "var(--arbor-clay)", color: "#fff" } : { background: meta.soft, color: meta.color }}
+          style={done ? { background: "var(--arbor-primary)", color: "#fff" } : { background: meta.soft, color: meta.color }}
         >
           <Icon name="check" size={14} /> {done ? "Done!" : "Mark done"}
         </button>
@@ -200,7 +200,7 @@ export function MissionsPanel({ variant = "full" }: { variant?: "today" | "full"
       {/* Development Score (feature 7) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className={`${cardCls} p-5 flex items-center gap-4`}>
-          <ProgressRing value={data.score} size={72} stroke={7} color="var(--arbor-clay)">
+          <ProgressRing value={data.score} size={72} stroke={7} color="var(--arbor-primary)">
             <span className="text-lg font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.score}</span>
           </ProgressRing>
           <div>

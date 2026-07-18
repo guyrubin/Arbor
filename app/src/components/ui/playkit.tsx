@@ -160,7 +160,7 @@ export function ChoiceTile({
 }) {
   const ring =
     state === "correct"
-      ? "var(--arbor-clay)"
+      ? "var(--arbor-primary)"
       : state === "wrong"
         ? "var(--arbor-pink-ink)"
         : "rgba(41,51,63,0.08)";

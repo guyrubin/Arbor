@@ -137,7 +137,7 @@ export default function AvatarCreator({
           >
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-extrabold tracking-tight flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} /> Create {childName}&apos;s avatar
+                <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-primary)" }} /> Create {childName}&apos;s avatar
               </h3>
               <button onClick={close} className="p-1.5 rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
                 <X className="w-4 h-4" />
@@ -191,7 +191,7 @@ export default function AvatarCreator({
             ) : (
               <div className="space-y-3 mb-4">
                 <label className="flex items-start gap-2 p-3 rounded-xl cursor-pointer" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}>
-                  <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-clay)" }} />
+                  <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-primary)" }} />
                   <span className="text-[11px] leading-snug" style={{ color: "var(--arbor-green-ink)" }}>
                     <ShieldCheck className="w-3.5 h-3.5 inline me-1" />
                     {t("trust.avatar.consent.pre")} <strong>{t("trust.avatar.consent.claim")}</strong>

@@ -128,7 +128,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-clay-deep)" }}><Icon name="auto_awesome" size={18} /></span>
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-primary-deep)" }}><Icon name="auto_awesome" size={18} /></span>
               <div className="min-w-0">
                 <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>
                   {t("set.plan.your", { plan: planLabel })}
@@ -151,7 +151,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   {t("set.plan.viaStore", { provider: entitlement.provider })}
                 </p>
               )}
-              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
+              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-primary-dim)", color: "var(--arbor-primary-deep)" }}>
                 {t("set.plan.manage")}
               </button>
             </>
@@ -171,16 +171,16 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <div className="flex items-center gap-1 rounded-xl p-1 mt-3 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 {(["monthly", "annual"] as const).map((c) => (
                   <button key={c} onClick={() => setCadence(c)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
-                    style={cadence === c ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}>
+                    style={cadence === c ? { background: "var(--arbor-primary)", color: T.onAccent } : { color: "var(--arbor-muted)" }}>
                     {t(c === "monthly" ? "set.plan.monthly" : "set.plan.annual")}
                   </button>
                 ))}
               </div>
               <div className="flex flex-wrap gap-2 mt-2.5">
-                <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+                <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-primary)", color: T.onAccent }}>
                   {t("set.plan.upgradePlus")}
                 </button>
-                <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
+                <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-primary-deep)", color: T.onAccent }}>
                   {t("set.plan.upgradeFamily")}
                 </button>
               </div>
@@ -208,7 +208,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   onClick={() => setDraftUiLang(k)}
                   aria-pressed={draftUiLang === k}
                   className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
-                  style={draftUiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+                  style={draftUiLang === k ? { background: "var(--arbor-primary)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
                 >
                   {label}
                 </button>
@@ -227,7 +227,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 onClick={handleSaveLanguage}
                 disabled={!languageDirty}
                 className="text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-40"
-                style={{ background: "var(--arbor-clay)", color: T.onAccent }}
+                style={{ background: "var(--arbor-primary)", color: T.onAccent }}
               >
                 {t("set.language.save")}
               </button>
@@ -243,7 +243,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               aria-pressed={draftAiDifferent}
               aria-label={t("set.aiLang.toggle")}
               className="w-11 h-6 rounded-full transition relative"
-              style={{ background: draftAiDifferent ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
+              style={{ background: draftAiDifferent ? "var(--arbor-primary)" : "var(--arbor-rule-strong)" }}
             >
               <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${draftAiDifferent ? "end-[22px]" : "start-0.5"}`} />
             </button>
@@ -255,7 +255,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                     onClick={() => setDraftAiLang(k)}
                     aria-pressed={draftAiLang === k}
                     className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
-                    style={draftAiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+                    style={draftAiLang === k ? { background: "var(--arbor-primary)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
                   >
                     {label}
                   </button>
@@ -274,7 +274,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 onClick={() => handleThemeChange(theme)}
                 aria-pressed={accentTheme === theme}
                 className="px-3 py-1 rounded-lg text-xs font-bold transition"
-                style={accentTheme === theme ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+                style={accentTheme === theme ? { background: "var(--arbor-primary)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
               >
                 {t(`set.theme.${theme}`)}
               </button>
@@ -287,7 +287,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         {/* AI Engines panel */}
         <Row icon={<Icon name="auto_awesome" size={18} />} title={t("set.rail.title")} sub={t("set.rail.sub")}>
-          <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 h-6 rounded-full transition relative" style={{ background: showAiRail ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}>
+          <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 h-6 rounded-full transition relative" style={{ background: showAiRail ? "var(--arbor-primary)" : "var(--arbor-rule-strong)" }}>
             <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "end-[22px]" : "start-0.5"}`} />
           </button>
         </Row>
@@ -300,7 +300,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <button
             onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
             className="text-xs font-bold rounded-xl px-3 py-2"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            style={{ background: "var(--arbor-primary-dim)", color: "var(--arbor-primary-deep)" }}
             data-testid="settings-open-smart-reminders"
           >
             {t("set.data.open")}
@@ -315,7 +315,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <button
             onClick={() => { onClose(); setActiveTab("science"); }}
             className="text-xs font-bold rounded-xl px-3 py-2"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            style={{ background: "var(--arbor-primary-dim)", color: "var(--arbor-primary-deep)" }}
             data-testid="settings-open-science"
           >
             {t("sci.settings.open")}
@@ -324,7 +324,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         {/* Data & privacy → profile editor (export / delete live there) */}
         <Row icon={<Icon name="verified_user" size={18} />} title={t("set.data.title")} sub={t("set.data.sub")}>
-          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
+          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-primary-dim)", color: "var(--arbor-primary-deep)" }}>
             {t("set.data.open")}
           </button>
         </Row>
@@ -335,13 +335,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <Section title={t("set.section.admin")} sub={t("set.section.adminSub")}>
             {/* ADM-1: founder-only single-pane dashboard (users, paying, token spend) */}
             <Row icon={<Icon name="bar_chart" size={18} />} title={t("set.admin.founder.title")} sub={t("set.admin.founder.sub")}>
-              <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+              <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-primary)", color: T.onAccent }}>
                 {t("set.admin.open")}
               </button>
             </Row>
             {/* P0-5: attribution + UTM funnel dashboard (operator-only) */}
             <Row icon={<Icon name="bar_chart" size={18} />} title={t("set.admin.attribution.title")} sub={t("set.admin.attribution.sub")}>
-              <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+              <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-primary)", color: T.onAccent }}>
                 {t("set.admin.open")}
               </button>
             </Row>
@@ -386,7 +386,7 @@ function Row({ icon, title, sub, children }: { icon: React.ReactNode; title: str
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="flex items-start gap-3 min-w-0">
         {/* GREEN-DRIFT-SETTINGS: sapphire chip (clay-dim/clay-deep, the Sidebar/Topbar idiom) — green stays reserved for semantic success/active state. */}
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>{icon}</span>
+        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-primary-dim)", color: "var(--arbor-primary-deep)" }}>{icon}</span>
         <div className="min-w-0">
           <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>{title}</p>
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{sub}</p>

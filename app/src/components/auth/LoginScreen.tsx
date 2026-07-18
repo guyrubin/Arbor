@@ -101,7 +101,7 @@ export default function LoginScreen() {
           <ul className="space-y-2.5 text-sm font-semibold inline-block text-start" style={{ color: "var(--arbor-muted)" }}>
             {(["elev.auth.p1", "elev.auth.p2", "elev.auth.p3"] as const).map((k) => (
               <li key={k} className="flex items-center gap-2.5">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-primary)" }} />
                 {t(k)}
               </li>
             ))}
@@ -134,7 +134,7 @@ export default function LoginScreen() {
           onClick={handleGoogle}
           disabled={busy !== null}
           className="w-full text-white font-extrabold text-sm px-5 py-3.5 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-60"
-          style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+          style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-primary-glow)" }}
         >
           {busy === "google" ? (
             <RefreshCw className="w-4 h-4 animate-spin" />

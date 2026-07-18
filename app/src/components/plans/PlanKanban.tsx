@@ -36,7 +36,7 @@ function StepCard({ item }: { item: Item }) {
     <div
       ref={setNodeRef}
       style={{ ...style, background: "#fff", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-      className={`group rounded-xl p-2.5 text-[11px] flex items-start gap-2 ${isDragging ? "opacity-60 ring-1 ring-[var(--arbor-clay)]/50" : ""}`}
+      className={`group rounded-xl p-2.5 text-[11px] flex items-start gap-2 ${isDragging ? "opacity-60 ring-1 ring-[var(--arbor-primary)]/50" : ""}`}
     >
       <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-0.5" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.dragStep")}>
         <GripVertical className="w-3.5 h-3.5" />

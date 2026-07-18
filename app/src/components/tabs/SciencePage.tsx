@@ -66,7 +66,7 @@ function StatTile({ value, label }: { value: string; label: string }) {
       className="flex flex-col items-center justify-center rounded-2xl p-5 text-center"
       style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", minHeight: 100 }}
     >
-      <span className="text-3xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-clay)" }}>
+      <span className="text-3xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-primary)" }}>
         {value}
       </span>
       <span className="mt-1 text-xs font-semibold leading-snug" style={{ color: "var(--arbor-muted)" }}>
@@ -80,7 +80,7 @@ function StatTile({ value, label }: { value: string; label: string }) {
 function CitationRow({ citation, noteText }: { citation: typeof CITATIONS[number]; noteText?: string }) {
   return (
     <li className="flex items-start gap-3 py-3" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
-      <Icon name="menu_book" size={16} className="flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-clay)" }} />
+      <Icon name="menu_book" size={16} className="flex-shrink-0 mt-0.5" style={{ color: "var(--arbor-primary)" }} />
       <div className="flex-1 min-w-0">
         <a
           href={citation.url}
@@ -172,7 +172,7 @@ export default function SciencePage() {
 
       {/* ── Eyebrow ───────────────────────────────────────────────────────── */}
       <div>
-        <p className="text-xs font-extrabold uppercase tracking-widest mb-1" style={{ color: "var(--arbor-clay)" }}>
+        <p className="text-xs font-extrabold uppercase tracking-widest mb-1" style={{ color: "var(--arbor-primary)" }}>
           {t("sci.eyebrow")}
         </p>
         <h1 className="text-2xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>

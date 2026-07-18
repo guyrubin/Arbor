@@ -39,7 +39,7 @@ function PushOptInToggle({
       <button role="switch" aria-checked={enabled} disabled={pending} onClick={onToggle}
         aria-label={label}
         className="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition-colors focus-visible:outline focus-visible:outline-2"
-        style={{ background: enabled ? "var(--arbor-clay)" : "var(--arbor-rule)", opacity: pending ? 0.6 : 1, cursor: pending ? "wait" : "pointer" }}>
+        style={{ background: enabled ? "var(--arbor-primary)" : "var(--arbor-rule)", opacity: pending ? 0.6 : 1, cursor: pending ? "wait" : "pointer" }}>
         <span className="inline-block h-5 w-5 rounded-full bg-white shadow transition-transform mt-0.5"
           style={{ marginLeft: 2, transform: enabled ? "translateX(20px)" : "translateX(0)" }} />
       </button>

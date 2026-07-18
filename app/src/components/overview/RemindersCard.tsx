@@ -115,7 +115,7 @@ export default function RemindersCard() {
             aria-checked={prefs.dailyLog}
             aria-label={t("aria.dailyLogReminder")}
             className="w-10 h-5 rounded-full transition relative"
-            style={{ background: prefs.dailyLog ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
+            style={{ background: prefs.dailyLog ? "var(--arbor-primary)" : "var(--arbor-rule-strong)" }}
           >
             <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.dailyLog ? "end-5" : "start-0.5"}`} />
           </button>
@@ -130,7 +130,7 @@ export default function RemindersCard() {
           aria-checked={prefs.monthlySafety}
           aria-label={t("aria.monthlySafetyReview")}
           className="w-10 h-5 rounded-full transition relative"
-          style={{ background: prefs.monthlySafety ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
+          style={{ background: prefs.monthlySafety ? "var(--arbor-primary)" : "var(--arbor-rule-strong)" }}
         >
           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${prefs.monthlySafety ? "end-5" : "start-0.5"}`} />
         </button>

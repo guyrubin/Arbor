@@ -70,7 +70,7 @@ export default function ProfileSwitcher() {
                     <span className="text-sm font-bold truncate block" dir="auto" style={{ color: "var(--arbor-ink)" }}>{p.name}</span>
                     <span className="text-[10px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("profile.ageLine", { age: p.age })}</span>
                   </div>
-                  {p.id === activeChild.id && <Check className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} />}
+                  {p.id === activeChild.id && <Check className="w-4 h-4" style={{ color: "var(--arbor-primary)" }} />}
                 </button>
               ))}
               <button

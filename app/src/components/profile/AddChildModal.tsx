@@ -71,7 +71,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
               <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                 {t("ac.limitBody", { max: entitlement.limits.maxChildren === 1 ? 6 : entitlement.limits.maxChildren })}
               </p>
-              <button onClick={() => { toast(t("ac.notifyToast"), "success"); close(); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
+              <button onClick={() => { toast(t("ac.notifyToast"), "success"); close(); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-primary)", color: "#fff" }}>
                 {t("ac.notify")}
               </button>
             </div>
@@ -87,7 +87,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
         {/* Step progress */}
         <div className="flex gap-1.5">
           {[1, 2, 3].map((s) => (
-            <div key={s} className="h-1 flex-1 rounded-full" style={{ background: s <= step ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }} />
+            <div key={s} className="h-1 flex-1 rounded-full" style={{ background: s <= step ? "var(--arbor-primary)" : "var(--arbor-rule-strong)" }} />
           ))}
         </div>
 

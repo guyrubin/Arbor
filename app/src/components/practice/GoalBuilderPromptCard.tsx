@@ -39,13 +39,13 @@ export default function GoalBuilderPromptCard({
       className="rounded-[var(--r-xl)] p-5 flex items-start gap-4"
       style={{
         background: GREEN_SOFT,
-        border: `1px solid var(--arbor-clay-border)`,
+        border: `1px solid var(--arbor-primary-border)`,
       }}
     >
       {/* Icon */}
       <span
         className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: "var(--arbor-clay-dim)", color: GREEN }}
+        style={{ background: "var(--arbor-primary-dim)", color: GREEN }}
       >
         <Icon name="target" size={20} />
       </span>

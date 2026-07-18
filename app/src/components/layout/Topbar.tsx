@@ -65,7 +65,7 @@ export default function Topbar() {
           title={t("top.howHelps")}
           className="hidden xl:inline-flex items-center justify-center w-11 h-11 rounded-xl transition flex-shrink-0"
           style={showAiRail
-            ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
+            ? { background: "var(--arbor-primary-dim)", color: "var(--arbor-primary-deep)" }
             : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
         >
           <Icon name="verified_user" size={18} />

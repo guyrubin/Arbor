@@ -68,7 +68,7 @@ export default function SessionLengthChips({
                   ? {
                       background: "var(--arbor-green-soft)",
                       color: "var(--arbor-green-ink)",
-                      border: "1px solid var(--arbor-clay-border)",
+                      border: "1px solid var(--arbor-primary-border)",
                       boxShadow: "var(--shadow-xs)",
                     }
                   : {

@@ -160,7 +160,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
             {contract.todayPlan.map((step, i) => (
               <li key={i}>
                 <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-start gap-2 text-start w-full group">
-                  <span className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition" style={done[i] ? { background: "var(--arbor-clay)", border: "1px solid var(--arbor-clay)" } : { border: "1px solid var(--arbor-rule-strong)" }}>
+                  <span className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition" style={done[i] ? { background: "var(--arbor-primary)", border: "1px solid var(--arbor-primary)" } : { border: "1px solid var(--arbor-rule-strong)" }}>
                     {done[i] && <Icon name="check" size={12} className="text-white" />}
                   </span>
                   <span className="text-[12.5px] leading-snug" style={done[i] ? { color: "var(--arbor-muted)", textDecoration: "line-through" } : { color: "var(--arbor-ink)" }}>{step}</span>

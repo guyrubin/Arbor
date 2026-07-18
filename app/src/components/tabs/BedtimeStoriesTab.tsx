@@ -443,7 +443,7 @@ export default function BedtimeStoriesTab() {
         disabled={loading || validEvents.length === 0}
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-extrabold text-[15px] text-white disabled:opacity-50 transition active:scale-[0.98] min-h-[52px]"
         style={{
-          background: "linear-gradient(135deg, var(--arbor-clay) 0%, var(--arbor-green-ink) 100%)",
+          background: "linear-gradient(135deg, var(--arbor-primary) 0%, var(--arbor-green-ink) 100%)",
         }}
         data-testid="bedtime-generate-btn"
       >

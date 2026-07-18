@@ -7,10 +7,10 @@ import type { Cosmetic } from "../../practice/cosmetics";
    returned. Reusable anywhere the hero appears (Arcade now; Today/Academy next). */
 
 const FRAME_RING: Record<string, string> = {
-  "sprout-frame": "var(--arbor-clay)",
+  "sprout-frame": "var(--arbor-primary)",
   "bloom-frame": "var(--arbor-pink)",
   "star-frame": "var(--arbor-yellow)",
-  "tree-frame": "var(--arbor-clay-deep)",
+  "tree-frame": "var(--arbor-primary-deep)",
 };
 
 export default function HeroCrest({
@@ -24,7 +24,7 @@ export default function HeroCrest({
   badges?: Cosmetic[];
   children: React.ReactNode;
 }) {
-  const ringColor = frame ? FRAME_RING[frame.id] ?? "var(--arbor-clay)" : null;
+  const ringColor = frame ? FRAME_RING[frame.id] ?? "var(--arbor-primary)" : null;
   const chip = Math.max(22, Math.round(size * 0.26));
   const shown = badges.slice(0, 3);
 

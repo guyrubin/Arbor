@@ -171,7 +171,7 @@ export default function TrustedSharing() {
             <div className="flex flex-wrap gap-1.5">
               {SCOPE_OPTIONS.map((f) => {
                 const on = draft.scopes.includes(f);
-                return <button key={f} onClick={() => setScope(f)} aria-pressed={on} className="rounded-full px-3 py-1 text-xs font-bold" style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{f}</button>;
+                return <button key={f} onClick={() => setScope(f)} aria-pressed={on} className="rounded-full px-3 py-1 text-xs font-bold" style={on ? { background: "var(--arbor-primary)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{f}</button>;
               })}
             </div>
           </div>
@@ -183,7 +183,7 @@ export default function TrustedSharing() {
               ))}
             </div>
           </div>
-          <button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
+          <button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "var(--arbor-primary)" }}>
             {busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> Sharing…</> : "Approve & share"}
           </button>
         </div>

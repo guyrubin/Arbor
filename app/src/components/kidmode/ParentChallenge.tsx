@@ -340,7 +340,7 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
               minHeight: "44px",
               borderRadius: "var(--r)",
               border: "none",
-              background: "var(--arbor-clay)",
+              background: "var(--arbor-primary)",
               color: "var(--arbor-on-accent)",
               fontWeight: 800,
               fontSize: "var(--t-sm)",

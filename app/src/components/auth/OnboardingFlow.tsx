@@ -74,7 +74,7 @@ class StepErrorBoundary extends React.Component<
           type="button"
           onClick={() => this.setState({ crashed: false })}
           className="px-6 py-2.5 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-          style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+          style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-primary-glow)" }}
         >
           {this.props.retryLabel}
         </button>
@@ -130,7 +130,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
       <button
         onClick={onNext}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-primary-glow)" }}
       >
         {t("ob.step.welcome.cta")}
       </button>
@@ -240,7 +240,7 @@ function StepChild({
             className="w-full rounded-xl px-4 py-2.5 focus:outline-none"
             style={
               missing === "name"
-                ? { ...inputStyle, border: "1.5px solid var(--arbor-clay)", boxShadow: "0 0 0 3px rgba(224,122,95,0.18)" }
+                ? { ...inputStyle, border: "1.5px solid var(--arbor-primary)", boxShadow: "0 0 0 3px rgba(224,122,95,0.18)" }
                 : inputStyle
             }
           />
@@ -263,7 +263,7 @@ function StepChild({
               value={ageYears}
               onChange={(e) => handleYearsChange(parseInt(e.target.value))}
               className="w-full"
-              style={{ accentColor: "var(--arbor-clay)", minHeight: 44 }}
+              style={{ accentColor: "var(--arbor-primary)", minHeight: 44 }}
               aria-label={t("ob.ageMonths.years")}
             />
           </div>
@@ -279,7 +279,7 @@ function StepChild({
                 value={ageMonthsPart}
                 onChange={(e) => setAgeMonthsPart(parseInt(e.target.value))}
                 className="w-full"
-                style={{ accentColor: "var(--arbor-clay)", minHeight: 44 }}
+                style={{ accentColor: "var(--arbor-primary)", minHeight: 44 }}
                 aria-label={t("ob.ageMonths.months")}
               />
             </div>
@@ -320,7 +320,7 @@ function StepChild({
         className="space-y-2.5 rounded-2xl p-3.5 transition-shadow"
         style={{
           background: "var(--arbor-green-soft)",
-          border: missing === "consent" ? "1px solid var(--arbor-clay)" : "1px solid rgba(52,178,119,0.30)",
+          border: missing === "consent" ? "1px solid var(--arbor-primary)" : "1px solid rgba(52,178,119,0.30)",
           boxShadow: missing === "consent" ? "0 0 0 3px rgba(224,122,95,0.18)" : "none",
         }}
       >
@@ -350,7 +350,7 @@ function StepChild({
         disabled={creating}
         aria-busy={creating}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-primary-glow)" }}
       >
         {creating && <RefreshCw className="w-4 h-4 animate-spin" aria-hidden />}
         {creating ? t("ob.settingUp") : t("ob.step.continue")}
@@ -450,7 +450,7 @@ function StepDomains({
         type="button"
         onClick={selectedDomains.length === 0 ? onSkip : onNext}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-primary-glow)" }}
       >
         {t("ob.step.continue")}
       </button>
@@ -508,7 +508,7 @@ function StepAvatar({
         type="button"
         onClick={replayMode ? onSkip : () => setAvatarOpen(true)}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-primary-glow)" }}
       >
         {t("ob.step.continue")}
       </button>
@@ -622,7 +622,7 @@ function StepReady({
         onClick={onSubmit}
         disabled={saving}
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-primary-glow)" }}
       >
         {saving && <RefreshCw className="w-4 h-4 animate-spin" />}
         {t("ob.step.ready.cta")}

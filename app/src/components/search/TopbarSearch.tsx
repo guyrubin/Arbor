@@ -119,7 +119,7 @@ export default function TopbarSearch() {
           height: "40px",
           background: "var(--arbor-paper-elevated)",
           border: open
-            ? "1px solid var(--arbor-clay)"
+            ? "1px solid var(--arbor-primary)"
             : "1px solid var(--arbor-rule)",
           color: "var(--arbor-faint)",
           fontSize: "var(--t-sm)",
@@ -132,7 +132,7 @@ export default function TopbarSearch() {
           name="search"
           size={18}
           style={{
-            color: open ? "var(--arbor-clay)" : "var(--arbor-faint)",
+            color: open ? "var(--arbor-primary)" : "var(--arbor-faint)",
             transition: "color 0.15s",
           }}
         />

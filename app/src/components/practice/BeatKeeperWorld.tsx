@@ -78,10 +78,10 @@ export default function BeatKeeperWorld() {
           className="play-pressable grid place-items-center rounded-full font-black text-white select-none"
           style={{
             width: 168, height: 168, border: "var(--comic-line)", fontFamily: "var(--font-display)", fontSize: 28,
-            background: "var(--arbor-clay)",
+            background: "var(--arbor-primary)",
             transform: phase === "playing" && pulse >= 0 ? "scale(1.12)" : "scale(1)",
             transition: "transform 120ms ease-out",
-            boxShadow: phase === "playing" && pulse >= 0 ? "0 0 0 12px color-mix(in oklab, var(--arbor-clay) 35%, transparent)" : "var(--comic-pop)",
+            boxShadow: phase === "playing" && pulse >= 0 ? "0 0 0 12px color-mix(in oklab, var(--arbor-primary) 35%, transparent)" : "var(--comic-pop)",
           }}
         >
           {phase === "playing" ? "TAP!" : phase === "scored" ? "✔" : "START"}

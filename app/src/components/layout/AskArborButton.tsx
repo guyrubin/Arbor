@@ -32,7 +32,7 @@ export default function AskArborButton({ compact = false }: { compact?: boolean 
         aria-label={t("nav.ask")}
         title={t("nav.ask")}
         className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
-        style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
+        style={{ color: "var(--arbor-primary-deep)", border: "1px solid var(--arbor-rule)" }}
       >
         <Icon name="forum" size={18} />
       </button>
@@ -56,7 +56,7 @@ export default function AskArborButton({ compact = false }: { compact?: boolean 
         borderRadius: "var(--r)",
         fontWeight: 800,
         fontSize: "var(--t-sm)",
-        background: "var(--arbor-clay)",
+        background: "var(--arbor-primary)",
         color: "#fff",
         border: "1px solid transparent",
         boxShadow: "0 6px 14px -6px rgba(43,127,255,0.55)",

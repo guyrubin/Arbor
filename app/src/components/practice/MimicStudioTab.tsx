@@ -130,7 +130,7 @@ export default function MimicStudioTab() {
           return (
             <button key={p.id} onClick={() => setPackId(p.id)}
               className={`${cardCls} p-4 text-start transition`}
-              style={on ? { border: "1px solid var(--arbor-clay)", background: T.paperDeep } : undefined}>
+              style={on ? { border: "1px solid var(--arbor-primary)", background: T.paperDeep } : undefined}>
               <span className="text-2xl">{p.emoji}</span>
               <p className="text-sm font-extrabold mt-1.5" style={{ color: "var(--arbor-ink)" }}>{p.title}</p>
               <p className="text-[10.5px] mt-0.5 leading-snug" style={{ color: "var(--arbor-muted)" }}>{p.blurb}</p>
@@ -164,7 +164,7 @@ export default function MimicStudioTab() {
                 <Icon name="chevron_right" size={16} />
               </button>
             </div>
-            {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "var(--arbor-clay)" }}>✓ Already played — replays still count</p>}
+            {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "var(--arbor-primary)" }}>✓ Already played — replays still count</p>}
           </div>
 
           {/* Mirror — the child watches themselves try it */}

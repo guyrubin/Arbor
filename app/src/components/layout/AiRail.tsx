@@ -35,7 +35,7 @@ export default function AiRail() {
       <ul className="space-y-2.5 flex-1">
         {BEHIND.map((b) => (
           <li key={b} className="flex items-start gap-3 rounded-2xl p-3.5" style={{ background: "var(--arbor-paper-deep)" }}>
-            <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
+            <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "var(--arbor-primary)", color: "#fff" }}>
               <Icon name="check" size={16} />
             </span>
             <span className="min-w-0">
@@ -62,7 +62,7 @@ export default function AiRail() {
       <button
         onClick={() => setActiveTab("coach")}
         className="w-full inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-2xl py-3"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
+        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-primary-glow)" }}
       >
         <Icon name="auto_awesome" size={18} /> {t("airail.askCta")}
       </button>

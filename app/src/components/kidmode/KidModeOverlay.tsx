@@ -115,7 +115,7 @@ export default function KidModeOverlay() {
                   fontWeight: 800,
                   fontSize: "var(--t-sm)",
                   background: "var(--arbor-paper-deep)",
-                  color: "var(--arbor-clay)",
+                  color: "var(--arbor-primary)",
                   border: "1px solid var(--arbor-rule)",
                   cursor: "pointer",
                 }}
@@ -128,7 +128,7 @@ export default function KidModeOverlay() {
                   fontFamily: "var(--font-display)",
                   fontWeight: 900,
                   fontSize: "var(--t-xl)",
-                  color: "var(--arbor-clay)",
+                  color: "var(--arbor-primary)",
                   flex: 1,
                   minWidth: 0,
                 }}

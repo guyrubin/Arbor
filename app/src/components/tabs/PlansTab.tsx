@@ -144,7 +144,7 @@ export default function PlansTab() {
                   <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("plan.stepsCount", { done: prog.doneSteps, total: prog.totalSteps, pct: prog.pct })}</span>
                 </div>
                 <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: "var(--arbor-paper-deep)" }}>
-                  <div className="h-full rounded-full" style={{ width: `${prog.pct}%`, background: "var(--arbor-clay)" }} />
+                  <div className="h-full rounded-full" style={{ width: `${prog.pct}%`, background: "var(--arbor-primary)" }} />
                 </div>
                 {prog.planComplete ? (
                   <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
@@ -162,7 +162,7 @@ export default function PlansTab() {
                     <ul className="space-y-1.5">
                       {prog.nextSteps.map((s, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs" style={{ color: "var(--arbor-ink)" }}>
-                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
+                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-primary)" }} />
                           {s}
                         </li>
                       ))}

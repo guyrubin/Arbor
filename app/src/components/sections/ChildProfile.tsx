@@ -284,7 +284,7 @@ export default function ChildProfile() {
             <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
               {nextMilestones.map((m) => (
                 <li key={m.id} className="flex items-start gap-2">
-                  <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-clay)" }} /> {m.title}
+                  <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-primary)" }} /> {m.title}
                 </li>
               ))}
             </ul>
@@ -302,7 +302,7 @@ export default function ChildProfile() {
           <ul className="space-y-3">
             {childProfile.strengths.map((s) => (
               <li key={s} className="flex items-start gap-3">
-                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
+                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-primary)" }} />
                 <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{s}</span>
               </li>
             ))}

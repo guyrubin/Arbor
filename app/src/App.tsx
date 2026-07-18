@@ -31,7 +31,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         role="status"
         aria-label={t("aria.loading")}
       >
-        <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-clay)" }} />
+        <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-primary)" }} />
       </div>
     );
   }
@@ -84,7 +84,7 @@ function ProfileGate({ children }: { children: React.ReactNode }) {
         role="status"
         aria-label={t("aria.loading")}
       >
-        <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-clay)" }} />
+        <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-primary)" }} />
       </div>
     );
   }

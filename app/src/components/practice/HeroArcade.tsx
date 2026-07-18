@@ -51,7 +51,7 @@ const COLOR: Record<WorldColor, { bg: string; ink: string }> = {
   pink: { bg: "var(--arbor-pink)", ink: "var(--arbor-pink-ink)" },
   peach: { bg: "var(--arbor-peach)", ink: "var(--arbor-peach-ink)" },
   yellow: { bg: "var(--arbor-yellow)", ink: "var(--arbor-yellow-ink)" },
-  clay: { bg: "var(--arbor-clay)", ink: "var(--arbor-clay-deep)" },
+  clay: { bg: "var(--arbor-primary)", ink: "var(--arbor-primary-deep)" },
 };
 
 const WORLDS: World[] = [

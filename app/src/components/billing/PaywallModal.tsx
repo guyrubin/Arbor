@@ -36,14 +36,14 @@ export default function PaywallModal() {
         <div className="flex items-center gap-1 rounded-xl p-1 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
           {(["monthly", "annual"] as const).map((c) => (
             <button key={c} onClick={() => setCadence(c)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
-              style={cadence === c ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}>
+              style={cadence === c ? { background: "var(--arbor-primary)", color: "#fff" } : { color: "var(--arbor-muted)" }}>
               {t(c === "monthly" ? "set.plan.monthly" : "set.plan.annual")}
             </button>
           ))}
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => void startCheckout("plus", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-sm font-bold rounded-xl px-4 py-2.5 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
+          <button onClick={() => void startCheckout("plus", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-sm font-bold rounded-xl px-4 py-2.5 disabled:opacity-50" style={{ background: "var(--arbor-primary)", color: "#fff" }}>
             {t("set.plan.upgradePlus")}
           </button>
           <button onClick={() => void startCheckout("family", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-sm font-bold rounded-xl px-4 py-2.5 disabled:opacity-50" style={{ background: "var(--arbor-green-ink)", color: "#fff" }}>

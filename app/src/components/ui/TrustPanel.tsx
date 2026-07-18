@@ -113,7 +113,7 @@ export function ReviewBeforeShare({
           <button
             onClick={onApprove}
             className="text-xs font-bold rounded-xl px-3 py-2"
-            style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
+            style={{ background: "var(--arbor-primary)", color: "var(--arbor-on-accent)" }}
           >
             {approveLabel}
           </button>

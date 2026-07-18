@@ -64,7 +64,7 @@ export default function GoalsCard() {
           className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none"
           style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
         />
-        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /></button>
+        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "var(--arbor-primary)" }}><Icon name="add" size={16} /></button>
       </form>
     </div>
   );

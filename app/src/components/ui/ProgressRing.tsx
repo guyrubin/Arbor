@@ -7,7 +7,7 @@ export function ProgressRing({
   stroke = 6,
   className = "",
   trackColor = "rgba(41,51,63,0.08)",
-  color = "var(--arbor-clay)",
+  color = "var(--arbor-primary)",
   animate = true,
   children,
 }: {

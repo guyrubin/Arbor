@@ -453,7 +453,7 @@ export default function PhysicalGrowthCard() {
             <button
               className="touch-target inline-flex items-center gap-1 text-[12px] font-bold rounded-xl px-3"
               style={{
-                background: "var(--arbor-clay-dim)",
+                background: "var(--arbor-primary-dim)",
                 color: GREEN,
                 border: "none",
                 minHeight: 32,

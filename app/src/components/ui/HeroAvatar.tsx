@@ -58,7 +58,7 @@ export function HeroAvatar({
           width: size,
           height: size,
           background: ring
-            ? "conic-gradient(from 210deg, var(--arbor-clay), var(--arbor-sky), var(--arbor-lav), var(--arbor-peach), var(--arbor-clay))"
+            ? "conic-gradient(from 210deg, var(--arbor-primary), var(--arbor-sky), var(--arbor-lav), var(--arbor-peach), var(--arbor-primary))"
             : "transparent",
           boxShadow: ring ? "0 6px 18px rgba(41,51,63,0.18)" : "none",
         }}
@@ -75,7 +75,7 @@ export function HeroAvatar({
       {/* Little hero star badge. */}
       <span
         className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full text-white"
-        style={{ width: badge, height: badge, background: "var(--arbor-clay)", boxShadow: "0 2px 6px rgba(41,51,63,0.25)", fontSize: badge * 0.6 }}
+        style={{ width: badge, height: badge, background: "var(--arbor-primary)", boxShadow: "0 2px 6px rgba(41,51,63,0.25)", fontSize: badge * 0.6 }}
         aria-hidden="true"
       >
         ★

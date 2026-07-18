@@ -52,7 +52,7 @@ export default function MobileNav() {
               key={sec.id}
               onClick={() => go(sec.id)}
               className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9.5px] font-bold transition"
-              style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
+              style={{ color: on ? "var(--arbor-primary-deep)" : "var(--arbor-muted)" }}
             >
               <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} />
               {t("nav.short." + sec.id)}
@@ -65,7 +65,7 @@ export default function MobileNav() {
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
           className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9.5px] font-bold transition"
-          style={{ color: overflowActive ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
+          style={{ color: overflowActive ? "var(--arbor-primary-deep)" : "var(--arbor-muted)" }}
         >
           <Icon name="more_horiz" size={20} fill={overflowActive ? 1 : 0} />
           {t("nav.short.more")}
@@ -105,7 +105,7 @@ export default function MobileNav() {
                     onClick={() => go(sec.id)}
                     className="flex items-center gap-2.5 px-3 py-3 rounded-2xl text-start text-sm font-bold transition min-w-0"
                     style={on
-                      ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
+                      ? { background: "var(--arbor-primary-dim)", color: "var(--arbor-primary-deep)" }
                       : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                   >
                     <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} />

@@ -13,7 +13,7 @@ const MUTED = "var(--arbor-muted)";
 const GREEN = "var(--arbor-green-ink)";
 const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
-const CLAY = "var(--arbor-clay)";
+const CLAY = "var(--arbor-primary)";
 
 export default function CourseCard({
   course,
@@ -115,7 +115,7 @@ export default function CourseCard({
                       <button
                         onClick={() => onToggle(a.id)}
                         className="inline-flex items-center justify-center gap-2 font-bold text-[13px] rounded-xl px-4 py-2.5 transition active:scale-[0.98]"
-                        style={done ? { background: GREEN_SOFT, color: GREEN } : { background: "var(--arbor-gradient-primary)", color: "#fff", boxShadow: "var(--arbor-clay-glow)" }}
+                        style={done ? { background: GREEN_SOFT, color: GREEN } : { background: "var(--arbor-gradient-primary)", color: "#fff", boxShadow: "var(--arbor-primary-glow)" }}
                       >
                         <Icon name="check" size={16} /> {done ? t("play.added", { name: childName }) : t("play.did")}
                       </button>

@@ -154,7 +154,7 @@ export default function WeeklyMissionsStrip() {
           const borderColor = done && token
             ? token.ink
             : isToday
-              ? "var(--arbor-clay)"
+              ? "var(--arbor-primary)"
               : "var(--arbor-rule-strong)";
           const inkColor = done && token
             ? token.ink
@@ -248,7 +248,7 @@ export default function WeeklyMissionsStrip() {
                     width: "8px",
                     height: "8px",
                     borderRadius: "50%",
-                    background: "var(--arbor-clay)",
+                    background: "var(--arbor-primary)",
                     marginTop: "4px",
                     flexShrink: 0,
                   }}

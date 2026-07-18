@@ -159,7 +159,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
             const on = active.includes(f);
             return (
               <button key={f} onClick={() => toggle(f)} className="rounded-full px-3 py-1.5 text-xs font-bold transition inline-flex items-center gap-1"
-                style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+                style={on ? { background: "var(--arbor-primary)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                 {f === "Verified by Arbor" && <Icon name="verified_user" size={15} fill={on ? 1 : 0} />}{f}
               </button>
             );
@@ -243,7 +243,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
             </div>
             <div className="flex flex-wrap gap-2">
               {consultDone.mailto && (
-                <a href={consultDone.mailto} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 text-white" style={{ background: "var(--arbor-clay)" }}>
+                <a href={consultDone.mailto} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 text-white" style={{ background: "var(--arbor-primary)" }}>
                   <Icon name="mail" size={15} /> Send the intro email
                 </a>
               )}

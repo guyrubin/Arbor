@@ -40,7 +40,7 @@ import { T, METRIC_VARS } from "../../lib/tokens";
 const PACK_WORLD: Record<HeroPackId, { bg: string; ink: string; label: string; labelHe: string }> = {
   courage: { bg: "var(--arbor-peach)", ink: "var(--arbor-peach-ink)", label: "Courage", labelHe: "אומץ" },
   responsibility: { bg: "var(--arbor-yellow)", ink: "var(--arbor-yellow-ink)", label: "Responsibility", labelHe: "אחריות" },
-  growth: { bg: "var(--arbor-clay)", ink: "var(--arbor-clay-deep)", label: "Growth", labelHe: "צמיחה" },
+  growth: { bg: "var(--arbor-primary)", ink: "var(--arbor-primary-deep)", label: "Growth", labelHe: "צמיחה" },
   wisdom: { bg: "var(--arbor-sky)", ink: "var(--arbor-sky-ink)", label: "Wisdom", labelHe: "חוכמה" },
   truth: { bg: "var(--arbor-pack-truth)", ink: "var(--arbor-pack-truth)", label: "Truth", labelHe: "אמת" },
 };
@@ -374,7 +374,7 @@ export default function HeroJourneyTab() {
                 className="px-3.5 py-1.5 rounded-full text-[13px] font-black transition"
                 style={
                   active
-                    ? { background: w ? w.bg : "var(--arbor-clay)", color: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }
+                    ? { background: w ? w.bg : "var(--arbor-primary)", color: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }
                     : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "var(--comic-line)" }
                 }
               >
@@ -568,7 +568,7 @@ export default function HeroJourneyTab() {
               >
                 <span
                   className="mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 text-white"
-                  style={{ background: questionsChecked[i] ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
+                  style={{ background: questionsChecked[i] ? "var(--arbor-primary)" : "var(--arbor-rule-strong)" }}
                 >
                   {questionsChecked[i] && <Icon name="check" size={12} />}
                 </span>

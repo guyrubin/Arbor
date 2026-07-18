@@ -14,7 +14,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 // TODO(m5): gate toast motion on prefers-reduced-motion
 const STYLES: Record<ToastType, { border: string; icon: React.ReactNode }> = {
-  success: { border: "rgba(52,178,119,0.40)", icon: <CheckCircle2 className="w-4 h-4" style={{ color: "var(--arbor-clay-deep)" }} /> },
+  success: { border: "rgba(52,178,119,0.40)", icon: <CheckCircle2 className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> },
   error: { border: "rgba(214,86,111,0.40)", icon: <AlertTriangle className="w-4 h-4" style={{ color: "var(--arbor-danger)" }} /> },
   info: { border: "rgba(63,140,201,0.40)", icon: <Info className="w-4 h-4" style={{ color: "var(--arbor-sky)" }} /> },
 };

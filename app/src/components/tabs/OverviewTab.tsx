@@ -168,7 +168,7 @@ export default function OverviewTab() {
         id: `play.${p.id}`,
         at,
         icon: <Icon name="sports_esports" size={21} />,
-        tone: { soft: "var(--arbor-tint)", ink: "var(--arbor-clay)" },
+        tone: { soft: "var(--arbor-tint)", ink: "var(--arbor-primary)" },
         title: t("today.feed.played", { title: p.title }),
         sub: t("today.feed.playedSub", { domain: playDomainLabel(p.domain, uiLang === "he" ? "he" : "en") }),
       });
@@ -287,7 +287,7 @@ export default function OverviewTab() {
               className="rounded-[22px] p-5 flex flex-col transition hover:-translate-y-0.5 cursor-pointer"
               style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}
             >
-              <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-clay)" }}>
+              <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-primary)" }}>
                 {t("devscore.eyebrow")}
               </div>
               <div className="flex items-center gap-4 mt-3">
@@ -318,9 +318,9 @@ export default function OverviewTab() {
                    noticed in 7d. */
                 <div className="flex gap-2 mt-auto pt-4">
                   {([
-                    { v: devStats.focus, label: t("devscore.stat.focus"), ink: "var(--arbor-clay)" },
+                    { v: devStats.focus, label: t("devscore.stat.focus"), ink: "var(--arbor-primary)" },
                     { v: devStats.domains, label: t("devscore.stat.domains"), ink: "var(--arbor-green-ink)" },
-                    { v: devStats.week, label: t("devscore.stat.week"), ink: "var(--arbor-clay-deep)" },
+                    { v: devStats.week, label: t("devscore.stat.week"), ink: "var(--arbor-primary-deep)" },
                   ] as const).map((s) => (
                     <div key={s.label} className="flex-1 rounded-xl py-2.5 text-center" style={{ background: "var(--arbor-paper-deep)" }}>
                       <div className="text-[17px] font-extrabold leading-none" style={{ color: s.ink }}>{s.v}</div>
@@ -348,7 +348,7 @@ export default function OverviewTab() {
                trailing status). ── */}
         <section className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
           <div className="flex items-center gap-2 mb-4">
-            <Icon name="sync_alt" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} />
+            <Icon name="sync_alt" size={20} fill={1} style={{ color: "var(--arbor-primary)" }} />
             <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("today.feed.title", { name: firstName })}</span>
             {/* Live pill reflects REAL recent activity (kid + parent events in 48h). */}
             {hasRecentActivity && (
@@ -356,9 +356,9 @@ export default function OverviewTab() {
                 title="Activity in the last 48 hours"
                 aria-label="Activity in the last 48 hours"
                 className="ms-auto inline-flex items-center gap-1.5 text-[10px] font-extrabold rounded-full px-2.5 py-1"
-                style={{ color: "var(--arbor-clay)", background: "var(--arbor-tint-2)" }}
+                style={{ color: "var(--arbor-primary)", background: "var(--arbor-tint-2)" }}
               >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-clay)" }} /> {t("today.live")}
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-primary)" }} /> {t("today.live")}
               </span>
             )}
           </div>
@@ -384,7 +384,7 @@ export default function OverviewTab() {
               />
             ) : (
               <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-primary)" }}>
                   <Icon name="auto_awesome" size={20} fill={1} />
                 </span>
                 <div className="flex-1 min-w-0">
@@ -396,7 +396,7 @@ export default function OverviewTab() {
             {/* Rhythm card */}
             {rhythm.confidence !== "none" && (
               <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay-deep)" }}>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-primary-deep)" }}>
                   <Icon name="calendar_month" size={20} fill={1} />
                 </span>
                 <div className="flex-1 min-w-0">
@@ -410,7 +410,7 @@ export default function OverviewTab() {
                 the feed reads as "waiting for your first log", not broken. */}
             {activityFeed.length === 0 && (
               <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-none" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-none" style={{ background: "var(--arbor-tint)", color: "var(--arbor-primary)" }}>
                   <Icon name="history" size={20} fill={1} />
                 </span>
                 <div className="flex-1 min-w-0">
@@ -449,7 +449,7 @@ export default function OverviewTab() {
               <div className="text-[14px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.title")}</div>
               {/* No live "online" dot — Arbor is guidance, not a live human on call.
                   A calm always-available label, no presence signal. */}
-              <div className="text-[10.5px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>
+              <div className="text-[10.5px] font-extrabold" style={{ color: "var(--arbor-primary)" }}>
                 {t("coach.online")}
               </div>
             </div>
@@ -457,7 +457,7 @@ export default function OverviewTab() {
           <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "var(--arbor-ink-soft)" }}>
             {focus?.text ? focus.text : t("coach.ready", { name: firstName })}
           </div>
-          <button className="mt-4 bg-white text-center rounded-xl py-3 min-h-[44px] text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
+          <button className="mt-4 bg-white text-center rounded-xl py-3 min-h-[44px] text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-primary)" }}>
             <Icon name="forum" size={18} /> {t("today.coach.reply")}
           </button>
         </section>

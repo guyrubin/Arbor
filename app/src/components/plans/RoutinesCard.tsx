@@ -85,7 +85,7 @@ export default function RoutinesCard() {
 
       <form onSubmit={addRoutine} className="flex gap-2">
         <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New routine name…" className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
-        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
+        <button type="submit" className="text-white font-extrabold px-3 rounded-xl flex items-center" style={{ background: "var(--arbor-primary)" }}><Plus className="w-4 h-4" /></button>
       </form>
     </div>
   );

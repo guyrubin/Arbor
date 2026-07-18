@@ -157,10 +157,10 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
             {/* Active stroke guide (dashed) */}
             <path d={guidePathD} fill="none" stroke="var(--arbor-lav-ink)" strokeWidth={4} strokeDasharray="2 12" strokeLinecap="round" opacity={0.6} />
             {/* Start dot */}
-            <circle cx={guide[0].x * TRACE_SIZE} cy={guide[0].y * TRACE_SIZE} r={12} fill="var(--arbor-clay)" />
+            <circle cx={guide[0].x * TRACE_SIZE} cy={guide[0].y * TRACE_SIZE} r={12} fill="var(--arbor-primary)" />
             {/* What the child has drawn */}
             {tracedPathD && (
-              <path d={tracedPathD} fill="none" stroke="var(--arbor-clay)" strokeWidth={22} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
+              <path d={tracedPathD} fill="none" stroke="var(--arbor-primary)" strokeWidth={22} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
             )}
           </svg>
         </div>
@@ -180,7 +180,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
                 <button onClick={() => sayAloud(letter.sound)} className="play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-4 min-h-[44px] rounded-full" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
                   <Icon name="volume_up" size={16} /> {t("prac.read.trace.hearShort")}
                 </button>
-                <button onClick={nextLetter} className="play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-5 min-h-[44px] rounded-full text-white" style={{ background: "var(--arbor-clay)" }}>
+                <button onClick={nextLetter} className="play-pressable inline-flex items-center gap-1.5 text-xs font-extrabold px-5 min-h-[44px] rounded-full text-white" style={{ background: "var(--arbor-primary)" }}>
                   {t("prac.read.trace.next")}
                 </button>
               </div>
@@ -194,7 +194,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
                 {t("prac.read.trace.stroke", { current: Math.min(strokeIdx + 1, totalStrokes), total: totalStrokes })}
               </p>
               <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ background: "rgba(41,51,63,0.08)" }}>
-                <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(coverage * 100)}%`, background: "var(--arbor-clay)" }} />
+                <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(coverage * 100)}%`, background: "var(--arbor-primary)" }} />
               </div>
               {totalStrokes > 1 && <ProgressPips total={totalStrokes} current={Math.min(strokeIdx, totalStrokes - 1)} tone="lav" />}
               <div className="flex flex-wrap gap-2 mt-4">
@@ -306,7 +306,7 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
             <p className="text-[13px] rounded-xl p-3 mb-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}>
               <b>{t("prac.read.phonics.model")}</b> {phonics.cue}
             </p>
-            <button onClick={heardPhonics} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
+            <button onClick={heardPhonics} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-primary)" }}>
               {saved === "phonics" ? <Icon name="check" size={16} /> : <Icon name="auto_awesome" size={16} />}
               {saved === "phonics" ? t("prac.read.saved") : t("prac.read.phonics.cta", { first })}
             </button>
@@ -341,7 +341,7 @@ export default function EarlyReadingTrack({ age, first, onLog }: { age: number; 
             <p className="text-[13px] rounded-xl p-3 mb-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}>
               <b>{t("prac.read.reading.together")}</b> {line.tip}
             </p>
-            <button onClick={readLine} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
+            <button onClick={readLine} className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-3 min-h-[44px] rounded-xl text-white" style={{ background: "var(--arbor-primary)" }}>
               {saved === "read" ? <Icon name="check" size={16} /> : <Icon name="auto_awesome" size={16} />}
               {saved === "read" ? t("prac.read.saved") : t("prac.read.reading.cta")}
             </button>

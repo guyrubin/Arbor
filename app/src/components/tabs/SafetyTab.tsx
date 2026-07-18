@@ -157,7 +157,7 @@ export default function SafetyTab() {
           <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className={inputCls} style={inputStyle} />
           <div className="flex gap-2">
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes" className={`flex-1 ${inputCls}`} style={inputStyle} />
-            <button type="submit" aria-label={t("aria.addContact")} className="text-white font-extrabold px-3 rounded-lg flex items-center" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /></button>
+            <button type="submit" aria-label={t("aria.addContact")} className="text-white font-extrabold px-3 rounded-lg flex items-center" style={{ background: "var(--arbor-primary)" }}><Icon name="add" size={16} /></button>
           </div>
         </form>
       </SectionCard>

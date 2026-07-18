@@ -201,7 +201,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     type="button"
                     onClick={() => setShowCreator(true)}
                     className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition"
-                    style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" }}
+                    style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-primary-border)" }}
                   >
                     <Sparkles className="w-3.5 h-3.5" /> {photoUrl ? "New avatar" : "Create avatar"}
                   </button>
@@ -224,7 +224,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Age: <span style={{ color: "var(--arbor-green-ink)" }}>{age}</span></label>
-                <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
+                <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "var(--arbor-primary)" }} />
               </div>
 
               <div className="space-y-1.5">
@@ -260,7 +260,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                         aria-label={isActive ? `${label}, selected` : `${label}, not selected`}
                         className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition"
                         style={isActive
-                          ? { background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-clay-border)", color: "var(--arbor-green-ink)" }
+                          ? { background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-primary-border)", color: "var(--arbor-green-ink)" }
                           : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-muted)" }}
                       >
                         {isActive && <Check className="w-3 h-3" />}
@@ -275,7 +275,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                       <span
                         key={label}
                         className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold"
-                        style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-clay-border)", color: "var(--arbor-green-ink)" }}
+                        style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-primary-border)", color: "var(--arbor-green-ink)" }}
                       >
                         {label}
                         <button

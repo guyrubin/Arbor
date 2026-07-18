@@ -52,14 +52,14 @@ export function ArborMascot({
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* shadow */}
-      <ellipse cx="70" cy="126" rx="34" ry="6" fill="var(--arbor-clay-deep)" opacity="0.10" />
+      <ellipse cx="70" cy="126" rx="34" ry="6" fill="var(--arbor-primary-deep)" opacity="0.10" />
 
       {/* pot */}
       <path d="M48 96 H92 L86 124 Q85 128 81 128 H59 Q55 128 54 124 Z" fill="#f3a886" />
       <rect x="45" y="90" width="50" height="12" rx="6" fill="#ef8a52" />
 
       {/* stem */}
-      <path d="M70 92 V58" stroke="var(--arbor-clay-deep)" strokeWidth="5" strokeLinecap="round" />
+      <path d="M70 92 V58" stroke="var(--arbor-primary-deep)" strokeWidth="5" strokeLinecap="round" />
 
       {/* side leaves (little arms) — raised on cheer/wave */}
       {mood === "cheer" ? (
@@ -82,10 +82,10 @@ export function ArborMascot({
       {/* sprout head — a rounded bud */}
       <path
         d="M70 60 C50 60 40 46 42 30 C44 16 56 8 70 8 C84 8 96 16 98 30 C100 46 90 60 70 60 Z"
-        fill="var(--arbor-clay)"
+        fill="var(--arbor-primary)"
       />
       {/* leaf crease on head */}
-      <path d="M70 12 V52" stroke="var(--arbor-clay-deep)" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+      <path d="M70 12 V52" stroke="var(--arbor-primary-deep)" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
 
       {/* face — eyes */}
       {eyesClosed ? (

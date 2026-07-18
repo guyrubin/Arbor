@@ -109,10 +109,10 @@ export function ShareButton({
         disabled={busy}
         aria-label={aria}
         aria-busy={busy}
-        className="inline-flex items-center justify-center gap-1.5 font-bold text-[13px] rounded-full px-4 min-h-[44px] transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--arbor-clay)] focus-visible:ring-offset-1 disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-1.5 font-bold text-[13px] rounded-full px-4 min-h-[44px] transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--arbor-primary)] focus-visible:ring-offset-1 disabled:opacity-60"
         style={
           solid
-            ? { background: "var(--arbor-clay)", color: "#fff" }
+            ? { background: "var(--arbor-primary)", color: "#fff" }
             : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }
         }
       >

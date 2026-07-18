@@ -72,7 +72,7 @@ export default function Sidebar() {
                 padding: "11px 13px",
                 fontSize: "14.5px",
                 ...(active
-                  ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)", fontWeight: 700 }
+                  ? { background: "var(--arbor-primary-dim)", color: "var(--arbor-primary-deep)", fontWeight: 700 }
                   : { color: "var(--arbor-muted)", fontWeight: 600 }),
               }}
               onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--arbor-paper-deep)"; }}
@@ -83,9 +83,9 @@ export default function Sidebar() {
                 <span className="truncate">{t("nav.cat." + sec.id)}</span>
               </span>
               {showDot ? (
-                <span aria-hidden="true" className="rounded-full flex-shrink-0" style={{ width: 8, height: 8, background: "var(--arbor-clay)" }} />
+                <span aria-hidden="true" className="rounded-full flex-shrink-0" style={{ width: 8, height: 8, background: "var(--arbor-primary)" }} />
               ) : text ? (
-                <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5 flex-shrink-0" style={active ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+                <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5 flex-shrink-0" style={active ? { background: "var(--arbor-primary)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                   {text}
                 </span>
               ) : null}
@@ -121,7 +121,7 @@ export default function Sidebar() {
                     aria-label={l === "en" ? "Switch to English" : "Switch to Hebrew"}
                     aria-pressed={uiLang === l}
                     className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition inline-flex items-center justify-center"
-                    style={uiLang === l ? { background: "var(--arbor-clay)", color: "#fff" } : { color: "var(--arbor-muted)" }}
+                    style={uiLang === l ? { background: "var(--arbor-primary)", color: "#fff" } : { color: "var(--arbor-muted)" }}
                   >
                     {l === "en" ? "EN" : "עב"}
                   </button>

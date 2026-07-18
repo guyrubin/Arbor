@@ -34,7 +34,7 @@ const T = {
   greenSoft: "var(--arbor-green-soft)",
   peach:     "var(--arbor-peach-ink)",
   peachSoft: "var(--arbor-peach-soft)",
-  clay:      "var(--arbor-clay)",
+  primary:   "var(--arbor-primary)",
 } as const;
 
 /** Returns the inline style for the panel, anchored relative to the bell button.
@@ -77,7 +77,7 @@ function NotificationItem({
       ? t(item.bodyKey, item.vars)
       : item.note; // verbatim monitoring note
 
-  const accentColor = item.kind === "monitoring" ? T.peach : T.clay;
+  const accentColor = item.kind === "monitoring" ? T.peach : T.primary;
   const accentSoft  = item.kind === "monitoring" ? T.peachSoft : T.greenSoft;
 
   return (
@@ -254,7 +254,7 @@ export default function TopbarBell() {
           height: "40px",
           borderRadius: "12px",
           background: open ? T.greenSoft : T.surface,
-          border: `1px solid ${open ? T.clay : T.rule}`,
+          border: `1px solid ${open ? T.primary : T.rule}`,
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
@@ -265,7 +265,7 @@ export default function TopbarBell() {
           // Minimum 44×44 touch target (the 40px button is inside a div that
           // expands the hit area via padding to reach 44px equivalent).
         }}
-        onFocus={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 2px var(--arbor-clay)"; }}
+        onFocus={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 2px var(--arbor-primary)"; }}
         onBlur={(e)  => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
       >
         <Icon
@@ -289,7 +289,7 @@ export default function TopbarBell() {
               minWidth: "17px",
               height: "17px",
               borderRadius: "9px",
-              background: T.clay,
+              background: T.primary,
               color: "var(--arbor-on-accent)",
               fontSize: "10px",
               fontWeight: 800,

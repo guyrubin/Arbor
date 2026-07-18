@@ -86,7 +86,7 @@ function ModuleCard({ module, selected, onSelect }: ModuleCardProps) {
       aria-pressed={selected}
       className="flex flex-col items-start gap-2 p-4 rounded-[var(--r-lg)] border text-start transition-all"
       style={{
-        borderColor: selected ? "var(--arbor-clay)" : "var(--arbor-rule)",
+        borderColor: selected ? "var(--arbor-primary)" : "var(--arbor-rule)",
         borderWidth: selected ? 2 : 1,
         background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",
       }}
@@ -257,7 +257,7 @@ export default function WordWorldTab() {
               disabled={confirmed}
               className="inline-flex items-center gap-2 rounded-full px-5 min-h-[44px] text-[14px] font-extrabold transition-all"
               style={{
-                background: confirmed ? "var(--arbor-green-soft)" : "var(--arbor-clay)",
+                background: confirmed ? "var(--arbor-green-soft)" : "var(--arbor-primary)",
                 color: confirmed ? "var(--arbor-green-ink)" : "#fff",
                 border: "none",
                 cursor: confirmed ? "default" : "pointer",
@@ -303,7 +303,7 @@ export default function WordWorldTab() {
               <button
                 onClick={() => setShowAllWeek((v) => !v)}
                 className="text-[12px] font-bold"
-                style={{ color: "var(--arbor-clay)" }}
+                style={{ color: "var(--arbor-primary)" }}
               >
                 {showAllWeek ? t("wordworld.showLess") : t("wordworld.seeAll", { n: langEvents.length })}
               </button>
@@ -322,7 +322,7 @@ export default function WordWorldTab() {
         <button
           onClick={handleReferralShare}
           className="inline-flex items-center gap-1.5 text-[12px] font-extrabold flex-shrink-0"
-          style={{ color: "var(--arbor-clay)" }}
+          style={{ color: "var(--arbor-primary)" }}
           aria-label={t("aria.shareNoteWithPro")}
         >
           <Icon name="share" size={14} />

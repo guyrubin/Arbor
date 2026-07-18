@@ -41,7 +41,7 @@ export type KidSurface = "journeys" | "arcade" | "feelings";
 type Accent = "green" | "clay" | "lav" | "peach" | "sky";
 const ACCENT_BG: Record<Accent, string> = {
   green: "var(--arbor-green-soft)",
-  clay: "var(--arbor-clay-soft)",
+  clay: "var(--arbor-primary-soft)",
   lav: "var(--arbor-lav-soft)",
   peach: "var(--arbor-peach-soft)",
   sky: "var(--arbor-sky-soft)",
@@ -299,7 +299,7 @@ export default function KidDashboard({
           textAlign: "start",
           cursor: "pointer",
           padding: 0,
-          background: "var(--arbor-clay-soft)",
+          background: "var(--arbor-primary-soft)",
           minBlockSize: "190px",
         }}
       >

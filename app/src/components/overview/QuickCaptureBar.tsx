@@ -39,7 +39,7 @@ export default function QuickCaptureBar({
         style={{
           minHeight: 48,
           background: "var(--arbor-gradient-primary)",
-          boxShadow: "var(--arbor-clay-glow)",
+          boxShadow: "var(--arbor-primary-glow)",
           border: `1px solid ${RULE}`,
           ["--tw-ring-color" as string]: GREEN,
         } as React.CSSProperties}

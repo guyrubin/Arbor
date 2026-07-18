@@ -138,7 +138,7 @@ export default function InviteCard() {
           onClick={() => void doCopy(link)}
           aria-label={t("set.referral.copy")}
           className="inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] transition"
-          style={{ background: "var(--arbor-clay)", color: T.onAccent }}
+          style={{ background: "var(--arbor-primary)", color: T.onAccent }}
         >
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           {copied ? t("set.referral.copied") : t("set.referral.copy")}

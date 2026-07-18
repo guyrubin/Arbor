@@ -77,7 +77,7 @@ export default function FeelingsLabTab() {
 
   // The emotion the avatar should be wearing right now.
   const activeEmotion = EMOTIONS.find((e) => e.id === (feltEmotion ?? pickedEmotion)) ?? null;
-  const activeColor = activeEmotion ? EMOTION_TONE[activeEmotion.id] ?? "var(--arbor-clay)" : "var(--arbor-clay)";
+  const activeColor = activeEmotion ? EMOTION_TONE[activeEmotion.id] ?? "var(--arbor-primary)" : "var(--arbor-primary)";
 
   const nextScenario = () => {
     setScenarioIdx((i) => (i + 1) % EMOTION_SCENARIOS.length);
@@ -147,7 +147,7 @@ export default function FeelingsLabTab() {
                     aria-pressed={on}
                     title={e.label}
                     className="rounded-full px-2.5 py-1.5 text-base transition"
-                    style={on ? { background: "#fff", boxShadow: `0 0 0 2px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
+                    style={on ? { background: "#fff", boxShadow: `0 0 0 2px ${EMOTION_TONE[e.id] ?? "var(--arbor-primary)"}` } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
                   >
                     {e.emoji}
                   </button>

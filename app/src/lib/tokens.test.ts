@@ -30,7 +30,7 @@ const KIT_PASTEL = {
 } as const;
 
 const PLAYKIT_TONE_INK: Record<string, string> = {
-  clay: "var(--arbor-clay-deep)",
+  clay: "var(--arbor-primary-deep)",
   lav: "var(--arbor-lav-ink)",
   sky: "var(--arbor-sky-ink)",
   yellow: "var(--arbor-yellow-ink)",

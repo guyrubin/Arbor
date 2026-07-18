@@ -61,7 +61,7 @@ export default function FamilyFormation() {
         </div>
         <div className="flex gap-2 max-w-md">
           <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={he ? "הוסיפו ערך (למשל סבלנות)…" : "Add a value (e.g. Patience)…"} dir="auto" className="flex-1 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-          <button onClick={add} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 text-white" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
+          <button onClick={add} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 text-white" style={{ background: "var(--arbor-primary)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
         </div>
       </SectionCard>
 
@@ -91,7 +91,7 @@ export default function FamilyFormation() {
                     <ol className="space-y-2">
                       {(he ? r.stepsHe : r.steps).map((s, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
-                          <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-extrabold text-white" style={{ background: "var(--arbor-clay)" }}>{i + 1}</span>
+                          <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-extrabold text-white" style={{ background: "var(--arbor-primary)" }}>{i + 1}</span>
                           <span>{s}</span>
                         </li>
                       ))}

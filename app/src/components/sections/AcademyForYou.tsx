@@ -315,7 +315,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
             style={{
               background: "var(--arbor-paper-deep)",
               color: "var(--arbor-green-ink)",
-              border: "1px solid var(--arbor-clay-dim)",
+              border: "1px solid var(--arbor-primary-dim)",
             }}
             data-testid="academy-foryou-cta"
           >

@@ -19,23 +19,31 @@
   --arbor-rule:           rgba(88, 166, 255, 0.15);
   --arbor-rule-strong:    rgba(88, 166, 255, 0.25);
 
-  /* Primary — sapphire blue (repurposes the clay token name; backward-compatible) */
-  --arbor-clay:           #58a6ff;   /* PRIMARY BLUE: logo, CTA, active nav */
-  --arbor-clay-deep:      #1f6feb;   /* hover / pressed primary */
-  --arbor-clay-dim:       rgba(88, 166, 255, 0.12);
-  --arbor-clay-soft:      linear-gradient(135deg, rgba(88,166,255,0.15), rgba(88,166,255,0.05));
-  --arbor-clay-glow:      0 0 20px rgba(88, 166, 255, 0.3);
-  --arbor-clay-border:    rgba(88, 166, 255, 0.2);   /* hairline on sapphire-tinted surfaces */
+  /* Primary — sapphire blue (canonical --arbor-primary* names) */
+  --arbor-primary:        #58a6ff;   /* PRIMARY BLUE: logo, CTA, active nav */
+  --arbor-primary-deep:   #1f6feb;   /* hover / pressed primary */
+  --arbor-primary-dim:    rgba(88, 166, 255, 0.12);
+  --arbor-primary-soft:   linear-gradient(135deg, rgba(88,166,255,0.15), rgba(88,166,255,0.05));
+  --arbor-primary-glow:   0 0 20px rgba(88, 166, 255, 0.3);
+  --arbor-primary-border: rgba(88, 166, 255, 0.2);   /* hairline on sapphire-tinted surfaces */
+  /* DEPRECATED — retired warm-clay names kept as aliases of --arbor-primary*;
+     do not add new consumers. Delete once grep for --arbor-clay is clean. */
+  --arbor-clay:           var(--arbor-primary);
+  --arbor-clay-deep:      var(--arbor-primary-deep);
+  --arbor-clay-dim:       var(--arbor-primary-dim);
+  --arbor-clay-soft:      var(--arbor-primary-soft);
+  --arbor-clay-glow:      var(--arbor-primary-glow);
+  --arbor-clay-border:    var(--arbor-primary-border);
   --arbor-green-soft:     linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));  /* emerald-tinted pill bg */
   --arbor-green-ink:      #059669;   /* AA text on green-soft */
   --arbor-sage:           #10b981;   /* emerald accent */
   /* Canonical primary CTA gradient — sapphire start → clay → clay-deep. */
-  --arbor-gradient-primary: linear-gradient(135deg, var(--arbor-clay), var(--arbor-clay) 60%, var(--arbor-clay-deep));
+  --arbor-gradient-primary: linear-gradient(135deg, var(--arbor-primary), var(--arbor-primary) 60%, var(--arbor-primary-deep));
   /* Lav (Practice CTA) gradient + shadow tokens — replaces hardcoded literals in OverviewTab. */
   --arbor-gradient-lav: linear-gradient(135deg, var(--arbor-lav), var(--arbor-lav-ink));
   --shadow-lav: 0 8px 20px rgba(167,139,250,0.28);
   /* Progress bar gradient — sapphire. */
-  --arbor-gradient-progress: linear-gradient(90deg, var(--arbor-clay), var(--arbor-clay-deep));
+  --arbor-gradient-progress: linear-gradient(90deg, var(--arbor-primary), var(--arbor-primary-deep));
 
   /* Jewel-tone accents — base / -soft (gradient) / -ink (AA text) / -glow */
   --arbor-peach:       #f97316;
@@ -105,7 +113,7 @@
   --arbor-muted-alt: #69747f;
 
   /* The single most-repeated CTA gradient — sapphire. */
-  --gradient-cta: linear-gradient(135deg, var(--arbor-green-cta-start), var(--arbor-clay) 60%, var(--arbor-clay-deep));
+  --gradient-cta: linear-gradient(135deg, var(--arbor-green-cta-start), var(--arbor-primary) 60%, var(--arbor-primary-deep));
   /* Category palette — Story-pack + development-metric semantic colors. */
   --arbor-pack-courage:         #e2562d;
   --arbor-pack-responsibility:  #d7aa55;
@@ -165,7 +173,7 @@
 .arbor-surface       { background: var(--arbor-paper-elevated); border: 1px solid var(--arbor-rule); }
 .arbor-surface-deep  { background: var(--arbor-paper-deep); border: 1px solid var(--arbor-rule); }
 .arbor-hairline      { border-color: var(--arbor-rule) !important; }
-.arbor-accent-text   { color: var(--arbor-clay); }
+.arbor-accent-text   { color: var(--arbor-primary); }
 .arbor-ink-text      { color: var(--arbor-ink); }
 .arbor-muted-tone    { color: var(--arbor-muted); }
 
@@ -295,8 +303,8 @@ body {
   transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
 }
 .arbor-app nav button[class~="bg-white/5"] {
-  background-color: var(--arbor-clay-dim) !important;
-  color: var(--arbor-clay-deep) !important;
+  background-color: var(--arbor-primary-dim) !important;
+  color: var(--arbor-primary-deep) !important;
   border-color: transparent !important;
   font-weight: 700;
 }
@@ -321,7 +329,7 @@ body {
   background-color: var(--arbor-paper-deep) !important;
 }
 .arbor-app button[class*="bg-white/5"]:hover {
-  background-color: var(--arbor-clay-dim) !important;
+  background-color: var(--arbor-primary-dim) !important;
 }
 
 /* ─── Form Controls ──────────────────────────────────────────────────────── */
@@ -337,7 +345,7 @@ body {
 .arbor-app textarea:focus,
 .arbor-app select:focus {
   outline: none !important;
-  border-color: var(--arbor-clay) !important;
+  border-color: var(--arbor-primary) !important;
   box-shadow: var(--ring) !important;
 }
 .arbor-app input::placeholder,
@@ -381,8 +389,8 @@ body {
 }
 
 /* ─── Progress / Range ────────────────────────────────────────────────────── */
-.arbor-app input[type="range"]    { accent-color: var(--arbor-clay); }
-.arbor-app input[type="checkbox"] { accent-color: var(--arbor-clay); }
+.arbor-app input[type="range"]    { accent-color: var(--arbor-primary); }
+.arbor-app input[type="checkbox"] { accent-color: var(--arbor-primary); }
 
 /* ─── Pulse animation override ────────────────────────────────────────────── */
 .arbor-app .animate-pulse:not(button):not(span[class*="bg-purple"]) {
@@ -448,7 +456,7 @@ body {
 .arbor-app select:focus-visible,
 .arbor-app textarea:focus-visible,
 .arbor-app [tabindex]:focus-visible {
-  outline: 2px solid var(--arbor-clay);
+  outline: 2px solid var(--arbor-primary);
   outline-offset: 2px;
   border-radius: 8px;
 }
@@ -486,7 +494,7 @@ body {
   background:
     radial-gradient(60% 52% at 8% -4%, color-mix(in oklab, var(--arbor-lav) 30%, transparent), transparent 70%),
     radial-gradient(64% 56% at 98% 2%, color-mix(in oklab, var(--arbor-sky) 28%, transparent), transparent 72%),
-    radial-gradient(70% 60% at 88% 102%, color-mix(in oklab, var(--arbor-clay) 26%, transparent), transparent 74%),
+    radial-gradient(70% 60% at 88% 102%, color-mix(in oklab, var(--arbor-primary) 26%, transparent), transparent 74%),
     radial-gradient(64% 56% at -2% 96%, color-mix(in oklab, var(--arbor-peach) 24%, transparent), transparent 72%),
     linear-gradient(135deg, color-mix(in oklab, var(--arbor-green-soft) 70%, var(--arbor-paper-elevated)), var(--arbor-paper-elevated) 80%);
   pointer-events: none;
@@ -531,7 +539,7 @@ body {
 
 /* Correct-tile happy pulse. */
 @keyframes play-correct {
-  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--arbor-clay) 55%, transparent); }
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--arbor-primary) 55%, transparent); }
   100% { box-shadow: 0 0 0 14px transparent; }
 }
 .play-correct { animation: play-correct 600ms ease-out 1; }
@@ -600,7 +608,7 @@ body {
 .power-fill {
   height: 100%;
   border-radius: 999px;
-  background: repeating-linear-gradient(45deg, var(--arbor-clay) 0 12px, var(--arbor-clay-deep) 12px 24px);
+  background: repeating-linear-gradient(45deg, var(--arbor-primary) 0 12px, var(--arbor-primary-deep) 12px 24px);
   animation: power-fill 1.1s cubic-bezier(0.2, 1, 0.3, 1) both;
 }
 @media (prefers-reduced-motion: reduce) { .power-fill { animation: none; } }
@@ -658,9 +666,13 @@ body {
 
 /* ── Teal accent — aligned to 2035 sapphire for coherence ───────────────── */
 [data-theme="teal"] {
-  --arbor-clay:             #58a6ff;   /* sapphire primary: logo, CTA, active nav */
-  --arbor-clay-deep:        #1f6feb;   /* hover / pressed primary */
-  --arbor-clay-dim:         rgba(88, 166, 255, 0.12);
+  --arbor-primary:          #58a6ff;   /* sapphire primary: logo, CTA, active nav */
+  --arbor-primary-deep:     #1f6feb;   /* hover / pressed primary */
+  --arbor-primary-dim:      rgba(88, 166, 255, 0.12);
+  /* DEPRECATED --arbor-clay* aliases — re-declared per scope so they track this scope's primary. */
+  --arbor-clay:             var(--arbor-primary);
+  --arbor-clay-deep:        var(--arbor-primary-deep);
+  --arbor-clay-dim:         var(--arbor-primary-dim);
   --arbor-green-soft:       linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));
   --arbor-green-ink:        #059669;   /* AA text on green-soft */
   --arbor-sage:             #10b981;   /* emerald accent */
@@ -673,9 +685,13 @@ body {
 
 /* ── Blue accent — aligned to 2035 sapphire for coherence ───────────────── */
 [data-theme="blue"] {
-  --arbor-clay:             #58a6ff;   /* sapphire primary: logo, CTA, active nav */
-  --arbor-clay-deep:        #1f6feb;   /* hover / pressed primary */
-  --arbor-clay-dim:         rgba(88, 166, 255, 0.12);
+  --arbor-primary:          #58a6ff;   /* sapphire primary: logo, CTA, active nav */
+  --arbor-primary-deep:     #1f6feb;   /* hover / pressed primary */
+  --arbor-primary-dim:      rgba(88, 166, 255, 0.12);
+  /* DEPRECATED --arbor-clay* aliases — re-declared per scope so they track this scope's primary. */
+  --arbor-clay:             var(--arbor-primary);
+  --arbor-clay-deep:        var(--arbor-primary-deep);
+  --arbor-clay-dim:         var(--arbor-primary-dim);
   --arbor-green-soft:       linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));
   --arbor-green-ink:        #059669;   /* AA text on green-soft */
   --arbor-sage:             #10b981;   /* emerald accent */
@@ -750,10 +766,15 @@ body {
 
   /* ── Accent: sapphire brand ────────────────────────────────────────────── */
   --accent:           #2b7fff;   /* mockup canonical `var(--accent,#2b7fff)` */
-  --arbor-clay:       #2b7fff;   /* remaps the primary token to the mockup sapphire */
-  --arbor-clay-deep:  #1a6be8;   /* hover/pressed (slightly darker for contrast) */
-  --arbor-clay-dim:   rgba(43,127,255,0.10);
-  --arbor-clay-border: rgba(43,127,255,0.18);
+  --arbor-primary:    #2b7fff;   /* remaps the primary token to the mockup sapphire */
+  --arbor-primary-deep: #1a6be8; /* hover/pressed (slightly darker for contrast) */
+  --arbor-primary-dim: rgba(43,127,255,0.10);
+  --arbor-primary-border: rgba(43,127,255,0.18);
+  /* DEPRECATED --arbor-clay* aliases — re-declared per scope so they track this scope's primary. */
+  --arbor-clay:       var(--arbor-primary);
+  --arbor-clay-deep:  var(--arbor-primary-deep);
+  --arbor-clay-dim:   var(--arbor-primary-dim);
+  --arbor-clay-border: var(--arbor-primary-border);
 
   /* ── Success / growth: flat solid (the flat scope must redefine these or it
      leaks the glass-gradient green from :root — the Today translucent-blob bug). */

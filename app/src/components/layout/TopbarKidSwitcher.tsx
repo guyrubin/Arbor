@@ -175,7 +175,7 @@ export default function TopbarKidSwitcher() {
                   <Icon
                     name="check"
                     size={16}
-                    style={{ color: "var(--arbor-clay)", flexShrink: 0 }}
+                    style={{ color: "var(--arbor-primary)", flexShrink: 0 }}
                   />
                 )}
               </button>

@@ -226,9 +226,9 @@ export default function Shell() {
           <ChildContextHeader
             className="md:hidden"
             identity={<span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
-              <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
+              <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-primary)" }} />
               <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {t("top.age")} {childProfile.age}</strong>
-              {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></span>}</span>
+              {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-primary-deep)" }}>{focusLabel}</strong></span>}</span>
             </span>}
             actions={<div className="flex w-full sm:w-auto items-center gap-2 overflow-x-auto no-scrollbar">
               <AskArborButton compact />

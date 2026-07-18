@@ -274,7 +274,7 @@ export default function SpeechCoachTab() {
           </Chip>
         </div>
         <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: "var(--arbor-paper-deep)" }}>
-          <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((dose.trialsToday / dose.perSessionTarget) * 100))}%`, background: "var(--arbor-clay)" }} />
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((dose.trialsToday / dose.perSessionTarget) * 100))}%`, background: "var(--arbor-primary)" }} />
         </div>
         <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
           {t("prac.speech.dose.explainer", { perSession: dose.perSessionTarget, perWeek: dose.weeklySessionTarget })}
@@ -311,13 +311,13 @@ export default function SpeechCoachTab() {
                       onClick={() => setSoundId(s.id)}
                       className="play-pressable min-w-[52px] h-[52px] px-3 rounded-2xl text-base font-extrabold transition inline-flex items-center justify-center gap-1"
                       style={on
-                        ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "0 6px 16px rgba(88,166,255,0.28)" }
+                        ? { background: "var(--arbor-primary)", color: "#fff", boxShadow: "0 6px 16px rgba(88,166,255,0.28)" }
                         : { background: "#fff", color: "var(--arbor-ink)", border: "2px solid var(--arbor-rule)", opacity: appropriate ? 1 : 0.5 }}
                       title={appropriate ? t("prac.speech.sound.tip", { label: s.label, age: s.typicalAge }) : t("prac.speech.sound.tipLate", { label: s.label, age: s.typicalAge, name: first })}
                     >
                       {s.id.toUpperCase()}
                       {st && st.attempts > 0 && (
-                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : st.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow-ink)" }}>{st.recentAccuracy}%</span>
+                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : st.recentAccuracy >= 70 ? "var(--arbor-primary)" : "var(--arbor-yellow-ink)" }}>{st.recentAccuracy}%</span>
                       )}
                     </button>
                   );
@@ -421,7 +421,7 @@ export default function SpeechCoachTab() {
             </button>
           ))}
           {lastSaved && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-clay)" }}>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-primary)" }}>
               <Icon name="check" size={14} /> {t("prac.read.saved")}
             </span>
           )}
@@ -457,7 +457,7 @@ export default function SpeechCoachTab() {
               <p className="text-xl font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{vocabItem.word}</p>
               <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("prac.lang.naming.ask", { name: first })}</p>
             </div>
-            <button onClick={markNamed} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
+            <button onClick={markNamed} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-primary)" }}>
               {languageSaved === "vocab-naming" ? <Icon name="check" size={14} /> : <Icon name="auto_awesome" size={14} />}
               {languageSaved === "vocab-naming" ? t("prac.read.saved") : t("prac.lang.naming.cta")}
             </button>
@@ -562,13 +562,13 @@ export default function SpeechCoachTab() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{entry?.label ?? s.sound}</p>
                     <div className="h-2 rounded-full mt-1.5" style={{ background: "rgba(41,51,63,0.08)" }}>
-                      <div className="h-2 rounded-full transition-all" style={{ width: `${s.recentAccuracy}%`, background: s.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow)" }} />
+                      <div className="h-2 rounded-full transition-all" style={{ width: `${s.recentAccuracy}%`, background: s.recentAccuracy >= 70 ? "var(--arbor-primary)" : "var(--arbor-yellow)" }} />
                     </div>
                     <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>
                       {t("prac.speech.progress.stat", { tries: s.attempts, accuracy: s.recentAccuracy, level: s.levelReached })}
                     </p>
                   </div>
-                  <Icon name={trendIconName} size={16} className="flex-shrink-0" style={{ color: s.trend === "up" ? "var(--arbor-clay)" : s.trend === "down" ? "var(--arbor-pink-ink)" : "var(--arbor-muted)" }} />
+                  <Icon name={trendIconName} size={16} className="flex-shrink-0" style={{ color: s.trend === "up" ? "var(--arbor-primary)" : s.trend === "down" ? "var(--arbor-pink-ink)" : "var(--arbor-muted)" }} />
                 </div>
               );
             })}

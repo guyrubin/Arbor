@@ -231,7 +231,7 @@ export default function ScholarHubCard() {
       <button
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-        style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-dim)" }}
+        style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-primary-dim)" }}
       >
         {t("hub.scholar.read")}
       </button>

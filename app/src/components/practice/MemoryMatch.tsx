@@ -172,7 +172,7 @@ export default function MemoryMatch({ data, childAge }: { data: PracticeData; ch
                   className={`play-pressable aspect-square rounded-[var(--play-radius)] flex items-center justify-center text-[2.4rem] ${c.matched ? "play-correct" : ""}`}
                   style={{
                     background: c.matched ? "var(--arbor-green-soft)" : face ? "#fff" : "var(--arbor-lav-soft)",
-                    border: c.matched ? "2.5px solid var(--arbor-clay)" : face ? "2.5px solid var(--arbor-lav-ink)" : "2.5px solid transparent",
+                    border: c.matched ? "2.5px solid var(--arbor-primary)" : face ? "2.5px solid var(--arbor-lav-ink)" : "2.5px solid transparent",
                     cursor: c.matched ? "default" : "pointer",
                     boxShadow: "0 4px 14px rgba(41,51,63,0.07)",
                   }}>

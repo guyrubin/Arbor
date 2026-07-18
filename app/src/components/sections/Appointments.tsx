@@ -55,7 +55,7 @@ export default function Appointments() {
             <input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Role (e.g. Speech Therapist)" className="rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
             <input value={form.when} onChange={(e) => setForm({ ...form, when: e.target.value })} placeholder="When (e.g. Mon 9 Jun · 10:00)" className="rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
           </div>
-          <button onClick={addAppt} className="mt-3 inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5" style={{ background: "var(--arbor-clay)" }}>Save</button>
+          <button onClick={addAppt} className="mt-3 inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5" style={{ background: "var(--arbor-primary)" }}>Save</button>
         </div>
       )}
 

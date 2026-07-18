@@ -29,11 +29,17 @@ export const CSS_VARS = {
   rule: "var(--arbor-rule)",
   ruleStrong: "var(--arbor-rule-strong)",
 
-  // Primary — friendly green (repurposes the clay token name; stable values)
-  clay: "var(--arbor-clay)",
-  clayDeep: "var(--arbor-clay-deep)",
-  clayDim: "var(--arbor-clay-dim)",
-  clayBorder: "var(--arbor-clay-border)",
+  // Primary — sapphire (canonical --arbor-primary* names)
+  primary: "var(--arbor-primary)",
+  primaryDeep: "var(--arbor-primary-deep)",
+  primaryDim: "var(--arbor-primary-dim)",
+  primaryBorder: "var(--arbor-primary-border)",
+  // DEPRECATED — retired warm-clay names kept as aliases of primary*;
+  // do not add new consumers. Delete once grep for clay is clean.
+  clay: "var(--arbor-primary)",
+  clayDeep: "var(--arbor-primary-deep)",
+  clayDim: "var(--arbor-primary-dim)",
+  clayBorder: "var(--arbor-primary-border)",
   gradientPrimary: "var(--arbor-gradient-primary)",
   greenSoft: "var(--arbor-green-soft)",
   greenInk: "var(--arbor-green-ink)",
@@ -139,13 +145,13 @@ export const tintVar = (varStr: string, pct: number): string =>
    `playkit.TONE_*` uses clay/lav/sky/yellow/pink/peach. TONES is the superset
    so both derive without changing any consumer's tone string. */
 export const TONES = {
-  mint: { soft: T.greenSoft, ink: T.greenInk, solid: T.clay, hex: "#34b277" },
+  mint: { soft: T.greenSoft, ink: T.greenInk, solid: T.primary, hex: "#34b277" },
   coral: { soft: T.peachSoft, ink: T.peachInk, solid: T.peach, hex: "#d9763f" },
   lav: { soft: T.lavSoft, ink: T.lavInk, solid: T.lav, hex: "#7a6bd8" },
   yellow: { soft: T.yellowSoft, ink: T.yellowInk, solid: T.yellow, hex: "#c2882a" },
   pink: { soft: T.pinkSoft, ink: T.pinkInk, solid: T.pink, hex: "#d65f87" },
   sky: { soft: T.skySoft, ink: T.skyInk, solid: T.sky, hex: "#3f8cc9" },
-  clay: { soft: T.greenSoft, ink: T.clayDeep, solid: T.clay, hex: "#2a9c66" },
+  clay: { soft: T.greenSoft, ink: T.primaryDeep, solid: T.primary, hex: "#2a9c66" },
   peach: { soft: T.peachSoft, ink: T.peachInk, solid: T.peach, hex: "#d9763f" },
 } as const;
 

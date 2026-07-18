@@ -251,7 +251,7 @@ export default function DailyPlayTab() {
             style={{
               background: activeGoals.length > 0 ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",
               color: activeGoals.length > 0 ? "var(--arbor-green-ink)" : "var(--arbor-muted)",
-              border: `1px solid ${activeGoals.length > 0 ? "var(--arbor-clay-border)" : "var(--arbor-rule)"}`,
+              border: `1px solid ${activeGoals.length > 0 ? "var(--arbor-primary-border)" : "var(--arbor-rule)"}`,
             }}
           >
             <Icon name="target" size={14} />
@@ -309,7 +309,7 @@ export default function DailyPlayTab() {
                 onClick={() => setReadinessId(rc.id)}
                 className="rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition"
                 style={on
-                  ? { background: "var(--arbor-clay)", color: "#fff", boxShadow: "var(--shadow-sm)" }
+                  ? { background: "var(--arbor-primary)", color: "#fff", boxShadow: "var(--shadow-sm)" }
                   : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {localizeCourse(rc, uiLang).title}
@@ -364,7 +364,7 @@ export default function DailyPlayTab() {
       <button
         onClick={() => setActiveTab("comics")}
         className="inline-flex items-center gap-2 text-[13px] font-bold rounded-full px-4 py-2.5"
-        style={{ background: "var(--arbor-clay)", color: "#fff", minHeight: 44 }}
+        style={{ background: "var(--arbor-primary)", color: "#fff", minHeight: 44 }}
       >
         <Icon name="menu_book" size={16} /> Turn today&apos;s practice into a comic →
       </button>

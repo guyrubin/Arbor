@@ -82,7 +82,7 @@ export default function Screening() {
             {monitoring.watchAreas.map((d) => (
               <div key={d.domain} className="rounded-2xl p-3.5" style={{ background: "var(--arbor-yellow-soft)" }}>
                 <div className="flex items-center gap-2">
-                  <Icon name="warning" size={14} style={{ color: "var(--arbor-clay-deep)" }} />
+                  <Icon name="warning" size={14} style={{ color: "var(--arbor-primary-deep)" }} />
                   <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{d.label}</span>
                 </div>
                 <p className="text-[12.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{d.note}</p>

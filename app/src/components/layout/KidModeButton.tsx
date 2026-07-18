@@ -28,7 +28,7 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
         aria-label={`${t("aria.kidMode")} — ${lockedLine}`}
         title="Kid Mode — hand the device to your child"
         className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
-        style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
+        style={{ color: "var(--arbor-primary-deep)", border: "1px solid var(--arbor-rule)" }}
       >
         <Icon name="sports_esports" size={18} />
       </button>
@@ -51,9 +51,9 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
         borderRadius: "var(--r)",
         fontWeight: 800,
         fontSize: "var(--t-sm)",
-        background: "var(--arbor-clay-dim)",
-        color: "var(--arbor-clay-deep)",
-        border: "1px solid var(--arbor-clay-border)",
+        background: "var(--arbor-primary-dim)",
+        color: "var(--arbor-primary-deep)",
+        border: "1px solid var(--arbor-primary-border)",
         cursor: "pointer",
         whiteSpace: "nowrap",
         transition: "background 120ms",

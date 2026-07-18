@@ -44,7 +44,7 @@ export default function DailyCheckinCard() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Icon name="bedtime" size={12} /> Sleep: <span style={{ color: "var(--arbor-green-ink)" }}>{cur.sleepHours}h</span></span>
-          <input type="range" min={4} max={16} value={cur.sleepHours} onChange={(e) => save({ sleepHours: parseInt(e.target.value) })} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
+          <input type="range" min={4} max={16} value={cur.sleepHours} onChange={(e) => save({ sleepHours: parseInt(e.target.value) })} className="w-full" style={{ accentColor: "var(--arbor-primary)" }} />
         </div>
         <div className="space-y-1">
           <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}><Icon name="restaurant" size={12} /> Appetite</span>

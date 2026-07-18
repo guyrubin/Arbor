@@ -57,7 +57,7 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
             <span style={{ color: "var(--arbor-muted)" }}>{next.cosmetic.requirement}</span>
           </div>
           <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(41,51,63,0.08)" }}>
-            <div className="h-full rounded-full" style={{ width: `${Math.round(next.progress * 100)}%`, background: "var(--arbor-clay)" }} />
+            <div className="h-full rounded-full" style={{ width: `${Math.round(next.progress * 100)}%`, background: "var(--arbor-primary)" }} />
           </div>
         </div>
       )}

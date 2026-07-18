@@ -20,7 +20,7 @@ export default function Strengths() {
           <ul className="space-y-3">
             {childProfile.strengths.map((s) => (
               <li key={s} className="flex items-start gap-3">
-                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
+                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-primary)" }} />
                 <span className="text-sm" style={{ color: "var(--arbor-ink)" }}>{s}</span>
               </li>
             ))}
