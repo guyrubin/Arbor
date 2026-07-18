@@ -4,6 +4,7 @@ import { Download, Share2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-r
 import { ComicPage, PlayButton, PlayPanel, ProgressPips, Celebrate, usePrefersReducedMotion } from "../ui/playkit";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { track } from "../../lib/analytics";
+import { PaywallError } from "../../lib/api";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { getStorySpec } from "../../lib/heroJourneys";
 import {
@@ -40,6 +41,7 @@ export function ComicReader({
   saved,
   onSave,
   onClose,
+  onPaywall,
   registerBack,
 }: {
   adventure: Adventure;
@@ -50,6 +52,9 @@ export function ComicReader({
   saved?: HeroComic;
   onSave: (comic: HeroComic) => void;
   onClose: () => void;
+  /** Surfaces a PaywallError from the book build (or a page retry) to the host,
+   *  which owns openPaywall — the reader itself stays paywall-agnostic. */
+  onPaywall?: (err: PaywallError) => void;
   /** Hook for the host to register a back-step handler (Android hardware Back). */
   registerBack?: (handler: () => boolean) => void;
 }) {
@@ -112,7 +117,14 @@ export function ComicReader({
         // Whole-book failure only if every page errored (e.g. offline).
         if (finalPages.every((p) => p.status === "error")) setBookError(true);
       })
-      .catch(() => { if (active) setBookError(true); });
+      .catch((err) => {
+        if (!active) return;
+        // A paywall stop is a conversion moment, not a book failure — hand it
+        // up to the host (which owns openPaywall). Without a host seam, fall
+        // back to the whole-book error panel so the reader never spins forever.
+        if (err instanceof PaywallError && onPaywall) onPaywall(err);
+        else setBookError(true);
+      });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adventure.id, lang]);
@@ -189,9 +201,11 @@ export function ComicReader({
       .then((dataUrl) =>
         setPages((prev) => prev.map((p) => (p.index === index ? { ...p, dataUrl, status: "ready" } : p))),
       )
-      .catch(() =>
-        setPages((prev) => prev.map((p) => (p.index === index ? { ...p, status: "error" } : p))),
-      );
+      .catch((err) => {
+        setPages((prev) => prev.map((p) => (p.index === index ? { ...p, status: "error" } : p)));
+        // A retry that hits the paywall surfaces it too (tile stays retryable).
+        if (err instanceof PaywallError) onPaywall?.(err);
+      });
   };
 
   const buildSavedComic = (): HeroComic => ({

@@ -10,7 +10,7 @@
  * sequentially through an in-flight dedupe map so one failed page never blocks
  * the rest of the book. HeroScenePlayer and ComicReader both build on it.
  */
-import { api } from "./api";
+import { api, PaywallError } from "./api";
 import { HERO_STORIES } from "./heroJourneys";
 import { resolveScene } from "./sceneCache";
 import type { HeroStorySpec } from "../types";
@@ -253,7 +253,11 @@ export async function generatePage(args: GeneratePageArgs): Promise<string> {
 /** Build a whole book by generating pages sequentially, reporting each as it
  *  resolves (or fails) via `onPage`. One failed page is marked `error` and the
  *  build continues — the book is never blocked on a single smudged page.
- *  Returns the final page list (with statuses + data-URLs). */
+ *  Returns the final page list (with statuses + data-URLs).
+ *
+ *  EXCEPTION: a `PaywallError` is a conversion moment, not a smudged page — the
+ *  build STOPS (no further paid generations) and rejects with the typed error so
+ *  the host can open the paywall instead of rendering per-page error tiles. */
 export async function buildComicBook(
   adventure: Adventure,
   lang: ComicLang,
@@ -276,7 +280,9 @@ export async function buildComicBook(
       });
       page.dataUrl = dataUrl;
       page.status = "ready";
-    } catch {
+    } catch (err) {
+      // Paywall ≠ page failure: stop the whole build and surface it typed.
+      if (err instanceof PaywallError) throw err;
       page.status = "error";
     }
     onPage({ ...page });
