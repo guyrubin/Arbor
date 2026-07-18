@@ -33,7 +33,7 @@ type WeeklyReport = {
 };
 
 export default function WeeklyTab() {
-  const { behaviorLogs, milestones, actionPlans, childProfile, setActiveTab, handleGenerateBrief } = useArbor();
+  const { behaviorLogs, milestones, actionPlans, childProfile, setActiveTab } = useArbor();
   const { t } = useLanguage();
   const reportsCol = useChildCollection<WeeklyReport>(childProfile.id, "weeklyReports");
 
@@ -274,10 +274,7 @@ export default function WeeklyTab() {
               </div>
             </div>
             <button
-              onClick={() => {
-                handleGenerateBrief();
-                setActiveTab("consult");
-              }}
+              onClick={() => setActiveTab("consult")}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
               style={{ background: "var(--arbor-gradient-primary)" }}
             >

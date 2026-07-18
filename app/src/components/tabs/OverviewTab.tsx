@@ -7,6 +7,7 @@ import { useToast } from "../../context/ToastContext";
 import { Skeleton } from "../ui/Skeleton";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import DailyPlayCard from "../overview/DailyPlayCard";
+import ArborNoticedCard from "../sections/ArborNoticedCard";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import { PASTEL } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
@@ -249,8 +250,8 @@ export default function OverviewTab() {
                 <div className="space-y-2"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-6 w-1/2" /></div>
               ) : (
                 <h1
-                  className="text-[27px] leading-[1.12] line-clamp-3"
-                  style={{ color: "#fff", maxWidth: "92%", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}
+                  className="text-[20px] sm:text-[24px] lg:text-[27px] leading-[1.12] line-clamp-6 sm:line-clamp-3 sm:max-w-[92%]"
+                  style={{ color: "#fff", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}
                 >
                   {focus ? focus.text : t("ov.recoEmpty", { name: firstName })}
                 </h1>
@@ -332,6 +333,12 @@ export default function OverviewTab() {
           );
         })()}
       </div>
+
+      {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
+             child's own logged data, below the hero row. Renders NOTHING with
+             zero detections and self-hides per-detection once dismissed; copy is
+             counts/patterns only (non-diagnostic, monitoring.ts framing). ── */}
+      <ArborNoticedCard />
 
       {/* ── Row 2 (1.6fr / 1fr): Kid activity feed · Coach card ───────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">

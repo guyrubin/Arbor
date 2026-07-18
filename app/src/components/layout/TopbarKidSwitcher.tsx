@@ -57,7 +57,7 @@ export default function TopbarKidSwitcher() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Active child: ${activeChild.name}. Switch child`}
+        aria-label={t("aria.activeChildSwitch", { name: activeChild.name })}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -78,6 +78,7 @@ export default function TopbarKidSwitcher() {
         <Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={24} />
         {/* UC-1: inline child name (avatar + name + chevron) */}
         <span
+          dir="auto"
           style={{
             fontSize: "var(--t-sm)",
             fontWeight: 700,
@@ -153,6 +154,7 @@ export default function TopbarKidSwitcher() {
                 <Avatar name={p.name} photoURL={p.photoUrl} size={28} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span
+                    dir="auto"
                     style={{
                       display: "block",
                       fontSize: "var(--t-sm)",
@@ -166,7 +168,7 @@ export default function TopbarKidSwitcher() {
                     {p.name}
                   </span>
                   <span style={{ fontSize: "10px", color: "var(--arbor-muted)" }}>
-                    Age {p.age}
+                    {t("profile.ageLine", { age: p.age })}
                   </span>
                 </div>
                 {p.id === activeChild.id && (
@@ -217,7 +219,7 @@ export default function TopbarKidSwitcher() {
               >
                 <Icon name="add" size={16} />
               </span>
-              <span style={{ fontSize: "var(--t-sm)", fontWeight: 700 }}>Add child</span>
+              <span style={{ fontSize: "var(--t-sm)", fontWeight: 700 }}>{t("ac.add")}</span>
             </button>
           </div>
         </>

@@ -58,8 +58,8 @@ export default function FamilyGlanceCard() {
                 <span className="text-[13px] font-bold truncate block" dir="auto" style={{ color: INK }}>
                   {row.name}
                 </span>
-                <span className="text-[11px] whitespace-nowrap" style={{ color: MUTED }}>
-                  Age {row.age}
+                <span className="text-[11px] whitespace-nowrap" dir="auto" style={{ color: MUTED }}>
+                  {t("profile.ageLine", { age: row.age })}
                 </span>
               </span>
 

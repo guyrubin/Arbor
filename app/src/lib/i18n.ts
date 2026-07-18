@@ -106,6 +106,7 @@ export const en: Dict = {
   "aria.signout": "Sign out",
   "aria.notifications": "Notifications",
   "aria.switchChild": "Switch child",
+  "aria.activeChildSwitch": "Active child: {name}. Switch child",
   "aria.applicationTopbar": "Application topbar",
   "aria.arborMark": "Arbor",
   "aria.sproutMascot": "Sprout, Arbor's guide",
@@ -643,6 +644,7 @@ export const en: Dict = {
   "profile.interests.addPlaceholder": "Something else…",
   "profile.interests.addBtn": "Add",
   "profile.interests.updated": "Updated {when}",
+  "profile.ageLine": "Age {age}",
   // CI-29: 12 suggested interests (EN)
   "interest.trains": "Trains",
   "interest.dinosaurs": "Dinosaurs",
@@ -1173,8 +1175,8 @@ export const en: Dict = {
   "wk.scholarSpotlight": "Scholar spotlight",
   "wk.scholarExplore": "Explore Scholar Frameworks →",
   "wk.readyToShare": "Ready to share",
-  "wk.compileBrief": "Compile a professional brief from this week for school or clinicians.",
-  "wk.brief": "Build a school brief for {first}",
+  "wk.compileBrief": "Turn this week into a shareable summary for school or clinicians — in Consult, you choose what to share.",
+  "wk.brief": "Build {first}'s summary in Consult",
   // C4 — Physical growth tracking
   "growth.eyebrow": "Physical growth",
   "growth.empty.title": "No measurements yet",
@@ -1232,6 +1234,10 @@ export const en: Dict = {
   "cite.based": "Based on: {source}",
   "cite.toggle.open": "Show sources",
   "cite.toggle.close": "Hide sources",
+  // coach.escalate.* — quiet (low-risk) framing of the escalation footer; content never changes
+  "coach.escalate.title": "When to seek help",
+  "coach.escalate.toggle.open": "Show",
+  "coach.escalate.toggle.close": "Hide",
   // R3 — Pride Moment (arbor-growth): in-app celebration + shareable card
   // Non-diagnostic, positive-only (AADC), claim-free, face-safe (first name only, no score number)
   "pride.title": "A new milestone for {name}",
@@ -1894,6 +1900,7 @@ export const he: Dict = {
   "aria.signout": "יציאה",
   "aria.notifications": "התראות",
   "aria.switchChild": "החלפת ילד/ה",
+  "aria.activeChildSwitch": "ילד/ה פעיל/ה: {name}. החלפת ילד/ה",
   "aria.applicationTopbar": "סרגל עליון של האפליקציה",
   "aria.arborMark": "Arbor",
   "aria.sproutMascot": "ספראוט, המדריך של Arbor",
@@ -2369,6 +2376,7 @@ export const he: Dict = {
   "profile.interests.addPlaceholder": "משהו אחר…",
   "profile.interests.addBtn": "הוסיפו",
   "profile.interests.updated": "עודכן {when}",
+  "profile.ageLine": "גיל {age}",
   // CI-29: 12 suggested interests (Hebrew)
   "interest.trains": "רכבות",
   "interest.dinosaurs": "דינוזאורים",
@@ -2886,8 +2894,8 @@ export const he: Dict = {
   "wk.scholarSpotlight": "זרקור מומחה",
   "wk.scholarExplore": "גלו מסגרות מומחים →",
   "wk.readyToShare": "מוכן לשיתוף",
-  "wk.compileBrief": "הרכיבו סיכום מקצועי מהשבוע הזה לבית הספר או לגורמי הטיפול.",
-  "wk.brief": "צרו סיכום לבית הספר עבור {first}",
+  "wk.compileBrief": "הפכו את השבוע הזה לסיכום לשיתוף עם בית הספר או גורמי הטיפול — בהתייעצות אתם בוחרים מה לשתף.",
+  "wk.brief": "צרו סיכום עבור {first} בהתייעצות",
   // C4 — Physical growth tracking
   "growth.eyebrow": "גדילה גופנית",
   "growth.empty.title": "אין מדידות עדיין",
@@ -2945,6 +2953,10 @@ export const he: Dict = {
   "cite.based": "בהתבסס על: {source}",
   "cite.toggle.open": "הצג מקורות",
   "cite.toggle.close": "הסתר מקורות",
+  // coach.escalate.* — quiet (low-risk) framing of the escalation footer; content never changes
+  "coach.escalate.title": "מתי כדאי לפנות לעזרה",
+  "coach.escalate.toggle.open": "הצגה",
+  "coach.escalate.toggle.close": "הסתרה",
   // pride.* — milestone pride moment (R3)
   "pride.title": "אבן דרך חדשה ל{name}",
   "pride.titleGeneric": "אבן דרך חדשה",
