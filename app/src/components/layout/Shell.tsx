@@ -58,7 +58,7 @@ const Reports = lazy(() => import("../sections/Reports"));
 const Masterclasses = lazy(() => import("../sections/Masterclasses"));
 const FamilyFormation = lazy(() => import("../sections/FamilyFormation"));
 // W5.3: the comics route mounts the bookshelf host (multi-page ComicReader
-// books); it replaces HeroComicsTab (single-panel generator) as the target.
+// books); it replaces the single-panel hero-comics grid (retired in W5.5).
 const ComicsTab = lazy(() => import("../tabs/ComicsTab"));
 
 // Practice Studio (Fall release: speech & language suite).

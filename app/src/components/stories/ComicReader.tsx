@@ -6,6 +6,7 @@ import { HeroAvatar } from "../ui/HeroAvatar";
 import { track } from "../../lib/analytics";
 import { PaywallError } from "../../lib/api";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
+import { downloadHeroAvatarCanvas, renderComicCanvas } from "../../lib/heroAvatarCanvas";
 import { getStorySpec } from "../../lib/heroJourneys";
 import {
   type Adventure,
@@ -228,28 +229,43 @@ export function ComicReader({
       a.href = cover;
       a.download = `${heroName.toLowerCase()}-${adventure.id}-comic.png`;
       a.click();
+      // AP-050 (ported from the retired HeroComicsTab grid): additionally save
+      // the branded share-card — single card only, comic → shared canvas module.
+      void downloadHeroAvatarCanvas(
+        "comic",
+        { imageUrl: cover, name: heroName, title: comic.title },
+        `${heroName.toLowerCase()}-${adventure.id}-share-card.png`,
+      );
     }
   };
 
   const handleShare = async () => {
     const cover = pages[0]?.dataUrl;
+    const title = adventureTitle(adventure, lang);
     trackShareInitiated("story", "comic-reader");
     try {
+      // AP-050 (ported from the retired HeroComicsTab grid): share the branded
+      // share-card (comic template → shared canvas module); the raw cover stays
+      // as the fallback so share never regresses if the card render fails.
+      const card = cover
+        ? await renderComicCanvas({ imageUrl: cover, name: heroName, title }).catch(() => undefined)
+        : undefined;
+      const shareUrl = card?.dataUrl ?? cover;
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-      if (cover && nav.share) {
-        const blob = await (await fetch(cover)).blob();
+      if (shareUrl && nav.share) {
+        const blob = card?.blob ?? (await (await fetch(shareUrl)).blob());
         const file = new File([blob], `${heroName.toLowerCase()}-comic.png`, { type: blob.type || "image/png" });
-        const data: ShareData = { files: [file], title: adventureTitle(adventure, lang), text: `${heroName}'s comic!` };
+        const data: ShareData = { files: [file], title, text: `${heroName}'s comic!` };
         if (!nav.canShare || nav.canShare(data)) {
           await nav.share(data);
           trackShareCompleted("story", "web-share");
           return;
         }
       }
-      // Fallback: download the cover.
-      if (cover) {
+      // Fallback: download the card (or the raw cover).
+      if (shareUrl) {
         const a = document.createElement("a");
-        a.href = cover;
+        a.href = shareUrl;
         a.download = `${heroName.toLowerCase()}-comic.png`;
         a.click();
       }

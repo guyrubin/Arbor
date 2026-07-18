@@ -70,8 +70,8 @@ function writeFlag(value: string): void {
  * existing /api/generate-comic path — read straight from the canonical
  * STORY_COMIC registry in lib/heroComics (the "david-and-goliath" entry,
  * i.e. HERO_STORIES[0]). A local mirror used to live here only because the
- * registry was module-private inside HeroComicsTab; now that it is public
- * there is one source of truth.
+ * registry was module-private inside the hero-comics grid (retired in IA
+ * W5.5); now that it is public there is one source of truth.
  */
 const FIRST_STORY_COMIC = STORY_COMIC["david-and-goliath"];
 

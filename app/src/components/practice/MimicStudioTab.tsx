@@ -26,7 +26,7 @@ export default function MimicStudioTab() {
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
   // AP-050: hero avatar URL for the practice_stamp canvas (data URL only; raw photo
-  // never embedded — same guard as HeroComicsTab).
+  // never embedded — same guard as ComicsTab).
   const { url: heroUrl } = useHeroAvatar();
   const heroDataUrl = heroUrl && heroUrl.startsWith("data:") ? heroUrl : undefined;
 
