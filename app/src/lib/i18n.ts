@@ -106,6 +106,7 @@ export const en: Dict = {
   "aria.signout": "Sign out",
   "aria.notifications": "Notifications",
   "aria.switchChild": "Switch child",
+  "aria.activeChildSwitch": "Active child: {name}. Switch child",
   "aria.applicationTopbar": "Application topbar",
   "aria.arborMark": "Arbor",
   "aria.sproutMascot": "Sprout, Arbor's guide",
@@ -643,6 +644,7 @@ export const en: Dict = {
   "profile.interests.addPlaceholder": "Something else…",
   "profile.interests.addBtn": "Add",
   "profile.interests.updated": "Updated {when}",
+  "profile.ageLine": "Age {age}",
   // CI-29: 12 suggested interests (EN)
   "interest.trains": "Trains",
   "interest.dinosaurs": "Dinosaurs",
@@ -1894,6 +1896,7 @@ export const he: Dict = {
   "aria.signout": "יציאה",
   "aria.notifications": "התראות",
   "aria.switchChild": "החלפת ילד/ה",
+  "aria.activeChildSwitch": "ילד/ה פעיל/ה: {name}. החלפת ילד/ה",
   "aria.applicationTopbar": "סרגל עליון של האפליקציה",
   "aria.arborMark": "Arbor",
   "aria.sproutMascot": "ספראוט, המדריך של Arbor",
@@ -2369,6 +2372,7 @@ export const he: Dict = {
   "profile.interests.addPlaceholder": "משהו אחר…",
   "profile.interests.addBtn": "הוסיפו",
   "profile.interests.updated": "עודכן {when}",
+  "profile.ageLine": "גיל {age}",
   // CI-29: 12 suggested interests (Hebrew)
   "interest.trains": "רכבות",
   "interest.dinosaurs": "דינוזאורים",
