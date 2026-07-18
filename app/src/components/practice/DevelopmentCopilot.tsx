@@ -10,6 +10,7 @@ import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
 import { domainMilestoneCounts } from "../../practice/signals";
 import { watchSignals } from "../../practice/watch";
 import type { ScreeningResult } from "../../lib/screening";
+import { assertClinicianExportCeiling } from "../../consult/packet";
 import { track } from "../../lib/analytics";
 
 type SavedScreening = ScreeningResult & { id: string };
@@ -91,7 +92,10 @@ export default function DevelopmentCopilot() {
     if (data.stats.length > 0) {
       lines.push(``, `Articulation practice (parent/auto-scored at home):`);
       for (const s of data.stats.slice(0, 8)) {
-        lines.push(`  • /${s.sound}/ — ${s.attempts} attempts, recent home-practice accuracy ${s.recentAccuracy}% (parent/auto-scored, not a normed measure), highest level: ${s.levelReached}`);
+        // Counts, never percentages (IA W4.5): this summary is a clinician export.
+        const recentWindow = Math.min(s.attempts, 10);
+        const landed = Math.round((s.recentAccuracy / 100) * recentWindow);
+        lines.push(`  • /${s.sound}/ — ${s.attempts} attempts, about ${landed} of the last ${recentWindow} landed (parent/auto-scored, not a normed measure), highest level: ${s.levelReached}`);
       }
     }
     if (advCount > 0) {
@@ -102,10 +106,17 @@ export default function DevelopmentCopilot() {
       watch.forEach((w) => lines.push(`  • ${w.area}: ${w.level}; evidence: ${w.evidence.join("; ")}`));
     }
     lines.push(``, `Current focus suggested to the family: ${recommendation.headline}.`);
-    return lines.join("\n");
+    const text = lines.join("\n");
+    // IA W4.5: the practice summary is a clinician-facing EXPORT — bound to the
+    // same clinician ceiling as the consult presets (forbidden tokens, counts-
+    // never-percentages). Fail closed: a violating summary neither renders nor
+    // copies — a blocked export exports NOTHING.
+    try { assertClinicianExportCeiling(text); } catch { return null; }
+    return text;
   }, [bands, domainCounts, childProfile, data.today, data.week, data.streak, data.stats, advCount, advCorrect, watch, recommendation]);
 
   const copySummary = async () => {
+    if (!clinicianSummary) return;
     try {
       await navigator.clipboard.writeText(clinicianSummary);
       setCopied(true);
@@ -291,7 +302,7 @@ export default function DevelopmentCopilot() {
           A speech-language professional, psychologist or pediatrician gets months of between-session data in one paragraph — the thing the single-skill practice apps never close the loop on.
         </p>
         <pre className="text-[11px] leading-relaxed whitespace-pre-wrap rounded-xl p-4 select-text" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", fontFamily: "ui-monospace, monospace" }}>
-          {clinicianSummary}
+          {clinicianSummary ?? "This summary did not pass Arbor's export safety check, so nothing was exported. Please try again after your next practice session."}
         </pre>
       </SectionCard>
     </motion.div>

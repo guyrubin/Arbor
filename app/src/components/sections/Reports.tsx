@@ -33,7 +33,7 @@ export const REPORTS: { title: string; desc: string; tone: PastelKey; type: Repo
 export function useReportExport() {
   const {
     childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems,
-    milestonesPercent, checkedMilestones, totalMilestones,
+    checkedMilestones, totalMilestones,
   } = useArbor();
   // The child's hero anchors the printed handoff to *this* child. Privacy gate:
   // embed ONLY the stylized descriptor hero (isGenerated) — never a real photo —
@@ -66,7 +66,6 @@ export function useReportExport() {
       child: childProfile,
       logs: behaviorLogs,
       plans: actionPlans,
-      milestonesPercent,
       checkedMilestones,
       totalMilestones,
       heroImageUrl,

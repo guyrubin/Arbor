@@ -220,6 +220,23 @@ export const CONSULT_PRESETS: Record<ConsultAudience, ConsultPreset> = {
 /** Tokens that appear in NO export, for ANY audience (clinician or not). */
 export const FORBIDDEN_EXPORT_TOKENS = ["riskLevel", "milestonesPercent"] as const;
 
+/** Clinician-ceiling egress guard for clinician-facing exports that live
+ *  OUTSIDE the consult packet (the Copilot practice summary, the monitoring
+ *  printable — IA W4.5). Same policy as the clinician presets: term-scan-EXEMPT,
+ *  but ceiling-bound — the forbidden tokens fail closed, and so does any
+ *  percentage figure, because exports carry counts, never percentages. */
+export function assertClinicianExportCeiling(text: string): void {
+  for (const token of FORBIDDEN_EXPORT_TOKENS) {
+    if (text.includes(token)) {
+      throw new ClinicalLanguageError(token, `Export blocked: forbidden token "${token}" must not appear in any export.`);
+    }
+  }
+  const pct = /\d+(?:\.\d+)?\s*%/.exec(text);
+  if (pct) {
+    throw new ClinicalLanguageError(pct[0], `Export blocked: percentage figure "${pct[0]}" — exports carry counts, never percentages.`);
+  }
+}
+
 /** Flatten a packet to plain text for the ceiling guards. */
 function packetToText(packet: ConsultPacket): string {
   return packet.sections

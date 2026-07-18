@@ -19,6 +19,7 @@
  * exporter in `reportExport.ts`.
  */
 import type { BehaviorLog, Milestone, DevelopmentalDomainId } from "../types";
+import { assertClinicianExportCeiling } from "../consult/packet";
 
 /** The six monitored developmental domains (the ecosystem domain is contextual,
  *  not a child-skill domain, so it is intentionally excluded from monitoring). */
@@ -345,6 +346,13 @@ export function buildMonitoringReportDoc(
     heading: "Non-diagnostic note",
     body: "Arbor is not a medical device and does not diagnose. This monitoring summary reflects parent observations and is shared to support a clinical conversation — never to replace one.",
   });
+
+  // IA W4.5: the monitoring printable is a clinician-facing export — bound to
+  // the same clinician ceiling as the consult presets (forbidden tokens,
+  // counts-never-percentages). Fail closed: a violating doc exports NOTHING.
+  assertClinicianExportCeiling(
+    sections.flatMap((s) => [s.heading, ...(Array.isArray(s.body) ? s.body : [s.body])]).join("\n"),
+  );
 
   return {
     title: "Developmental Monitoring Summary",

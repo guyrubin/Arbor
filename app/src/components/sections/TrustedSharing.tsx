@@ -8,8 +8,14 @@ import { api, PaywallError } from "../../lib/api";
 import type { ShareGrant, ShareRole } from "../../types";
 import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
+import { REPORTS } from "./Reports";
+import { isProfessionalReportType } from "../../lib/reportExport";
 
-const SCOPE_OPTIONS = ["Story timeline", "Weekly Insight", "Behavior patterns", "Milestones", "Teacher Handoff", "Therapist Summary"];
+// IA W4.5: the professional share scopes mirror the W4.1 preset audiences
+// one-to-one — derived from the single REPORTS definition (Reports.tsx) so the
+// labels can never drift from the consult preset names.
+const PRESET_SCOPES = REPORTS.filter((r) => isProfessionalReportType(r.type)).map((r) => r.title);
+const SCOPE_OPTIONS = ["Story timeline", "Weekly Insight", "Behavior patterns", "Milestones", ...PRESET_SCOPES];
 const DURATIONS = ["30 days", "60 days", "End of term", "Until revoked"];
 const ROLES: { id: ShareRole; label: string }[] = [
   { id: "co_parent", label: "Co-parent" },

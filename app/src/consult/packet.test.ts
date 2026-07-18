@@ -8,6 +8,7 @@ import {
   presetPacketToPrintSections,
   CONSULT_PRESETS,
   FORBIDDEN_EXPORT_TOKENS,
+  assertClinicianExportCeiling,
   type BuildPacketInput,
   type ConsultAudience,
   type ConsultPacket,
@@ -186,6 +187,28 @@ describe("IA W4.1 — forbidden tokens appear in NO export (any audience)", () =
         expect(() => serializePresetPacket(audience, poisoned)).toThrow(token);
       }
     }
+  });
+});
+
+/* IA W4.5 — the clinician ceiling for clinician-facing exports OUTSIDE the
+ * consult packet (Copilot practice summary, monitoring printable). */
+
+describe("IA W4.5 — assertClinicianExportCeiling (non-packet clinician surfaces)", () => {
+  it("passes counts-only clinician text", () => {
+    expect(() =>
+      assertClinicianExportCeiling("/s/ landed about 7 of the last 10 practice tries, 14 total")
+    ).not.toThrow();
+  });
+
+  it("fails closed on the forbidden tokens", () => {
+    for (const token of FORBIDDEN_EXPORT_TOKENS) {
+      expect(() => assertClinicianExportCeiling(`${token}: high`)).toThrow(token);
+    }
+  });
+
+  it("fails closed on ANY percentage figure — exports carry counts, never percentages", () => {
+    expect(() => assertClinicianExportCeiling("recent home-practice accuracy 62%")).toThrow(ClinicalLanguageError);
+    expect(() => assertClinicianExportCeiling("readiness 33.3 %")).toThrow(ClinicalLanguageError);
   });
 });
 

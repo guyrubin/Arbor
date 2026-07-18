@@ -20,7 +20,6 @@ export type ReportContext = {
   child: ChildProfile;
   logs: BehaviorLog[];
   plans: ActionPlan[];
-  milestonesPercent: number;
   checkedMilestones: number;
   totalMilestones: number;
   /** Optional stylized hero portrait to anchor the printed document to the child.
