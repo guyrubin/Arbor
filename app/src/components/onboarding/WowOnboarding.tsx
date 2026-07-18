@@ -34,6 +34,7 @@ import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
+import { STORY_COMIC } from "../../lib/heroComics";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 import { renderHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import { prefersReducedMotion } from "../../lib/devscore";
@@ -66,19 +67,13 @@ function writeFlag(value: string): void {
 
 /**
  * First-story comic prompt copy (EN+HE). This is AI-PROMPT PAYLOAD for the
- * existing /api/generate-comic path — mirrored from the canonical
- * "david-and-goliath" entry of HeroComicsTab's STORY_COMIC registry (that
- * registry is module-private and HeroComicsTab is not owned by this
- * workstream, so the single needed entry is mirrored here as data).
+ * existing /api/generate-comic path — read straight from the canonical
+ * STORY_COMIC registry in lib/heroComics (the "david-and-goliath" entry,
+ * i.e. HERO_STORIES[0]). A local mirror used to live here only because the
+ * registry was module-private inside the hero-comics grid (retired in IA
+ * W5.5); now that it is public there is one source of truth.
  */
-const FIRST_STORY_COMIC = {
-  theme: "a small but mighty young hero standing fearlessly before a towering giant, slingshot raised high, glowing with courage",
-  themeHe: "גיבור קטן ואדיר עומד ללא פחד מול ענק מתנשא, רוגטקה מורמת גבוה, זוהר באומץ",
-  dialogue: "I'm small but I'm brave!",
-  dialogueHe: "אני קטן אבל אמיץ!",
-  sfx: ["BOOM!", "WHOOSH!", "ZING!"],
-  sfxHe: ["בום!", "ואוש!", "זינג!"],
-} as const;
+const FIRST_STORY_COMIC = STORY_COMIC["david-and-goliath"];
 
 export function WowOnboarding() {
   const { setActiveTab } = useArbor();

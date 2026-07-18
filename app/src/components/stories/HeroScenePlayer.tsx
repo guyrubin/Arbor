@@ -51,7 +51,7 @@ export function HeroScenePlayer({
 }) {
   const [sceneArt, setSceneArt] = useState<string | undefined>();
   const [artLoading, setArtLoading] = useState(false);
-  const { uiLang, t } = useLanguage();
+  const { uiLang, aiLang, t } = useLanguage();
 
   // Stop speech whenever the scene changes or the card unmounts.
   useEffect(() => {
@@ -67,8 +67,9 @@ export function HeroScenePlayer({
     setSceneArt(undefined);
     if (!heroAvatarUrl || !scene.imagePrompt) return;
     // Shared key format (comicKey) so Story-Journey beats and Comic Reader pages
-    // reuse the same cached art; `seed` already encodes story+beat+child.
-    const key = comicKey(heroAvatarUrl, seed, "en", beatNumber);
+    // reuse the same cached art; `seed` already encodes story+beat+child, and
+    // aiLang (=== ComicLang) keys Hebrew beats to the Hebrew reader cache.
+    const key = comicKey(heroAvatarUrl, seed, aiLang, beatNumber);
     const cached = getScene(key);
     if (cached) { setSceneArt(cached); return; }
 
@@ -96,7 +97,7 @@ export function HeroScenePlayer({
       .catch(() => { /* graceful: keep the fallback illustration */ })
       .finally(() => { if (active) setArtLoading(false); });
     return () => { active = false; };
-  }, [seed, scene.imagePrompt, heroAvatarUrl, heroAvatarStyle, heroName]);
+  }, [seed, scene.imagePrompt, heroAvatarUrl, heroAvatarStyle, heroName, aiLang]);
 
   // AP-050: routes through the shared HeroAvatarCanvas module ("story" template)
   // so the scene save is tracked through one compositing path. Output is

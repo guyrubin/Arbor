@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the API so buildComicBook/generatePage don't hit the network. Each test
 // controls the resolver to exercise success, per-page failure, and dedupe.
+// Real exports (PaywallError) are kept so `instanceof` checks stay meaningful.
 const generateComic = vi.fn();
-vi.mock("./api", () => ({ api: { generateComic: (...a: unknown[]) => generateComic(...a) } }));
+vi.mock("./api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./api")>()),
+  api: { generateComic: (...a: unknown[]) => generateComic(...a) },
+}));
 
 import {
   ADVENTURES,
@@ -18,9 +22,14 @@ import {
   tapToDelta,
   planPages,
   buildComicBook,
+  rehydrateSavedPages,
+  toSavedComicMeta,
   type ComicPageData,
+  type HeroComic,
 } from "./heroComics";
-import { _resetSceneCache } from "./sceneCache";
+import { PaywallError } from "./api";
+import { getStorySpec } from "./heroJourneys";
+import { _resetSceneCache, setScene } from "./sceneCache";
 
 const adventure = ADVENTURES[0];
 
@@ -108,6 +117,50 @@ describe("planPages", () => {
   });
 });
 
+describe("saved-shelf metadata (W5.4)", () => {
+  const comic: HeroComic = {
+    id: `${adventure.id}-en-1721000000000`,
+    adventureId: adventure.id,
+    title: adventure.title,
+    lang: "en",
+    coverUrl: "data:image/png;base64,COVER",
+    pageUrls: ["data:image/png;base64,COVER", "data:image/png;base64,P1"],
+    createdAt: "2026-07-18T00:00:00.000Z",
+  };
+
+  it("toSavedComicMeta strips ALL art and keys the doc by adventureId", () => {
+    const meta = toSavedComicMeta(comic);
+    expect(meta).toEqual({
+      id: adventure.id, // deterministic doc id → re-saving upserts, never duplicates
+      adventureId: adventure.id,
+      title: adventure.title,
+      lang: "en",
+      createdAt: "2026-07-18T00:00:00.000Z",
+    });
+    // Metadata-only guarantee: no data-URL may reach Firestore/localStorage.
+    expect(JSON.stringify(meta)).not.toContain("data:");
+  });
+
+  it("rehydrateSavedPages returns the whole book only when EVERY page is cached", () => {
+    const beatCount = getStorySpec(adventure.id)!.beats.filter((b) => b.id !== "decision").length;
+    const total = beatCount + 1; // cover + beats
+    // Nothing cached (fresh session) → [] → reader falls back to a fresh build.
+    expect(rehydrateSavedPages(adventure.id, "en", "data:hero")).toEqual([]);
+    // Partial cache (missing last page) → still [] (never a half-hydrated book).
+    for (let i = 0; i < total - 1; i++) setScene(comicKey("data:hero", adventure.id, "en", i), `data:page-${i}`);
+    expect(rehydrateSavedPages(adventure.id, "en", "data:hero")).toEqual([]);
+    // Full cache → the index-aligned data-URL list, cover at [0].
+    setScene(comicKey("data:hero", adventure.id, "en", total - 1), `data:page-${total - 1}`);
+    const urls = rehydrateSavedPages(adventure.id, "en", "data:hero");
+    expect(urls).toHaveLength(total);
+    expect(urls[0]).toBe("data:page-0");
+    expect(urls[total - 1]).toBe(`data:page-${total - 1}`);
+    // Cache keys are lang- and avatar-specific — no cross-hydration.
+    expect(rehydrateSavedPages(adventure.id, "he", "data:hero")).toEqual([]);
+    expect(rehydrateSavedPages(adventure.id, "en", "data:other-hero")).toEqual([]);
+  });
+});
+
 describe("buildComicBook", () => {
   const pages = (): ComicPageData[] => planPages(adventure, "en", ["A", "B", "C"]);
 
@@ -130,6 +183,35 @@ describe("buildComicBook", () => {
     expect(out[2].dataUrl).toBeUndefined();
     // Every OTHER page resolved fine — one smudge never blocks the book.
     expect(out.filter((p) => p.status === "ready")).toHaveLength(3);
+  });
+
+  it("network-style error: page marked error, build continues to the end", async () => {
+    generateComic.mockImplementation(async (payload: { pageIndex?: number }) => {
+      if (payload.pageIndex === 1) throw new TypeError("Failed to fetch");
+      return { dataUrl: "data:img" };
+    });
+    const seen: number[] = [];
+    const out = await buildComicBook(adventure, "en", "Mia", "data:hero", pages(), { 1: "a", 2: "b", 3: "c" }, (p) => seen.push(p.index));
+    expect(out[1].status).toBe("error");
+    // Pages after the failure were still attempted and reported.
+    expect(seen).toEqual([0, 1, 2, 3]);
+    expect(generateComic).toHaveBeenCalledTimes(4);
+  });
+
+  it("PaywallError STOPS the build: typed rejection, no further generations", async () => {
+    generateComic.mockImplementation(async (payload: { pageIndex?: number }) => {
+      if (payload.pageIndex === 1) throw new PaywallError("Upgrade to keep drawing", { plan: "plus", feature: "heroComic" });
+      return { dataUrl: "data:img" };
+    });
+    const seen: number[] = [];
+    const err = await buildComicBook(adventure, "en", "Mia", "data:hero", pages(), { 1: "a", 2: "b", 3: "c" }, (p) => seen.push(p.index)).catch((e) => e);
+    expect(err).toBeInstanceOf(PaywallError);
+    expect((err as PaywallError).feature).toBe("heroComic");
+    expect((err as PaywallError).plan).toBe("plus");
+    // The cover resolved (and was reported) before the paywall hit; the paywalled
+    // page was never reported as a smudge and pages 2..3 were never attempted.
+    expect(seen).toEqual([0]);
+    expect(generateComic).toHaveBeenCalledTimes(2);
   });
 
   it("flags a whole-book failure only when every page errors", async () => {
