@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
+import { markWowPending, setCoachSeed } from "../../lib/onboardingJourney";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
@@ -786,20 +787,35 @@ export default function OnboardingFlow() {
         onboardingCompletedAt: new Date().toISOString(),
       };
       if (challenges.length) patch.challenges = challenges;
-      if (avatarResult) patch.avatar = avatarResult.dataUrl;
+      // W6.1 / ONB-1: persist the avatar in the canonical shape (photoUrl data
+      // URL + typed metadata — same patch as AvatarCreator's other callers).
+      // The old write stuffed the raw dataUrl string into the metadata-typed
+      // `avatar` field and never set photoUrl, so the first-run hero was
+      // invisible (useHeroAvatar reads comicAvatarUrl||photoUrl).
+      if (avatarResult) {
+        patch.photoUrl = avatarResult.dataUrl;
+        patch.avatar = {
+          style: avatarResult.style,
+          source: avatarResult.source,
+          createdAt: new Date().toISOString(),
+        };
+      }
 
       await updateChild(createdChildId, patch as Parameters<typeof updateChild>[1]);
 
+      // W6.1: a REAL first-run just completed → queue the wow (E0 hero-comic
+      // overlay) to fire exactly once when Shell mounts. Submit is inherently
+      // the real path — the demo replay's exit CTA falls through to this same
+      // real completion, so no replay guard belongs here.
+      markWowPending();
+
       // Seed the coach if domains were picked.
       if (selectedDomains.length > 0) {
-        try {
-          const firstDomain = DOMAINS.find((d) => d.id === selectedDomains[0]);
-          const topDomain = firstDomain ? t(firstDomain.nameKey) : selectedDomains[0];
-          localStorage.setItem(
-            "arbor.coachSeed",
-            `${topDomain} is on my mind with ${name.trim()} (${ageString(totalAgeMonths)}). Where should I start?`,
-          );
-        } catch { /* ignore */ }
+        const firstDomain = DOMAINS.find((d) => d.id === selectedDomains[0]);
+        const topDomain = firstDomain ? t(firstDomain.nameKey) : selectedDomains[0];
+        setCoachSeed(
+          `${topDomain} is on my mind with ${name.trim()} (${ageString(totalAgeMonths)}). Where should I start?`,
+        );
       }
 
       toast(t("ob.ready", { name: name.trim() }), "success");
