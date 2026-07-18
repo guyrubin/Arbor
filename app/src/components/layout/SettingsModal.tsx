@@ -123,12 +123,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
       <div className="space-y-5 text-sm">
         <Section title={t("set.section.billing")} sub={t("set.section.billingSub")}>
         {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
-        {/* m3-hex-sweep: #eef6f1 insight-wash start has no m2 token yet; left as-is
-            per spec (would become --gradient-insight if m2 adds it). */}
-        <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+        {/* m3-hex-sweep (resolved): the old green-tinted #eef6f1 wash now has a sapphire
+            token — --arbor-paper-tinted — so the insight well sits in the 2035 chrome. */}
+        <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={18} /></span>
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-clay-deep)" }}><Icon name="auto_awesome" size={18} /></span>
               <div className="min-w-0">
                 <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>
                   {t("set.plan.your", { plan: planLabel })}
@@ -151,7 +151,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   {t("set.plan.viaStore", { provider: entitlement.provider })}
                 </p>
               )}
-              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
                 {t("set.plan.manage")}
               </button>
             </>
@@ -180,7 +180,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                   {t("set.plan.upgradePlus")}
                 </button>
-                <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-green-ink)", color: T.onAccent }}>
+                <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
                   {t("set.plan.upgradeFamily")}
                 </button>
               </div>
@@ -300,7 +300,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <button
             onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
             className="text-xs font-bold rounded-xl px-3 py-2"
-            style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
             data-testid="settings-open-smart-reminders"
           >
             {t("set.data.open")}
@@ -315,7 +315,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <button
             onClick={() => { onClose(); setActiveTab("science"); }}
             className="text-xs font-bold rounded-xl px-3 py-2"
-            style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
             data-testid="settings-open-science"
           >
             {t("sci.settings.open")}
@@ -324,7 +324,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         {/* Data & privacy → profile editor (export / delete live there) */}
         <Row icon={<Icon name="verified_user" size={18} />} title={t("set.data.title")} sub={t("set.data.sub")}>
-          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
             {t("set.data.open")}
           </button>
         </Row>
@@ -385,7 +385,8 @@ function Row({ icon, title, sub, children }: { icon: React.ReactNode; title: str
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="flex items-start gap-3 min-w-0">
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{icon}</span>
+        {/* GREEN-DRIFT-SETTINGS: sapphire chip (clay-dim/clay-deep, the Sidebar/Topbar idiom) — green stays reserved for semantic success/active state. */}
+        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>{icon}</span>
         <div className="min-w-0">
           <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>{title}</p>
           <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{sub}</p>
