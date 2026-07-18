@@ -1234,6 +1234,10 @@ export const en: Dict = {
   "cite.based": "Based on: {source}",
   "cite.toggle.open": "Show sources",
   "cite.toggle.close": "Hide sources",
+  // coach.escalate.* — quiet (low-risk) framing of the escalation footer; content never changes
+  "coach.escalate.title": "When to seek help",
+  "coach.escalate.toggle.open": "Show",
+  "coach.escalate.toggle.close": "Hide",
   // R3 — Pride Moment (arbor-growth): in-app celebration + shareable card
   // Non-diagnostic, positive-only (AADC), claim-free, face-safe (first name only, no score number)
   "pride.title": "A new milestone for {name}",
@@ -2949,6 +2953,10 @@ export const he: Dict = {
   "cite.based": "בהתבסס על: {source}",
   "cite.toggle.open": "הצג מקורות",
   "cite.toggle.close": "הסתר מקורות",
+  // coach.escalate.* — quiet (low-risk) framing of the escalation footer; content never changes
+  "coach.escalate.title": "מתי כדאי לפנות לעזרה",
+  "coach.escalate.toggle.open": "הצגה",
+  "coach.escalate.toggle.close": "הסתרה",
   // pride.* — milestone pride moment (R3)
   "pride.title": "אבן דרך חדשה ל{name}",
   "pride.titleGeneric": "אבן דרך חדשה",
