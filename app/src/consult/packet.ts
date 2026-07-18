@@ -271,3 +271,32 @@ export function serializePresetPacket(
   assertWithinCeiling(preset, md);
   return md;
 }
+
+/** Print-shell section shape — matches `ReportDoc.sections` in
+ *  `lib/reportExport` without importing it (the print shell depends on no
+ *  consult types, and this module stays pure). */
+export interface PresetPrintSection { heading: string; body: string[] }
+
+/** Render a preset packet as print-shell sections for `openPrintableReport`
+ *  (IA W4.2 — the AskSpecialist / Reports PDF path). Same egress contract as
+ *  `serializePresetPacket`: re-caps to the audience ceiling, honours parent
+ *  redaction (excluded item ids drop, emptied sections vanish), and re-runs
+ *  the fail-closed guards on the final text. */
+export function presetPacketToPrintSections(
+  audience: ConsultAudience,
+  packet: ConsultPacket,
+  excludedIds: Set<string> = new Set()
+): PresetPrintSection[] {
+  const preset = CONSULT_PRESETS[audience];
+  const sections: PresetPrintSection[] = [];
+  for (const section of capToPreset(preset, packet).sections) {
+    const items = section.items.filter((it) => !excludedIds.has(it.id));
+    if (items.length === 0) continue;
+    sections.push({
+      heading: section.title,
+      body: [...(section.note ? [section.note] : []), ...items.map((it) => it.text)],
+    });
+  }
+  assertWithinCeiling(preset, sections.flatMap((s) => [s.heading, ...s.body]).join("\n"));
+  return sections;
+}

@@ -5,6 +5,7 @@ import {
   countIncluded,
   buildPresetPacket,
   serializePresetPacket,
+  presetPacketToPrintSections,
   CONSULT_PRESETS,
   FORBIDDEN_EXPORT_TOKENS,
   type BuildPacketInput,
@@ -185,5 +186,45 @@ describe("IA W4.1 — forbidden tokens appear in NO export (any audience)", () =
         expect(() => serializePresetPacket(audience, poisoned)).toThrow(token);
       }
     }
+  });
+});
+
+/* IA W4.2 — the print-shell path (AskSpecialist Export-as-PDF + Reports).
+ * Same egress contract as the Markdown serializer: ceiling, redaction, guards. */
+
+describe("IA W4.2 — presetPacketToPrintSections (the PDF export path)", () => {
+  it("teacher print export carries NO raw behavior-log data: no top trigger, no average intensity, no raw log responses/triggers", () => {
+    const logged: BuildPacketInput = {
+      ...base,
+      logs: base.logs.map((l) => ({ ...l, trigger: "Screen turned off", response: "Countdown from five" })),
+    };
+    const sections = presetPacketToPrintSections("teacher", buildPresetPacket("teacher", logged));
+    const text = sections.flatMap((s) => [s.heading, ...s.body]).join("\n");
+    expect(sections.map((s) => s.heading)).toEqual(["About Dylan", "What we've already tried"]);
+    expect(text).not.toMatch(/Transition Refusal/); // topTrigger / most-logged
+    expect(text).not.toMatch(/Sibling Conflict/);
+    expect(text).not.toMatch(/intensity/i);         // avgIntensity
+    expect(text).not.toMatch(/Countdown from five/); // raw log response
+    expect(text).not.toMatch(/Screen turned off/);   // raw log trigger
+    expect(text).not.toMatch(/\d+\s*%/);             // counts only, never a percentage
+  });
+
+  it("parent redaction survives into the print path — excluded items drop and emptied sections vanish", () => {
+    const p = buildPresetPacket("therapist", base);
+    const sections = presetPacketToPrintSections("therapist", p, new Set(["mem-0"]));
+    const text = sections.flatMap((s) => [s.heading, ...s.body]).join("\n");
+    expect(text).not.toMatch(/Calms fastest with a countdown/);
+    expect(sections.some((s) => s.heading === "Context worth knowing")).toBe(false);
+  });
+
+  it("re-runs the fail-closed guards at the print egress seam (edits cannot route around the build-time scan)", () => {
+    const p = buildPresetPacket("teacher", base);
+    const edited: ConsultPacket = {
+      ...p,
+      sections: p.sections.map((s) =>
+        s.id === "about" ? { ...s, items: [...s.items, { id: "about-edit", text: "possible ADHD" }] } : s
+      ),
+    };
+    expect(() => presetPacketToPrintSections("teacher", edited)).toThrow(ClinicalLanguageError);
   });
 });
