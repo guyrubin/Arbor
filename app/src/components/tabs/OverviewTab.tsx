@@ -7,6 +7,7 @@ import { useToast } from "../../context/ToastContext";
 import { Skeleton } from "../ui/Skeleton";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import DailyPlayCard from "../overview/DailyPlayCard";
+import ArborNoticedCard from "../sections/ArborNoticedCard";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import { PASTEL } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
@@ -332,6 +333,12 @@ export default function OverviewTab() {
           );
         })()}
       </div>
+
+      {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
+             child's own logged data, below the hero row. Renders NOTHING with
+             zero detections and self-hides per-detection once dismissed; copy is
+             counts/patterns only (non-diagnostic, monitoring.ts framing). ── */}
+      <ArborNoticedCard />
 
       {/* ── Row 2 (1.6fr / 1fr): Kid activity feed · Coach card ───────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">

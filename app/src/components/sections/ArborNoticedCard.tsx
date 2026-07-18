@@ -1,20 +1,25 @@
 /**
- * C1 — "Arbor Noticed" weekly in-app card (Development / Growth tab).
+ * C1 — "Arbor Noticed" weekly in-app card (mounted on Today / OverviewTab).
  *
  * Surfaces the single highest WatchLevel signal derived from the child's OWN
  * logged milestones and behavior moments. Read-only: no new data collection,
  * no network call, no push notification — pure in-app display.
  *
+ * DUX-011: renders NOTHING with zero detections (no empty state), and carries
+ * an unobtrusive per-detection dismiss ("not right") persisted in localStorage
+ * per child + domain + level — a NEW detection (different domain or a level
+ * change) shows again; the dismissed one stays quiet.
+ *
  * NON-DIAGNOSTIC STANCE (hard constraint, do not weaken):
- *   - Calm state: encouraging, never manufactured concern.
- *   - Monitor state: "worth keeping an eye on / worth mentioning to your
- *     pediatrician" — never a diagnosis, score, condition name, or alarm.
+ *   - Only monitor-level detections render: "worth keeping an eye on / worth
+ *     mentioning to your pediatrician" — never a diagnosis, score, condition
+ *     name, or alarm. No calm/on-track verdict card on Today.
  *   - All copy follows the established monitoring.ts framing rules.
  *
  * C5 link: when the flagged domain maps to an expert-cited Daily Play
  * activity, a secondary CTA links there (no new data, just a tab switch).
  */
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -27,12 +32,32 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
 const RULE = "var(--arbor-rule)";
-const GREEN = "var(--arbor-green-ink)";
-const GREEN_SOFT = "var(--arbor-green-soft)";
 // Peach = calm warm attention (non-alarming). Design system token.
 // Distinct from the green "on track" palette and from error red.
 const PEACH_INK = "var(--arbor-peach-ink)";
 const PEACH_SOFT = "var(--arbor-peach-soft)";
+
+// Per-child localStorage key for dismissed detection signatures (same
+// try/catch idiom as FirstStepsRail / the Daily Play sessionLength pref).
+const dismissKey = (childId: string) => `arbor.noticed.dismissed.${childId}`;
+
+function readDismissed(childId: string): string[] {
+  try {
+    const raw = window.localStorage.getItem(dismissKey(childId));
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+    return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDismissed(childId: string, sigs: string[]): void {
+  try {
+    window.localStorage.setItem(dismissKey(childId), JSON.stringify(sigs));
+  } catch {
+    /* storage unavailable — dismissal simply won't persist */
+  }
+}
 
 /**
  * Pick the first Daily Play activity that (a) has an expert `source` and
@@ -73,17 +98,29 @@ export default function ArborNoticedCard() {
 
   const signal = useMemo(() => pickHighestWatchSignal(monitoring), [monitoring]);
 
-  // No signal = no milestones/logs yet; stay silent rather than show an empty card.
-  if (!signal) return null;
+  // DUX-011 dismiss — per-detection signature (child-scoped key). A different
+  // domain or a level change is a NEW detection and shows again.
+  const [dismissedSigs, setDismissedSigs] = useState<string[]>(() =>
+    readDismissed(childProfile.id),
+  );
 
-  const isCalm = signal.level === "on_track";
-  const bgColor = isCalm ? GREEN_SOFT : PEACH_SOFT;
-  const accentColor = isCalm ? GREEN : PEACH_INK;
-  const eyebrowGlyph = isCalm ? "check_circle" : "visibility";
+  // DUX-011 hide-on-empty: `deriveMonitoring` always emits all monitored
+  // domains, so a signal object exists even for a zero-data account — the real
+  // "nothing detected" case is the absence of a monitor-level signal. With zero
+  // detections the card renders NOTHING (no empty/calm placeholder on Today).
+  if (!signal || signal.level !== "monitor") return null;
+
+  const signature = `${signal.domain}:${signal.level}`;
+  if (dismissedSigs.includes(signature)) return null;
+
+  const dismiss = () => {
+    const next = [...dismissedSigs, signature];
+    writeDismissed(childProfile.id, next);
+    setDismissedSigs(next);
+  };
 
   // Build the body copy for the monitor state using the translation keys.
   function buildMonitorBody(): string {
-    if (isCalm) return t("noticed.calm.body", { name: firstName });
     const area = t("noticed.domain." + signal!.domain);
     const hasMilestone = signal!.reasons.includes("milestone_overdue");
     const hasPattern = signal!.reasons.includes("behavior_pattern");
@@ -98,40 +135,44 @@ export default function ArborNoticedCard() {
     return t("noticed.monitor.body.pattern", { n: signal!.patternMoments, area });
   }
 
-  const citedActivity = !isCalm ? findCitedActivity(signal.domain as MonitoredDomainId) : null;
+  const citedActivity = findCitedActivity(signal.domain as MonitoredDomainId);
 
   return (
     <section
       className="rounded-[22px] p-5"
-      style={{ background: bgColor, border: `1px solid ${RULE}` }}
-      aria-label={isCalm ? t("noticed.calm.title", { name: firstName }) : t("noticed.monitor.title")}
+      style={{ background: PEACH_SOFT, border: `1px solid ${RULE}` }}
+      aria-label={t("noticed.monitor.title")}
     >
-      {/* Eyebrow */}
+      {/* Eyebrow + unobtrusive per-detection dismiss */}
       <div className="flex items-center gap-1.5 mb-3">
-        <Icon name={eyebrowGlyph} size={14} className="flex-shrink-0" style={{ color: accentColor }} />
-        <span className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+        <Icon name="visibility" size={14} className="flex-shrink-0" style={{ color: PEACH_INK }} />
+        <span className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: PEACH_INK }}>
           {t("noticed.eyebrow")}
         </span>
+        <button
+          onClick={dismiss}
+          aria-label={t("aria.dismiss")}
+          className="ms-auto -my-2 -me-2 inline-flex items-center justify-center w-9 h-9 rounded-lg touch-target transition active:scale-[0.98]"
+          style={{ color: MUTED }}
+        >
+          <Icon name="close" size={14} />
+        </button>
       </div>
 
       {/* Title */}
       <p className="text-[14.5px] font-extrabold leading-snug mb-1.5" style={{ color: INK }}>
-        {isCalm
-          ? t("noticed.calm.title", { name: firstName })
-          : t("noticed.monitor.title")}
+        {t("noticed.monitor.title")}
       </p>
 
-      {/* Body: calm encouragement or the domain signal */}
+      {/* Body: the domain signal (counts/patterns only, never a verdict) */}
       <p className="text-[13px] leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
         {buildMonitorBody()}
       </p>
 
-      {/* Monitor-state: non-diagnostic reassurance line */}
-      {!isCalm && (
-        <p className="text-[12px] mt-2 font-medium" style={{ color: PEACH_INK }}>
-          {t("noticed.monitor.cta")}
-        </p>
-      )}
+      {/* Non-diagnostic reassurance line */}
+      <p className="text-[12px] mt-2 font-medium" style={{ color: PEACH_INK }}>
+        {t("noticed.monitor.cta")}
+      </p>
 
       {/* C5 link: expert-cited activity for the flagged domain */}
       {citedActivity && (
@@ -140,7 +181,7 @@ export default function ArborNoticedCard() {
           className="inline-flex items-center gap-1.5 mt-3 text-[12.5px] font-bold rounded-xl px-3 py-2 touch-target transition active:scale-[0.98]"
           style={{
             background: "var(--arbor-paper-elevated)",
-            color: accentColor,
+            color: PEACH_INK,
             border: `1px solid ${RULE}`,
           }}
           aria-label={t("noticed.activity.aria", { area: t("noticed.domain." + signal!.domain) })}
