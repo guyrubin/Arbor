@@ -1175,8 +1175,8 @@ export const en: Dict = {
   "wk.scholarSpotlight": "Scholar spotlight",
   "wk.scholarExplore": "Explore Scholar Frameworks →",
   "wk.readyToShare": "Ready to share",
-  "wk.compileBrief": "Compile a professional brief from this week for school or clinicians.",
-  "wk.brief": "Build a school brief for {first}",
+  "wk.compileBrief": "Turn this week into a shareable summary for school or clinicians — in Consult, you choose what to share.",
+  "wk.brief": "Build {first}'s summary in Consult",
   // C4 — Physical growth tracking
   "growth.eyebrow": "Physical growth",
   "growth.empty.title": "No measurements yet",
@@ -2894,8 +2894,8 @@ export const he: Dict = {
   "wk.scholarSpotlight": "זרקור מומחה",
   "wk.scholarExplore": "גלו מסגרות מומחים →",
   "wk.readyToShare": "מוכן לשיתוף",
-  "wk.compileBrief": "הרכיבו סיכום מקצועי מהשבוע הזה לבית הספר או לגורמי הטיפול.",
-  "wk.brief": "צרו סיכום לבית הספר עבור {first}",
+  "wk.compileBrief": "הפכו את השבוע הזה לסיכום לשיתוף עם בית הספר או גורמי הטיפול — בהתייעצות אתם בוחרים מה לשתף.",
+  "wk.brief": "צרו סיכום עבור {first} בהתייעצות",
   // C4 — Physical growth tracking
   "growth.eyebrow": "גדילה גופנית",
   "growth.empty.title": "אין מדידות עדיין",
