@@ -40,6 +40,10 @@ export const CHILD_SUBCOLLECTIONS = [
   "appointments",
   "apptQuestions",
   "wellness",
+  // W5.4: saved comic-book shelf — METADATA ONLY (id/adventureId/title/lang/
+  // createdAt). Page-art data-URLs are never persisted (Firestore 1MB doc cap
+  // + the localStorage-quota regression documented in lib/sceneCache.ts).
+  "savedComics",
 ];
 
 const remoteActive = (uid?: string) =>

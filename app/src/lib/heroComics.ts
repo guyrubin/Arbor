@@ -11,8 +11,8 @@
  * the rest of the book. HeroScenePlayer and ComicReader both build on it.
  */
 import { api, PaywallError } from "./api";
-import { HERO_STORIES } from "./heroJourneys";
-import { resolveScene } from "./sceneCache";
+import { HERO_STORIES, getStorySpec } from "./heroJourneys";
+import { getScene, resolveScene } from "./sceneCache";
 import type { HeroStorySpec } from "../types";
 
 /** Per-story viral comic copy (bilingual): the heroic panel cue, a shout, and SFX. */
@@ -140,6 +140,44 @@ export interface HeroComic {
   /** All page data-URLs (index-aligned to pages[]). Cover at [0]. */
   pageUrls: string[];
   createdAt: string;
+}
+
+/** W5.4 — the persistable METADATA of a saved book. Art data-URLs are NEVER
+ *  persisted: Firestore caps docs at 1MB, and localStorage image persistence is
+ *  a banned prior regression (see lib/sceneCache). Within a session pages
+ *  rehydrate from the scene cache; across sessions they regenerate on open,
+ *  until the separate (Guy-gated) Firebase Storage layer lands. */
+export interface SavedComicMeta {
+  id: string;
+  adventureId: string;
+  title: string;
+  lang: ComicLang;
+  createdAt: string;
+}
+
+/** Strip a book down to its persistable metadata. The doc id IS the adventureId
+ *  (one shelf slot per adventure), so re-saving upserts instead of duplicating. */
+export const toSavedComicMeta = (comic: HeroComic): SavedComicMeta => ({
+  id: comic.adventureId,
+  adventureId: comic.adventureId,
+  title: comic.title,
+  lang: comic.lang,
+  createdAt: comic.createdAt,
+});
+
+/** Rehydrate a saved book's page art from the in-session scene cache. Returns
+ *  the full index-aligned data-URL list (cover + every non-decision beat) only
+ *  when EVERY page is cached; otherwise [] so the reader falls back to a fresh
+ *  build — where generatePage still reuses any partial cache hits per page. */
+export function rehydrateSavedPages(adventureId: string, lang: ComicLang, avatarOrHash: string): string[] {
+  const beatCount = (getStorySpec(adventureId)?.beats || []).filter((b) => b.id !== "decision").length;
+  const urls: string[] = [];
+  for (let i = 0; i <= beatCount; i++) {
+    const url = getScene(comicKey(avatarOrHash, adventureId, lang, i));
+    if (!url) return [];
+    urls.push(url);
+  }
+  return urls;
 }
 
 const shortHash = (s: string): string => {

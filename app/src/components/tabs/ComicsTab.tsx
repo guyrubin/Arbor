@@ -1,11 +1,22 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel } from "../ui/playkit";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { ComicReader } from "../stories/ComicReader";
-import { ADVENTURES, adventureTitle, getAdventure, type HeroComic } from "../../lib/heroComics";
+import {
+  ADVENTURES,
+  adventureTitle,
+  comicKey,
+  getAdventure,
+  rehydrateSavedPages,
+  toSavedComicMeta,
+  type HeroComic,
+  type SavedComicMeta,
+} from "../../lib/heroComics";
+import { getScene } from "../../lib/sceneCache";
 import type { HeroPackId } from "../../types";
 
 /**
@@ -18,10 +29,14 @@ import type { HeroPackId } from "../../types";
  *
  * COST GUARD: the shelf itself never generates anything — a book build (up to
  * ~6 image-gen calls, throttled by lib/sceneCache) starts only when the parent
- * explicitly opens a book. Saved books replay from cache with zero new calls.
+ * explicitly opens a book. Saved books replay from the in-session cache with
+ * zero new calls; in a new session the art rebuilds on open.
  *
- * Saved books live in component state for the session (large data URLs are
- * never persisted to the per-child Firestore doc); W5.4 adds durable shelves.
+ * W5.4: the shelf is durable — saved books persist as METADATA ONLY through the
+ * GDPR-registered "savedComics" child collection (Firestore + realtime, or the
+ * localStorage sandbox). Art data-URLs are never persisted (Firestore 1MB doc
+ * cap; localStorage image persistence is a banned regression — lib/sceneCache);
+ * cross-session art durability is the separate Guy-gated Firebase Storage layer.
  */
 
 /** Comic-world skin per pack (matches HeroJourneyTab + the Hero Arcade layer). */
@@ -48,18 +63,24 @@ const STORY_EMOJI: Record<string, string> = {
 };
 
 export default function ComicsTab() {
-  const { setActiveTab, openPaywall } = useArbor();
+  const { childProfile, setActiveTab, openPaywall } = useArbor();
   const { aiLang } = useLanguage();
   const { url: heroUrl, hasHero, name } = useHeroAvatar();
 
-  // adventureId → saved book (session-only; W5.4 persists the shelf).
-  const [savedComics, setSavedComics] = useState<Record<string, HeroComic>>({});
+  // The durable shelf: one metadata doc per saved adventure (doc id = adventureId).
+  const savedCol = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
+  const savedByAdventure = useMemo(
+    () => Object.fromEntries(savedCol.items.map((m) => [m.adventureId, m])) as Record<string, SavedComicMeta>,
+    [savedCol.items]
+  );
   // The adventure currently open in the reader (null = bookshelf).
   const [openId, setOpenId] = useState<string | null>(null);
 
   const he = aiLang === "he";
   const heroDataUrl = heroUrl && heroUrl.startsWith("data:") ? heroUrl : undefined;
-  const savedCount = Object.keys(savedComics).length;
+  // Must match generatePage's cache-key token so rehydration finds its pages.
+  const avatarKeyToken = heroDataUrl || "no-hero";
+  const savedCount = savedCol.items.length;
 
   // No hero yet → invite the parent to create one (cross-domain entry point).
   if (!hasHero) {
@@ -84,6 +105,21 @@ export default function ComicsTab() {
   // ── Reader view — one open book ────────────────────────────────────────────
   const openAdventure = openId ? getAdventure(openId) : undefined;
   if (openAdventure) {
+    // Re-open a saved book in the CURRENT language: fully cached pages hydrate
+    // instantly (zero calls); a cache miss (e.g. a new session) hands ComicReader
+    // an empty pageUrls so it falls back to a fresh build. `createdAt` carries
+    // over so re-saving upserts the same shelf slot.
+    const meta = savedByAdventure[openAdventure.id];
+    const savedBook: HeroComic | undefined = meta
+      ? {
+          id: meta.id,
+          adventureId: meta.adventureId,
+          title: adventureTitle(openAdventure, aiLang),
+          lang: aiLang,
+          pageUrls: rehydrateSavedPages(openAdventure.id, aiLang, avatarKeyToken),
+          createdAt: meta.createdAt,
+        }
+      : undefined;
     return (
       <PlayShell>
         <ComicReader
@@ -91,8 +127,8 @@ export default function ComicsTab() {
           lang={aiLang}
           heroName={name}
           heroDataUrl={heroDataUrl}
-          saved={savedComics[openAdventure.id]}
-          onSave={(comic) => setSavedComics((c) => ({ ...c, [comic.adventureId]: comic }))}
+          saved={savedBook}
+          onSave={(comic) => { void savedCol.upsert(toSavedComicMeta(comic)); }}
           onClose={() => setOpenId(null)}
           // Paywall stop: open the upgrade sheet and return to the shelf — the
           // stopped build would otherwise leave un-generated pages spinning.
@@ -129,7 +165,12 @@ export default function ComicsTab() {
         {ADVENTURES.map((a) => {
           const w = PACK_WORLD[a.pack];
           const emoji = STORY_EMOJI[a.id] ?? "⭐";
-          const saved = savedComics[a.id];
+          const saved = savedByAdventure[a.id];
+          // In-session cover thumbnail only (art is never persisted): current
+          // lang first, then the lang the book was saved in; else the hero card.
+          const coverThumb = saved
+            ? getScene(comicKey(avatarKeyToken, a.id, aiLang, 0)) ?? getScene(comicKey(avatarKeyToken, a.id, saved.lang, 0))
+            : undefined;
           const title = adventureTitle(a, aiLang);
           return (
             <div key={a.id} className="comic-panel overflow-hidden">
@@ -141,10 +182,10 @@ export default function ComicsTab() {
                     ? (he ? `לקרוא שוב: ${title}` : `Read again: ${title}`)
                     : (he ? `צרו קומיקס: ${title}` : `Make this comic: ${title}`)}
                   className="absolute inset-0 grid place-items-center"
-                  style={saved?.coverUrl ? undefined : { background: w.bg }}
+                  style={coverThumb ? undefined : { background: w.bg }}
                 >
-                  {saved?.coverUrl ? (
-                    <img src={saved.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  {coverThumb ? (
+                    <img src={coverThumb} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <div className="comic-halftone absolute inset-0 grid place-items-center">
                       <div className="flex items-center gap-1.5">

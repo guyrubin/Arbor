@@ -22,10 +22,14 @@ import {
   tapToDelta,
   planPages,
   buildComicBook,
+  rehydrateSavedPages,
+  toSavedComicMeta,
   type ComicPageData,
+  type HeroComic,
 } from "./heroComics";
 import { PaywallError } from "./api";
-import { _resetSceneCache } from "./sceneCache";
+import { getStorySpec } from "./heroJourneys";
+import { _resetSceneCache, setScene } from "./sceneCache";
 
 const adventure = ADVENTURES[0];
 
@@ -110,6 +114,50 @@ describe("planPages", () => {
     expect(pages[0].index).toBe(0);
     expect(pages.slice(1).every((p) => !p.cover)).toBe(true);
     expect(pages[3].title).toBe("Beat C");
+  });
+});
+
+describe("saved-shelf metadata (W5.4)", () => {
+  const comic: HeroComic = {
+    id: `${adventure.id}-en-1721000000000`,
+    adventureId: adventure.id,
+    title: adventure.title,
+    lang: "en",
+    coverUrl: "data:image/png;base64,COVER",
+    pageUrls: ["data:image/png;base64,COVER", "data:image/png;base64,P1"],
+    createdAt: "2026-07-18T00:00:00.000Z",
+  };
+
+  it("toSavedComicMeta strips ALL art and keys the doc by adventureId", () => {
+    const meta = toSavedComicMeta(comic);
+    expect(meta).toEqual({
+      id: adventure.id, // deterministic doc id → re-saving upserts, never duplicates
+      adventureId: adventure.id,
+      title: adventure.title,
+      lang: "en",
+      createdAt: "2026-07-18T00:00:00.000Z",
+    });
+    // Metadata-only guarantee: no data-URL may reach Firestore/localStorage.
+    expect(JSON.stringify(meta)).not.toContain("data:");
+  });
+
+  it("rehydrateSavedPages returns the whole book only when EVERY page is cached", () => {
+    const beatCount = getStorySpec(adventure.id)!.beats.filter((b) => b.id !== "decision").length;
+    const total = beatCount + 1; // cover + beats
+    // Nothing cached (fresh session) → [] → reader falls back to a fresh build.
+    expect(rehydrateSavedPages(adventure.id, "en", "data:hero")).toEqual([]);
+    // Partial cache (missing last page) → still [] (never a half-hydrated book).
+    for (let i = 0; i < total - 1; i++) setScene(comicKey("data:hero", adventure.id, "en", i), `data:page-${i}`);
+    expect(rehydrateSavedPages(adventure.id, "en", "data:hero")).toEqual([]);
+    // Full cache → the index-aligned data-URL list, cover at [0].
+    setScene(comicKey("data:hero", adventure.id, "en", total - 1), `data:page-${total - 1}`);
+    const urls = rehydrateSavedPages(adventure.id, "en", "data:hero");
+    expect(urls).toHaveLength(total);
+    expect(urls[0]).toBe("data:page-0");
+    expect(urls[total - 1]).toBe(`data:page-${total - 1}`);
+    // Cache keys are lang- and avatar-specific — no cross-hydration.
+    expect(rehydrateSavedPages(adventure.id, "he", "data:hero")).toEqual([]);
+    expect(rehydrateSavedPages(adventure.id, "en", "data:other-hero")).toEqual([]);
   });
 });
 
