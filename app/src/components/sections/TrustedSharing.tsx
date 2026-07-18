@@ -6,7 +6,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { downloadJson } from "../../lib/childData";
 import { api, PaywallError } from "../../lib/api";
 import type { ShareGrant, ShareRole } from "../../types";
-import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar } from "../ui/kit";
+import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
+import { ErrorState } from "../ui/ErrorState";
 
 const SCOPE_OPTIONS = ["Story timeline", "Weekly Insight", "Behavior patterns", "Milestones", "Teacher Handoff", "Therapist Summary"];
 const DURATIONS = ["30 days", "60 days", "End of term", "Until revoked"];
@@ -15,20 +16,24 @@ const ROLES: { id: ShareRole; label: string }[] = [
   { id: "viewer", label: "Viewer" },
   { id: "professional", label: "Professional" },
 ];
+const ROLE_TONE: Record<ShareRole, PastelKey> = { co_parent: "mint", professional: "sky", viewer: "lav" };
 const roleLabel = (r: ShareRole) => ROLES.find((x) => x.id === r)?.label || "Viewer";
 const expiryLabel = (g: ShareGrant) =>
   g.expiresAt ? `Expires ${new Date(g.expiresAt).toLocaleDateString()}` : "Until revoked";
 
-/** Care Network › Trusted Sharing — real, server-enforced sharing: scoped,
- *  time-boxed, revocable grants (incl. co-parents), plus what's shared with you. */
+/** Care Network › Trusted Sharing — the ONE roster surface (W4.4 merged the
+ *  former My Care Team here): the people coordinating around the child, derived
+ *  from real, server-enforced share grants — scoped, time-boxed, revocable
+ *  (incl. co-parents) — plus what's shared with you. */
 export default function TrustedSharing() {
-  const { childProfile, behaviorLogs, actionPlans, openPaywall } = useArbor();
+  const { childProfile, behaviorLogs, actionPlans, openPaywall, setActiveTab } = useArbor();
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   const [shares, setShares] = useState<ShareGrant[]>([]);
   const [inbound, setInbound] = useState<ShareGrant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [audit, setAudit] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
@@ -36,19 +41,30 @@ export default function TrustedSharing() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(false);
+    // Track each call independently: a partial failure still renders what loaded,
+    // but a total failure surfaces a real error/retry instead of a false "empty" roster.
+    let aFailed = false;
+    let bFailed = false;
     try {
       const [mine, toMe] = await Promise.all([
-        api.listShares(childProfile.id).catch(() => ({ shares: [] })),
-        api.sharedWithMe().catch(() => ({ shares: [] })),
+        api.listShares(childProfile.id).catch(() => { aFailed = true; return { shares: [] }; }),
+        api.sharedWithMe().catch(() => { bFailed = true; return { shares: [] }; }),
       ]);
       setShares(mine.shares || []);
       setInbound(toMe.shares || []);
+      if (aFailed && bFailed) setError(true);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
   }, [childProfile.id]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // The roster (former My Care Team) shows only live grants; revoked ones drop out.
+  const team = shares.filter((g) => !g.revokedAt);
 
   const setScope = (f: string) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
 
@@ -106,13 +122,28 @@ export default function TrustedSharing() {
         title={t("sec.sharing.title")}
         subtitle={t("sec.sharing.sub", { name: first })}
         action={
-          <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
-            <Icon name="add" size={18} /> New share
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
+              <Icon name="add" size={18} /> New share
+            </button>
+            <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
+              <Icon name="search" size={18} /> Find a professional
+            </button>
+          </div>
         }
       />
 
       <TrustSafetyBar note="Every share is parent-approved, time-boxed and fully revocable — enforced on the server." />
+
+      {error && (
+        <ErrorState
+          headline={t("err.careTeam.title")}
+          body={t("err.careTeam.body", { name: first })}
+          onRetry={() => void load()}
+          retryLabel={t("err.retry")}
+          retrying={loading}
+        />
+      )}
 
       {adding && (
         <div className={`${cardCls} p-5 space-y-3`}>
@@ -152,6 +183,35 @@ export default function TrustedSharing() {
         </div>
       )}
 
+      {/* W4.4: the former My Care Team roster — the people coordinating around
+          the child, rendered from the same non-revoked share grants. */}
+      {!error && !loading && team.length > 0 && (
+        <SectionCard title={`Coordinating around ${first}`} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
+          <div className="grid lg:grid-cols-2 gap-4">
+            {team.map((g) => {
+              const tone = ROLE_TONE[g.role] || ROLE_TONE.viewer;
+              return (
+                <div key={g.id} className={`${cardCls} p-5`}>
+                  <div className="flex items-center gap-3">
+                    <InitialsTile name={g.recipientEmail} tone={tone} />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{g.recipientEmail}</h3>
+                      <p className="text-xs" style={{ color: PASTEL[tone].ink }}>{roleLabel(g.role)}</p>
+                    </div>
+                    <Chip tone={tone}>{roleLabel(g.role)}</Chip>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{g.scopes.join(", ") || "No scopes"}</Chip>
+                    <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(g)}</Chip>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
+
+      {!error && (
       <SectionCard title="Active shares" icon={<Icon name="share" size={20} />} tone="mint">
         <div className="space-y-3">
           {loading ? (
@@ -178,8 +238,9 @@ export default function TrustedSharing() {
           ))}
         </div>
       </SectionCard>
+      )}
 
-      {inbound.length > 0 && (
+      {!error && inbound.length > 0 && (
         <SectionCard title="Shared with you" icon={<Icon name="inbox" size={20} />} tone="lav">
           <div className="space-y-3">
             {inbound.map((s) => (
