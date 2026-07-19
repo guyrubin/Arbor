@@ -594,6 +594,59 @@
                   </div>
                 </div>
               </sc-if>
+              <sc-if value="{{ b.isRlib }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="font-size:15px;font-weight:800;color:#14225a;margin-bottom:11px;">{{ rlibTitle }}</div>
+                  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+                    <sc-for list="{{ routineLib }}" as="rt" hint-placeholder-count="7">
+                      <div onClick="{{ pickRoutine }}" data-r="{{ rt.id }}" class="nv" style="border-radius:16px;padding:13px 12px;cursor:pointer;background:{{ rt.tileBg }};border:{{ rt.tileBorder }};box-shadow:0 6px 16px -12px rgba(31,60,120,.2);">
+                        <span style="width:38px;height:38px;border-radius:12px;background:{{ rt.iconBg }};display:flex;align-items:center;justify-content:center;"><span class="msr" style="font-size:21px;color:{{ rt.c }};font-variation-settings:'FILL' 1;">{{ rt.icon }}</span></span>
+                        <div style="font-size:12.5px;font-weight:800;color:#14225a;margin-top:9px;line-height:1.2;">{{ rt.title }}</div>
+                        <div style="font-size:10px;color:#8d9892;font-weight:700;margin-top:3px;">{{ rt.meta }}</div>
+                        <div style="margin-top:8px;height:4px;background:#e8eef7;border-radius:3px;overflow:hidden;"><div style="width:{{ rt.pw }};height:100%;background:{{ rt.c }};border-radius:3px;transition:width .4s ease;"></div></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="margin-top:16px;background:#fff;border:1px solid #e5e9f0;border-radius:20px;box-shadow:0 14px 32px -18px rgba(31,60,120,.28);overflow:hidden;">
+                    <div style="padding:17px 20px 14px;background:linear-gradient(140deg,#fbfdff,#eef3fb);border-bottom:1px solid #eef1f6;display:flex;align-items:center;gap:14px;">
+                      <span style="width:46px;height:46px;border-radius:14px;background:{{ boardIconBg }};display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:25px;color:{{ boardC }};font-variation-settings:'FILL' 1;">{{ boardIcon }}</span></span>
+                      <div style="flex:1;min-width:0;">
+                        <div style="font-size:17px;font-weight:800;color:#14225a;">{{ boardTitle }}</div>
+                        <div style="font-size:11.5px;color:#8d9892;font-weight:600;margin-top:2px;line-height:1.4;">{{ boardWhy }}</div>
+                      </div>
+                      <div style="text-align:center;flex:none;">
+                        <div style="font-size:20px;font-weight:800;color:{{ boardC }};">{{ boardCount }}</div>
+                        <div style="font-size:9.5px;color:#8d9892;font-weight:700;">{{ boardCountLabel }}</div>
+                      </div>
+                    </div>
+                    <div style="padding:12px 16px 14px;display:flex;flex-direction:column;gap:8px;">
+                      <sc-for list="{{ boardSteps }}" as="st" hint-placeholder-count="4">
+                        <div onClick="{{ toggleStep }}" data-k="{{ st.k }}" class="nv" style="display:flex;align-items:center;gap:13px;border-radius:14px;padding:10px 13px;cursor:pointer;background:{{ st.rowBg }};border:1px solid {{ st.rowBorder }};transition:background .25s ease,border-color .25s ease;">
+                          <span style="width:38px;height:38px;border-radius:11px;background:{{ st.iconBg }};display:flex;align-items:center;justify-content:center;flex:none;"><span class="msr" style="font-size:21px;color:{{ st.iconC }};font-variation-settings:'FILL' 1;">{{ st.icon }}</span></span>
+                          <span style="flex:1;font-size:14px;font-weight:800;color:{{ st.textC }};">{{ st.label }}</span>
+                          <span style="width:58px;height:30px;border-radius:20px;background:{{ st.trackBg }};border:1px solid {{ st.trackBorder }};position:relative;flex:none;display:block;transition:background .25s ease,border-color .25s ease;">
+                            <span class="msr" style="position:absolute;top:7px;inset-inline-start:8px;font-size:15px;color:#2f9e6f;opacity:{{ st.checkOp }};transition:opacity .2s;font-variation-settings:'FILL' 1,'wght' 700;">check</span>
+                            <span class="msr" style="position:absolute;top:7px;inset-inline-end:8px;font-size:15px;color:#dd9c86;opacity:{{ st.xOp }};transition:opacity .2s;font-variation-settings:'wght' 700;">close</span>
+                            <span style="position:absolute;top:2px;inset-inline-start:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(20,40,60,.28);transform:translateX({{ st.shift }});transition:transform .28s cubic-bezier(.34,1.56,.64,1);display:block;"></span>
+                          </span>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{ boardDone }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin:0 16px 14px;display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,#e9f7ef,#ddf1e6);border:1px solid #c8e6d5;border-radius:14px;padding:12px 15px;">
+                        <span class="msr" style="font-size:22px;color:#e0a83b;font-variation-settings:'FILL' 1;">star</span>
+                        <span style="font-size:13px;font-weight:800;color:#1f6b48;">{{ boardDoneMsg }}</span>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-top:1px solid #eef1f6;background:#fbfdff;">
+                      <span style="display:inline-flex;align-items:center;gap:6px;background:#eaf2ff;border-radius:20px;padding:6px 12px;"><span class="msr" style="font-size:15px;color:var(--accent,#2b7fff);font-variation-settings:'FILL' 1;">insights</span><span style="font-size:11px;font-weight:800;color:#1c63d6;">{{ boardFeeds }}</span></span>
+                      <span style="flex:1;"></span>
+                      <span onClick="{{ resetRoutine }}" class="nv" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#8d9892;border-radius:10px;padding:8px 12px;cursor:pointer;"><span class="msr" style="font-size:17px;">restart_alt</span>{{ resetLabel }}</span>
+                      <span style="display:inline-flex;align-items:center;gap:7px;background:#14225a;color:#fff;font-size:12.5px;font-weight:800;padding:10px 18px;border-radius:12px;cursor:pointer;box-shadow:0 8px 18px -8px rgba(20,34,90,.5);"><span class="msr" style="font-size:17px;font-variation-settings:'FILL' 1;">child_care</span>{{ assignLabel }}</span>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
               <sc-if value="{{ b.isWindows }}" hint-placeholder-val="{{ false }}">
                 <div style="background:#fff;border:1px solid #e5e9f0;border-radius:18px;padding:18px;box-shadow:0 8px 20px -14px rgba(31,60,120,.2);">
                   <div style="font-size:15px;font-weight:800;color:#14225a;margin-bottom:16px;">{{ windowsTitle }}</div>
@@ -653,7 +706,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1372,&quot;height&quot;:912}}">
 class Component extends DCLogic {
-  state = { view:'today', lang:'en', kidOpen:false, kid:0, settingsOpen:false, ms:{}, openDom:null, feat:null, cp:{}, kidMode:false, kidStars:12, behOpen:null };
+  state = { view:'today', lang:'en', kidOpen:false, kid:0, settingsOpen:false, ms:{}, openDom:null, feat:null, cp:{}, kidMode:false, kidStars:12, behOpen:null, rsel:'morning', rdone:{m1:true,m2:true} };
   he(){ return this.state.lang==='he'; }
   renderVals(){
     const he=this.he(); const T=(h,e)=>he?h:e; const A='#2b7fff';
@@ -804,6 +857,44 @@ class Component extends DCLogic {
     const planFree=[T('מפת התפתחות','Development Map'),T('הדרכה יומית','Daily guidance'),T('משחקי ילדים','Kid games'),T('תיעוד רגעים','Log moments')];
     const planPlus=[T('כל מה שבחינם','Everything in Free'),T('ייעוץ מומחים','Expert consults'),T('דוחות שבועיים','Weekly reports'),T('מסירה לגן','School handoff'),T('סיפורי גיבור ללא הגבלה','Unlimited hero stories')];
 
+    // ── Off-the-shelf routines (research-backed library) ──
+    const RLIB=[
+      {id:'morning',icon:'wb_sunny',c:'#cf9320',iconBg:'#fbf0d8',dom:T('עצמאות + ויסות','Self-Care + Regulation'),title:T('בוקר רגוע','Calm morning'),time:T('20 דק׳','20 min'),
+        why:T('רצף קבוע נותן למיה תחושת שליטה — פחות מאבקי כוח בבוקר.','A fixed sequence gives Mia a sense of control — fewer morning power struggles.'),
+        steps:[{k:'m1',icon:'light_mode',t:T('להתעורר עם שיר הבוקר','Wake up with our morning song')},{k:'m2',icon:'checkroom',t:T('להתלבש לבד','Get dressed by myself')},{k:'m3',icon:'restaurant',t:T('ארוחת בוקר','Eat breakfast')},{k:'m4',icon:'dentistry',t:T('לצחצח שיניים','Brush teeth')},{k:'m5',icon:'backpack',t:T('נעליים ותיק ליד הדלת','Shoes + bag by the door')}]},
+      {id:'goodbye',icon:'waving_hand',c:'#3f8cc9',iconBg:'#e7f1fa',dom:T('ויסות עצמי','Self-Regulation'),title:T('טקס פרידה','Goodbye ritual'),time:T('2 דק׳','2 min'),
+        why:T('אותן מילים, אותו חיבוק, כל בוקר — פרידה צפויה בונה ביטחון.','Same words, same hug, every morning — a predictable goodbye builds security.'),
+        steps:[{k:'g1',icon:'favorite',t:T('החיבוק המיוחד שלנו','Our special hug')},{k:'g2',icon:'record_voice_over',t:T('שלוש מילות הקסם','Our three magic words')},{k:'g3',icon:'waving_hand',t:T('נפנוף בחלון','Wave at the window')}]},
+      {id:'reconnect',icon:'cookie',c:'#e2562d',iconBg:'#fbe6df',dom:T('חברתי + שפה','Social + Language'),title:T('חיבור אחרי הגן','After-preschool reconnect'),time:T('25 דק׳','25 min'),
+        why:T('קודם עיכול של היום, אחר כך שיחה — החיבור מגיע כשנרגעים.','Decompress first, talk after — connection comes once the day settles.'),
+        steps:[{k:'a1',icon:'cookie',t:T('חטיף ומים','Snack + water')},{k:'a2',icon:'toys',t:T('10 דקות משחק שקט יחד','10 min of quiet play together')},{k:'a3',icon:'forum',t:T('שאלה אחת על היום','One question about today')}]},
+      {id:'meal',icon:'restaurant_menu',c:'#7a6bd8',iconBg:'#ece9fb',dom:T('שפה + עצמאות','Language + Self-Care'),title:T('ארוחה יחד','Mealtime together'),time:T('30 דק׳','30 min'),
+        why:T('ארוחות משפחתיות קבועות מזינות שפה, חיבור והרגלי אכילה.','Regular family meals feed language, connection and eating habits.'),
+        steps:[{k:'e1',icon:'soap',t:T('לשטוף ידיים','Wash hands')},{k:'e2',icon:'flatware',t:T('לעזור לערוך שולחן','Help set the table')},{k:'e3',icon:'forum',t:T('שאלת המשפחה של היום','Today\u2019s family question')},{k:'e4',icon:'delete_sweep',t:T('לפנות את הצלחת שלי','Clear my own plate')}]},
+      {id:'tidy',icon:'cleaning_services',c:'#2f9e6f',iconBg:'#e2f3ea',dom:T('עצמאות + חשיבה','Self-Care + Thinking'),title:T('סידור צעצועים','Tidy-up time'),time:T('10 דק׳','10 min'),
+        why:T('מיון לקופסאות הוא תרגול חשיבה — והשיר הופך מטלה למשחק.','Sorting into bins is thinking practice — the song turns a chore into a game.'),
+        steps:[{k:'t1',icon:'music_note',t:T('מפעילים את שיר הסידור','Play the tidy-up song')},{k:'t2',icon:'category',t:T('ממיינים צעצועים לקופסאות','Sort toys into bins')},{k:'t3',icon:'front_hand',t:T('כיף חמש לסיום','High-five to finish')}]},
+      {id:'screens',icon:'timer',c:'#3f8cc9',iconBg:'#e7f1fa',dom:T('ויסות עצמי','Self-Regulation'),title:T('סיום מסכים','Screen wind-down'),time:T('5 דק׳','5 min'),
+        why:T('אזהרה מראש + טיימר שהוא ״הרע״ — מעבר בלי ריב.','A heads-up + a timer that plays the villain — a transition without a fight.'),
+        steps:[{k:'s1',icon:'campaign',t:T('אזהרת 5 דקות','5-minute warning')},{k:'s2',icon:'timer',t:T('הטיימר מצלצל — מכבים','Timer rings — screen off')},{k:'s3',icon:'checklist',t:T('בוחרים מה עושים עכשיו','Choose what\u2019s next')}]},
+      {id:'bedtime',icon:'bedtime',c:'#7a6bd8',iconBg:'#ece9fb',dom:T('ויסות + שפה','Regulation + Language'),title:T('שינה רגועה','Calm bedtime'),time:T('30 דק׳','30 min'),
+        why:T('השגרה הנחקרת ביותר: רצף שינה קבוע משפר שינה, מצב רוח והתנהגות.','The most researched routine of all: a consistent bedtime sequence improves sleep, mood and behavior.'),
+        steps:[{k:'b1',icon:'bathtub',t:T('אמבטיה','Bath')},{k:'b2',icon:'dentistry',t:T('פיג׳מה ושיניים','Pajamas + teeth')},{k:'b3',icon:'menu_book',t:T('סיפור במיטה','Story in bed')},{k:'b4',icon:'nightlight',t:T('חיבוק וכיבוי אור','Cuddle + lights out')}]},
+    ];
+    const rdone=this.state.rdone||{};
+    const rPct=(r)=>Math.round(100*r.steps.filter(st=>rdone[st.k]).length/r.steps.length);
+    const rSel=RLIB.find(r=>r.id===this.state.rsel)||RLIB[0];
+    const routineLib=RLIB.map(r=>{const on=r.id===rSel.id;return {id:r.id,icon:r.icon,c:r.c,iconBg:r.iconBg,title:r.title,
+      meta:(r.steps.length+(he?' שלבים · ':' steps · ')+r.time),pw:rPct(r)+'%',
+      tileBg:on?'#fff':'#fbfdff',tileBorder:on?('2px solid '+r.c):'1px solid #e5e9f0'};});
+    const boardSteps=rSel.steps.map(st=>{const d=!!rdone[st.k];return {k:st.k,icon:st.icon,label:st.t,
+      iconBg:d?'#e2f3ea':rSel.iconBg,iconC:d?'#2f9e6f':rSel.c,textC:d?'#7c8983':'#14225a',
+      rowBg:d?'#f4faf6':'#fff',rowBorder:d?'#d5ebde':'#eef1f6',
+      trackBg:d?'#dff3e8':'#fbeae3',trackBorder:d?'#bfe3cf':'#f3d5c8',
+      checkOp:d?1:0,xOp:d?0:1,shift:d?(he?'-28px':'28px'):'0px'};});
+    const boardDoneCount=rSel.steps.filter(st=>rdone[st.k]).length;
+    const boardDone=boardDoneCount===rSel.steps.length;
+
     // ── Feature catalogue (full parity with mobile) ──
     const hero=(grad,icon,tag,title,sub)=>({kind:'hero',grad,icon,tag,title,sub});
     const stat3=(items)=>({kind:'stats',items});
@@ -824,10 +915,9 @@ class Component extends DCLogic {
         stat3([{n:'133',l:T('אבני דרך','milestones')},{n:'40+',l:T('מקורות','sources')},{n:'7',l:T('תחומים','domains')}]),
         rows(T('המסגרות שמאחורי ארבור','The frameworks behind Arbor'),[{icon:'school',c:'#3f8cc9',bg:'#e7f1fa',title:'CDC · ASQ-3',sub:T('מעקב אבני דרך','Milestone tracking')},{icon:'psychology',c:'#7a6bd8',bg:'#ece9fb',title:'Siegel & Bryson',sub:T('ויסות רגשי','Emotional regulation')},{icon:'favorite',c:A,bg:'#eaf2ff',title:'Gottman',sub:T('יחסי הורה-ילד','Parent-child bond')}]),
         note('info',T('ארבור הוא כלי הדרכה התפתחותי — לא כלי אבחון. בכל חשש פנו לאיש מקצוע.','Arbor is a developmental guidance tool — not a diagnostic. For any concern, see a professional.'))]},
-      routines:{title:T('שגרות יומיות','Daily Routines'),sub:T('בקר, ערב ומעברים — שגרות צפויות שמחזקות ויסות עצמי.','Morning, evening & transitions — predictable routines that build regulation.'),blocks:[
-        prog(T('השגרות של מיה היום','Mia\u2019s routines today'),[{label:T('בוקר','Morning'),tag:'4/5',color:A,w:'80%'},{label:T('מעבר לגן','To preschool'),tag:'2/3',color:'#cf9320',w:'66%'},{label:T('ערב','Evening'),tag:'0/4',color:'#cdd6cf',w:'4%'}]),
-        rows(T('שגרות מוצעות','Suggested routines'),[{icon:'wb_sunny',c:'#cf9320',bg:'#fbf0d8',title:T('בוקר רגוע','Calm morning'),sub:T('5 שלבים · 20 דק׳','5 steps · 20 min')},{icon:'directions_walk',c:'#3f8cc9',bg:'#e7f1fa',title:T('טקס פרידה','Goodbye ritual'),sub:T('3 שלבים','3 steps')},{icon:'bedtime',c:'#7a6bd8',bg:'#ece9fb',title:T('שינה רגועה','Calm bedtime'),sub:T('4 שלבים','4 steps')}]),
-        note('insights',T('שגרות שהושלמו מזינות את ויסות עצמי במפת ההתפתחות.','Completed routines feed Self-Regulation on the Development Map.'))]},
+      routines:{title:T('שגרות מוכנות','Ready-made Routines'),sub:T('שבע שגרות מבוססות-מחקר — בחרו אחת, התאימו אותה, והפעילו עם מיה.','Seven research-backed routines — pick one, make it yours, run it with Mia.'),blocks:[
+        {kind:'rlib'},
+        note('insights',T('כל שלב שמסומן מזין את מפת ההתפתחות — ושגרה שלמה מזכה את מיה בכוכב בעולם הילד.','Every step you mark feeds the Development Map — and a full routine earns Mia a star in her kid world.'))]},
       reminders:{title:T('תזכורות חכמות','Smart Reminders'),sub:T('תזכורת אחת ביום, בחלון הרגוע של מיה. אף פעם לא יותר משתיים.','One nudge a day, in Mia\u2019s calm window. Never more than two.'),blocks:[
         hero('linear-gradient(140deg,#cf9320,#e0b34a)','notifications_active',T('היום · 10:00','TODAY · 10:00'),T('זמן טוב לפעילות החברתית','Good time for the social activity'),T('שעות שקטות: 19:00–7:00','Quiet hours: 7pm–7am')),
         rows(T('תזכורות פעילות','Active reminders'),[{icon:'extension',c:A,bg:'#eaf2ff',title:T('פעילות יומית','Daily activity'),sub:T('בחלון הרגוע','In the calm window')},{icon:'mood',c:'#cf9320',bg:'#fbf0d8',title:T('בדיקת רגשות','Feeling check-in'),sub:T('אחה״צ','Afternoon')}])]},
@@ -858,7 +948,7 @@ class Component extends DCLogic {
     const hasSubTabs=subTabs.length>0;
     const fkey=this.state.feat;
     const rawF=fkey&&FEAT[fkey];
-    const featBlocks=rawF?rawF.blocks.map(b=>({...b,isHero:b.kind==='hero',isStats:b.kind==='stats',isRows:b.kind==='rows',isProg:b.kind==='prog',isNote:b.kind==='note',isWindows:b.kind==='windows',isTrend:b.kind==='trend',isPricing:b.kind==='pricing',isStories:b.kind==='stories'})):[];
+    const featBlocks=rawF?rawF.blocks.map(b=>({...b,isHero:b.kind==='hero',isStats:b.kind==='stats',isRows:b.kind==='rows',isProg:b.kind==='prog',isNote:b.kind==='note',isWindows:b.kind==='windows',isTrend:b.kind==='trend',isPricing:b.kind==='pricing',isStories:b.kind==='stories',isRlib:b.kind==='rlib'})):[];
     const trendBars=[{label:'W21',pct:61},{label:'W22',pct:63},{label:'W23',pct:66},{label:'W24',pct:overallPct}].map((b,i,a)=>({...b,h:Math.round(b.pct*1.1)+'px',bg:i===a.length-1?A:'#cfe1d6',vc:i===a.length-1?A:'#8d9892'}));
 
     const STATE_NAV=[
@@ -939,6 +1029,23 @@ class Component extends DCLogic {
       dirAttr:he?'rtl':'ltr', view:v,
       isToday:v==='today', isBehaviors:v==='behaviors', isJournal:v==='journal', isGrowth:v==='growth', isAcademy:v==='academy', isAsk:v==='ask', isCare:v==='care', isProfile:v==='profile',
       isFeat:v==='feat', featTitle:rawF&&rawF.title, featSub:rawF&&rawF.sub, featBlocks, windowHours, trendBars,
+      // routines board
+      rlibTitle:T('ספריית השגרות','The routine library'), routineLib,
+      pickRoutine:(e)=>this.setState({rsel:e.currentTarget.getAttribute('data-r')}),
+      boardIcon:rSel.icon, boardIconBg:rSel.iconBg, boardC:rSel.c, boardTitle:rSel.title,
+      boardWhy:rSel.why, boardCount:boardDoneCount+'/'+rSel.steps.length, boardCountLabel:T('הושלמו','done'),
+      boardSteps, boardDone,
+      boardDoneMsg:T('כל השלבים הושלמו — מיה קיבלה כוכב בעולם הילד!','All steps done — Mia earned a star in her kid world!'),
+      boardFeeds:(he?'מזין: ':'Feeds: ')+rSel.dom,
+      toggleStep:(e)=>{const k=e.currentTarget.getAttribute('data-k');this.setState(s=>{
+        const nd={...s.rdone,[k]:!s.rdone[k]};
+        const rt=RLIB.find(x=>x.id===s.rsel)||RLIB[0];
+        const was=rt.steps.every(st=>s.rdone[st.k]);
+        const now=rt.steps.every(st=>nd[st.k]);
+        return {rdone:nd, kidStars:(!was&&now)?s.kidStars+1:s.kidStars};
+      });},
+      resetRoutine:()=>this.setState(s=>{const nd={...s.rdone};(RLIB.find(x=>x.id===s.rsel)||RLIB[0]).steps.forEach(st=>{delete nd[st.k];});return {rdone:nd};}),
+      resetLabel:T('איפוס','Reset'), assignLabel:T('הפעלה במצב ילד','Run in Kid Mode'),
       behStats, behLogModes, behEvents, behPatterns,
       toggleBeh:(e)=>{const id=e.currentTarget.getAttribute('data-id');this.setState(s=>({behOpen:s.behOpen===id?null:id}));},
       behHeroTag:T('השבוע','THIS WEEK'), behHeroTitle:T('ההתנהגות של מיה','Mia\u2019s behavior'), behHeroSub:T('כל אירוע עם הקשר, עוצמה ופתרון','Every event with context, intensity & resolution'),
