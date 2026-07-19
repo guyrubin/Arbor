@@ -17,7 +17,6 @@ const WARNING_SIGNS = [
   "Escalating aggression that endangers self or others",
 ];
 
-const RISK_TONE: Record<string, PastelKey> = { Low: "mint", Moderate: "yellow", High: "pink" };
 
 const inputCls = "rounded-lg px-3 py-2 text-sm focus:outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" };
@@ -66,9 +65,6 @@ export default function SafetyTab() {
     try { localStorage.setItem(reviewedKey, now); } catch { /* ignore */ }
   };
 
-  const riskLabel = childProfile.riskLevel || "Low";
-  const riskTone = RISK_TONE[riskLabel] || "mint";
-  const riskP = PASTEL[riskTone];
   const reviewStale = !lastReviewed || Date.now() - new Date(lastReviewed).getTime() > 30 * 86_400_000;
 
   return (
@@ -76,20 +72,8 @@ export default function SafetyTab() {
       <PageHeader
         eyebrow="Care Network"
         title="Safety & Escalation"
-        subtitle="Clear risk signals, emergency contacts, and crisis language — ready the moment you need them."
+        subtitle="Emergency contacts and crisis language — ready the moment you need them."
       />
-
-      {/* Risk banner */}
-      <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: riskP.soft }}>
-        <Icon name="gpp_maybe" size={24} className="flex-shrink-0" style={{ color: riskP.ink }} />
-        <div>
-          <span className="text-[10px] uppercase font-extrabold tracking-widest" style={{ color: riskP.ink }}>Current risk level</span>
-          <div className="text-xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{riskLabel}</div>
-        </div>
-        <p className="text-xs ms-auto max-w-sm text-end hidden sm:block" style={{ color: "var(--arbor-muted)" }}>
-          Based on {first}&apos;s profile. Update it from the profile editor as circumstances change.
-        </p>
-      </div>
 
       {/* Crisis script (pinned) */}
       <div className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-soft)" }}>

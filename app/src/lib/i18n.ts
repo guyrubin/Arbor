@@ -356,9 +356,10 @@ export const en: Dict = {
   "coach.specialist.lead": "Want a human?",
   "coach.specialist.toast": "Opening the specialist handoff — you choose what to share.",
   "coach.specialist.aria": "Ask a human specialist — open the consult handoff",
-  // UC-1 ask — persistent coach identity strip (en)
-  "coach.coachName": "Dr. Levi",
-  "coach.coachStatus": "Online now",
+  // UC-1 ask — persistent coach identity strip (en). Honest-AI disclosure: no doctor honorific,
+  // no live-human presence signal (clinical firewall / AI Act Art.50). Council 2026-07-18.
+  "coach.coachName": "Arbor Coach",
+  "coach.coachStatus": "AI guide · always here",
   "coach.send.aria": "Send message",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "Integrated Balanced",
@@ -2098,8 +2099,10 @@ export const he: Dict = {
   "coach.specialist.toast": "פותח את ההעברה למומחה — אתה בוחר מה לשתף.",
   "coach.specialist.aria": "פנייה לאיש מקצוע — פתיחת ההעברה לייעוץ",
   // UC-1 ask — persistent coach identity strip (he)
-  "coach.coachName": "ד״ר לוי",
-  "coach.coachStatus": "זמינה עכשיו",
+  // Honest-AI disclosure (he) — doctor honorific + live-presence removed. FLAG: native-Hebrew
+  // review before publish, per the transcreation gate.
+  "coach.coachName": "מאמן Arbor",
+  "coach.coachStatus": "עוזר בינה מלאכותית · תמיד כאן",
   "coach.send.aria": "שליחת הודעה",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "משולב מאוזן",
