@@ -5,7 +5,7 @@ import * as path from "path";
 /**
  * Wave-3 clinical-firewall test (2026-06-26).
  *
- * Asserts that the demoted surfaces (TrendsChart, DevScoreCard, DevScoreStrip,
+ * Asserts that the demoted surfaces (DevScoreCard, DevScoreStrip,
  * OverviewTab dev-map card, StoryTimelineTab momentum strip, BehaviorsTab
  * per-type strip) + the prose paths (childStory, signalTimeline.deriveNextStep)
  * + their i18n keys NO LONGER emit any verdict-shaped primitive on a child
@@ -27,7 +27,7 @@ function read(rel: string): string {
 
 // The surfaces demoted in Wave-3. None may render a verdict primitive anymore.
 const DEMOTED_SURFACES = [
-  "components/overview/TrendsChart.tsx",
+  // TrendsChart.tsx was deleted in the IA W6.3 dead-code sweep (zero importers).
   "components/overview/DevScoreStrip.tsx",
   "components/sections/DevScoreCard.tsx",
   // 2026-07-04 release audit: the sidebar milestone badge rendered

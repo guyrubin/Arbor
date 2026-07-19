@@ -26,9 +26,9 @@ import { KidModeProvider } from "../kidmode/KidModeContext";
 import KidModeOverlay from "../kidmode/KidModeOverlay";
 // E11: first-steps rail for new accounts (parent register only, dismissible)
 import FirstStepsRail from "../onboarding/FirstStepsRail";
-// E0: hero-comic wow onboarding — the front door for brand-new accounts only
-// (children.length === 0 or localStorage "arbor.wowPending"); self-gating,
-// existing accounts are marked seen on first render and never see it.
+// E0: hero-comic wow onboarding — fires exactly once, right after OnboardingFlow
+// completes (journey.wow === "pending" in lib/onboardingJourney); self-gating,
+// legacy devices migrate to done and never see it.
 import WowOnboarding from "../onboarding/WowOnboarding";
 
 // Existing leaf views (preserved).
@@ -362,8 +362,9 @@ export default function Shell() {
           itself is responsive; MobileNav is byte-unchanged. */}
       <KidModeOverlay />
       {/* E0: full-screen wow-onboarding overlay (z-45 — under the reused
-          Modal/AvatarCreator it drives, over the app chrome). Renders null for
-          every account that has seen it or already has children. */}
+          AvatarCreator it drives, over the app chrome). Renders null unless
+          the journey store says the wow is pending (set by OnboardingFlow's
+          real submit — so it fires exactly once, post-onboarding). */}
       <WowOnboarding />
     </div>
     </KidModeProvider>

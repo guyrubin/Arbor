@@ -29,6 +29,7 @@ import { runInstrumented } from "../hooks/useAsyncAction";
 import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
+import { takeCoachSeed } from "../lib/onboardingJourney";
 
 const readLS = (key: string): string | null => {
   try {
@@ -216,16 +217,10 @@ function useArborState() {
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
   // Onboarding → coach seeding: OnboardingFlow (which renders outside this
-  // provider) leaves the parent's "what's on your mind" concern in storage; the
-  // coach composer starts pre-filled with it on the very first session.
-  const [chatInput, setChatInput] = useState<string>(() => {
-    const seed = readLS("arbor.coachSeed");
-    if (seed) {
-      try { localStorage.removeItem("arbor.coachSeed"); } catch { /* ignore */ }
-      return seed;
-    }
-    return "";
-  });
+  // provider) leaves the parent's "what's on your mind" concern in the journey
+  // store (lib/onboardingJourney); the coach composer starts pre-filled with it
+  // on the very first session. takeCoachSeed() is read-once-and-clear.
+  const [chatInput, setChatInput] = useState<string>(() => takeCoachSeed() ?? "");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   // Multi-thread coach conversations (persisted per child).
   const conversationsCol = useChildCollection<Conversation>(childProfile.id, "conversations");

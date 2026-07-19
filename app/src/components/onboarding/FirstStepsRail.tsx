@@ -2,13 +2,15 @@
  * E11: FirstStepsRail — a dismissible 4-step start path for new accounts,
  * mounted once in Shell above the tab content (PARENT register only).
  *
- * Steps: add child → meet the coach → capture a moment → create the first
- * comic. Each step deep-links via setActiveTab; completion is auto-detected
- * from existing state where cheap (profiles, conversations, logs) and on-click
- * otherwise (comic). State lives in localStorage "arbor.firstSteps" — no
- * Firestore, no child-data write. Hidden once all four are done or dismissed;
- * accounts that already show real usage on first render are auto-dismissed so
- * the rail only ever greets genuinely new families.
+ * Steps: create the hero avatar → meet the coach → capture a moment → create
+ * the first comic. Each step deep-links via setActiveTab; completion is
+ * auto-detected from existing state where cheap (hero avatar, conversations,
+ * logs) and on-click otherwise (comic). State lives in the shared journey
+ * store (lib/onboardingJourney, IA W6.1 — the one localStorage owner; the wow
+ * flow checks the comic step here when it showed a real comic) — no Firestore,
+ * no child-data write. Hidden once all four are done or dismissed; accounts
+ * that already show real usage on first render are auto-dismissed so the rail
+ * only ever greets genuinely new families.
  *
  * Kid dark-pattern ban: parent-side module, counts only ("2 of 4 done") — no
  * streaks, timers, urgency, or deficit framing. CLINICAL FIREWALL respected:
@@ -19,51 +21,30 @@
  * on prefers-reduced-motion.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { UserPlus, MessageCircle, Camera, BookOpen, Check, X, ChevronRight } from "lucide-react";
+import { Sparkles, MessageCircle, Camera, BookOpen, Check, X, ChevronRight } from "lucide-react";
 import { useArbor, type ActiveTab } from "../../context/ArborContext";
-import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { PASTEL, type PastelKey } from "../../lib/tokens";
 import { prefersReducedMotion } from "../../lib/devscore";
+import {
+  readJourney,
+  setRailClicked,
+  setRailDismissed,
+  subscribeJourney,
+  type JourneyRailState,
+} from "../../lib/onboardingJourney";
+import { useHeroAvatar } from "../ui/HeroAvatar";
 
-type StepId = "child" | "coach" | "capture" | "comic";
-
-interface RailState {
-  dismissed?: boolean;
-  /** Steps completed by clicking (used where no cheap state signal exists). */
-  clicked?: Partial<Record<StepId, boolean>>;
-}
-
-const LS_KEY = "arbor.firstSteps";
-
-function readRailState(): RailState | null {
-  try {
-    if (typeof window === "undefined" || !window.localStorage) return null;
-    const raw = window.localStorage.getItem(LS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as RailState;
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeRailState(s: RailState): void {
-  try {
-    window.localStorage.setItem(LS_KEY, JSON.stringify(s));
-  } catch {
-    /* storage unavailable — the rail simply won't persist */
-  }
-}
+type StepId = "avatar" | "coach" | "capture" | "comic";
 
 const STEPS: ReadonlyArray<{
   id: StepId;
   labelKey: string;
   tab: ActiveTab;
   tone: PastelKey;
-  Glyph: typeof UserPlus;
+  Glyph: typeof Sparkles;
 }> = [
-  { id: "child", labelKey: "elev.rail.step.child", tab: "profile", tone: "mint", Glyph: UserPlus },
+  { id: "avatar", labelKey: "elev.rail.step.avatar", tab: "profile", tone: "mint", Glyph: Sparkles },
   { id: "coach", labelKey: "elev.rail.step.coach", tab: "coach", tone: "lav", Glyph: MessageCircle },
   { id: "capture", labelKey: "elev.rail.step.capture", tab: "behaviors", tone: "sky", Glyph: Camera },
   { id: "comic", labelKey: "elev.rail.step.comic", tab: "comics", tone: "pink", Glyph: BookOpen },
@@ -71,31 +52,34 @@ const STEPS: ReadonlyArray<{
 
 export function FirstStepsRail() {
   const { setActiveTab, behaviorLogs, playLogs, conversations } = useArbor();
-  const { needsOnboarding } = useProfile();
+  const { hasHero, name } = useHeroAvatar();
   const { t } = useLanguage();
 
-  const [state, setState] = useState<RailState | null>(() => readRailState());
+  // The journey store owns rail state; subscribe so writes from elsewhere
+  // (the wow flow checking the comic step) reflect without a remount.
+  const [state, setState] = useState<JourneyRailState>(() => readJourney().rail);
+  useEffect(() => subscribeJourney(() => setState(readJourney().rail)), []);
 
   // Cheap auto-detection from state the app already holds (O(1) reads).
-  const childDone = !needsOnboarding;
-  const coachDone = conversations.length > 0 || !!state?.clicked?.coach;
+  // The old "add child" tile is gone: Shell only mounts when onboarding is
+  // complete, so it was definitionally pre-checked — the hero-avatar tile
+  // gives wow-skippers a real next step instead.
+  const avatarDone = hasHero;
+  const coachDone = conversations.length > 0 || !!state.clicked?.coach;
   const captureDone = behaviorLogs.length + playLogs.length > 0;
-  const comicDone = !!state?.clicked?.comic;
+  const comicDone = !!state.clicked?.comic;
 
   // An account that already shows real usage the first time the rail renders
-  // is not a new account — dismiss silently, once, before ever showing.
-  const established = state === null && childDone && coachDone && captureDone;
+  // (rail state never touched) is not a new account — dismiss silently, once,
+  // before ever showing.
+  const established = !state.dismissed && !state.clicked && coachDone && captureDone;
   useEffect(() => {
-    if (established) {
-      const next: RailState = { dismissed: true };
-      writeRailState(next);
-      setState(next);
-    }
+    if (established) setRailDismissed();
   }, [established]);
 
   const done: Record<StepId, boolean> = useMemo(
-    () => ({ child: childDone, coach: coachDone, capture: captureDone, comic: comicDone }),
-    [childDone, coachDone, captureDone, comicDone]
+    () => ({ avatar: avatarDone, coach: coachDone, capture: captureDone, comic: comicDone }),
+    [avatarDone, coachDone, captureDone, comicDone]
   );
   const doneCount = STEPS.filter((s) => done[s.id]).length;
   const allDone = doneCount === STEPS.length;
@@ -109,29 +93,20 @@ export function FirstStepsRail() {
   }, [entered]);
 
   const dismiss = useCallback(() => {
-    const next: RailState = { ...(state ?? {}), dismissed: true };
-    writeRailState(next);
-    setState(next);
-  }, [state]);
+    setRailDismissed(); // local state follows via the journey subscription
+  }, []);
 
   const openStep = useCallback(
     (id: StepId, tab: ActiveTab) => {
       // Click-completion for steps with no cheap state signal (coach doubles
       // up with auto-detection; comic is click-only).
-      if (id === "coach" || id === "comic") {
-        const next: RailState = {
-          ...(state ?? {}),
-          clicked: { ...(state?.clicked ?? {}), [id]: true },
-        };
-        writeRailState(next);
-        setState(next);
-      }
+      if (id === "coach" || id === "comic") setRailClicked(id);
       setActiveTab(tab);
     },
-    [state, setActiveTab]
+    [setActiveTab]
   );
 
-  if (state?.dismissed || allDone || established) return null;
+  if (state.dismissed || allDone || established) return null;
 
   return (
     <section
@@ -176,7 +151,8 @@ export function FirstStepsRail() {
         {STEPS.map((s, i) => {
           const isDone = done[s.id];
           const p = PASTEL[s.tone];
-          const label = t(s.labelKey);
+          // {name} only appears in the avatar key; extra vars are inert.
+          const label = t(s.labelKey, { name });
           return (
             <button
               key={s.id}
