@@ -4,9 +4,10 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
-  buildTimeline, computeMomentum, deriveNextStep, groupByDay,
+  computeMomentum, deriveNextStep, groupByDay,
   type SignalKind, type SignalTone, type TimelineSignal,
 } from "../../lib/signalTimeline";
+import { useTimeline } from "../../hooks/useTimeline";
 import { PageHeader, PASTEL, IconBadge, Chip, SectionCard, cardCls, type PastelKey } from "../ui/kit";
 import { MemoryRow } from "../sections/ChildMemory";
 import ScreeningSheet from "../sections/ScreeningSheet";
@@ -100,7 +101,7 @@ function SignalRow({ signal }: { signal: TimelineSignal }) {
 export default function StoryTimelineTab() {
   const {
     behaviorLogs, milestones, actionPlans, conversations, memoryReviewItems,
-    childProfile, setActiveTab, setChatInput,
+    childProfile, setActiveTab, seedCoach,
     pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
     playLogs,
   } = useArbor();
@@ -108,10 +109,7 @@ export default function StoryTimelineTab() {
   const [filter, setFilter] = useState<SignalKind | "all">("all");
   const [checkOpen, setCheckOpen] = useState(false);
 
-  const signals = useMemo(
-    () => buildTimeline({ behaviorLogs, milestones, plans: actionPlans, memory: memoryReviewItems, conversations, play: playLogs }),
-    [behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs],
-  );
+  const signals = useTimeline();
   const momentum = useMemo(
     () => computeMomentum(behaviorLogs, actionPlans, milestones),
     [behaviorLogs, actionPlans, milestones],
@@ -166,8 +164,7 @@ export default function StoryTimelineTab() {
   // count renders with a neutral "vs N last week" comparison (descriptive only).
 
   const handleCoach = (prompt: string) => {
-    setChatInput(prompt);
-    setActiveTab("coach");
+    seedCoach({ prompt, source: "story-timeline" });
   };
 
   return (

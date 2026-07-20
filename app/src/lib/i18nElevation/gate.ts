@@ -35,6 +35,8 @@ export const en: Record<string, string> = {
   "elev.rail.dismiss": "Hide this checklist",
   "elev.rail.stepDone": "Done",
   "elev.rail.step.child": "Add your child",
+  // W6.1: replaces the always-pre-checked child tile (onboarding already did it).
+  "elev.rail.step.avatar": "Create {name}'s hero",
   "elev.rail.step.coach": "Meet the coach",
   "elev.rail.step.capture": "Capture a moment",
   "elev.rail.step.comic": "Create the first comic",
@@ -65,6 +67,7 @@ export const he: Record<string, string> = {
   "elev.rail.dismiss": "להסתיר את הרשימה",
   "elev.rail.stepDone": "בוצע",
   "elev.rail.step.child": "הוסיפו את הילד שלכם",
+  "elev.rail.step.avatar": "צרו את הגיבור של {name}",
   "elev.rail.step.coach": "הכירו את המאמן",
   "elev.rail.step.capture": "תעדו רגע אחד",
   "elev.rail.step.comic": "צרו את הקומיקס הראשון",

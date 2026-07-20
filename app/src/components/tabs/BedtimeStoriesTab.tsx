@@ -27,7 +27,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
-import { api } from "../../lib/api";
+import { api, EscalationRequiredError } from "../../lib/api";
 import type { BedtimeStory } from "../../types";
 import { cardCls } from "../ui/kit";
 
@@ -105,7 +105,14 @@ export default function BedtimeStoriesTab() {
       const message = err instanceof Error ? err.message : String(err);
       // The server returns 409 + escalationCategory when a safety trigger fires.
       // Show a calm, non-diagnostic prompt to reach professional support.
-      if (message.includes("Professional support recommended") || message.includes("409")) {
+      if (
+        // DUX-032: typed escalation error thrown by the api layer on HTTP 409.
+        err instanceof EscalationRequiredError ||
+        // DEPRECATED fallback — legacy substring matching, kept so the escalation
+        // UI can never fire less often than before the typed error existed.
+        message.includes("Professional support recommended") ||
+        message.includes("409")
+      ) {
         setEscalated(true);
       } else {
         toast(

@@ -57,24 +57,31 @@ function readSrc(relPath) {
   return readFileSync(full, "utf8");
 }
 
-// ── F1: Routes >= 34 (VALID_TABS size; ALL_TABS export verified) ──────────────
+// ── F1: Routes >= 34 (ROUTE_IDS manifest; VALID_TABS+ALL_TABS derived) ─────────
+// The route set is now a single source of truth in lib/routes.ts (ROUTE_IDS);
+// ActiveTab, VALID_TABS and (via Record<ActiveTab>) Shell's tabRegistry all
+// derive from it. This floor counts the manifest and asserts the derivation.
 {
-  const text = readSrc("context/ArborContext.tsx");
-  if (!text) {
-    skip("F1", "routes", "ArborContext.tsx not found");
+  const routesText = readSrc("lib/routes.ts");
+  const ctxText = readSrc("context/ArborContext.tsx");
+  if (!routesText || !ctxText) {
+    skip("F1", "routes", "lib/routes.ts or ArborContext.tsx not found");
   } else {
-    const setMatch = text.match(/const VALID_TABS = new Set<string>\(\[([\s\S]*?)\]\)/);
-    if (!setMatch) {
-      fail("F1", "routes", "VALID_TABS set literal not found");
+    const arrMatch = routesText.match(/export const ROUTE_IDS = \[([\s\S]*?)\] as const/);
+    if (!arrMatch) {
+      fail("F1", "routes", "ROUTE_IDS manifest literal not found in lib/routes.ts");
     } else {
-      const count = (setMatch[1].match(/"[^"]+"/g) || []).length;
-      const hasExport = /export const ALL_TABS/.test(text);
-      if (count >= 34 && hasExport) {
-        pass("F1", "routes", "VALID_TABS=" + count + ">=34 ALL_TABS-export=present");
-      } else if (count >= 34) {
-        fail("F1", "routes", "count=" + count + ">=34 but ALL_TABS export missing");
-      } else {
+      const count = (arrMatch[1].match(/"[^"]+"/g) || []).length;
+      const derivesValid = /new Set<string>\(ROUTE_IDS\)/.test(ctxText);
+      const hasExport = /export const ALL_TABS/.test(ctxText);
+      if (count >= 34 && hasExport && derivesValid) {
+        pass("F1", "routes", "ROUTE_IDS=" + count + ">=34 VALID_TABS-derived ALL_TABS-export=present");
+      } else if (count < 34) {
         fail("F1", "routes", count + "<34");
+      } else if (!derivesValid) {
+        fail("F1", "routes", "VALID_TABS no longer derived from ROUTE_IDS");
+      } else {
+        fail("F1", "routes", "ALL_TABS export missing");
       }
     }
   }

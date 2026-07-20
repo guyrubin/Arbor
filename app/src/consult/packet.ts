@@ -8,6 +8,8 @@
  * parent observations only, never a label or assessment.
  */
 
+import { ClinicalLanguageError, findClinicalDiagnosisTerm } from "../lib/clinicalScan";
+
 export interface PacketInputProfile {
   name: string;
   age: number;
@@ -159,4 +161,159 @@ export function countIncluded(packet: ConsultPacket, excludedIds: Set<string>): 
     (n, s) => n + s.items.filter((it) => !excludedIds.has(it.id)).length,
     0
   );
+}
+
+/* Audience presets (IA W4.1) — one packet builder, three audiences, each with
+ * a DEFINED data ceiling:
+ *
+ *  - teacher (non-clinician): capped at the School-Brief curated ceiling —
+ *    profile-level context + what the family already tries. NO log-derived
+ *    patterns, NO milestone coverage, NO memory-ledger facts (the packet never
+ *    carries raw behavior-log fields for ANY audience; for a teacher even the
+ *    derived sections stay behind the ceiling). The shared fail-closed
+ *    clinical-term scan (`src/lib/clinicalScan.ts`) runs on every teacher
+ *    build AND serialization.
+ *  - therapist / pediatrician (clinicians): log-derived patterns + approved
+ *    memory facts are IN ceiling. EXEMPT from the term scan by policy —
+ *    "speech delay" is legitimate shorthand in a pediatrician summary.
+ *
+ * No preset, clinician or not, may export "riskLevel", "milestonesPercent",
+ * or a percentage readiness figure — those tokens appear in NO export. */
+
+export type ConsultAudience = "teacher" | "therapist" | "pediatrician";
+
+export interface ConsultPreset {
+  audience: ConsultAudience;
+  /** Section ids (from `buildConsultPacket`) this audience may receive. */
+  sections: readonly string[];
+  dataCeiling: {
+    /** Frequency/intensity patterns derived from the behavior log. */
+    logDerivedPatterns: boolean;
+    /** Parent-approved longitudinal memory facts. */
+    approvedMemoryFacts: boolean;
+  };
+  /** Fail-closed clinical-diagnosis-term scan (non-clinician audiences only). */
+  clinicalTermScan: boolean;
+}
+
+export const CONSULT_PRESETS: Record<ConsultAudience, ConsultPreset> = {
+  teacher: {
+    audience: "teacher",
+    sections: ["about", "tried"],
+    dataCeiling: { logDerivedPatterns: false, approvedMemoryFacts: false },
+    clinicalTermScan: true,
+  },
+  therapist: {
+    audience: "therapist",
+    sections: ["about", "patterns", "development", "tried", "memory"],
+    dataCeiling: { logDerivedPatterns: true, approvedMemoryFacts: true },
+    clinicalTermScan: false,
+  },
+  pediatrician: {
+    audience: "pediatrician",
+    sections: ["about", "patterns", "development", "tried", "memory"],
+    dataCeiling: { logDerivedPatterns: true, approvedMemoryFacts: true },
+    clinicalTermScan: false,
+  },
+};
+
+/** Tokens that appear in NO export, for ANY audience (clinician or not). */
+export const FORBIDDEN_EXPORT_TOKENS = ["riskLevel", "milestonesPercent"] as const;
+
+/** Clinician-ceiling egress guard for clinician-facing exports that live
+ *  OUTSIDE the consult packet (the Copilot practice summary, the monitoring
+ *  printable — IA W4.5). Same policy as the clinician presets: term-scan-EXEMPT,
+ *  but ceiling-bound — the forbidden tokens fail closed, and so does any
+ *  percentage figure, because exports carry counts, never percentages. */
+export function assertClinicianExportCeiling(text: string): void {
+  for (const token of FORBIDDEN_EXPORT_TOKENS) {
+    if (text.includes(token)) {
+      throw new ClinicalLanguageError(token, `Export blocked: forbidden token "${token}" must not appear in any export.`);
+    }
+  }
+  const pct = /\d+(?:\.\d+)?\s*%/.exec(text);
+  if (pct) {
+    throw new ClinicalLanguageError(pct[0], `Export blocked: percentage figure "${pct[0]}" — exports carry counts, never percentages.`);
+  }
+}
+
+/** Flatten a packet to plain text for the ceiling guards. */
+function packetToText(packet: ConsultPacket): string {
+  return packet.sections
+    .flatMap((s) => [s.title, s.note ?? "", ...s.items.map((it) => it.text)])
+    .join("\n");
+}
+
+/** Cap a packet to the preset's section ceiling. */
+function capToPreset(preset: ConsultPreset, packet: ConsultPacket): ConsultPacket {
+  const allowed = new Set(preset.sections);
+  return { ...packet, sections: packet.sections.filter((s) => allowed.has(s.id)) };
+}
+
+/** Fail-closed egress guards: forbidden tokens block EVERY audience; the
+ *  clinical-diagnosis-term scan blocks non-clinician audiences only. */
+function assertWithinCeiling(preset: ConsultPreset, text: string): void {
+  for (const token of FORBIDDEN_EXPORT_TOKENS) {
+    if (text.includes(token)) {
+      throw new ClinicalLanguageError(token, `Consult packet blocked: forbidden token "${token}" must not appear in any export.`);
+    }
+  }
+  if (preset.clinicalTermScan) {
+    const violation = findClinicalDiagnosisTerm(text);
+    if (violation) {
+      throw new ClinicalLanguageError(violation, `Consult packet blocked: clinical-diagnosis term "${violation}" is not allowed in a ${preset.audience} packet.`);
+    }
+  }
+}
+
+/** Build the packet capped to the audience preset's data ceiling. Fail-closed:
+ *  a non-clinician (teacher) packet throws on any clinical-diagnosis term. */
+export function buildPresetPacket(audience: ConsultAudience, input: BuildPacketInput): ConsultPacket {
+  const preset = CONSULT_PRESETS[audience];
+  const packet = capToPreset(preset, buildConsultPacket(input));
+  assertWithinCeiling(preset, packetToText(packet));
+  return packet;
+}
+
+/** Serialize a preset packet — re-caps the sections and re-runs the guards at
+ *  the egress seam, so a redaction/edit path can never route around the
+ *  build-time scan. */
+export function serializePresetPacket(
+  audience: ConsultAudience,
+  packet: ConsultPacket,
+  excludedIds: Set<string> = new Set()
+): string {
+  const preset = CONSULT_PRESETS[audience];
+  const md = serializePacket(capToPreset(preset, packet), excludedIds);
+  assertWithinCeiling(preset, md);
+  return md;
+}
+
+/** Print-shell section shape — matches `ReportDoc.sections` in
+ *  `lib/reportExport` without importing it (the print shell depends on no
+ *  consult types, and this module stays pure). */
+export interface PresetPrintSection { heading: string; body: string[] }
+
+/** Render a preset packet as print-shell sections for `openPrintableReport`
+ *  (IA W4.2 — the AskSpecialist / Reports PDF path). Same egress contract as
+ *  `serializePresetPacket`: re-caps to the audience ceiling, honours parent
+ *  redaction (excluded item ids drop, emptied sections vanish), and re-runs
+ *  the fail-closed guards on the final text. */
+export function presetPacketToPrintSections(
+  audience: ConsultAudience,
+  packet: ConsultPacket,
+  excludedIds: Set<string> = new Set()
+): PresetPrintSection[] {
+  const preset = CONSULT_PRESETS[audience];
+  const sections: PresetPrintSection[] = [];
+  for (const section of capToPreset(preset, packet).sections) {
+    const items = section.items.filter((it) => !excludedIds.has(it.id));
+    if (items.length === 0) continue;
+    sections.push({
+      heading: section.title,
+      body: [...(section.note ? [section.note] : []), ...items.map((it) => it.text)],
+    });
+  }
+  assertWithinCeiling(preset, sections.flatMap((s) => [s.heading, ...s.body]).join("\n"));
+  return sections;
 }

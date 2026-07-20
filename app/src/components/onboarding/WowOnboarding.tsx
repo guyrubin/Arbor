@@ -1,23 +1,26 @@
 /**
- * E0: WowOnboarding — the hero-comic front door. A 2-minute chain for a NEW
- * family that ORCHESTRATES existing capabilities (no new AI, no new pipelines):
+ * E0: WowOnboarding — the hero-comic activation moment (IA W6.1: the
+ * post-onboarding layer of the journey). A 2-minute chain that ORCHESTRATES
+ * existing capabilities (no new AI, no new pipelines):
  *
- *   1. add child      → the EXISTING AddChildModal (imported and driven)
- *   2. comic avatar   → the EXISTING AvatarCreator (/generate-avatar; the
+ *   1. comic avatar   → the EXISTING AvatarCreator (/generate-avatar; the
  *                       face_processing consent gate lives INSIDE it, untouched;
- *                       SKIP path = Sprout fallback via HeroAvatar)
- *   3. first comic    → the EXISTING /api/generate-comic path, ONE page for the
+ *                       SKIP path = Sprout fallback via HeroAvatar) — skipped
+ *                       entirely when the child already has a hero
+ *   2. first comic    → the EXISTING /api/generate-comic path, ONE page for the
  *                       first canon story spine (HERO_STORIES[0]); calm
  *                       preparing state while it draws; on ANY failure fall
  *                       back to a pre-composed page via the heroAvatarCanvas
  *                       template registry — the wow never 404s
- *   4. closing card   → the page + parent-mediated ShareButton (existing share
+ *   3. closing card   → the page + parent-mediated ShareButton (existing share
  *                       pipeline w/ referral code, ≤1 share prompt per session)
- *                       + "Enter Arbor" → localStorage done, land on Today
+ *                       + "Enter Arbor" → journey done, land on Today
  *
- * VISIBILITY: brand-new accounts only — children.length === 0, or the explicit
- * localStorage flag "arbor.wowPending" === "1". Accounts that already have
- * children default to SEEN (the flag is written once and the flow never shows).
+ * VISIBILITY: journey.wow === "pending" ONLY (lib/onboardingJourney — the one
+ * localStorage owner). OnboardingFlow sets it at real submit, so a child is
+ * guaranteed to exist before the wow can trigger and there is no child step
+ * here (the old AddChildModal step + childless heuristic are gone). Legacy
+ * devices migrate absent → done and never see a surprise overlay.
  * Every step is dismissible (X / Escape → marks done, lands on Today).
  *
  * REGISTER: full-screen calm overlay in the PARENT register (.arbor-parent) —
@@ -28,83 +31,50 @@
  * existing gated components/paths listed above.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, Sparkles, UserPlus, BookOpen } from "lucide-react";
+import { X, Sparkles, BookOpen } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
+import { STORY_COMIC } from "../../lib/heroComics";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 import { renderHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import { prefersReducedMotion } from "../../lib/devscore";
 import { PASTEL } from "../../lib/tokens";
-import AddChildModal from "../profile/AddChildModal";
+import { markWowDone, readJourney } from "../../lib/onboardingJourney";
 import AvatarCreator from "../profile/AvatarCreator";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { ShareButton } from "../ui/ShareButton";
 
-type WowStep = "child" | "avatar" | "comic" | "closing";
-const STEP_ORDER: readonly WowStep[] = ["child", "avatar", "comic", "closing"];
-
-const LS_KEY = "arbor.wowPending";
-
-function readFlag(): string | null {
-  try {
-    return typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem(LS_KEY) : "done";
-  } catch {
-    return "done"; // storage unavailable → behave as seen, never trap the user
-  }
-}
-
-function writeFlag(value: string): void {
-  try {
-    window.localStorage.setItem(LS_KEY, value);
-  } catch {
-    /* storage unavailable — the flow simply won't persist its done state */
-  }
-}
+type WowStep = "avatar" | "comic" | "closing";
+const STEP_ORDER: readonly WowStep[] = ["avatar", "comic", "closing"];
 
 /**
  * First-story comic prompt copy (EN+HE). This is AI-PROMPT PAYLOAD for the
- * existing /api/generate-comic path — mirrored from the canonical
- * "david-and-goliath" entry of HeroComicsTab's STORY_COMIC registry (that
- * registry is module-private and HeroComicsTab is not owned by this
- * workstream, so the single needed entry is mirrored here as data).
+ * existing /api/generate-comic path — read straight from the canonical
+ * STORY_COMIC registry in lib/heroComics (the "david-and-goliath" entry,
+ * i.e. HERO_STORIES[0]). A local mirror used to live here only because the
+ * registry was module-private inside the hero-comics grid (retired in IA
+ * W5.5); now that it is public there is one source of truth.
  */
-const FIRST_STORY_COMIC = {
-  theme: "a small but mighty young hero standing fearlessly before a towering giant, slingshot raised high, glowing with courage",
-  themeHe: "גיבור קטן ואדיר עומד ללא פחד מול ענק מתנשא, רוגטקה מורמת גבוה, זוהר באומץ",
-  dialogue: "I'm small but I'm brave!",
-  dialogueHe: "אני קטן אבל אמיץ!",
-  sfx: ["BOOM!", "WHOOSH!", "ZING!"],
-  sfxHe: ["בום!", "ואוש!", "זינג!"],
-} as const;
+const FIRST_STORY_COMIC = STORY_COMIC["david-and-goliath"];
 
 export function WowOnboarding() {
   const { setActiveTab } = useArbor();
-  const { profiles, activeChild, updateChild } = useProfile();
+  const { activeChild, updateChild } = useProfile();
   const { t, aiLang } = useLanguage();
   const hero = useHeroAvatar();
 
   // ── Visibility gate — resolved ONCE at mount. ──────────────────────────────
-  // "1" → show; "done" → never; absent → show only for a childless account,
-  // and for accounts WITH children write the default-seen flag immediately.
-  const [visible, setVisible] = useState<boolean>(() => {
-    const flag = readFlag();
-    if (flag === "1") return true;
-    if (flag !== null) return false;
-    return profiles.length === 0;
-  });
-  useEffect(() => {
-    if (!visible && readFlag() === null && profiles.length > 0) writeFlag("done");
-    // Existing users NEVER see the flow: absent flag + children = seen.
-  }, [visible, profiles.length]);
+  // journey.wow === "pending" is the ONLY trigger: OnboardingFlow sets it at
+  // real submit, and the one-time migration maps legacy/absent state to done.
+  const [visible, setVisible] = useState<boolean>(() => readJourney().wow === "pending");
 
   // ── Step state — start at the first step the account hasn't done. ─────────
-  const [step, setStep] = useState<WowStep>(() =>
-    profiles.length === 0 ? "child" : !hero.hasHero ? "avatar" : "comic"
-  );
-  const [addOpen, setAddOpen] = useState(false);
+  // OnboardingFlow guarantees a child exists before the wow can trigger; an
+  // avatar made there (or earlier) enters straight at the comic.
+  const [step, setStep] = useState<WowStep>(() => (!hero.hasHero ? "avatar" : "comic"));
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [comic, setComic] = useState<{ url: string | null; fallback: boolean } | null>(null);
   // The avatar created INSIDE this flow, held locally: updateChild's profile
@@ -113,7 +83,6 @@ export function WowOnboarding() {
   const [freshAvatar, setFreshAvatar] = useState<string | undefined>();
   const comicStarted = useRef(false);
   const startedTracked = useRef(false);
-  const initialChildCount = useRef(profiles.length);
 
   const he = aiLang === "he";
   const firstStory = HERO_STORIES[0];
@@ -130,27 +99,19 @@ export function WowOnboarding() {
   }, [visible, step]);
 
   // ── Finish (both "Enter Arbor" and every dismiss path): mark done forever,
-  // land on Today. ────────────────────────────────────────────────────────────
+  // land on Today. A real comic shown also checks the rail's comic step via
+  // the shared journey store — the checklist never re-asks for it. ────────────
   const finish = useCallback(
     (reason: "completed" | "dismissed") => {
-      writeFlag("done");
+      markWowDone({ comicShown: comic?.url != null });
       track(reason === "completed" ? "wow_onboarding_completed" : "wow_onboarding_dismissed", { step });
       setActiveTab("overview");
       setVisible(false);
     },
-    [setActiveTab, step]
+    [setActiveTab, step, comic]
   );
 
-  // ── Step 1 → 2: AddChildModal closes on BOTH cancel and success, so success
-  // is detected from the profile list growing (the modal already saved). ──────
-  useEffect(() => {
-    if (visible && step === "child" && profiles.length > initialChildCount.current) {
-      setAddOpen(false);
-      setStep("avatar");
-    }
-  }, [visible, step, profiles.length]);
-
-  // ── Step 3: generate ONE page via the existing /generate-comic path; on any
+  // ── Comic step: generate ONE page via the existing /generate-comic path; on any
   // failure (paywall, network, quota) pre-compose a branded Sprout/hero page
   // through the heroAvatarCanvas template registry. Never 404s, never nags. ───
   useEffect(() => {
@@ -195,9 +156,9 @@ export function WowOnboarding() {
   }, [visible, step, heroDataUrl, name, he, storyTitle]);
 
   // ── Keyboard: Escape dismisses, Tab is trapped — but ONLY while no reused
-  // sub-modal is open on top (AddChildModal/AvatarCreator own their keys). ────
+  // sub-modal is open on top (AvatarCreator owns its keys). ─────────────────
   const dialogRef = useRef<HTMLDivElement>(null);
-  const subModalOpen = addOpen || avatarOpen;
+  const subModalOpen = avatarOpen;
   useEffect(() => {
     if (!visible || subModalOpen) return;
     const node = dialogRef.current;
@@ -257,21 +218,6 @@ export function WowOnboarding() {
 
   const body = useMemo(() => {
     switch (step) {
-      case "child":
-        return (
-          <>
-            <StepHeading tone={mint.ink} title={t("elev.wow.child.title")} sub={t("elev.wow.child.sub")} />
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="mt-6 inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-6 py-3 text-[var(--t-sm)] font-extrabold transition active:scale-[0.97]"
-              style={primaryBtn}
-            >
-              <UserPlus aria-hidden="true" style={{ width: 16, height: 16 }} />
-              {t("elev.wow.child.cta")}
-            </button>
-          </>
-        );
       case "avatar":
         return (
           <>
@@ -449,12 +395,11 @@ export function WowOnboarding() {
         </div>
       </div>
 
-      {/* ── Reused surfaces, driven — NOT rebuilt. ──────────────────────────── */}
-      {/* Step 1: the existing add-child flow (entitlement limit handling included). */}
-      <AddChildModal open={addOpen} onClose={() => setAddOpen(false)} />
-      {/* Step 2: the existing avatar creator — face_processing consent gating and
-          the /generate-avatar call stay entirely inside it. Persisting the result
-          uses the SAME patch shape as ProfileEditDrawer (photoUrl + avatar meta). */}
+      {/* ── Reused surface, driven — NOT rebuilt. ──────────────────────────── */}
+      {/* Avatar step: the existing avatar creator — face_processing consent gating
+          and the /generate-avatar call stay entirely inside it. Persisting the
+          result uses the SAME patch shape as ProfileEditDrawer (photoUrl + avatar
+          meta). */}
       {step === "avatar" && (
         <AvatarCreator
           open={avatarOpen}

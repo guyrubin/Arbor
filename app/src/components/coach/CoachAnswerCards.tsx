@@ -18,6 +18,18 @@ export function sourcesLabel(n: number, lang: UiLang = "en"): string {
 }
 
 /**
+ * Pure helper: presentation tier for the "Reach out for help if" footer.
+ * Low (or absent) risk → "quiet": a calm, collapsed disclosure so routine
+ * questions don't read as alarms. Anything else — including unrecognized
+ * levels, which fail safe upward — → "prominent": the full warning panel.
+ * The escalateIf CONTENT is always rendered; only the framing is tiered.
+ * Exported so tests can cover it without mounting the full component.
+ */
+export function escalationTier(riskLevel?: string): "quiet" | "prominent" {
+  return (riskLevel || "low").toLowerCase() === "low" ? "quiet" : "prominent";
+}
+
+/**
  * Generative answer surface (v6 UX-3 / v5 GUI-1·2·3). Renders the coach's real
  * structured `contract` as an attributed, actionable card stack instead of a
  * markdown wall — each block is a thing the parent can DO (check off, say aloud,
@@ -25,14 +37,8 @@ export function sourcesLabel(n: number, lang: UiLang = "en"): string {
  * this stops it being flattened to prose and regex-scraped.
  */
 
-const RISK_TONE: Record<string, { fg: string; bg: string; label: string }> = {
-  low: { fg: "var(--arbor-green-ink)", bg: "var(--arbor-green-soft)", label: "Low" },
-  moderate: { fg: "var(--arbor-yellow-ink)", bg: "var(--arbor-yellow-soft)", label: "Moderate" },
-  elevated: { fg: "var(--arbor-yellow-ink)", bg: "var(--arbor-yellow-soft)", label: "Elevated" },
-  high: { fg: "var(--arbor-pink-ink)", bg: "var(--arbor-pink-soft)", label: "High" },
-  severe: { fg: "var(--arbor-pink-ink)", bg: "var(--arbor-pink-soft)", label: "Severe" },
-  urgent: { fg: "var(--arbor-pink-ink)", bg: "var(--arbor-pink-soft)", label: "Urgent" },
-};
+// Risk-tone verdict palette removed: Arbor renders counts and observations, never a graded
+// child risk verdict on a parent-facing surface (clinical firewall). See council 2026-07-18.
 
 const FRAME_LABELS: Record<string, string> = {
   aim: "Aim", twoAxes: "Warmth ↔ Structure", story: "Story",
@@ -67,12 +73,12 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   const [done, setDone] = useState<Record<number, boolean>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [citationsOpen, setCitationsOpen] = useState(false);
+  const [escalateOpen, setEscalateOpen] = useState(false);
 
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const sources = contract.sourceCardsUsed ?? [];
   const hasSources = sources.length > 0;
 
-  const risk = RISK_TONE[(contract.riskLevel || "low").toLowerCase()] || RISK_TONE.low;
   const showLens = lens && lens !== "Integrated Balanced";
 
   const copy = (text: string, key: string) => {
@@ -98,7 +104,6 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
         {contract.domains?.slice(0, 3).map((d) => (
           <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{d.replace(/_/g, " ")}</span>
         ))}
-        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full ms-auto" style={{ color: risk.fg, background: risk.bg }}>Risk: {risk.label}</span>
       </div>
 
       {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
@@ -193,14 +198,42 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
         )}
       </div>
 
-      {/* Escalate */}
-      {contract.escalateIf?.length > 0 && (
+      {/* Escalate — content is ALWAYS rendered when present; only its PROMINENCE
+          is tiered by riskLevel. Low risk gets a calm, collapsed disclosure (same
+          idiom as the citation drawer) so routine questions don't read as alarms;
+          moderate and above keep the full pink warning panel untouched. The list
+          is identical in both tiers and is never conditionally dropped — when
+          collapsed it is hidden, not unmounted, so it stays in the DOM. */}
+      {contract.escalateIf?.length > 0 && (escalationTier(contract.riskLevel) === "prominent" ? (
         <Panel icon={<Icon name="warning" size={12} />} title="Reach out for help if" tint="var(--arbor-pink-ink)">
           <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-pink-ink)" }}>
             {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
         </Panel>
-      )}
+      ) : (
+        <div className="rounded-xl" style={{ border: "1px solid var(--arbor-rule)", overflow: "hidden" }}>
+          <button
+            onClick={() => setEscalateOpen((o) => !o)}
+            aria-expanded={escalateOpen}
+            className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 min-h-[44px] transition"
+            style={{ background: "var(--arbor-paper-deep)" }}
+          >
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
+              <Icon name="health_and_safety" size={12} /> {t("coach.escalate.title")}
+            </span>
+            <span className="text-[10px] font-bold inline-flex items-center gap-0.5" style={{ color: "var(--arbor-muted)" }}>
+              {escalateOpen
+                ? <><Icon name="expand_less" size={14} />{t("coach.escalate.toggle.close")}</>
+                : <><Icon name="expand_more" size={14} />{t("coach.escalate.toggle.open")}</>}
+            </span>
+          </button>
+          <div hidden={!escalateOpen} className="px-3.5 pb-3 pt-2" style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}>
+            <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
+              {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          </div>
+        </div>
+      ))}
 
       {/* Six-frame routing chips (SF-2) */}
       {frames.length > 0 && (

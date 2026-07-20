@@ -7,7 +7,8 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
 import { PageHeader, SectionCard, cardCls, Chip, IconBadge, TrustSafetyBar } from "../ui/kit";
 import { bandForAge, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
-import { deriveMonitoring, buildMonitoringReportDoc } from "../../lib/monitoring";
+import { buildMonitoringReportDoc } from "../../lib/monitoring";
+import { useMonitoring } from "../../hooks/useMonitoring";
 import { openPrintableReport } from "../../lib/reportExport";
 
 type SavedScreening = ScreeningResult & { id: string };
@@ -28,15 +29,21 @@ export default function Screening() {
 
   // Passive developmental-monitoring layer (Mission M8): derived from the child's
   // own milestones + behavior logs, surfaced as calm, non-diagnostic watch notes.
-  const monitoring = useMemo(
-    () => deriveMonitoring({ ageYears: childProfile.age, milestones, behaviorLogs }, first),
-    [childProfile.age, milestones, behaviorLogs, first]
-  );
+  // The ONE shared derivation (hooks/useMonitoring) — this surface previously
+  // passed the coarse childProfile.age while the noticed card and the bell fed a
+  // months-precise age, so the same child could get different watch answers.
+  const monitoring = useMonitoring();
 
   const exportMonitoring = () => {
-    const doc = buildMonitoringReportDoc(monitoring, childProfile.name, childProfile.age);
-    openPrintableReport(doc, childProfile.name);
-    toast("Opening a provider-ready summary to print or save as PDF", "info");
+    // The builder is clinician-ceiling-bound (IA W4.5) and fail-closed: a
+    // blocked doc exports NOTHING.
+    try {
+      const doc = buildMonitoringReportDoc(monitoring, childProfile.name, childProfile.age);
+      openPrintableReport(doc, childProfile.name);
+      toast("Opening a provider-ready summary to print or save as PDF", "info");
+    } catch {
+      toast("This summary could not be exported — it did not pass Arbor's safety check.", "error");
+    }
   };
 
   return (

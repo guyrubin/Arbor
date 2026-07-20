@@ -26,9 +26,9 @@ import { KidModeProvider } from "../kidmode/KidModeContext";
 import KidModeOverlay from "../kidmode/KidModeOverlay";
 // E11: first-steps rail for new accounts (parent register only, dismissible)
 import FirstStepsRail from "../onboarding/FirstStepsRail";
-// E0: hero-comic wow onboarding — the front door for brand-new accounts only
-// (children.length === 0 or localStorage "arbor.wowPending"); self-gating,
-// existing accounts are marked seen on first render and never see it.
+// E0: hero-comic wow onboarding — fires exactly once, right after OnboardingFlow
+// completes (journey.wow === "pending" in lib/onboardingJourney); self-gating,
+// legacy devices migrate to done and never see it.
 import WowOnboarding from "../onboarding/WowOnboarding";
 
 // Existing leaf views (preserved).
@@ -48,16 +48,17 @@ const ChildProfile = lazy(() => import("../sections/ChildProfile"));
 const ChildMemory = lazy(() => import("../sections/ChildMemory"));
 const Strengths = lazy(() => import("../sections/Strengths"));
 const Screening = lazy(() => import("../sections/Screening"));
-const StoryTimelineTab = lazy(() => import("../tabs/StoryTimelineTab"));
-const JournalTab = lazy(() => import("../tabs/JournalTab")); // UC-1: additive Journal surface
+// One timeline surface, two densities (Feed #/journal · Story #/timeline).
+const TimelineTab = lazy(() => import("../tabs/TimelineTab"));
 const FindProfessional = lazy(() => import("../sections/FindProfessional"));
-const CareTeam = lazy(() => import("../sections/CareTeam"));
 const Appointments = lazy(() => import("../sections/Appointments"));
 const TrustedSharing = lazy(() => import("../sections/TrustedSharing"));
 const Reports = lazy(() => import("../sections/Reports"));
 const Masterclasses = lazy(() => import("../sections/Masterclasses"));
 const FamilyFormation = lazy(() => import("../sections/FamilyFormation"));
-const HeroComicsTab = lazy(() => import("../tabs/HeroComicsTab"));
+// W5.3: the comics route mounts the bookshelf host (multi-page ComicReader
+// books); it replaces the single-panel hero-comics grid (retired in W5.5).
+const ComicsTab = lazy(() => import("../tabs/ComicsTab"));
 
 // Practice Studio (Fall release: speech & language suite).
 const SpeechCoachTab = lazy(() => import("../practice/SpeechCoachTab"));
@@ -111,16 +112,19 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   memory: ChildMemory,
   strengths: Strengths,
   screening: Screening,
-  timeline: StoryTimelineTab,
-  journal: JournalTab,
+  timeline: TimelineTab,
+  journal: TimelineTab,
   "find-pro": FindProfessional,
-  "care-team": CareTeam,
+  // W4.4: My Care Team merged into Trusted Sharing (both rendered the same
+  // listShares + sharedWithMe grants) — deep-links to #/care-team resolve into
+  // the one roster surface.
+  "care-team": TrustedSharing,
   appointments: Appointments,
   sharing: TrustedSharing,
   reports: Reports,
   masterclasses: Masterclasses,
   family: FamilyFormation,
-  comics: HeroComicsTab,
+  comics: ComicsTab,
   speech: SpeechCoachTab,
   mimic: MimicStudioTab,
   feelings: FeelingsLabTab,
@@ -261,11 +265,11 @@ export default function Shell() {
                 <button
                   onClick={() => void signOut()}
                   aria-label={t("aria.signout")}
-                  title="Sign out"
+                  title={t("nav.signout")}
                   className="md:hidden flex flex-shrink-0 items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-bold transition bg-white"
                   style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
-                  <Icon name="logout" size={16} /> Sign out
+                  <Icon name="logout" size={16} /> {t("nav.signout")}
                 </button>
               )}
             </div>
@@ -324,9 +328,10 @@ export default function Shell() {
             </div>
           )}
 
-          {/* E11: first-steps rail — above the tab content, parent register only
-              (inside .arbor-parent <main>); self-hides when done/dismissed. */}
-          <FirstStepsRail />
+          {/* E11: first-steps rail — Today/home only (F10: it was bleeding onto every
+              hub, incl. Ask Arbor). Parent register only (inside .arbor-parent <main>);
+              self-hides when done/dismissed. */}
+          {activeTab === "overview" && <FirstStepsRail />}
 
           <Suspense fallback={<TabSkeleton />}>
             <AnimatePresence mode="wait">
@@ -358,8 +363,9 @@ export default function Shell() {
           itself is responsive; MobileNav is byte-unchanged. */}
       <KidModeOverlay />
       {/* E0: full-screen wow-onboarding overlay (z-45 — under the reused
-          Modal/AvatarCreator it drives, over the app chrome). Renders null for
-          every account that has seen it or already has children. */}
+          AvatarCreator it drives, over the app chrome). Renders null unless
+          the journey store says the wow is pending (set by OnboardingFlow's
+          real submit — so it fires exactly once, post-onboarding). */}
       <WowOnboarding />
     </div>
     </KidModeProvider>

@@ -28,38 +28,21 @@
  */
 
 import type { SchoolBrief } from "../types";
+import { ClinicalLanguageError, findClinicalDiagnosisTerm } from "../lib/clinicalScan";
 
-/** Condition 2: the ONLY fields that may appear in the teacher-facing export.
- *  These are the warm/practical, non-diagnostic, parent-mediated transition
- *  fields. The raw memory-ledger / behavior-log record is intentionally NOT here. */
-export const CURATED_FIELDS = [
-  "overview",
-  "keyStrengths",
-  "classroomChallenges",
-  "languageSupportPlan",
-  "suggestedTeacherStrategies",
-] as const;
-export type CuratedField = (typeof CURATED_FIELDS)[number];
-
-/** Condition 2 (negative): raw-record keys that MUST NOT leak into the export.
- *  If a caller hands the builder a record carrying these, they are ignored. */
-export const RAW_RECORD_KEYS = [
-  // behavior-log fields
-  "behaviorType", "intensity", "trigger", "response", "notes", "timestamp",
-  "resolved", "logs", "behaviorLogs", "context", "durationMinutes",
-  // memory-ledger fields
-  "memory", "memoryEvents", "memoryLedger", "fact", "status", "approvedMemoryItems",
-  // misc raw identifiers
-  "crisisEscalationTrigger", // generator may return it, but it is NOT exported to a teacher
-] as const;
-
-/** Condition 3: clinical-diagnosis terms that must never appear in the brief
- *  shown to a teacher. Word-boundary, case-insensitive. */
-export const CLINICAL_DIAGNOSIS_TERMS = [
-  "diagnosis", "diagnose", "diagnosed",
-  "disorder", "adhd", "autism", "autistic",
-  "delay", "delayed", "deficit",
-] as const;
+/* Conditions 2 + 3 field ceilings and the fail-closed clinical-term scan live
+ * in the shared PURE module `src/lib/clinicalScan.ts` (extracted IA W4.1 so the
+ * consult packet's audience presets run the SAME scanner). Re-exported verbatim
+ * here so every existing import of this module is unchanged. This module still
+ * never imports or touches the consult packet itself. */
+export {
+  CURATED_FIELDS,
+  RAW_RECORD_KEYS,
+  CLINICAL_DIAGNOSIS_TERMS,
+  ClinicalLanguageError,
+  findClinicalDiagnosisTerm,
+} from "../lib/clinicalScan";
+export type { CuratedField } from "../lib/clinicalScan";
 
 /** i18n key for the mandatory outside-erase-reach notice (Condition 5). Both EN
  *  and HE dictionaries MUST define it; the approval screen MUST render it. */
@@ -158,26 +141,6 @@ export function exportToText(ex: SchoolBriefExport): string {
     ...ex.languageSupportPlan,
     ...ex.suggestedTeacherStrategies,
   ].join("\n");
-}
-
-export class ClinicalLanguageError extends Error {
-  readonly term: string;
-  constructor(term: string) {
-    super(`School Brief blocked: clinical-diagnosis term "${term}" is not allowed in a teacher brief.`);
-    this.name = "ClinicalLanguageError";
-    this.term = term;
-  }
-}
-
-/** Condition 3: return the first clinical-diagnosis term found (word-boundary,
- *  case-insensitive), or null if the text is clean. */
-export function findClinicalDiagnosisTerm(text: string): string | null {
-  const lower = text.toLowerCase();
-  for (const term of CLINICAL_DIAGNOSIS_TERMS) {
-    const re = new RegExp(`\\b${term}\\b`, "i");
-    if (re.test(lower)) return term;
-  }
-  return null;
 }
 
 /** Render the approved export to shareable Markdown (the PDF/download body).

@@ -10,9 +10,9 @@
  * sequentially through an in-flight dedupe map so one failed page never blocks
  * the rest of the book. HeroScenePlayer and ComicReader both build on it.
  */
-import { api } from "./api";
-import { HERO_STORIES } from "./heroJourneys";
-import { resolveScene } from "./sceneCache";
+import { api, PaywallError } from "./api";
+import { HERO_STORIES, getStorySpec } from "./heroJourneys";
+import { getScene, resolveScene } from "./sceneCache";
 import type { HeroStorySpec } from "../types";
 
 /** Per-story viral comic copy (bilingual): the heroic panel cue, a shout, and SFX. */
@@ -142,6 +142,44 @@ export interface HeroComic {
   createdAt: string;
 }
 
+/** W5.4 — the persistable METADATA of a saved book. Art data-URLs are NEVER
+ *  persisted: Firestore caps docs at 1MB, and localStorage image persistence is
+ *  a banned prior regression (see lib/sceneCache). Within a session pages
+ *  rehydrate from the scene cache; across sessions they regenerate on open,
+ *  until the separate (Guy-gated) Firebase Storage layer lands. */
+export interface SavedComicMeta {
+  id: string;
+  adventureId: string;
+  title: string;
+  lang: ComicLang;
+  createdAt: string;
+}
+
+/** Strip a book down to its persistable metadata. The doc id IS the adventureId
+ *  (one shelf slot per adventure), so re-saving upserts instead of duplicating. */
+export const toSavedComicMeta = (comic: HeroComic): SavedComicMeta => ({
+  id: comic.adventureId,
+  adventureId: comic.adventureId,
+  title: comic.title,
+  lang: comic.lang,
+  createdAt: comic.createdAt,
+});
+
+/** Rehydrate a saved book's page art from the in-session scene cache. Returns
+ *  the full index-aligned data-URL list (cover + every non-decision beat) only
+ *  when EVERY page is cached; otherwise [] so the reader falls back to a fresh
+ *  build — where generatePage still reuses any partial cache hits per page. */
+export function rehydrateSavedPages(adventureId: string, lang: ComicLang, avatarOrHash: string): string[] {
+  const beatCount = (getStorySpec(adventureId)?.beats || []).filter((b) => b.id !== "decision").length;
+  const urls: string[] = [];
+  for (let i = 0; i <= beatCount; i++) {
+    const url = getScene(comicKey(avatarOrHash, adventureId, lang, i));
+    if (!url) return [];
+    urls.push(url);
+  }
+  return urls;
+}
+
 const shortHash = (s: string): string => {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
@@ -253,7 +291,11 @@ export async function generatePage(args: GeneratePageArgs): Promise<string> {
 /** Build a whole book by generating pages sequentially, reporting each as it
  *  resolves (or fails) via `onPage`. One failed page is marked `error` and the
  *  build continues — the book is never blocked on a single smudged page.
- *  Returns the final page list (with statuses + data-URLs). */
+ *  Returns the final page list (with statuses + data-URLs).
+ *
+ *  EXCEPTION: a `PaywallError` is a conversion moment, not a smudged page — the
+ *  build STOPS (no further paid generations) and rejects with the typed error so
+ *  the host can open the paywall instead of rendering per-page error tiles. */
 export async function buildComicBook(
   adventure: Adventure,
   lang: ComicLang,
@@ -276,7 +318,9 @@ export async function buildComicBook(
       });
       page.dataUrl = dataUrl;
       page.status = "ready";
-    } catch {
+    } catch (err) {
+      // Paywall ≠ page failure: stop the whole build and surface it typed.
+      if (err instanceof PaywallError) throw err;
       page.status = "error";
     }
     onPage({ ...page });

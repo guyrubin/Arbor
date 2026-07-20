@@ -3,7 +3,9 @@ import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { buildTimeline, type SignalKind, type TimelineSignal } from "../../lib/signalTimeline";
+import { type SignalKind, type TimelineSignal } from "../../lib/signalTimeline";
+import { useTimeline } from "../../hooks/useTimeline";
+import type { CaptureMode } from "../../context/ArborContext";
 import { PASTEL, IconBadge, Chip, cardCls, domainVisual } from "../ui/kit";
 import type { DevelopmentalDomainId } from "../../types";
 import type { PlayDomain } from "../../playbank/content";
@@ -17,8 +19,8 @@ import type { PlayDomain } from "../../playbank/content";
  *
  * Anatomy (top → bottom), reconciled to the wireframe's "Journal" screen:
  *  1. a COMPOSE card — "Log a moment" with three capture-mode tiles
- *     (Voice / Photo / Text) that route into the EXISTING capture flow
- *     (setActiveTab('behaviors')); the split is an entry affordance, not a new
+ *     (Voice / Photo / Text) that open the EXISTING capture flow IN THE CHOSEN
+ *     MODE via requestCapture(); the split is an entry affordance, not a new
  *     capture path.
  *  2. a flat single-column FEED (~840px) of moment rows. Each row carries a
  *     colored domain icon tile, an AUTO(Arbor)-vs-MANUAL(You) provenance badge, a
@@ -35,7 +37,7 @@ import type { PlayDomain } from "../../playbank/content";
  */
 
 /** Compose modality tiles — Material Symbols glyphs (mic / photo_camera / keyboard). */
-const MODE_TILES: { ms: string; key: "voice" | "photo" | "text" }[] = [
+const MODE_TILES: { ms: string; key: CaptureMode }[] = [
   { ms: "mic", key: "voice" },
   { ms: "photo_camera", key: "photo" },
   { ms: "keyboard", key: "text" },
@@ -173,19 +175,22 @@ function JournalRow({
 }
 
 export default function JournalTab() {
-  const {
-    setActiveTab,
-    behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs,
-  } = useArbor();
+  const { setActiveTab, requestCapture, milestones, playLogs } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
 
-  // Reuse the shared timeline engine — the journal reads the SAME real data as
-  // StoryTimelineTab. No new fetch, no new write path.
-  const signals = useMemo(
-    () => buildTimeline({ behaviorLogs, milestones, plans: actionPlans, memory: memoryReviewItems, conversations, play: playLogs }),
-    [behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs],
-  );
+  // The ONE timeline read (hooks/useTimeline) — the same stream the Story
+  // density renders. No second read, no new write path.
+  const signals = useTimeline();
+
+  /** Open the real capture flow in the requested modality. Previously these
+   *  tiles were decoys: all three ran a bare setActiveTab("behaviors"), so
+   *  "Voice" and "Photo" promised a mode they never opened. `requestCapture`
+   *  hands the mode to the capture surface, which acts on it and clears it. */
+  const startCapture = (mode: CaptureMode) => {
+    requestCapture(mode);
+    setActiveTab("behaviors");
+  };
 
   // Per-signal domain: milestones + play carry an explicit domain; everything
   // else falls back to a sensible per-kind domain (descriptive, never a verdict).
@@ -222,7 +227,7 @@ export default function JournalTab() {
             <button
               key={key}
               type="button"
-              onClick={() => setActiveTab("behaviors")}
+              onClick={() => startCapture(key)}
               className="flex items-center justify-center gap-2 rounded-[13px] py-3.5 min-h-[44px] text-[12.5px] font-extrabold transition hover:-translate-y-0.5"
               style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
             >

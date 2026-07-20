@@ -20,7 +20,6 @@ export type ReportContext = {
   child: ChildProfile;
   logs: BehaviorLog[];
   plans: ActionPlan[];
-  milestonesPercent: number;
   checkedMilestones: number;
   totalMilestones: number;
   /** Optional stylized hero portrait to anchor the printed document to the child.
@@ -28,9 +27,17 @@ export type ReportContext = {
   heroImageUrl?: string;
 };
 
-export type ReportType =
-  | "weekly" | "teacher" | "therapist" | "pediatrician"
-  | "snapshot" | "behavior" | "language" | "growth";
+/** Professional audiences (IA W4.2) build through the consult preset
+ *  serializer (`src/consult/packet.ts`) — audience data ceilings + the
+ *  fail-closed clinical scan — and reuse only this module's print shell.
+ *  This module itself builds the PARENT's own records. */
+export type ProfessionalReportType = "teacher" | "therapist" | "pediatrician";
+export type ParentReportType = "weekly" | "snapshot" | "behavior" | "language" | "growth";
+export type ReportType = ParentReportType | ProfessionalReportType;
+
+export function isProfessionalReportType(type: ReportType): type is ProfessionalReportType {
+  return type === "teacher" || type === "therapist" || type === "pediatrician";
+}
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -50,12 +57,12 @@ function topTrigger(logs: BehaviorLog[]) {
   return top;
 }
 
-export function buildReport(type: ReportType, ctx: ReportContext): ReportDoc {
+export function buildReport(type: ParentReportType, ctx: ReportContext): ReportDoc {
   return { ...buildReportBody(type, ctx), heroImageUrl: ctx.heroImageUrl };
 }
 
-function buildReportBody(type: ReportType, ctx: ReportContext): ReportDoc {
-  const { child, logs, plans, milestonesPercent, checkedMilestones, totalMilestones } = ctx;
+function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc {
+  const { child, logs, plans, checkedMilestones, totalMilestones } = ctx;
   const wk = recentLogs(logs, 7);
   const mo = recentLogs(logs, 28);
   const common = `${child.name}, age ${child.age}`;
@@ -64,40 +71,12 @@ function buildReportBody(type: ReportType, ctx: ReportContext): ReportDoc {
     case "weekly":
       return { title: "Weekly Insight", subtitle: common, sections: [
         { heading: "This week", body: [`${wk.length} moments logged`, `Average intensity: ${avgIntensity(wk)} / 5`, `Most-logged: ${topTrigger(wk)}`] },
-        { heading: "Development", body: [`Milestone readiness: ${milestonesPercent}% (${checkedMilestones}/${totalMilestones})`] },
+        { heading: "Development", body: [`${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
         { heading: "Suggested focus", body: child.challenges.slice(0, 2) },
-      ]};
-    case "teacher":
-      return { title: "Teacher Handoff", subtitle: common, sections: [
-        { heading: "Child context", body: [`${common}`, `Strengths: ${child.strengths.join("; ")}`] },
-        { heading: "School context", body: child.schoolContext },
-        { heading: "Language transition", body: child.languages.join(" · ") },
-        { heading: "Recent patterns", body: [`Most-logged: ${topTrigger(mo)}`, `Avg intensity (28d): ${avgIntensity(mo)} / 5`] },
-        { heading: "What helps", body: wk.map((l) => l.response).filter(Boolean).slice(0, 3) },
-        { heading: "What escalates / watch", body: child.challenges },
-        { heading: "Classroom support suggestions", body: ["Offer a two-choice option before transitions", "Name feelings out loud to support regulation", "Allow a quiet reset space when overwhelmed"] },
-      ]};
-    case "therapist":
-      return { title: "Therapist Summary", subtitle: common, sections: [
-        { heading: "Primary concern", body: child.challenges[0] || "General developmental support" },
-        { heading: "Timeline & frequency", body: [`${mo.length} relevant moments in the last 28 days`, `Average intensity: ${avgIntensity(mo)} / 5`] },
-        { heading: "Patterns", body: [`Most-logged: ${topTrigger(mo)}`] },
-        { heading: "Parent-tried interventions", body: mo.map((l) => l.response).filter(Boolean).slice(0, 5) },
-        { heading: "Risk level", body: child.riskLevel },
-        { heading: "Parent goals", body: child.challenges },
-        { heading: "Non-diagnostic note", body: "This summary reflects parent observations only and is not a clinical diagnosis." },
-      ]};
-    case "pediatrician":
-      return { title: "Pediatrician Summary", subtitle: common, sections: [
-        { heading: "Concern", body: child.challenges[0] || "Routine developmental check" },
-        { heading: "Duration & frequency", body: [`${mo.length} logged moments in 28 days`, `Average intensity ${avgIntensity(mo)} / 5`] },
-        { heading: "Relevant milestones", body: `${milestonesPercent}% readiness for age ${child.age}` },
-        { heading: "Parent observations", body: mo.slice(0, 4).map((l) => `${l.behaviorType}: ${l.trigger || ""}`.trim()) },
-        { heading: "Non-diagnostic framing", body: "Shared to support a clinical conversation; Arbor does not diagnose." },
       ]};
     case "snapshot":
       return { title: "Development Snapshot", subtitle: common, sections: [
-        { heading: "At a glance", body: [`Age ${child.age}`, `Milestone readiness: ${milestonesPercent}%`, `Risk level: ${child.riskLevel}`] },
+        { heading: "At a glance", body: [`Age ${child.age}`, `${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
         { heading: "Strengths", body: child.strengths },
         { heading: "Where to support", body: child.challenges },
         { heading: "Languages", body: child.languages.join(" · ") },

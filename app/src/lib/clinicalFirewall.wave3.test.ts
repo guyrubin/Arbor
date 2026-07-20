@@ -5,7 +5,7 @@ import * as path from "path";
 /**
  * Wave-3 clinical-firewall test (2026-06-26).
  *
- * Asserts that the demoted surfaces (TrendsChart, DevScoreCard, DevScoreStrip,
+ * Asserts that the demoted surfaces (DevScoreCard, DevScoreStrip,
  * OverviewTab dev-map card, StoryTimelineTab momentum strip, BehaviorsTab
  * per-type strip) + the prose paths (childStory, signalTimeline.deriveNextStep)
  * + their i18n keys NO LONGER emit any verdict-shaped primitive on a child
@@ -27,7 +27,7 @@ function read(rel: string): string {
 
 // The surfaces demoted in Wave-3. None may render a verdict primitive anymore.
 const DEMOTED_SURFACES = [
-  "components/overview/TrendsChart.tsx",
+  // TrendsChart.tsx was deleted in the IA W6.3 dead-code sweep (zero importers).
   "components/overview/DevScoreStrip.tsx",
   "components/sections/DevScoreCard.tsx",
   // 2026-07-04 release audit: the sidebar milestone badge rendered
@@ -46,6 +46,35 @@ describe("shared kit — no graded child verdict text", () => {
   it("TrustSafetyBar renders no 'Risk: <grade>' text", () => {
     expect(code, "kit.tsx interpolates a risk grade into visible text").not.toMatch(/Risk:\s*\{|Risk:\s*[LMH]/);
   });
+});
+
+// 2026-07-20 (product council): the Wave-3 guard scanned only the demoted dev-score
+// surfaces + kit, so a graded child RISK verdict survived on three surfaces it never
+// looked at — the coach answer card ("Risk: <grade>" chip), the Safety banner
+// ("Current risk level"), and the rendered coach markdown ("Risk level: **X**").
+// These are the highest-severity firewall leaks (a verdict on the child, parent- and
+// clinician-facing). Removed, and pinned here: the riskLevel FIELD may exist for
+// internal reasoning, but no visible text on these surfaces may render it as a grade.
+describe("coach & safety surfaces — no graded child risk verdict in visible text", () => {
+  const VERDICT_TEXT = [
+    /Risk level:\s*\*\*/i,        // rendered coach markdown
+    /Current risk level/i,        // Safety banner
+    /Risk:\s*\{/,                 // JSX-interpolated grade chip
+    /Risk:\s*\$\{/,               // template-interpolated grade
+    /Risk:\s*[LMH][a-z]+/,        // literal "Risk: Low/Moderate/High"
+  ];
+  for (const rel of [
+    "components/coach/CoachAnswerCards.tsx",
+    "components/tabs/SafetyTab.tsx",
+    "contracts/coach.ts",
+  ]) {
+    it(`${rel} renders no risk-grade verdict text`, () => {
+      const code = stripComments(read(rel));
+      for (const pat of VERDICT_TEXT) {
+        expect(code, `${rel} emits a graded risk verdict (${pat}) into visible text`).not.toMatch(pat);
+      }
+    });
+  }
 });
 
 // Tokens that NEVER belong on a child metric in the demoted surfaces. (Accent-

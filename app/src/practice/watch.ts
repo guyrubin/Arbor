@@ -65,7 +65,10 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
       level,
       evidence: lagging.map((s) => {
         const e = SOUND_LIBRARY.find((x) => x.id === s.sound);
-        return `/${s.sound}/ at ${s.recentAccuracy}% after ${s.attempts} practice tries (typically settled ${e?.typicalAge})`;
+        // Counts, never percentages (IA W4.5): evidence rides into clinician exports.
+        const recentWindow = Math.min(s.attempts, 10);
+        const landed = Math.round((s.recentAccuracy / 100) * recentWindow);
+        return `/${s.sound}/ landed about ${landed} of the last ${recentWindow} practice tries, ${s.attempts} total (typically settled ${e?.typicalAge})`;
       }),
       plan: [
         "Keep 5 minutes of daily Speech Coach play on one lagging sound — model, don't correct.",
@@ -112,7 +115,8 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
       domain: "cognition",
       level: "monitor",
       evidence: [
-        `${Math.round(advRate * 100)}% first-try answers across ${input.adventureScenes} adventure scenes`,
+        // Counts, never percentages (IA W4.5): evidence rides into clinician exports.
+        `${input.adventureCorrect} of ${input.adventureScenes} adventure scenes answered right on the first try`,
         `Thinking & logic band currently ${cogBand.band}`,
       ],
       plan: [

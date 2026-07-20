@@ -2,23 +2,39 @@ import React from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
+import type { CaptureMode } from "../../context/ArborContext";
 
-/* Quick Capture — the always-present door into logging a moment. Pinned to the
-   bottom of the Today scroll region on phones (clears the home indicator + tab
-   bar via --safe-bottom) and inline at the top of the spine on desktop. It is
-   the first interactive element in Today so keyboard users reach capture first.
-   Convenience, not a nag: it opens the existing QuickLogModal, nothing more. */
+/* Quick Capture — the ambient door into logging a moment, above the forms in
+   the capture hierarchy. First in Today's DOM so keyboard users reach capture
+   first; on phones `order-last` gives it a real flow slot at the END of the
+   column so the sticky-bottom pin genuinely engages (a sticky-bottom FIRST
+   child never sticks), with a bottom offset that clears the fixed MobileNav
+   tab bar (< md) + the home indicator. Inline at the top of the spine on lg+.
+   Three modality affordances, ZERO new capture paths: the primary CTA opens
+   the existing QuickLogModal inline (text), and the mic / photo tiles hand the
+   mode to the EXISTING requestCapture() seam — the same one JournalTab's
+   compose tiles use (BehaviorsTab consumes it once and opens the real
+   voice/photo flow). Convenience, not a nag. */
 
 const GREEN = "var(--arbor-green-ink)";
 const RULE = "var(--arbor-rule)";
 
+/** Ambient aux modes — Material Symbols glyphs shared with JournalTab's compose tiles. */
+const AUX_MODES: { ms: string; key: Exclude<CaptureMode, "text">; label: string }[] = [
+  { ms: "mic", key: "voice", label: "today.capture.voice" },
+  { ms: "photo_camera", key: "photo", label: "today.capture.photo" },
+];
+
 export default function QuickCaptureBar({
   childName,
-  onCapture,
+  onText,
+  onMode,
 }: {
   childName: string;
-  /** Open the existing QuickLogModal. */
-  onCapture: () => void;
+  /** Open the existing QuickLogModal (text capture, inline on Today). */
+  onText: () => void;
+  /** Hand voice/photo to the existing requestCapture() seam. */
+  onMode: (mode: CaptureMode) => void;
 }) {
   const reduce = useReducedMotion();
   const { t } = useLanguage();
@@ -28,14 +44,13 @@ export default function QuickCaptureBar({
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { duration: 0.16 }}
-      className="sticky z-20 lg:static"
-      style={{ bottom: "var(--safe-bottom, env(safe-area-inset-bottom, 0px))" }}
+      className="sticky z-20 order-last bottom-[calc(var(--safe-bottom,env(safe-area-inset-bottom,0px))_+_64px)] md:bottom-[var(--safe-bottom,env(safe-area-inset-bottom,0px))] lg:static lg:order-none flex items-stretch gap-2"
     >
       <button
         type="button"
-        onClick={onCapture}
+        onClick={onText}
         aria-label={t("today.capture.aria", { name: childName })}
-        className="w-full inline-flex items-center justify-center gap-2 text-white font-bold text-[15px] rounded-2xl px-5 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="flex-1 inline-flex items-center justify-center gap-2 text-white font-bold text-[15px] rounded-2xl px-5 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
         style={{
           minHeight: 48,
           background: "var(--arbor-gradient-primary)",
@@ -46,6 +61,25 @@ export default function QuickCaptureBar({
       >
         <Icon name="add" size={20} /> {t("today.capture.cta")}
       </button>
+      {AUX_MODES.map(({ ms, key, label }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onMode(key)}
+          aria-label={t(label)}
+          title={t(label)}
+          className="w-12 inline-flex items-center justify-center rounded-2xl bg-white transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          style={{
+            minHeight: 48,
+            border: `1px solid ${RULE}`,
+            color: GREEN,
+            boxShadow: "var(--shadow-sm)",
+            ["--tw-ring-color" as string]: GREEN,
+          } as React.CSSProperties}
+        >
+          <Icon name={ms} size={21} fill={1} />
+        </button>
+      ))}
     </motion.div>
   );
 }

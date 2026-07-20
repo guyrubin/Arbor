@@ -6,7 +6,6 @@ import {
   ActionPlan,
   BedtimeStory,
   BehaviorAnalysis,
-  SchoolBrief,
   MemoryReviewItem,
   BehaviorContext,
   DevelopmentalDomainId,
@@ -15,6 +14,7 @@ import {
   PlayLog,
 } from "../types";
 import type { ScoredActivity } from "../playbank/select";
+import { ROUTE_IDS, type ActiveTab } from "../lib/routes";
 import {
   sampleBehaviorLogs,
   initialMilestones,
@@ -29,6 +29,7 @@ import { runInstrumented } from "../hooks/useAsyncAction";
 import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
+import { takeCoachSeed } from "../lib/onboardingJourney";
 
 const readLS = (key: string): string | null => {
   try {
@@ -55,88 +56,17 @@ const renderApiConnectionError = (message: string) => {
   return `### Connection Error\nCould not fetch response from the server.\n\n**Reason:** ${reason}\n\n${authHint}`;
 };
 
-export type ActiveTab =
-  // existing leaf views (preserved)
-  | "overview"
-  | "coach"
-  | "behaviors"
-  | "milestones"
-  | "plans"
-  | "stories"
-  | "weekly"
-  | "scholar"
-  | "language"
-  | "handoff"
-  | "safety"
-  // new capability views (IA refactor)
-  | "profile"        // Child Intelligence › Development Profile
-  | "memory"         // Child Intelligence › Child Memory
-  | "strengths"      // Child Intelligence › Strengths & Challenges
-  | "screening"      // Child Intelligence › Development Check (non-diagnostic screener)
-  | "timeline"       // Child Intelligence › Story (unified signal timeline)
-  | "journal"        // Journal › action-forward log + flat moment feed (UC-1; additive to timeline)
-  | "find-pro"       // Care Network › Find a Professional
-  | "care-team"      // Care Network › My Care Team
-  | "appointments"   // Care Network › Appointments
-  | "sharing"        // Care Network › Trusted Sharing
-  | "reports"        // Care Network › Reports
-  | "masterclasses"  // Arbor Academy › Parent Masterclasses
-  | "family"         // Arbor Academy › Family Formation
-  | "comics"         // Arbor Academy › Hero Comics (child-as-hero comic generator)
-  // Practice Studio (Fall release: speech & language suite)
-  | "speech"         // Practice Studio › Speech Coach (articulation)
-  | "mimic"          // Practice Studio › Mimic Studio (imitation play)
-  | "feelings"       // Practice Studio › Feelings Lab (emotion coaching)
-  // (ia-b1) "missions" retired as a standalone route — the daily mission loop is
-  // now folded into Today (OverviewTab). Mission DATA still lives in usePracticeData.
-  | "journey"        // Practice Studio › Development Journey
-  | "adventures"     // Practice Studio › Cognitive Adventures
-  | "copilot"        // My Child › Development Dashboard (Copilot)
-  // IA v3: 6-pillar consolidation hubs (merge confusable/duplicate leaves)
-  | "development"    // My Child › Development (merges copilot+profile+milestones+journey)
-  | "daily-play"     // Grow › Daily Play (household-item activity library)
-  | "practice"       // Grow › Practice (hub over speech+mimic+feelings+adventures)
-  | "consult"        // Care › Consult (merges reports+handoff+find-pro)
-  // Internal / admin-only (P0-5): attribution + UTM funnel dashboard. Reachable
-  // by deep link (#/attribution) and from the admin-gated Settings entry; never
-  // surfaced in the parent-facing sidebar. The view itself enforces admin gating.
-  | "attribution"
-  // AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI.
-  // Read-only detail view, reachable from Today/Overview; does NOT replace the inline nudge.
-  | "day-windows"
-  // AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI engine.
-  // Parent-only surface (no child data, no consent surface, no redaction implication).
-  | "smart-reminders"
-  // AP-060: "The Science" — parent-facing trust/source-transparency page.
-  // Static editorial content — no child data read, captured, processed, or exported.
-  | "science"
-  // AP-056: School Handoff Brief — parent-controlled, teacher-facing, curated,
-  // non-diagnostic 1-page export. DISTINCT from the clinician Consult packet.
-  | "school-brief"
-  // AP-057: Bedtime Stories — day-rooted AI-generated nightly story, avatar-starring,
-  // HE/EN read-aloud. Distinct from Hero Journeys (stories route). Generate-and-discard
-  // design (no persistent library); escalation screen + redaction enforced server-side.
-  | "bedtime-stories"
-  // Wireframe: Ready-made Routines — a research-backed library of 7 named
-  // routines (morning, goodbye, meal, tidy, screens, bedtime…), each a
-  // checkable step board. Grows › Routines.
-  | "routines";
-
 // IA-1: URL hash routing. Each leaf view maps to `#/<tab>` for deep links and a
-// working browser back/forward button.
-const VALID_TABS = new Set<string>([
-  "overview", "coach", "behaviors", "milestones", "plans", "stories", "weekly", "scholar", "language", "handoff", "safety",
-  "profile", "memory", "strengths", "screening", "timeline", "journal", "find-pro", "care-team", "appointments", "sharing", "reports", "masterclasses", "family", "comics",
-  "speech", "mimic", "feelings", "journey", "adventures", "copilot",
-  "development", "daily-play", "practice", "consult",
-  "attribution",
-  "day-windows", // AP-051: Day Windows detail panel (read-only, from Today)
-  "smart-reminders", // AP-058: Smart Reminders settings (parent prefs over existing JITAI)
-  "science", // AP-060: The Science trust page (static editorial, no child data)
-  "school-brief", // AP-056: School Handoff Brief (parent-controlled, teacher-facing, curated)
-  "bedtime-stories", // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
-  "routines", // Wireframe: Ready-made Routines library (Growth › Routines)
-]);
+// working browser back/forward button. The `ActiveTab` type and this runtime
+// guard both derive from the ROUTE_IDS single source of truth in lib/routes.ts —
+// re-exported here so existing `import { ActiveTab } from "../context/ArborContext"`
+// call sites keep working unchanged.
+export type { ActiveTab };
+const VALID_TABS = new Set<string>(ROUTE_IDS);
+
+/** The modality a "log a moment" entry tile promises; the capture surface opens
+ *  in this mode when a request is pending. */
+export type CaptureMode = "voice" | "photo" | "text";
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this
  *  array is derived from VALID_TABS and is never read by any render path. */
@@ -188,6 +118,32 @@ function useArborState() {
     setActiveTabState(t);
     try { if (window.location.hash.replace(/^#\/?/, "") !== t) window.location.hash = `/${t}`; } catch { /* noop */ }
     try { track("view_tab", { tab: t }); } catch { /* noop */ }
+  };
+
+  /**
+   * Capture hand-off: a surface that offers "log a moment" entry tiles (Journal)
+   * can name the modality it promised, and the capture surface (Behaviors) opens
+   * in that mode and clears the request. Without this the entry tiles were
+   * decoys — a bare setActiveTab("behaviors") that ignored the chosen mode.
+   */
+  const [pendingCaptureMode, setPendingCaptureMode] = useState<CaptureMode | null>(null);
+  const requestCapture = (mode: CaptureMode) => setPendingCaptureMode(mode);
+  const consumeCaptureRequest = () => setPendingCaptureMode(null);
+
+  /**
+   * The single seam for handing a prompt to Ask Arbor from anywhere in the app.
+   * Historically 18+ surfaces hand-rolled the same `setChatInput(...) +
+   * (setSelectedLens(...)) + setActiveTab("coach")` triple; that sprawl had no
+   * lens coordination and no provenance. Route every external coach entry point
+   * through here instead. `lens` is optional (a caller that wants to steer the
+   * scholar frame passes one; callers that respect the parent's current lens
+   * omit it). `source` tags where the seed came from for telemetry.
+   */
+  const seedCoach = (opts: { prompt?: string; lens?: string; source?: string }) => {
+    if (opts.prompt !== undefined) setChatInput(opts.prompt);
+    if (opts.lens) setSelectedLens(opts.lens);
+    setActiveTab("coach");
+    try { track("coach_seed", { source: opts.source ?? "unknown" }); } catch { /* noop */ }
   };
   // UC-wireframe: the right-hand AI "how Arbor helps" rail is a third column the
   // wireframe does not have. Default it OFF (opt-in via the topbar toggle) so the
@@ -261,16 +217,10 @@ function useArborState() {
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
   // Onboarding → coach seeding: OnboardingFlow (which renders outside this
-  // provider) leaves the parent's "what's on your mind" concern in storage; the
-  // coach composer starts pre-filled with it on the very first session.
-  const [chatInput, setChatInput] = useState<string>(() => {
-    const seed = readLS("arbor.coachSeed");
-    if (seed) {
-      try { localStorage.removeItem("arbor.coachSeed"); } catch { /* ignore */ }
-      return seed;
-    }
-    return "";
-  });
+  // provider) leaves the parent's "what's on your mind" concern in the journey
+  // store (lib/onboardingJourney); the coach composer starts pre-filled with it
+  // on the very first session. takeCoachSeed() is read-once-and-clear.
+  const [chatInput, setChatInput] = useState<string>(() => takeCoachSeed() ?? "");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   // Multi-thread coach conversations (persisted per child).
   const conversationsCol = useChildCollection<Conversation>(childProfile.id, "conversations");
@@ -320,14 +270,10 @@ function useArborState() {
   const [behaviorAnalysis, setBehaviorAnalysis] = useState<BehaviorAnalysis | null>(null);
   const [isAnalyzingBehavior, setIsAnalyzingBehavior] = useState<boolean>(false);
 
-  // Form states: School Brief
-  const [schoolBrief, setSchoolBrief] = useState<SchoolBrief | null>(null);
-  const [isGeneratingBrief, setIsGeneratingBrief] = useState<boolean>(false);
   const [memoryReviewItems, setMemoryReviewItems] = useState<MemoryReviewItem[]>([]);
   const [isMemoryUpdating, setIsMemoryUpdating] = useState<string | null>(null);
 
   // Embedded Interactive AI States and Helpers
-  const [handoffAudience, setHandoffAudience] = useState<"teacher" | "clinician" | "pediatrician">("teacher");
   const [milestoneAnalysisOfGaps, setMilestoneAnalysisOfGaps] = useState<string>("");
   const [isAnalyzingMilestones, setIsAnalyzingMilestones] = useState<boolean>(false);
   const [inlineCoRegulationScripts, setInlineCoRegulationScripts] = useState<{ [logId: string]: string }>({});
@@ -906,27 +852,6 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     }
   };
 
-  // Generate Handoff Brief Report
-  const handleGenerateBrief = async () => {
-    setIsGeneratingBrief(true);
-    setApiError(null);
-    try {
-      const briefData = await api.generateBrief({
-        childProfile,
-        logs: behaviorLogs,
-        milestones,
-        audience: handoffAudience,
-      });
-      setSchoolBrief(briefData);
-    } catch (err: any) {
-      console.error(err);
-      if (err instanceof PaywallError) openPaywall(err.feature || "professionalReports", err.plan);
-      else setApiError(err.message || "Failed to generate professional school ready brief.");
-    } finally {
-      setIsGeneratingBrief(false);
-    }
-  };
-
   // Mark a behavior log resolved / unresolved
   const toggleLogResolved = (id: string) => {
     const log = behaviorLogs.find((l) => l.id === id);
@@ -1004,6 +929,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setSelectedLens,
     chatInput,
     setChatInput,
+    seedCoach,
+    pendingCaptureMode,
+    requestCapture,
+    consumeCaptureRequest,
     chatMessages,
     conversations,
     activeConversationId,
@@ -1054,13 +983,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     storyReadingProgress,
     behaviorAnalysis,
     isAnalyzingBehavior,
-    schoolBrief,
-    setSchoolBrief,
-    isGeneratingBrief,
     memoryReviewItems,
     isMemoryUpdating,
-    handoffAudience,
-    setHandoffAudience,
     milestoneAnalysisOfGaps,
     isAnalyzingMilestones,
     inlineCoRegulationScripts,
@@ -1084,7 +1008,6 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     handleAnalyzeBehaviors,
     handleGenerateActionPlan,
     handleGenerateStory,
-    handleGenerateBrief,
     handleToggleMilestone,
     addCustomMilestone,
     handleTogglePlanStep,

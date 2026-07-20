@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Home, Sprout, HeartHandshake, GraduationCap,
   LayoutDashboard, Activity, Languages,
-  Users, FileBarChart, Calendar,
+  FileBarChart, Calendar,
   Share2, BookOpen, Sliders, Waypoints, ShieldAlert,
   Target, Map, Gauge, School, Moon,
   MessageCircle, NotebookPen, UserCircle,
@@ -144,13 +144,18 @@ export const SECTIONS: NavSection[] = [
     label: "Journal",
     icon: NotebookPen,
     msIcon: "edit_note",
+    // Journal and Story are two DENSITIES of one timeline surface (TimelineTab),
+    // not two capabilities: they render the same ledger stream. The density
+    // toggle lives IN the surface, so the hub exposes a single capability — a
+    // pill row switching the same thing would re-create the duplication this
+    // collapse removes. `timeline` is therefore no longer a separately-navigable
+    // leaf; it stays a valid deep-link route that resolves back to this section
+    // via TAB_SECTION_FALLBACK.
     items: [
       { tab: "journal", label: "Journal", icon: NotebookPen },
-      { tab: "timeline", label: "Story", icon: Waypoints },
     ],
     primaryTabs: [
       { tab: "journal", label: "Journal", icon: NotebookPen },
-      { tab: "timeline", label: "Story", icon: Waypoints },
     ],
     tools: [],
   },
@@ -204,21 +209,20 @@ export const SECTIONS: NavSection[] = [
     items: [
       { tab: "consult", label: "Consult", icon: FileBarChart },
       { tab: "school-brief", label: "School Brief", icon: School },
-      { tab: "care-team", label: "My Care Team", icon: Users },
       { tab: "sharing", label: "Trusted Sharing", icon: Share2 },
       { tab: "appointments", label: "Appointments", icon: Calendar },
       { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
     ],
     // Hub (Consult) + Safety (the load-bearing escalation surface). School Brief,
-    // Care Team, Trusted Sharing and Appointments are the hub's contextual tools
-    // (folded out of the drawer).
+    // Trusted Sharing and Appointments are the hub's contextual tools (folded out
+    // of the drawer). W4.4: My Care Team merged into Trusted Sharing — one
+    // roster surface over the same share grants.
     primaryTabs: [
       { tab: "consult", label: "Consult", icon: FileBarChart },
       { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
     ],
     tools: [
       { tab: "school-brief", label: "School Brief", icon: School, msIcon: "school" },
-      { tab: "care-team", label: "My Care Team", icon: Users, msIcon: "groups" },
       { tab: "sharing", label: "Trusted Sharing", icon: Share2, msIcon: "share" },
       { tab: "appointments", label: "Appointments", icon: Calendar, msIcon: "calendar_month" },
     ],
@@ -252,7 +256,7 @@ export const SECTIONS: NavSection[] = [
  * of those views opens by deep link or programmatic navigation. The guard test
  * (navigation.test.ts) asserts sectionForTab() resolves for EVERY ActiveTab.
  */
-const TAB_SECTION_FALLBACK: Record<string, string> = {
+export const TAB_SECTION_FALLBACK: Record<string, string> = {
   // Growth — the development hub absorbs copilot/journey/screening; strengths is
   // folded into the Development Profile but resolves to Growth's map spine.
   copilot: "growth",
@@ -269,6 +273,10 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   mimic: "growth",
   feelings: "growth",
   adventures: "growth",
+
+  // Journal — Story is the rich DENSITY of the one timeline surface, reached by
+  // the in-surface density toggle (and deep links), not by its own pill.
+  timeline: "journal",
 
   // Profile — the development profile is the Profile category; weekly snapshot
   // surfaces from the Story/Journal spine but resolves to Profile.
@@ -287,6 +295,9 @@ const TAB_SECTION_FALLBACK: Record<string, string> = {
   reports: "care",
   handoff: "care",
   "find-pro": "care",
+  // W4.4: My Care Team merged into Trusted Sharing — #/care-team stays a valid
+  // deep-link route resolving to Care (Shell hosts it on TrustedSharing).
+  "care-team": "care",
   // Internal/admin: attribution dashboard reached by deep link / admin Settings.
   attribution: "care",
   // UC-4: The Science is a product trust/editorial page, not a care surface —

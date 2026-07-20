@@ -72,7 +72,6 @@ export const en: Dict = {
   "nav.tab.adventures": "Adventures",
   "nav.tab.plans": "Growth Plans",
   "nav.tab.weekly": "Weekly Report",
-  "nav.tab.care-team": "My Care Team",
   "nav.tab.find-pro": "Find a Professional",
   "nav.tab.reports": "Reports & Handoffs",
   "nav.tab.sharing": "Trusted Sharing",
@@ -106,20 +105,16 @@ export const en: Dict = {
   "aria.signout": "Sign out",
   "aria.notifications": "Notifications",
   "aria.switchChild": "Switch child",
+  "aria.activeChildSwitch": "Active child: {name}. Switch child",
   "aria.applicationTopbar": "Application topbar",
   "aria.arborMark": "Arbor",
   "aria.sproutMascot": "Sprout, Arbor's guide",
-  "aria.parentChildIllustration": "A parent holding their child",
   "aria.storyIllustration": "Story illustration",
   "aria.saveComicPage": "Save this comic page",
   "aria.hidePanel": "Hide this panel",
   "aria.kidMode": "Kid Mode",
   "aria.launchKidMode": "Launch Kid Mode",
   "aria.kidModeSections": "Kid Mode sections",
-  "aria.deleteGoal": "Delete goal",
-  "aria.dailyReminderTime": "Daily reminder time",
-  "aria.dailyLogReminder": "Daily log reminder",
-  "aria.monthlySafetyReview": "Monthly safety review",
   "aria.removeAppointment": "Remove appointment",
   "aria.removeQuestion": "Remove question",
   "aria.globalSearch": "Global search",
@@ -138,8 +133,6 @@ export const en: Dict = {
   "aria.interests": "Interests",
   "aria.addCustomInterest": "Add a custom interest",
   "aria.addInterest": "Add interest",
-  "aria.domainRadar": "Domain radar",
-  "aria.dismissGoalPrompt": "Dismiss goal prompt",
   "aria.yourHero": "Your hero",
   "aria.exitImmersive": "Exit immersive",
   "aria.renameCustomMilestone": "Rename custom milestone",
@@ -356,9 +349,10 @@ export const en: Dict = {
   "coach.specialist.lead": "Want a human?",
   "coach.specialist.toast": "Opening the specialist handoff — you choose what to share.",
   "coach.specialist.aria": "Ask a human specialist — open the consult handoff",
-  // UC-1 ask — persistent coach identity strip (en)
-  "coach.coachName": "Dr. Levi",
-  "coach.coachStatus": "Online now",
+  // UC-1 ask — persistent coach identity strip (en). Honest-AI disclosure: no doctor honorific,
+  // no live-human presence signal (clinical firewall / AI Act Art.50). Council 2026-07-18.
+  "coach.coachName": "Arbor Coach",
+  "coach.coachStatus": "AI guide · always here",
   "coach.send.aria": "Send message",
   // EU AI Act Art. 50 — persistent AI-interaction transparency line on the Ask
   // surface (always visible under the input; non-diagnostic register).
@@ -646,6 +640,7 @@ export const en: Dict = {
   "profile.interests.addPlaceholder": "Something else…",
   "profile.interests.addBtn": "Add",
   "profile.interests.updated": "Updated {when}",
+  "profile.ageLine": "Age {age}",
   // CI-29: 12 suggested interests (EN)
   "interest.trains": "Trains",
   "interest.dinosaurs": "Dinosaurs",
@@ -662,8 +657,6 @@ export const en: Dict = {
   // section headers (Care / Academy / My Child)
   "sec.appt.title": "Appointments",
   "sec.appt.sub": "Prepare for sessions, share context, and capture follow-ups, so every appointment moves your child forward.",
-  "sec.care.title": "My care team",
-  "sec.care.sub": "The people coordinating around {name}, with exactly the context you've shared, and nothing more.",
   "sec.mem.title": "Child memory",
   "sec.mem.sub": "The facts about {name} that Arbor remembers, only what you approve. Source-linked, time-stamped and forgettable, always.",
   "sec.family.title": "Family formation",
@@ -1010,6 +1003,8 @@ export const en: Dict = {
   "today.part.evening.eyebrow": "Wind down with {name}",
   "today.capture.cta": "Capture a moment",
   "today.capture.aria": "Capture a moment in {name}'s story",
+  "today.capture.voice": "Capture with voice",
+  "today.capture.photo": "Capture with a photo",
   "today.memory.evening.title": "Look back on today",
   "today.memory.evening.body": "{n} new things Arbor noticed — review before they're saved.",
   "today.mission.eyebrow": "Today's mission",
@@ -1069,13 +1064,6 @@ export const en: Dict = {
   "ov.track.title": "Is {name} on track?",
   "ov.track.desc": "A short, non-diagnostic check across developmental areas.",
   "ov.dailyTools": "Your daily tools",
-  // Wave-3 clinical subtraction: prior keys named an intensity trend + readiness
-  // % (both verdicts). Replaced by a flat recall card (parent-observation only).
-  "trends.eyebrow": "Moments you've logged",
-  "trends.title": "A look back at the last 6 months",
-  "trends.empty": "You haven't logged any moments yet — capture one to start your recall.",
-  "trends.recall": "You've logged {count} moments in the last 6 months — most around {context}.",
-  "trends.recall.noContext": "You've logged {count} moments in the last 6 months.",
   "ov.ageWord": "age",
   "ov.focus.regenerate": "Suggest another focus",
   "ov.toast.focusSet": "Focus set. Daily Play is now matched to what you're working on.",
@@ -1176,8 +1164,8 @@ export const en: Dict = {
   "wk.scholarSpotlight": "Scholar spotlight",
   "wk.scholarExplore": "Explore Scholar Frameworks →",
   "wk.readyToShare": "Ready to share",
-  "wk.compileBrief": "Compile a professional brief from this week for school or clinicians.",
-  "wk.brief": "Build a school brief for {first}",
+  "wk.compileBrief": "Turn this week into a shareable summary for school or clinicians — in Consult, you choose what to share.",
+  "wk.brief": "Build {first}'s summary in Consult",
   // C4 — Physical growth tracking
   "growth.eyebrow": "Physical growth",
   "growth.empty.title": "No measurements yet",
@@ -1235,6 +1223,10 @@ export const en: Dict = {
   "cite.based": "Based on: {source}",
   "cite.toggle.open": "Show sources",
   "cite.toggle.close": "Hide sources",
+  // coach.escalate.* — quiet (low-risk) framing of the escalation footer; content never changes
+  "coach.escalate.title": "When to seek help",
+  "coach.escalate.toggle.open": "Show",
+  "coach.escalate.toggle.close": "Hide",
   // R3 — Pride Moment (arbor-growth): in-app celebration + shareable card
   // Non-diagnostic, positive-only (AADC), claim-free, face-safe (first name only, no score number)
   "pride.title": "A new milestone for {name}",
@@ -1732,6 +1724,9 @@ export const en: Dict = {
   "journal.domain.ecosystem_stressors": "Context",
   "journal.empty": "No moments yet. Log one above — and Arbor will remember the rest for you, right here.",
   "journal.ongoing": "Ongoing",
+  "timeline.density.feed": "Feed",
+  "timeline.density.story": "Story",
+  "timeline.density.aria": "Timeline density",
   "academy.learnMap.title": "Learning Map",
   "academy.learnMap.sub": "Courses matched to where {name} is growing.",
   "academy.courses.title": "All courses",
@@ -1740,39 +1735,6 @@ export const en: Dict = {
   "care.lead": "Built from {name}'s record. Uncheck anything you'd rather keep private.",
   "care.trust": "Nothing leaves your device until you choose · GDPR/COPPA",
   "care.request": "Request consult",
-  // UC-4 Care › Handoff (legacy door folded into Consult; reskinned to <Icon>+sage).
-  "handoff.back": "Reports & Handoffs",
-  "handoff.title": "School & Care Handoff",
-  "handoff.subtitle": "Export structured summaries of behavioral trends and developmental check-ins for teachers, clinics and occupational therapists.",
-  "handoff.weaving": "Weaving brief…",
-  "handoff.compile": "Compile brief summary",
-  "handoff.audience.title": "Briefing audience",
-  "handoff.audience.body": "Arbor customizes professional language, support strategies and developmental observations depending on who is reading {name}'s progress summary.",
-  "handoff.aud.teacher": "Educator focus",
-  "handoff.aud.teacher.sub": "Environment prompts & classroom transitions",
-  "handoff.aud.clinician": "Speech/OT Therapist focus",
-  "handoff.aud.clinician.sub": "Somatic checkpoints & dual-language delays",
-  "handoff.aud.pediatrician": "Pediatrician focus",
-  "handoff.aud.pediatrician.sub": "Developmental watch/wait checks",
-  "handoff.summary.title": "{name}'s Development Handoff Summary",
-  "handoff.summary.audience": "Target audience: educators, occupational therapists, speech consultants & intake teams",
-  "handoff.save": "Save",
-  "handoff.print": "Print",
-  "handoff.saved": "Brief saved to history",
-  "handoff.overview": "Observation overview",
-  "handoff.list.strengths": "Relational strengths (Gardner intelligences)",
-  "handoff.list.challenges": "Classroom sensory & transition challenges",
-  "handoff.list.language": "Transition dual-language plan",
-  "handoff.list.strategies": "Teacher co-regulation strategies",
-  "handoff.crisis": "Crisis trigger warning index:",
-  "handoff.empty.title": "No brief summary compiled yet.",
-  "handoff.empty.body": "Click \"Compile brief summary\" above, and Arbor will put together a printable support brief from {name}'s current milestones and logs.",
-  "handoff.saved.title": "Saved briefs ({n})",
-  "handoff.saved.item": "{audience} brief",
-  "handoff.open": "Open",
-  "handoff.delete": "Delete",
-  // EU AI Act Art. 50 — AI-generated artifact label on the exported/printed brief.
-  "handoff.aiFooter": "This summary was generated with AI assistance and approved by the parent.",
 };
 
 export const he: Dict = {
@@ -1862,7 +1824,6 @@ export const he: Dict = {
   "nav.tab.adventures": "הרפתקאות",
   "nav.tab.plans": "תוכניות התפתחות",
   "nav.tab.weekly": "דוח שבועי",
-  "nav.tab.care-team": "צוות הטיפול שלי",
   "nav.tab.find-pro": "מצאו איש מקצוע",
   "nav.tab.reports": "דוחות והעברות",
   "nav.tab.sharing": "שיתוף מהימן",
@@ -1896,20 +1857,16 @@ export const he: Dict = {
   "aria.signout": "יציאה",
   "aria.notifications": "התראות",
   "aria.switchChild": "החלפת ילד/ה",
+  "aria.activeChildSwitch": "ילד/ה פעיל/ה: {name}. החלפת ילד/ה",
   "aria.applicationTopbar": "סרגל עליון של האפליקציה",
   "aria.arborMark": "Arbor",
   "aria.sproutMascot": "ספראוט, המדריך של Arbor",
-  "aria.parentChildIllustration": "הורה מחזיק את ילדו/ה",
   "aria.storyIllustration": "איור לסיפור",
   "aria.saveComicPage": "שמירת דף הקומיקס",
   "aria.hidePanel": "הסתרת הפאנל",
   "aria.kidMode": "מצב ילדים",
   "aria.launchKidMode": "כניסה למצב ילדים",
   "aria.kidModeSections": "מדורי מצב ילדים",
-  "aria.deleteGoal": "מחיקת יעד",
-  "aria.dailyReminderTime": "שעת תזכורת יומית",
-  "aria.dailyLogReminder": "תזכורת רישום יומי",
-  "aria.monthlySafetyReview": "סקירת בטיחות חודשית",
   "aria.removeAppointment": "הסרת תור",
   "aria.removeQuestion": "הסרת שאלה",
   "aria.globalSearch": "חיפוש כללי",
@@ -1928,8 +1885,6 @@ export const he: Dict = {
   "aria.interests": "תחומי עניין",
   "aria.addCustomInterest": "הוספת תחום עניין מותאם אישית",
   "aria.addInterest": "הוספת תחום עניין",
-  "aria.domainRadar": "תרשים תחומים",
-  "aria.dismissGoalPrompt": "סגירת הצעת יעד",
   "aria.yourHero": "הגיבור שלך",
   "aria.exitImmersive": "יציאה ממצב מיטבי",
   "aria.renameCustomMilestone": "שינוי שם של אבן דרך מותאמת אישית",
@@ -2100,8 +2055,10 @@ export const he: Dict = {
   "coach.specialist.toast": "פותח את ההעברה למומחה — אתה בוחר מה לשתף.",
   "coach.specialist.aria": "פנייה לאיש מקצוע — פתיחת ההעברה לייעוץ",
   // UC-1 ask — persistent coach identity strip (he)
-  "coach.coachName": "ד״ר לוי",
-  "coach.coachStatus": "זמינה עכשיו",
+  // Honest-AI disclosure (he) — doctor honorific + live-presence removed. FLAG: native-Hebrew
+  // review before publish, per the transcreation gate.
+  "coach.coachName": "מאמן Arbor",
+  "coach.coachStatus": "עוזר בינה מלאכותית · תמיד כאן",
   "coach.send.aria": "שליחת הודעה",
   // EU AI Act Art. 50 — persistent AI-interaction transparency line (he).
   "coach.aiDisclosure": "ההכוונה של ארבור נוצרת בבינה מלאכותית ואינה תחליף לייעוץ מקצועי. במקרה חירום פנו לגורם המטפל שלכם.",
@@ -2373,6 +2330,7 @@ export const he: Dict = {
   "profile.interests.addPlaceholder": "משהו אחר…",
   "profile.interests.addBtn": "הוסיפו",
   "profile.interests.updated": "עודכן {when}",
+  "profile.ageLine": "גיל {age}",
   // CI-29: 12 suggested interests (Hebrew)
   "interest.trains": "רכבות",
   "interest.dinosaurs": "דינוזאורים",
@@ -2417,8 +2375,6 @@ export const he: Dict = {
   "cp.activity.empty": "רגעים אחרונים יופיעו כאן ככל שתתעדו את השבוע של {name}.",
   "sec.appt.title": "פגישות",
   "sec.appt.sub": "התכוננו לפגישות, שתפו הקשר, ותעדו המשך, כך שכל פגישה מקדמת את הילד שלכם.",
-  "sec.care.title": "צוות הטיפול שלי",
-  "sec.care.sub": "האנשים שמתאמים סביב {name}, עם בדיוק ההקשר ששיתפתם, ולא יותר.",
   "sec.mem.title": "זיכרון הילד",
   "sec.mem.sub": "העובדות על {name} שארבור זוכר, רק מה שאתם מאשרים. מקושר למקור, מתוארך, וניתן לשכוח תמיד.",
   "sec.family.title": "בניית משפחה",
@@ -2755,6 +2711,8 @@ export const he: Dict = {
   "today.part.evening.eyebrow": "סיימו את היום ברוגע עם {name}",
   "today.capture.cta": "תיעוד רגע",
   "today.capture.aria": "תיעוד רגע בסיפור של {name}",
+  "today.capture.voice": "תיעוד בקול",
+  "today.capture.photo": "תיעוד בתמונה",
   "today.memory.evening.title": "מבט אחורה על היום",
   "today.memory.evening.body": "{n} דברים חדשים שארבור שם לב אליהם — סקרו לפני השמירה.",
   "today.mission.eyebrow": "המשימה של היום",
@@ -2814,13 +2772,6 @@ export const he: Dict = {
   "ov.track.title": "האם {name} בקצב?",
   "ov.track.desc": "בדיקה קצרה ולא־אבחנתית על פני תחומי ההתפתחות.",
   "ov.dailyTools": "הכלים היומיים שלכם",
-  // Wave-3 clinical subtraction: הוחלף כרטיס מגמת עוצמה + אחוז מוכנות (שניהם
-  // פסק־דין) בכרטיס שליפה שטוח — תצפית הורית בלבד. תואם אנגלית.
-  "trends.eyebrow": "רגעים שתיעדתם",
-  "trends.title": "מבט לאחור על ששת החודשים האחרונים",
-  "trends.empty": "עדיין לא תיעדתם רגעים — תעדו אחד כדי להתחיל להיזכר.",
-  "trends.recall": "תיעדתם {count} רגעים בששת החודשים האחרונים — רובם סביב {context}.",
-  "trends.recall.noContext": "תיעדתם {count} רגעים בששת החודשים האחרונים.",
   "ov.ageWord": "גיל",
   "ov.focus.regenerate": "הציעו מיקוד אחר",
   "ov.toast.focusSet": "המיקוד נקבע. המשחק היומי כעת מותאם למה שאתם עובדים עליו.",
@@ -2890,8 +2841,8 @@ export const he: Dict = {
   "wk.scholarSpotlight": "זרקור מומחה",
   "wk.scholarExplore": "גלו מסגרות מומחים →",
   "wk.readyToShare": "מוכן לשיתוף",
-  "wk.compileBrief": "הרכיבו סיכום מקצועי מהשבוע הזה לבית הספר או לגורמי הטיפול.",
-  "wk.brief": "צרו סיכום לבית הספר עבור {first}",
+  "wk.compileBrief": "הפכו את השבוע הזה לסיכום לשיתוף עם בית הספר או גורמי הטיפול — בהתייעצות אתם בוחרים מה לשתף.",
+  "wk.brief": "צרו סיכום עבור {first} בהתייעצות",
   // C4 — Physical growth tracking
   "growth.eyebrow": "גדילה גופנית",
   "growth.empty.title": "אין מדידות עדיין",
@@ -2949,6 +2900,10 @@ export const he: Dict = {
   "cite.based": "בהתבסס על: {source}",
   "cite.toggle.open": "הצג מקורות",
   "cite.toggle.close": "הסתר מקורות",
+  // coach.escalate.* — quiet (low-risk) framing of the escalation footer; content never changes
+  "coach.escalate.title": "מתי כדאי לפנות לעזרה",
+  "coach.escalate.toggle.open": "הצגה",
+  "coach.escalate.toggle.close": "הסתרה",
   // pride.* — milestone pride moment (R3)
   "pride.title": "אבן דרך חדשה ל{name}",
   "pride.titleGeneric": "אבן דרך חדשה",
@@ -3439,6 +3394,9 @@ export const he: Dict = {
   "journal.domain.ecosystem_stressors": "הקשר",
   "journal.empty": "עדיין אין רגעים. תעדו אחד למעלה — וארבור כבר תזכור בשבילכם את השאר, ממש כאן.",
   "journal.ongoing": "מתמשך",
+  "timeline.density.feed": "פיד",
+  "timeline.density.story": "סיפור",
+  "timeline.density.aria": "תצוגת ציר הזמן",
   "academy.learnMap.title": "מפת הלמידה",
   "academy.learnMap.sub": "קורסים מותאמים לאן ש{name} מתפתח.",
   "academy.courses.title": "כל הקורסים",
@@ -3447,39 +3405,6 @@ export const he: Dict = {
   "care.lead": "נבנה מהנתונים של {name}. בטלו סימון של כל מה שתעדיפו לשמור פרטי.",
   "care.trust": "כלום לא יוצא מהמכשיר עד שתבחרו · GDPR/COPPA",
   "care.request": "בקשת ייעוץ",
-  // UC-4 Care › Handoff (HE; flagged for arbor-localization native review).
-  "handoff.back": "דוחות והעברות",
-  "handoff.title": "העברה לבית הספר ולצוות הטיפול",
-  "handoff.subtitle": "ייצוא סיכומים מובנים של מגמות התנהגותיות ובדיקות התפתחותיות עבור מורים, מרפאות ומרפאים בעיסוק.",
-  "handoff.weaving": "מכינים סיכום…",
-  "handoff.compile": "הפקת סיכום קצר",
-  "handoff.audience.title": "קהל היעד של הסיכום",
-  "handoff.audience.body": "Arbor מתאימה את השפה המקצועית, אסטרטגיות התמיכה והתצפיות ההתפתחותיות בהתאם למי שקורא את סיכום ההתקדמות של {name}.",
-  "handoff.aud.teacher": "מיקוד למורים",
-  "handoff.aud.teacher.sub": "רמזים סביבתיים ומעברים בכיתה",
-  "handoff.aud.clinician": "מיקוד לקלינאי תקשורת/מרפא בעיסוק",
-  "handoff.aud.clinician.sub": "נקודות בדיקה גופניות ועיכובים דו-לשוניים",
-  "handoff.aud.pediatrician": "מיקוד לרופא ילדים",
-  "handoff.aud.pediatrician.sub": "בדיקות מעקב/המתנה התפתחותיות",
-  "handoff.summary.title": "סיכום העברה התפתחותי של {name}",
-  "handoff.summary.audience": "קהל יעד: אנשי חינוך, מרפאים בעיסוק, יועצי תקשורת וצוותי קליטה",
-  "handoff.save": "שמירה",
-  "handoff.print": "הדפסה",
-  "handoff.saved": "הסיכום נשמר בהיסטוריה",
-  "handoff.overview": "סקירת תצפיות",
-  "handoff.list.strengths": "חוזקות יחסיות (אינטליגנציות גרדנר)",
-  "handoff.list.challenges": "אתגרים חושיים ומעברים בכיתה",
-  "handoff.list.language": "תוכנית מעבר דו-לשונית",
-  "handoff.list.strategies": "אסטרטגיות ויסות משותף למורה",
-  "handoff.crisis": "מדד אזהרת טריגרים למשבר:",
-  "handoff.empty.title": "טרם הופק סיכום.",
-  "handoff.empty.body": "לחצו על \"הפקת סיכום קצר\" למעלה, וארבור תרכיב סיכום תמיכה מוכן להדפסה מאבני הדרך והרישומים הנוכחיים של {name}.",
-  "handoff.saved.title": "סיכומים שמורים ({n})",
-  "handoff.saved.item": "סיכום {audience}",
-  "handoff.open": "פתיחה",
-  "handoff.delete": "מחיקה",
-  // EU AI Act Art. 50 — AI-generated artifact label on the exported/printed brief (he).
-  "handoff.aiFooter": "סיכום זה נוצר בסיוע בינה מלאכותית ואושר על ידי ההורה.",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and
@@ -3490,8 +3415,18 @@ const DICTS: Record<UiLang, Dict> = {
   he: { ...elevationHe, ...he },
 };
 
+// Bidi isolation (F7 / AR-UX-IDN-01): when an interpolated value carries strong-RTL
+// characters (Hebrew/Arabic) — e.g. a child's name "נועה" dropped into an English
+// template, or an English word inside a Hebrew one — wrap it in Unicode isolates
+// FSI…PDI so the substituted run's direction can't reorder the surrounding text.
+// Applied ONLY to RTL-bearing values, so pure-LTR/numeric interpolation is untouched.
+const RTL_CHARS = /[֐-׿؀-ۿ܀-ݏ]/;
+function isolate(value: string): string {
+  return RTL_CHARS.test(value) ? `⁨${value}⁩` : value;
+}
+
 export function translate(lang: UiLang, key: string, vars?: Record<string, string | number>): string {
   let s = DICTS[lang][key] ?? DICTS.en[key] ?? key;
-  if (vars) for (const k of Object.keys(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(vars[k]));
+  if (vars) for (const k of Object.keys(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, "g"), isolate(String(vars[k])));
   return s;
 }

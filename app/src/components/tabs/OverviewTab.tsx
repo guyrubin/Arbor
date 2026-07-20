@@ -7,11 +7,15 @@ import { useToast } from "../../context/ToastContext";
 import { Skeleton } from "../ui/Skeleton";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import DailyPlayCard from "../overview/DailyPlayCard";
+import QuickCaptureBar from "../overview/QuickCaptureBar";
+import QuickLogModal from "../overview/QuickLogModal";
+import ArborNoticedCard from "../sections/ArborNoticedCard";
+import type { CaptureMode } from "../../context/ArborContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import { PASTEL } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
-import { computeDevScore } from "../../growth/devScore";
+import { useDevScore } from "../../hooks/useDevScore";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
@@ -32,6 +36,8 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
  * de-duplicated off the home screen, not deleted. See navigation.ts SECTIONS.
  *
  * What renders now (top → bottom):
+ *   Quick Capture bar (W6.2): ambient voice/photo/text moment capture — first
+ *                        in the DOM, pinned bottom on phones, inline on lg+.
  *   Row 1 (1.6fr / 1fr): Guidance hero (ONE gradient card, single "Begin" CTA)
  *                        · Development-Map count card (→ Growth).
  *   Row 2 (1.6fr / 1fr): Kid activity feed (live, multi-row) · Coach card.
@@ -44,15 +50,28 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 export default function OverviewTab() {
   const {
     setActiveTab, milestones, milestonesPercent, checkedMilestones, totalMilestones,
-    behaviorLogs, childProfile, setChatInput,
-    donePlayIds, logPlayCompletion, playLogs,
+    behaviorLogs, childProfile, seedCoach,
+    donePlayIds, logPlayCompletion, playLogs, requestCapture,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // The ONE shared dev-score derivation (hooks/useDevScore) — the same result
+  // the Development hub and the other picture surfaces read. Hoisted here
+  // because the dev-map card below renders it inside a JSX callback.
+  const devScore = useDevScore();
   // The wellness check-in is the only genuinely interactive daily card and its
   // only home, so it opens by default rather than hiding behind the disclosure.
   const [showTools, setShowTools] = useState(true);
+  // W6.2 ambient capture — text mode opens the existing QuickLogModal inline
+  // (the parent never leaves Today); voice/photo hand the mode to the SAME
+  // requestCapture() seam JournalTab's compose tiles use (BehaviorsTab consumes
+  // it once and opens the real mic/photo flow). No new capture path.
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
+  const startCapture = (mode: CaptureMode) => {
+    requestCapture(mode);
+    setActiveTab("behaviors");
+  };
 
   // Parent-expressed goals (not a child assessment). Feed Daily Play selection
   // and the dev-map "Focus" count; goal editing itself lives in Growth › Daily Play.
@@ -100,8 +119,7 @@ export default function OverviewTab() {
   }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains, sessionLength]);
 
   const coachOnPlay = (p: ScoredActivity) => {
-    setChatInput(`We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`);
-    setActiveTab("coach");
+    seedCoach({ prompt: `We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`, source: "today-play" });
   };
   const markPlayDone = (p: ScoredActivity) => {
     logPlayCompletion(p, "today");
@@ -135,8 +153,7 @@ export default function OverviewTab() {
   });
 
   const beginGuidance = () => {
-    if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`);
-    setActiveTab("coach");
+    seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-guidance" });
   };
 
   // ── Kid activity feed (Loops 1+3+5) — kid-originated + parent-logged events
@@ -221,8 +238,19 @@ export default function OverviewTab() {
     <motion.div
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="space-y-5 md:space-y-7 relative max-w-[1080px]"
+      className="flex flex-col gap-5 md:gap-7 relative max-w-[1080px]"
     >
+      {/* ── Quick Capture (W6.2) — ambient voice/photo/text capture, ABOVE the
+             forms in the hierarchy. First in the DOM (keyboard users reach
+             capture first); on phones its own `order-last` + sticky-bottom pin
+             it above the tab bar, on lg+ it renders inline here above the hero.
+             Capture-only surface: no metrics, no firewall exposure. ── */}
+      <QuickCaptureBar
+        childName={firstName}
+        onText={() => setQuickLogOpen(true)}
+        onMode={startCapture}
+      />
+
       {/* ── Row 1 (1.6fr / 1fr): Guidance hero · Development-Map card ─────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">
         {/* ── Guidance hero — ONE gradient card: "Today's guidance" tag → the one
@@ -247,8 +275,8 @@ export default function OverviewTab() {
                 <div className="space-y-2"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-6 w-1/2" /></div>
               ) : (
                 <h1
-                  className="text-[27px] leading-[1.12] line-clamp-3"
-                  style={{ color: "#fff", maxWidth: "92%", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}
+                  className="text-[20px] sm:text-[24px] lg:text-[27px] leading-[1.12] line-clamp-6 sm:line-clamp-3 sm:max-w-[92%]"
+                  style={{ color: "#fff", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}
                 >
                   {focus ? focus.text : t("ov.recoEmpty", { name: firstName })}
                 </h1>
@@ -276,7 +304,7 @@ export default function OverviewTab() {
             footer (Focus / Domains / Week). NO 0–100 ring, no per-domain %, no
             on-track verdict, no weakest-domain pointer. Click → Growth. */}
         {(() => {
-          const score = computeDevScore(milestones.map((m) => ({ domain: m.domain, checked: m.checked })));
+          const score = devScore;
           if (score.confidence === "none") return null;
           return (
             <section
@@ -330,6 +358,12 @@ export default function OverviewTab() {
           );
         })()}
       </div>
+
+      {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
+             child's own logged data, below the hero row. Renders NOTHING with
+             zero detections and self-hides per-detection once dismissed; copy is
+             counts/patterns only (non-diagnostic, monitoring.ts framing). ── */}
+      <ArborNoticedCard />
 
       {/* ── Row 2 (1.6fr / 1fr): Kid activity feed · Coach card ───────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">
@@ -428,7 +462,7 @@ export default function OverviewTab() {
         {/* ── Coach card — the ONE coach entry: identity + one coaching line +
                single "Continue chat" CTA into Ask Arbor. ── */}
         <section
-          onClick={() => { if (focus) setChatInput(`About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?`); setActiveTab("coach"); }}
+          onClick={() => seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-coach-card" })}
           className="rounded-[22px] p-5 flex flex-col transition motion-safe:hover:-translate-y-0.5 cursor-pointer"
           style={{ background: "var(--arbor-coach-grad)", boxShadow: "var(--shadow-sm)" }}
         >
@@ -475,6 +509,10 @@ export default function OverviewTab() {
           </div>
         )}
       </section>
+
+      {/* Text-mode quick capture — the orphaned-but-working QuickLogModal, revived.
+          Portals to document.body, so it contributes no box to the flex column. */}
+      <QuickLogModal open={quickLogOpen} onClose={() => setQuickLogOpen(false)} />
     </motion.div>
   );
 }

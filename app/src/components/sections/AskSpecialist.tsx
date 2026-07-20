@@ -126,7 +126,10 @@ export default function AskSpecialist() {
     setMenuOpen(false);
     menuTriggerRef.current?.focus();
     toast(t("consult.opening"), "info");
-    try { exportReport(type); }
+    // Professional audiences route through the W4.1 preset serializer inside
+    // useReportExport — the parent's include-toggles (redaction) ride along.
+    // The catch is the fail-closed seam: a blocked packet exports NOTHING.
+    try { exportReport(type, excluded); }
     catch { toast(t("consult.exportError"), "error"); }
   };
 

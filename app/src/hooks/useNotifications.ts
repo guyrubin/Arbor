@@ -16,7 +16,7 @@
  *  - Read state is local (localStorage), not synced — no backend call.
  */
 import { useMemo } from "react";
-import { deriveMonitoring } from "../lib/monitoring";
+import { useMonitoring } from "./useMonitoring";
 import { nextNudge } from "../lib/jitai";
 import { ageMonthsFromProfile } from "../lib/childAge";
 import { useArbor } from "../context/ArborContext";
@@ -74,17 +74,9 @@ export function useNotifications(): {
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
-  const ageMonthsPrecise = ageMonthsFromProfile(childProfile);
-  const ageYears =
-    ageMonthsPrecise !== null ? ageMonthsPrecise / 12 : (childProfile.age ?? 0);
-
-  // Derive monitoring signals (pure, deterministic).
-  const monitoring = useMemo(
-    () => deriveMonitoring({ ageYears, milestones, behaviorLogs }, firstName),
-    // Re-derive when data length changes (same pattern as ArborNoticedCard).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ageYears, milestones.length, behaviorLogs.length, firstName],
-  );
+  // Derive monitoring signals via the ONE shared derivation (hooks/useMonitoring),
+  // which owns the months-precise age conversion this hook used to duplicate.
+  const monitoring = useMonitoring();
 
   // Derive JITAI nudge (pure).
   const rhythm = useMemo(

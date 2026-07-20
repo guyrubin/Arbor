@@ -4,7 +4,9 @@ import { Download, Share2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-r
 import { ComicPage, PlayButton, PlayPanel, ProgressPips, Celebrate, usePrefersReducedMotion } from "../ui/playkit";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { track } from "../../lib/analytics";
+import { PaywallError } from "../../lib/api";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
+import { downloadHeroAvatarCanvas, renderComicCanvas } from "../../lib/heroAvatarCanvas";
 import { getStorySpec } from "../../lib/heroJourneys";
 import {
   type Adventure,
@@ -40,6 +42,7 @@ export function ComicReader({
   saved,
   onSave,
   onClose,
+  onPaywall,
   registerBack,
 }: {
   adventure: Adventure;
@@ -50,6 +53,9 @@ export function ComicReader({
   saved?: HeroComic;
   onSave: (comic: HeroComic) => void;
   onClose: () => void;
+  /** Surfaces a PaywallError from the book build (or a page retry) to the host,
+   *  which owns openPaywall — the reader itself stays paywall-agnostic. */
+  onPaywall?: (err: PaywallError) => void;
   /** Hook for the host to register a back-step handler (Android hardware Back). */
   registerBack?: (handler: () => boolean) => void;
 }) {
@@ -112,7 +118,14 @@ export function ComicReader({
         // Whole-book failure only if every page errored (e.g. offline).
         if (finalPages.every((p) => p.status === "error")) setBookError(true);
       })
-      .catch(() => { if (active) setBookError(true); });
+      .catch((err) => {
+        if (!active) return;
+        // A paywall stop is a conversion moment, not a book failure — hand it
+        // up to the host (which owns openPaywall). Without a host seam, fall
+        // back to the whole-book error panel so the reader never spins forever.
+        if (err instanceof PaywallError && onPaywall) onPaywall(err);
+        else setBookError(true);
+      });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adventure.id, lang]);
@@ -189,9 +202,11 @@ export function ComicReader({
       .then((dataUrl) =>
         setPages((prev) => prev.map((p) => (p.index === index ? { ...p, dataUrl, status: "ready" } : p))),
       )
-      .catch(() =>
-        setPages((prev) => prev.map((p) => (p.index === index ? { ...p, status: "error" } : p))),
-      );
+      .catch((err) => {
+        setPages((prev) => prev.map((p) => (p.index === index ? { ...p, status: "error" } : p)));
+        // A retry that hits the paywall surfaces it too (tile stays retryable).
+        if (err instanceof PaywallError) onPaywall?.(err);
+      });
   };
 
   const buildSavedComic = (): HeroComic => ({
@@ -214,28 +229,43 @@ export function ComicReader({
       a.href = cover;
       a.download = `${heroName.toLowerCase()}-${adventure.id}-comic.png`;
       a.click();
+      // AP-050 (ported from the retired HeroComicsTab grid): additionally save
+      // the branded share-card — single card only, comic → shared canvas module.
+      void downloadHeroAvatarCanvas(
+        "comic",
+        { imageUrl: cover, name: heroName, title: comic.title },
+        `${heroName.toLowerCase()}-${adventure.id}-share-card.png`,
+      );
     }
   };
 
   const handleShare = async () => {
     const cover = pages[0]?.dataUrl;
+    const title = adventureTitle(adventure, lang);
     trackShareInitiated("story", "comic-reader");
     try {
+      // AP-050 (ported from the retired HeroComicsTab grid): share the branded
+      // share-card (comic template → shared canvas module); the raw cover stays
+      // as the fallback so share never regresses if the card render fails.
+      const card = cover
+        ? await renderComicCanvas({ imageUrl: cover, name: heroName, title }).catch(() => undefined)
+        : undefined;
+      const shareUrl = card?.dataUrl ?? cover;
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-      if (cover && nav.share) {
-        const blob = await (await fetch(cover)).blob();
+      if (shareUrl && nav.share) {
+        const blob = card?.blob ?? (await (await fetch(shareUrl)).blob());
         const file = new File([blob], `${heroName.toLowerCase()}-comic.png`, { type: blob.type || "image/png" });
-        const data: ShareData = { files: [file], title: adventureTitle(adventure, lang), text: `${heroName}'s comic!` };
+        const data: ShareData = { files: [file], title, text: `${heroName}'s comic!` };
         if (!nav.canShare || nav.canShare(data)) {
           await nav.share(data);
           trackShareCompleted("story", "web-share");
           return;
         }
       }
-      // Fallback: download the cover.
-      if (cover) {
+      // Fallback: download the card (or the raw cover).
+      if (shareUrl) {
         const a = document.createElement("a");
-        a.href = cover;
+        a.href = shareUrl;
         a.download = `${heroName.toLowerCase()}-comic.png`;
         a.click();
       }

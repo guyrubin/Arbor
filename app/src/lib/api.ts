@@ -61,6 +61,25 @@ export class PaywallError extends Error {
   }
 }
 
+/**
+ * DUX-032: a 409 from an AI-generation endpoint is the server-side escalation
+ * screen firing — every 409 in routes/api.ts means "Professional support
+ * recommended" and carries `escalationCategory`. request() throws this typed
+ * error so the UI can branch on `instanceof` instead of fragile message
+ * substring-matching. The server message is preserved verbatim so legacy
+ * substring checks keep working unchanged.
+ */
+export class EscalationRequiredError extends Error {
+  readonly status = 409;
+  readonly code = "ESCALATION_REQUIRED";
+  readonly category?: string;
+  constructor(message: string, opts: { category?: string } = {}) {
+    super(message);
+    this.name = "EscalationRequiredError";
+    this.category = opts.category;
+  }
+}
+
 async function request<T>(url: string, method: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
     method,
@@ -79,6 +98,13 @@ async function request<T>(url: string, method: string, body?: unknown): Promise<
     if (res.status === 402) {
       const plan = errData?.upgrade?.plan === "family" ? "family" : "plus";
       throw new PaywallError(detail, { plan, feature: errData?.upgrade?.feature });
+    }
+    if (res.status === 409) {
+      // Server escalation contract (see routes/api.ts): 409 == a safety trigger
+      // fired on the input. Never downgrade this to a generic Error.
+      const category =
+        typeof errData?.escalationCategory === "string" ? errData.escalationCategory : undefined;
+      throw new EscalationRequiredError(detail, { category });
     }
     throw new Error(detail);
   }

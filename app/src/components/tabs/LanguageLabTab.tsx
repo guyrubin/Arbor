@@ -12,7 +12,7 @@ import LanguageLabVocabView from "./LanguageLabVocabView";
  * "second language" we help build = second listed, the rest are early exposure.
  */
 export default function LanguageLabTab() {
-  const { childProfile, setChatInput, setSelectedLens, setActiveTab } = useArbor();
+  const { childProfile, setActiveTab, seedCoach } = useArbor();
   const { t } = useLanguage();
   const name = childProfile.name;
   const first = name.split(" ")[0];
@@ -23,9 +23,7 @@ export default function LanguageLabTab() {
   const target = second || t("lang.theirSecondLang");
 
   const askCoach = (prompt: string) => {
-    setSelectedLens("Lev Vygotsky");
-    setChatInput(prompt);
-    setActiveTab("coach");
+    seedCoach({ prompt, lens: "Lev Vygotsky", source: "language-lab" });
   };
 
   const profileCards = [

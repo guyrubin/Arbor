@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { sourcesLabel } from "./CoachAnswerCards";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import CoachAnswerCards, { sourcesLabel, escalationTier } from "./CoachAnswerCards";
+import type { CoachContract } from "../../types";
 
 /**
  * R1 — Render coach citations
@@ -65,5 +68,89 @@ describe("sourcesLabel (R1 citation helper)", () => {
         expect(label, `label for n=${n} must not contain "${word}"`).not.toContain(word);
       }
     }
+  });
+});
+
+/**
+ * Escalation footer tiering — the "Reach out for help if" content is ALWAYS
+ * rendered when escalateIf is non-empty; only its PROMINENCE changes with
+ * riskLevel. Low risk = quiet collapsed disclosure; moderate+ = the full
+ * warning panel. Unknown levels fail safe upward to prominent.
+ *
+ * The component is exercised via renderToStaticMarkup (no DOM harness needed;
+ * clipboard/speech surfaces are only reached through event handlers).
+ */
+const ESCALATE_ITEM = "sleep disruption lasts more than two weeks";
+
+function makeContract(riskLevel: string): CoachContract {
+  return {
+    riskLevel,
+    ageBand: "",
+    domains: [],
+    nonDiagnosticHypotheses: [],
+    todayPlan: [],
+    parentScript: "",
+    avoid: [],
+    observe: [],
+    escalateIf: [ESCALATE_ITEM],
+    frameRouting: { aim: "", twoAxes: "", story: "", shadow: "", marriage: "", shepherd: "" },
+    memoryProposals: [],
+    handoffNotes: { teacher: "", professional: "" },
+  };
+}
+
+const noop = () => {};
+
+function renderCards(riskLevel: string): string {
+  return renderToStaticMarkup(
+    React.createElement(CoachAnswerCards, {
+      contract: makeContract(riskLevel),
+      onSaveToPlan: noop,
+      onCreateLog: noop,
+      onAddToHandoff: noop,
+    })
+  );
+}
+
+describe("escalationTier (prominence helper)", () => {
+  it("low / absent risk is quiet", () => {
+    expect(escalationTier("low")).toBe("quiet");
+    expect(escalationTier("Low")).toBe("quiet");
+    expect(escalationTier("")).toBe("quiet");
+    expect(escalationTier(undefined)).toBe("quiet");
+  });
+
+  it("moderate and above are prominent", () => {
+    for (const level of ["moderate", "elevated", "high", "severe", "urgent"]) {
+      expect(escalationTier(level), `"${level}" must be prominent`).toBe("prominent");
+    }
+  });
+
+  it("unrecognized levels fail safe to prominent", () => {
+    expect(escalationTier("unexpected")).toBe("prominent");
+  });
+});
+
+describe("escalation footer rendering", () => {
+  it("low risk: escalateIf content is present in the DOM inside the quiet disclosure", () => {
+    const html = renderCards("low");
+    expect(html).toContain(ESCALATE_ITEM);
+    expect(html).toContain("When to seek help");
+    expect(html).not.toContain("Reach out for help if");
+    // Collapsed by default — hidden, never unmounted.
+    expect(html).toContain("hidden");
+    expect(html).toContain('aria-expanded="false"');
+  });
+
+  it("moderate risk: escalateIf content is present in the full warning panel", () => {
+    const html = renderCards("moderate");
+    expect(html).toContain(ESCALATE_ITEM);
+    expect(html).toContain("Reach out for help if");
+  });
+
+  it("high risk: warning panel keeps maximum prominence", () => {
+    const html = renderCards("high");
+    expect(html).toContain(ESCALATE_ITEM);
+    expect(html).toContain("Reach out for help if");
   });
 });
