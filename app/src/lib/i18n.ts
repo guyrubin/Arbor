@@ -354,6 +354,9 @@ export const en: Dict = {
   "coach.coachName": "Arbor Coach",
   "coach.coachStatus": "AI guide · always here",
   "coach.send.aria": "Send message",
+  // EU AI Act Art. 50 — persistent AI-interaction transparency line on the Ask
+  // surface (always visible under the input; non-diagnostic register).
+  "coach.aiDisclosure": "Arbor's guidance is AI-generated and doesn't replace professional advice. In an emergency, contact your care provider.",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "Integrated Balanced",
   "coach.lens.integratedHint": "The default: connection first, then the next achievable step, then the environment. Pick a named lens when one angle should lead.",
@@ -2057,6 +2060,8 @@ export const he: Dict = {
   "coach.coachName": "מאמן Arbor",
   "coach.coachStatus": "עוזר בינה מלאכותית · תמיד כאן",
   "coach.send.aria": "שליחת הודעה",
+  // EU AI Act Art. 50 — persistent AI-interaction transparency line (he).
+  "coach.aiDisclosure": "ההכוונה של ארבור נוצרת בבינה מלאכותית ואינה תחליף לייעוץ מקצועי. במקרה חירום פנו לגורם המטפל שלכם.",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "משולב מאוזן",
   "coach.lens.integratedHint": "ברירת המחדל: קשר תחילה, אחר כך הצעד הבא בר-השגה, ואז הסביבה. בחרו עדשה ממוקדת כשצריך להוביל מזווית אחת.",
