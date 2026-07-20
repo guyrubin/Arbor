@@ -67,6 +67,22 @@ export default function KidModeOverlay() {
     <AnimatePresence>
       {isKidModeOpen && (
         <motion.div
+          key="kid-mode-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22 }}
+          aria-hidden="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          // F4: the overlay itself animates with scale, so its margins briefly expose the
+          // parent shell during enter/exit. This non-transformed full-viewport backdrop
+          // swallows any pointer that lands in those strips — the lock never depends on a
+          // completed animation frame.
+          style={{ position: "fixed", inset: 0, zIndex: 69, background: "var(--arbor-paper)", pointerEvents: "auto" }}
+        />
+      )}
+      {isKidModeOpen && (
+        <motion.div
           key="kid-mode-overlay"
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}

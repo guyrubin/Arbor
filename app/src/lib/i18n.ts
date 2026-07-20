@@ -3490,8 +3490,18 @@ const DICTS: Record<UiLang, Dict> = {
   he: { ...elevationHe, ...he },
 };
 
+// Bidi isolation (F7 / AR-UX-IDN-01): when an interpolated value carries strong-RTL
+// characters (Hebrew/Arabic) — e.g. a child's name "נועה" dropped into an English
+// template, or an English word inside a Hebrew one — wrap it in Unicode isolates
+// FSI…PDI so the substituted run's direction can't reorder the surrounding text.
+// Applied ONLY to RTL-bearing values, so pure-LTR/numeric interpolation is untouched.
+const RTL_CHARS = /[֐-׿؀-ۿ܀-ݏ]/;
+function isolate(value: string): string {
+  return RTL_CHARS.test(value) ? `⁨${value}⁩` : value;
+}
+
 export function translate(lang: UiLang, key: string, vars?: Record<string, string | number>): string {
   let s = DICTS[lang][key] ?? DICTS.en[key] ?? key;
-  if (vars) for (const k of Object.keys(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(vars[k]));
+  if (vars) for (const k of Object.keys(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, "g"), isolate(String(vars[k])));
   return s;
 }
