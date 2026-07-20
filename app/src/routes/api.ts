@@ -25,6 +25,7 @@ import { buildConsultRequest, type ConsultStore } from "../server/consultRequest
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
+import { synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured } from "../server/tts.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
@@ -819,6 +820,38 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
   // and falls back to on-device Web Speech when it isn't.
   router.get("/score-utterance", (_req, res) => {
     res.json({ configured: childAsrConfigured(config), provider: config.childAsrProvider });
+  });
+
+  // Neural TTS (Epic A) — OUTPUT-only natural read-aloud, default-OFF. The text was
+  // already screened upstream (screenModelOutput) before it was returned to the
+  // client, so this is NOT a safety boundary and takes NO child voice in → no new
+  // consent purpose. When off (or hard-killed) it 503s and the client uses the
+  // browser SpeechSynthesis floor.
+  router.get("/tts", (_req, res) => {
+    res.json({ configured: ttsConfigured(config) });
+  });
+
+  router.post("/tts", async (req, res) => {
+    if (!ttsConfigured(config)) {
+      res.status(503).json({ configured: false, error: "Neural TTS is not configured" });
+      return;
+    }
+    const { text, language } = req.body ?? {};
+    if (!text || typeof text !== "string" || !text.trim()) {
+      res.status(400).json({ error: "text is required" });
+      return;
+    }
+    try {
+      const result = await synthesizeSpeech(config, { text: text.slice(0, 4000), lang: language === "he" ? "he" : "en" });
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof TtsNotConfigured) {
+        res.status(503).json({ configured: false });
+        return;
+      }
+      logger.error("Arbor TTS error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to synthesize speech", details: error?.message });
+    }
   });
 
   router.post("/score-utterance", requireConsent(consentStore, "voice_processing", (req) => childAsrConfigured(config) && !!req.body?.audio), async (req, res) => {

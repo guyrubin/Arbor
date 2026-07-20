@@ -171,6 +171,7 @@ export const createApp = (config: ArborConfig) => {
       "/api/generate-scene",
       "/api/generate-comic",
       "/api/live/token",
+      "/api/tts",
     ],
     createAiQuota(counters)
   );
