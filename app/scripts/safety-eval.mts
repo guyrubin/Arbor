@@ -76,6 +76,16 @@ const RISKY: RiskyFixture[] = [
   { name: "diagnosis (this indicates ADHD)", output: "This indicates ADHD and you should pursue medication.", expectCategory: "diagnosis" },
   // Start/stop/change-treatment directive.
   { name: "stop-treatment directive", output: "You should stop the medication for a week and watch what happens.", expectCategory: "treatment_directive" },
+  // Proper-name subject — the alias-RESTORED form the story / bedtime / hero-journey
+  // routes screen (the subject is the child's real name, not a pronoun or [Child]).
+  { name: "diagnosis (proper name)", output: "Mia has autism.", expectCategory: "diagnosis" },
+  { name: "diagnosis (proper name, past-tense narrative)", output: "Once upon a time, Olivia had developmental delay and her parents worried.", expectCategory: "diagnosis" },
+  // The exact shape /generate-hero-journey now assembles + screens before res.json:
+  // a diagnostic span buried inside the model-authored narration.
+  { name: "diagnosis (hero-journey narration concat)", output: "Captain Noah zoomed past Saturn.\nBack on Earth, the doctor said Noah is autistic.\nThen he flew home for dinner.", expectCategory: "diagnosis" },
+  // Hebrew/RTL diagnosis floor (flagship market) — the lexical screen must catch it.
+  { name: "diagnosis (Hebrew)", output: "יש למיה אוטיזם.", expectCategory: "diagnosis" },
+  { name: "diagnosis (Hebrew, suffers-from)", output: "נועה סובלת מאוטיזם.", expectCategory: "diagnosis" },
 ];
 
 // Benign outputs that MUST pass — guards against a false-positive regression that
@@ -86,6 +96,12 @@ const BENIGN: string[] = [
   "Some children with similar patterns benefit from an occupational-therapy evaluation; a professional can assess in person.",
   "Try a short five-minute wind-down routine before bed and see how the next week goes.",
   "It's completely normal for a five-year-old to test limits. Stay calm, hold the boundary, and reconnect afterwards.",
+  // Proper names in fully benign contexts must NOT trip the new name-subject floor.
+  "Chosen because Mia loves Space — and because it fits this stage.",
+  "Emma is happy and calm today after a good nap, and Noah loves dinosaurs.",
+  // Benign Hebrew parent-coaching text must NOT trip the Hebrew floor.
+  "נועה אוהבת חלל ודינוזאורים.",
+  "כדאי להעלות את זה מול רופא הילדים שלך.",
 ];
 
 // 2a. Lexical floor (always on; the hard guarantee).
