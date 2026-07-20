@@ -136,7 +136,7 @@ export const renderCoachResponse = (response: CoachResponse) => {
 ${hypotheses || "One possibility is a temporary mismatch between the child's developmental capacity, the environment, and the demand being placed on them."}
 
 ### 2. Why It May Be Happening
-Age band: **${response.ageBand}**. Domains: **${response.domains.join(", ")}**. Risk level: **${response.riskLevel}**.
+Age band: **${response.ageBand}**. Domains: **${response.domains.join(", ")}**.
 
 ### 3. What To Do Today
 ${response.todayPlan.map((step) => `- ${step}`).join("\n")}

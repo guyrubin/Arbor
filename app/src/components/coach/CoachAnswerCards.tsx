@@ -37,14 +37,8 @@ export function escalationTier(riskLevel?: string): "quiet" | "prominent" {
  * this stops it being flattened to prose and regex-scraped.
  */
 
-const RISK_TONE: Record<string, { fg: string; bg: string; label: string }> = {
-  low: { fg: "var(--arbor-green-ink)", bg: "var(--arbor-green-soft)", label: "Low" },
-  moderate: { fg: "var(--arbor-yellow-ink)", bg: "var(--arbor-yellow-soft)", label: "Moderate" },
-  elevated: { fg: "var(--arbor-yellow-ink)", bg: "var(--arbor-yellow-soft)", label: "Elevated" },
-  high: { fg: "var(--arbor-pink-ink)", bg: "var(--arbor-pink-soft)", label: "High" },
-  severe: { fg: "var(--arbor-pink-ink)", bg: "var(--arbor-pink-soft)", label: "Severe" },
-  urgent: { fg: "var(--arbor-pink-ink)", bg: "var(--arbor-pink-soft)", label: "Urgent" },
-};
+// Risk-tone verdict palette removed: Arbor renders counts and observations, never a graded
+// child risk verdict on a parent-facing surface (clinical firewall). See council 2026-07-18.
 
 const FRAME_LABELS: Record<string, string> = {
   aim: "Aim", twoAxes: "Warmth ↔ Structure", story: "Story",
@@ -85,7 +79,6 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   const sources = contract.sourceCardsUsed ?? [];
   const hasSources = sources.length > 0;
 
-  const risk = RISK_TONE[(contract.riskLevel || "low").toLowerCase()] || RISK_TONE.low;
   const showLens = lens && lens !== "Integrated Balanced";
 
   const copy = (text: string, key: string) => {
@@ -111,7 +104,6 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
         {contract.domains?.slice(0, 3).map((d) => (
           <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{d.replace(/_/g, " ")}</span>
         ))}
-        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full ms-auto" style={{ color: risk.fg, background: risk.bg }}>Risk: {risk.label}</span>
       </div>
 
       {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}

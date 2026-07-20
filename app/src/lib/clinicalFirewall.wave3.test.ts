@@ -48,6 +48,35 @@ describe("shared kit — no graded child verdict text", () => {
   });
 });
 
+// 2026-07-20 (product council): the Wave-3 guard scanned only the demoted dev-score
+// surfaces + kit, so a graded child RISK verdict survived on three surfaces it never
+// looked at — the coach answer card ("Risk: <grade>" chip), the Safety banner
+// ("Current risk level"), and the rendered coach markdown ("Risk level: **X**").
+// These are the highest-severity firewall leaks (a verdict on the child, parent- and
+// clinician-facing). Removed, and pinned here: the riskLevel FIELD may exist for
+// internal reasoning, but no visible text on these surfaces may render it as a grade.
+describe("coach & safety surfaces — no graded child risk verdict in visible text", () => {
+  const VERDICT_TEXT = [
+    /Risk level:\s*\*\*/i,        // rendered coach markdown
+    /Current risk level/i,        // Safety banner
+    /Risk:\s*\{/,                 // JSX-interpolated grade chip
+    /Risk:\s*\$\{/,               // template-interpolated grade
+    /Risk:\s*[LMH][a-z]+/,        // literal "Risk: Low/Moderate/High"
+  ];
+  for (const rel of [
+    "components/coach/CoachAnswerCards.tsx",
+    "components/tabs/SafetyTab.tsx",
+    "contracts/coach.ts",
+  ]) {
+    it(`${rel} renders no risk-grade verdict text`, () => {
+      const code = stripComments(read(rel));
+      for (const pat of VERDICT_TEXT) {
+        expect(code, `${rel} emits a graded risk verdict (${pat}) into visible text`).not.toMatch(pat);
+      }
+    });
+  }
+});
+
 // Tokens that NEVER belong on a child metric in the demoted surfaces. (Accent-
 // safe word-boundary checks; we allow these words to appear in COMMENTS only —
 // the test scans code lines, stripping /* … */ and // comments first.)

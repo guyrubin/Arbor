@@ -328,9 +328,10 @@ export default function Shell() {
             </div>
           )}
 
-          {/* E11: first-steps rail — above the tab content, parent register only
-              (inside .arbor-parent <main>); self-hides when done/dismissed. */}
-          <FirstStepsRail />
+          {/* E11: first-steps rail — Today/home only (F10: it was bleeding onto every
+              hub, incl. Ask Arbor). Parent register only (inside .arbor-parent <main>);
+              self-hides when done/dismissed. */}
+          {activeTab === "overview" && <FirstStepsRail />}
 
           <Suspense fallback={<TabSkeleton />}>
             <AnimatePresence mode="wait">
