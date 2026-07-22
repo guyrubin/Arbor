@@ -13,7 +13,7 @@ export default function AiRail() {
 
   return (
     <aside
-      className="hidden xl:flex flex-col gap-5 p-5 h-screen sticky top-0 overflow-y-auto z-20 w-full bg-white"
+      className="hidden 2xl:flex flex-col gap-5 p-5 h-screen sticky top-0 overflow-y-auto z-20 w-full bg-white"
       style={{ borderLeft: "1px solid var(--arbor-rule)" }}
     >
       <div className="flex items-center justify-between pb-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>

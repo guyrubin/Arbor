@@ -51,7 +51,7 @@ export default function OverviewTab() {
   const {
     setActiveTab, milestones, milestonesPercent, checkedMilestones, totalMilestones,
     behaviorLogs, childProfile, seedCoach,
-    donePlayIds, logPlayCompletion, playLogs, requestCapture,
+    donePlayIds, logPlayCompletion, playLogs, requestCapture, setShowAiRail,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -152,6 +152,18 @@ export default function OverviewTab() {
     count: recentCount, avg: weekAvg, topTrigger, milestonesPercent,
   });
 
+  const focusHeadline = useMemo(() => {
+    const raw = focus?.text?.trim() || t("ov.recoEmpty", { name: firstName });
+    const cleaned = raw
+      .replace(/^\s*\d+\.\s*What May Be Happening\s*[-:–—]\s*/i, "")
+      .replace(/\s*\((?:high|medium|low)\)\s*:?/gi, "")
+      .replace(/\s*(?:Profile mentions|Based on|Evidence:)\s+.*$/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    const sentence = cleaned.split(/(?<=[.!?])\s+/)[0] || cleaned;
+    return sentence.length > 86 ? `${sentence.slice(0, 83).trimEnd()}…` : sentence;
+  }, [focus?.text, firstName, t]);
+
   const beginGuidance = () => {
     seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-guidance" });
   };
@@ -238,21 +250,28 @@ export default function OverviewTab() {
     <motion.div
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="flex flex-col gap-5 md:gap-7 relative max-w-[1080px]"
+      className="flex flex-col gap-4 md:gap-5 relative max-w-[1180px] mx-auto"
     >
+      <header className="flex items-start justify-between gap-4 px-1">
+        <div>
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("today.guidance.tag")}</p>
+          <h1 className="mt-1 text-[28px] sm:text-[34px] leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
+            {uiLang === "he" ? `בוקר טוב, ${firstName}` : `Good morning, ${firstName}.`}
+          </h1>
+          <p className="mt-1 text-[14px]" style={{ color: "var(--arbor-muted)" }}>{t("today.meta")}</p>
+        </div>
+        <button onClick={() => setShowAiRail(true)} className="hidden sm:inline-flex items-center gap-2 min-h-[44px] rounded-2xl px-4 text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)", background: "var(--arbor-green-soft)" }}>
+          <Icon name="verified_user" size={17} /> {t("airail.title")}
+        </button>
+      </header>
+
       {/* ── Quick Capture (W6.2) — ambient voice/photo/text capture, ABOVE the
              forms in the hierarchy. First in the DOM (keyboard users reach
              capture first); on phones its own `order-last` + sticky-bottom pin
              it above the tab bar, on lg+ it renders inline here above the hero.
              Capture-only surface: no metrics, no firewall exposure. ── */}
-      <QuickCaptureBar
-        childName={firstName}
-        onText={() => setQuickLogOpen(true)}
-        onMode={startCapture}
-      />
-
       {/* ── Row 1 (1.6fr / 1fr): Guidance hero · Development-Map card ─────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
         {/* ── Guidance hero — ONE gradient card: "Today's guidance" tag → the one
                thing that matters today (the AI focus) → meta footer + single
                "Begin" CTA into the coach on today's focus. */}
@@ -260,11 +279,11 @@ export default function OverviewTab() {
           className="rounded-[22px] overflow-hidden"
           style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-lg)" }}
         >
-          <div className="relative min-h-[188px] flex flex-col justify-between" style={{ background: "var(--arbor-hero-grad)", padding: "22px" }}>
-            <div className="absolute inset-0" style={{ background: "radial-gradient(60% 80% at 86% 4%, rgba(255,255,255,0.34), transparent 60%)" }} aria-hidden="true"></div>
-            <Icon name="self_improvement" size={92} fill={1} className="absolute bottom-[14px]" style={{ color: "rgba(255,255,255,0.16)", insetInlineEnd: 22 }} />
-            {/* Legibility scrim: darken from the bottom up so the title reads on the gradient */}
-            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(13,28,52,0.5), transparent 64%)" }} aria-hidden="true"></div>
+          <div
+            className="relative min-h-[250px] flex flex-col justify-between bg-cover bg-center"
+            style={{ backgroundImage: "url('/assets/today/calm-transition-activity.png')", padding: "24px" }}
+          >
+            <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(16,39,72,0.96) 0%, rgba(16,39,72,0.88) 43%, rgba(16,39,72,0.22) 72%, transparent 100%)" }} aria-hidden="true"></div>
             <div className="relative">
               <span className="inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider" style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(4px)", color: "#fff", padding: "6px 12px", borderRadius: "20px", letterSpacing: "1.4px" }}>
                 {t("today.guidance.tag")}
@@ -274,12 +293,12 @@ export default function OverviewTab() {
               {focusLoading && !focus ? (
                 <div className="space-y-2"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-6 w-1/2" /></div>
               ) : (
-                <h1
-                  className="text-[20px] sm:text-[24px] lg:text-[27px] leading-[1.12] line-clamp-6 sm:line-clamp-3 sm:max-w-[92%]"
+                <h2
+                  className="text-[24px] sm:text-[30px] lg:text-[34px] leading-[1.08] line-clamp-3 max-w-full sm:max-w-[60%]"
                   style={{ color: "#fff", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}
                 >
-                  {focus ? focus.text : t("ov.recoEmpty", { name: firstName })}
-                </h1>
+                  {focusHeadline}
+                </h2>
               )}
             </div>
           </div>
@@ -358,6 +377,12 @@ export default function OverviewTab() {
           );
         })()}
       </div>
+
+      <QuickCaptureBar
+        childName={firstName}
+        onText={() => setQuickLogOpen(true)}
+        onMode={startCapture}
+      />
 
       {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
              child's own logged data, below the hero row. Renders NOTHING with
