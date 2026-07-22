@@ -128,11 +128,11 @@ function JournalRow({
   const tone = dv.tone;
   const p = PASTEL[tone];
   return (
-    <div className={`${cardCls} p-4 flex gap-3.5`}>
+    <article className="flex gap-3.5 border-b py-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
       {/* Colored domain icon tile — tone + glyph follow the entry's domain. */}
       <span
-        className="inline-flex items-center justify-center rounded-[13px] flex-shrink-0"
-        style={{ width: 42, height: 42, background: p.soft, color: p.ink }}
+        className="inline-flex items-center justify-center rounded-full flex-shrink-0"
+        style={{ width: 40, height: 40, background: p.soft, color: p.ink }}
       >
         <Icon name={DOMAIN_MS[domain]} size={22} fill={1} />
       </span>
@@ -170,7 +170,7 @@ function JournalRow({
           style={{ borderColor: "var(--arbor-rule)" }}
         />
       )}
-    </div>
+    </article>
   );
 }
 
@@ -219,14 +219,14 @@ export default function JournalTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5">
-      <section className="relative overflow-hidden rounded-[26px] p-5 sm:p-7" style={{ background: "linear-gradient(135deg, var(--arbor-lav-soft), var(--arbor-paper-elevated) 58%, var(--arbor-green-soft))", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
-        <div className="relative z-10 grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
+      <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
+        <div className="grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
               <Icon name="auto_stories" size={16} fill={1} /> {uiLang === "he" ? "היומן שכותב את עצמו" : "The journal that writes itself"}
             </span>
-            <h1 className="mt-3 text-[28px] sm:text-[36px] leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              {uiLang === "he" ? "שמרו את הרגע. ארבור יחבר את הסיפור." : "Keep the moment. Arbor connects the story."}
+            <h1 className="mt-2 text-[28px] sm:text-[34px] leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              {uiLang === "he" ? "כל הרגעים של המשפחה, לפי הסדר." : "Your family story, in order."}
             </h1>
             <p className="mt-3 max-w-2xl text-sm sm:text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
           </div>
@@ -238,12 +238,12 @@ export default function JournalTab() {
             </div>
           </div>
         </div>
-      </section>
+      </header>
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
-      <section className="border-y py-5 sm:py-6" style={{ borderColor: "var(--arbor-rule)" }}>
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <section className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
+        <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{uiLang === "he" ? "×¨×’×¢ ×—×“×©" : "New moment"}</p>
           <h2 className="mt-1 text-[18px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
@@ -253,13 +253,13 @@ export default function JournalTab() {
           <IconBadge tone="lav" size={34}><Icon name="edit_note" size={19} fill={1} /></IconBadge>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 gap-2">
           {MODE_TILES.map(({ ms, key }) => (
             <button
               key={key}
               type="button"
               onClick={() => startCapture(key)}
-              className="flex items-center justify-start sm:justify-center gap-3 rounded-[15px] px-4 py-3.5 min-h-[52px] text-[13px] font-extrabold transition motion-safe:hover:-translate-y-0.5"
+              className="flex min-h-[48px] items-center justify-center gap-2 rounded-[13px] px-3 py-3 text-[12px] font-extrabold transition motion-safe:hover:-translate-y-0.5"
               style={{ background: key === "voice" ? "var(--arbor-green-soft)" : "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
             >
               <Icon name={ms} size={21} fill={1} style={{ color: "var(--arbor-green-ink)" }} />
@@ -281,7 +281,11 @@ export default function JournalTab() {
           </p>
         </div>
       ) : (
-        <div className="grid min-w-0 items-start gap-3 lg:grid-cols-2">
+        <section aria-labelledby="journal-timeline-title">
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <h2 id="journal-timeline-title" className="text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{uiLang === "he" ? "ציר הזמן" : "Timeline"}</h2>
+            <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{signals.length} {uiLang === "he" ? "רגעים" : "moments"}</span>
+          </div>
           {signals.map((s) => {
             const kind = s.kind;
             const domain = domainOf.get(s.id) ?? KIND_DOMAIN[kind];
@@ -298,7 +302,7 @@ export default function JournalTab() {
               />
             );
           })}
-        </div>
+        </section>
       )}
     </motion.div>
   );
