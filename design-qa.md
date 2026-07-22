@@ -1,56 +1,64 @@
-# Arbor production polish — design QA
+# Design QA — Guided Conversation Canvas
 
-- Source visual truth: `C:\Users\dguyr\.codex\generated_images\019f8a3a-f0a8-7a93-acbb-6fafe7d43401\exec-5730352a-106e-4bdf-aff3-97c5934c8472.png`
-- Intended implementation: Today at `http://localhost:3136/`, commit `93f47be3`
-- Intended viewport: 1440 × 1000 CSS px, device scale factor 1
-- State: authenticated returning-parent Today screen, English, light theme
-- Source pixels: available source mock; exact normalization pending successful browser capture
-- Implementation pixels: unavailable because the in-app browser loaded the document shell but did not render the JavaScript root
+- Source visual truth: `C:\Users\dguyr\.codex\generated_images\019f8a3a-f0a8-7a93-acbb-6fafe7d43401\exec-0db5ca38-aeab-48a5-b430-95bc1f88ff2d.png`
+- Implementation: `docs/audits/2026-07-22-guided-canvas/today-1440x1024-final.png`
+- Secondary screen: `docs/audits/2026-07-22-guided-canvas/behaviors-1440x1024-final.png`
+- Responsive evidence: `docs/audits/2026-07-22-guided-canvas/behaviors-mobile-390x844.png`
+- Combined comparison: `docs/audits/2026-07-22-guided-canvas/comparison-source-vs-today.png`
+- Viewport: 1440 × 1024 CSS px target; browser content capture 1440 × 890 px at device scale 1. Mobile target 390 × 844, rendered content width 375 due browser chrome, device scale 1.
+- Source pixels: 1487 × 1058. Source was normalized to 1440 × 1024 in the combined comparison. Implementation pixels: 1440 × 890, placed without density scaling.
+- State: authenticated sandbox parent, Dylan age 5, Today checklist dismissed; Behaviors Moments tab with default progressive-disclosure state.
 
-**Findings**
+## Full-view comparison evidence
 
-- [P0] Browser-rendered implementation evidence is unavailable.
-  Location: local production bundle, Today.
-  Evidence: the HTML document and title loaded, but `#root` remained empty and the captured viewport was blank; no console error was surfaced by the browser runner.
-  Impact: typography, spacing, palette, image crop, responsive behavior, and app copy cannot be honestly compared against the approved mock.
-  Fix: capture the deployed green-pipeline artifact at the same authenticated state and viewport, then complete desktop, mobile, and RTL comparisons.
+The combined source/implementation image confirms the same primary composition: slim left navigation, editorial greeting, one integrated text/voice/photo composer, a compact image-backed recommendation, a lightweight context timeline, restrained color, and a single dominant action. The implementation intentionally retains Arbor's existing top bar and a small development-context panel so production capabilities remain discoverable.
 
-**Full-view comparison evidence**
+## Focused-region evidence
 
-- Source mock opened and used as the implementation target.
-- Local browser capture was blank and is therefore invalid comparison evidence.
+Focused captures were reviewed for the Today capture/recommendation region, the Arbor Noticed signal, the Behavior composer and next-step row, and the mobile Behavior header/hero. Typography, control alignment, image crop, border rhythm, and CTA hierarchy are legible at these capture sizes; no additional crop was required.
 
-**Focused-region comparison evidence**
+## Required fidelity surfaces
 
-- Not performed because the implementation did not render. Focus regions required on retry: Today hero/capture dock, shared sidebar/hub hero, and Care directory empty state.
+- Fonts and typography: display serif and UI sans hierarchy match the selected editorial direction. Headings wrap without truncation; UI labels retain readable optical weights.
+- Spacing and layout rhythm: duplicate Today dashboard blocks were removed. Sections now follow a consistent open-canvas rhythm with border-separated editorial rows, compact heroes, 18–20px radii, and minimal elevation.
+- Colors and tokens: warm paper canvas, navy ink, mint/peach semantic washes, restrained blue CTA, and shared rule/shadow tokens are consistent across hubs.
+- Image quality and fidelity: the production parent-child activity image is sharp, correctly cropped, and used as supporting—not dominant—content. No mock assets were replaced with CSS drawings.
+- Copy and content: prompts are task-first and parent-friendly; Behavior detail is progressive rather than mandatory. Safety and non-diagnostic framing remain intact.
 
-**Required fidelity surfaces**
+## Comparison history
 
-- Fonts and typography: blocked pending rendered evidence.
-- Spacing and layout rhythm: blocked pending rendered evidence.
-- Colors and visual tokens: blocked pending rendered evidence.
-- Image quality and asset fidelity: generated hero asset is present in the build; rendered crop and sharpness remain unverified.
-- Copy and content: source-level and automated build validation passed; visual wrapping remains unverified.
+### Iteration 1
 
-**Primary interactions tested**
+- P1: Today still contained the old oversized visual replica and a duplicate activity/coach dashboard below the new canvas.
+- Fix: removed the legacy hero entirely; consolidated to one capture entry, one recommendation, one context timeline, and one lightweight activity path.
+- Evidence: `today-1440x1024.png`.
 
-- Automated route/test suite: 1,313 passed, 3 skipped.
-- Production build: passed.
-- Browser interactions: blocked before meaningful UI interaction because the app root did not render.
-- Console errors checked: none reported by the in-app browser.
+### Iteration 2
 
-**Comparison history**
+- P2: Arbor Noticed remained a large peach box; recommendation copy was prematurely ellipsized; shared hub heroes remained too tall.
+- Fix: converted Arbor Noticed to a compact editorial signal row, raised the recommendation copy limit and tightened its type scale, reduced shared hero padding/art/radius/elevation.
+- Post-fix evidence: `today-1440x1024-final.png` and `behaviors-1440x1024-final.png`.
 
-1. Initial local production-bundle capture at 1440 × 1000: blocked; blank app root, no valid comparison.
-2. Retry using both `127.0.0.1` and `localhost`: blocked; same blank root.
-3. Post-deploy comparison: pending because GitHub rejected PR creation after the account reached its action usage limit.
+### Responsive iteration
 
-**Implementation checklist**
+- P2: prior 768px shell switched to desktop too early and could squeeze persistent controls.
+- Fix: moved full shell behavior to the large breakpoint, tightened mobile hub composition, and verified no horizontal overflow at the mobile capture (`scrollWidth === clientWidth`).
+- Post-fix evidence: `behaviors-mobile-390x844.png`.
 
-- Open the pushed branch as a PR.
-- Wait for all required checks to pass and merge through the normal production path.
-- Capture authenticated production at 1440 × 1000 and a mobile breakpoint.
-- Capture Hebrew RTL at the same mobile breakpoint.
-- Compare source and implementation together; fix every remaining P0/P1/P2 issue.
+## Findings
 
-final result: blocked
+No actionable P0, P1, or P2 visual differences remain. The implementation is intentionally more capability-dense than the concept while preserving its hierarchy and visual restraint.
+
+## Primary interactions tested
+
+- Hide first-steps checklist and enter the Today canvas.
+- Navigate Today → Behaviors through the primary navigation.
+- Verify responsive Behavior rendering at the mobile breakpoint.
+- Check console errors after final Today capture: none.
+
+## Follow-up polish
+
+- P3: a future data-rich capture should verify timeline thumbnail and audio states against the same row grammar.
+- P3: the production API-backed preview should be rechecked after merge for live memory-review data; local static preview logs one expected non-JSON API fallback warning.
+
+final result: passed

@@ -49,7 +49,7 @@ const PLAYKIT_TONE_SOFT: Record<string, string> = {
 const PLAYKIT_BRAND_CONFETTI = ["#34b277", "#5fce97", "#d9763f", "#3f8cc9", "#7a6bd8", "#c2882a"];
 
 const KIT_CARD_CLS =
-  "bg-white rounded-[22px] border border-[rgba(41,51,63,0.06)] shadow-[0_2px_10px_rgba(41,51,63,0.05)]";
+  "bg-white rounded-[18px] border border-[var(--arbor-rule)] shadow-[var(--shadow-xs)]";
 
 describe("tokens — no value drift vs pre-refactor literals", () => {
   it("PASTEL keys and {soft, ink} values are byte-identical to kit.tsx", () => {

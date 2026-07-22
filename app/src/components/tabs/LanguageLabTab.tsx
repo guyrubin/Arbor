@@ -82,7 +82,7 @@ export default function LanguageLabTab() {
   ];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
       <PageHeader
         eyebrow={t("lang.eyebrow")}
         title={t("lang.title")}
@@ -129,19 +129,19 @@ export default function LanguageLabTab() {
             }
           >
             <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-green-ink)" }}>{t("lang.dailyPractice")}</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="grid min-w-0 grid-cols-1 gap-3 text-xs xl:grid-cols-2 xl:gap-4">
               {activities.map((item) => (
-                <div key={item.title} className={`${cardCls} p-4 space-y-2`}>
-                  <div className="flex items-center justify-between">
-                    <b style={{ color: "var(--arbor-ink)" }}>{item.title}</b>
+                <div key={item.title} className={`${cardCls} min-w-0 space-y-2 p-4`}>
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <b className="min-w-0 break-words leading-snug" style={{ color: "var(--arbor-ink)" }}>{item.title}</b>
                     <Chip tone="yellow">{item.time}</Chip>
                   </div>
                   <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.desc}</p>
                   <p className="italic rounded-xl p-2 text-[11px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
                     {item.example}
                   </p>
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{item.lens}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <span className="break-words text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{item.lens}</span>
                     <button
                       onClick={() =>
                         askCoach(
@@ -161,11 +161,11 @@ export default function LanguageLabTab() {
 
           {/* Language profile — the context that frames the activities */}
           <SectionCard title={t("lang.profileTitle", { first, age: childProfile.age })} icon={<Icon name="translate" size={20} />} tone="sky">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div className="grid min-w-0 grid-cols-1 gap-3 text-xs sm:grid-cols-2 xl:grid-cols-3 xl:gap-4">
               {profileCards.map((c, i) => (
-                <div key={i} className={`${cardCls} p-4 space-y-2`}>
+                <div key={i} className={`${cardCls} min-w-0 space-y-2 p-4`}>
                   <span className="text-[10px] uppercase font-bold tracking-wide block" style={{ color: "var(--arbor-muted)" }}>{c.label}</span>
-                  <b className="block text-sm" style={{ color: "var(--arbor-ink)" }}>{c.value}</b>
+                  <b className="block break-words text-sm" style={{ color: "var(--arbor-ink)" }}>{c.value}</b>
                   <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.note}</p>
                   <Chip tone={c.tone}>{c.tag}</Chip>
                 </div>

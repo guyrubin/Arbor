@@ -5,10 +5,10 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
-import { Skeleton } from "../ui/Skeleton";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
+import TodayRecommendation from "../overview/TodayRecommendation";
 import QuickLogModal from "../overview/QuickLogModal";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
 import type { CaptureMode } from "../../context/ArborContext";
@@ -167,7 +167,7 @@ export default function OverviewTab() {
     if (/transition|screen\s*time|dysregulation/i.test(sentence)) {
       return t("today.focus.transition");
     }
-    return sentence.length > 86 ? `${sentence.slice(0, 83).trimEnd()}…` : sentence;
+    return sentence.length > 150 ? `${sentence.slice(0, 147).trimEnd()}…` : sentence;
   }, [focus?.text, firstName, t]);
 
   const beginGuidance = () => {
@@ -261,10 +261,11 @@ export default function OverviewTab() {
       <header className="flex items-start justify-between gap-4 px-1">
         <div>
           <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("today.guidance.tag")}</p>
-          <h1 className="mt-1 text-[28px] sm:text-[34px] leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
+          <h1 className="mt-1 text-[30px] sm:text-[38px] leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
             {uiLang === "he" ? `בוקר טוב, ${parentFirstName}` : `Good morning, ${parentFirstName}.`}
           </h1>
-          <p className="mt-1 text-[14px]" style={{ color: "var(--arbor-muted)" }}>{t("today.meta")}</p>
+          <p className="mt-2 text-[19px] font-bold" style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-display)" }}>{uiLang === "he" ? "מה יעזור היום?" : "What would help today?"}</p>
+          <p className="mt-1 text-[14px]" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "שתפו תצפית, שאלה או רגע — Arbor ינחה את הצעד הבא." : "Share an observation, question, or moment — Arbor will guide the next best step."}</p>
         </div>
         <button onClick={() => setShowAiRail(true)} className="hidden sm:inline-flex items-center gap-2 min-h-[44px] rounded-2xl px-4 text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)", background: "var(--arbor-green-soft)" }}>
           <Icon name="verified_user" size={17} /> {t("airail.title")}
@@ -277,53 +278,20 @@ export default function OverviewTab() {
              it above the tab bar, on lg+ it renders inline here above the hero.
              Capture-only surface: no metrics, no firewall exposure. ── */}
       {/* ── Row 1 (1.6fr / 1fr): Guidance hero · Development-Map card ─────────── */}
+      <QuickCaptureBar
+        key="today-primary-capture"
+        childName={firstName}
+        onText={() => setQuickLogOpen(true)}
+        onMode={startCapture}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
         {/* ── Guidance hero — ONE gradient card: "Today's guidance" tag → the one
                thing that matters today (the AI focus) → meta footer + single
                "Begin" CTA into the coach on today's focus. */}
-        <section
-          className="rounded-[22px] overflow-hidden"
-          style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-lg)" }}
-        >
-          <div
-            className="relative min-h-[250px] flex flex-col justify-between bg-cover bg-center"
-            style={{ backgroundImage: "url('/assets/today/calm-transition-activity.png')", padding: "24px" }}
-          >
-            <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(16,39,72,0.96) 0%, rgba(16,39,72,0.88) 43%, rgba(16,39,72,0.22) 72%, transparent 100%)" }} aria-hidden="true"></div>
-            <div className="relative">
-              <span className="inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider" style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(4px)", color: "#fff", padding: "6px 12px", borderRadius: "20px", letterSpacing: "1.4px" }}>
-                {t("today.guidance.tag")}
-              </span>
-            </div>
-            <div className="relative mt-6">
-              {focusLoading && !focus ? (
-                <div className="space-y-2"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-6 w-1/2" /></div>
-              ) : (
-                <h2
-                  className="text-[24px] sm:text-[30px] lg:text-[34px] leading-[1.08] line-clamp-3 max-w-full sm:max-w-[60%]"
-                  style={{ color: "#fff", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}
-                >
-                  {focusHeadline}
-                </h2>
-              )}
-            </div>
-          </div>
-          {/* Meta footer — guidance-briefing microcopy + the ONE primary CTA. */}
-          <div className="flex items-center justify-between gap-3 px-5 py-[14px]">
-            <span className="inline-flex items-center gap-2 text-[13px] font-bold" style={{ color: "var(--arbor-faint)" }}>
-              <Icon name="schedule" size={18} /> {t("today.meta")}
-            </span>
-            <button
-              onClick={beginGuidance}
-              data-testid="today-guidance-cta"
-              className="inline-flex items-center gap-1.5 text-white font-extrabold text-[13px] rounded-xl px-5 py-2.5 transition active:scale-[0.98]"
-              style={{ background: "var(--arbor-ink)", boxShadow: "0 8px 18px -6px rgba(20,34,90,0.5)" }}
-            >
-              {t("today.begin")} <Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
-            </button>
-          </div>
-        </section>
-
+        <div className="min-w-0">
+          <TodayRecommendation eyebrow={t("today.guidance.tag")} headline={focusHeadline} meta={t("today.meta")} action={t("today.begin")} loading={focusLoading && !focus} onBegin={beginGuidance} />
+        </div>
         {/* ── Development-Map card (right, 1fr) ─────────────────────────────────
             Clinical firewall: a milestone-count ring + a COUNT-based 3-stat
             footer (Focus / Domains / Week). NO 0–100 ring, no per-domain %, no
@@ -384,140 +352,43 @@ export default function OverviewTab() {
         })()}
       </div>
 
-      <QuickCaptureBar
-        childName={firstName}
-        onText={() => setQuickLogOpen(true)}
-        onMode={startCapture}
-      />
-
       {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
              child's own logged data, below the hero row. Renders NOTHING with
              zero detections and self-hides per-detection once dismissed; copy is
              counts/patterns only (non-diagnostic, monitoring.ts framing). ── */}
       <ArborNoticedCard />
 
-      {/* ── Row 2 (1.6fr / 1fr): Kid activity feed · Coach card ───────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">
-        {/* ── Kid activity feed — live, multi-row: the child's play quest + a
-               unified feed of kid quest/play completions, parent-logged moments
-               and a noticed milestone, one row grammar (icon-tile + title/sub +
-               trailing status). ── */}
-        <section className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
-          <div className="flex items-center gap-2 mb-4">
-            <Icon name="sync_alt" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} />
-            <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("today.feed.title", { name: firstName })}</span>
-            {/* Live pill reflects REAL recent activity (kid + parent events in 48h). */}
-            {hasRecentActivity && (
-              <span
-                title="Activity in the last 48 hours"
-                aria-label="Activity in the last 48 hours"
-                className="ms-auto inline-flex items-center gap-1.5 text-[10px] font-extrabold rounded-full px-2.5 py-1"
-                style={{ color: "var(--arbor-clay)", background: "var(--arbor-tint-2)" }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-clay)" }} /> {t("today.live")}
-              </span>
-            )}
-          </div>
-          <div className="flex flex-col gap-3">
-            {/* Daily Play card if available */}
-            {dailyPlay ? (
-              <DailyPlayCard
-                pick={dailyPlay}
-                childName={firstName}
-                done={donePlayIds.includes(dailyPlay.activity.id)}
-                onDid={markPlayDone}
-                onCoach={coachOnPlay}
-                concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined}
-                goalLabel={
-                  dailyPlay.reason === "goal-match"
-                    ? (activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label)
-                    : undefined
-                }
-                sessionLength={sessionLength}
-                onSessionLengthChange={handleSessionLength}
-                sessionTapped={sessionTapped}
-                rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined}
-              />
-            ) : (
-              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
-                  <Icon name="auto_awesome" size={20} fill={1} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoLoading", { name: firstName })}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: "var(--arbor-faint)" }}>{t("ov.play.desc")}</div>
-                </div>
-              </div>
-            )}
-            {/* Rhythm card */}
-            {rhythm.confidence !== "none" && (
-              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay-deep)" }}>
-                  <Icon name="calendar_month" size={20} fill={1} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("dw.cta")}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: "var(--arbor-faint)" }}>{rhythm.frictionPeak ? t("rhythm.peak", { hour: hourLabel(rhythm.frictionPeak.hour) }) : t("rhythm.steady")}</div>
-                </div>
-                <Icon name="check_circle" size={20} fill={1} style={{ color: "var(--arbor-success)" }} />
-              </div>
-            )}
-            {/* Empty state: no kid/parent events yet — one quiet teaching row so
-                the feed reads as "waiting for your first log", not broken. */}
-            {activityFeed.length === 0 && (
-              <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-none" style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}>
-                  <Icon name="history" size={20} fill={1} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>{t("today.feed.empty", { name: firstName })}</div>
-                </div>
-              </div>
-            )}
-            {/* Unified activity feed rows (Loops 1+3+5). */}
-            {activityFeed.map((row) => (
-              <div key={row.id} className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-none" style={{ background: row.tone.soft, color: row.tone.ink }}>
-                  {row.icon}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13.5px] font-extrabold truncate" style={{ color: "var(--arbor-ink)" }}>{row.title}</div>
-                  <div className="text-[11px] mt-0.5 truncate" style={{ color: "var(--arbor-faint)" }}>{row.sub}</div>
-                </div>
-                <Icon name="check_circle" size={20} fill={1} className="flex-none" style={{ color: "var(--arbor-success)" }} />
-              </div>
-            ))}
-          </div>
-        </section>
+      <section className="px-1 pt-1" aria-labelledby="today-recent-context">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 id="today-recent-context" className="text-[17px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{uiLang === "he" ? "הקשר אחרון" : "Recent context"}</h2>
+          <button onClick={() => setActiveTab("journal")} className="inline-flex min-h-[44px] items-center gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-clay)" }}>{uiLang === "he" ? "הצג ביומן" : "View in Journal"}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
+        </div>
+        <div className="divide-y" style={{ borderColor: "var(--arbor-rule)" }}>
+          {activityFeed.length === 0 ? <div className="py-5 text-[13px]" style={{ color: "var(--arbor-faint)" }}>{t("today.feed.empty", { name: firstName })}</div> : activityFeed.slice(0, 3).map((row) => (
+            <div key={`context.${row.id}`} className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 py-3.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: row.tone.soft, color: row.tone.ink }}>{row.icon}</span>
+              <div className="min-w-0"><div className="truncate text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{row.title}</div><div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--arbor-faint)" }}>{row.sub}</div></div>
+              <Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
+            </div>
+          ))}
+        </div>
+      </section>
 
-        {/* ── Coach card — the ONE coach entry: identity + one coaching line +
-               single "Continue chat" CTA into Ask Arbor. ── */}
-        <section
-          onClick={() => seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-coach-card" })}
-          className="rounded-[22px] p-5 flex flex-col transition motion-safe:hover:-translate-y-0.5 cursor-pointer"
-          style={{ background: "var(--arbor-coach-grad)", boxShadow: "var(--shadow-sm)" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-[16px] font-extrabold" style={{ background: "var(--arbor-avatar-grad)", color: "#fff" }}>
-              {firstName.charAt(0)}
-            </div>
-            <div>
-              <div className="text-[14px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.title")}</div>
-              {/* No live "online" dot — Arbor is guidance, not a live human on call.
-                  A calm always-available label, no presence signal. */}
-              <div className="text-[10.5px] font-extrabold" style={{ color: "var(--arbor-clay)" }}>
-                {t("coach.online")}
-              </div>
-            </div>
+      <section className="border-y py-5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("today.feed.title", { name: firstName })}>
+        <div className="mb-3 flex items-center justify-between gap-3 px-1">
+          <div>
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-clay)" }}>{uiLang === "he" ? "לשחק יחד" : "Try together"}</div>
+            <h2 className="mt-1 text-[17px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.feed.title", { name: firstName })}</h2>
           </div>
-          <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "var(--arbor-ink-soft)" }}>
-            {focus?.text ? focusHeadline : t("coach.ready", { name: firstName })}
-          </div>
-          <button className="mt-4 bg-white text-center rounded-xl py-3 min-h-[44px] text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
-            <Icon name="forum" size={18} /> {t("today.coach.reply")}
-          </button>
-        </section>
-      </div>
+          {hasRecentActivity && <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--arbor-clay)" }} />{t("today.live")}</span>}
+        </div>
+        {dailyPlay ? (
+          <DailyPlayCard pick={dailyPlay} childName={firstName} done={donePlayIds.includes(dailyPlay.activity.id)} onDid={markPlayDone} onCoach={coachOnPlay} concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined} goalLabel={dailyPlay.reason === "goal-match" ? activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label : undefined} sessionLength={sessionLength} onSessionLengthChange={handleSessionLength} sessionTapped={sessionTapped} rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined} />
+        ) : (
+          <div className="flex items-center gap-3 px-1 py-3"><Icon name="auto_awesome" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} /><div><div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoLoading", { name: firstName })}</div><div className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("ov.play.desc")}</div></div></div>
+        )}
+        <button onClick={() => seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-coach-row" })} className="mt-3 inline-flex min-h-[44px] items-center gap-2 px-1 text-[12px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><Icon name="forum" size={18} />{t("today.coach.reply")}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
+      </section>
 
       {/* ── Daily tools (secondary, collapsed) — keeps the wellness check-in
              reachable (its only home). Day Windows + Reminders are NOT duplicated

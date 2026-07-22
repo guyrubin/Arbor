@@ -5,7 +5,7 @@ import { GraduationCap } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { HubHero } from "../ui/HubHero";
 import { EvidenceChip } from "../ui/EvidenceChip";
-import { PageHeader, cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
+import { cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
 import { BRAND_CONFETTI } from "../../lib/tokens";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
@@ -106,7 +106,7 @@ export default function Masterclasses() {
       {/* E2 — Academy hub hero: sits ABOVE the existing page (outside the
           page's motion wrapper — HubHero runs its own reduced-motion-gated
           entrance). E8: EvidenceChip on the hero's meta row. */}
-      <div className="max-w-[1180px]">
+      <div className="mx-auto w-full min-w-0 max-w-[1180px]">
         <HubHero
           tone="sky"
           icon={GraduationCap}
@@ -127,23 +127,23 @@ export default function Masterclasses() {
           <EvidenceChip />
         </div>
       </div>
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <section aria-label={he ? "בחרו חוויה" : "Choose an Academy experience"} className="grid md:grid-cols-3 gap-3">
-        <div className={`${cardCls} p-5 relative overflow-hidden`} style={{ background: "linear-gradient(135deg, var(--arbor-sky-soft), var(--arbor-paper-elevated))" }}>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
+      <section aria-label={he ? "בחרו חוויה" : "Choose an Academy experience"} className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="relative overflow-hidden border-y p-5 sm:col-span-2 lg:col-span-1" style={{ borderColor: "var(--arbor-rule)" }}>
           <IconBadge tone="sky" size={42}><Icon name="school" size={22} fill={1} /></IconBadge>
           <p className="mt-4 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-sky-ink)" }}>{he ? "בשבילכם" : "For parents"}</p>
           <h2 className="mt-1 text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "ללמוד ולהרגיש בטוחים יותר" : "Learn and feel more confident"}</h2>
           <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{he ? "שיעורים קצרים, תסריטים וכלים לרגעים אמיתיים." : "Short lessons, exact scripts, and tools for real moments."}</p>
           <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold" style={{ color: "var(--arbor-sky-ink)" }}><Icon name="arrow_downward" size={15} /> {he ? "המשיכו לשיעורים" : "Continue to lessons"}</span>
         </div>
-        <button type="button" onClick={() => setActiveTab("journey")} className={`${cardCls} p-5 text-start transition motion-safe:hover:-translate-y-0.5`} style={{ background: "linear-gradient(135deg, var(--arbor-lav-soft), var(--arbor-paper-elevated))" }}>
+        <button type="button" onClick={() => setActiveTab("journey")} className={`${cardCls} min-w-0 p-5 text-start transition motion-safe:hover:-translate-y-0.5`} style={{ background: "linear-gradient(135deg, var(--arbor-lav-soft), var(--arbor-paper-elevated))" }}>
           <IconBadge tone="lav" size={42}><Icon name="auto_stories" size={22} fill={1} /></IconBadge>
           <p className="mt-4 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-lav-ink)" }}>{he ? `ביחד עם ${childName}` : `Together with ${childName}`}</p>
           <h2 className="mt-1 text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "מסעות וסיפורים" : "Story journeys"}</h2>
           <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{he ? "חוויה משותפת שבה הילד הוא הגיבור." : "Shared adventures where your child becomes the hero."}</p>
           <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>{he ? "פתחו מסעות" : "Open journeys"} <Icon name={he ? "arrow_back" : "arrow_forward"} size={15} /></span>
         </button>
-        <button type="button" onClick={() => setActiveTab("comics")} className={`${cardCls} p-5 text-start transition motion-safe:hover:-translate-y-0.5`} style={{ background: "linear-gradient(135deg, var(--arbor-yellow-soft), var(--arbor-paper-elevated))" }}>
+        <button type="button" onClick={() => setActiveTab("comics")} className={`${cardCls} min-w-0 p-5 text-start transition motion-safe:hover:-translate-y-0.5`} style={{ background: "linear-gradient(135deg, var(--arbor-yellow-soft), var(--arbor-paper-elevated))" }}>
           <IconBadge tone="yellow" size={42}><Icon name="comic_bubble" size={22} fill={1} /></IconBadge>
           <p className="mt-4 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-yellow-ink)" }}>{he ? "נוצר במיוחד עבורכם" : "Made for your family"}</p>
           <h2 className="mt-1 text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "ספריית הקומיקס" : "Comic library"}</h2>
@@ -152,12 +152,16 @@ export default function Masterclasses() {
         </button>
       </section>
 
-      <PageHeader title={t("sec.master.title")} subtitle={t("sec.master.sub")} />
+      <header className="border-b px-1 pb-4" style={{ borderColor: "var(--arbor-rule)" }}>
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>{he ? "×œ×ž×™×“×” ×œ×”×•×¨×™×" : "Parent learning"}</p>
+        <h1 className="mt-1 text-2xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("sec.master.title")}</h1>
+        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.master.sub")}</p>
+      </header>
 
       {/* Design's two-column shell: left = the Learning Map rail (the explicit
           development-map spine — courses matched to where the child is growing),
           right = the "All courses" gallery. Collapses to one column below xl. */}
-      <div className="grid xl:grid-cols-[1fr_1.7fr] gap-5 items-start">
+      <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
         {/* ── Left rail: Learning Map ─────────────────────────────────────── */}
         <div className="space-y-5">
           <p className="text-[11px] uppercase tracking-widest font-bold px-1" style={{ color: "var(--arbor-green-ink)" }}>

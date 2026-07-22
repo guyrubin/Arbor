@@ -13,7 +13,7 @@ import { useLanguage } from "../../context/LanguageContext";
  *   - desktop: the labelled sapphire primary pill in the Topbar;
  *   - mobile: the compact icon in the in-content accessories row.
  *
- * `compact` renders the mobile icon-button (`md:hidden`, matches the Settings /
+ * `compact` renders the mobile/tablet icon-button (`lg:hidden`, matches Settings /
  * Search / KidMode accessory buttons). The default is the labelled desktop pill.
  *
  * Sapphire fill + white = the primary action; it sits one step above the soft
@@ -31,7 +31,7 @@ export default function AskArborButton({ compact = false }: { compact?: boolean 
         onClick={go}
         aria-label={t("nav.ask")}
         title={t("nav.ask")}
-        className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
+        className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
         style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
       >
         <Icon name="forum" size={18} />

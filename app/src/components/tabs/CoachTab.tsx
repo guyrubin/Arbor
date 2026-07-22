@@ -259,7 +259,7 @@ export default function CoachTab() {
   const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
 
   return (
-    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 mx-auto max-w-[1040px]">
+    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
       {/* Header section with lens selector */}
       <div className="space-y-4">
         {/* E2 hub hero (slim: no stat trio) — the job sentence + one CTA that
@@ -285,7 +285,7 @@ export default function CoachTab() {
 
         {/* Composer-first: the parent's question is the primary job on this page.
             The existing in-thread composer remains available for follow-up turns. */}
-        <section className={`${cardCls} p-4 sm:p-5`} aria-label={t("elev.hero.ask.cta")} style={{ boxShadow: "var(--shadow-md)" }}>
+        <section className="border-y py-5 sm:py-6" aria-label={t("elev.hero.ask.cta")} style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="flex items-center gap-3 mb-3">
             <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={21} fill={1} /></span>
             <div className="min-w-0">
@@ -459,7 +459,7 @@ export default function CoachTab() {
       </div>
 
       {/* Chat Viewport Area */}
-      <div className={`${cardCls} flex flex-col h-[560px] overflow-hidden justify-between`}>
+      <div className={`${cardCls} flex h-[min(70dvh,560px)] min-h-[460px] min-w-0 flex-col justify-between overflow-hidden`}>
         {/* Persistent named-coach identity strip. The lens/context frame is kept but
             visually subordinate so the conversation is the hero. Green primary —
             never the design's sapphire — per the parent color lock. */}

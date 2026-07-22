@@ -120,8 +120,29 @@ export default function BehaviorsTab() {
   } = useArbor();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const behFirst = (childProfile.name || "").split(" ")[0];
+  const captureCopy = uiLang === "he"
+    ? {
+        intro: "תעדו את הרגע בשתי שורות. אפשר להוסיף פרטים רק אם הם יעזרו אחר כך.",
+        open: "תיעוד מהיר",
+        close: "סגירה",
+        details: "הוספת הקשר ופרטים",
+        hideDetails: "פחות פרטים",
+        happened: "מה קרה?",
+        tried: "מה ניסיתם?",
+        optional: "אופציונלי — עוזר לארבור לזהות הקשר לאורך זמן",
+      }
+    : {
+        intro: "Capture the moment in two lines. Add detail only when it will help later.",
+        open: "Quick capture",
+        close: "Close",
+        details: "Add context and details",
+        hideDetails: "Show fewer details",
+        happened: "What happened?",
+        tried: "What did you try?",
+        optional: "Optional — helps Arbor notice context over time",
+      };
 
   // Voice-to-log
   const [listening, setListening] = useState(false);
@@ -131,13 +152,19 @@ export default function BehaviorsTab() {
   // Refs for the QuickLog tiles: scroll the form into view, focus the photo input.
   const formRef = useRef<HTMLFormElement | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const focusForm = () => {
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const focusForm = (showDetails = false) => {
+    setCaptureOpen(true);
+    if (showDetails) setDetailsOpen(true);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    });
   };
   const openPhoto = () => {
-    focusForm();
-    photoInputRef.current?.click();
+    focusForm(true);
+    window.setTimeout(() => photoInputRef.current?.click(), 120);
   };
 
   const parseVoice = async (text: string) => {
@@ -305,6 +332,8 @@ export default function BehaviorsTab() {
     const wasEditing = !!editingLogId;
     handleAddLog(e);
     toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
+    setCaptureOpen(false);
+    setDetailsOpen(false);
   };
 
   // QuickLog tiles — shortcuts INTO the existing form (no new capability).
@@ -312,7 +341,7 @@ export default function BehaviorsTab() {
   const quickModes: { key: string; icon: string; label: string; onClick: () => void; tone: PastelKey }[] = [
     { key: "voice", icon: "mic", label: t("beh.mode.voice"), onClick: () => { focusForm(); toggleVoice(); }, tone: "mint" },
     { key: "photo", icon: "photo_camera", label: t("beh.mode.photo"), onClick: openPhoto, tone: "sky" },
-    { key: "text", icon: "keyboard", label: t("beh.mode.text"), onClick: focusForm, tone: "coral" },
+    { key: "text", icon: "keyboard", label: t("beh.mode.text"), onClick: () => focusForm(), tone: "coral" },
   ];
 
   // A capture entry tile elsewhere (Journal) named the modality it promised —
@@ -325,7 +354,7 @@ export default function BehaviorsTab() {
   }, [pendingCaptureMode]);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto max-w-[1180px] space-y-6">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
       {/* E2 — the shared hub-hero grammar (replaces PageHeader + the hand-rolled
           coral hero; same job, one kit). Warm tone; stat trio = this-week flat
           counts only — no averages, no trends (clinical firewall). */}
@@ -343,38 +372,26 @@ export default function BehaviorsTab() {
         testId="behaviors-hub-hero"
       />
 
-      <section className={`${cardCls} overflow-hidden`} aria-labelledby="behavior-next-step">
-        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <section className="flex min-w-0 flex-col gap-4 border-y py-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--arbor-rule)" }} aria-labelledby="behavior-next-step">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="lightbulb" size={19} /></span>
           <div className="min-w-0">
-            <span className="text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-peach-ink)" }}>{t("beh.next.eyebrow")}</span>
-            <h2 id="behavior-next-step" className="mt-1 text-xl font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("beh.next.title")}</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("beh.next.body")}</p>
-          </div>
-          <div className="flex flex-wrap gap-2 sm:flex-shrink-0">
-            <button type="button" onClick={focusForm} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-white transition active:scale-[0.98]" style={{ background: T.gradientCta }}>
-              <Icon name="add_circle" size={18} /> {t("beh.next.log")}
-            </button>
-            <button type="button" onClick={() => setActiveTab("plans")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
-              <Icon name="route" size={18} /> {t("beh.next.plan")}
-            </button>
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.next.eyebrow")}</span>
+            <h2 id="behavior-next-step" className="mt-0.5 break-words text-lg font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("beh.next.title")}</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("beh.next.body")}</p>
           </div>
         </div>
-        <ol className="grid grid-cols-1 border-t sm:grid-cols-3" style={{ borderColor: "var(--arbor-rule)" }}>
-          {(["capture", "notice", "try"] as const).map((step, index) => (
-            <li key={step} className="flex items-center gap-3 px-5 py-3.5 sm:border-s first:sm:border-s-0" style={{ borderColor: "var(--arbor-rule)" }}>
-              <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold" style={{ background: index === 0 ? "var(--arbor-peach-soft)" : "var(--arbor-paper-deep)", color: index === 0 ? "var(--arbor-peach-ink)" : "var(--arbor-muted)" }}>{index + 1}</span>
-              <span className="text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t(`beh.next.${step}`)}</span>
-            </li>
-          ))}
-        </ol>
+        <button type="button" onClick={() => setActiveTab("plans")} className="inline-flex min-h-11 w-full flex-shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition sm:w-auto" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)" }}>
+          {t("beh.next.plan")} <Icon name="arrow_forward" size={16} className="rtl:rotate-180" />
+        </button>
       </section>
 
       {/* Row 1 — QuickLog tiles (full width under the hero) */}
-      <div className="grid grid-cols-1 gap-3">
+      <section className="min-w-0" aria-label={t("beh.captureTitle")}>
         {/* QuickLog mode tiles — Voice / Photo / Text */}
-        <div className={`${cardCls} p-5 flex flex-col`}>
-          <span className="text-xs font-extrabold uppercase tracking-wider mb-3" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.captureTitle")}</span>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 flex-1">
+        <div className="overflow-hidden rounded-[20px] bg-white" style={{ border: "1px solid var(--arbor-rule-strong)", boxShadow: "0 8px 28px rgba(32,47,42,0.05)" }}>
+          <button type="button" onClick={() => focusForm()} className="block min-h-[88px] w-full px-4 py-4 text-start text-sm sm:px-5" style={{ color: "var(--arbor-muted)" }}>{captureCopy.intro}</button>
+          <div className="flex flex-wrap items-center gap-1 border-t px-2 py-2 sm:px-3" style={{ borderColor: "var(--arbor-rule)" }}>
             {quickModes.map((m) => {
               const p = PASTEL[m.tone];
               const active = m.key === "voice" && listening;
@@ -383,33 +400,34 @@ export default function BehaviorsTab() {
                   key={m.key}
                   type="button"
                   onClick={m.onClick}
-                  className={`flex flex-col items-center justify-center gap-2 rounded-2xl py-5 transition active:scale-[0.98] ${active ? "animate-pulse" : ""}`}
-                  style={{ background: p.soft, color: p.ink, border: "1px solid var(--arbor-rule)" }}
+                  className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold transition ${active ? "animate-pulse" : ""}`}
+                  style={{ color: p.ink }}
                 >
-                  <Icon name={m.icon} size={24} />
-                  <span className="text-xs font-extrabold">{m.label}</span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full" style={{ background: p.soft }}><Icon name={m.icon} size={15} /></span>
+                  {m.label}
                 </button>
               );
             })}
+            <button type="button" onClick={() => focusForm()} aria-label={captureCopy.open} className="ms-auto flex h-10 w-10 items-center justify-center rounded-full text-white transition active:scale-95" style={{ background: T.gradientCta }}><Icon name="arrow_forward" size={18} className="rtl:rotate-180" /></button>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Row 2 — events main column + right rail (patterns) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         {/* Main column: events + the full log form */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className={`${cardCls} p-5 space-y-4`}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg" style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--arbor-ink)" }}>{t("beh.activeLogs")}</h3>
                 <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("beh.entriesOf", { n: filtered.length, total: behaviorLogs.length })}</p>
               </div>
-              <div className="flex items-center gap-2 ms-auto">
-                <button onClick={exportPdf} className="font-bold text-xs px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
+              <div className="flex w-full flex-wrap items-center gap-2 sm:ms-auto sm:w-auto">
+                <button onClick={exportPdf} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-white px-3 py-2.5 text-xs font-bold transition sm:flex-none" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
                   <Icon name="download" size={15} style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.exportPdf")}
                 </button>
-                <button onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} className="text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60" style={{ background: T.gradientCta }}>
+                <button onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-extrabold text-white transition disabled:opacity-60 sm:flex-none" style={{ background: T.gradientCta }}>
                   {isAnalyzingBehavior ? (<><Icon name="progress_activity" size={15} className="animate-spin" /> {t("beh.synthesizing")}</>) : (<><Icon name="psychology" size={15} /> {t("beh.analyze")}</>)}
                 </button>
               </div>
@@ -417,16 +435,16 @@ export default function BehaviorsTab() {
 
             {/* Filter bar */}
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("beh.searchPlaceholder")} className="flex-1 min-w-[160px] rounded-xl px-3 py-2 focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
-              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("beh.searchPlaceholder")} className="min-h-11 min-w-0 flex-[1_1_220px] rounded-xl px-3 py-2 focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="min-h-11 min-w-0 flex-[1_1_150px] rounded-xl px-2 py-2 sm:max-w-[220px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
                 <option value="all">{t("beh.allTypes")}</option>
                 {types.map((ty) => <option key={ty} value={ty}>{ty}</option>)}
               </select>
-              <select value={intensityFilter} onChange={(e) => setIntensityFilter(e.target.value)} className="rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
+              <select value={intensityFilter} onChange={(e) => setIntensityFilter(e.target.value)} className="min-h-11 min-w-0 flex-[1_1_130px] rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
                 <option value="all">{t("beh.anyIntensity")}</option>
                 {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{t("beh.level", { n })}</option>)}
               </select>
-              <select value={resolvedFilter} onChange={(e) => setResolvedFilter(e.target.value)} className="rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
+              <select value={resolvedFilter} onChange={(e) => setResolvedFilter(e.target.value)} className="min-h-11 min-w-0 flex-[1_1_120px] rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
                 <option value="all">{t("beh.allStatus")}</option>
                 <option value="open">{t("beh.open")}</option>
                 <option value="resolved">{t("beh.resolved")}</option>
@@ -520,7 +538,7 @@ export default function BehaviorsTab() {
                                       <span className="truncate">{log.context ? `${log.context} · ` : ""}{new Date(log.timestamp).toLocaleString()}</span>
                                     </div>
                                   </div>
-                                  <IntensityMeter intensity={log.intensity} tone={tv.tone} />
+                                  <span className="hidden min-[520px]:inline-flex"><IntensityMeter intensity={log.intensity} tone={tv.tone} /></span>
                                   {/* Status icon — resolved (mint check_circle) / open (amber pending) */}
                                   {log.resolved
                                     ? <Icon name="check_circle" size={20} fill={1} style={{ color: "var(--arbor-green-ink)" }} aria-label={t("beh.resolved")} />
@@ -560,7 +578,7 @@ export default function BehaviorsTab() {
                                             <Icon name="check" size={13} /> {log.resolved ? t("beh.resolved") : t("beh.markResolved")}
                                           </button>
                                           <button
-                                            onClick={() => { startEditLog(log.id); focusForm(); }}
+                                            onClick={() => { startEditLog(log.id); focusForm(true); }}
                                             aria-label={t("beh.editLogAria")}
                                             className="px-2 py-1 rounded-lg transition flex items-center gap-1 text-[10px]"
                                             style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
@@ -579,11 +597,11 @@ export default function BehaviorsTab() {
 
                                         {/* co-regulation script */}
                                         <div className="pt-2.5 mt-1 flex flex-col gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                                          <div className="flex justify-between items-center">
+                                          <div className="flex flex-col items-start gap-2 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between">
                                             <span className="text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
                                               <Icon name="record_voice_over" size={14} fill={1} /> {t("beh.coRegScript")}
                                             </span>
-                                            <button type="button" onClick={() => handleGetInlineCoRegulationScript(log)} disabled={isGeneratingInlineScript[log.id]} className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+                                            <button type="button" onClick={() => handleGetInlineCoRegulationScript(log)} disabled={isGeneratingInlineScript[log.id]} className="flex min-h-9 max-w-full cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-start text-[10px] font-extrabold uppercase tracking-wider transition-all" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
                                               {isGeneratingInlineScript[log.id] ? (<><Icon name="progress_activity" size={13} className="animate-spin" /> {t("beh.analyzing")}</>) : inlineCoRegulationScripts[log.id] ? (<><Icon name="auto_awesome" size={13} fill={1} /> {t("beh.regenerateScript")}</>) : (<><Icon name="auto_awesome" size={13} fill={1} /> {t("beh.generateScript")}</>)}
                                             </button>
                                           </div>
@@ -620,12 +638,25 @@ export default function BehaviorsTab() {
           {/* Full log-entry form — the "Text" QuickLog target; also the edit surface.
               Kept fully reachable (scrolled to via the tiles) and unchanged in
               capability. */}
-          <form ref={formRef} onSubmit={submitLog} className={`${cardCls} p-5 space-y-4 text-sm`}>
-            <div className="flex items-center justify-between pb-2" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
-              <h3 className="text-lg flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--arbor-ink)" }}>
+          <AnimatePresence initial={false}>
+          {(captureOpen || !!editingLogId) && (
+          <motion.form
+            ref={formRef}
+            onSubmit={submitLog}
+            initial={{ opacity: 0, y: 12, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: 8, height: 0 }}
+            className={`${cardCls} min-w-0 overflow-hidden p-4 text-sm sm:p-5`}
+          >
+            <div className="flex items-start justify-between gap-3 pb-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
+              <div className="min-w-0">
+              <h3 className="flex items-center gap-2 text-lg" style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--arbor-ink)" }}>
                 {editingLogId ? <Icon name="edit" size={18} style={{ color: "var(--arbor-green-ink)" }} /> : <Icon name="add" size={18} style={{ color: "var(--arbor-green-ink)" }} />}
-                {editingLogId ? t("beh.editMoment") : t("beh.logMoment")}
+                {editingLogId ? t("beh.editMoment") : captureCopy.open}
               </h3>
+              <p className="mt-1 max-w-xl text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{captureCopy.intro}</p>
+              </div>
+              <div className="flex flex-shrink-0 items-center gap-1.5">
               <button
                 type="button"
                 onClick={toggleVoice}
@@ -639,8 +670,29 @@ export default function BehaviorsTab() {
                 {parsing ? <Icon name="progress_activity" size={15} className="animate-spin" /> : listening ? <Icon name="stop" size={15} fill={1} /> : <Icon name="mic" size={15} />}
                 {parsing ? t("beh.parsing") : listening ? t("beh.stop") : t("beh.speak")}
               </button>
+              {!editingLogId && (
+                <button type="button" onClick={() => { setCaptureOpen(false); setDetailsOpen(false); }} aria-label={captureCopy.close} className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>
+                  <Icon name="close" size={16} />
+                </button>
+              )}
+              </div>
             </div>
 
+            <div className="mt-4 space-y-1">
+              <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.typeLabel")}</label>
+              <select value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="min-h-11 w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
+                <option value="Transition Refusal">{t("beh.type.transition")}</option>
+                <option value="Sensory Overload">{t("beh.type.sensory")}</option>
+                <option value="Screentime Dispute">{t("beh.type.screen")}</option>
+                <option value="Sibling Conflict">{t("beh.type.sibling")}</option>
+                <option value="Food Refusal">{t("beh.type.food")}</option>
+                <option value="Sleep Meltdown">{t("beh.type.sleep")}</option>
+              </select>
+            </div>
+
+            <AnimatePresence initial={false}>
+            {detailsOpen && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-4 space-y-4 overflow-hidden">
             <div className="p-3 rounded-xl space-y-1.5" style={{ background: "var(--arbor-peach-soft)" }}>
               <span className="text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1" style={{ color: "var(--arbor-peach-ink)" }}>
                 <Icon name="auto_awesome" size={13} fill={1} />
@@ -654,20 +706,8 @@ export default function BehaviorsTab() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.typeLabel")}</label>
-              <select value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-                <option value="Transition Refusal">{t("beh.type.transition")}</option>
-                <option value="Sensory Overload">{t("beh.type.sensory")}</option>
-                <option value="Screentime Dispute">{t("beh.type.screen")}</option>
-                <option value="Sibling Conflict">{t("beh.type.sibling")}</option>
-                <option value="Food Refusal">{t("beh.type.food")}</option>
-                <option value="Sleep Meltdown">{t("beh.type.sleep")}</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
               <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.whereLabel")}</label>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                 {CONTEXTS.map((c) => (
                   <button
                     key={c}
@@ -693,17 +733,31 @@ export default function BehaviorsTab() {
                 <input type="number" min="2" value={newLogDuration} onChange={(e) => setNewLogDuration(parseInt(e.target.value) || 5)} className="w-full rounded-xl p-2 text-xs text-center" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
               </div>
             </div>
+            </motion.div>
+            )}
+            </AnimatePresence>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.trigger")} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
-              <input type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder={t("beh.triggerPlaceholder")} className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+            <div className="mt-4 space-y-1.5">
+              <label className="text-xs font-bold block" style={{ color: "var(--arbor-ink)" }}>{captureCopy.happened} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
+              <input type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder={t("beh.triggerPlaceholder")} className="min-h-11 w-full rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.response")} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
-              <input type="text" value={newLogResponse} onChange={(e) => setNewLogResponse(e.target.value)} placeholder={t("beh.responsePlaceholder")} className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+            <div className="mt-4 space-y-1.5">
+              <label className="text-xs font-bold block" style={{ color: "var(--arbor-ink)" }}>{captureCopy.tried} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
+              <input type="text" value={newLogResponse} onChange={(e) => setNewLogResponse(e.target.value)} placeholder={t("beh.responsePlaceholder")} className="min-h-11 w-full rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
 
+            <button type="button" onClick={() => setDetailsOpen((open) => !open)} className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-start" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} aria-expanded={detailsOpen}>
+              <span className="min-w-0">
+                <span className="block text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{detailsOpen ? captureCopy.hideDetails : captureCopy.details}</span>
+                {!detailsOpen && <span className="mt-0.5 block text-[10px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{captureCopy.optional}</span>}
+              </span>
+              <Icon name={detailsOpen ? "expand_less" : "expand_more"} size={18} style={{ color: "var(--arbor-muted)" }} />
+            </button>
+
+            <AnimatePresence initial={false}>
+            {detailsOpen && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-4 space-y-4 overflow-hidden">
             <div className="space-y-1">
               <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.notes")}</label>
               <textarea value={newLogNotes} onChange={(e) => setNewLogNotes(e.target.value)} rows={2} placeholder={t("beh.notesPlaceholder")} className="w-full rounded-xl p-2 text-xs" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
@@ -749,8 +803,11 @@ export default function BehaviorsTab() {
                 </label>
               )}
             </div>
+            </motion.div>
+            )}
+            </AnimatePresence>
 
-            <div className="flex gap-2">
+            <div className="mt-5 flex gap-2">
               <button type="submit" className="flex-1 py-3 transition text-white font-extrabold text-xs rounded-xl active:scale-[0.98]" style={{ background: T.gradientCta }}>
                 {editingLogId ? t("beh.update") : t("beh.save")}
               </button>
@@ -760,11 +817,13 @@ export default function BehaviorsTab() {
                 </button>
               )}
             </div>
-          </form>
+          </motion.form>
+          )}
+          </AnimatePresence>
         </div>
 
         {/* Right rail — detected patterns + flat-count card */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <PatternInsights logs={behaviorLogs} />
 
           {/* Per-type 30-day FLAT COUNT (Wave-3 clinical subtraction). Replaces
