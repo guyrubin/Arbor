@@ -218,9 +218,9 @@ export default function JournalTab() {
       : "One small moment is enough to begin. Arbor will help shape it into a story that grows over time.";
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-[1080px] mx-auto flex flex-col gap-5">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5">
       <section className="relative overflow-hidden rounded-[26px] p-5 sm:p-7" style={{ background: "linear-gradient(135deg, var(--arbor-lav-soft), var(--arbor-paper-elevated) 58%, var(--arbor-green-soft))", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
-        <div className="relative z-10 grid md:grid-cols-[1.25fr_.75fr] gap-5 items-end">
+        <div className="relative z-10 grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
               <Icon name="auto_stories" size={16} fill={1} /> {uiLang === "he" ? "היומן שכותב את עצמו" : "The journal that writes itself"}
@@ -230,7 +230,7 @@ export default function JournalTab() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm sm:text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
           </div>
-          <div className="rounded-2xl p-4" style={{ background: "color-mix(in srgb, var(--arbor-paper-elevated) 88%, transparent)", border: "1px solid var(--arbor-rule)" }}>
+          <div className="border-t pt-4 md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
             <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "השבוע בסיפור" : "This week in the story"}</p>
             <div className="mt-3 flex items-center gap-3">
               <span className="text-3xl font-black" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-lav-ink)" }}>{signals.length}</span>
@@ -242,12 +242,15 @@ export default function JournalTab() {
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
-      <div className={`${cardCls} p-4 sm:p-[18px]`}>
-        <div className="flex items-center gap-2.5 mb-3.5">
-          <IconBadge tone="lav" size={32}><Icon name="edit_note" size={18} fill={1} /></IconBadge>
-          <h2 className="text-[16px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+      <section className="border-y py-5 sm:py-6" style={{ borderColor: "var(--arbor-rule)" }}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{uiLang === "he" ? "×¨×’×¢ ×—×“×©" : "New moment"}</p>
+          <h2 className="mt-1 text-[18px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("journal.compose.title")}
           </h2>
+          </div>
+          <IconBadge tone="lav" size={34}><Icon name="edit_note" size={19} fill={1} /></IconBadge>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -264,7 +267,7 @@ export default function JournalTab() {
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* Flat single-column feed */}
       {signals.length === 0 ? (
@@ -278,7 +281,7 @@ export default function JournalTab() {
           </p>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-2 gap-3 items-start">
+        <div className="grid min-w-0 items-start gap-3 lg:grid-cols-2">
           {signals.map((s) => {
             const kind = s.kind;
             const domain = domainOf.get(s.id) ?? KIND_DOMAIN[kind];

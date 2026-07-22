@@ -27,7 +27,7 @@ export default function KidModeButton({ compact = false }: { compact?: boolean }
         onClick={openKidMode}
         aria-label={`${t("aria.kidMode")} — ${lockedLine}`}
         title="Kid Mode — hand the device to your child"
-        className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
+        className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
         style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
       >
         <Icon name="sports_esports" size={18} />

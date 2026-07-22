@@ -129,7 +129,7 @@ export default function DevelopmentTab() {
   }, [pushEnabled]);
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
       {/* E2 — Growth hub hero: eyebrow → job sentence → ONE CTA (quick check)
           → count trio. Sits ABOVE the existing cards; ring/domain internals
           below are untouched. E8: EvidenceChip on the hero's meta row. */}
@@ -160,13 +160,13 @@ export default function DevelopmentTab() {
       </div>
       {/* One action first, then the neutral development picture. */}
       <section className="overflow-hidden rounded-[24px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }} aria-labelledby="growth-weekly-focus">
-        <div className="grid lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
-          <div className="p-5 sm:p-7">
+        <div className="grid min-w-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
+          <div className="min-w-0 p-4 sm:p-6 lg:p-7">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>
               <Icon name="explore" size={16} /> {t("growth.focus.eyebrow")}
             </span>
-            <h2 id="growth-weekly-focus" className="mt-2 text-2xl font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{weeklyFocus.title}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{weeklyFocus.body}</p>
+            <h2 id="growth-weekly-focus" className="mt-2 break-words text-xl font-semibold leading-tight sm:text-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{weeklyFocus.title}</h2>
+            <p className="mt-2 max-w-2xl break-words text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{weeklyFocus.body}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <button type="button" onClick={() => weeklyFocus.action === "check" ? setCheckOpen(true) : setActiveTab("daily-play")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-white transition active:scale-[0.98]" style={{ background: "var(--arbor-clay)" }}>
                 <Icon name={weeklyFocus.action === "check" ? "assignment_turned_in" : "play_arrow"} size={18} />
@@ -177,7 +177,7 @@ export default function DevelopmentTab() {
               </button>
             </div>
           </div>
-          <div className="border-t p-5 sm:p-6 lg:border-s lg:border-t-0" style={{ background: "var(--arbor-paper-deep)", borderColor: "var(--arbor-rule)" }}>
+          <div className="min-w-0 border-t p-4 sm:p-6 xl:border-s xl:border-t-0" style={{ background: "var(--arbor-paper-deep)", borderColor: "var(--arbor-rule)" }}>
             <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("growth.recent.title")}</h3>
             <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("growth.recent.body")}</p>
             {recentMoments.length > 0 ? (
@@ -185,7 +185,7 @@ export default function DevelopmentTab() {
                 {recentMoments.map((moment) => (
                   <li key={moment.id} className="flex items-start gap-3 rounded-xl bg-white p-3" style={{ border: "1px solid var(--arbor-rule)" }}>
                     <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name={moment.icon} size={16} /></span>
-                    <span className="min-w-0"><span className="block truncate text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{moment.title}</span><span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--arbor-muted)" }}>{moment.meta}</span></span>
+                    <span className="min-w-0 flex-1"><span className="block break-words text-xs font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{moment.title}</span><span className="mt-0.5 block break-words text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{moment.meta}</span></span>
                   </li>
                 ))}
               </ul>
@@ -207,7 +207,7 @@ export default function DevelopmentTab() {
         type="button"
         onClick={() => setCheckOpen(true)}
         data-testid="dev-watching-pointer"
-        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-start transition active:scale-[0.99]"
+        className="flex w-full min-w-0 flex-wrap items-center gap-3 rounded-2xl px-4 py-3 text-start transition active:scale-[0.99] sm:flex-nowrap"
         style={{ minHeight: 44, background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
       >
         <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: "var(--arbor-paper-deep)" }}>
@@ -218,7 +218,7 @@ export default function DevelopmentTab() {
             ? t("dev.watching.line", { name: firstName })
             : t("dev.watching.lineGeneric")}
         </span>
-        <span className="inline-flex flex-shrink-0 items-center gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+        <span className="ms-12 inline-flex flex-shrink-0 items-center gap-1 text-[12px] font-bold sm:ms-0" style={{ color: "var(--arbor-green-ink)" }}>
           {t("dev.watching.cta")}
           <Icon name="chevron_right" size={16} className="rtl:rotate-180" />
         </span>
@@ -241,8 +241,8 @@ export default function DevelopmentTab() {
               <Icon name={l.glyph} size={18} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{l.label}</span>
-              <span className="block text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{l.sub}</span>
+              <span className="block break-words text-sm font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{l.label}</span>
+              <span className="mt-0.5 block break-words text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{l.sub}</span>
             </span>
             <Icon name="chevron_right" size={18} className="rtl:rotate-180 flex-shrink-0" />
           </button>

@@ -721,18 +721,18 @@ body {
      UC-2 visual-match: the app canvas warms from the cool #eef3fb to the mock's
      sage (#e7ece8) via a gentle vertical wash; panels/cards stay light (white +
      #eef3fb sapphire-tinted wells) so cards read as calm islands on the sage. */
-  --arbor-paper:            linear-gradient(180deg, #eaeee9 0%, #e7ece8 100%);  /* app canvas — warm sage */
+  --arbor-paper:            #fbfaf7;                          /* calm editorial canvas */
   --arbor-paper-elevated:   #ffffff;                          /* cards + panels */
   --arbor-paper-deep:       #eef3fb;                          /* recessed wells inside cards (sapphire-tinted) */
   --arbor-paper-sunk:       #e7eeea;                          /* deeper track backgrounds (sage well) */
   --arbor-paper-tinted:     #eef3fb;                          /* tinted accent well */
 
   /* ── Shadows: neutral soft, no blue tint ───────────────────────────────── */
-  --shadow-xs:  0 1px 3px rgba(31,60,120,.08);
-  --shadow-sm:  0 6px 18px rgba(16,24,40,.07);                /* neutral soft */
-  --shadow-md:  0 10px 26px -16px rgba(31,60,120,.22);        /* card (neutral soft) */
-  --shadow-lg:  0 16px 36px -18px rgba(31,90,120,.3);         /* hero / elevated */
-  --shadow-xl:  0 24px 48px -20px rgba(31,60,120,.32);
+  --shadow-xs:  0 1px 2px rgba(20,34,90,.04);
+  --shadow-sm:  0 3px 12px rgba(20,34,90,.045);               /* quiet surface lift */
+  --shadow-md:  0 8px 24px -18px rgba(20,34,90,.16);          /* reserved emphasis */
+  --shadow-lg:  0 12px 30px -22px rgba(20,34,90,.18);         /* primary object only */
+  --shadow-xl:  0 16px 36px -24px rgba(20,34,90,.2);
 
   /* ── Glass: fully disabled ─────────────────────────────────────────────── */
   --glass-blur:   none;
