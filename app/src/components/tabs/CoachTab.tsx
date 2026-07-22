@@ -116,6 +116,7 @@ export default function CoachTab() {
   // Which answer's overflow ("…") menu is open. Only Copy stays inline; Log /
   // Plan / Share fold into this menu so a settled answer reads as calm text.
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
+  const [showAllLenses, setShowAllLenses] = useState(false);
 
   // E2 hero CTA target — focusing the input also scrolls it into view.
   const chatInputRef = useRef<HTMLInputElement>(null);
@@ -258,7 +259,7 @@ export default function CoachTab() {
   const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
 
   return (
-    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 mx-auto max-w-[860px]">
+    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 mx-auto max-w-[1040px]">
       {/* Header section with lens selector */}
       <div className="space-y-4">
         {/* E2 hub hero (slim: no stat trio) — the job sentence + one CTA that
@@ -282,6 +283,47 @@ export default function CoachTab() {
           <p className="text-xs max-w-2xl -mt-4" style={{ color: "var(--arbor-muted)" }}>{t("coach.languageManaged")}</p>
         </div>
 
+        {/* Composer-first: the parent's question is the primary job on this page.
+            The existing in-thread composer remains available for follow-up turns. */}
+        <section className={`${cardCls} p-4 sm:p-5`} aria-label={t("elev.hero.ask.cta")} style={{ boxShadow: "var(--shadow-md)" }}>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={21} fill={1} /></span>
+            <div className="min-w-0">
+              <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.empty.title", { name: childFirst })}</p>
+              <p className="text-[11px] leading-relaxed truncate" style={{ color: "var(--arbor-muted)" }}>
+                {uiLang === "he" ? `משתמש בזיכרון שאישרתם על ${childFirst} · אתם שולטים במה שנשמר` : `Uses the memory you approved about ${childFirst} · you control what is remembered`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-end gap-2 rounded-[20px] p-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
+            <textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChatSend(); } }}
+              disabled={isChatLoading}
+              rows={2}
+              placeholder={t("coach.placeholder", { name: childFirst })}
+              className="flex-1 bg-transparent resize-none px-2.5 py-2 text-sm leading-relaxed focus:outline-none min-h-[58px]"
+              style={{ color: "var(--arbor-ink)" }}
+            />
+            <button
+              type="button"
+              onClick={() => handleChatSend()}
+              disabled={isChatLoading || !chatInput.trim()}
+              aria-label={t("coach.send.aria")}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-white flex-shrink-0 disabled:opacity-40 transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              style={{ background: T.gradientCta }}
+            >
+              <Icon name={uiLang === "he" ? "arrow_back" : "arrow_forward"} size={20} />
+            </button>
+          </div>
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={() => setVisionMode("observe")} className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="photo_camera" size={14} /> {t("coach.photo")}</button>
+            <button type="button" onClick={toggleVoice} className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="mic" size={14} /> {voiceLabel}</button>
+            <span className="ms-auto inline-flex items-center gap-1 text-[10px]" style={{ color: "var(--arbor-muted)" }}><Icon name="shield" size={13} /> {t("coach.aiDisclosure")}</span>
+          </div>
+        </section>
+
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.lens")}</span>
@@ -290,14 +332,13 @@ export default function CoachTab() {
             {/* IA: the inline picker selects between lenses; the library browses/learns them. */}
             <button
               type="button"
-              onClick={() => setActiveTab("scholar")}
+              onClick={() => setShowAllLenses((v) => !v)}
+              aria-expanded={showAllLenses}
               className="ms-auto inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
               style={{ color: "var(--arbor-muted)" }}
             >
-              <span>{t("coach.lens.browseAll")}</span>
-              {uiLang === "he"
-                ? <Icon name="chevron_left" size={14} />
-                : <Icon name="chevron_right" size={14} />}
+              <span>{showAllLenses ? (uiLang === "he" ? "פחות אפשרויות" : "Fewer options") : t("coach.lens.browseAll")}</span>
+              <Icon name={showAllLenses ? "expand_less" : "expand_more"} size={14} />
             </button>
           </div>
           {(() => {
@@ -331,7 +372,7 @@ export default function CoachTab() {
                     </button>
                   );
                 })()}
-                {scholarsInfo.map((s, idx) => {
+                {showAllLenses && scholarsInfo.map((s, idx) => {
                   const on = selectedLens === s.name;
                   return (
                     <button
@@ -356,7 +397,7 @@ export default function CoachTab() {
             );
           })()}
           {/* "Use this lens when…" — makes the lens choice practical, not academic */}
-          {(() => {
+          {showAllLenses && (() => {
             const active = scholarsInfo.find((s) => s.name === selectedLens);
             const hint = active?.useWhen
               || (selectedLens === "Integrated Balanced" ? t("coach.lens.integratedHint") : null);
@@ -373,13 +414,13 @@ export default function CoachTab() {
       {chatMessages.length <= 1 && (
         <div className="space-y-2">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {SCENARIOS.map((s) => (
               <button
                 key={s.labelKey}
                 onClick={() => handleChatSend(s.prompt)}
                 disabled={isChatLoading}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                className="inline-flex items-center gap-2 rounded-2xl px-4 py-3 min-h-[48px] text-start text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                 style={{ color: T.ink, border: "1px solid var(--arbor-rule)" }}
               >
                 <span aria-hidden>{s.emoji}</span> {t(s.labelKey)}
@@ -418,7 +459,7 @@ export default function CoachTab() {
       </div>
 
       {/* Chat Viewport Area */}
-      <div className={`${cardCls} flex flex-col h-[520px] overflow-hidden justify-between`}>
+      <div className={`${cardCls} flex flex-col h-[560px] overflow-hidden justify-between`}>
         {/* Persistent named-coach identity strip. The lens/context frame is kept but
             visually subordinate so the conversation is the hero. Green primary —
             never the design's sapphire — per the parent color lock. */}

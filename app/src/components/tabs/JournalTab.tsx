@@ -208,13 +208,41 @@ export default function JournalTab() {
   const ongoingLabel = t("journal.ongoing");
   const autoLabel = t("journal.auto");
   const manualLabel = t("journal.manual");
+  const recentSignals = signals.slice(0, 3);
+  const storyCopy = uiLang === "he"
+    ? recentSignals.length
+      ? `ארבור מחבר ${recentSignals.length} רגעים אחרונים לסיפור מתמשך — בלי שתצטרכו לכתוב הכול בעצמכם.`
+      : "רגע קטן אחד מספיק כדי להתחיל. ארבור יעזור להפוך אותו לסיפור שנבנה עם הזמן."
+    : recentSignals.length
+      ? `Arbor is connecting ${recentSignals.length} recent moments into a living story — without asking you to write it all yourself.`
+      : "One small moment is enough to begin. Arbor will help shape it into a story that grows over time.";
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-[840px] mx-auto flex flex-col gap-[18px]">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-[1080px] mx-auto flex flex-col gap-5">
+      <section className="relative overflow-hidden rounded-[26px] p-5 sm:p-7" style={{ background: "linear-gradient(135deg, var(--arbor-lav-soft), var(--arbor-paper-elevated) 58%, var(--arbor-green-soft))", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
+        <div className="relative z-10 grid md:grid-cols-[1.25fr_.75fr] gap-5 items-end">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
+              <Icon name="auto_stories" size={16} fill={1} /> {uiLang === "he" ? "היומן שכותב את עצמו" : "The journal that writes itself"}
+            </span>
+            <h1 className="mt-3 text-[28px] sm:text-[36px] leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              {uiLang === "he" ? "שמרו את הרגע. ארבור יחבר את הסיפור." : "Keep the moment. Arbor connects the story."}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm sm:text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
+          </div>
+          <div className="rounded-2xl p-4" style={{ background: "color-mix(in srgb, var(--arbor-paper-elevated) 88%, transparent)", border: "1px solid var(--arbor-rule)" }}>
+            <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "השבוע בסיפור" : "This week in the story"}</p>
+            <div className="mt-3 flex items-center gap-3">
+              <span className="text-3xl font-black" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-lav-ink)" }}>{signals.length}</span>
+              <span className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "רגעים ותובנות שנשמרו במקום אחד" : "moments and insights kept in one calm place"}</span>
+            </div>
+          </div>
+        </div>
+      </section>
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
-      <div className={`${cardCls} p-[18px]`}>
+      <div className={`${cardCls} p-4 sm:p-[18px]`}>
         <div className="flex items-center gap-2.5 mb-3.5">
           <IconBadge tone="lav" size={32}><Icon name="edit_note" size={18} fill={1} /></IconBadge>
           <h2 className="text-[16px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
@@ -222,14 +250,14 @@ export default function JournalTab() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {MODE_TILES.map(({ ms, key }) => (
             <button
               key={key}
               type="button"
               onClick={() => startCapture(key)}
-              className="flex items-center justify-center gap-2 rounded-[13px] py-3.5 min-h-[44px] text-[12.5px] font-extrabold transition hover:-translate-y-0.5"
-              style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+              className="flex items-center justify-start sm:justify-center gap-3 rounded-[15px] px-4 py-3.5 min-h-[52px] text-[13px] font-extrabold transition motion-safe:hover:-translate-y-0.5"
+              style={{ background: key === "voice" ? "var(--arbor-green-soft)" : "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
             >
               <Icon name={ms} size={21} fill={1} style={{ color: "var(--arbor-green-ink)" }} />
               {t(`journal.mode.${key}`)}
@@ -250,7 +278,7 @@ export default function JournalTab() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="grid lg:grid-cols-2 gap-3 items-start">
           {signals.map((s) => {
             const kind = s.kind;
             const domain = domainOf.get(s.id) ?? KIND_DOMAIN[kind];

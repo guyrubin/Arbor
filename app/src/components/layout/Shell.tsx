@@ -2,7 +2,6 @@ import React, { lazy, Suspense, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
-import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { sectionForTab, hubTabsForSection } from "../../lib/navigation";
@@ -146,7 +145,6 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
 
 export default function Shell() {
   const { activeTab, setActiveTab, showAiRail, setShowAiRail, showSandboxBanner, childProfile } = useArbor();
-  const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const ActiveTabComponent = tabRegistry[activeTab];
@@ -261,17 +259,6 @@ export default function Shell() {
               >
                 <Icon name="settings" size={18} />
               </button>
-              {firebaseEnabled && user && (
-                <button
-                  onClick={() => void signOut()}
-                  aria-label={t("aria.signout")}
-                  title={t("nav.signout")}
-                  className="md:hidden flex flex-shrink-0 items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-[11px] font-bold transition bg-white"
-                  style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                >
-                  <Icon name="logout" size={16} /> {t("nav.signout")}
-                </button>
-              )}
             </div>
           }/>
 
