@@ -199,7 +199,7 @@ export default function Shell() {
       <div
         className={`page-shell grid grid-cols-1 md:grid-cols-[248px_minmax(0,1fr)] ${
           showAiRail
-            ? "xl:grid-cols-[270px_minmax(0,1fr)_minmax(300px,340px)] 2xl:grid-cols-[280px_minmax(0,1fr)_minmax(320px,360px)]"
+            ? "xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_320px]"
             : "xl:grid-cols-[280px_minmax(0,1fr)]"
         } min-h-screen relative z-10 transition-all duration-300 max-w-full overflow-x-hidden`}
       >

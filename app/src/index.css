@@ -8,16 +8,16 @@
    Migrated: 2026-06-25 (reskin wave 1, step 2). */
 :root {
   /* Surfaces — glass + gradient, light mode */
-  --arbor-paper:          linear-gradient(135deg, #f0f4f8 0%, #e8ecf5 100%);  /* app canvas */
-  --arbor-paper-elevated: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(248,250,252,0.5));  /* cards + sidebar */
-  --arbor-paper-deep:     linear-gradient(135deg, rgba(240,244,248,0.6), rgba(232,236,245,0.4));  /* subtle wells / recessed */
-  --arbor-paper-sunk:     rgba(232,236,245,0.3);   /* deeper wells, track backgrounds */
+  --arbor-paper:          #f7f8f5;  /* calm warm canvas */
+  --arbor-paper-elevated: #ffffff;  /* crisp cards + sidebar */
+  --arbor-paper-deep:     #f1f4f2;  /* subtle wells / recessed */
+  --arbor-paper-sunk:     #e9eeec;  /* deeper wells, track backgrounds */
   --arbor-ink:            #1a1a2e;   /* primary text */
   --arbor-ink-soft:       #2d3748;   /* sub-headings */
   --arbor-muted:          #475569;   /* secondary text */
   --arbor-faint:          #64748b;   /* tertiary / captions */
-  --arbor-rule:           rgba(88, 166, 255, 0.15);
-  --arbor-rule-strong:    rgba(88, 166, 255, 0.25);
+  --arbor-rule:           rgba(28, 56, 74, 0.11);
+  --arbor-rule-strong:    rgba(28, 56, 74, 0.2);
 
   /* Primary — sapphire blue (repurposes the clay token name; backward-compatible) */
   --arbor-clay:           #58a6ff;   /* PRIMARY BLUE: logo, CTA, active nav */
@@ -119,8 +119,8 @@
   /* UC-2 visual-match: Baloo 2 rounded display + Plus Jakarta Sans UI +
      Instrument Serif editorial accents (mock font system). Fraunces/Nunito kept
      as graceful fallbacks; Hebrew swaps to Heebo/Frank Ruhl Libre below. */
-  --font-display:   'Baloo 2', 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-sans:      'Plus Jakarta Sans', 'Nunito', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display:   'Fraunces', 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif;
+  --font-sans:      'Nunito', 'Heebo', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-editorial: 'Instrument Serif', Georgia, serif;
 
   /* Type scale (rem, product-fixed; root = 15px → px equivalents shown as comment)
@@ -142,11 +142,11 @@
   --r-sm: 10px; --r: 14px; --r-lg: 18px; --r-xl: 22px;
 
   /* Shadow system — layered, blue-tinted, precise (2035 sapphire palette) */
-  --shadow-xs:    0 1px 2px rgba(0,0,0,0.04);
-  --shadow-sm:    0 4px 8px rgba(88,166,255,0.08);
-  --shadow-md:    0 8px 16px rgba(88,166,255,0.12);
-  --shadow-lg:    0 12px 32px rgba(88,166,255,0.15);
-  --shadow-xl:    0 20px 48px rgba(88,166,255,0.2);
+  --shadow-xs:    0 1px 2px rgba(22,35,45,0.04);
+  --shadow-sm:    0 4px 12px rgba(22,35,45,0.06);
+  --shadow-md:    0 10px 24px rgba(22,35,45,0.08);
+  --shadow-lg:    0 18px 38px rgba(22,35,45,0.1);
+  --shadow-xl:    0 24px 56px rgba(22,35,45,0.13);
   --shadow-green: 0 0 24px rgba(52,211,153,0.25);
   /* Focus ring — brand-blue halo */
   --ring:         0 0 0 3px rgba(88, 166, 255, 0.18);

@@ -69,10 +69,11 @@ export function HubHero({
   return (
     <section
       data-testid={testId}
-      className={`relative max-w-full overflow-hidden rounded-[22px] p-5 md:p-7 mb-6 text-start ${className}`.trim()}
+      className={`relative max-w-full overflow-hidden rounded-[24px] p-6 md:p-8 mb-6 text-start ${className}`.trim()}
       style={{
         background: p.soft,
         border: "1px solid var(--arbor-rule)",
+        boxShadow: "var(--shadow-sm)",
         opacity: entered ? 1 : 0,
         transform: entered ? "none" : "translateY(10px)",
         transition: "opacity 0.45s ease, transform 0.45s ease",
@@ -88,7 +89,7 @@ export function HubHero({
         />
       )}
 
-      <div className="relative max-w-2xl min-w-0" style={{ zIndex: 1 }}>
+      <div className="relative max-w-3xl min-w-0" style={{ zIndex: 1 }}>
         <div
           className="text-[11px] font-extrabold uppercase"
           style={{ color: p.ink, letterSpacing: "0.14em" }}
@@ -97,7 +98,7 @@ export function HubHero({
         </div>
 
         <h1
-          className="mt-2 text-xl md:text-2xl leading-[1.15] break-words"
+          className="mt-2 text-2xl md:text-[32px] leading-[1.1] break-words"
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >
           {title}
@@ -114,8 +115,8 @@ export function HubHero({
             type="button"
             onClick={cta.onClick}
             data-testid={cta.testId}
-            className="mt-4 inline-flex max-w-full min-h-[44px] items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-[var(--t-sm)] font-extrabold transition active:scale-[0.97] whitespace-normal text-center"
-            style={{ background: p.ink, color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }}
+            className="mt-5 inline-flex max-w-full min-h-[48px] items-center justify-center gap-2 rounded-2xl px-6 py-3 text-[var(--t-base)] font-extrabold transition motion-safe:hover:-translate-y-0.5 active:scale-[0.98] whitespace-normal text-center"
+            style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", boxShadow: "var(--arbor-clay-glow)" }}
           >
             {cta.icon}
             {cta.label}
@@ -127,8 +128,8 @@ export function HubHero({
             {trio.map((s, i) => (
               <div
                 key={i}
-                className="min-w-0 rounded-2xl px-4 py-2.5"
-                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+                className="min-w-0 px-4 py-2.5 first:ps-0"
+                style={{ borderInlineStart: i === 0 ? "none" : "1px solid var(--arbor-rule)" }}
               >
                 <div
                   className="text-lg font-extrabold leading-none tabular-nums"

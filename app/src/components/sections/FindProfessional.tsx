@@ -20,13 +20,8 @@ const SPECIALTIES = [
 const FILTERS = ["Verified by Arbor", "Online", "In-person", "Hebrew", "English", "Ages 3–6", "Insurance accepted"];
 
 // Fallback shown if the API is unavailable (keeps the directory functional offline).
-const FALLBACK: Professional[] = [
-  { id: "p1", name: "Dr. Maya Levi", role: "Child Psychologist", creds: "PhD, Clinical Psychology", langs: "Hebrew · English", city: "Tel Aviv · Online", mode: "Online & in-person", ages: "3–10", approach: "Warm, attachment-informed, practical", handles: "Transition anxiety, emotional regulation", price: "₪₪₪", rating: 4.9, verified: true, tone: "sky" },
-  { id: "p2", name: "Noa Ben-David", role: "Speech & Language Therapist", creds: "MA, CCC-SLP", langs: "Hebrew · English · Arabic", city: "Remote", mode: "Online", ages: "2–8", approach: "Play-based, bilingual focus", handles: "Bilingual transition, expressive language", price: "₪₪", rating: 4.8, verified: true, tone: "mint" },
-  { id: "p3", name: "Dr. Amir Cohen", role: "Pediatrician", creds: "MD, Developmental-Behavioral", langs: "Hebrew · English", city: "Herzliya", mode: "In-person", ages: "0–12", approach: "Evidence-first, calm, parent-partnering", handles: "Developmental screening, sleep, milestones", price: "₪₪₪", rating: 5.0, verified: true, tone: "coral" },
-];
-
-/** True if the professional's "min–max" age string overlaps [lo, hi]. */
+const FALLBACK: Professional[] = [];
+// True if the professional's age range overlaps [lo, hi].
 function agesOverlap(ages: string, lo: number, hi: number): boolean {
   const m = ages.match(/(\d+)\s*[–-]\s*(\d+)/);
   if (!m) return true;
@@ -177,8 +172,10 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
       {/* Curated results */}
       {results.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>
-          <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>No professionals match those filters.</p>
-          <button onClick={() => { setActive([]); setQuery(""); }} className="text-xs font-bold mt-2" style={{ color: "var(--arbor-green-ink)" }}>Clear filters</button>
+          <Icon name="shield_person" size={34} style={{ color: "var(--arbor-green-ink)" }} />
+          <p className="mt-3 text-base font-bold" style={{ color: "var(--arbor-ink)" }}>The verified directory is opening soon.</p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Arbor will only show professionals after their identity and credentials have been reviewed. You can still prepare a private summary for someone you already trust.</p>
+          <button onClick={() => setActiveTab("consult")} className="mt-4 rounded-xl px-4 py-2.5 text-xs font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>Prepare a shareable summary</button>
         </div>
       ) : (
         <div className="grid lg:grid-cols-2 gap-5">
@@ -226,7 +223,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           ))}
         </div>
       )}
-      <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>Every professional is reviewed and verified by Arbor. Curated, not crowdsourced.</p>
+      <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>No profile appears here until Arbor has completed its verification process.</p>
 
       {/* MON-3 v1: consultation request modal */}
       <Modal open={!!consultPro} onClose={() => setConsultPro(null)} title={consultPro ? `Request a consultation — ${consultPro.name}` : "Request a consultation"}>
