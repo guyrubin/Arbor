@@ -78,7 +78,7 @@ export default function ChildProfile() {
     : t("cp.card.subtitleNoSchool", { langs: langs || "—" });
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
       {/* ── E2 hub hero — the family-album job sentence + one CTA (add a member,
           via the SAME Trusted Sharing route the Family Circle card uses) + a
           living count trio. FIREWALL: counts only — the child in this profile,
@@ -107,7 +107,7 @@ export default function ChildProfile() {
       {/* ── Identity masthead (UC-1) — the child identity card and the live Family
           Circle sit side by side ABOVE the full developmental narrative below.
           Additive: every chapter is preserved beneath it. ──────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
         {/* Child card — the framed identity hero. Avatar renders THROUGH the shared
             HeroAvatar engine (Loop 4); we never re-composite the portrait. */}
         <div className={`${cardCls} overflow-hidden min-w-0`}>
@@ -307,7 +307,7 @@ export default function ChildProfile() {
       </SectionCard>
 
       {/* Chapter 4 — strengths & where to support */}
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <SectionCard title={t("cp.ch.strengths")} icon={<Icon name="diamond" size={20} fill={1} />} tone="mint">
           <ul className="space-y-3">
             {childProfile.strengths.map((s) => (
@@ -385,7 +385,7 @@ export default function ChildProfile() {
       </SectionCard>
 
       {/* Footer jump strip — the deep tools, one tap away */}
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-3">
         {([
           { tab: "timeline" as const, tone: "sky" as const, icon: <Icon name="route" size={18} />, label: t("cp.footer.story", { name: first }) },
           { tab: "behaviors" as const, tone: "coral" as const, icon: <Icon name="monitoring" size={18} />, label: t("cp.footer.moments") },

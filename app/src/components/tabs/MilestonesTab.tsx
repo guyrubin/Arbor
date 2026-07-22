@@ -339,11 +339,11 @@ export default function MilestonesTab() {
   const firstName = (childProfile.name || "").split(" ")[0];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
-      <div className="flex items-center gap-3.5">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
+      <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
         {/* The child's memory portrait — modest, no comic frame in the parent register. */}
         <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
-        <div>
+        <div className="min-w-0">
           <h2 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h2>
           <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("ms.subtitle")}</p>
         </div>
@@ -353,16 +353,17 @@ export default function MilestonesTab() {
           (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
           right pane = the seven-domain master list, or a single-domain drill-in. */}
       <Split
-        ratio="1fr 1.4fr"
+        ratio="minmax(300px,1fr) minmax(0,1.4fr)"
+        className="md:[&>div]:!contents xl:[&>div]:!grid"
         left={
-          <div className="space-y-5 md:sticky md:top-4">
+          <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
             {/* Development Map summary — count headline only, no verdict score. */}
-            <div className={`${cardCls} p-6`}>
+            <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.developmentMap")}</span>
               {/* Ring/dial visual — CLINICAL FIREWALL: the number inside is a COUNT of
                   noticed milestones (never a %/score/verdict); the ring fill is only the
                   checked/total count-proportion, and it is not labelled as competence. */}
-              <div className="flex items-center gap-4 mt-4">
+              <div className="mt-4 flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
                 <RadialProgress value={checkedMilestones} total={totalMilestones} tone="mint" size={92} thickness={10}>
                   <span className="text-center leading-none">
                     <span className="block text-[26px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{checkedMilestones}</span>
@@ -393,7 +394,7 @@ export default function MilestonesTab() {
             </div>
 
             {/* Corrected-age (preterm) control + badge — relocated into the rail. */}
-            <div className={`${cardCls} p-4`}>
+            <div className={`${cardCls} min-w-0 p-4`}>
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-2.5">
                   <span className="p-1.5 rounded-lg flex items-center justify-center mt-0.5" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="child_care" size={16} /></span>
@@ -440,7 +441,7 @@ export default function MilestonesTab() {
                       style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                     />
                   </label>
-                  <div className="flex gap-2 items-stretch">
+                  <div className="flex flex-wrap items-stretch gap-2">
                     <button type="submit" disabled={savingGestation} className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
                       {savingGestation ? <Icon name="progress_activity" size={14} className="animate-spin" /> : t("ms.gestationSave")}
                     </button>
