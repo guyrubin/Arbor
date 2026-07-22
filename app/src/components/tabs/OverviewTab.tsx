@@ -4,6 +4,7 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
 import { Skeleton } from "../ui/Skeleton";
 import DailyCheckinCard from "../overview/DailyCheckinCard";
 import DailyPlayCard from "../overview/DailyPlayCard";
@@ -55,6 +56,7 @@ export default function OverviewTab() {
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
+  const { user } = useAuth();
   const { toast } = useToast();
   // The ONE shared dev-score derivation (hooks/useDevScore) — the same result
   // the Development hub and the other picture surfaces read. Hoisted here
@@ -79,6 +81,7 @@ export default function OverviewTab() {
   const goalDomains = useMemo(() => activeGoalDomains(activeGoals), [activeGoals]);
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
+  const parentFirstName = (user?.displayName || t("nav.parent")).split(" ")[0];
 
   // ── Rhythm prediction + Daily Play pick (memory-driven) ──
   const rhythm = useMemo(
@@ -161,6 +164,9 @@ export default function OverviewTab() {
       .replace(/\s+/g, " ")
       .trim();
     const sentence = cleaned.split(/(?<=[.!?])\s+/)[0] || cleaned;
+    if (/transition|screen\s*time|dysregulation/i.test(sentence)) {
+      return t("today.focus.transition");
+    }
     return sentence.length > 86 ? `${sentence.slice(0, 83).trimEnd()}…` : sentence;
   }, [focus?.text, firstName, t]);
 
@@ -256,7 +262,7 @@ export default function OverviewTab() {
         <div>
           <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("today.guidance.tag")}</p>
           <h1 className="mt-1 text-[28px] sm:text-[34px] leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
-            {uiLang === "he" ? `בוקר טוב, ${firstName}` : `Good morning, ${firstName}.`}
+            {uiLang === "he" ? `בוקר טוב, ${parentFirstName}` : `Good morning, ${parentFirstName}.`}
           </h1>
           <p className="mt-1 text-[14px]" style={{ color: "var(--arbor-muted)" }}>{t("today.meta")}</p>
         </div>
