@@ -6,7 +6,9 @@ export default function TodayRecommendation({ eyebrow, headline, meta, action, l
   return (
     <section className="overflow-hidden rounded-[20px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
       <div className="grid min-h-[164px] grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)]">
-        <div aria-hidden="true" className="min-h-[132px] bg-cover bg-center" style={{ backgroundImage: "url('/assets/today/calm-transition-activity.png')" }} />
+        {/* CODEX-3: decorative hero art re-encoded 2.6MB PNG → ~56KB 800px WebP
+            (crisp at 2x in the 180px column; ffmpeg libwebp q82). */}
+        <div aria-hidden="true" className="min-h-[132px] bg-cover bg-center" style={{ backgroundImage: "url('/assets/today/calm-transition-activity.webp')" }} />
         <div className="flex min-w-0 flex-col justify-center p-5 sm:px-6">
           <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</span>
           {loading ? <div className="mt-2 space-y-2"><Skeleton className="h-6 w-4/5" /><Skeleton className="h-5 w-1/2" /></div> : <h2 className="mt-1.5 text-[21px] font-extrabold leading-[1.12] sm:text-[23px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}>{headline}</h2>}

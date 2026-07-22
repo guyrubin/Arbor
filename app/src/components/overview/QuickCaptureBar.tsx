@@ -6,10 +6,11 @@ import type { CaptureMode } from "../../context/ArborContext";
 
 /* Quick Capture — the ambient door into logging a moment, above the forms in
    the capture hierarchy. First in Today's DOM so keyboard users reach capture
-   first; on phones `order-last` gives it a real flow slot at the END of the
-   column so the sticky-bottom pin genuinely engages (a sticky-bottom FIRST
-   child never sticks), with a bottom offset that clears the fixed MobileNav
-   tab bar (< md) + the home indicator. Inline at the top of the spine on lg+.
+   first; on phones (< md) the OverviewTab wrapper pins it position:fixed with
+   a bottom offset (--mobile-nav-h + safe-area) clearing the MobileNav tab bar
+   + the home indicator, so it stays visible at any scroll position (sticky
+   cannot engage there: the shell's overflow-x-hidden ancestors are scroll
+   containers that grow with content). Inline at the top of the spine on md+.
    Three modality affordances, ZERO new capture paths: the primary CTA opens
    the existing QuickLogModal inline (text), and the mic / photo tiles hand the
    mode to the EXISTING requestCapture() seam — the same one JournalTab's

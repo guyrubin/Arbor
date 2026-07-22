@@ -1006,7 +1006,15 @@ export const en: Dict = {
   "today.capture.aria": "Capture a moment in {name}'s story",
   "today.capture.voice": "Capture with voice",
   "today.capture.photo": "Capture with a photo",
-  "today.focus.transition": "Make the next transition feel easier.",
+  // Today header (CODEX-2: time-of-day-aware greeting, no inline ternaries)
+  "today.greeting.morning": "Good morning, {name}.",
+  "today.greeting.afternoon": "Good afternoon, {name}.",
+  "today.greeting.evening": "Good evening, {name}.",
+  "today.header.prompt": "What would help today?",
+  "today.header.sub": "Share an observation, question, or moment — Arbor will guide the next best step.",
+  // Today action loop empty state (TODAY-1: no accept CTA without a real focus)
+  "today.loop.empty": "Log one moment to unlock today's step.",
+  "today.loop.emptySub": "Capture a moment above — Arbor will turn it into one small, doable step for today.",
   "today.memory.evening.title": "Look back on today",
   "today.memory.evening.body": "{n} new things Arbor noticed — review before they're saved.",
   "today.mission.eyebrow": "Today's mission",
@@ -2735,7 +2743,15 @@ export const he: Dict = {
   "today.capture.aria": "תיעוד רגע בסיפור של {name}",
   "today.capture.voice": "תיעוד בקול",
   "today.capture.photo": "תיעוד בתמונה",
-  "today.focus.transition": "הפכו את המעבר הבא לקל יותר.",
+  // Today header (CODEX-2: time-of-day-aware greeting, no inline ternaries)
+  "today.greeting.morning": "בוקר טוב, {name}",
+  "today.greeting.afternoon": "צהריים טובים, {name}",
+  "today.greeting.evening": "ערב טוב, {name}",
+  "today.header.prompt": "מה יעזור היום?",
+  "today.header.sub": "שתפו תצפית, שאלה או רגע — Arbor ינחה את הצעד הבא.",
+  // Today action loop empty state (TODAY-1: no accept CTA without a real focus)
+  "today.loop.empty": "תעדו רגע אחד כדי לפתוח את הצעד של היום.",
+  "today.loop.emptySub": "תעדו רגע למעלה — Arbor יהפוך אותו לצעד אחד קטן ואפשרי להיום.",
   "today.memory.evening.title": "מבט אחורה על היום",
   "today.memory.evening.body": "{n} דברים חדשים שארבור שם לב אליהם — סקרו לפני השמירה.",
   "today.mission.eyebrow": "המשימה של היום",

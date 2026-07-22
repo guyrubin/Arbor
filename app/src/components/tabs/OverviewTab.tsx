@@ -22,6 +22,7 @@ import { useDevScore } from "../../hooks/useDevScore";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
+import { focusHeadlineFrom } from "../../lib/todayFocus";
 
 const DAY = 86_400_000;
 
@@ -166,20 +167,17 @@ export default function OverviewTab() {
     lastActionOutcome: latestCompletedAction?.outcome,
   });
 
-  const focusHeadline = useMemo(() => {
-    const raw = focus?.text?.trim() || t("ov.recoEmpty", { name: firstName });
-    const cleaned = raw
-      .replace(/^\s*\d+\.\s*What May Be Happening\s*[-:–—]\s*/i, "")
-      .replace(/\s*\((?:high|medium|low)\)\s*:?/gi, "")
-      .replace(/\s*(?:Profile mentions|Based on|Evidence:)\s+.*$/i, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    const sentence = cleaned.split(/(?<=[.!?])\s+/)[0] || cleaned;
-    if (/transition|screen\s*time|dysregulation/i.test(sentence)) {
-      return t("today.focus.transition");
-    }
-    return sentence.length > 150 ? `${sentence.slice(0, 147).trimEnd()}…` : sentence;
-  }, [focus?.text, firstName, t]);
+  // TODAY-1/CODEX-2: the headline is ALWAYS derived from the AI focus text
+  // (pure scrub in lib/todayFocus — no keyword override, no canned copy).
+  // null = no real focus (day-0 / failed fetch): the hero shows display-only
+  // fallback copy, but TodayActionLoop gets null so the fallback can never be
+  // persisted via acceptTodayAction nor injected into the next focus prompt.
+  const focusHeadline = useMemo(() => focusHeadlineFrom(focus?.text), [focus?.text]);
+
+  // CODEX-2: time-of-day-aware greeting (was hardcoded to the morning copy).
+  const hour = new Date().getHours();
+  const greetingKey =
+    hour < 12 ? "today.greeting.morning" : hour < 18 ? "today.greeting.afternoon" : "today.greeting.evening";
 
   const beginGuidance = () => {
     seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-guidance" });
@@ -265,43 +263,56 @@ export default function OverviewTab() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+      /* Fade-only entrance (no `y`): a transform on this column would become
+         the containing block for the < md position:fixed quick-capture pin
+         (TODAY-4), gluing the bar to the column instead of the viewport. */
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="flex flex-col gap-4 md:gap-5 relative max-w-[1180px] mx-auto"
+      className="flex flex-col gap-4 md:gap-5 relative max-w-[1180px] mx-auto max-md:pb-20"
     >
       <header className="flex items-start justify-between gap-4 px-1">
         <div>
           <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("today.guidance.tag")}</p>
           <h1 className="mt-1 text-[30px] sm:text-[38px] leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
-            {uiLang === "he" ? `בוקר טוב, ${parentFirstName}` : `Good morning, ${parentFirstName}.`}
+            {t(greetingKey, { name: parentFirstName })}
           </h1>
-          <p className="mt-2 text-[19px] font-bold" style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-display)" }}>{uiLang === "he" ? "מה יעזור היום?" : "What would help today?"}</p>
-          <p className="mt-1 text-[14px]" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "שתפו תצפית, שאלה או רגע — Arbor ינחה את הצעד הבא." : "Share an observation, question, or moment — Arbor will guide the next best step."}</p>
+          <p className="mt-2 text-[19px] font-bold" style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-display)" }}>{t("today.header.prompt")}</p>
+          <p className="mt-1 text-[14px]" style={{ color: "var(--arbor-muted)" }}>{t("today.header.sub")}</p>
         </div>
         <button onClick={() => setShowAiRail(true)} className="hidden sm:inline-flex items-center gap-2 min-h-[44px] rounded-2xl px-4 text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)", background: "var(--arbor-green-soft)" }}>
           <Icon name="verified_user" size={17} /> {t("airail.title")}
         </button>
       </header>
 
-      {/* ── Quick Capture (W6.2) — ambient voice/photo/text capture, ABOVE the
-             forms in the hierarchy. First in the DOM (keyboard users reach
-             capture first); on phones its own `order-last` + sticky-bottom pin
-             it above the tab bar, on lg+ it renders inline here above the hero.
+      {/* ── Quick Capture (W6.2/TODAY-4) — ambient voice/photo/text capture,
+             ABOVE the forms in the hierarchy. First in the DOM (keyboard users
+             reach capture first); on phones (< md) the wrapper pins it
+             `fixed` above the MobileNav tab bar (--mobile-nav-h + safe-area
+             offset) so the ≤20s capture affordance survives any scroll; on
+             md+ it renders inline here above the hero. `fixed`, not `sticky`:
+             every ancestor (main + both shell wrappers) is an overflow-x-hidden
+             scroll container that grows with content on mobile, so a
+             sticky-bottom pin can never engage against the real viewport.
+             z-30 keeps it under MobileNav (z-40) and QuickLogModal (z-50).
+             The max-md:pb-* on the column below reserves its floating slot.
              Capture-only surface: no metrics, no firewall exposure. ── */}
+      <div className="max-md:fixed max-md:inset-x-4 max-md:z-30 max-md:bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+8px)]">
+        <QuickCaptureBar
+          key="today-primary-capture"
+          childName={firstName}
+          onText={() => setQuickLogOpen(true)}
+          onMode={startCapture}
+        />
+      </div>
+
       {/* ── Row 1 (1.6fr / 1fr): Guidance hero · Development-Map card ─────────── */}
-      <QuickCaptureBar
-        key="today-primary-capture"
-        childName={firstName}
-        onText={() => setQuickLogOpen(true)}
-        onMode={startCapture}
-      />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
         {/* ── Guidance hero — ONE gradient card: "Today's guidance" tag → the one
                thing that matters today (the AI focus) → meta footer + single
                "Begin" CTA into the coach on today's focus. */}
         <div className="min-w-0">
-          <TodayRecommendation eyebrow={t("today.guidance.tag")} headline={focusHeadline} meta={t("today.meta")} action={t("today.begin")} loading={focusLoading && !focus} onBegin={beginGuidance} />
+          <TodayRecommendation eyebrow={t("today.guidance.tag")} headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })} meta={t("today.meta")} action={t("today.begin")} loading={focusLoading && !focus} onBegin={beginGuidance} />
         </div>
         {/* ── Development-Map card (right, 1fr) ─────────────────────────────────
             Clinical firewall: a milestone-count ring + a COUNT-based 3-stat
@@ -367,6 +378,9 @@ export default function OverviewTab() {
              child's own logged data, below the hero row. Renders NOTHING with
              zero detections and self-hides per-detection once dismissed; copy is
              counts/patterns only (non-diagnostic, monitoring.ts framing). ── */}
+      {/* TODAY-1: recommendation is null when no real AI focus exists — the
+          loop renders a capture-pointing empty state with NO accept CTA, so
+          fallback copy can never enter actionLoops. */}
       <TodayActionLoop recommendation={focusHeadline} />
 
       <ProgressNarrative

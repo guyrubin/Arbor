@@ -4,9 +4,16 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { capacityMinutes, type ActionCapacity, type ActionOutcome } from "../../actionLoop/model";
 
-export default function TodayActionLoop({ recommendation }: { recommendation: string }) {
+/**
+ * recommendation MUST be the AI-derived focus headline or null (TODAY-1):
+ * when null (day-0 user / failed focus fetch) the component renders an empty
+ * state WITHOUT the accept CTA, so acceptTodayAction is unreachable and no
+ * fallback/marketing copy can ever be persisted into actionLoops or injected
+ * into the next focus prompt.
+ */
+export default function TodayActionLoop({ recommendation }: { recommendation: string | null }) {
   const { activeTodayAction, acceptTodayAction, recordTodayOutcome, removeTodayAction } = useArbor();
-  const { uiLang } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const [capacity, setCapacity] = useState<ActionCapacity>("standard");
   const he = uiLang === "he";
   const copy = he ? {
@@ -15,12 +22,29 @@ export default function TodayActionLoop({ recommendation }: { recommendation: st
     eyebrow: "Today's step", title: "Turn the guidance into one small action", body: "Choose what fits today. You can change course or remove it at any time.", make: "Make this today's step", tried: "What happened when you tried it?", helped: "Helped", somewhat: "A little", notToday: "Not today", receipt: "Saved as your report", adapt: "Arbor will use this outcome to shape the next step — never to score your child.", remove: "Remove",
   };
 
-  if (!activeTodayAction) return (
+  if (!activeTodayAction) {
+    // TODAY-1 guard: without a real AI focus there is nothing legitimate to
+    // accept — render the empty state pointing at the capture bar, with NO
+    // accept CTA (acceptTodayAction is unreachable from this branch).
+    if (!recommendation) return (
+      <section className="rounded-[20px] bg-white p-5 sm:p-6" style={{ border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }} aria-labelledby="today-action-title">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="edit_note" size={19} /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{copy.eyebrow}</p>
+            <h2 id="today-action-title" className="mt-1 text-lg font-bold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.loop.empty")}</h2>
+            <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("today.loop.emptySub")}</p>
+          </div>
+        </div>
+      </section>
+    );
+    return (
     <section className="rounded-[20px] bg-white p-5 sm:p-6" style={{ border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }} aria-labelledby="today-action-title">
       <div className="flex items-start gap-3"><span className="flex h-10 w-10 flex-none items-center justify-center rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="task_alt" size={19} /></span><div className="min-w-0 flex-1"><p className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{copy.eyebrow}</p><h2 id="today-action-title" className="mt-1 text-lg font-bold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{copy.title}</h2><p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{copy.body}</p></div></div>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="inline-flex rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)" }} aria-label={he ? "משך הצעד" : "Action length"}>{(["tiny", "standard", "roomy"] as ActionCapacity[]).map((value) => <button key={value} type="button" onClick={() => setCapacity(value)} aria-pressed={capacity === value} className="min-h-10 rounded-lg px-3 text-xs font-bold transition" style={{ background: capacity === value ? "white" : "transparent", color: capacity === value ? "var(--arbor-ink)" : "var(--arbor-muted)", boxShadow: capacity === value ? "var(--shadow-xs)" : "none" }}>{capacityMinutes[value]} {he ? "דק׳" : "min"}</button>)}</div><button type="button" onClick={() => acceptTodayAction(recommendation, capacity)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-extrabold text-white transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)" }}>{copy.make}<Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" /></button></div>
     </section>
-  );
+    );
+  }
 
   const outcomes: { value: ActionOutcome; label: string }[] = [{ value: "helped", label: copy.helped }, { value: "somewhat", label: copy.somewhat }, { value: "not_today", label: copy.notToday }];
   return (

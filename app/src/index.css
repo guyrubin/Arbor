@@ -19,6 +19,11 @@
   --arbor-rule:           rgba(28, 56, 74, 0.11);
   --arbor-rule-strong:    rgba(28, 56, 74, 0.2);
 
+  /* Layout — fixed MobileNav tab-bar height (< lg). Consumed by Today's sticky
+     quick-capture bar (TODAY-4) to pin above the nav; keep in sync with
+     components/layout/MobileNav.tsx (py-2.5 + 20px icon + label + border). */
+  --mobile-nav-h:         58px;
+
   /* Primary — sapphire blue (repurposes the clay token name; backward-compatible) */
   --arbor-clay:           #58a6ff;   /* PRIMARY BLUE: logo, CTA, active nav */
   --arbor-clay-deep:      #1f6feb;   /* hover / pressed primary */
