@@ -159,6 +159,41 @@ describe("Wave-3 clinical firewall — prose paths emit no intensity-trend verdi
   });
 });
 
+// 2026-07-23 (JRNL-1): the weekly recap computed its OWN avg-intensity score
+// ("avg intensity {avg}/5") that the avgIntensityThisWeek token scan never saw,
+// the parent report export printed "Average intensity X / 5", and the weekly
+// digest shipped avgIntensity + an easing/steady/intensifying trend VERDICT in
+// its parent-visible stats payload and fallback narrative ("Hard moments are
+// easing"). All removed — parent surfaces show counts, never derived scores or
+// trend adjectives. This scan pins all three files shut.
+describe("JRNL-1 clinical firewall — weekly surfaces render no intensity score or trend verdict", () => {
+  const WEEKLY_SURFACES = [
+    "components/tabs/WeeklyTab.tsx",
+    "lib/reportExport.ts",
+    "server/digest.ts",
+  ];
+  for (const rel of WEEKLY_SURFACES) {
+    describe(rel, () => {
+      const code = stripComments(read(rel));
+
+      it("renders no avg-intensity score or '/5' denominator", () => {
+        expect(code, `${rel} reintroduces an avg-intensity score`).not.toMatch(/avg.?intensity/i);
+        expect(code, `${rel} renders an x/5 score denominator`).not.toMatch(/\/\s*5\b/);
+      });
+
+      it("emits no easing/intensifying trend verdict", () => {
+        expect(code, `${rel} reintroduces the easing/intensifying verdict class`).not.toMatch(/\b(easing|intensifying|intensityTrend)\b/i);
+      });
+    });
+  }
+
+  it("i18n drops the avg-intensity keys (wk.avgIntensity, beh.stats.avgIntensity)", () => {
+    const i18n = read("lib/i18n.ts");
+    expect(i18n).not.toContain('"wk.avgIntensity":');
+    expect(i18n).not.toContain('"beh.stats.avgIntensity":');
+  });
+});
+
 describe("Wave-3 clinical firewall — i18n keys are non-diagnostic", () => {
   const i18n = read("lib/i18n.ts");
 

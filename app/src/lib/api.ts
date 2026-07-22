@@ -312,13 +312,13 @@ export type WeeklyDigest = {
   watchFor: string[];
   tryThisWeek: string;
   generated: "ai" | "fallback";
+  /** Counts only (clinical firewall JRNL-1) — the digest stats payload carries
+   *  no derived intensity score and no trend verdict. */
   stats: {
     weekOf: string;
     daysCovered: number;
     momentsLogged: number;
     previousWeekMoments: number;
-    avgIntensity: number | null;
-    intensityTrend: "easing" | "steady" | "intensifying" | "unknown";
     resolvedCount: number;
     topContext: string | null;
     topBehavior: string | null;
