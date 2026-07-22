@@ -6,6 +6,8 @@ import { useArbor } from "../../context/ArborContext";
 import { HubHero } from "../ui/HubHero";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { countSince, WEEK_MS } from "../../lib/pulse";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { isRecheckDue, latestRecheckDueAt } from "../../lib/screeningRecheck";
 import DevScoreCard from "../sections/DevScoreCard";
 import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
@@ -52,6 +54,17 @@ export default function DevelopmentTab() {
   const { milestones, behaviorLogs, playLogs, childProfile, setActiveTab } = useArbor();
   const [checkOpen, setCheckOpen] = useState(false);
   const firstName = (childProfile.name || "").split(" ")[0];
+
+  // UND-2 — read-only view of the saved screenings (existing child collection):
+  // once a parent-requested re-check comes due, the pointer row says so.
+  const screenings = useChildCollection<{ id: string; answeredAt: string; recheckDueAt?: string }>(
+    childProfile.id,
+    "screenings"
+  );
+  const recheckDue = useMemo(
+    () => isRecheckDue(latestRecheckDueAt(screenings.items)),
+    [screenings.items]
+  );
 
   const weeklyFocus = useMemo(() => {
     const nextMilestone = milestones.find((m) => !m.checked);
@@ -218,6 +231,17 @@ export default function DevelopmentTab() {
             ? t("dev.watching.line", { name: firstName })
             : t("dev.watching.lineGeneric")}
         </span>
+        {/* UND-2 — the parent's saved re-check reminder surfaces HERE once due
+            (neutral reminder chip — never a verdict; CLINICAL FIREWALL). */}
+        {recheckDue && (
+          <span
+            data-testid="dev-recheck-due"
+            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold"
+            style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-ink)" }}
+          >
+            <Icon name="notifications" size={12} /> {t("dev.watching.recheckDue")}
+          </span>
+        )}
         <span className="ms-12 inline-flex flex-shrink-0 items-center gap-1 text-[12px] font-bold sm:ms-0" style={{ color: "var(--arbor-green-ink)" }}>
           {t("dev.watching.cta")}
           <Icon name="chevron_right" size={16} className="rtl:rotate-180" />

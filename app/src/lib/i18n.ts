@@ -690,6 +690,13 @@ export const en: Dict = {
   "monitor.sub": "From the milestones and moments you've already logged — never a test, never a diagnosis.",
   "monitor.ontrack": "Nothing stands out right now. Keep logging — Arbor will let you know if anything is worth raising.",
   "monitor.export": "Prepare a provider summary",
+  // UND-2 — real re-check reminder (persisted recheckDueAt, in-app flag only —
+  // copy must never promise a push/email channel that isn't wired).
+  "screen.recheck.btn": "Remind me to re-check",
+  "screen.recheck.toast": "Noted — we'll flag it here when it's time to check again.",
+  "screen.recheck.dueOn": "Re-check {date}",
+  "screen.recheck.dueNow": "Re-check due",
+  "dev.watching.recheckDue": "Re-check due",
   "sec.strengths.title": "Strengths & challenges",
   "sec.strengths.sub": "What lights {name} up, and where a little support goes a long way.",
   "sec.sharing.title": "Trusted sharing",
@@ -2448,6 +2455,12 @@ export const he: Dict = {
   "monitor.sub": "מתוך אבני הדרך והרגעים שכבר תיעדתם — אף פעם לא מבחן, אף פעם לא אבחנה.",
   "monitor.ontrack": "כרגע שום דבר לא בולט. המשיכו לתעד — Arbor יודיע לכם אם משהו ראוי להעלאה.",
   "monitor.export": "הכנת סיכום לאיש המקצוע",
+  // UND-2 — תזכורת אמיתית לבדיקה חוזרת (סימון בתוך האפליקציה בלבד).
+  "screen.recheck.btn": "תזכורת לבדיקה חוזרת",
+  "screen.recheck.toast": "נרשם — נסמן זאת כאן כשיגיע הזמן לבדוק שוב.",
+  "screen.recheck.dueOn": "בדיקה חוזרת {date}",
+  "screen.recheck.dueNow": "הגיע הזמן לבדיקה חוזרת",
+  "dev.watching.recheckDue": "זמן לבדיקה חוזרת",
   "sec.strengths.title": "חוזקות ואתגרים",
   "sec.strengths.sub": "מה מאיר את {name}, והיכן מעט תמיכה עושה הבדל גדול.",
   "sec.sharing.title": "שיתוף מהימן",

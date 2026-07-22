@@ -7,11 +7,12 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
 import { PageHeader, SectionCard, cardCls, Chip, IconBadge, TrustSafetyBar } from "../ui/kit";
 import { bandForAge, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
+import { computeRecheckDueAt, isRecheckDue } from "../../lib/screeningRecheck";
 import { buildMonitoringReportDoc } from "../../lib/monitoring";
 import { useMonitoring } from "../../hooks/useMonitoring";
 import { openPrintableReport } from "../../lib/reportExport";
 
-type SavedScreening = ScreeningResult & { id: string };
+type SavedScreening = ScreeningResult & { id: string; recheckDueAt?: string };
 
 const ANSWERS: { key: ScreenAnswer; label: string }[] = [
   { key: "yes", label: "Yes" },
@@ -107,6 +108,7 @@ export default function Screening() {
 export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
   const { childProfile, setActiveTab } = useArbor();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
   const band = useMemo(() => bandForAge(childProfile.age), [childProfile.age]);
 
@@ -119,6 +121,9 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
   const [phase, setPhase] = useState<"intro" | "questions" | "result">("intro");
   const [answers, setAnswers] = useState<Record<string, ScreenAnswer>>({});
   const [result, setResult] = useState<ScreeningResult | null>(null);
+  // Id of the saved screening record the result screen is showing — the
+  // re-check reminder is written onto THIS record (UND-2: no fake done-state).
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const allAnswered = band.items.every((it) => answers[it.id]);
 
@@ -126,7 +131,25 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
     const r = scoreScreening(band.items, answers);
     setResult(r);
     setPhase("result");
-    void col.upsert({ ...r, id: `screen-${Date.now()}` });
+    const id = `screen-${Date.now()}`;
+    setActiveId(id);
+    void col.upsert({ ...r, id });
+  };
+
+  // Live view of the active saved record (sandbox state / Firestore snapshot),
+  // so the reminder button reflects a persisted — not merely toasted — due date.
+  const activeSaved = useMemo(() => col.items.find((s) => s.id === activeId), [col.items, activeId]);
+  const reminderDueAt = activeSaved?.recheckDueAt;
+
+  // UND-2 — persist recheckDueAt (answeredAt + ~3 weeks) on the SAVED screening
+  // record via the existing screenings upsert seam. No push channel is
+  // registered here, so the toast claims only what happens: an in-app flag.
+  const remind = () => {
+    if (!activeId) return;
+    const base = activeSaved ?? (result ? { ...result, id: activeId } : null);
+    if (!base) return;
+    void col.upsert({ ...base, recheckDueAt: computeRecheckDueAt(base.answeredAt) });
+    toast(t("screen.recheck.toast"), "success");
   };
 
   const restart = () => { setAnswers({}); setResult(null); setPhase("questions"); };
@@ -147,12 +170,29 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
             Based on widely-used developmental guidance (CDC / AAP-style milestones). Non-diagnostic.
           </div>
           {last && (
-            <div className="mt-4 rounded-2xl p-3.5 flex items-center justify-between gap-3" style={{ background: "var(--arbor-paper-deep)" }}>
-              <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>
-                Last checked {new Date(last.answeredAt).toLocaleDateString()} ·{" "}
-                {last.elevated ? `${last.watchAreas.length} area(s) flagged` : "all areas on track"}
-              </span>
-              <button onClick={() => { setResult(last); setPhase("result"); }} className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>View last result</button>
+            <div className="mt-4 rounded-2xl p-3.5 space-y-2" style={{ background: "var(--arbor-paper-deep)" }}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>
+                  Last checked {new Date(last.answeredAt).toLocaleDateString()} ·{" "}
+                  {last.elevated ? `${last.watchAreas.length} area(s) flagged` : "all areas on track"}
+                </span>
+                <button onClick={() => { setActiveId(last.id); setResult(last); setPhase("result"); }} className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>View last result</button>
+              </div>
+              {/* UND-2 — the parent-requested re-check is a real, inspectable fact. */}
+              {last.recheckDueAt && (
+                <span
+                  data-testid="screen-recheck-due"
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-bold"
+                  style={isRecheckDue(last.recheckDueAt)
+                    ? { background: "var(--arbor-yellow-soft)", color: "var(--arbor-ink)" }
+                    : { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+                >
+                  <Icon name="notifications" size={14} />
+                  {isRecheckDue(last.recheckDueAt)
+                    ? t("screen.recheck.dueNow")
+                    : t("screen.recheck.dueOn", { date: new Date(last.recheckDueAt).toLocaleDateString() })}
+                </span>
+              )}
             </div>
           )}
           <button
@@ -255,8 +295,18 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                     </button>
                   </>
                 )}
-                <button onClick={() => { toast(`We'll remind you to re-check ${first} in a few weeks`, "success"); }} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
-                  <Icon name="notifications" size={16} /> Remind me to re-check
+                <button
+                  onClick={remind}
+                  disabled={!!reminderDueAt}
+                  aria-pressed={!!reminderDueAt}
+                  data-testid="screen-recheck-btn"
+                  className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-70"
+                  style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+                >
+                  <Icon name={reminderDueAt ? "check" : "notifications"} size={16} />
+                  {reminderDueAt
+                    ? t("screen.recheck.dueOn", { date: new Date(reminderDueAt).toLocaleDateString() })
+                    : t("screen.recheck.btn")}
                 </button>
                 <button onClick={restart} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
                   Retake
