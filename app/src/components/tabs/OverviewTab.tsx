@@ -505,7 +505,7 @@ export default function OverviewTab() {
             </div>
           </div>
           <div className="text-[13px] leading-relaxed mt-3 flex-1" style={{ color: "var(--arbor-ink-soft)" }}>
-            {focus?.text ? focus.text : t("coach.ready", { name: firstName })}
+            {focus?.text ? focusHeadline : t("coach.ready", { name: firstName })}
           </div>
           <button className="mt-4 bg-white text-center rounded-xl py-3 min-h-[44px] text-[13px] font-extrabold flex items-center justify-center gap-2" style={{ color: "var(--arbor-clay)" }}>
             <Icon name="forum" size={18} /> {t("today.coach.reply")}
