@@ -43,7 +43,8 @@ export default function TrustedSharing() {
   const [busy, setBusy] = useState<string | null>(null);
   const [audit, setAudit] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ recipientEmail: "", role: "co_parent" as ShareRole, scopes: [SCOPE_OPTIONS[0]] as string[], duration: DURATIONS[0] });
+  const [reviewing, setReviewing] = useState(false);
+  const [draft, setDraft] = useState({ recipientEmail: "", role: "co_parent" as ShareRole, scopes: [] as string[], duration: DURATIONS[0] });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,7 +82,8 @@ export default function TrustedSharing() {
     try {
       await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: draft.role, scopes: draft.scopes, duration: draft.duration });
       setAudit((a) => [`Shared ${draft.scopes.join(", ")} with ${email} (${roleLabel(draft.role)}) — just now`, ...a]);
-      setDraft({ recipientEmail: "", role: "co_parent", scopes: [SCOPE_OPTIONS[0]], duration: DURATIONS[0] });
+      setDraft({ recipientEmail: "", role: "co_parent", scopes: [], duration: DURATIONS[0] });
+      setReviewing(false);
       setAdding(false);
       await load();
     } catch (e: any) {
@@ -155,9 +157,10 @@ export default function TrustedSharing() {
         <div className={`${cardCls} p-5 space-y-3`}>
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Share {first}'s context</h3>
-            <button onClick={() => setAdding(false)} aria-label={t("aria.cancel")}><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
+            <button onClick={() => { setAdding(false); setReviewing(false); }} aria-label={t("aria.cancel")}><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
-          <input value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder="Recipient email (they sign in with this to see what you share)" type="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+          {!reviewing && <>
+          <input value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder="Recipient email (they sign in with this to see what you share)" type="email" inputMode="email" autoComplete="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
           <div>
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>Their role</p>
             <div className="flex flex-wrap gap-1.5">
@@ -165,6 +168,7 @@ export default function TrustedSharing() {
                 <button key={r.id} onClick={() => setDraft({ ...draft, role: r.id })} aria-pressed={draft.role === r.id} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.role === r.id ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{r.label}</button>
               ))}
             </div>
+            <p className="text-[11px] mt-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Nothing is selected by default. Only the sections you choose will be visible.</p>
           </div>
           <div>
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>What to share</p>
@@ -183,9 +187,19 @@ export default function TrustedSharing() {
               ))}
             </div>
           </div>
-          <button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
-            {busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> Sharing…</> : "Approve & share"}
+          <button onClick={() => setReviewing(true)} disabled={!/^\S+@\S+\.\S+$/.test(draft.recipientEmail.trim()) || draft.scopes.length === 0} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-40" style={{ background: "var(--arbor-clay)" }}>
+            Review before sharing <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
           </button>
+          </>}
+          {reviewing && <div className="space-y-4" aria-live="polite">
+            <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>Recipient</p><p className="text-sm font-extrabold mt-0.5 break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{draft.recipientEmail.trim()}</p></div><Chip tone="mint">{roleLabel(draft.role)}</Chip></div>
+              <div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>They can see</p><div className="flex flex-wrap gap-1.5 mt-1.5">{draft.scopes.map((scope) => <Chip key={scope} tone="sky">{scope}</Chip>)}</div></div>
+              <div className="flex items-center gap-2 text-xs" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={16} /> {draft.duration}</div>
+            </div>
+            <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "var(--arbor-yellow-soft)", border: "1px solid var(--arbor-rule)" }}><Icon name="verified_user" size={19} style={{ color: "var(--arbor-yellow-ink)" }} /><p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>Arbor will share only this summary. Access can be revoked at any time. Review the recipient and sections carefully before approving.</p></div>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="rounded-xl px-4 py-2.5 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>Back and edit</button><button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> Sharing…</> : "Approve & share"}</button></div>
+          </div>}
         </div>
       )}
 
@@ -222,9 +236,9 @@ export default function TrustedSharing() {
         <div className="space-y-3">
           {loading ? (
             <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><Icon name="progress_activity" size={16} className="animate-spin" /> Loading shares…</p>
-          ) : shares.length === 0 ? (
+          ) : team.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>Nothing is shared right now. Add a co-parent or a teacher to get started.</p>
-          ) : shares.map((s) => (
+          ) : team.map((s) => (
             <div key={s.id} className={`${cardCls} p-4`}>
               <div className="flex items-start justify-between gap-3">
                 <div>

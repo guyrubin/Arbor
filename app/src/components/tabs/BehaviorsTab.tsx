@@ -108,6 +108,7 @@ export default function BehaviorsTab() {
     isGeneratingInlineScript,
     handleGetInlineCoRegulationScript,
     seedCoach,
+    setActiveTab,
     pendingCaptureMode,
     consumeCaptureRequest,
     childProfile,
@@ -239,10 +240,10 @@ export default function BehaviorsTab() {
     const now = Date.now();
     const last7 = behaviorLogs.filter((l) => now - new Date(l.timestamp).getTime() < 7 * DAY);
     const resolvedWeek = last7.filter((l) => l.resolved).length;
-    const avg = last7.length ? last7.reduce((s, l) => s + l.intensity, 0) / last7.length : 0;
+    const contexts = new Set(last7.map((l) => l.context).filter(Boolean)).size;
     return {
       events: last7.length,
-      avgIntensity: last7.length ? avg.toFixed(1) : "—",
+      contexts,
       resolved: `${resolvedWeek}/${last7.length}`,
     };
   }, [behaviorLogs]);
@@ -324,7 +325,7 @@ export default function BehaviorsTab() {
   }, [pendingCaptureMode]);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto max-w-[1180px] space-y-6">
       {/* E2 — the shared hub-hero grammar (replaces PageHeader + the hand-rolled
           coral hero; same job, one kit). Warm tone; stat trio = this-week flat
           counts only — no averages, no trends (clinical firewall). */}
@@ -336,18 +337,44 @@ export default function BehaviorsTab() {
         subtitle={t("beh.hero.sub")}
         stats={[
           { value: heroStats.events, label: t("beh.stats.events") },
-          { value: heroStats.avgIntensity, label: t("beh.stats.avgIntensity") },
+          { value: heroStats.contexts, label: t("beh.stats.contexts") },
           { value: heroStats.resolved, label: t("beh.stats.resolved") },
         ]}
         testId="behaviors-hub-hero"
       />
+
+      <section className={`${cardCls} overflow-hidden`} aria-labelledby="behavior-next-step">
+        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="min-w-0">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-peach-ink)" }}>{t("beh.next.eyebrow")}</span>
+            <h2 id="behavior-next-step" className="mt-1 text-xl font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("beh.next.title")}</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("beh.next.body")}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:flex-shrink-0">
+            <button type="button" onClick={focusForm} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-white transition active:scale-[0.98]" style={{ background: T.gradientCta }}>
+              <Icon name="add_circle" size={18} /> {t("beh.next.log")}
+            </button>
+            <button type="button" onClick={() => setActiveTab("plans")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+              <Icon name="route" size={18} /> {t("beh.next.plan")}
+            </button>
+          </div>
+        </div>
+        <ol className="grid grid-cols-1 border-t sm:grid-cols-3" style={{ borderColor: "var(--arbor-rule)" }}>
+          {(["capture", "notice", "try"] as const).map((step, index) => (
+            <li key={step} className="flex items-center gap-3 px-5 py-3.5 sm:border-s first:sm:border-s-0" style={{ borderColor: "var(--arbor-rule)" }}>
+              <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold" style={{ background: index === 0 ? "var(--arbor-peach-soft)" : "var(--arbor-paper-deep)", color: index === 0 ? "var(--arbor-peach-ink)" : "var(--arbor-muted)" }}>{index + 1}</span>
+              <span className="text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t(`beh.next.${step}`)}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       {/* Row 1 — QuickLog tiles (full width under the hero) */}
       <div className="grid grid-cols-1 gap-3">
         {/* QuickLog mode tiles — Voice / Photo / Text */}
         <div className={`${cardCls} p-5 flex flex-col`}>
           <span className="text-xs font-extrabold uppercase tracking-wider mb-3" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.captureTitle")}</span>
-          <div className="grid grid-cols-3 gap-3 flex-1">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 flex-1">
             {quickModes.map((m) => {
               const p = PASTEL[m.tone];
               const active = m.key === "voice" && listening;

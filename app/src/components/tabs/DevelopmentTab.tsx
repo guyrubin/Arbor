@@ -53,6 +53,42 @@ export default function DevelopmentTab() {
   const [checkOpen, setCheckOpen] = useState(false);
   const firstName = (childProfile.name || "").split(" ")[0];
 
+  const weeklyFocus = useMemo(() => {
+    const nextMilestone = milestones.find((m) => !m.checked);
+    if (nextMilestone) {
+      return {
+        title: nextMilestone.title,
+        body: nextMilestone.skillLooksLike || nextMilestone.description,
+        action: "daily-play" as const,
+      };
+    }
+    return {
+      title: t("growth.focus.empty.title"),
+      body: t("growth.focus.empty.body"),
+      action: "check" as const,
+    };
+  }, [milestones, t]);
+
+  const recentMoments = useMemo(() => {
+    const moments = [
+      ...behaviorLogs.map((log) => ({
+        id: `behavior-${log.id}`,
+        at: new Date(log.timestamp).getTime(),
+        icon: "chat_bubble",
+        title: log.behaviorType,
+        meta: [log.context, new Date(log.timestamp).toLocaleDateString()].filter(Boolean).join(" · "),
+      })),
+      ...playLogs.map((log) => ({
+        id: `play-${log.id}`,
+        at: new Date(log.timestamp).getTime(),
+        icon: "toys",
+        title: log.title,
+        meta: new Date(log.timestamp).toLocaleDateString(),
+      })),
+    ];
+    return moments.sort((a, b) => b.at - a.at).slice(0, 3);
+  }, [behaviorLogs, playLogs]);
+
   // E2 hero stat trio — CLINICAL FIREWALL: counts and plain activity facts
   // only ("x of y noticed", active-domain count, moments-this-week count).
   // Never percentages, verdicts, or trend deltas on this surface.
@@ -93,7 +129,7 @@ export default function DevelopmentTab() {
   }, [pushEnabled]);
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-[1180px] space-y-6">
       {/* E2 — Growth hub hero: eyebrow → job sentence → ONE CTA (quick check)
           → count trio. Sits ABOVE the existing cards; ring/domain internals
           below are untouched. E8: EvidenceChip on the hero's meta row. */}
@@ -122,7 +158,47 @@ export default function DevelopmentTab() {
           <EvidenceChip />
         </div>
       </div>
-      {/* The Map — the record's home (ring + domains; counts only). */}
+      {/* One action first, then the neutral development picture. */}
+      <section className="overflow-hidden rounded-[24px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }} aria-labelledby="growth-weekly-focus">
+        <div className="grid lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
+          <div className="p-5 sm:p-7">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>
+              <Icon name="explore" size={16} /> {t("growth.focus.eyebrow")}
+            </span>
+            <h2 id="growth-weekly-focus" className="mt-2 text-2xl font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{weeklyFocus.title}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{weeklyFocus.body}</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" onClick={() => weeklyFocus.action === "check" ? setCheckOpen(true) : setActiveTab("daily-play")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-white transition active:scale-[0.98]" style={{ background: "var(--arbor-clay)" }}>
+                <Icon name={weeklyFocus.action === "check" ? "assignment_turned_in" : "play_arrow"} size={18} />
+                {weeklyFocus.action === "check" ? t("growth.focus.check") : t("growth.focus.try")}
+              </button>
+              <button type="button" onClick={() => setActiveTab("milestones")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+                <Icon name="edit_note" size={18} /> {t("growth.focus.review")}
+              </button>
+            </div>
+          </div>
+          <div className="border-t p-5 sm:p-6 lg:border-s lg:border-t-0" style={{ background: "var(--arbor-paper-deep)", borderColor: "var(--arbor-rule)" }}>
+            <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("growth.recent.title")}</h3>
+            <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("growth.recent.body")}</p>
+            {recentMoments.length > 0 ? (
+              <ul className="mt-4 space-y-2.5">
+                {recentMoments.map((moment) => (
+                  <li key={moment.id} className="flex items-start gap-3 rounded-xl bg-white p-3" style={{ border: "1px solid var(--arbor-rule)" }}>
+                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name={moment.icon} size={16} /></span>
+                    <span className="min-w-0"><span className="block truncate text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{moment.title}</span><span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--arbor-muted)" }}>{moment.meta}</span></span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <button type="button" onClick={() => setActiveTab("daily-play")} className="mt-4 flex w-full items-center gap-3 rounded-xl bg-white p-3 text-start" style={{ border: "1px dashed var(--arbor-rule-strong)" }}>
+                <Icon name="add_circle" size={18} style={{ color: "var(--arbor-green-ink)" }} />
+                <span className="text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("growth.recent.empty")}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+      {/* The Map — the record's home (counts only). */}
       <DevScoreCard />
       {/* C1 — Monitoring now lives in ONE home: Development Check (the
           ScreeningSheet). The hub keeps only a slim, neutral pointer into it —

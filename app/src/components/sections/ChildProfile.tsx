@@ -10,6 +10,7 @@ import { HubHero } from "../ui/HubHero";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { api } from "../../lib/api";
 import type { ShareGrant } from "../../types";
+import ProfileEditDrawer from "../profile/ProfileEditDrawer";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -33,6 +34,7 @@ export default function ChildProfile() {
   // Family Circle reads the SAME live, server-enforced ShareGrants that Trusted
   // Sharing manages — never a parallel store. The account holder is row 0.
   const [shares, setShares] = useState<ShareGrant[]>([]);
+  const [editingProfile, setEditingProfile] = useState(false);
   useEffect(() => {
     let cancelled = false;
     api.listShares(childProfile.id)
@@ -120,6 +122,14 @@ export default function ChildProfile() {
                 {childProfile.name}
               </h2>
               <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{cardSubtitle}</p>
+              <button
+                type="button"
+                onClick={() => setEditingProfile(true)}
+                className="mt-4 inline-flex items-center gap-2 min-h-[44px] rounded-xl px-4 py-2.5 text-xs font-extrabold"
+                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+              >
+                <Icon name="edit" size={16} /> Edit what Arbor knows
+              </button>
               {!hasHero && (
                 <button onClick={() => setActiveTab("profile")} className="mt-3 text-start block">
                   <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
@@ -389,6 +399,7 @@ export default function ChildProfile() {
           </button>
         ))}
       </div>
+      <ProfileEditDrawer open={editingProfile} onClose={() => setEditingProfile(false)} />
     </motion.div>
   );
 }
