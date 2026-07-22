@@ -277,6 +277,13 @@ export default function OverviewTab() {
              it above the tab bar, on lg+ it renders inline here above the hero.
              Capture-only surface: no metrics, no firewall exposure. ── */}
       {/* ── Row 1 (1.6fr / 1fr): Guidance hero · Development-Map card ─────────── */}
+      <QuickCaptureBar
+        key="today-primary-capture"
+        childName={firstName}
+        onText={() => setQuickLogOpen(true)}
+        onMode={startCapture}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
         {/* ── Guidance hero — ONE gradient card: "Today's guidance" tag → the one
                thing that matters today (the AI focus) → meta footer + single
@@ -286,21 +293,21 @@ export default function OverviewTab() {
           style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-lg)" }}
         >
           <div
-            className="relative min-h-[250px] flex flex-col justify-between bg-cover bg-center"
-            style={{ backgroundImage: "url('/assets/today/calm-transition-activity.png')", padding: "24px" }}
+            className="relative min-h-[190px] flex flex-col justify-between bg-cover bg-center"
+            style={{ backgroundImage: "url('/assets/today/calm-transition-activity.png')", padding: "20px 24px" }}
           >
-            <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(16,39,72,0.96) 0%, rgba(16,39,72,0.88) 43%, rgba(16,39,72,0.22) 72%, transparent 100%)" }} aria-hidden="true"></div>
+            <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(16,39,72,0.96) 0%, rgba(16,39,72,0.84) 48%, rgba(16,39,72,0.12) 68%, transparent 100%)" }} aria-hidden="true"></div>
             <div className="relative">
               <span className="inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider" style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(4px)", color: "#fff", padding: "6px 12px", borderRadius: "20px", letterSpacing: "1.4px" }}>
                 {t("today.guidance.tag")}
               </span>
             </div>
-            <div className="relative mt-6">
+            <div className="relative mt-4">
               {focusLoading && !focus ? (
                 <div className="space-y-2"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-6 w-1/2" /></div>
               ) : (
                 <h2
-                  className="text-[24px] sm:text-[30px] lg:text-[34px] leading-[1.08] line-clamp-3 max-w-full sm:max-w-[60%]"
+                  className="text-[22px] sm:text-[26px] lg:text-[28px] leading-[1.1] line-clamp-2 max-w-full sm:max-w-[58%]"
                   style={{ color: "#fff", letterSpacing: "-0.4px", fontFamily: "var(--font-display)", fontWeight: 700, textWrap: "balance" } as React.CSSProperties}
                 >
                   {focusHeadline}
@@ -383,12 +390,6 @@ export default function OverviewTab() {
           );
         })()}
       </div>
-
-      <QuickCaptureBar
-        childName={firstName}
-        onText={() => setQuickLogOpen(true)}
-        onMode={startCapture}
-      />
 
       {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
              child's own logged data, below the hero row. Renders NOTHING with

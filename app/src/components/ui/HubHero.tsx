@@ -124,12 +124,12 @@ export function HubHero({
         )}
 
         {trio.length > 0 && (
-          <div className="mt-5 grid grid-cols-1 min-[420px]:grid-cols-3 gap-2.5">
+          <div className="mt-5 grid grid-cols-1 min-[420px]:grid-cols-3 gap-0 min-[420px]:gap-2.5">
             {trio.map((s, i) => (
               <div
                 key={i}
-                className="min-w-0 px-4 py-2.5 first:ps-0"
-                style={{ borderInlineStart: i === 0 ? "none" : "1px solid var(--arbor-rule)" }}
+                className={`min-w-0 py-3 min-[420px]:px-4 min-[420px]:py-2.5 first:min-[420px]:ps-0 ${i > 0 ? "border-t min-[420px]:border-t-0 min-[420px]:border-s" : ""}`}
+                style={{ borderColor: "var(--arbor-rule)" }}
               >
                 <div
                   className="text-lg font-extrabold leading-none tabular-nums"
@@ -137,7 +137,7 @@ export function HubHero({
                 >
                   {s.value}
                 </div>
-                <div className="mt-1 text-[var(--t-xs)] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                <div className="mt-1 break-words text-[var(--t-xs)] font-bold leading-snug" style={{ color: "var(--arbor-muted)" }}>
                   {s.label}
                 </div>
               </div>

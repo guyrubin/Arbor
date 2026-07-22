@@ -259,7 +259,7 @@ export default function CoachTab() {
   const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
 
   return (
-    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 mx-auto max-w-[1040px]">
+    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
       {/* Header section with lens selector */}
       <div className="space-y-4">
         {/* E2 hub hero (slim: no stat trio) — the job sentence + one CTA that
@@ -459,7 +459,7 @@ export default function CoachTab() {
       </div>
 
       {/* Chat Viewport Area */}
-      <div className={`${cardCls} flex flex-col h-[560px] overflow-hidden justify-between`}>
+      <div className={`${cardCls} flex h-[min(70dvh,560px)] min-h-[460px] min-w-0 flex-col justify-between overflow-hidden`}>
         {/* Persistent named-coach identity strip. The lens/context frame is kept but
             visually subordinate so the conversation is the hero. Green primary —
             never the design's sapphire — per the parent color lock. */}

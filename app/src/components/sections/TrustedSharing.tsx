@@ -124,17 +124,17 @@ export default function TrustedSharing() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[920px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[920px] space-y-6">
       <PageHeader
         eyebrow="Care Network"
         title={t("sec.sharing.title")}
         subtitle={t("sec.sharing.sub", { name: first })}
         action={
           <div className="flex items-center gap-2">
-            <button onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
+            <button onClick={() => setAdding((a) => !a)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>
               <Icon name="add" size={18} /> New share
             </button>
-            <button onClick={() => setActiveTab("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
+            <button onClick={() => setActiveTab("find-pro")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
               <Icon name="search" size={18} /> Find a professional
             </button>
           </div>
@@ -207,7 +207,7 @@ export default function TrustedSharing() {
           the child, rendered from the same non-revoked share grants. */}
       {!error && !loading && team.length > 0 && (
         <SectionCard title={`Coordinating around ${first}`} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
-          <div className="grid lg:grid-cols-2 gap-4">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-2">
             {team.map((g) => {
               const tone = ROLE_TONE[g.role] || ROLE_TONE.viewer;
               return (
@@ -281,7 +281,7 @@ export default function TrustedSharing() {
         </SectionCard>
       )}
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid min-w-0 gap-4 sm:grid-cols-2">
         <SectionCard title="Your data" icon={<Icon name="download" size={20} />} tone="lav">
           <div className="space-y-2">
             <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Icon name="download" size={18} /> Export all data</button>

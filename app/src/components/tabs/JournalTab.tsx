@@ -218,9 +218,9 @@ export default function JournalTab() {
       : "One small moment is enough to begin. Arbor will help shape it into a story that grows over time.";
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-[1080px] mx-auto flex flex-col gap-5">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5">
       <section className="relative overflow-hidden rounded-[26px] p-5 sm:p-7" style={{ background: "linear-gradient(135deg, var(--arbor-lav-soft), var(--arbor-paper-elevated) 58%, var(--arbor-green-soft))", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
-        <div className="relative z-10 grid md:grid-cols-[1.25fr_.75fr] gap-5 items-end">
+        <div className="relative z-10 grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
               <Icon name="auto_stories" size={16} fill={1} /> {uiLang === "he" ? "היומן שכותב את עצמו" : "The journal that writes itself"}
@@ -278,7 +278,7 @@ export default function JournalTab() {
           </p>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-2 gap-3 items-start">
+        <div className="grid min-w-0 items-start gap-3 lg:grid-cols-2">
           {signals.map((s) => {
             const kind = s.kind;
             const domain = domainOf.get(s.id) ?? KIND_DOMAIN[kind];

@@ -195,7 +195,7 @@ export default function Shell() {
     {/* select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility) */}
     <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
       <div
-        className={`page-shell grid grid-cols-1 md:grid-cols-[248px_minmax(0,1fr)] ${
+        className={`page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] ${
           showAiRail
             ? "xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_320px]"
             : "xl:grid-cols-[280px_minmax(0,1fr)]"
@@ -204,25 +204,25 @@ export default function Shell() {
         <Sidebar />
 
         {/* AP-044: Right column — topbar placeholder (desktop) + scrollable content area */}
-        <div className="flex flex-col min-h-0 min-w-0 md:h-screen overflow-hidden">
+        <div className="flex flex-col min-h-0 min-w-0 lg:h-screen overflow-hidden">
           <Topbar />
         {/* arbor-parent: scopes the flat-white clinical token overrides to the parent
             dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
             as a sibling of the grid — it carries its own .arbor-play scope and does
             NOT inherit from this <main>. See index.css .arbor-parent block. */}
-        <main className="arbor-parent w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 md:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
-          {/* Mobile brand header (sidebar is hidden below md, so the logo lives here) */}
-          <div className="flex md:hidden items-center gap-2.5 mb-5">
+        <main className="arbor-parent w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 lg:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
+          {/* Compact header (sidebar is hidden below lg, so the logo lives here) */}
+          <div className="flex lg:hidden items-center gap-2.5 mb-5">
             <ArborMark size={34} />
             <span className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</span>
           </div>
 
-          {/* Mobile-only workspace accessories strip. On md+ the topbar is the
+          {/* Mobile/tablet workspace accessories strip. On lg+ the topbar is the
               self-sufficient control band (search · Kid Mode · rail toggle · bell ·
               child switcher), so this row would duplicate it — it is hidden there.
-              On mobile (topbar is md:flex, hidden) this remains the control surface. */}
+              On mobile/tablet (topbar starts at lg) this remains the control surface. */}
           <ChildContextHeader
-            className="md:hidden"
+            className="lg:hidden"
             identity={<span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
               <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
               <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {t("top.age")} {childProfile.age}</strong>
@@ -237,7 +237,7 @@ export default function Shell() {
               {/* UC-1 + main consolidation: the whole-app language switch is canonical
                   inside Settings ONLY (see languageSettingsCanonical guard test). On
                   desktop it lives in the sidebar account-row popover; on mobile the
-                  md:hidden Settings button below opens the same SettingsModal language
+                  lg:hidden Settings button below opens the same SettingsModal language
                   panel — so the mobile language path is preserved without a duplicate
                   in-content toggle. */}
               <button
@@ -254,7 +254,7 @@ export default function Shell() {
                 onClick={() => setSettingsOpen(true)}
                 aria-label={t("aria.settings")}
                 title="Settings"
-                className="md:hidden flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-xl transition bg-white"
+                className="lg:hidden flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-xl transition bg-white"
                 style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 <Icon name="settings" size={18} />
@@ -346,7 +346,7 @@ export default function Shell() {
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <PaywallModal />
       {/* AP-048: Kid Mode full-screen overlay — rendered at z-70, above everything.
-          Desktop-only entry point (Topbar button is hidden md:flex). The overlay
+          Desktop-only entry point (Topbar button starts at lg). The overlay
           itself is responsive; MobileNav is byte-unchanged. */}
       <KidModeOverlay />
       {/* E0: full-screen wow-onboarding overlay (z-45 — under the reused
