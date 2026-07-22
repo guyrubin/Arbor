@@ -10,6 +10,7 @@ import { HubHero } from "../ui/HubHero";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { api } from "../../lib/api";
 import type { ShareGrant } from "../../types";
+import ProfileEditDrawer from "../profile/ProfileEditDrawer";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -33,6 +34,7 @@ export default function ChildProfile() {
   // Family Circle reads the SAME live, server-enforced ShareGrants that Trusted
   // Sharing manages — never a parallel store. The account holder is row 0.
   const [shares, setShares] = useState<ShareGrant[]>([]);
+  const [editingProfile, setEditingProfile] = useState(false);
   useEffect(() => {
     let cancelled = false;
     api.listShares(childProfile.id)
@@ -76,7 +78,7 @@ export default function ChildProfile() {
     : t("cp.card.subtitleNoSchool", { langs: langs || "—" });
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
       {/* ── E2 hub hero — the family-album job sentence + one CTA (add a member,
           via the SAME Trusted Sharing route the Family Circle card uses) + a
           living count trio. FIREWALL: counts only — the child in this profile,
@@ -105,7 +107,7 @@ export default function ChildProfile() {
       {/* ── Identity masthead (UC-1) — the child identity card and the live Family
           Circle sit side by side ABOVE the full developmental narrative below.
           Additive: every chapter is preserved beneath it. ──────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2">
         {/* Child card — the framed identity hero. Avatar renders THROUGH the shared
             HeroAvatar engine (Loop 4); we never re-composite the portrait. */}
         <div className={`${cardCls} overflow-hidden min-w-0`}>
@@ -120,6 +122,14 @@ export default function ChildProfile() {
                 {childProfile.name}
               </h2>
               <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{cardSubtitle}</p>
+              <button
+                type="button"
+                onClick={() => setEditingProfile(true)}
+                className="mt-4 inline-flex items-center gap-2 min-h-[44px] rounded-xl px-4 py-2.5 text-xs font-extrabold"
+                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+              >
+                <Icon name="edit" size={16} /> Edit what Arbor knows
+              </button>
               {!hasHero && (
                 <button onClick={() => setActiveTab("profile")} className="mt-3 text-start block">
                   <span className="block text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
@@ -133,7 +143,11 @@ export default function ChildProfile() {
 
           {/* Family Circle — reads live ShareGrants (the SAME source Trusted Sharing
               uses); "Add a member" routes there rather than duplicating its form. */}
-          <SectionCard title={t("cp.family.title")} icon={<Icon name="group" size={20} />} tone="mint">
+          <section className="border-y px-1 py-5" style={{ borderColor: "var(--arbor-rule)" }}>
+            <div className="mb-4 flex items-center gap-2.5">
+              <IconBadge tone="mint" size={36}><Icon name="group" size={20} /></IconBadge>
+              <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("cp.family.title")}</h2>
+            </div>
             <p className="text-xs -mt-2 mb-3" style={{ color: "var(--arbor-muted)" }}>{t("cp.family.sub", { name: first })}</p>
             <div className="space-y-2">
               {/* The account holder is always the first member. */}
@@ -159,7 +173,7 @@ export default function ChildProfile() {
                 <span className="text-sm font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{t("cp.family.add")}</span>
               </button>
             </div>
-          </SectionCard>
+          </section>
       </div>
 
       <section
@@ -196,7 +210,7 @@ export default function ChildProfile() {
         title={t("cp.title", { name: first })}
         subtitle={t("cp.subtitle", { name: first })}
         action={
-          <button onClick={() => setActiveTab("coach")} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--shadow-green)" }}>
+          <button onClick={() => setActiveTab("coach")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
             <Icon name="auto_awesome" size={16} /> {t("cp.askAbout", { name: first })}
           </button>
         }
@@ -297,7 +311,7 @@ export default function ChildProfile() {
       </SectionCard>
 
       {/* Chapter 4 — strengths & where to support */}
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <SectionCard title={t("cp.ch.strengths")} icon={<Icon name="diamond" size={20} fill={1} />} tone="mint">
           <ul className="space-y-3">
             {childProfile.strengths.map((s) => (
@@ -375,7 +389,7 @@ export default function ChildProfile() {
       </SectionCard>
 
       {/* Footer jump strip — the deep tools, one tap away */}
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-3">
         {([
           { tab: "timeline" as const, tone: "sky" as const, icon: <Icon name="route" size={18} />, label: t("cp.footer.story", { name: first }) },
           { tab: "behaviors" as const, tone: "coral" as const, icon: <Icon name="monitoring" size={18} />, label: t("cp.footer.moments") },
@@ -389,6 +403,7 @@ export default function ChildProfile() {
           </button>
         ))}
       </div>
+      <ProfileEditDrawer open={editingProfile} onClose={() => setEditingProfile(false)} />
     </motion.div>
   );
 }

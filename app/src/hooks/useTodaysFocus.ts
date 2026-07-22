@@ -19,6 +19,8 @@ export type FocusSignals = {
    */
   milestonesChecked?: number;
   milestonesTotal?: number;
+  lastActionRecommendation?: string;
+  lastActionOutcome?: "helped" | "somewhat" | "not_today";
 };
 
 type Focus = { text: string; generatedAt: string; dateKey: string };
@@ -55,7 +57,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
           // both are verdict primitives a child metric could re-emit. Only flat
           // parent-log counts + the top pattern (a parent-tagged category) are
           // passed. The model is asked for a mechanism-only focus.
-          message: `In 2 short sentences, give me today's single most useful parenting focus for ${child.name} (age ${child.age}). What the parent has logged this week: ${signals.count} moment${signals.count === 1 ? "" : "s"}, most often around "${signals.topTrigger || "transitions"}". Suggest ONE small, concrete thing to try — a developmental mechanism (serve-and-return, co-regulation, a transition cue), not an assessment, score, percentage, trend, diagnosis, or outcome claim. Warm, non-diagnostic, no headings or markdown.`,
+          message: `In 2 short sentences, give me today's single most useful parenting focus for ${child.name} (age ${child.age}). What the parent has logged this week: ${signals.count} moment${signals.count === 1 ? "" : "s"}, most often around "${signals.topTrigger || "transitions"}".${signals.lastActionRecommendation && signals.lastActionOutcome ? ` The parent last tried "${signals.lastActionRecommendation}" and reported the attempt as "${signals.lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""} Suggest ONE small, concrete thing to try — a developmental mechanism (serve-and-return, co-regulation, a transition cue), not an assessment, score, percentage, trend, diagnosis, or outcome claim. Warm, non-diagnostic, no headings or markdown.`,
           childProfile: child,
           scholarLens: "Integrated Balanced",
           language: getAiLanguage(),

@@ -69,11 +69,11 @@ export function HubHero({
   return (
     <section
       data-testid={testId}
-      className={`relative max-w-full overflow-hidden rounded-[24px] p-6 md:p-8 mb-6 text-start ${className}`.trim()}
+      className={`relative max-w-full overflow-hidden rounded-[20px] p-5 md:px-7 md:py-6 mb-5 text-start ${className}`.trim()}
       style={{
         background: p.soft,
         border: "1px solid var(--arbor-rule)",
-        boxShadow: "var(--shadow-sm)",
+        boxShadow: "var(--shadow-xs)",
         opacity: entered ? 1 : 0,
         transform: entered ? "none" : "translateY(10px)",
         transition: "opacity 0.45s ease, transform 0.45s ease",
@@ -82,10 +82,10 @@ export function HubHero({
       {GhostIcon && (
         <GhostIcon
           aria-hidden="true"
-          size={150}
+          size={112}
           strokeWidth={1.1}
           className="pointer-events-none absolute top-1/2 -translate-y-1/2 hidden sm:block"
-          style={{ insetInlineEnd: "-1.25rem", color: p.ink, opacity: 0.1 }}
+          style={{ insetInlineEnd: "-0.75rem", color: p.ink, opacity: 0.08 }}
         />
       )}
 
@@ -98,7 +98,7 @@ export function HubHero({
         </div>
 
         <h1
-          className="mt-2 text-2xl md:text-[32px] leading-[1.1] break-words"
+          className="mt-1.5 text-2xl md:text-[28px] leading-[1.1] break-words"
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >
           {title}
@@ -124,12 +124,12 @@ export function HubHero({
         )}
 
         {trio.length > 0 && (
-          <div className="mt-5 grid grid-cols-1 min-[420px]:grid-cols-3 gap-2.5">
+          <div className="mt-4 grid grid-cols-1 min-[420px]:grid-cols-3 gap-0 min-[420px]:gap-2.5">
             {trio.map((s, i) => (
               <div
                 key={i}
-                className="min-w-0 px-4 py-2.5 first:ps-0"
-                style={{ borderInlineStart: i === 0 ? "none" : "1px solid var(--arbor-rule)" }}
+                className={`min-w-0 py-3 min-[420px]:px-4 min-[420px]:py-2.5 first:min-[420px]:ps-0 ${i > 0 ? "border-t min-[420px]:border-t-0 min-[420px]:border-s" : ""}`}
+                style={{ borderColor: "var(--arbor-rule)" }}
               >
                 <div
                   className="text-lg font-extrabold leading-none tabular-nums"
@@ -137,7 +137,7 @@ export function HubHero({
                 >
                   {s.value}
                 </div>
-                <div className="mt-1 text-[var(--t-xs)] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                <div className="mt-1 break-words text-[var(--t-xs)] font-bold leading-snug" style={{ color: "var(--arbor-muted)" }}>
                   {s.label}
                 </div>
               </div>

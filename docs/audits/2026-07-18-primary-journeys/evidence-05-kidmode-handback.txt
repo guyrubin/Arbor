@@ -1,0 +1,10 @@
+CAPTURE 05 — Kid Mode hand-back journey (launched from topbar "Launch Kid Mode" on #/overview, full load ?cb=6)
+Kid surface (.arbor-play overlay, fixed z-70): "Hi נועה! You're doing amazing today" / star count "0" / pledges: "Parent locked · Private by default · Stars, never streaks" / Today's Adventure, Playbank, Hero Stories, Feelings, Studio, Games (Memory Match, Feelings Detective, Mimic Studio, Sound Explorer, Sequence Quest, Calm Builder, Rhythm Hero, Puzzle Planet...).
+Pressure-mechanics scan: NO streaks, timers, leaderboards, loot, or child-facing share prompts in overlay text. "Stars, never streaks" pledge explicit. PASS.
+EXIT GATE VERIFIED (interaction, with rAF shim to defeat hidden-pane freeze):
+  1. Quick tap on hold button -> does NOT exit. PASS.
+  2. mousedown held 3.5s -> ParentChallenge appears: "A question for a grown-up — Answer to go back to the parent area. 73 + 44 = / Set a parent PIN for next time (optional) / Confirm".
+  3. Typed 117 + Confirm -> challenge dismissed, overlay opacity -> 0 (exit fired; unmount rides exit animation). PASS.
+  Source: HoldExitButton.tsx (HOLD_MS=3s, rAF-driven ring, E10: hold -> challenge -> exit), ParentChallenge.tsx, parentGate.ts.
+FINDING (containment): overlay rect (22,14,1397x873) at 1440x900 does NOT cover full viewport; margin strips are CLICK-THROUGH to the parent app — elementFromPoint hits: (5,450)=ASIDE sidebar, (1430,450)=MAIN parent content, (720,5)=HEADER topbar, (720,895)=parent content. "Parent-locked — your child can't exit or delete" claim is breachable via edge taps (thin 13-22px strips; touch-realistic).
+Artifact notes: initial hold test with PointerEvents + no shim failed — NOT a bug (component uses onMouseDown; rAF frozen in hidden pane).

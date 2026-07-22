@@ -46,7 +46,7 @@ export default function Sidebar() {
   }, [popoverOpen]);
 
   return (
-    <aside className="hidden md:flex flex-col gap-5 px-4 py-6 h-auto xl:h-screen xl:sticky xl:top-0 overflow-y-auto bg-white" style={{ borderRight: "1px solid var(--arbor-rule)" }}>
+    <aside className="hidden lg:flex flex-col gap-5 px-4 py-6 h-screen sticky top-0 overflow-y-auto bg-white" style={{ borderRight: "1px solid var(--arbor-rule)" }}>
       {/* Brand lockup — softer 38px rounded mark + wordmark (UC-1 density) */}
       <div className="flex items-center gap-2.5 px-1">
         <ArborMark size={38} />

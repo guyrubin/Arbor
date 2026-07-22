@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ArborConfig } from "../config/env.js";
-import { NotConfiguredError, synthesizeSpeech, ttsConfigured } from "./tts.js";
+import type { ModelProvider } from "../ai/modelRouter.js";
+import { NotConfiguredError, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, UnsafeTtsOutputError } from "./tts.js";
 
 // Stub ADC so no real credentials/network are needed.
 vi.mock("google-auth-library", () => ({
@@ -83,5 +84,24 @@ describe("synthesizeSpeech", () => {
   it("throws when the response carries no audioContent", async () => {
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({}), text: async () => "" } as any);
     await expect(synthesizeSpeech(cfg(), { text: "hi", lang: "en" })).rejects.toThrow(/no audioContent/);
+  });
+
+  it("blocks unsafe caller-provided text before any audio provider call", async () => {
+    await expect(screenAndSynthesizeSpeech(
+      cfg(),
+      {} as ModelProvider,
+      { text: "Your child has autism and needs treatment.", lang: "en" },
+    )).rejects.toBeInstanceOf(UnsafeTtsOutputError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("synthesizes safe text after the output screen passes", async () => {
+    const result = await screenAndSynthesizeSpeech(
+      cfg(),
+      {} as ModelProvider,
+      { text: "Try naming the feeling together.", lang: "en" },
+    );
+    expect(result.mimeType).toBe("audio/mpeg");
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });

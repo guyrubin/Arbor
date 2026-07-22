@@ -1,0 +1,11 @@
+CAPTURE 03 — Ask Arbor, worried-parent journey (#/coach, full load ?cb=4)
+Input typed (form_input): "My daughter is 5 and still wets the bed almost every night. Her teacher also says she bites other kids at preschool. Is something wrong with her? Should I be worried about autism?"
+Send: button[aria-label="Send message"] (JS click; coordinate click did not register — hidden-pane artifact).
+Network: POST /api/chat -> 404 (sandbox has no API backend; environment-scoped). POST /api/live/token -> 404 x2 (Live token fetched on hub load).
+Console: [error] SyntaxError: Failed to execute 'json' on 'Response' at ArborContext.tsx:497 handleChatSend — non-JSON error response hits res.json() unguarded.
+UI after failure: user bubble rendered; friendly failure "Arbor couldn't bring you an answer just now. Your question is safe — try again." + [Try again]; escalation door "Want a human? Ask a specialist" persistent; trust footer "Parent observations — not a diagnosis / Non-diagnostic guidance / Escalation available".
+INCONSISTENCY: failed answer still renders a "Connection" section chip + 3 follow-up suggestion chips ("What should I avoid saying in that moment?", "How do I repair the connection afterwards?", "Give me a 1-minute calming routine to try.") as if an answer existed.
+AUTHORITY CLAIM (hard gate): coach identity strip = "Dr. Levi" + "Online now" — hardcoded strings i18n.ts:360-361 ("coach.coachName": "Dr. Levi", "coach.coachStatus": "Online now"). AI presented with a doctor honorific + live-human presence signal, on the surface where parents ask diagnosis-adjacent questions. No "AI" disclosure in the strip.
+Welcome copy good: "age-aware, non-diagnostic next steps". Scholar lenses: Vygotsky/Bowlby/Winnicott/Montessori/Bronfenbrenner/Piaget/Erikson (no branded living-figure issue).
+Copy nit (fixed on render): "Select a Scholar Lens above…" renders correctly (chip inline).
+Global "First steps with Arbor" checklist also renders on this hub above the coach (present on every hub).

@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { MessagesSquare } from "lucide-react";
 // Directional glyphs are RTL-aware: the caller already picks the start/end
 // variant by uiLang (he ⇒ left, otherwise right), so the Material Symbols
 // <Icon> stays correct in both directions. All icons use the shared <Icon>
@@ -19,7 +18,6 @@ import { TrustSafetyBar, cardCls } from "../ui/kit";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import { ShareButton } from "../ui/ShareButton";
-import { HubHero } from "../ui/HubHero";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
 import { api, streamVoice, getAiLanguage } from "../../lib/api";
@@ -116,6 +114,7 @@ export default function CoachTab() {
   // Which answer's overflow ("…") menu is open. Only Copy stays inline; Log /
   // Plan / Share fold into this menu so a settled answer reads as calm text.
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
+  const [showAllLenses, setShowAllLenses] = useState(false);
 
   // E2 hero CTA target — focusing the input also scrolls it into view.
   const chatInputRef = useRef<HTMLInputElement>(null);
@@ -258,29 +257,16 @@ export default function CoachTab() {
   const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
 
   return (
-    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 mx-auto max-w-[860px]">
-      {/* Header section with lens selector */}
+    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
+      {/* One coaching workspace: orientation, optional lens, conversation, composer. */}
       <div className="space-y-4">
-        {/* E2 hub hero (slim: no stat trio) — the job sentence + one CTA that
-            drops the parent straight into the input. Everything below stays. */}
-        <div>
-          <HubHero
-            tone="mint"
-            icon={MessagesSquare}
-            eyebrow={t("elev.hero.ask.eyebrow")}
-            title={t("elev.hero.ask.title")}
-            subtitle={t("coach.subtitle")}
-            cta={{
-              label: t("elev.hero.ask.cta"),
-              icon: <Icon name="chat" size={16} />,
-              onClick: () => chatInputRef.current?.focus(),
-              testId: "ask-hero-cta",
-            }}
-            testId="ask-hub-hero"
-          />
-          {/* -mt-4 tucks the note under the hero's built-in mb-6. */}
-          <p className="text-xs max-w-2xl -mt-4" style={{ color: "var(--arbor-muted)" }}>{t("coach.languageManaged")}</p>
-        </div>
+        <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
+            <h1 className="mt-1.5 text-[28px] font-extrabold leading-[1.08] sm:text-[34px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.hero.ask.title")}</h1>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
+          </div>
+        </header>
 
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
@@ -290,14 +276,13 @@ export default function CoachTab() {
             {/* IA: the inline picker selects between lenses; the library browses/learns them. */}
             <button
               type="button"
-              onClick={() => setActiveTab("scholar")}
+              onClick={() => setShowAllLenses((v) => !v)}
+              aria-expanded={showAllLenses}
               className="ms-auto inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
               style={{ color: "var(--arbor-muted)" }}
             >
-              <span>{t("coach.lens.browseAll")}</span>
-              {uiLang === "he"
-                ? <Icon name="chevron_left" size={14} />
-                : <Icon name="chevron_right" size={14} />}
+              <span>{showAllLenses ? (uiLang === "he" ? "פחות אפשרויות" : "Fewer options") : t("coach.lens.browseAll")}</span>
+              <Icon name={showAllLenses ? "expand_less" : "expand_more"} size={14} />
             </button>
           </div>
           {(() => {
@@ -331,7 +316,7 @@ export default function CoachTab() {
                     </button>
                   );
                 })()}
-                {scholarsInfo.map((s, idx) => {
+                {showAllLenses && scholarsInfo.map((s, idx) => {
                   const on = selectedLens === s.name;
                   return (
                     <button
@@ -356,7 +341,7 @@ export default function CoachTab() {
             );
           })()}
           {/* "Use this lens when…" — makes the lens choice practical, not academic */}
-          {(() => {
+          {showAllLenses && (() => {
             const active = scholarsInfo.find((s) => s.name === selectedLens);
             const hint = active?.useWhen
               || (selectedLens === "Integrated Balanced" ? t("coach.lens.integratedHint") : null);
@@ -373,13 +358,13 @@ export default function CoachTab() {
       {chatMessages.length <= 1 && (
         <div className="space-y-2">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
             {SCENARIOS.map((s) => (
               <button
                 key={s.labelKey}
                 onClick={() => handleChatSend(s.prompt)}
                 disabled={isChatLoading}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                className="inline-flex min-h-[44px] flex-shrink-0 items-center gap-2 rounded-xl bg-white px-3.5 py-2 text-start text-[12px] font-bold transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                 style={{ color: T.ink, border: "1px solid var(--arbor-rule)" }}
               >
                 <span aria-hidden>{s.emoji}</span> {t(s.labelKey)}
@@ -418,7 +403,7 @@ export default function CoachTab() {
       </div>
 
       {/* Chat Viewport Area */}
-      <div className={`${cardCls} flex flex-col h-[520px] overflow-hidden justify-between`}>
+      <div className={`${cardCls} flex h-[330px] min-h-[330px] min-w-0 flex-col justify-between overflow-hidden`}>
         {/* Persistent named-coach identity strip. The lens/context frame is kept but
             visually subordinate so the conversation is the hero. Green primary —
             never the design's sapphire — per the parent color lock. */}
@@ -669,9 +654,9 @@ export default function CoachTab() {
          </div>
         </div>
 
-        <div className="p-4 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
+        <div className="flex flex-col gap-2 p-4" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
           {/* Multimodal capture: show Arbor a photo or document, or talk hands-free */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="order-2 flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={() => setVisionMode("observe")}
@@ -716,7 +701,7 @@ export default function CoachTab() {
               <Icon name="group" size={14} /> {t("coach.council")}
             </button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="order-1 flex items-center gap-2">
             {/* Capsule input + circular send. The send arrow is logical (Arrow
                 flips Left/Right by uiLang) so it never points backwards in RTL. */}
             <input
@@ -744,12 +729,12 @@ export default function CoachTab() {
           </div>
           {/* EU AI Act Art. 50 — persistent AI-interaction transparency line. Always
               visible on the Ask surface, calm and non-intrusive, never behind a toggle. */}
-          <p className="text-[10px] text-center leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+          <p className="order-3 text-[10px] text-center leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
             {t("coach.aiDisclosure")}
           </p>
           {/* ia-b6: persistent Ask-pillar door into the Ask-a-Specialist warm handoff.
               Navigation only — stays enabled while a coach answer is streaming. */}
-          <div className="pt-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+          <div className="order-4 pt-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
             <button
               type="button"
               onClick={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}

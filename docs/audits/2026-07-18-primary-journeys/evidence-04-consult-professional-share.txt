@@ -1,0 +1,9 @@
+CAPTURE 04 — Care Network / Consult, professional-share journey (#/consult, full load ?cb=5)
+Surface: "One summary you control, ready for everyone who helps נועה." / "You choose what goes in — nothing is shared until you send it."
+Three-step trust framing: Review first ("Read the exact packet before any copy, download, export, or send action unlocks") / You choose / Share deliberately. Footer: "Nothing leaves your device until you choose · GDPR/COPPA".
+CONSENT GATE VERIFIED (interaction): with checkbox "I reviewed the summary and chose what to share." unchecked -> Copy, Download, Export as PDF, Send to a professional ALL disabled=true. After cb.click() -> checked=true, all four enabled=false(disabled). PASS.
+REDACTION TOGGLE VERIFIED (interaction): detail row button aria-pressed=true aria-label="Include: Current focus: Severe transition anxiety (…)" -> click -> aria-pressed=false, count "12 details selected" -> "11 details selected". PASS.
+Packet content: ABOUT sections + DEVELOPMENT SNAPSHOT counts only ("0 of 133 tracked milestones noticed") — no %, no verdicts. Firewall OK.
+FINDING: snapshot rows show raw internal keys: "social_development: 0/27", "language_communication: 0/38", "cognition_executive_function: 0/31", "sensory_motor_patterns: 0/22", "attachment_regulation: 0/6", "independence_adaptive_skills: 0/9" — snake_case leaking into parent/professional packet.
+Professionals list (sandbox seed): "Dr. Maya Levi verified Child Psychologist · 4.9", "Noa Ben-David Speech & Language Therapist 4.8", "Dr. Amir Cohen Pediatrician 5" + "Find a professional". Note: "verified" badges + star ratings are seed data; prod must substantiate.
+Not executed: actual Copy/Download/Send (side-effectful; packet-content-after-redaction not verified end-to-end).

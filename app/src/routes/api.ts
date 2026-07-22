@@ -25,7 +25,7 @@ import { buildConsultRequest, type ConsultStore } from "../server/consultRequest
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
-import { synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured } from "../server/tts.js";
+import { screenAndSynthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
@@ -842,9 +842,14 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
       return;
     }
     try {
-      const result = await synthesizeSpeech(config, { text: text.slice(0, 4000), lang: language === "he" ? "he" : "en" });
+      const result = await screenAndSynthesizeSpeech(config, modelProvider, { text: text.slice(0, 4000), lang: language === "he" ? "he" : "en" });
       res.json(result);
     } catch (error: any) {
+      if (error instanceof UnsafeTtsOutputError) {
+        logger.warn("Arbor TTS safety block", { requestId: requestIdOf(req), category: error.verdict.category });
+        res.status(422).json({ error: "This text cannot be spoken by Arbor." });
+        return;
+      }
       if (error instanceof TtsNotConfigured) {
         res.status(503).json({ configured: false });
         return;

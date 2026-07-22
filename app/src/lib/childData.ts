@@ -26,6 +26,8 @@ export const CHILD_SUBCOLLECTIONS = [
   // a new sink can never silently bypass export/erasure again.
   "conversations",
   "playLogs",
+  // AR-CAP-02: parent-accepted Today actions and parent-reported outcomes.
+  "actionLoops",
   "screenings",
   "devScoreSnapshots",
   "routines",

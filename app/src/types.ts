@@ -205,6 +205,8 @@ export interface PlayLog {
   timestamp: string; // ISO
 }
 
+export type { ActionLoopEntry, ActionCapacity, ActionOutcome } from "./actionLoop/model";
+
 export interface Milestone {
   id: string;
   domain: DevelopmentalDomainId;
@@ -223,6 +225,9 @@ export interface Milestone {
    * the behavior a parent can actually watch for. Optional; falls back to `description`.
    */
   skillLooksLike?: string;
+  /** Parent observation state. `checked` remains the backward-compatible yes flag. */
+  observationStatus?: "yes" | "not_sure" | "not_yet";
+  observationUpdatedAt?: string;
   checked: boolean;
   references?: { label: string; url: string }[];
   custom?: boolean;

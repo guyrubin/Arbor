@@ -7,11 +7,13 @@ import { selectionHaptic } from "../../lib/native";
 import { usePulses, type HubId } from "../../lib/pulse";
 
 /**
- * Bottom tab bar shown on mobile (< md). The UC-1 IA has EIGHT categories, which
+ * Bottom tab bar shown on mobile and tablet (< lg). The UC-1 IA has EIGHT categories, which
  * don't fit a mobile bar — so the first four show as tabs and a fifth "More"
  * entry opens a sheet exposing EVERY remaining category (no route is lost).
  */
-const PRIMARY_COUNT = 4;
+// Mobile is job-prioritized rather than a slice of the desktop IA. Ask Arbor is
+// a frequent in-the-moment parent action; Behaviors remains one tap away in More.
+const PRIMARY_SECTION_IDS = ["today", "growth", "ask", "journal"] as const;
 
 export default function MobileNav() {
   const { activeTab, setActiveTab } = useArbor();
@@ -20,8 +22,10 @@ export default function MobileNav() {
   const activeSectionId = sectionForTab(activeTab).id;
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const primary = SECTIONS.slice(0, PRIMARY_COUNT);
-  const overflow = SECTIONS.slice(PRIMARY_COUNT);
+  const primary = PRIMARY_SECTION_IDS
+    .map((id) => SECTIONS.find((section) => section.id === id))
+    .filter((section): section is (typeof SECTIONS)[number] => Boolean(section));
+  const overflow = SECTIONS.filter((section) => !PRIMARY_SECTION_IDS.includes(section.id as (typeof PRIMARY_SECTION_IDS)[number]));
   const overflowActive = overflow.some((s) => s.id === activeSectionId);
 
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function MobileNav() {
   return (
     <>
       <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 flex bg-white"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex bg-white"
         style={{ borderTop: "1px solid var(--arbor-rule)", boxShadow: "0 -4px 16px rgba(41,51,63,0.04)" }}
       >
         {primary.map((sec) => {
@@ -77,7 +81,7 @@ export default function MobileNav() {
           role="dialog"
           aria-modal="true"
           aria-label={t("nav.popover.more")}
-          className="md:hidden fixed inset-0 z-50 flex flex-col justify-end"
+          className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end"
           style={{ background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}
           onClick={() => setMoreOpen(false)}
         >

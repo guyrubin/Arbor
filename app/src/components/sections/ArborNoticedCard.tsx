@@ -123,12 +123,12 @@ export default function ArborNoticedCard() {
 
   return (
     <section
-      className="rounded-[22px] p-5"
-      style={{ background: PEACH_SOFT, border: `1px solid ${RULE}` }}
+      className="grid gap-3 border-y px-1 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      style={{ background: "transparent", borderColor: RULE }}
       aria-label={t("noticed.monitor.title")}
     >
       {/* Eyebrow + unobtrusive per-detection dismiss */}
-      <div className="flex items-center gap-1.5 mb-3">
+      <div className="col-span-full flex items-center gap-1.5">
         <Icon name="visibility" size={14} className="flex-shrink-0" style={{ color: PEACH_INK }} />
         <span className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: PEACH_INK }}>
           {t("noticed.eyebrow")}
@@ -144,25 +144,17 @@ export default function ArborNoticedCard() {
       </div>
 
       {/* Title */}
-      <p className="text-[14.5px] font-extrabold leading-snug mb-1.5" style={{ color: INK }}>
-        {t("noticed.monitor.title")}
-      </p>
-
-      {/* Body: the domain signal (counts/patterns only, never a verdict) */}
-      <p className="text-[13px] leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
-        {buildMonitorBody()}
-      </p>
-
-      {/* Non-diagnostic reassurance line */}
-      <p className="text-[12px] mt-2 font-medium" style={{ color: PEACH_INK }}>
-        {t("noticed.monitor.cta")}
-      </p>
+      <div className="min-w-0">
+        <p className="text-[14.5px] font-extrabold leading-snug" style={{ color: INK }}>{t("noticed.monitor.title")}</p>
+        <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>{buildMonitorBody()}</p>
+        <p className="mt-1 text-[11.5px] font-medium" style={{ color: PEACH_INK }}>{t("noticed.monitor.cta")}</p>
+      </div>
 
       {/* C5 link: expert-cited activity for the flagged domain */}
       {citedActivity && (
         <button
           onClick={() => setActiveTab("daily-play")}
-          className="inline-flex items-center gap-1.5 mt-3 text-[12.5px] font-bold rounded-xl px-3 py-2 touch-target transition active:scale-[0.98]"
+          className="inline-flex items-center gap-1.5 text-[12.5px] font-bold rounded-xl px-3 py-2 touch-target transition active:scale-[0.98]"
           style={{
             background: "var(--arbor-paper-elevated)",
             color: PEACH_INK,

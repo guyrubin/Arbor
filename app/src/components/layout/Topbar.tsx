@@ -28,7 +28,7 @@ export default function Topbar() {
 
   return (
     <header
-      className="hidden md:flex items-center gap-4 px-5 xl:px-7 flex-none min-w-0"
+      className="hidden lg:flex items-center gap-4 px-5 xl:px-7 flex-none min-w-0"
       style={{
         height: "74px",
         background: "var(--arbor-topbar-band)",
@@ -52,7 +52,7 @@ export default function Topbar() {
       {/* Right zone: lean desktop control band (search → Kid Mode → rail toggle →
           bell → child switcher). Ask Arbor lives in the sidebar, not here. */}
       <div className="flex min-w-0 flex-shrink-0 items-center gap-2.5">
-        <div className="hidden md:block">
+        <div className="hidden lg:block">
           <TopbarSearch />
         </div>
         <div className="hidden lg:block">

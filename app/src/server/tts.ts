@@ -1,10 +1,12 @@
 import { GoogleAuth } from "google-auth-library";
 import type { ArborConfig } from "../config/env.js";
+import type { ModelProvider } from "../ai/modelRouter.js";
+import { screenModelOutput, type OutputScreenVerdict } from "../safety/outputScreen.js";
 import { logger } from "./logger.js";
 
 /**
- * Neural text-to-speech seam (Epic A) — synthesizes ALREADY-SCREENED, already-
- * rendered app text (story / coach narration) into natural speech. A pluggable
+ * Neural text-to-speech seam (Epic A) — synthesizes screened app text (story /
+ * coach narration) into natural speech. A pluggable
  * provider seam mirroring `server/childAsr.ts`, default-OFF so the browser
  * `SpeechSynthesis` floor (lib/voice.ts) remains the shipped default until this is
  * deliberately enabled:
@@ -13,10 +15,9 @@ import { logger } from "./logger.js";
  *               cloud-platform scope the runtime already has).
  *   - "none":   not configured → callers use the on-device browser voice.
  *
- * NOT a safety boundary. Callers must only ever pass text that has already passed
- * the server-side output screen (`screenModelOutput`). This route does not — and
- * cannot — re-verify that; the guarantee lives UPSTREAM, where the text was
- * produced and screened before res.json.
+ * `synthesizeSpeech` is the provider-only primitive. The public API is a safety
+ * boundary because authenticated clients can submit arbitrary text, so callers
+ * must use `screenAndSynthesizeSpeech` to screen immediately before synthesis.
  *
  * COPPA: TTS is OUTPUT-only and transient — no audio is persisted and no child PII
  * is involved (the input is app-rendered, screened output), so it adds no new
@@ -38,6 +39,10 @@ export class NotConfiguredError extends Error {
     super(message);
     this.name = "NotConfiguredError";
   }
+}
+
+export class UnsafeTtsOutputError extends Error {
+  constructor(public readonly verdict: OutputScreenVerdict) { super("Text-to-speech output was blocked by Arbor's safety policy."); this.name = "UnsafeTtsOutputError"; }
 }
 
 /** True when neural TTS is enabled (and not hard-killed). */
@@ -98,4 +103,11 @@ export async function synthesizeSpeech(config: ArborConfig, input: TtsInput): Pr
     default:
       throw new NotConfiguredError();
   }
+}
+
+/** Public TTS trust boundary: caller-provided text is screened immediately before synthesis. */
+export async function screenAndSynthesizeSpeech(config: ArborConfig, modelProvider: ModelProvider, input: TtsInput): Promise<TtsResult> {
+  const verdict = await screenModelOutput(modelProvider, input.text);
+  if (verdict.flagged) throw new UnsafeTtsOutputError(verdict);
+  return synthesizeSpeech(config, input);
 }

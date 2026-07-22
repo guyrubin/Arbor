@@ -213,4 +213,4 @@ export const BRAND_CONFETTI: readonly string[] = [
 
 /** Standard card chrome shared by the calm parent-facing surfaces. */
 export const cardCls =
-  "bg-white rounded-[22px] border border-[rgba(41,51,63,0.06)] shadow-[0_2px_10px_rgba(41,51,63,0.05)]";
+  "bg-white rounded-[18px] border border-[var(--arbor-rule)] shadow-[var(--shadow-xs)]";

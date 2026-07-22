@@ -27,7 +27,7 @@ function celebrate() {
 export default function MilestonesTab() {
   const {
     milestones,
-    handleToggleMilestone,
+    setMilestoneObservation,
     addCustomMilestone,
     checkedMilestones,
     totalMilestones,
@@ -129,11 +129,6 @@ export default function MilestonesTab() {
     return map;
   }, [milestones, domainOptions]);
 
-  const onToggle = (id: string, wasChecked: boolean) => {
-    handleToggleMilestone(id);
-    if (!wasChecked) celebrate();
-  };
-
   const submitCustom = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
@@ -148,8 +143,8 @@ export default function MilestonesTab() {
       className="p-3 rounded-xl transition"
       style={item.checked ? { background: "var(--arbor-paper-deep)", border: "1px solid rgba(52,178,119,0.30)" } : { background: "#fff", border: "1px solid var(--arbor-rule)" }}
     >
-      <label className="flex items-start gap-3 cursor-pointer">
-        <input type="checkbox" checked={item.checked} onChange={() => onToggle(item.id, item.checked)} className="mt-1" style={{ accentColor: "var(--arbor-clay)" }} />
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full" style={{ background: item.checked ? "var(--arbor-green-soft)" : "var(--arbor-paper-deep)", color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}><Icon name={item.checked ? "check" : item.observationStatus === "not_sure" ? "question_mark" : "remove"} size={14} /></span>
         <div className="space-y-0.5 flex-1">
           <span className="font-bold block" style={{ color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{item.title}</span>
           <span className="text-[10px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.description}</span>
@@ -159,6 +154,17 @@ export default function MilestonesTab() {
               {item.skillLooksLike}
             </span>
           )}
+          <div className="grid grid-cols-3 gap-1.5 pt-2" role="group" aria-label={uiLang === "he" ? "מה ראיתם?" : "What have you noticed?"}>
+            {([
+              ["yes", uiLang === "he" ? "כן" : "Yes"],
+              ["not_sure", uiLang === "he" ? "לא בטוחים" : "Not sure"],
+              ["not_yet", uiLang === "he" ? "עוד לא" : "Not yet"],
+            ] as const).map(([status, label]) => {
+              const selected = (item.observationStatus ?? (item.checked ? "yes" : undefined)) === status;
+              return <button key={status} type="button" onClick={() => { setMilestoneObservation(item.id, status); if (status === "yes" && !item.checked) celebrate(); }} aria-pressed={selected} className="min-h-9 rounded-lg px-1.5 text-[10px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "rgba(52,178,119,0.30)" : "var(--arbor-rule)"}` }}>{label}</button>;
+            })}
+          </div>
+          {item.observationStatus === "not_sure" && <p className="pt-1 text-[10px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "נסו לצפות בדוגמה במהלך משחק מוכר. אין צורך לבדוק או ללחוץ." : "Try watching for the example during familiar play. There is no need to test or push."}</p>}
           <div className="flex items-center gap-2 flex-wrap pt-1">
             {item.checked && <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.observed")}</span>}
             {item.ageGroup && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.age")} {item.ageGroup}</span>}
@@ -223,7 +229,7 @@ export default function MilestonesTab() {
             </button>
           </div>
         )}
-      </label>
+      </div>
       <AnimatePresence initial={false}>
         {explanations[item.id] && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -339,11 +345,11 @@ export default function MilestonesTab() {
   const firstName = (childProfile.name || "").split(" ")[0];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
-      <div className="flex items-center gap-3.5">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
+      <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
         {/* The child's memory portrait — modest, no comic frame in the parent register. */}
         <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
-        <div>
+        <div className="min-w-0">
           <h2 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h2>
           <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("ms.subtitle")}</p>
         </div>
@@ -353,16 +359,17 @@ export default function MilestonesTab() {
           (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
           right pane = the seven-domain master list, or a single-domain drill-in. */}
       <Split
-        ratio="1fr 1.4fr"
+        ratio="minmax(300px,1fr) minmax(0,1.4fr)"
+        className="md:[&>div]:!contents xl:[&>div]:!grid"
         left={
-          <div className="space-y-5 md:sticky md:top-4">
+          <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
             {/* Development Map summary — count headline only, no verdict score. */}
-            <div className={`${cardCls} p-6`}>
+            <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.developmentMap")}</span>
               {/* Ring/dial visual — CLINICAL FIREWALL: the number inside is a COUNT of
                   noticed milestones (never a %/score/verdict); the ring fill is only the
                   checked/total count-proportion, and it is not labelled as competence. */}
-              <div className="flex items-center gap-4 mt-4">
+              <div className="mt-4 flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
                 <RadialProgress value={checkedMilestones} total={totalMilestones} tone="mint" size={92} thickness={10}>
                   <span className="text-center leading-none">
                     <span className="block text-[26px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{checkedMilestones}</span>
@@ -393,7 +400,7 @@ export default function MilestonesTab() {
             </div>
 
             {/* Corrected-age (preterm) control + badge — relocated into the rail. */}
-            <div className={`${cardCls} p-4`}>
+            <div className={`${cardCls} min-w-0 p-4`}>
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-2.5">
                   <span className="p-1.5 rounded-lg flex items-center justify-center mt-0.5" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="child_care" size={16} /></span>
@@ -440,7 +447,7 @@ export default function MilestonesTab() {
                       style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                     />
                   </label>
-                  <div className="flex gap-2 items-stretch">
+                  <div className="flex flex-wrap items-stretch gap-2">
                     <button type="submit" disabled={savingGestation} className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>
                       {savingGestation ? <Icon name="progress_activity" size={14} className="animate-spin" /> : t("ms.gestationSave")}
                     </button>

@@ -422,3 +422,108 @@ Live API access is granted on the account, no code change.
 multi-agent council, and co-parent/expiry sharing are fully verified. The realtime
 voice coach functions today via Gemini streaming; the literal Live-bidi upgrade is
 built and one Google account-grant away.
+
+---
+
+## 14. AR-CAP market-derived enhancement delta (2026-07-22)
+
+**Research source:** `PAI/projects/arbor/CAPABILITY-MAP.md` (feature-level official-source refresh).
+**Rule:** these items extend the shipped system; they do not revive superseded v2–v5 backlogs. AI-platform work stays in the canonical AR-AI ledger. Existing shipped seams must be reused where named.
+
+Prioritization uses **RICE-like relative scoring**: Reach (R), user Impact (I), evidence Confidence (C), Effort (E), each 1–5 except C as 0.5/0.8/1.0. Score = `R × I × C ÷ E`. Scores are sequencing aids, not promises.
+
+| ID | P | Outcome / build item | Market reference | Acceptance criteria | R/I/C/E | Score | Gate |
+|---|:--:|---|---|---|---:|---:|---|
+| **AR-CAP-01** | P0 | **Universal capture composer → confirmed signal** across Today, Journal, Behaviors, Coach, milestone, and document entry | Huckleberry AI logging | One text/voice/photo/document entry; typed draft with source, confidence, edit/discard/confirm; no draft enters memory before confirm; median internal task ≤20s; all existing capture paths converge on one contract | 5/5/1/2 | **12.5** | child-data guard |
+| **AR-CAP-02** | P0 | **Close recommendation → action → outcome → adaptation** | Kinedu completion loop; Bend measurement loop | Every accepted “try today” can create a bounded action; lightweight done/skipped/helped/didn’t-help outcome; duplicate-safe; next recommendation can cite the outcome; parent can remove it | 5/5/1/2 | **12.5** | clinical copy |
+| **AR-CAP-03** | P0 | **Progress narrative dashboard: what changed / evidence / next** | Huckleberry reports; Lingokids Progress Center | One child-level view combines confirmed observations, activities, outcomes, milestones, strengths, and next action; no peer percentile; every inference links to source signals; HE/EN and mobile pass | 5/4/1/2 | **10.0** | clinical firewall |
+| **AR-CAP-04** | P0 | **Separate caregiver identities and family alignment view** over the shipped sharing seam | Good Inside Family Plans | Invite creates distinct adult identity, not shared credentials; shared child profile and plan; private adult AI history by default; role/scopes/revoke; content/action handoff; audit events; migration test for existing shares | 4/5/1/3 | **6.7** | GDPR/DPIA |
+| **AR-CAP-05** | P0 | **Professional reverse-channel v0** | Little Otter; Bend; Kinedu Educators | Parent-approved professional can assign one focus/action; family accepts/declines; outcome returns; professional comments/closes; scope/expiry/revoke enforced; facts vs inference preserved; no autonomous send | 3/5/1/3 | **5.0** | clinical + Guy Tier-C |
+| **AR-CAP-06** | P1 | **Top-100 guided activity layer** | Kinedu; Lovevery | Each priority activity has ≤90s video/animation, setup, adaptations, safety, “what to notice,” and outcome prompt; selected by child state, materials, time, and prior response; helpfulness/completion instrumented | 4/4/1/3 | **5.3** | content review |
+| **AR-CAP-07** | P1 | **Governed content graph and publishing contract** | Good Inside coherent method; Lovevery course system | Schema includes age/band, moment, concern, domain, action, evidence, reviewer, locale, safety class, version, review date; search/recommendation use it; stale or unreviewed clinical content fails promotion | 5/4/1/3 | **6.7** | clinical content review |
+| **AR-CAP-08** | P1 | **Illustrated milestone evidence and uncertainty flow** | CDC Milestone Tracker | Every milestone supports observable example media; Yes / Not sure / Not yet; corrected-age handling where appropriate; “not sure” guidance; packet preserves response and provenance; explicit screening disclaimer | 3/4/1/2 | **6.0** | licensed/source media |
+| **AR-CAP-09** | P1 | **Concern packs v1: routines/sleep, emotion regulation, language, transitions/attention** | Huckleberry; Good Inside; Otsimo | Each pack has reviewed pathway, daily actions, content, progress/outcome definition, escalation boundary, locale coverage; opt-in; never labels a condition | 4/4/0.8/3 | **4.3** | clinical board |
+| **AR-CAP-10** | P1 | **Warm referral and local resource registry** | Brightline/Bend right-care routing; CDC Act Early | Versioned provider/resource records by market, age, concern, language, access and urgency; parent initiates; acknowledgement/follow-up state; expired records hidden; crisis path bypasses marketplace UX | 3/5/1/4 | **3.8** | market owner + clinical |
+| **AR-CAP-11** | P1 | **Published bounded curriculum maps** for literacy, language, and practice | Duolingo ABC; Khan Kids | Explicit sequence, prerequisites, target skill, activity mapping, mastery evidence, adaptation and exit; parent sees purpose/progress; no streak penalties; content coverage tests | 3/4/1/3 | **4.0** | education review |
+| **AR-CAP-12** | P1 | **Product outcomes and efficacy program** | Duolingo ABC; Bend | Define primary/guardrail outcomes; consented cohort design; baseline and follow-up; analysis plan registered before results; attrition/adverse-event reporting; claims require evidence gate | 3/5/1/4 | **3.8** | ethics/privacy/clinical |
+| **AR-CAP-13** | P2 | **Parent-capacity check and action sizing** | Soula; Good Inside | Optional ≤10s check; affects action size/timing only; no diagnosis or emotion inference; can disable/delete; measures acceptance and completion vs control | 4/3/0.8/2 | **4.8** | parent-wellbeing copy |
+| **AR-CAP-14** | P2 | **Child-relevant school/admin intake** | SchoolParent and family-assistant archetype | Forward/upload document or message → proposed event, question, task, and child signal; each independently confirmable; source retained; no general-purpose family inbox in v1 | 3/3/0.8/3 | **2.4** | connector/privacy |
+| **AR-CAP-15** | P2 | **Printable/keepsake experiments, not physical inventory** | Lovevery physical ecosystem | Test printable play cards and annual hero/milestone keepsake with preorder/POD; no stock; parent approves content; child media/data retention documented; explicit kill threshold | 2/3/0.8/3 | **1.6** | Guy Tier-C money/vendor |
+
+### AI dependencies (link, do not duplicate)
+
+- **AR-CAP-01/02/03** depend on AR-AI-06–09 (answer/action contract, review, confirmed memory, evidence inspector).
+- **AR-CAP-05** composes with AR-AI-11 (continuity-of-care pack) but owns the human reverse channel.
+- **AR-CAP-13** extends routing context; it must not create a parent diagnosis or inferred emotional profile.
+- Provider/model routing, receipts, evals, voice, and child-AI controls remain AR-AI-01–13.
+
+### Recommended delivery sequence
+
+1. **Loop foundation:** AR-CAP-01 → AR-CAP-02 → AR-CAP-03.
+2. **Trust and family:** AR-CAP-04 plus AR-AI-09; then AR-CAP-05 plus AR-AI-11.
+3. **Content depth:** AR-CAP-07 → AR-CAP-06/08 → AR-CAP-09/11.
+4. **Proof and access:** instrument AR-CAP-12 from wave 1; build AR-CAP-10 after the first-market registry owner exists.
+5. **Experiments:** AR-CAP-13/14/15 only after loop metrics show repeated use.
+
+### Explicit non-goals
+
+- Do not chase Khan/Lingokids library scale.
+- Do not build a diagnostic or therapy product to match Little Otter/Bend.
+- Do not copy streaks, hearts, penalties, open-ended child companionship, or engagement-maximizing AI.
+- Do not build inventory-heavy Lovevery-style kits before demand is proven.
+- Do not open an unvetted professional marketplace.
+
+---
+
+## 15. The next 10 feature enhancements - locked shortlist (2026-07-22)
+
+> **Execution note — 2026-07-22:** Wave 1 of AR-CAP-02/13 is implemented in the Today journey: one daily child-scoped action, explicit 2/5/10-minute sizing, parent-reported Helped/A little/Not today outcome, removal, export/erase registration, and outcome-aware next-focus input. Browser QA passed the full action loop, reload persistence, 390px containment, and Hebrew RTL. Wave 2 now adds the AR-CAP-03 progress narrative, the typed-capture review/confirm seam for AR-CAP-01, the AR-CAP-07 publishing contract, and all 25 bilingual AR-CONT-01 hard-moment card drafts. The content pack is intentionally blocked from publication until a named clinical reviewer stamps approval and review dates; no fabricated review provenance is permitted. Canonical journey spec: `docs/ARBOR-CONTINUITY-JOURNEY-2026-07-22.md`.
+
+This is the decision list derived from the feature-level benchmark. It deliberately excludes shipped capability, low-confidence bets, physical inventory, broad family administration, and feature-volume work. The underlying AR-CAP rows above remain the acceptance source.
+
+| Rank | ID | Feature enhancement | Why it survives the cut | Start condition |
+|---:|---|---|---|---|
+| 1 | **AR-CAP-01** | Universal capture composer | Highest-frequency friction; unifies already-built capture seams rather than adding a new module | current capture inventory verified |
+| 2 | **AR-CAP-02** | Action-to-outcome adaptation loop | Converts longitudinal memory from stored context into compounding product value | confirmed-signal contract stable |
+| 3 | **AR-CAP-03** | Progress narrative dashboard | Makes the loop understandable: what changed, evidence, next | outcome events available |
+| 4 | **AR-CAP-04** | Separate caregiver identities + alignment | Good Inside-level family collaboration without leaking private adult history | sharing/auth migration design approved |
+| 5 | **AR-CAP-05** | Professional reverse channel v0 | Completes continuity; bounded assignment/response, not a full clinical platform | role/scopes and clinical workflow approved |
+| 6 | **AR-CAP-08** | Illustrated milestone evidence + uncertainty | Closes a trust/usability gap against the CDC without peer scoring | media licensing/source plan approved |
+| 7 | **AR-CAP-10** | Warm referral + local resource registry | Makes escalation actionable in the first pilot market | named registry owner + freshness SLA |
+| 8 | **AR-CAP-11** | Bounded curriculum maps | Turns existing literacy/language/practice into visible progression | education reviewer and target bands selected |
+| 9 | **AR-CAP-12** | Outcomes/effectiveness instrumentation | Required for retention learning and institutional credibility | measures, consent and analysis plan approved |
+| 10 | **AR-CAP-13** | Parent-capacity action sizing | Small, differentiated adherence lever; adapts effort without diagnosing | copy/privacy review; A/B design |
+
+**Not in the next 10:** AR-CAP-06/07/09 are delivered through the content backlog below; AR-CAP-14 family-admin intake is outside the child-continuity wedge; AR-CAP-15 keepsakes remain a demand test only. No replacement item is added merely to fill space.
+
+## 16. The next 10 content enhancements for capabilities already live
+
+These are content products, not new software modules. Each must use the governed content schema in AR-CAP-07, work in English and Hebrew unless explicitly piloted in one locale, include a review owner/date, and reuse current surfaces. “Publish” means pass clinical/safety/localization gates and instrument helpfulness plus follow-through.
+
+| Rank | ID | Content enhancement | Existing capability enhanced | Definition of done | Gate |
+|---:|---|---|---|---|---|
+| 1 | **AR-CONT-01** | **Top 25 hard-moment action cards**: tantrum, refusal, hitting, sibling conflict, separation, bedtime, transitions | Ask Arbor + Today + Behaviors | Each moment has do-now, say-this, avoid, observe, escalation boundary, age adaptation, EN/HE; selected from real top intents | clinical copy |
+| 2 | **AR-CONT-02** | **Top 50 guided play activities** | Playbank + Growth Plans | 50 highest-use activities receive setup, household materials, 60-90s demonstration, easier/harder variation, what-to-notice, outcome prompt | child-safety + media rights |
+| 3 | **AR-CONT-03** | **Emotion regulation pathway** | Feelings Lab + Growth Plans + Today | Four-week parent-child pathway by age band; co-regulation scripts, play, reflection, outcome checks; explicitly non-diagnostic | clinical review |
+| 4 | **AR-CONT-04** | **Transitions and attention pathway** | Practice + Behaviors + Today | Morning, school, stopping play, homework and bedtime routines; visual scripts, rehearsal games, parent capacity variants | clinical review |
+| 5 | **AR-CONT-05** | **Language growth pathway** | Language Lab + speech scorer + Growth Plans | Listening, turn-taking, vocabulary, narrative and articulation-support activities by band; clear boundary to SLP referral | SLP review; child-voice gate for scoring |
+| 6 | **AR-CONT-06** | **Sleep and routine micro-pack** | Day Windows + Journal + Today | Bedtime routine builder, wake/nap context, wind-down scripts, two-week experiment and outcome review; no sleep-clinic claims | pediatric/sleep review |
+| 7 | **AR-CONT-07** | **Illustrated milestone example set** | Milestones + Development Map | Priority milestone examples use licensed illustration/video, Yes/Not sure/Not yet guidance, prematurity note where relevant, and doctor-question prompt | CDC/AAP alignment + rights |
+| 8 | **AR-CONT-08** | **Co-parent alignment mini-course** | Family Formation + sharing + plans | Five 5-minute lessons: shared aim, scripts, roles, disagreement repair, weekly alignment; each creates an optional shared agreement/action | family/clinical review |
+| 9 | **AR-CONT-09** | **Professional-visit preparation packs** | Care + handoff + appointments | Pediatrician, teacher, SLP and behavioral-health versions: what changed, evidence to bring, questions, consent/redaction checklist, follow-up outcome | professional reviewer per audience |
+| 10 | **AR-CONT-10** | **Hero story spine expansion: 12 reusable therapeutic-adjacent themes** | Hero Journeys + Comics + Journal | 12 non-clinical spines (courage, repair, waiting, belonging, trying again, asking for help, etc.) with age/locale variants and memory-safe personalization slots | content safety + localization |
+
+### Content sequencing
+
+1. Ship AR-CONT-01 first because it upgrades the highest-frequency parent job with no new platform dependency.
+2. Build AR-CONT-02 and AR-CONT-07 as the visual guidance wave; reuse one production pipeline and rights ledger.
+3. Build AR-CONT-03/04/05/06 as governed pathways, one at a time, based on observed demand - not all four in parallel.
+4. Add AR-CONT-08/09 when caregiver identity and professional reverse-channel work begins.
+5. AR-CONT-10 is the differentiated retention layer and follows stable character consistency/voice, not before.
+
+### Content non-goals
+
+- No generic article-volume program.
+- No diagnostic condition courses or treatment claims.
+- No attempt to match Khan, Lingokids or Kinedu by catalog size.
+- No AI-generated content may publish without schema validation, review ownership and safety/localization gates.
