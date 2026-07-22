@@ -209,13 +209,11 @@ export default function JournalTab() {
   const autoLabel = t("journal.auto");
   const manualLabel = t("journal.manual");
   const recentSignals = signals.slice(0, 3);
-  const storyCopy = uiLang === "he"
-    ? recentSignals.length
-      ? `ארבור מחבר ${recentSignals.length} רגעים אחרונים לסיפור מתמשך — בלי שתצטרכו לכתוב הכול בעצמכם.`
-      : "רגע קטן אחד מספיק כדי להתחיל. ארבור יעזור להפוך אותו לסיפור שנבנה עם הזמן."
-    : recentSignals.length
-      ? `Arbor is connecting ${recentSignals.length} recent moments into a living story — without asking you to write it all yourself.`
-      : "One small moment is enough to begin. Arbor will help shape it into a story that grows over time.";
+  // JRNL-2: all header/compose copy lives in lib/i18n.ts (journal.* keys) so the
+  // EN/HE parity guard covers it — no inline he-ternary strings on this surface.
+  const storyCopy = recentSignals.length
+    ? t("journal.story.body", { count: recentSignals.length })
+    : t("journal.story.empty");
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5">
@@ -223,18 +221,18 @@ export default function JournalTab() {
         <div className="grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
-              <Icon name="auto_stories" size={16} fill={1} /> {uiLang === "he" ? "היומן שכותב את עצמו" : "The journal that writes itself"}
+              <Icon name="auto_stories" size={16} fill={1} /> {t("journal.eyebrow")}
             </span>
             <h1 className="mt-2 text-[28px] sm:text-[34px] leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              {uiLang === "he" ? "כל הרגעים של המשפחה, לפי הסדר." : "Your family story, in order."}
+              {t("journal.title")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm sm:text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
           </div>
           <div className="border-t pt-4 md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
-            <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "השבוע בסיפור" : "This week in the story"}</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.title")}</p>
             <div className="mt-3 flex items-center gap-3">
               <span className="text-3xl font-black" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-lav-ink)" }}>{signals.length}</span>
-              <span className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "רגעים ותובנות שנשמרו במקום אחד" : "moments and insights kept in one calm place"}</span>
+              <span className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.sub")}</span>
             </div>
           </div>
         </div>
@@ -245,7 +243,7 @@ export default function JournalTab() {
       <section className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{uiLang === "he" ? "×¨×’×¢ ×—×“×©" : "New moment"}</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
           <h2 className="mt-1 text-[18px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("journal.compose.title")}
           </h2>
@@ -283,8 +281,8 @@ export default function JournalTab() {
       ) : (
         <section aria-labelledby="journal-timeline-title">
           <div className="mb-1 flex items-center justify-between gap-3">
-            <h2 id="journal-timeline-title" className="text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{uiLang === "he" ? "ציר הזמן" : "Timeline"}</h2>
-            <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{signals.length} {uiLang === "he" ? "רגעים" : "moments"}</span>
+            <h2 id="journal-timeline-title" className="text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("journal.timeline.title")}</h2>
+            <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{signals.length} {t("journal.timeline.count")}</span>
           </div>
           {signals.map((s) => {
             const kind = s.kind;
