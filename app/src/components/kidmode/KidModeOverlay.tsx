@@ -33,10 +33,11 @@ const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
 const PracticeHubTab = lazy(() => import("../practice/PracticeHubTab"));
 const FeelingsLabTab = lazy(() => import("../practice/FeelingsLabTab"));
 
-const SURFACE_META: Record<KidSurface, { label: string; Comp: React.ComponentType }> = {
-  journeys: { label: "Hero Stories", Comp: HeroJourneyTab },
-  arcade: { label: "Playbank", Comp: PracticeHubTab },
-  feelings: { label: "Feelings", Comp: FeelingsLabTab },
+// KID-1: labels are i18n keys (kid.* namespace) resolved with t() at render.
+const SURFACE_META: Record<KidSurface, { labelKey: string; Comp: React.ComponentType }> = {
+  journeys: { labelKey: "kid.surface.journeys", Comp: HeroJourneyTab },
+  arcade: { labelKey: "kid.surface.arcade", Comp: PracticeHubTab },
+  feelings: { labelKey: "kid.surface.feelings", Comp: FeelingsLabTab },
 };
 
 type View = "home" | KidSurface;
@@ -140,7 +141,7 @@ export default function KidModeOverlay() {
             >
               <button
                 onClick={() => setView("home")}
-                aria-label="Back to home"
+                aria-label={t("kid.back.homeAria")}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -158,7 +159,7 @@ export default function KidModeOverlay() {
                 }}
               >
                 <ChevronLeft className="w-4 h-4" aria-hidden="true" />
-                Home
+                {t("kid.back.home")}
               </button>
               <span
                 style={{
@@ -170,9 +171,9 @@ export default function KidModeOverlay() {
                   minWidth: 0,
                 }}
               >
-                {surface.label}
+                {t(surface.labelKey)}
               </span>
-              <HoldExitButton onExit={closeKidMode} idleLabel="Back to parent" ariaIdle="Hold to go back to parent" />
+              <HoldExitButton onExit={closeKidMode} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
             </header>
           )}
 

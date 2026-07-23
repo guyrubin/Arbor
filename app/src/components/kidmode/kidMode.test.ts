@@ -218,6 +218,157 @@ describe("KID-2: shieldShellSiblings — shell carries inert while Kid Mode is o
   });
 });
 
+// ── KID-1: i18n — kid.* namespace coverage, no hardcoded copy, register split ─
+import { en, he } from "../../lib/i18n";
+
+/** Strip // and /* *\/ comments so scans only see live code. */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
+describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
+  // The Kid Mode chrome keys the components reference directly.
+  const CHROME_KEYS = [
+    "kid.greeting",
+    "kid.greetingSub",
+    "kid.stars.aria",
+    "kid.exit.backToParent",
+    "kid.exit.backToParentAria",
+    "kid.exit.holdIdle",
+    "kid.exit.holdAria",
+    "kid.exit.holding",
+    "kid.safety.aria",
+    "kid.safety.locked",
+    "kid.safety.private",
+    "kid.safety.stars",
+    "kid.quest.eyebrow",
+    "kid.quest.title",
+    "kid.quest.sub",
+    "kid.quest.cta",
+    "kid.adventures.title",
+    "kid.games.title",
+    "kid.games.seeAll",
+    "kid.back.home",
+    "kid.back.homeAria",
+    "kid.surface.journeys",
+    "kid.surface.arcade",
+    "kid.surface.feelings",
+  ];
+
+  it.each(CHROME_KEYS)("%s exists (non-empty) in en AND he", (key) => {
+    expect(en[key], `en missing ${key}`).toBeTruthy();
+    expect(he[key], `he missing ${key} (HE placeholders must still register the key)`).toBeTruthy();
+  });
+
+  it("every tile id declared in KidDashboard.tsx has title+sub keys in both maps", () => {
+    // Tile defs carry only ids — copy lives in i18n under kid.adv.<id>.* /
+    // kid.game.<id>.*. Extract the ids straight from the source so a new tile
+    // without keys fails here instead of rendering a raw key string.
+    const src = stripComments(readSelf("KidDashboard.tsx"));
+    const ids = [...src.matchAll(/\{ id: "([a-z-]+)"/g)].map((m) => m[1]);
+    expect(ids.length, "expected the 4 adventure + 8 game tile defs").toBeGreaterThanOrEqual(12);
+    for (const id of ids) {
+      const base = `kid.adv.${id}.title` in en ? `kid.adv.${id}` : `kid.game.${id}`;
+      for (const suffix of [".title", ".sub"]) {
+        expect(en[base + suffix], `en missing ${base}${suffix}`).toBeTruthy();
+        expect(he[base + suffix], `he missing ${base}${suffix}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("kid.* keys are en/he parity-complete (no one-sided keys)", () => {
+    const kidEn = Object.keys(en).filter((k) => k.startsWith("kid."));
+    const kidHe = Object.keys(he).filter((k) => k.startsWith("kid."));
+    expect(kidEn.length).toBeGreaterThan(0);
+    expect(kidHe.sort()).toEqual(kidEn.sort());
+  });
+});
+
+describe("KID-1: no hardcoded UI copy renders in kidmode/*.tsx", () => {
+  const KID_TSX = ["KidDashboard.tsx", "KidModeOverlay.tsx", "HoldExitButton.tsx", "ParentChallenge.tsx"];
+
+  // The exact strings that used to be hardcoded — they must never reappear as
+  // literals (they live in lib/i18n.ts now).
+  const FORBIDDEN_LITERALS = [
+    "You're doing amazing today",
+    "TODAY'S ADVENTURE",
+    "Start a hero story",
+    "Pick a world and you're the star",
+    "Let's go",
+    "My growth adventures",
+    "See all games",
+    "Parent locked",
+    "Private by default",
+    "Stars, never streaks",
+    "Hold to exit",
+    "Back to parent",
+    "Back to home",
+    "stars earned",
+    "Memory Match",
+    "Feelings Detective",
+    "Sound Explorer",
+    "Sequence Quest",
+    "Calm Builder",
+    "Rhythm Hero",
+    "Puzzle Planet",
+    "Play, learn & grow",
+    "Explore & understand",
+    "Create & express",
+  ];
+
+  it.each(KID_TSX)("%s contains none of the previously hardcoded strings", (file) => {
+    const src = stripComments(readSelf(file));
+    for (const lit of FORBIDDEN_LITERALS) {
+      expect(src, `${file} must not hardcode "${lit}"`).not.toContain(lit);
+    }
+  });
+
+  it.each(KID_TSX)("%s renders no bare English JSX text nodes", (file) => {
+    const src = stripComments(readSelf(file));
+    // JSX text = content between a closing `>` and the next `<`. Legit renders
+    // go through {t("kid.*")} — the braces break the match. TS generics also
+    // produce `>…<` spans, so only flag captures that read as natural language
+    // (words/punctuation only — code spans carry (), :, ; or = and are skipped).
+    const textNodes = [...src.matchAll(/>([^<>{}]+)</g)]
+      .map((m) => m[1].trim())
+      .filter((s) => /[A-Za-z]{2}/.test(s) && /^[\sA-Za-z'’.,!?…-]+$/.test(s));
+    expect(textNodes, `${file} has bare JSX text: ${JSON.stringify(textNodes)}`).toEqual([]);
+  });
+});
+
+// Firewall condition (KID-1): the kid.* namespace is the kid register — it must
+// never be referenced from parent surfaces. Walk every source file outside
+// components/kidmode and assert none references a "kid." i18n key. The only
+// other legitimate home for "kid." strings is the dictionary itself.
+import { readdirSync, statSync } from "node:fs";
+
+describe("KID-1 register separation: kid.* i18n keys never referenced outside kidmode", () => {
+  const SRC_ROOT = path.join(__dirname, "..", "..");
+  const ALLOWED = [
+    path.join(SRC_ROOT, "components", "kidmode") + path.sep, // the kid register itself
+    path.join(SRC_ROOT, "lib", "i18n.ts"), // the dictionaries
+  ];
+
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const name of readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (statSync(full).isDirectory()) walk(full, out);
+      else if (/\.(ts|tsx)$/.test(name)) out.push(full);
+    }
+    return out;
+  }
+
+  it("no parent-surface file references a kid.* key", () => {
+    const offenders: string[] = [];
+    for (const file of walk(SRC_ROOT)) {
+      if (ALLOWED.some((a) => file === a || file.startsWith(a))) continue;
+      const src = readFileSync(file, "utf8");
+      if (/["'`]kid\./.test(src)) offenders.push(path.relative(SRC_ROOT, file));
+    }
+    expect(offenders, `parent surfaces referencing kid.* keys: ${offenders.join(", ")}`).toEqual([]);
+  });
+});
+
 // ── KidMode enter / exit state machine (pure logic) ──────────────────────────
 // We test the state transitions through direct function calls on the
 // context state, simulating what the Provider does without a DOM.
