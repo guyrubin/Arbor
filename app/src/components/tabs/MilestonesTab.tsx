@@ -154,17 +154,18 @@ export default function MilestonesTab() {
               {item.skillLooksLike}
             </span>
           )}
-          <div className="grid grid-cols-3 gap-1.5 pt-2" role="group" aria-label={uiLang === "he" ? "מה ראיתם?" : "What have you noticed?"}>
+          {/* UND-1 — observation labels resolve through i18n keys (were inline ternaries). */}
+          <div className="grid grid-cols-3 gap-1.5 pt-2" role="group" aria-label={t("ms.observePrompt")}>
             {([
-              ["yes", uiLang === "he" ? "כן" : "Yes"],
-              ["not_sure", uiLang === "he" ? "לא בטוחים" : "Not sure"],
-              ["not_yet", uiLang === "he" ? "עוד לא" : "Not yet"],
+              ["yes", t("ms.observe.yes")],
+              ["not_sure", t("ms.observe.notSure")],
+              ["not_yet", t("ms.observe.notYet")],
             ] as const).map(([status, label]) => {
               const selected = (item.observationStatus ?? (item.checked ? "yes" : undefined)) === status;
               return <button key={status} type="button" onClick={() => { setMilestoneObservation(item.id, status); if (status === "yes" && !item.checked) celebrate(); }} aria-pressed={selected} className="min-h-9 rounded-lg px-1.5 text-[10px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "rgba(52,178,119,0.30)" : "var(--arbor-rule)"}` }}>{label}</button>;
             })}
           </div>
-          {item.observationStatus === "not_sure" && <p className="pt-1 text-[10px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "נסו לצפות בדוגמה במהלך משחק מוכר. אין צורך לבדוק או ללחוץ." : "Try watching for the example during familiar play. There is no need to test or push."}</p>}
+          {item.observationStatus === "not_sure" && <p className="pt-1 text-[10px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
           <div className="flex items-center gap-2 flex-wrap pt-1">
             {item.checked && <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.observed")}</span>}
             {item.ageGroup && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.age")} {item.ageGroup}</span>}

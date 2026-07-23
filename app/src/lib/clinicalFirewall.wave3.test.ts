@@ -230,10 +230,15 @@ describe("Wave-3 clinical firewall — i18n keys are non-diagnostic", () => {
     // Scan only the new/changed key values for the CI-28 / Blueprint #91 banned
     // tokens. (Matches the values of devscore.*, trends.recall*, beh.count*,
     // beh.countLabel keys in both EN and HE blocks.)
+    // UND-1 extension: the Development Check localization moved the whole
+    // screener (prompts, result framing, monitoring notes) into "screen.*" /
+    // "sec.screen.*" keys — every one of those lines is scanned too, so the
+    // rephrased calm result copy can never regress to the 'on-track' verdict
+    // class the wave-3 firewall banned.
     const banned = /\b(improves|boosts?|reduces?|on[\s-]?track|behind|clinically|therapeutically|autism|adhd|anxiety|spd|arfid|dyslexia)\b/i;
     const lines = i18n.split(/\r?\n/);
     const suspectLines = lines.filter((l) =>
-      /"(devscore\.|trends\.recall|beh\.count)/.test(l) && l.includes(":") && !l.trim().startsWith("//"),
+      /"(devscore\.|trends\.recall|beh\.count|sec\.screen\.|screen\.)/.test(l) && l.includes(":") && !l.trim().startsWith("//"),
     );
     for (const l of suspectLines) {
       expect(l, `banned token in i18n line: ${l}`).not.toMatch(banned);

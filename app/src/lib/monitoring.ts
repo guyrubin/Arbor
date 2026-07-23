@@ -136,6 +136,14 @@ export function classifyBehaviorDomain(log: Pick<BehaviorLog, "behaviorType" | "
   return "attachment_regulation";
 }
 
+/**
+ * UND-1 (localization): these EN note strings feed the clinician printable
+ * (buildMonitoringReportDoc) and the notification bell. The parent-facing
+ * Development Check surface does NOT render `note` directly — it rebuilds the
+ * same templates through i18n keys ("screen.monitor.note.*" in lib/i18n.ts)
+ * from the signal's structured facts, so HE parity holds on-screen while this
+ * module stays pure and framework-free.
+ */
 function buildNote(
   childFirst: string,
   domain: MonitoredDomainId,

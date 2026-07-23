@@ -12,7 +12,8 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * Inline Development-check sheet (b2 My Child story spine). Wraps the extracted
  * `ScreeningFlow` in a focus-trapped, Esc-/scrim-dismissible dialog so a parent
  * can run a quick check in context (from Story or Development) without leaving
- * the page. The non-diagnostic TrustSafetyBar disclaimer is preserved verbatim.
+ * the page. The non-diagnostic TrustSafetyBar disclaimer is the same keyed
+ * string ("screen.trustNote") the full-page surface renders.
  *
  * Open/exit motion is gated globally by the `.arbor-app` prefers-reduced-motion
  * rule in index.css; the portal carries that class.
@@ -96,7 +97,8 @@ export default function ScreeningSheet({ open, onClose }: { open: boolean; onClo
               </button>
             </div>
 
-            <TrustSafetyBar note="Arbor is not a medical device and does not diagnose. This is a parent-awareness check — a conversation with a professional never hurts." />
+            {/* UND-1 — same keyed disclaimer as the full-page surface (screen.trustNote). */}
+            <TrustSafetyBar note={t("screen.trustNote")} />
 
             <div className="mt-4">
               <ScreeningFlow onClose={onClose} />

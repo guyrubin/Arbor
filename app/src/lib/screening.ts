@@ -48,6 +48,14 @@ export const DOMAIN_LABEL: Record<ScreenDomainId, string> = {
  * Compact age-banded item bank. Deliberately modest for the MVP — the goal is to
  * prove the flow (check → framed result → care action), not to be exhaustive.
  * Each band carries a few observable prompts across domains.
+ *
+ * UND-1 (localization): the `prompt`/`label` strings here are the CANONICAL
+ * ENGLISH source. The UI never renders them directly — it resolves
+ * `screen.item.<item id>`, `screen.band.<band id>` and `screen.domain.<domain>`
+ * through lib/i18n.ts (EN mirrors this file; HE first-drafts are queued for the
+ * named clinical reviewer, GD-10). Adding/renaming an item id REQUIRES the
+ * matching i18n keys in both languages — src/lib/screeningI18n.test.ts enforces
+ * the coverage.
  */
 export const AGE_BANDS: AgeBand[] = [
   {
