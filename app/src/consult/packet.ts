@@ -87,7 +87,10 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     sections.push({
       id: "patterns",
       title: `What we've been seeing (last ${windowDays} days)`,
-      note: "Parent-logged moments, not a diagnosis.",
+      // Deliberately scan-clean wording (CARE-2): the fail-closed clinical-term
+      // scan runs on non-clinician egress, so the reassurance note itself must
+      // not contain a scanned term.
+      note: "Parent-logged moments — observations only, never an assessment.",
       items,
     });
   }
@@ -287,6 +290,56 @@ export function serializePresetPacket(
   const md = serializePacket(capToPreset(preset, packet), excludedIds);
   assertWithinCeiling(preset, md);
   return md;
+}
+
+/* ── CARE-2 — recipient shared view ──────────────────────────────────────────
+ * The read-only packet a share RECIPIENT (co-parent / viewer / professional)
+ * may see. This is the ONLY egress for recipient-facing child data: it builds
+ * through `buildConsultPacket`, caps sections to exactly what the grant's
+ * stable scope IDs (lib/shareScopes.ts) unlock, and re-runs the same
+ * fail-closed guards (`assertWithinCeiling`: forbidden tokens for everyone,
+ * clinical-diagnosis term scan for non-clinician recipients) on the final
+ * text. Raw subcollection documents never leave the server — only these
+ * derived, counts-only section lines do.
+ */
+
+/** Stable share-scope ID → the packet sections it unlocks. FAILS CLOSED: a
+ *  scope not in this map (e.g. an unmigrated legacy string) unlocks nothing.
+ *  The report_* scopes mirror their audience preset ceilings exactly. */
+export const SHARED_SCOPE_SECTIONS: Record<string, readonly string[]> = {
+  story_timeline: ["patterns"],
+  weekly_insight: ["patterns", "development"],
+  behavior_patterns: ["patterns"],
+  milestones: ["development"],
+  report_teacher: CONSULT_PRESETS.teacher.sections,
+  report_therapist: CONSULT_PRESETS.therapist.sections,
+  report_pediatrician: CONSULT_PRESETS.pediatrician.sections,
+};
+
+/** Build the recipient's read-only packet: exactly the sections the granted
+ *  scopes unlock, guard-checked at this egress seam. Non-clinician recipients
+ *  (co_parent / viewer) ride the non-clinician ceiling — the fail-closed
+ *  clinical-diagnosis term scan runs, mirroring the teacher preset policy.
+ *  Professionals ride the clinician ceiling (term-scan exempt by the same
+ *  policy as therapist/pediatrician presets). The forbidden-token scan runs
+ *  for EVERY recipient. Throws `ClinicalLanguageError` (fail closed) rather
+ *  than ever emitting guarded content. */
+export function buildSharedScopePacket(
+  scopes: readonly string[],
+  recipientIsClinician: boolean,
+  input: BuildPacketInput
+): ConsultPacket {
+  const allowed = new Set<string>();
+  for (const scope of scopes) {
+    for (const sectionId of SHARED_SCOPE_SECTIONS[scope] ?? []) allowed.add(sectionId);
+  }
+  const packet = buildConsultPacket(input);
+  const capped: ConsultPacket = { ...packet, sections: packet.sections.filter((s) => allowed.has(s.id)) };
+  const guardPreset: ConsultPreset = recipientIsClinician
+    ? CONSULT_PRESETS.therapist
+    : { audience: "teacher", sections: [...allowed], dataCeiling: CONSULT_PRESETS.teacher.dataCeiling, clinicalTermScan: true };
+  assertWithinCeiling(guardPreset, packetToText(capped));
+  return capped;
 }
 
 /** Print-shell section shape — matches `ReportDoc.sections` in

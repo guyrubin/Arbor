@@ -31,6 +31,7 @@ import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
+import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
 
 type ApiDeps = {
   config: ArborConfig;
@@ -48,6 +49,9 @@ type ApiDeps = {
   waitlistNotifier?: WaitlistNotifier | null;
   /** C2: push token store (FCM). Off-by-default client-side via VITE_FIREBASE_VAPID_KEY. */
   pushTokenStore?: import("../server/pushTokens.js").PushTokenStore;
+  /** CARE-2: read seam for the recipient shared view (injectable for tests);
+   *  defaults to the Firestore/local source derived from config. */
+  sharedChildSource?: SharedChildRecordSource;
 };
 
 /** Redact PII from a profile object by round-tripping its JSON through the redactor. */
@@ -81,8 +85,10 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource }: ApiDeps) => {
   const router = express.Router();
+  // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
+  const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
@@ -259,6 +265,32 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     } catch (error: any) {
       logger.error("Arbor Shared-With-Me Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to list shares", details: error.message });
+    }
+  });
+
+  // CARE-2: the recipient shared VIEW — a read-only, scope-exact packet for a
+  // live grant. All authorization (recipient email, server-enforced
+  // expiry/revocation, CARE-3 fail-closed scope resolution) and the fail-closed
+  // egress guards (forbidden-token scan + non-clinician clinical-term scan) run
+  // inside resolveSharedPacket → buildSharedScopePacket — the ONLY egress for
+  // recipient-facing child data. Never returns raw subcollection documents.
+  router.get("/shared/:grantId/packet", async (req, res) => {
+    const { email } = actorOf(req);
+    try {
+      const result = await resolveSharedPacket({
+        grantId: req.params.grantId,
+        recipientEmail: email,
+        shareStore,
+        source: sharedSource,
+      });
+      if (result.status === 200) {
+        res.json(result.view);
+        return;
+      }
+      res.status(result.status).json({ error: result.error });
+    } catch (error: any) {
+      logger.error("Arbor Shared Packet Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to load the shared view", details: error.message });
     }
   });
 

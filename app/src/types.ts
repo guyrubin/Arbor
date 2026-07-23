@@ -127,6 +127,20 @@ export interface ShareGrant {
   revokedAt: string | null;
 }
 
+/** CARE-2: the read-only shared view a share RECIPIENT sees — grant metadata
+ *  plus the guard-checked, scope-exact packet sections assembled server-side
+ *  (client mirror of server/sharedPacket.ts SharedPacketView). Counts-only
+ *  derived lines; never raw subcollection documents. */
+export interface SharedPacketView {
+  childName: string | null;
+  ownerEmail: string | null;
+  role: ShareRole;
+  expiresAt: string | null;
+  scopes: string[];
+  generatedAt: string;
+  sections: { id: string; title: string; note?: string; items: { id: string; text: string }[] }[];
+}
+
 /** M9: proof-of-deletion receipt returned by a full child-data erase. */
 export interface DeletionReceipt {
   childId: string;

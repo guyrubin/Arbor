@@ -5,8 +5,8 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useProfile } from "../../context/ProfileContext";
 import { downloadJson } from "../../lib/childData";
-import { api, PaywallError } from "../../lib/api";
-import type { DeletionReceipt, ShareGrant, ShareRole } from "../../types";
+import { api, ApiError, PaywallError } from "../../lib/api";
+import type { DeletionReceipt, ShareGrant, ShareRole, SharedPacketView } from "../../types";
 import Modal from "../ui/Modal";
 import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
@@ -111,6 +111,45 @@ export default function TrustedSharing() {
     } finally {
       setBusy(null);
     }
+  };
+
+  // CARE-2: the recipient shared VIEW — clicking an inbound card opens a
+  // read-only viewer of exactly the granted scopes, assembled server-side
+  // through the fail-closed consult-packet egress (counts only, no raw
+  // documents, no write access). A 403/404 means the share has ended → the
+  // card disappears from the inbound roster.
+  const [viewing, setViewing] = useState<ShareGrant | null>(null);
+  const [view, setView] = useState<SharedPacketView | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewError, setViewError] = useState<"ended" | "blocked" | "generic" | null>(null);
+
+  const openSharedView = async (g: ShareGrant) => {
+    setViewing(g);
+    setView(null);
+    setViewError(null);
+    setViewLoading(true);
+    try {
+      setView(await api.sharedPacket(g.id));
+    } catch (e: any) {
+      if (e instanceof ApiError && (e.status === 403 || e.status === 404)) {
+        // Server says no access NOW (revoked/expired/fail-closed scopes):
+        // drop the dead card so the roster reflects reality.
+        setViewError("ended");
+        setInbound((prev) => prev.filter((x) => x.id !== g.id));
+      } else if (e instanceof ApiError && e.status === 422) {
+        setViewError("blocked");
+      } else {
+        setViewError("generic");
+      }
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeSharedView = () => {
+    setViewing(null);
+    setView(null);
+    setViewError(null);
   };
 
   const exportData = () => {
@@ -322,6 +361,16 @@ export default function TrustedSharing() {
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{scopesLabel(s.scopes) || t("sec.sharing.noScopes")}</Chip>
                 </div>
+                {/* CARE-2: the card is no longer a dead end — open the read-only view. */}
+                <button
+                  onClick={() => void openSharedView(s)}
+                  data-testid={`shared-view-open-${s.id}`}
+                  className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold"
+                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+                >
+                  <Icon name="visibility" size={17} /> {t("sec.sharing.viewer.open")}
+                  <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+                </button>
               </div>
             ))}
           </div>
@@ -342,6 +391,63 @@ export default function TrustedSharing() {
           </ul>
         </SectionCard>
       </div>
+
+      {/* CARE-2: read-only recipient viewer — exactly the granted scopes,
+          server-assembled and guard-checked. No capture paths, no writes. */}
+      <Modal
+        open={viewing !== null}
+        onClose={closeSharedView}
+        title={t("sec.sharing.viewer.title", { name: viewing?.childName || t("sec.sharing.inbound.aChild") })}
+      >
+        <div className="space-y-4" data-testid="shared-view" aria-live="polite">
+          {viewLoading && (
+            <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}>
+              <Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.viewer.loading")}
+            </p>
+          )}
+          {!viewLoading && viewError && (
+            <p role="alert" className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
+              {t(`sec.sharing.viewer.${viewError === "ended" ? "ended" : viewError === "blocked" ? "blocked" : "error"}`)}
+            </p>
+          )}
+          {!viewLoading && !viewError && view && (
+            <>
+              <div className="rounded-2xl p-3 flex items-start gap-2.5" style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule)" }}>
+                <Icon name="verified_user" size={18} style={{ color: "var(--arbor-green-ink)" }} />
+                <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
+                  {t("sec.sharing.viewer.readOnly", { owner: view.ownerEmail || "—" })}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {view.scopes.map((scope) => <Chip key={scope} tone="sky">{scopeDisplayLabels([scope], t)[0] || scope}</Chip>)}
+              </div>
+              {view.sections.length === 0 ? (
+                <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.viewer.empty")}</p>
+              ) : (
+                view.sections.map((section) => (
+                  <div key={section.id} className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                    <h3 className="text-sm font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{section.title}</h3>
+                    {section.note && <p className="text-[11px]" dir="auto" style={{ color: "var(--arbor-muted)" }}>{section.note}</p>}
+                    <ul className="space-y-1.5">
+                      {section.items.map((item) => (
+                        <li key={item.id} className="flex items-start gap-2 text-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                          <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full" style={{ background: "var(--arbor-muted)" }} />
+                          {item.text}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </>
+          )}
+          <div className="flex sm:justify-end">
+            <button onClick={closeSharedView} className="w-full sm:w-auto rounded-xl px-4 py-2.5 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
+              {t("sec.sharing.viewer.close")}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* CARE-1: typed-name confirmation → real erasure → deletion receipt. */}
       <Modal

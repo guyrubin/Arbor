@@ -1,4 +1,4 @@
-import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole, ConsentGrant, ConsentPurpose, DeletionReceipt } from "../types";
+import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole, SharedPacketView, ConsentGrant, ConsentPurpose, DeletionReceipt } from "../types";
 import type { AdventureScenario } from "../practice/content";
 
 /**
@@ -80,6 +80,18 @@ export class EscalationRequiredError extends Error {
   }
 }
 
+/**
+ * CARE-2: generic API error that carries the HTTP status. Lets callers branch
+ * on status (e.g. the shared-view 403 "share ended" → drop the card) without
+ * fragile message matching. Message behavior is unchanged for existing catches.
+ */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function request<T>(url: string, method: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
     method,
@@ -106,7 +118,7 @@ async function request<T>(url: string, method: string, body?: unknown): Promise<
         typeof errData?.escalationCategory === "string" ? errData.escalationCategory : undefined;
       throw new EscalationRequiredError(detail, { category });
     }
-    throw new Error(detail);
+    throw new ApiError(detail, res.status);
   }
   return (await res.json()) as T;
 }
@@ -221,6 +233,10 @@ export const api = {
     get<{ shares: ShareGrant[] }>(`/api/shares${childId ? `?childId=${encodeURIComponent(childId)}` : ""}`),
   revokeShare: (id: string) => del<ShareGrant>(`/api/shares/${encodeURIComponent(id)}`),
   sharedWithMe: () => get<{ shares: ShareGrant[] }>("/api/shared-with-me"),
+  // CARE-2: the recipient's read-only view of a live grant — exactly the granted
+  // scopes, assembled through the fail-closed consult-packet egress. 403 = the
+  // share has ended (revoked/expired/not addressed to you) → drop the card.
+  sharedPacket: (grantId: string) => get<SharedPacketView>(`/api/shared/${encodeURIComponent(grantId)}/packet`),
   // COPPA-2026 consent: grant/list/revoke purpose-scoped parental consent.
   grantConsent: (payload: { childId: string; purpose: ConsentPurpose; granted?: boolean }) =>
     post<{ grant: ConsentGrant }>("/api/consent", payload),
