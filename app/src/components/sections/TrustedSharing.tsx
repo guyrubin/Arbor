@@ -12,22 +12,19 @@ import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar, PASTEL, PastelK
 import { ErrorState } from "../ui/ErrorState";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
+import { REPORT_SCOPE_BY_TYPE, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
 
-// IA W4.5: the professional share scopes mirror the W4.1 preset audiences
-// one-to-one — derived from the single REPORTS definition (Reports.tsx) so the
-// labels can never drift from the consult preset names.
-const PRESET_SCOPES = REPORTS.filter((r) => isProfessionalReportType(r.type)).map((r) => r.title);
-const SCOPE_OPTIONS = ["Story timeline", "Weekly Insight", "Behavior patterns", "Milestones", ...PRESET_SCOPES];
-const DURATIONS = ["30 days", "60 days", "End of term", "Until revoked"];
-const ROLES: { id: ShareRole; label: string }[] = [
-  { id: "co_parent", label: "Co-parent" },
-  { id: "viewer", label: "Viewer" },
-  { id: "professional", label: "Professional" },
-];
+// IA W4.5 + CARE-3: the professional share scopes mirror the W4.1 preset
+// audiences one-to-one — derived from the single REPORTS definition
+// (Reports.tsx) via stable scope IDs (lib/shareScopes.ts). Grants store the
+// IDs; localized labels resolve at render and can never leak into enforcement.
+const PRESET_SCOPE_IDS = REPORTS.flatMap((r) => (isProfessionalReportType(r.type) ? [REPORT_SCOPE_BY_TYPE[r.type]] : []));
+const SCOPE_OPTIONS: ShareScopeId[] = ["story_timeline", "weekly_insight", "behavior_patterns", "milestones", ...PRESET_SCOPE_IDS];
+// Stable duration IDs sent to the server (expiryFromDuration reads "30"/"60"/
+// "term"/"revok" out of them); localized labels via share.duration.* keys.
+const DURATIONS = ["30d", "60d", "term", "until_revoked"] as const;
+const ROLES: ShareRole[] = ["co_parent", "viewer", "professional"];
 const ROLE_TONE: Record<ShareRole, PastelKey> = { co_parent: "mint", professional: "sky", viewer: "lav" };
-const roleLabel = (r: ShareRole) => ROLES.find((x) => x.id === r)?.label || "Viewer";
-const expiryLabel = (g: ShareGrant) =>
-  g.expiresAt ? `Expires ${new Date(g.expiresAt).toLocaleDateString()}` : "Until revoked";
 
 /** Care Network › Trusted Sharing — the ONE roster surface (W4.4 merged the
  *  former My Care Team here): the people coordinating around the child, derived
@@ -39,6 +36,12 @@ export default function TrustedSharing() {
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
+  // CARE-3: display resolvers — stable IDs → localized labels, at render only.
+  const roleLabel = (r: ShareRole) => t(`share.role.${ROLES.includes(r) ? r : "viewer"}`);
+  const scopesLabel = (scopes: string[]) => scopeDisplayLabels(scopes, t).join(", ");
+  const expiryLabel = (g: ShareGrant) =>
+    g.expiresAt ? t("sec.sharing.expires", { date: new Date(g.expiresAt).toLocaleDateString() }) : t("share.duration.until_revoked");
+
   const [shares, setShares] = useState<ShareGrant[]>([]);
   const [inbound, setInbound] = useState<ShareGrant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +50,7 @@ export default function TrustedSharing() {
   const [audit, setAudit] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const [draft, setDraft] = useState({ recipientEmail: "", role: "co_parent" as ShareRole, scopes: [] as string[], duration: DURATIONS[0] });
+  const [draft, setDraft] = useState({ recipientEmail: "", role: "co_parent" as ShareRole, scopes: [] as ShareScopeId[], duration: DURATIONS[0] as string });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,7 +79,7 @@ export default function TrustedSharing() {
   // The roster (former My Care Team) shows only live grants; revoked ones drop out.
   const team = shares.filter((g) => !g.revokedAt);
 
-  const setScope = (f: string) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
+  const setScope = (f: ShareScopeId) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
 
   const createShare = async () => {
     const email = draft.recipientEmail.trim();
@@ -84,14 +87,14 @@ export default function TrustedSharing() {
     setBusy("create");
     try {
       await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: draft.role, scopes: draft.scopes, duration: draft.duration });
-      setAudit((a) => [`Shared ${draft.scopes.join(", ")} with ${email} (${roleLabel(draft.role)}) — just now`, ...a]);
+      setAudit((a) => [t("sec.sharing.audit.shared", { scopes: scopesLabel(draft.scopes), email, role: roleLabel(draft.role) }), ...a]);
       setDraft({ recipientEmail: "", role: "co_parent", scopes: [], duration: DURATIONS[0] });
       setReviewing(false);
       setAdding(false);
       await load();
     } catch (e: any) {
       if (e instanceof PaywallError) openPaywall(e.feature, e.plan);
-      else setAudit((a) => [`Could not create share: ${e.message}`, ...a]);
+      else setAudit((a) => [t("sec.sharing.audit.createError", { message: e.message }), ...a]);
     } finally {
       setBusy(null);
     }
@@ -101,10 +104,10 @@ export default function TrustedSharing() {
     setBusy(g.id);
     try {
       await api.revokeShare(g.id);
-      setAudit((a) => [`Access revoked for ${g.recipientEmail} — just now`, ...a]);
+      setAudit((a) => [t("sec.sharing.audit.revoked", { email: g.recipientEmail }), ...a]);
       await load();
     } catch (e: any) {
-      setAudit((a) => [`Could not revoke: ${e.message}`, ...a]);
+      setAudit((a) => [t("sec.sharing.audit.revokeError", { message: e.message }), ...a]);
     } finally {
       setBusy(null);
     }
@@ -116,9 +119,9 @@ export default function TrustedSharing() {
       child: childProfile,
       behaviorLogs,
       actionPlans,
-      note: "Parent-initiated export of Arbor data. Non-diagnostic.",
+      note: t("sec.sharing.data.exportNote"),
     });
-    setAudit((a) => [`You exported all of ${first}'s data — just now`, ...a]);
+    setAudit((a) => [t("sec.sharing.audit.exported", { name: first }), ...a]);
   };
 
   // CARE-1: REAL GDPR Art. 17 erasure — the old confirm/alert theater claimed a
@@ -170,22 +173,22 @@ export default function TrustedSharing() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[920px] space-y-6">
       <PageHeader
-        eyebrow="Care Network"
+        eyebrow={t("nav.care")}
         title={t("sec.sharing.title")}
         subtitle={t("sec.sharing.sub", { name: first })}
         action={
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={() => setAdding((a) => !a)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>
-              <Icon name="add" size={18} /> New share
+              <Icon name="add" size={18} /> {t("sec.sharing.new")}
             </button>
             <button onClick={() => setActiveTab("find-pro")} className="inline-flex min-h-11 items-center justify-center gap-2 px-1 py-2 text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-              Find a professional <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+              {t("sec.sharing.findPro")} <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
             </button>
           </div>
         }
       />
 
-      <TrustSafetyBar note="Every share is parent-approved, time-boxed and fully revocable — enforced on the server." />
+      <TrustSafetyBar note={t("sec.sharing.trustNote")} />
 
       {error && (
         <ErrorState
@@ -200,49 +203,49 @@ export default function TrustedSharing() {
       {adding && (
         <div className="space-y-4 border-y py-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Share {first}'s context</h3>
+            <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("sec.sharing.form.title", { name: first })}</h3>
             <button onClick={() => { setAdding(false); setReviewing(false); }} aria-label={t("aria.cancel")}><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           {!reviewing && <>
-          <input value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder="Recipient email (they sign in with this to see what you share)" type="email" inputMode="email" autoComplete="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+          <input value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder={t("sec.sharing.form.emailPlaceholder")} type="email" inputMode="email" autoComplete="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
           <div>
-            <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>Their role</p>
+            <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.role")}</p>
             <div className="flex flex-wrap gap-1.5">
               {ROLES.map((r) => (
-                <button key={r.id} onClick={() => setDraft({ ...draft, role: r.id })} aria-pressed={draft.role === r.id} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.role === r.id ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{r.label}</button>
+                <button key={r} onClick={() => setDraft({ ...draft, role: r })} aria-pressed={draft.role === r} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.role === r ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{roleLabel(r)}</button>
               ))}
             </div>
-            <p className="text-[11px] mt-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Nothing is selected by default. Only the sections you choose will be visible.</p>
+            <p className="text-[11px] mt-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.nothingDefault")}</p>
           </div>
           <div>
-            <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>What to share</p>
+            <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.what")}</p>
             <div className="flex flex-wrap gap-1.5">
               {SCOPE_OPTIONS.map((f) => {
                 const on = draft.scopes.includes(f);
-                return <button key={f} onClick={() => setScope(f)} aria-pressed={on} className="rounded-full px-3 py-1 text-xs font-bold" style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{f}</button>;
+                return <button key={f} onClick={() => setScope(f)} aria-pressed={on} className="rounded-full px-3 py-1 text-xs font-bold" style={on ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{t(shareScopeLabelKey(f))}</button>;
               })}
             </div>
           </div>
           <div>
-            <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>Access duration</p>
+            <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.duration")}</p>
             <div className="flex flex-wrap gap-1.5">
               {DURATIONS.map((d) => (
-                <button key={d} onClick={() => setDraft({ ...draft, duration: d })} aria-pressed={draft.duration === d} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.duration === d ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{d}</button>
+                <button key={d} onClick={() => setDraft({ ...draft, duration: d })} aria-pressed={draft.duration === d} className="rounded-full px-3 py-1 text-xs font-bold" style={draft.duration === d ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{t(`share.duration.${d}`)}</button>
               ))}
             </div>
           </div>
           <button onClick={() => setReviewing(true)} disabled={!/^\S+@\S+\.\S+$/.test(draft.recipientEmail.trim()) || draft.scopes.length === 0} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-40" style={{ background: "var(--arbor-clay)" }}>
-            Review before sharing <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+            {t("sec.sharing.form.review")} <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
           </button>
           </>}
           {reviewing && <div className="space-y-4" aria-live="polite">
             <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>Recipient</p><p className="text-sm font-extrabold mt-0.5 break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{draft.recipientEmail.trim()}</p></div><Chip tone="mint">{roleLabel(draft.role)}</Chip></div>
-              <div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>They can see</p><div className="flex flex-wrap gap-1.5 mt-1.5">{draft.scopes.map((scope) => <Chip key={scope} tone="sky">{scope}</Chip>)}</div></div>
-              <div className="flex items-center gap-2 text-xs" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={16} /> {draft.duration}</div>
+              <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.recipient")}</p><p className="text-sm font-extrabold mt-0.5 break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{draft.recipientEmail.trim()}</p></div><Chip tone="mint">{roleLabel(draft.role)}</Chip></div>
+              <div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.canSee")}</p><div className="flex flex-wrap gap-1.5 mt-1.5">{draft.scopes.map((scope) => <Chip key={scope} tone="sky">{t(shareScopeLabelKey(scope))}</Chip>)}</div></div>
+              <div className="flex items-center gap-2 text-xs" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={16} /> {t(`share.duration.${draft.duration}`)}</div>
             </div>
-            <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "var(--arbor-yellow-soft)", border: "1px solid var(--arbor-rule)" }}><Icon name="verified_user" size={19} style={{ color: "var(--arbor-yellow-ink)" }} /><p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>Arbor will share only this summary. Access can be revoked at any time. Review the recipient and sections carefully before approving.</p></div>
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="rounded-xl px-4 py-2.5 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>Back and edit</button><button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> Sharing…</> : "Approve & share"}</button></div>
+            <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "var(--arbor-yellow-soft)", border: "1px solid var(--arbor-rule)" }}><Icon name="verified_user" size={19} style={{ color: "var(--arbor-yellow-ink)" }} /><p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{t("sec.sharing.review.note")}</p></div>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end"><button onClick={() => setReviewing(false)} className="rounded-xl px-4 py-2.5 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.review.back")}</button><button onClick={createShare} disabled={busy === "create"} className="inline-flex items-center justify-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 disabled:opacity-60" style={{ background: "var(--arbor-clay)" }}>{busy === "create" ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.review.working")}</> : t("sec.sharing.review.approve")}</button></div>
           </div>}
         </div>
       )}
@@ -250,7 +253,7 @@ export default function TrustedSharing() {
       {/* W4.4: the former My Care Team roster — the people coordinating around
           the child, rendered from the same non-revoked share grants. */}
       {!error && !loading && team.length > 0 && (
-        <SectionCard title={`Coordinating around ${first}`} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
+        <SectionCard title={t("sec.sharing.team.title", { name: first })} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
           <div className="grid min-w-0 gap-4 lg:grid-cols-2">
             {team.map((g) => {
               const tone = ROLE_TONE[g.role] || ROLE_TONE.viewer;
@@ -265,7 +268,7 @@ export default function TrustedSharing() {
                     <Chip tone={tone}>{roleLabel(g.role)}</Chip>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mt-4">
-                    <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{g.scopes.join(", ") || "No scopes"}</Chip>
+                    <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{scopesLabel(g.scopes) || t("sec.sharing.noScopes")}</Chip>
                     <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(g)}</Chip>
                   </div>
                 </div>
@@ -276,12 +279,12 @@ export default function TrustedSharing() {
       )}
 
       {!error && (
-      <SectionCard title="Active shares" icon={<Icon name="share" size={20} />} tone="mint">
+      <SectionCard title={t("sec.sharing.active.title")} icon={<Icon name="share" size={20} />} tone="mint">
         <div className="space-y-3">
           {loading ? (
-            <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><Icon name="progress_activity" size={16} className="animate-spin" /> Loading shares…</p>
+            <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.active.loading")}</p>
           ) : team.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>Nothing is shared right now. Add a co-parent or a teacher to get started.</p>
+            <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.active.empty")}</p>
           ) : team.map((s) => (
             <div key={s.id} className={`${cardCls} p-4`}>
               <div className="flex items-start justify-between gap-3">
@@ -290,12 +293,12 @@ export default function TrustedSharing() {
                   <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{roleLabel(s.role)}</p>
                 </div>
                 <button onClick={() => revoke(s)} disabled={busy === s.id} className="inline-flex items-center gap-1 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>
-                  {busy === s.id ? <Icon name="progress_activity" size={14} className="animate-spin" /> : <Icon name="close" size={15} />} Revoke access
+                  {busy === s.id ? <Icon name="progress_activity" size={14} className="animate-spin" /> : <Icon name="close" size={15} />} {t("sec.sharing.revoke")}
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-3">
-                {s.role === "co_parent" && <Chip tone="mint" icon={<Icon name="group" size={15} />}>Co-parent</Chip>}
-                <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{s.scopes.join(", ")}</Chip>
+                {s.role === "co_parent" && <Chip tone="mint" icon={<Icon name="group" size={15} />}>{t("share.role.co_parent")}</Chip>}
+                <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{scopesLabel(s.scopes) || t("sec.sharing.noScopes")}</Chip>
                 <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(s)}</Chip>
               </div>
             </div>
@@ -305,19 +308,19 @@ export default function TrustedSharing() {
       )}
 
       {!error && inbound.length > 0 && (
-        <SectionCard title="Shared with you" icon={<Icon name="inbox" size={20} />} tone="lav">
+        <SectionCard title={t("sec.sharing.inbound.title")} icon={<Icon name="inbox" size={20} />} tone="lav">
           <div className="space-y-3">
             {inbound.map((s) => (
               <div key={s.id} className={`${cardCls} p-4`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{s.childName || "A child"}</h3>
-                    <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>from {s.ownerEmail || "a parent"} · you are {roleLabel(s.role)}</p>
+                    <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{s.childName || t("sec.sharing.inbound.aChild")}</h3>
+                    <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.inbound.fromRole", { owner: s.ownerEmail || "—", role: roleLabel(s.role) })}</p>
                   </div>
                   <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(s)}</Chip>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{s.scopes.join(", ")}</Chip>
+                  <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{scopesLabel(s.scopes) || t("sec.sharing.noScopes")}</Chip>
                 </div>
               </div>
             ))}
@@ -326,16 +329,16 @@ export default function TrustedSharing() {
       )}
 
       <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-        <SectionCard title="Your data" icon={<Icon name="download" size={20} />} tone="lav">
+        <SectionCard title={t("sec.sharing.data.title")} icon={<Icon name="download" size={20} />} tone="lav">
           <div className="space-y-2">
-            <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Icon name="download" size={18} /> Export all data</button>
+            <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Icon name="download" size={18} /> {t("sec.sharing.data.export")}</button>
             <button onClick={() => setDeleteOpen(true)} data-testid="delete-child-btn" className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}><Icon name="delete" size={18} /> {t("sec.sharing.delete.btn")}</button>
           </div>
         </SectionCard>
-        <SectionCard title="This session" icon={<Icon name="history" size={20} />} tone="sky">
+        <SectionCard title={t("sec.sharing.audit.title")} icon={<Icon name="history" size={20} />} tone="sky">
           <ul className="space-y-2.5 text-xs max-h-44 overflow-y-auto" style={{ color: "var(--arbor-muted)" }}>
-            {audit.length === 0 && <li>Share and revoke actions you take will appear here.</li>}
-            {audit.map((a, i) => <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "#69747f" }} />{a}</li>)}
+            {audit.length === 0 && <li>{t("sec.sharing.audit.empty")}</li>}
+            {audit.map((a, i) => <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "var(--arbor-muted)" }} />{a}</li>)}
           </ul>
         </SectionCard>
       </div>
