@@ -120,29 +120,20 @@ export default function BehaviorsTab() {
   } = useArbor();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { t, uiLang } = useLanguage();
+  const { t } = useLanguage();
   const behFirst = (childProfile.name || "").split(" ")[0];
-  const captureCopy = uiLang === "he"
-    ? {
-        intro: "תעדו את הרגע בשתי שורות. אפשר להוסיף פרטים רק אם הם יעזרו אחר כך.",
-        open: "תיעוד מהיר",
-        close: "סגירה",
-        details: "הוספת הקשר ופרטים",
-        hideDetails: "פחות פרטים",
-        happened: "מה קרה?",
-        tried: "מה ניסיתם?",
-        optional: "אופציונלי — עוזר לארבור לזהות הקשר לאורך זמן",
-      }
-    : {
-        intro: "Capture the moment in two lines. Add detail only when it will help later.",
-        open: "Quick capture",
-        close: "Close",
-        details: "Add context and details",
-        hideDetails: "Show fewer details",
-        happened: "What happened?",
-        tried: "What did you try?",
-        optional: "Optional — helps Arbor notice context over time",
-      };
+  // COACH-5: quick-capture copy lives in i18n.ts (beh.capture.*), never an
+  // inline per-language ternary table — keys stay visible to i18n tooling.
+  const captureCopy = {
+    intro: t("beh.capture.intro"),
+    open: t("beh.capture.open"),
+    close: t("beh.capture.close"),
+    details: t("beh.capture.details"),
+    hideDetails: t("beh.capture.hideDetails"),
+    happened: t("beh.capture.happened"),
+    tried: t("beh.capture.tried"),
+    optional: t("beh.capture.optional"),
+  };
 
   // Voice-to-log
   const [listening, setListening] = useState(false);
@@ -389,7 +380,7 @@ export default function BehaviorsTab() {
       {/* Row 1 — QuickLog tiles (full width under the hero) */}
       <section className="min-w-0" aria-label={t("beh.captureTitle")}>
         {/* QuickLog mode tiles — Voice / Photo / Text */}
-        <div className="overflow-hidden rounded-[20px] bg-white" style={{ border: "1px solid var(--arbor-rule-strong)", boxShadow: "0 8px 28px rgba(32,47,42,0.05)" }}>
+        <div className="overflow-hidden rounded-[20px] bg-white" style={{ border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
           <button type="button" onClick={() => focusForm()} className="block min-h-[88px] w-full px-4 py-4 text-start text-sm sm:px-5" style={{ color: "var(--arbor-muted)" }}>{captureCopy.intro}</button>
           <div className="flex flex-wrap items-center gap-1 border-t px-2 py-2 sm:px-3" style={{ borderColor: "var(--arbor-rule)" }}>
             {quickModes.map((m) => {

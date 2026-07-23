@@ -154,3 +154,101 @@ describe("escalation footer rendering", () => {
     expect(html).toContain("Reach out for help if");
   });
 });
+
+/**
+ * COACH-1 — HE/EN parity on the flagship answer surface.
+ *
+ * With lang="he" a full contract answer must render ZERO English chrome:
+ * every panel title, action label and chip is asserted in Hebrew, and the
+ * English literals are asserted absent. (CoachTab passes lang={uiLang}, so
+ * this covers the uiLang=he path end-to-end for the card stack.)
+ */
+function makeFullContract(riskLevel: string): CoachContract {
+  return {
+    riskLevel,
+    ageBand: "4-5",
+    domains: ["attachment_regulation"],
+    nonDiagnosticHypotheses: [{ label: "Transition fatigue", confidence: "possible", rationale: "Long day, short notice." }],
+    todayPlan: ["Give a two-minute warning before leaving."],
+    parentScript: "I see this is hard. We leave in two minutes.",
+    avoid: ["Long explanations in the moment"],
+    observe: ["Whether warnings shorten the storm"],
+    escalateIf: [ESCALATE_ITEM],
+    frameRouting: { aim: "Calmer exits", twoAxes: "Warm but firm", story: "", shadow: "", marriage: "", shepherd: "" },
+    memoryProposals: [],
+    handoffNotes: { teacher: "Transitions are hard this week.", professional: "" },
+  };
+}
+
+function renderCardsHe(riskLevel: string): string {
+  return renderToStaticMarkup(
+    React.createElement(CoachAnswerCards, {
+      contract: makeFullContract(riskLevel),
+      lens: "Dr. Becky Kennedy",
+      council: [{ scholarId: "s1", name: "Dr. Ross Greene", concept: "CPS", takeaway: "Skill, not will.", suggestion: "Solve it together." }],
+      lang: "he",
+      onSaveToPlan: noop,
+      onCreateLog: noop,
+      onAddToHandoff: noop,
+    })
+  );
+}
+
+describe("COACH-1 — uiLang=he renders zero English chrome", () => {
+  const HE_CHROME = [
+    "המועצה התייעצה",        // council panel title
+    "מה אולי קורה",           // what may be happening
+    "לנסות היום",             // try today
+    "שמירה כתוכנית",          // save as plan
+    "אפשר להגיד",             // say this
+    "ממה להימנע",             // avoid
+    "למה לשים לב",            // watch for
+    "מסגרת התפתחותית",        // developmental frame
+    "שמירה לתוכנית",          // save to plan
+    "פתק למורה",              // teacher note
+    "מטרה",                   // frame chip: aim
+  ];
+  const EN_CHROME = [
+    "The council weighed in",
+    "What may be happening",
+    "Try today",
+    "Save as plan",
+    "Say this",
+    "Watch for",
+    "Developmental frame",
+    "Save to plan",
+    "Teacher note",
+    "Reach out for help if",
+    "When to seek help",
+    "Aligned with",
+  ];
+
+  it("quiet tier (low risk): every panel title and action renders in Hebrew", () => {
+    const html = renderCardsHe("low");
+    for (const s of HE_CHROME) expect(html, `missing HE chrome "${s}"`).toContain(s);
+    expect(html).toContain("מתי כדאי לפנות לעזרה"); // quiet escalation disclosure title
+    for (const s of EN_CHROME) expect(html, `EN chrome "${s}" leaked into HE render`).not.toContain(s);
+  });
+
+  it("prominent tier (moderate risk): escalation headline is Hebrew, semantics preserved", () => {
+    const html = renderCardsHe("moderate");
+    expect(html).toContain("פנו לעזרה מקצועית אם"); // clear reach-out call — never a graded verdict
+    expect(html).toContain(ESCALATE_ITEM);          // content itself is never dropped
+    for (const s of EN_CHROME) expect(html, `EN chrome "${s}" leaked into HE render`).not.toContain(s);
+  });
+
+  it("EN render still carries the original English chrome (no regression)", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CoachAnswerCards, {
+        contract: makeFullContract("low"),
+        lang: "en",
+        onSaveToPlan: noop,
+        onCreateLog: noop,
+        onAddToHandoff: noop,
+      })
+    );
+    for (const s of ["What may be happening", "Try today", "Say this", "Watch for", "Developmental frame", "Save to plan", "Teacher note"]) {
+      expect(html, `missing EN chrome "${s}"`).toContain(s);
+    }
+  });
+});

@@ -4,6 +4,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { DevelopmentalDomainId } from "../../types";
+import { translate, type UiLang } from "../../lib/i18n";
+import { useLanguage } from "../../context/LanguageContext";
 
 /* Shared Soft-Daylight UI kit used across the new section/capability pages.
    Green = trust/growth (primary). Coral/peach = AI/action/attention. */
@@ -66,10 +68,28 @@ export function SectionCard({ title, icon, tone = "mint", children, action }: { 
   );
 }
 
+/** Resolve the UI language for kit primitives: prefer an explicit `lang` prop,
+ *  else the surrounding LanguageProvider, else "en". The try/catch keeps kit
+ *  components renderable outside a provider (unit tests, static markup) —
+ *  `useLanguage`'s `useContext` still runs unconditionally, so hook order is
+ *  stable in both branches. */
+function useUiLang(explicit?: UiLang): UiLang {
+  let ctxLang: UiLang | undefined;
+  try {
+    ctxLang = useLanguage().uiLang;
+  } catch {
+    /* outside a LanguageProvider — fall back below */
+  }
+  return explicit ?? ctxLang ?? "en";
+}
+
 /** Trust & Safety strip — embedded across guidance, reports, sharing, handoffs.
  *  `risk` reflects the model's real computed risk level; when it's elevated and
- *  `onEscalate` is provided, a "Talk to a professional" action is surfaced. */
-export function TrustSafetyBar({ risk = "Low", note, onEscalate }: { risk?: "Low" | "Moderate" | "High"; note?: string; onEscalate?: () => void }) {
+ *  `onEscalate` is provided, a "Talk to a professional" action is surfaced.
+ *  Localized via kit.trust.* keys (COACH-1); `lang` overrides the provider. */
+export function TrustSafetyBar({ risk = "Low", note, onEscalate, lang }: { risk?: "Low" | "Moderate" | "High"; note?: string; onEscalate?: () => void; lang?: UiLang }) {
+  const uiLang = useUiLang(lang);
+  const t = (key: string) => translate(uiLang, key);
   const tone: PastelKey = risk === "High" ? "pink" : risk === "Moderate" ? "yellow" : "mint";
   const elevated = risk !== "Low";
   return (
@@ -78,14 +98,14 @@ export function TrustSafetyBar({ risk = "Low", note, onEscalate }: { risk?: "Low
           parent surface — the tone wash + escalate button carry the attention,
           the text stays a posture line, not a grade. */}
       <span className="font-extrabold" style={{ color: PASTEL[tone].ink }}>
-        {elevated ? "Worth a conversation with a professional" : "Parent observations — not a diagnosis"}
+        {elevated ? t("kit.trust.elevated") : t("kit.trust.calm")}
       </span>
-      <span style={{ color: "var(--arbor-muted)" }}>Non-diagnostic guidance</span>
-      <span style={{ color: "var(--arbor-muted)" }}>Escalation available</span>
+      <span style={{ color: "var(--arbor-muted)" }}>{t("kit.trust.nonDiagnostic")}</span>
+      <span style={{ color: "var(--arbor-muted)" }}>{t("kit.trust.escalation")}</span>
       {note && <span style={{ color: "var(--arbor-muted)" }}>· {note}</span>}
       {elevated && onEscalate && (
         <button onClick={onEscalate} className="ms-auto inline-flex items-center gap-1 font-extrabold rounded-full px-3 py-1" style={{ background: PASTEL[tone].ink, color: T.onAccent }}>
-          Talk to a professional →
+          {t("kit.trust.talkPro")}
         </button>
       )}
     </div>

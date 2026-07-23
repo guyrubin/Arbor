@@ -194,7 +194,7 @@ export default function CoachTab() {
   };
 
   const startListening = () => {
-    if (!speechSupported()) { toast("Voice input isn't supported in this browser", "info"); voiceOnRef.current = false; setVoicePhase("off"); return; }
+    if (!speechSupported()) { toast(t("coach.toast.voiceUnsupported"), "info"); voiceOnRef.current = false; setVoicePhase("off"); return; }
     setVoicePhase("listening");
     stopDictationRef.current = startDictation(
       {
@@ -239,7 +239,7 @@ export default function CoachTab() {
             "You are Arbor, a warm, calm, non-diagnostic parenting coach. Keep spoken replies short, kind, and practical. Never diagnose; suggest professional help for safety concerns.",
             {
               onPhase: (p) => setVoicePhase(p === "closed" ? "off" : p === "connecting" ? "thinking" : p),
-              onError: () => { liveCtlRef.current = null; toast("Switched to standard voice", "info"); startBrowserVoice(); },
+              onError: () => { liveCtlRef.current = null; toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
             },
           );
           return;
@@ -276,7 +276,7 @@ export default function CoachTab() {
             <div className="min-w-0">
               <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.empty.title", { name: childFirst })}</p>
               <p className="text-[11px] leading-relaxed truncate" style={{ color: "var(--arbor-muted)" }}>
-                {uiLang === "he" ? `משתמש בזיכרון שאישרתם על ${childFirst} · אתם שולטים במה שנשמר` : `Uses the memory you approved about ${childFirst} · you control what is remembered`}
+                {t("coach.memoryLine", { name: childFirst })}
               </p>
             </div>
           </div>
@@ -322,7 +322,7 @@ export default function CoachTab() {
               className="ms-auto inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
               style={{ color: "var(--arbor-muted)" }}
             >
-              <span>{showAllLenses ? (uiLang === "he" ? "פחות אפשרויות" : "Fewer options") : t("coach.lens.browseAll")}</span>
+              <span>{showAllLenses ? t("coach.lens.fewer") : t("coach.lens.browseAll")}</span>
               <Icon name={showAllLenses ? "expand_less" : "expand_more"} size={14} />
             </button>
           </div>
@@ -504,15 +504,16 @@ export default function CoachTab() {
                       contract={msg.contract}
                       lens={msg.lens}
                       council={msg.council}
+                      lang={uiLang}
                       onSaveToPlan={(topic) => {
                         setPlanChallengeTopic((topic || msg.text).replace(/[#*]/g, "").slice(0, 140));
                         setActiveTab("plans");
-                        toast("Seeded the plan generator — tap Generate", "info");
+                        toast(t("coach.toast.planSeeded"), "info");
                       }}
                       onCreateLog={async () => {
                         const prior = chatMessages[idx - 1];
                         const source = prior?.sender === "user" ? prior.text : msg.text;
-                        toast("Drafting a log from this moment…", "info");
+                        toast(t("coach.toast.draftingLog"), "info");
                         try {
                           const d = await api.extractLog({ message: source, childProfile });
                           if (d.behaviorType) setNewLogType(d.behaviorType);
@@ -524,16 +525,16 @@ export default function CoachTab() {
                           if (d.response) setNewLogResponse(d.response);
                           setNewLogNotes(d.notes || "");
                           setActiveTab("behaviors");
-                          toast("Arbor drafted a log — review and save", "success");
+                          toast(t("coach.toast.logDrafted"), "success");
                         } catch {
                           setNewLogNotes(msg.contract!.nonDiagnosticHypotheses?.[0]?.rationale?.slice(0, 300) || source.slice(0, 300));
                           setActiveTab("behaviors");
-                          toast("Capture the moment — a note is pre-filled", "info");
+                          toast(t("coach.toast.notePrefilled"), "info");
                         }
                       }}
                       onAddToHandoff={() => {
                         setActiveTab("consult");
-                        toast("Teacher note copied — paste it into your Consult summary", "info");
+                        toast(t("coach.toast.teacherNoteCopied"), "info");
                       }}
                     />
                   ) : (
@@ -581,7 +582,7 @@ export default function CoachTab() {
                               setNewLogNotes(msg.text.replace(/[#*]/g, "").trim().slice(0, 400));
                               setActiveTab("behaviors");
                               setOpenMenuIdx(null);
-                              toast("Pre-filled a log from this guidance — review and save", "info");
+                              toast(t("coach.toast.logPrefilled"), "info");
                             }}
                             className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-[40px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
                           >
@@ -593,7 +594,7 @@ export default function CoachTab() {
                               setPlanChallengeTopic(msg.text.replace(/[#*]/g, "").slice(0, 140));
                               setActiveTab("plans");
                               setOpenMenuIdx(null);
-                              toast("Seeded the plan generator — tap Generate", "info");
+                              toast(t("coach.toast.planSeeded"), "info");
                             }}
                             className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-[40px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
                           >
@@ -798,7 +799,8 @@ export default function CoachTab() {
       {lastMessage?.sender === "ai" && chatMessages.length > 1 && (
         <TrustSafetyBar
           risk={lastMessage.contract ? riskFromLevel(lastMessage.contract.riskLevel) : parseRisk(lastMessage.text)}
-          note="Arbor's read of this answer"
+          note={t("coach.trust.note")}
+          lang={uiLang}
           onEscalate={() => setActiveTab("consult")}
         />
       )}
@@ -815,8 +817,8 @@ export default function CoachTab() {
         onClose={() => setVisionMode(null)}
         childProfile={childProfile}
         onSeedCoach={(prompt) => { setChatInput(prompt); }}
-        onGoHandoff={() => { setActiveTab("consult"); toast("Note copied — paste it into your Consult summary", "info"); }}
-        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); setActiveTab("behaviors"); toast("Captured from the photo — review and save", "info"); }}
+        onGoHandoff={() => { setActiveTab("consult"); toast(t("coach.toast.noteCopied"), "info"); }}
+        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); setActiveTab("behaviors"); toast(t("coach.toast.photoCaptured"), "info"); }}
       />
     </motion.div>
   );
