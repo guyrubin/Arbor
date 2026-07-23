@@ -1254,6 +1254,9 @@ export const en: Dict = {
   // Today action loop empty state (TODAY-1: no accept CTA without a real focus)
   "today.loop.empty": "Log one moment to unlock today's step.",
   "today.loop.emptySub": "Capture a moment above — Arbor will turn it into one small, doable step for today.",
+  "today.action.make": "Make this today's step",
+  "today.action.length": "Action length",
+  "today.action.min": "min",
   "today.memory.evening.title": "Look back on today",
   "today.memory.evening.body": "{n} new things Arbor noticed — review before they're saved.",
   "today.mission.eyebrow": "Today's mission",
@@ -3278,6 +3281,9 @@ export const he: Dict = {
   // Today action loop empty state (TODAY-1: no accept CTA without a real focus)
   "today.loop.empty": "תעדו רגע אחד כדי לפתוח את הצעד של היום.",
   "today.loop.emptySub": "תעדו רגע למעלה — Arbor יהפוך אותו לצעד אחד קטן ואפשרי להיום.",
+  "today.action.make": "בחירת הצעד",
+  "today.action.length": "משך הצעד",
+  "today.action.min": "דק׳",
   "today.memory.evening.title": "מבט אחורה על היום",
   "today.memory.evening.body": "{n} דברים חדשים שארבור שם לב אליהם — סקרו לפני השמירה.",
   "today.mission.eyebrow": "המשימה של היום",

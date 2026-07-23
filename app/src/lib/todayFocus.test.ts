@@ -77,7 +77,11 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
   });
 
   it("never feeds the marketing fallback into the action loop", () => {
-    expect(src).toContain("<TodayActionLoop recommendation={focusHeadline} />");
+    // TODAY-2/CODEX-1: the accept CTA moved into the hero; the guard moved
+    // with it — the accept prop is offered ONLY from a real focus headline.
+    expect(src).toMatch(/accept=\{focusHeadline\s*\?/);
+    expect(src).toContain("acceptTodayAction(focusHeadline");
+    expect(src).not.toMatch(/acceptTodayAction\([^)]*recoEmpty/);
     expect(src).not.toMatch(/focus\?\.text\?\.trim\(\)\s*\|\|\s*t\("ov\.recoEmpty"/);
   });
 
@@ -94,17 +98,12 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
 describe("TodayActionLoop guard (TODAY-1: acceptTodayAction unreachable when focus is null)", () => {
   const src = read("components/overview/TodayActionLoop.tsx");
 
-  it("accepts a nullable recommendation and guards BEFORE any accept CTA", () => {
-    expect(src).toContain("recommendation: string | null");
-    const guardIdx = src.indexOf("if (!recommendation)");
-    const acceptIdx = src.indexOf("acceptTodayAction(recommendation");
-    expect(guardIdx).toBeGreaterThan(-1);
-    expect(acceptIdx).toBeGreaterThan(-1);
-    expect(guardIdx).toBeLessThan(acceptIdx);
-    // The guard's empty state is the capture pointer, not an accept CTA.
-    const emptyBranch = src.slice(guardIdx, acceptIdx);
-    expect(emptyBranch).toContain('t("today.loop.empty")');
-    expect(emptyBranch).not.toContain("acceptTodayAction");
+  it("holds no accept path at all after the TODAY-2/CODEX-1 merge", () => {
+    // The pre-accept state (and with it acceptTodayAction) moved into the
+    // TodayRecommendation hero behind the focusHeadline guard; the card is
+    // accepted/completed-only and cannot persist anything into actionLoops.
+    expect(src).not.toContain("acceptTodayAction");
+    expect(src).toMatch(/if\s*\(!activeTodayAction\)\s*return null/);
   });
 });
 

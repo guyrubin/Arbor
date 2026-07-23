@@ -21,12 +21,16 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
   const { t, uiLang } = useLanguage();
   const [reviewing, setReviewing] = useState(false);
   useEffect(() => { if (!open) setReviewing(false); }, [open]);
+  // CODEX-7: the provenance line states only the factual source ("written by
+  // you"). NO static confidence/certainty wording may return here — an
+  // unconditional "high confidence" is an asserted-not-computed system verdict
+  // (firewall generative-honesty rule; guarded by todayConsolidation.test.ts).
   const copy = uiLang === "he" ? {
-    reviewTitle: "בדקו לפני השמירה", source: "מקור: טקסט שהורה הזין · ודאות גבוהה",
+    reviewTitle: "בדקו לפני השמירה", source: "מקור: נכתב על ידכם",
     edit: "עריכה", discard: "מחיקה", confirm: "אישור ושמירה ברשומה",
     notSaved: "הטיוטה עדיין לא נשמרה ברשומה של הילד.", trigger: "מה קרה לפני", response: "מה ניסיתם",
   } : {
-    reviewTitle: "Review before saving", source: "Source: parent-entered text · high confidence",
+    reviewTitle: "Review before saving", source: "Source: written by you",
     edit: "Edit", discard: "Discard", confirm: "Confirm and save to record",
     notSaved: "This draft is not yet part of your child's record.", trigger: "What happened before", response: "What you tried",
   };

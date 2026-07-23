@@ -31,22 +31,24 @@ const GREEN = "var(--arbor-green-ink)";
 const GREEN_SOFT = "var(--arbor-green-soft)";
 
 /**
- * TODAY — reconciled to the "Arbor Web App" wireframe's simplicity: ONE guidance
- * hero + a few cards, nothing more. The old Today stacked TWO heroes, a 6-tile
- * "whole picture" hub grid, an intent trio, a JITAI nudge, a goal-builder prompt
- * and a heavy in-content "daily tools" dashboard on top of the real cards. Every
- * one of those routed to a capability that already has a home behind the sidebar
- * (Growth, Behaviors, Journal, Care, the Today sub-tab pills) — so they were
- * de-duplicated off the home screen, not deleted. See navigation.ts SECTIONS.
+ * TODAY — one integrated loop, not stacked widgets (TODAY-2/CODEX-1).
  *
  * What renders now (top → bottom):
- *   Quick Capture bar (W6.2): ambient voice/photo/text moment capture — first
- *                        in the DOM, pinned bottom on phones, inline on lg+.
- *   Row 1 (1.6fr / 1fr): Guidance hero (ONE gradient card, single "Begin" CTA)
- *                        · Development-Map count card (→ Growth).
- *   Row 2 (1.6fr / 1fr): Kid activity feed (live, multi-row) · Coach card.
- *   Below: a collapsed "daily tools" disclosure keeping the wellness check-in
- *          reachable (its only home) — demoted, not deleted.
+ *   Quick Capture bar (W6.2/TODAY-4): ambient voice/photo/text capture — first
+ *       in the DOM, pinned bottom on phones, inline on lg+.
+ *   Row 1 (1.85fr / 0.85fr): ONE day anchor in the left slot —
+ *       pre-accept: Guidance hero (focus headline + capacity sizing chips +
+ *         the single gradient "Make this today's step" CTA; "Begin" → coach
+ *         demoted to a secondary button),
+ *       accepted/completed: the TodayActionLoop card (outcome buttons /
+ *         receipt) REPLACES the hero, so the focus headline never renders
+ *         twice and Today never shows two gradient-primary CTAs
+ *       · Development-Map count card (→ Growth) on the right.
+ *   Arbor Noticed (DUX-011): the single highest watch signal, conditional.
+ *   Progress narrative: what changed + the ONE recent-moments/evidence surface
+ *       (the old duplicate "Recent context" section was deleted — CODEX-1).
+ *   Try together: Daily Play pick + coach row.
+ *   Daily tools: collapsed disclosure keeping the wellness check-in reachable.
  *
  * CLINICAL FIREWALL: every child-data surface here shows COUNTS ONLY — never a
  * %, 0–100 score, verdict/status tag, percentile or deficit pointer.
@@ -56,6 +58,7 @@ export default function OverviewTab() {
     setActiveTab, milestones, milestonesPercent, checkedMilestones, totalMilestones,
     behaviorLogs, childProfile, seedCoach,
     donePlayIds, logPlayCompletion, playLogs, requestCapture, setShowAiRail, actionLoop,
+    activeTodayAction, acceptTodayAction,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -308,11 +311,35 @@ export default function OverviewTab() {
       {/* ── Row 1 (1.6fr / 1fr): Guidance hero · Development-Map card ─────────── */}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
-        {/* ── Guidance hero — ONE gradient card: "Today's guidance" tag → the one
-               thing that matters today (the AI focus) → meta footer + single
-               "Begin" CTA into the coach on today's focus. */}
+        {/* ── Day anchor (left slot) — TODAY-2/CODEX-1: ONE card, two states.
+               Pre-accept: the guidance hero owns the whole loop entry — focus
+               headline, capacity sizing chips and the single gradient accept
+               CTA ("Begin" → coach is secondary). Once today's action exists
+               (accepted/completed) the TodayActionLoop card takes this slot
+               INSTEAD of the hero, so the headline renders exactly once.
+               TODAY-1: `accept` is passed ONLY with a real AI focus headline —
+               day-0/fallback copy can never reach acceptTodayAction, so it can
+               never be persisted into actionLoops nor injected into the next
+               focus prompt. */}
         <div className="min-w-0">
-          <TodayRecommendation eyebrow={t("today.guidance.tag")} headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })} meta={t("today.meta")} action={t("today.begin")} loading={focusLoading && !focus} onBegin={beginGuidance} />
+          {activeTodayAction ? (
+            <TodayActionLoop />
+          ) : (
+            <TodayRecommendation
+              eyebrow={t("today.guidance.tag")}
+              headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })}
+              meta={t("today.meta")}
+              action={t("today.begin")}
+              loading={focusLoading && !focus}
+              onBegin={beginGuidance}
+              accept={focusHeadline ? {
+                label: t("today.action.make"),
+                lengthAria: t("today.action.length"),
+                minUnit: t("today.action.min"),
+                onAccept: (capacity) => acceptTodayAction(focusHeadline, capacity),
+              } : undefined}
+            />
+          )}
         </div>
         {/* ── Development-Map card (right, 1fr) ─────────────────────────────────
             Clinical firewall: a milestone-count ring + a COUNT-based 3-stat
@@ -378,11 +405,11 @@ export default function OverviewTab() {
              child's own logged data, below the hero row. Renders NOTHING with
              zero detections and self-hides per-detection once dismissed; copy is
              counts/patterns only (non-diagnostic, monitoring.ts framing). ── */}
-      {/* TODAY-1: recommendation is null when no real AI focus exists — the
-          loop renders a capture-pointing empty state with NO accept CTA, so
-          fallback copy can never enter actionLoops. */}
-      <TodayActionLoop recommendation={focusHeadline} />
+      <ArborNoticedCard />
 
+      {/* ── Progress narrative — retrospective picture. Its "Your evidence" cell
+             is the ONE recent-moments surface on Today (the duplicate "Recent
+             context" section was deleted — CODEX-1). ── */}
       <ProgressNarrative
         childName={firstName}
         behaviorLogs={behaviorLogs.map((item) => ({ id: item.id, timestamp: item.timestamp, label: item.context || item.notes || t("today.feed.logged") }))}
@@ -391,24 +418,6 @@ export default function OverviewTab() {
         actions={actionLoop}
         onOpenEvidence={() => setActiveTab("journal")}
       />
-
-      <ArborNoticedCard />
-
-      <section className="px-1 pt-1" aria-labelledby="today-recent-context">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <h2 id="today-recent-context" className="text-[17px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{uiLang === "he" ? "הקשר אחרון" : "Recent context"}</h2>
-          <button onClick={() => setActiveTab("journal")} className="inline-flex min-h-[44px] items-center gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-clay)" }}>{uiLang === "he" ? "הצג ביומן" : "View in Journal"}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
-        </div>
-        <div className="divide-y" style={{ borderColor: "var(--arbor-rule)" }}>
-          {activityFeed.length === 0 ? <div className="py-5 text-[13px]" style={{ color: "var(--arbor-faint)" }}>{t("today.feed.empty", { name: firstName })}</div> : activityFeed.slice(0, 3).map((row) => (
-            <div key={`context.${row.id}`} className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 py-3.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: row.tone.soft, color: row.tone.ink }}>{row.icon}</span>
-              <div className="min-w-0"><div className="truncate text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{row.title}</div><div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--arbor-faint)" }}>{row.sub}</div></div>
-              <Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
-            </div>
-          ))}
-        </div>
-      </section>
 
       <section className="border-y py-5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("today.feed.title", { name: firstName })}>
         <div className="mb-3 flex items-center justify-between gap-3 px-1">

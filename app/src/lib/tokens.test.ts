@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -137,4 +137,28 @@ describe("tokens — no CSS drift vs index.css :root", () => {
   it("T is the CSS_VARS alias", () => {
     expect(T).toBe(CSS_VARS);
   });
+});
+
+/* TODAY-7 — parent Today surfaces must draw card backgrounds from the paper
+   tokens (var(--arbor-paper-elevated) / var(--arbor-paper)), never Tailwind's
+   bg-white or a bare "white" style literal: those evade the hex guard on a
+   technicality, split Today across two surface colors, and break any future
+   paper-tone/dark shift. Source-scan every component in components/overview so
+   the regression cannot recur. (kit.tsx's legacy cardCls keeps its own
+   byte-identity contract above — it is not an overview file.) */
+describe("parent surfaces (components/overview) — no bg-white / \"white\" literals", () => {
+  const overviewDir = path.join(here, "..", "components", "overview");
+  const files = readdirSync(overviewDir).filter((f) => f.endsWith(".tsx"));
+
+  it("scans a non-empty overview component set (sanity)", () => {
+    expect(files.length).toBeGreaterThan(0);
+  });
+
+  for (const f of files) {
+    it(`${f} uses paper tokens, not white literals`, () => {
+      const code = readFileSync(path.join(overviewDir, f), "utf8");
+      expect(code, `${f} uses Tailwind bg-white — use var(--arbor-paper-elevated)`).not.toMatch(/\bbg-white\b/);
+      expect(code, `${f} uses a bare "white" literal — use var(--arbor-paper)`).not.toMatch(/["']white["']/);
+    });
+  }
 });

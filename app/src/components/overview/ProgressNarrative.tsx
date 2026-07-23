@@ -47,7 +47,7 @@ export default function ProgressNarrative({
   const hasEvidence = evidence.length > 0 || noticedMilestones > 0;
 
   return (
-    <section className="rounded-[20px] bg-white p-5 sm:p-6" style={{ border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }} aria-labelledby="progress-narrative-title">
+    <section className="rounded-[20px] p-5 sm:p-6" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }} aria-labelledby="progress-narrative-title">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{copy.eyebrow}</p>

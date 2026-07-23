@@ -45,8 +45,8 @@ export default function QuickCaptureBar({
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { duration: 0.16 }}
-      className="grid grid-cols-[1fr_auto_auto] lg:grid-cols-[1.1fr_1fr_1fr_1fr] items-stretch overflow-hidden rounded-[18px] bg-white"
-      style={{ border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
+      className="grid grid-cols-[1fr_auto_auto] lg:grid-cols-[1.1fr_1fr_1fr_1fr] items-stretch overflow-hidden rounded-[18px]"
+      style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
       <div className="hidden lg:flex flex-col justify-center px-5 py-3">
         <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.capture.cta")}</span>
