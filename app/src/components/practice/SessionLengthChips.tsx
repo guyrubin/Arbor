@@ -1,14 +1,21 @@
 import React from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import type { SessionLength } from "../../playbank/select";
+import { availableSessionLengths, type SessionLength } from "../../playbank/select";
 
 /**
  * CI-31: Session-length chip row.
  *
- * A three-pill selector (Short / Standard / Extended) that signals the parent's
+ * A pill selector (Short / Standard / Extended) that signals the parent's
  * available time budget. Selection is persisted in localStorage per-child by
  * the parent component. No child-data write, no network call — purely additive
  * local state.
+ *
+ * KID-3 (honesty): a chip renders ONLY when its durationMin bucket holds
+ * enough activities for the child's band (availableSessionLengths, computed
+ * from PLAY_ACTIVITIES). Offering a chip whose bucket is empty made select.ts
+ * silently fall back to the full pool — an 8-minute activity badged as
+ * "25-30 min". If fewer than two buckets qualify there is no real choice, so
+ * the whole row renders nothing.
  *
  * Accessibility: role="group" + aria-label on the container, aria-pressed on
  * each pill. Min tap target ≥ 44px (py-3 on mobile, py-2 on md+).
@@ -18,6 +25,8 @@ import type { SessionLength } from "../../playbank/select";
 interface SessionLengthChipsProps {
   value: SessionLength;
   onChange: (v: SessionLength) => void;
+  /** KID-3: child's age in years — drives which buckets may honestly render. */
+  ageYears: number;
   /** Optional: rhythm calmWindow hint time string (e.g. "10am"). Shown only
    *  when the chip has not been tapped this session. */
   rhythmHintTime?: string;
@@ -34,10 +43,18 @@ const CHIPS: { id: SessionLength; labelKey: string }[] = [
 export default function SessionLengthChips({
   value,
   onChange,
+  ageYears,
   rhythmHintTime,
   tapped,
 }: SessionLengthChipsProps) {
   const { t } = useLanguage();
+
+  // KID-3: only offer buckets that are honestly stocked for this child's band.
+  const available = new Set(availableSessionLengths(ageYears));
+  const chips = CHIPS.filter((c) => available.has(c.id));
+
+  // A single option is not a choice — render nothing rather than a fake picker.
+  if (chips.length < 2) return null;
 
   return (
     <div className="mt-4">
@@ -55,7 +72,7 @@ export default function SessionLengthChips({
         aria-label={t("play.session.eyebrow")}
         className="flex flex-wrap gap-2"
       >
-        {CHIPS.map(({ id, labelKey }) => {
+        {chips.map(({ id, labelKey }) => {
           const active = value === id;
           return (
             <button

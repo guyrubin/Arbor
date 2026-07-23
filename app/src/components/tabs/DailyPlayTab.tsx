@@ -276,6 +276,7 @@ export default function DailyPlayTab() {
           onObservationSubmit={handlePlanObservation}
           sessionLength={planSessionLength}
           onSessionLengthChange={handlePlanSessionLength}
+          ageYears={childProfile.age}
           onSetGoal={() => setGoalModalOpen(true)}
         />
       </div>
@@ -333,6 +334,7 @@ export default function DailyPlayTab() {
         <SessionLengthChips
           value={sessionLength}
           onChange={handleSessionLength}
+          ageYears={childProfile.age}
           tapped={true}
         />
       </div>

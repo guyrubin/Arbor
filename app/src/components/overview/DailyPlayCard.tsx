@@ -27,6 +27,7 @@ export default function DailyPlayCard({
   goalLabel,
   sessionLength,
   onSessionLengthChange,
+  ageYears,
   sessionTapped,
   rhythmHintTime,
 }: {
@@ -39,10 +40,13 @@ export default function DailyPlayCard({
   concernLabel?: string;
   /** CI-28: label of the active goal that drove this pick (for "because" line). */
   goalLabel?: string;
-  /** CI-31: currently selected session length (controls chip row + duration badge). */
+  /** CI-31: currently selected session length (controls chip row). */
   sessionLength?: SessionLength;
   /** CI-31: called when the parent taps a chip. */
   onSessionLengthChange?: (v: SessionLength) => void;
+  /** KID-3: child's age in years — required for the chip row to render, so
+   *  SessionLengthChips only offers honestly-stocked buckets for the band. */
+  ageYears?: number;
   /** CI-31: true once any chip has been tapped this session (hides rhythm hint). */
   sessionTapped?: boolean;
   /** CI-31: rhythm calmWindow hour label (e.g. "10am") for the hint line. */
@@ -53,14 +57,10 @@ export default function DailyPlayCard({
   const { reason, matchedInterest } = pick;
   const activity = localizeActivity(pick.activity, uiLang);
 
-  // CI-31: duration badge text — shows selected chip range when a chip has been
-  // chosen, otherwise falls back to the activity's own durationMin.
-  const durationLabel: string = (() => {
-    if (!sessionLength) return t("play.min", { n: activity.durationMin });
-    if (sessionLength === "short")    return t("play.session.short");
-    if (sessionLength === "extended") return t("play.session.extended");
-    return t("play.session.standard");
-  })();
+  // KID-3: duration badge is ALWAYS the picked activity's real durationMin —
+  // never the selected chip's range. When the pool falls back (or an off-range
+  // pick surfaces), the parent still sees the honest number.
+  const durationLabel: string = t("play.min", { n: activity.durationMin });
 
   // CI-29: interest-match why-line variants (FIX 2: no effect-verb on child capacity;
   // FIX 5: parent-facing "about the child", never kid-companion second-person).
@@ -146,10 +146,11 @@ export default function DailyPlayCard({
         {/* CI-31: Session-length chips — inserted when the card owns the chip row
             (i.e. on the Overview/Today hero card; in DailyPlayTab the row is
             lifted to tab level and NOT rendered here). */}
-        {sessionLength && onSessionLengthChange && (
+        {sessionLength && onSessionLengthChange && ageYears !== undefined && (
           <SessionLengthChips
             value={sessionLength}
             onChange={onSessionLengthChange}
+            ageYears={ageYears}
             rhythmHintTime={rhythmHintTime}
             tapped={sessionTapped ?? false}
           />

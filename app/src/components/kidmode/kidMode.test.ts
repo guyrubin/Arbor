@@ -138,6 +138,86 @@ describe("Kid Mode overlay — no child-data write contract", () => {
   });
 });
 
+// ── KID-2: keyboard lock — shell shield (inert + aria-hidden) ────────────────
+import { shieldShellSiblings, KID_MODE_LAYER_ATTR, type ShieldableElement } from "./kidModeShield";
+
+/** Minimal attribute-bearing Element stand-in for the node harness. */
+function fakeEl(initial: Record<string, string> = {}): ShieldableElement & { attrs: Map<string, string> } {
+  const attrs = new Map(Object.entries(initial));
+  return {
+    attrs,
+    hasAttribute: (n) => attrs.has(n),
+    getAttribute: (n) => (attrs.has(n) ? attrs.get(n)! : null),
+    setAttribute: (n, v) => void attrs.set(n, v),
+    removeAttribute: (n) => void attrs.delete(n),
+  };
+}
+
+describe("KID-2: shieldShellSiblings — shell carries inert while Kid Mode is open", () => {
+  it("sets inert + aria-hidden on every non-Kid-Mode sibling (the shell root)", () => {
+    const shell = fakeEl(); // the .page-shell grid — nav, capture, settings live here
+    const mobileNav = fakeEl();
+    shieldShellSiblings([shell, mobileNav]);
+    for (const el of [shell, mobileNav]) {
+      expect(el.attrs.has("inert")).toBe(true);
+      expect(el.attrs.get("aria-hidden")).toBe("true");
+    }
+  });
+
+  it("never shields the Kid Mode layers themselves (backdrop + overlay)", () => {
+    const backdrop = fakeEl({ [KID_MODE_LAYER_ATTR]: "true", "aria-hidden": "true" });
+    const overlay = fakeEl({ [KID_MODE_LAYER_ATTR]: "true" });
+    const shell = fakeEl();
+    shieldShellSiblings([backdrop, overlay, shell]);
+    expect(backdrop.attrs.has("inert")).toBe(false);
+    expect(overlay.attrs.has("inert")).toBe(false);
+    expect(overlay.attrs.has("aria-hidden")).toBe(false);
+    expect(shell.attrs.has("inert")).toBe(true);
+  });
+
+  it("undo restores the shell exactly (inert removed, prior aria-hidden preserved)", () => {
+    const shell = fakeEl();
+    const alreadyHidden = fakeEl({ "aria-hidden": "false" });
+    const undo = shieldShellSiblings([shell, alreadyHidden]);
+    expect(shell.attrs.has("inert")).toBe(true);
+    expect(alreadyHidden.attrs.get("aria-hidden")).toBe("true");
+    undo();
+    expect(shell.attrs.has("inert")).toBe(false);
+    expect(shell.attrs.has("aria-hidden")).toBe(false);
+    expect(alreadyHidden.attrs.has("inert")).toBe(false);
+    expect(alreadyHidden.attrs.get("aria-hidden")).toBe("false");
+  });
+
+  it("leaves elements that were already inert alone — and never un-inerts them", () => {
+    const externallyInert = fakeEl({ inert: "" });
+    const undo = shieldShellSiblings([externallyInert]);
+    expect(externallyInert.attrs.has("aria-hidden")).toBe(false); // untouched
+    undo();
+    expect(externallyInert.attrs.has("inert")).toBe(true); // ownership respected
+  });
+
+  it("KidModeOverlay.tsx wires the shield while open and marks both layers", () => {
+    const src = readSelf("KidModeOverlay.tsx");
+    // The shield is applied in an isKidModeOpen effect...
+    expect(src).toContain("shieldShellSiblings(");
+    // ...and both the backdrop and the overlay carry the layer marker so they
+    // are never shielded themselves.
+    const markers = src.match(/data-kid-mode-layer="true"/g) ?? [];
+    expect(markers.length).toBeGreaterThanOrEqual(2);
+    // The marker literal must match the constant the shield checks.
+    expect(KID_MODE_LAYER_ATTR).toBe("data-kid-mode-layer");
+  });
+
+  it("kidModeShield.ts stays a pure attribute helper — no writes, no hex", () => {
+    const src = readSelf("kidModeShield.ts");
+    const writePaths = ["upsert(", "addDoc(", "setDoc(", "updateDoc(", "deleteDoc(", "writeBatch"];
+    for (const wp of writePaths) {
+      expect(src, `shield must not call ${wp}`).not.toContain(wp);
+    }
+    expect(src.match(/#[0-9a-fA-F]{3,6}\b/g) ?? []).toHaveLength(0);
+  });
+});
+
 // ── KidMode enter / exit state machine (pure logic) ──────────────────────────
 // We test the state transitions through direct function calls on the
 // context state, simulating what the Provider does without a DOM.

@@ -60,6 +60,40 @@ export const SESSION_LENGTH_RANGES: Record<SessionLength, [number, number]> = {
   extended: [21, Infinity],
 };
 
+/** All session lengths, in chip-row order. */
+export const SESSION_LENGTHS: readonly SessionLength[] = ["short", "standard", "extended"];
+
+/**
+ * KID-3: minimum number of in-band activities a session-length bucket must
+ * hold before the UI may offer it as a chip. Below this, ranking quality
+ * collapses to near-random off-band picks — and an empty bucket would
+ * silently fall back to the full pool, badging an 8-minute activity as
+ * "25-30 min". Offering only honest buckets removes that path.
+ */
+export const MIN_SESSION_BUCKET = 3;
+
+/**
+ * KID-3: the session lengths that may honestly be offered for a child of
+ * this age — a bucket qualifies only when it holds at least
+ * MIN_SESSION_BUCKET activities matching the child's band. The extended
+ * bucket is currently empty (0/252 activities), so it never renders;
+ * authoring extended-duration activities is the AR-CONT-02 content wave.
+ */
+export function availableSessionLengths(ageYears: number): SessionLength[] {
+  const band = bandForAge(ageYears);
+  return SESSION_LENGTHS.filter((s) => {
+    const [minDur, maxDur] = SESSION_LENGTH_RANGES[s];
+    let n = 0;
+    for (const a of PLAY_ACTIVITIES) {
+      if (a.durationMin >= minDur && a.durationMin <= maxDur && a.bands.includes(band)) {
+        n += 1;
+        if (n >= MIN_SESSION_BUCKET) return true;
+      }
+    }
+    return false;
+  });
+}
+
 export interface PlaySelectContext {
   ageYears: number;
   /** Domains the child has recently struggled with (from their log). */

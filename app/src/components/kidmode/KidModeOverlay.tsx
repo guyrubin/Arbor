@@ -10,15 +10,19 @@
  *
  * Parent gate: hold-to-exit button (3 s hold), now reused in both the dashboard
  * header and the surface back-bar. Pure friction — no PIN, no Firestore call, no
- * child-data mutation on enter OR exit. Escape is blocked; focus is trapped.
+ * child-data mutation on enter OR exit. Escape is blocked; focus is trapped
+ * for real (KID-2): while open, every sibling of the Kid Mode layers in the
+ * Shell mount node is made inert + aria-hidden via shieldShellSiblings, so
+ * Tab can never walk focus into the invisible parent shell.
  *
  * Styling: TOKEN-ONLY (var(--arbor-*), zero raw hex), RTL-safe (logical CSS
  * properties), scoped under `.arbor-play` for the child type scale.
  */
-import React, { lazy, Suspense, useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft } from "lucide-react";
 import { useKidMode } from "./KidModeContext";
+import { shieldShellSiblings } from "./kidModeShield";
 import { TabSkeleton } from "../ui/Skeleton";
 import { useLanguage } from "../../context/LanguageContext";
 import KidDashboard, { type KidSurface } from "./KidDashboard";
@@ -41,6 +45,7 @@ export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
   const { t } = useLanguage();
   const [view, setView] = useState<View>("home");
+  const overlayRef = useRef<HTMLDivElement | null>(null);
 
   // Reset to the home dashboard whenever the overlay opens.
   useEffect(() => {
@@ -61,6 +66,19 @@ export default function KidModeOverlay() {
     return () => document.removeEventListener("keydown", onKey, true);
   }, [isKidModeOpen]);
 
+  // KID-2: the keyboard half of the lock. Pointer events are swallowed by the
+  // backdrop, but Tab could still walk focus into invisible parent-shell
+  // controls (nav, capture, settings, sign-out) behind the overlay. While Kid
+  // Mode is open, every sibling of the Kid Mode layers inside the Shell mount
+  // node is made inert + aria-hidden (shieldShellSiblings) so focus can never
+  // leave the overlay; the cleanup restores the shell exactly on close.
+  useEffect(() => {
+    if (!isKidModeOpen) return;
+    const parent = overlayRef.current?.parentElement;
+    if (!parent) return;
+    return shieldShellSiblings(Array.from(parent.children));
+  }, [isKidModeOpen]);
+
   const surface = view === "home" ? null : SURFACE_META[view];
 
   return (
@@ -73,6 +91,7 @@ export default function KidModeOverlay() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22 }}
           aria-hidden="true"
+          data-kid-mode-layer="true"
           onPointerDown={(e) => e.stopPropagation()}
           // F4: the overlay itself animates with scale, so its margins briefly expose the
           // parent shell during enter/exit. This non-transformed full-viewport backdrop
@@ -84,6 +103,8 @@ export default function KidModeOverlay() {
       {isKidModeOpen && (
         <motion.div
           key="kid-mode-overlay"
+          ref={overlayRef}
+          data-kid-mode-layer="true"
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.97 }}
