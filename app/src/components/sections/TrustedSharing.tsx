@@ -3,9 +3,11 @@ import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { useProfile } from "../../context/ProfileContext";
 import { downloadJson } from "../../lib/childData";
 import { api, PaywallError } from "../../lib/api";
-import type { ShareGrant, ShareRole } from "../../types";
+import type { DeletionReceipt, ShareGrant, ShareRole } from "../../types";
+import Modal from "../ui/Modal";
 import { PageHeader, SectionCard, cardCls, Chip, TrustSafetyBar, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
 import { REPORTS } from "./Reports";
@@ -33,6 +35,7 @@ const expiryLabel = (g: ShareGrant) =>
  *  (incl. co-parents) — plus what's shared with you. */
 export default function TrustedSharing() {
   const { childProfile, behaviorLogs, actionPlans, openPaywall, setActiveTab } = useArbor();
+  const { deleteChild } = useProfile();
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
@@ -118,9 +121,50 @@ export default function TrustedSharing() {
     setAudit((a) => [`You exported all of ${first}'s data — just now`, ...a]);
   };
 
-  const deleteData = () => {
-    const ok = window.confirm(`Permanently delete all of ${first}'s data?\n\nThis cannot be undone. (For your safety this requires account verification and is processed server-side.)`);
-    if (ok) alert("Deletion request recorded. To protect your child's data, permanent deletion is verified and processed server-side.");
+  // CARE-1: REAL GDPR Art. 17 erasure — the old confirm/alert theater claimed a
+  // server-side deletion request that never left the browser. The flow now runs
+  // through the ONE tested erase seam: typed child-name confirmation in the app
+  // Modal → ProfileContext.deleteChild → eraseEverything (childData.ts) →
+  // POST /privacy/erase + full client wipe via the CHILD_SUBCOLLECTIONS
+  // allow-list → provable DeletionReceipt rendered as the done-state.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+  const [erasing, setErasing] = useState(false);
+  const [deleteFailed, setDeleteFailed] = useState(false);
+  const [receipt, setReceipt] = useState<DeletionReceipt | null>(null);
+  const [deletedName, setDeletedName] = useState("");
+
+  const nameMatches = confirmName.trim().toLowerCase() === first.trim().toLowerCase();
+
+  const closeDeleteModal = () => {
+    if (erasing) return; // never abandon an erasure mid-flight
+    setDeleteOpen(false);
+    setConfirmName("");
+    setDeleteFailed(false);
+    if (receipt) {
+      // The child no longer exists — route away from the deleted child's surfaces.
+      setReceipt(null);
+      setActiveTab("overview");
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!nameMatches || erasing) return;
+    setErasing(true);
+    setDeleteFailed(false);
+    const name = first;
+    const childId = childProfile.id;
+    try {
+      const r = await deleteChild(childId);
+      setDeletedName(name);
+      setReceipt(
+        r ?? { childId, erasedAt: new Date().toISOString(), counts: { memoryEvents: 0, shares: 0 } }
+      );
+    } catch {
+      setDeleteFailed(true);
+    } finally {
+      setErasing(false);
+    }
   };
 
   return (
@@ -285,7 +329,7 @@ export default function TrustedSharing() {
         <SectionCard title="Your data" icon={<Icon name="download" size={20} />} tone="lav">
           <div className="space-y-2">
             <button onClick={exportData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}><Icon name="download" size={18} /> Export all data</button>
-            <button onClick={deleteData} className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}><Icon name="delete" size={18} /> Delete child data</button>
+            <button onClick={() => setDeleteOpen(true)} data-testid="delete-child-btn" className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}><Icon name="delete" size={18} /> {t("sec.sharing.delete.btn")}</button>
           </div>
         </SectionCard>
         <SectionCard title="This session" icon={<Icon name="history" size={20} />} tone="sky">
@@ -295,6 +339,72 @@ export default function TrustedSharing() {
           </ul>
         </SectionCard>
       </div>
+
+      {/* CARE-1: typed-name confirmation → real erasure → deletion receipt. */}
+      <Modal
+        open={deleteOpen}
+        onClose={closeDeleteModal}
+        title={receipt ? t("sec.sharing.receipt.title") : t("sec.sharing.delete.title", { name: first })}
+      >
+        {!receipt ? (
+          <div className="space-y-4">
+            <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{t("sec.sharing.delete.body", { name: first })}</p>
+            <div className="space-y-1.5">
+              <label htmlFor="delete-confirm-input" className="block text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.delete.typeToConfirm", { name: first })}</label>
+              <input
+                id="delete-confirm-input"
+                data-testid="delete-confirm-input"
+                dir="auto"
+                value={confirmName}
+                onChange={(e) => setConfirmName(e.target.value)}
+                autoComplete="off"
+                className="w-full rounded-xl px-3 py-2.5 text-sm"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              />
+            </div>
+            {deleteFailed && (
+              <p role="alert" className="text-xs font-bold" style={{ color: "var(--arbor-pink-ink)" }}>{t("sec.sharing.delete.error")}</p>
+            )}
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <button onClick={closeDeleteModal} disabled={erasing} className="rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>{t("sec.sharing.delete.cancel")}</button>
+              <button
+                onClick={confirmDelete}
+                disabled={!nameMatches || erasing}
+                data-testid="delete-confirm-btn"
+                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-40"
+                style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
+              >
+                {erasing
+                  ? <><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.delete.working")}</>
+                  : <><Icon name="delete_forever" size={16} /> {t("sec.sharing.delete.confirm")}</>}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4" data-testid="delete-receipt" aria-live="polite">
+            <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
+              {t("sec.sharing.receipt.body", { name: deletedName, date: new Date(receipt.erasedAt).toLocaleDateString() })}
+            </p>
+            <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.receipt.memoryEvents")}</span>
+                <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{receipt.counts.memoryEvents}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.receipt.shares")}</span>
+                <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{receipt.counts.shares}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.receipt.consents")}</span>
+                <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{receipt.counts.consents ?? 0}</span>
+              </div>
+            </div>
+            <div className="flex sm:justify-end">
+              <button onClick={closeDeleteModal} className="w-full sm:w-auto rounded-xl px-4 py-2.5 text-sm font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>{t("sec.sharing.receipt.done")}</button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </motion.div>
   );
 }
