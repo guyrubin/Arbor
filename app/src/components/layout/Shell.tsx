@@ -229,7 +229,7 @@ export default function Shell() {
               {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></span>}</span>
             </span>}
             actions={<div className="flex w-full sm:w-auto items-center gap-2 overflow-x-auto no-scrollbar">
-              <AskArborButton compact />
+              <AskArborButton />
               {/* Capture ("log a moment") is NOT a global chrome button — it has
                   two canonical homes: the Behaviors hub composer and the Journal
                   compose card, both one tap away in the bottom nav. Duplicating it
