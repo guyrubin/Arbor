@@ -212,8 +212,9 @@ export const api = {
     post<{ behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string }>("/api/extract-log", payload),
   // childId is REQUIRED by the server's COPPA gate (requireConsent reads it from
   // the body); without it /api/vision fails closed with 451. The caller passes the
-  // active child's id.
-  vision: (payload: { childId: string; image: { dataUrl: string }; mode: "observe" | "document"; note?: string; childProfile: ChildProfile }) =>
+  // active child's id. AIX-S1: `language` (getAiLanguage()) drives the server-side
+  // languageDirective so a Hebrew parent gets Hebrew observations back.
+  vision: (payload: { childId: string; image: { dataUrl: string }; mode: "observe" | "document"; note?: string; childProfile: ChildProfile; language?: "en" | "he" }) =>
     post<VisionResult>("/api/vision", payload),
   // AVA-1: generate a stylized character avatar from descriptors (default) or an
   // optional reference photo. The photo is never stored server-side.

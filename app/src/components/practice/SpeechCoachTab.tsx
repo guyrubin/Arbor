@@ -7,7 +7,7 @@ import { PlayShell, PlayHeader, PlayButton, ChoiceTile, ProgressPips, Celebrate 
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
 import { matchResult, speechDose, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
-import { scoreUtterance } from "../../lib/speechScorer";
+import { scoreUtterance, recognitionLangFor, autoListenSupported } from "../../lib/speechScorer";
 import { usePracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent, SpeechAttempt, SpeechLevel } from "../../types";
 import { track } from "../../lib/analytics";
@@ -38,7 +38,11 @@ const LADDER: { level: SpeechLevel; labelKey: string; hintKey: string }[] = [
 
 export default function SpeechCoachTab() {
   const { childProfile, setActiveTab, seedCoach } = useArbor();
-  const { t } = useLanguage();
+  const { t, aiLang } = useLanguage();
+  // AIX-S2: the auto-listen verdict path (on-device recognition + cloud scoring)
+  // is honest ONLY for English sessions — SOUND_LIBRARY targets are English.
+  // For HE, autoResult stays null and the parent-scoring floor takes over.
+  const autoVerdictOk = autoListenSupported(aiLang);
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
 
@@ -128,7 +132,9 @@ export default function SpeechCoachTab() {
         // Cloud upgrade: if a child-ASR provider (SoapBox/Whisper) is configured,
         // score the recording for a more accurate result. Otherwise the on-device
         // Web Speech transcript above remains the result; parent scoring is the floor.
-        if (level !== "story") {
+        // AIX-S2: gated on autoVerdictOk — the cloud path carries no language
+        // field and the targets are EN, so it can never be honest for HE.
+        if (level !== "story" && autoVerdictOk) {
           try {
             const score = await scoreUtterance({ target, sound: sound.id, level, audioBlob: blob });
             if (score && score.source === "cloud") {
@@ -143,9 +149,11 @@ export default function SpeechCoachTab() {
       setRecState("recording");
 
       const Ctor = getRecognitionCtor();
-      if (Ctor && level !== "story") {
+      // AIX-S2: never render an en-US mis-transcript verdict about an HE child —
+      // the whole auto-listen path is suppressed for non-EN sessions.
+      if (Ctor && level !== "story" && autoVerdictOk) {
         const recog = new Ctor();
-        recog.lang = "en-US";
+        recog.lang = recognitionLangFor(aiLang);
         recog.interimResults = false;
         recog.maxAlternatives = 1;
         recog.onresult = (e) => {
@@ -389,9 +397,10 @@ export default function SpeechCoachTab() {
               <audio src={audioUrl} controls className="h-8" />
             </span>
           )}
-          {!recognitionAvailable && (
+          {(!recognitionAvailable || !autoVerdictOk) && (
             <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-              <Icon name="mic_off" size={12} className="inline me-1" />{t("prac.speech.noAutoListen")}
+              <Icon name="mic_off" size={12} className="inline me-1" />
+              {!autoVerdictOk ? t("prac.speech.parentJudged") : t("prac.speech.noAutoListen")}
             </span>
           )}
         </div>

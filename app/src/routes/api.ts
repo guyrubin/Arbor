@@ -1370,7 +1370,7 @@ Return only JSON matching the schema.`;
   // and fails CLOSED (451) without an active grant — and, because requireConsent
   // reads `childId` from the body, the client MUST send childId or every call 451s.
   router.post("/vision", requireConsent(consentStore, "face_processing", (req) => !!req.body?.image), async (req, res) => {
-    const { image, mode = "observe", note, childProfile } = req.body;
+    const { image, mode = "observe", note, childProfile, language } = req.body;
     const parsed = parseDataUrl(image?.dataUrl ?? image);
     if (!parsed) {
       res.status(400).json({ error: "A base64 image data URL is required" });
@@ -1399,6 +1399,9 @@ Return only JSON matching the schema.`;
 
     const isDoc = mode === "document";
     const guard = `IMAGE SAFETY GATE: Only analyze images relevant to a young child's development, wellbeing, environment, learning, artwork, or a child-related document. If the image is unrelated, a person other than in an ordinary family context, explicit, graphic, or otherwise outside parenting support, set "offTopic" to true and leave the other fields brief and empty. Never identify or judge people. Observations only — never a diagnosis.`;
+    // AIX-S1: mirror /digest's languageDirective — a Hebrew parent must get
+    // Hebrew observations/tryToday/summary back on the flagship vision surface.
+    const languageDirective = language === "he" ? "\nWrite every human-readable value in warm, natural Hebrew (עברית)." : "";
 
     const prompt = isDoc
       ? `${NON_DIAGNOSTIC_CONTRACT}
@@ -1406,14 +1409,14 @@ ${guard}
 You can SEE the attached document photo. Read it (OCR) and extract what matters for this child's care.
 Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
 Parent note: "${typeof note === "string" ? note : ""}"
-Return JSON: offTopic, documentType, summary, keyPoints[], suggestedMemory[] (durable facts the parent could approve), questionsForProfessional[], handoffNote.`
+Return JSON: offTopic, documentType, summary, keyPoints[], suggestedMemory[] (durable facts the parent could approve), questionsForProfessional[], handoffNote.${languageDirective}`
       : `${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
 ${guard}
 You can SEE the attached photo. Describe only what is observable and relevant, then give gentle, non-diagnostic next steps.
 Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
 Parent note: "${typeof note === "string" ? note : ""}"
-Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avoid[], nonDiagnosticNote.`;
+Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avoid[], nonDiagnosticNote.${languageDirective}`;
 
     const schema = isDoc
       ? {

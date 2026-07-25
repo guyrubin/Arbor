@@ -83,19 +83,27 @@ export default function ComicsTab() {
   const savedCount = savedCol.items.length;
 
   // No hero yet → invite the parent to create one (cross-domain entry point).
+  // AIX-S7: the entry-gate bookend follows the file's he? pattern — Hebrew
+  // families must not hit English exactly where register matters most.
   if (!hasHero) {
     return (
       <PlayShell>
-        <PlayHeader title="Hero Comics" say={`Turn ${name} into the star of their own comic book.`} mood="cheer" />
+        <PlayHeader
+          title="Hero Comics"
+          say={he ? `הפכו את ${name} לכוכב של ספר קומיקס משלו.` : `Turn ${name} into the star of their own comic book.`}
+          mood="cheer"
+        />
         <PlayPanel tone="lav" className="text-center">
-          <p className="text-[1.3rem] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            First, create {name}&apos;s hero
+          <p className="text-[1.3rem] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+            {he ? `קודם כול, צרו את הגיבור של ${name}` : `First, create ${name}'s hero`}
           </p>
-          <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }}>
-            Make {name} into their own comic superhero — then they star in every Academy story, comic and adventure across Arbor.
+          <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
+            {he
+              ? `הפכו את ${name} לגיבור־על מצויר משלו — ומשם הוא מככב בכל סיפור, קומיקס והרפתקה באקדמיה של ארבור.`
+              : `Make ${name} into their own comic superhero — then they star in every Academy story, comic and adventure across Arbor.`}
           </p>
           <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
-            <Icon name="auto_awesome" size={16} /> Create {name}&apos;s hero
+            <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${name}` : `Create ${name}'s hero`}
           </PlayButton>
         </PlayPanel>
       </PlayShell>
@@ -224,9 +232,18 @@ export default function ComicsTab() {
         })}
       </div>
 
+      {/* AIX-S7: trust/safety bookend in the file's he? pattern. The
+          never-a-real-photo and provenance-watermark claims survive verbatim
+          in meaning in BOTH languages (comicsBookendsI18n.test.ts locks it). */}
       <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
-        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="verified_user" size={16} /> Safe &amp; private</span>
-        <span style={{ color: "var(--arbor-muted)" }}>Comics use {name}&apos;s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.</span>
+        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }} dir="auto">
+          <Icon name="verified_user" size={16} /> {he ? "בטוח ופרטי" : "Safe & private"}
+        </span>
+        <span style={{ color: "var(--arbor-muted)" }} dir="auto">
+          {he
+            ? `הקומיקס משתמש בדמות הגיבור המצוירת השמורה של ${name} — לעולם לא בתמונה אמיתית. התמונות נוצרות בבינה מלאכותית ומסומנות בסימן מים של מקור.`
+            : `Comics use ${name}'s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.`}
+        </span>
       </div>
     </PlayShell>
   );

@@ -1,7 +1,8 @@
 import React, { useRef, useState } from "react";
 import Icon from "../ui/Icon";
 import { Modal } from "../ui/Modal";
-import { api, type VisionResult, type VisionObserve, type VisionDocument } from "../../lib/api";
+import { api, getAiLanguage, type VisionResult, type VisionObserve, type VisionDocument } from "../../lib/api";
+import { useLanguage } from "../../context/LanguageContext";
 import { fileToThumbnail } from "../../lib/image";
 import type { ChildProfile } from "../../types";
 
@@ -10,6 +11,10 @@ import type { ChildProfile } from "../../types";
  * environment / a drawing (observe) or a school report / form (document). The
  * image is downscaled on-device, sent to the multimodal model, and the result is
  * rendered as actionable cards that feed the rest of the app.
+ *
+ * AIX-S1: every string routes through lib/i18n.ts (vis.* keys) and the request
+ * carries language: getAiLanguage() so the server localizes the analysis too —
+ * an HE session renders the modal AND the model output fully in Hebrew (RTL).
  */
 
 const List = ({ icon, title, tint, items }: { icon: React.ReactNode; title: string; tint: string; items: string[] }) =>
@@ -29,6 +34,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
   onGoHandoff: (note: string) => void;
   onGoBehaviors: (note: string) => void;
 }) {
+  const { t } = useLanguage();
   const [dataUrl, setDataUrl] = useState<string>("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,7 +53,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
       const url = await fileToThumbnail(file, mode === "document" ? 1280 : 800, 0.82);
       setDataUrl(url);
     } catch {
-      setError("Could not read that image — try another photo.");
+      setError(t("vis.readError"));
     }
   };
 
@@ -55,10 +61,10 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
     if (!dataUrl) return;
     setLoading(true); setError(null); setResult(null);
     try {
-      const r = await api.vision({ childId: childProfile.id, image: { dataUrl }, mode, note: note.trim() || undefined, childProfile });
+      const r = await api.vision({ childId: childProfile.id, image: { dataUrl }, mode, note: note.trim() || undefined, childProfile, language: getAiLanguage() });
       setResult(r);
     } catch (e: any) {
-      setError(e?.message || "Arbor could not analyze this image.");
+      setError(e?.message || t("vis.analyzeError"));
     } finally {
       setLoading(false);
     }
@@ -67,7 +73,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
   const copy = (text: string) => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); };
 
   const isDoc = mode === "document";
-  const title = isDoc ? "Scan a document" : "Show Arbor a photo";
+  const title = isDoc ? t("vis.title.document") : t("vis.title.observe");
 
   return (
     <Modal open={open} onClose={close} title={title} maxWidth="max-w-xl">
@@ -81,9 +87,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
       />
 
       <p className="text-xs mb-3" style={{ color: "var(--arbor-muted)" }}>
-        {isDoc
-          ? "Photograph or upload a school report, daycare note or form. Arbor reads it and pulls out what matters — privately, on your device first."
-          : "Show Arbor the moment, the room, or your child's drawing. Arbor describes what it sees and offers gentle, non-diagnostic next steps."}
+        {isDoc ? t("vis.intro.document") : t("vis.intro.observe")}
       </p>
 
       {!dataUrl ? (
@@ -93,20 +97,20 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
           style={{ border: "2px dashed var(--arbor-rule-strong)", color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}
         >
           {isDoc ? <Icon name="upload" size={28} /> : <Icon name="photo_camera" size={28} />}
-          <span className="text-sm font-bold">{isDoc ? "Upload or photograph a document" : "Take or choose a photo"}</span>
-          <span className="text-[10px]">Resized on your device before sending</span>
+          <span className="text-sm font-bold">{isDoc ? t("vis.upload.document") : t("vis.upload.photo")}</span>
+          <span className="text-[10px]">{t("vis.resizedNote")}</span>
         </button>
       ) : (
         <div className="space-y-3">
           <div className="relative">
-            <img src={dataUrl} alt="To analyze" className="w-full max-h-56 object-contain rounded-2xl" style={{ border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }} />
-            <button onClick={() => { setDataUrl(""); setResult(null); }} className="absolute top-2 end-2 text-white rounded-lg px-2 py-1 text-[10px] font-bold" style={{ background: "rgba(41,51,63,0.7)" }}>Change</button>
+            <img src={dataUrl} alt={t("vis.imageAlt")} className="w-full max-h-56 object-contain rounded-2xl" style={{ border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }} />
+            <button onClick={() => { setDataUrl(""); setResult(null); }} className="absolute top-2 end-2 text-white rounded-lg px-2 py-1 text-[10px] font-bold" style={{ background: "rgba(41,51,63,0.7)" }}>{t("vis.change")}</button>
           </div>
           {!isDoc && (
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Optional: what's going on here? (e.g. 'bedtime, she won't settle in this room')"
+              placeholder={t("vis.notePlaceholder")}
               className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none resize-none"
               style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               rows={2}
@@ -119,7 +123,7 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
               className="w-full text-white font-extrabold text-sm py-3 rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60"
               style={{ background: "var(--arbor-gradient-primary)" }}
             >
-              {loading ? <><Icon name="sync" size={16} className="animate-spin" /> Arbor is looking…</> : <><Icon name="auto_awesome" size={16} /> {isDoc ? "Read this document" : "Ask Arbor to look"}</>}
+              {loading ? <><Icon name="sync" size={16} className="animate-spin" /> {t("vis.looking")}</> : <><Icon name="auto_awesome" size={16} /> {isDoc ? t("vis.cta.document") : t("vis.cta.observe")}</>}
             </button>
           )}
         </div>
@@ -133,27 +137,34 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
 
       {result && result.offTopic && (
         <div className="mt-3 p-4 rounded-xl text-[12.5px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
-          Arbor keeps to children's development and care. This image doesn't look like something it can help with — try a photo of a moment, the environment, a drawing, or a child-related document.
+          {t("vis.offTopic")}
         </div>
       )}
 
       {result && !result.offTopic && result.mode === "observe" && (
         <div className="mt-3 space-y-2.5">
-          <List icon={<Icon name="visibility" size={12} />} title="What Arbor sees" tint="var(--arbor-lav-ink)" items={(result as VisionObserve).observations} />
-          <List icon={<Icon name="auto_awesome" size={12} />} title="What it may mean" tint="var(--arbor-yellow-ink)" items={(result as VisionObserve).possibleMeanings} />
-          <List icon={<Icon name="checklist" size={12} />} title="Try today" tint="var(--arbor-green-ink)" items={(result as VisionObserve).tryToday} />
-          <List icon={<Icon name="block" size={12} />} title="Avoid" tint="var(--arbor-peach-ink)" items={(result as VisionObserve).avoid} />
+          <List icon={<Icon name="visibility" size={12} />} title={t("vis.sec.sees")} tint="var(--arbor-lav-ink)" items={(result as VisionObserve).observations} />
+          <List icon={<Icon name="auto_awesome" size={12} />} title={t("vis.sec.mayMean")} tint="var(--arbor-yellow-ink)" items={(result as VisionObserve).possibleMeanings} />
+          <List icon={<Icon name="checklist" size={12} />} title={t("vis.sec.tryToday")} tint="var(--arbor-green-ink)" items={(result as VisionObserve).tryToday} />
+          <List icon={<Icon name="block" size={12} />} title={t("vis.sec.avoid")} tint="var(--arbor-peach-ink)" items={(result as VisionObserve).avoid} />
           {(result as VisionObserve).nonDiagnosticNote && (
             <p className="text-[11px] italic px-1" style={{ color: "var(--arbor-muted)" }}>{(result as VisionObserve).nonDiagnosticNote}</p>
           )}
           <div className="flex flex-wrap gap-2 pt-1">
-            <button onClick={() => { onSeedCoach(`About the photo I showed you${note ? ` (${note})` : ""}: ${(result as VisionObserve).observations?.[0] || ""}. What's one thing to try this week?`); close(); }}
+            <button onClick={() => {
+              const observation = (result as VisionObserve).observations?.[0] || "";
+              const trimmed = note.trim();
+              onSeedCoach(trimmed
+                ? t("vis.seed.observeWithNote", { note: trimmed, observation })
+                : t("vis.seed.observe", { observation }));
+              close();
+            }}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              <Icon name="chat" size={14} /> Discuss in Arbor
+              <Icon name="chat" size={14} /> {t("vis.action.discuss")}
             </button>
             <button onClick={() => { onGoBehaviors((result as VisionObserve).observations?.join(". ") || note); close(); }}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              <Icon name="bookmark" size={14} /> Log this moment
+              <Icon name="bookmark" size={14} /> {t("vis.action.log")}
             </button>
           </div>
         </div>
@@ -162,24 +173,30 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
       {result && !result.offTopic && result.mode === "document" && (
         <div className="mt-3 space-y-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}><Icon name="description" size={12} /> {(result as VisionDocument).documentType || "Document"}</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5" style={{ color: "var(--arbor-sky-ink)" }}><Icon name="description" size={12} /> {(result as VisionDocument).documentType || t("vis.docType.fallback")}</span>
           </div>
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{(result as VisionDocument).summary}</p>
-          <List icon={<Icon name="checklist" size={12} />} title="Key points" tint="var(--arbor-green-ink)" items={(result as VisionDocument).keyPoints} />
-          <List icon={<Icon name="bookmark" size={12} />} title="Worth remembering" tint="var(--arbor-yellow-ink)" items={(result as VisionDocument).suggestedMemory} />
-          <List icon={<Icon name="chat" size={12} />} title="Ask the professional" tint="var(--arbor-lav-ink)" items={(result as VisionDocument).questionsForProfessional} />
+          <List icon={<Icon name="checklist" size={12} />} title={t("vis.sec.keyPoints")} tint="var(--arbor-green-ink)" items={(result as VisionDocument).keyPoints} />
+          <List icon={<Icon name="bookmark" size={12} />} title={t("vis.sec.remember")} tint="var(--arbor-yellow-ink)" items={(result as VisionDocument).suggestedMemory} />
+          <List icon={<Icon name="chat" size={12} />} title={t("vis.sec.askPro")} tint="var(--arbor-lav-ink)" items={(result as VisionDocument).questionsForProfessional} />
           <div className="flex flex-wrap gap-2 pt-1">
             <button onClick={() => { const n = (result as VisionDocument).handoffNote || (result as VisionDocument).summary; copy(n); onGoHandoff(n); close(); }}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              <Icon name="send" size={14} /> Use in a handoff
+              <Icon name="send" size={14} /> {t("vis.action.handoff")}
             </button>
-            <button onClick={() => { onSeedCoach(`Here's what a ${(result as VisionDocument).documentType || "document"} from my child's school/clinic says: ${(result as VisionDocument).summary}. What should I take from this and do next?`); close(); }}
+            <button onClick={() => {
+              onSeedCoach(t("vis.seed.document", {
+                docType: (result as VisionDocument).documentType || t("vis.docType.fallback"),
+                summary: (result as VisionDocument).summary,
+              }));
+              close();
+            }}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              <Icon name="chat" size={14} /> Discuss in Arbor
+              <Icon name="chat" size={14} /> {t("vis.action.discuss")}
             </button>
             <button onClick={() => copy((result as VisionDocument).summary)}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              {copied ? <><Icon name="check" size={14} /> Copied</> : <><Icon name="content_copy" size={14} /> Copy</>}
+              {copied ? <><Icon name="check" size={14} /> {t("vis.action.copied")}</> : <><Icon name="content_copy" size={14} /> {t("vis.action.copy")}</>}
             </button>
           </div>
         </div>

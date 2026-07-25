@@ -128,8 +128,9 @@ export default function OverviewTab() {
     return picks[0] ?? null;
   }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains, sessionLength]);
 
+  // AIX-S4: seeds go through i18n (seed.*) — HE parents see Hebrew in the chat box.
   const coachOnPlay = (p: ScoredActivity) => {
-    seedCoach({ prompt: `We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`, source: "today-play" });
+    seedCoach({ prompt: t("seed.play", { title: p.activity.title, name: firstName, domain: p.activity.domain }), source: "today-play" });
   };
   const markPlayDone = (p: ScoredActivity) => {
     logPlayCompletion(p, "today");
@@ -195,7 +196,7 @@ export default function OverviewTab() {
     hour < 12 ? "today.greeting.morning" : hour < 18 ? "today.greeting.afternoon" : "today.greeting.evening";
 
   const beginGuidance = () => {
-    seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-guidance" });
+    seedCoach({ prompt: focus ? t("seed.todayFocus", { focus: focus.text, name: firstName }) : undefined, source: "today-guidance" });
   };
 
   // ── Kid activity feed (Loops 1+3+5) — kid-originated + parent-logged events
@@ -458,7 +459,7 @@ export default function OverviewTab() {
         ) : (
           <div className="flex items-center gap-3 px-1 py-3"><Icon name="auto_awesome" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} /><div><div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoLoading", { name: firstName })}</div><div className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("ov.play.desc")}</div></div></div>
         )}
-        <button onClick={() => seedCoach({ prompt: focus ? `About today: ${focus.text} What is one concrete thing I can do for ${firstName} today?` : undefined, source: "today-coach-row" })} className="mt-3 inline-flex min-h-[44px] items-center gap-2 px-1 text-[12px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><Icon name="forum" size={18} />{t("today.coach.reply")}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
+        <button onClick={() => seedCoach({ prompt: focus ? t("seed.todayFocus", { focus: focus.text, name: firstName }) : undefined, source: "today-coach-row" })} className="mt-3 inline-flex min-h-[44px] items-center gap-2 px-1 text-[12px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><Icon name="forum" size={18} />{t("today.coach.reply")}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
       </section>
 
       {/* ── Daily tools (secondary, collapsed) — keeps the wellness check-in
