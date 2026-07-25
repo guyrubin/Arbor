@@ -15,20 +15,110 @@ import type { BehaviorLog, Milestone, ActionPlan, MemoryReviewItem, PlayLog } fr
 export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach" | "play";
 export type SignalTone = "mint" | "coral" | "lav" | "yellow" | "pink" | "sky";
 
+/**
+ * JRNL-3: signals are STRUCTURED — this module never bakes display English.
+ * `refTitle`/`detail` carry raw source-record content (a behavior type the
+ * parent typed, a milestone title, a plan title…); every UI label around them
+ * ("Observed: …", "Played: …", kind names, day groups) is applied at render
+ * via the `timeline.*` i18n keys through `signalTitle`/`signalDetail`/
+ * `signalMeta` below, so HE/EN parity holds on both timeline densities.
+ */
 export interface TimelineSignal {
   id: string;
   kind: SignalKind;
   /** ISO timestamp, or null for sources that carry no date (grouped as "Ongoing"). */
   at: string | null;
-  title: string;
+  /** Raw source-record title (user/content data, never UI copy). */
+  refTitle?: string;
+  /** Raw source-record detail (user/content data, never UI copy). */
   detail?: string;
   tone: SignalTone;
-  /** Optional render metadata. */
+  /** Optional render metadata — structured, labeled at render. */
   intensity?: number;
   context?: string;
   photo?: string;
-  meta?: string;
+  durationMinutes?: number;
+  ageGroup?: string;
+  steps?: { done: number; total: number };
+  memorySource?: string;
+  playDomain?: PlayLog["domain"];
+  concernMatch?: boolean;
 }
+
+/**
+ * JRNL-4: provenance is DERIVED read-only from who authored the entry.
+ * MANUAL ("You") = the parent acted: logged a moment, confirmed a milestone
+ * observation, played an activity. AUTO ("Arbor") = Arbor derived it: a coach
+ * session, an approved memory fact, a generated growth plan. No new flag is
+ * written to the ledger; this maps the existing signal kind at render time.
+ */
+export type SignalProvenance = "manual" | "auto";
+
+export const SIGNAL_PROVENANCE: Record<SignalKind, SignalProvenance> = {
+  moment: "manual",
+  milestone: "manual",
+  play: "manual",
+  plan: "auto",
+  memory: "auto",
+  coach: "auto",
+};
+
+export const isAutoSignal = (kind: SignalKind): boolean => SIGNAL_PROVENANCE[kind] === "auto";
+
+/** Shape of the app's `t()` — kept structural so this module stays framework-free. */
+export type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
+
+/** Localized display title for a signal — all templates live in i18n. */
+export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
+  switch (s.kind) {
+    case "moment":
+      return s.refTitle || t("timeline.title.moment");
+    case "milestone":
+      return t("timeline.title.observed", { title: s.refTitle ?? "" });
+    case "plan":
+      return s.refTitle || t("timeline.title.plan");
+    case "memory":
+      return t("timeline.title.memory");
+    case "coach":
+      return t("timeline.title.coach");
+    case "play":
+      return t("timeline.title.played", { title: s.refTitle ?? "" });
+  }
+};
+
+/** Localized secondary line — raw source detail except where it was UI copy. */
+export const signalDetail = (s: TimelineSignal, t: TranslateFn): string => {
+  if (s.kind === "play") {
+    return s.playDomain
+      ? t("timeline.detail.builds", { domain: t(`timeline.playdomain.${s.playDomain}`) })
+      : "";
+  }
+  if (s.kind === "coach") return s.refTitle ?? "";
+  return s.detail || "";
+};
+
+/** Localized meta chip text (steps, duration, pattern match) or undefined. */
+export const signalMeta = (s: TimelineSignal, t: TranslateFn): string | undefined => {
+  switch (s.kind) {
+    case "moment": {
+      const parts = [
+        s.context,
+        s.durationMinutes ? t("timeline.meta.minutes", { n: s.durationMinutes }) : "",
+      ].filter(Boolean);
+      return parts.length ? parts.join(" · ") : undefined;
+    }
+    case "milestone":
+      return s.ageGroup || undefined;
+    case "plan":
+      return s.steps?.total ? t("timeline.meta.steps", { done: s.steps.done, total: s.steps.total }) : undefined;
+    case "memory":
+      return s.memorySource || undefined;
+    case "play":
+      return s.concernMatch ? t("timeline.meta.match") : undefined;
+    case "coach":
+      return undefined;
+  }
+};
 
 export interface TimelineSources {
   behaviorLogs?: BehaviorLog[];
@@ -79,18 +169,17 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
   const signals: TimelineSignal[] = [];
 
   for (const log of sources.behaviorLogs || []) {
-    const parts = [log.context, log.durationMinutes ? `${log.durationMinutes}m` : ""].filter(Boolean);
     signals.push({
       id: `moment-${log.id}`,
       kind: "moment",
       at: log.timestamp || null,
-      title: log.behaviorType || "Logged moment",
+      refTitle: log.behaviorType || undefined,
       detail: log.trigger || log.notes || "",
       tone: log.resolved ? "mint" : "coral",
       intensity: log.intensity,
       context: log.context,
       photo: log.photoAttachment,
-      meta: parts.join(" · "),
+      durationMinutes: log.durationMinutes || undefined,
     });
   }
 
@@ -99,24 +188,26 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
     signals.push({
       id: `milestone-${m.id}`,
       kind: "milestone",
-      at: null,
-      title: `Observed: ${m.title}`,
+      // JRNL-5: a confirmed observation carries the day the parent noticed it,
+      // so first words / first steps land in the chronology. Undated legacy
+      // milestones still fall back to the "Ongoing" group.
+      at: m.observationUpdatedAt || null,
+      refTitle: m.title,
       detail: m.description || "",
       tone: "lav",
-      meta: m.ageGroup,
+      ageGroup: m.ageGroup,
     });
   }
 
   for (const plan of sources.plans || []) {
-    const steps = countPlanSteps([plan]);
     signals.push({
       id: `plan-${plan.id}`,
       kind: "plan",
       at: null,
-      title: plan.title || "Growth plan",
+      refTitle: plan.title || undefined,
       detail: plan.issue || "",
       tone: "sky",
-      meta: steps.total ? `${steps.done}/${steps.total} steps` : undefined,
+      steps: countPlanSteps([plan]),
     });
   }
 
@@ -126,10 +217,9 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       id: `memory-${item.memoryId}`,
       kind: "memory",
       at: item.createdAt || null,
-      title: "Approved to memory",
       detail: item.fact,
       tone: "yellow",
-      meta: item.source,
+      memorySource: item.source,
     });
   }
 
@@ -138,8 +228,7 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       id: `coach-${c.id}`,
       kind: "coach",
       at: c.updatedAt || null,
-      title: "Coach session",
-      detail: c.title,
+      refTitle: c.title,
       tone: "pink",
     });
   }
@@ -149,10 +238,10 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       id: `play-${p.id}`,
       kind: "play",
       at: p.timestamp || null,
-      title: `Played: ${p.title}`,
-      detail: `Builds ${p.domain}`,
+      refTitle: p.title,
       tone: "mint",
-      meta: p.reason === "concern-match" ? "matched to a recent pattern" : undefined,
+      playDomain: p.domain,
+      concernMatch: p.reason === "concern-match",
     });
   }
 
@@ -289,8 +378,33 @@ export type TimelineGroup = { key: string; label: string; signals: TimelineSigna
 
 const dayKey = (iso: string) => new Date(iso).toISOString().slice(0, 10);
 
-/** Group dated signals by day with friendly labels; undated land in "Ongoing". */
-export const groupByDay = (signals: TimelineSignal[], now: number = Date.now()): TimelineGroup[] => {
+/** First-letter capitalize — Intl.RelativeTimeFormat yields lowercase "today". */
+const capFirst = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/** "Today" / "Yesterday" via Intl so He/En (and any locale) localize natively. */
+const relDayLabel = (daysAgo: 0 | 1, locale: string | undefined): string => {
+  try {
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+    return capFirst(rtf.format(-daysAgo, "day"));
+  } catch {
+    return daysAgo === 0 ? "Today" : "Yesterday";
+  }
+};
+
+export interface GroupByDayOptions {
+  /** BCP-47 locale for the day labels (JRNL-3); browser default when omitted. */
+  locale?: string;
+  /** Localized label for the undated bucket — pass t("timeline.ongoing"). */
+  ongoingLabel?: string;
+}
+
+/** Group dated signals by day with localized labels; undated land in "Ongoing". */
+export const groupByDay = (
+  signals: TimelineSignal[],
+  now: number = Date.now(),
+  opts: GroupByDayOptions = {},
+): TimelineGroup[] => {
+  const { locale, ongoingLabel = "Ongoing" } = opts;
   const todayKey = new Date(now).toISOString().slice(0, 10);
   const yesterdayKey = new Date(now - DAY).toISOString().slice(0, 10);
   const groups: TimelineGroup[] = [];
@@ -308,16 +422,16 @@ export const groupByDay = (signals: TimelineSignal[], now: number = Date.now()):
 
   for (const s of signals) {
     if (!s.at) {
-      ensure("ongoing", "Ongoing").signals.push(s);
+      ensure("ongoing", ongoingLabel).signals.push(s);
       continue;
     }
     const k = dayKey(s.at);
     const label =
       k === todayKey
-        ? "Today"
+        ? relDayLabel(0, locale)
         : k === yesterdayKey
-          ? "Yesterday"
-          : new Date(s.at).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+          ? relDayLabel(1, locale)
+          : new Date(s.at).toLocaleDateString(locale, { weekday: "long", month: "short", day: "numeric" });
     ensure(k, label).signals.push(s);
   }
 

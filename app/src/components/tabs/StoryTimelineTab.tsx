@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
   computeMomentum, deriveNextStep, groupByDay,
+  signalDetail, signalMeta, signalTitle,
   type SignalKind, type SignalTone, type TimelineSignal,
 } from "../../lib/signalTimeline";
 import { useTimeline } from "../../hooks/useTimeline";
@@ -25,23 +26,25 @@ const KIND_ICON: Record<SignalKind, string> = {
   play: "eco",
 };
 
-const KIND_LABEL: Record<SignalKind, string> = {
-  moment: "Moment",
-  milestone: "Milestone",
-  plan: "Plan",
-  memory: "Memory",
-  coach: "Coach",
-  play: "Play",
+/** JRNL-3: kind + filter labels resolve through i18n (timeline.* keys) at
+ *  render so the HE/EN parity guard covers them — no baked English here. */
+const KIND_LABEL_KEY: Record<SignalKind, string> = {
+  moment: "timeline.kind.moment",
+  milestone: "timeline.kind.milestone",
+  plan: "timeline.kind.plan",
+  memory: "timeline.kind.memory",
+  coach: "timeline.kind.coach",
+  play: "timeline.kind.play",
 };
 
-const FILTERS: { key: SignalKind | "all"; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "moment", label: "Moments" },
-  { key: "milestone", label: "Milestones" },
-  { key: "plan", label: "Plans" },
-  { key: "play", label: "Play" },
-  { key: "memory", label: "Memory" },
-  { key: "coach", label: "Coach" },
+const FILTERS: { key: SignalKind | "all"; labelKey: string }[] = [
+  { key: "all", labelKey: "timeline.filter.all" },
+  { key: "moment", labelKey: "timeline.filter.moment" },
+  { key: "milestone", labelKey: "timeline.filter.milestone" },
+  { key: "plan", labelKey: "timeline.filter.plan" },
+  { key: "play", labelKey: "timeline.filter.play" },
+  { key: "memory", labelKey: "timeline.filter.memory" },
+  { key: "coach", labelKey: "timeline.filter.coach" },
 ];
 
 function StatTile({ tone, icon, value, label, foot }: {
@@ -70,8 +73,13 @@ function IntensityDots({ value }: { value: number }) {
 }
 
 function SignalRow({ signal }: { signal: TimelineSignal }) {
+  const { t, uiLang } = useLanguage();
+  const locale = uiLang === "he" ? "he" : "en";
   const ms = KIND_ICON[signal.kind];
   const tone = signal.tone as SignalTone as PastelKey;
+  // JRNL-3: labels/templates applied at render — the signal itself stays structured.
+  const detail = signalDetail(signal, t);
+  const meta = signalMeta(signal, t);
   return (
     <div className="relative ps-12">
       {/* node on the rail */}
@@ -81,13 +89,13 @@ function SignalRow({ signal }: { signal: TimelineSignal }) {
           <IconBadge tone={tone} size={34}><Icon name={ms} size={18} fill={1} /></IconBadge>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL[tone].ink }}>{KIND_LABEL[signal.kind]}</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL[tone].ink }}>{t(KIND_LABEL_KEY[signal.kind])}</span>
               {typeof signal.intensity === "number" && <IntensityDots value={signal.intensity} />}
-              {signal.at && <span className="text-[10.5px] font-semibold ms-auto" style={{ color: "var(--arbor-muted)" }}>{new Date(signal.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>}
+              {signal.at && <span className="text-[10.5px] font-semibold ms-auto" style={{ color: "var(--arbor-muted)" }}>{new Date(signal.at).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}</span>}
             </div>
-            <p className="text-sm font-extrabold mt-0.5" style={{ color: "var(--arbor-ink)" }}>{signal.title}</p>
-            {signal.detail && <p className="text-[12.5px] mt-0.5 leading-snug line-clamp-2" style={{ color: "var(--arbor-muted)" }}>{signal.detail}</p>}
-            {signal.meta && <div className="mt-2"><Chip tone={tone}>{signal.meta}</Chip></div>}
+            <p className="text-sm font-extrabold mt-0.5" style={{ color: "var(--arbor-ink)" }} dir="auto">{signalTitle(signal, t)}</p>
+            {detail && <p className="text-[12.5px] mt-0.5 leading-snug line-clamp-2" style={{ color: "var(--arbor-muted)" }} dir="auto">{detail}</p>}
+            {meta && <div className="mt-2"><Chip tone={tone}>{meta}</Chip></div>}
           </div>
           {signal.photo && (
             <img src={signal.photo} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border" style={{ borderColor: "var(--arbor-rule)" }} />
@@ -105,7 +113,8 @@ export default function StoryTimelineTab() {
     pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
     playLogs,
   } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const locale = uiLang === "he" ? "he" : "en";
   const [filter, setFilter] = useState<SignalKind | "all">("all");
   const [checkOpen, setCheckOpen] = useState(false);
 
@@ -154,7 +163,11 @@ export default function StoryTimelineTab() {
   };
 
   const shown = filter === "all" ? signals : signals.filter((s) => s.kind === filter);
-  const groups = useMemo(() => groupByDay(shown), [shown]);
+  // JRNL-3: day-group labels localize via Intl; "Ongoing" comes from i18n.
+  const groups = useMemo(
+    () => groupByDay(shown, Date.now(), { locale, ongoingLabel: t("timeline.ongoing") }),
+    [shown, locale, t],
+  );
 
   const firstName = childProfile.name?.split(" ")[0] || "Your child";
 
@@ -321,7 +334,7 @@ export default function StoryTimelineTab() {
                 className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
                 style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
-                {f.label} <span className="opacity-60">{n}</span>
+                {t(f.labelKey)} <span className="opacity-60">{n}</span>
               </button>
             );
           })}
