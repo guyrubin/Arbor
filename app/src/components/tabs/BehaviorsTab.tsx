@@ -113,6 +113,7 @@ export default function BehaviorsTab() {
     isGeneratingInlineScript,
     handleGetInlineCoRegulationScript,
     seedCoach,
+    offerPostCaptureCoach,
     setActiveTab,
     pendingCaptureMode,
     consumeCaptureRequest,
@@ -143,6 +144,11 @@ export default function BehaviorsTab() {
   // Voice-to-log
   const [listening, setListening] = useState(false);
   const [parsing, setParsing] = useState(false);
+  // AI-CAP-6: live interim transcript — the parent's own words render in the
+  // capture area (calm register, --arbor-muted) while they are still speaking,
+  // so dictation is never speak-blind. The final transcript still flows through
+  // the ONE hardened extraction seam (parseVoice → api.extractLog).
+  const [voiceInterim, setVoiceInterim] = useState("");
   const stopRef = useRef<(() => void) | null>(null);
   // AI-CAP-1: when a spoken note trips the server escalation screen (409), the
   // FULL crisis-resources markdown renders in a visible surface (never a toast)
@@ -329,18 +335,25 @@ export default function BehaviorsTab() {
       return;
     }
     setListening(true);
+    setVoiceInterim("");
     stopRef.current = startDictation(
       {
         onResult: (text) => void parseVoice(text),
+        // AI-CAP-6: spoken words appear live while still speaking.
+        onInterim: (text) => setVoiceInterim(text),
         onError: () => toast(t("beh.toast.voiceError"), "error"),
         onEnd: () => {
           setListening(false);
+          setVoiceInterim("");
           stopRef.current = null;
         },
       },
       // AI-CAP-2: dictate in the parent's UI language — a Hebrew parent's
       // speech must never be transcribed as English garbage.
       uiLang === "he" ? "he-IL" : "en-US",
+      // AI-CAP-6: generous endpointing — a natural mid-story pause must NOT end
+      // the capture; only the manual stop or ~4.5s of silence finalizes.
+      { continuous: true, silenceFinalizeMs: 4500 },
     );
   };
 
@@ -466,9 +479,26 @@ export default function BehaviorsTab() {
 
   // TODAY-3: explicit confirm — the ONLY behavior-log write for gated captures.
   const confirmReview = (e: React.FormEvent) => {
+    // AI-CAP-5: inline review editing can now empty a required field — let the
+    // shared validation speak and keep the review open instead of fake-toasting.
+    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
+      e.preventDefault();
+      toast(t("beh.toast.fillBoth"), "error");
+      return;
+    }
     const wasEditing = !!editingLogId;
+    // AI-CAP-7: snapshot the confirmed fields BEFORE handleAddLog resets the
+    // form, then offer the ONE dismissible post-capture coach CTA (prefill via
+    // seedCoach source 'post-capture' — never auto-sent, no write-path change).
+    const confirmedPrompt = t("beh.postCapture.prompt", {
+      name: behFirst,
+      type: behaviorTypeLabel(newLogType, t),
+      trigger: newLogTrigger,
+      response: newLogResponse,
+    });
     handleAddLog(e);
     toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
+    if (!wasEditing) offerPostCaptureCoach(confirmedPrompt);
     setReviewOpen(false);
     setNeedsReview(false);
     setCaptureSource("text");
@@ -893,6 +923,23 @@ export default function BehaviorsTab() {
               </div>
             </div>
 
+            {/* AI-CAP-6 — live dictation caption: the parent's own words render
+                while they are still speaking (calm register, --arbor-muted;
+                dir="auto" for HE/RTL). Evidence Arbor is hearing them — the
+                fix for speak-blind capture. Shows a quiet listening line until
+                the first words arrive. */}
+            {listening && (
+              <p
+                dir="auto"
+                aria-live="polite"
+                data-testid="voice-interim-caption"
+                className="mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed"
+                style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px dashed var(--arbor-rule-strong)" }}
+              >
+                {voiceInterim || t("beh.capture.listening")}
+              </p>
+            )}
+
             <div className="mt-4 space-y-1">
               <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.typeLabel")}</label>
               {/* AI-CAP-8: options render from the ONE shared taxonomy module —
@@ -1062,14 +1109,26 @@ export default function BehaviorsTab() {
               ONLY through confirmReview; Edit returns to the form, Discard drops
               the draft entirely. */}
           <Modal open={reviewOpen} onClose={() => setReviewOpen(false)} title={t("ql.title")}>
+            {/* AI-CAP-5: the review surfaces ALL fields the extraction seam
+                guesses — intensity/context/duration included — with inline
+                correction in place (stepper / chip row / tap-to-edit). Setters
+                write straight into the ONE draft state the confirmed write
+                reads, so a correction never needs the full form round-trip. */}
             <ConfirmCaptureReview
               source={captureSource}
               rows={[
                 { label: t("beh.typeLabel"), value: behaviorTypeLabel(newLogType, t) },
-                { label: t("ql.review.trigger"), value: newLogTrigger },
-                { label: t("ql.review.response"), value: newLogResponse },
-                { label: t("beh.notes"), value: newLogNotes },
+                { label: t("ql.review.trigger"), value: newLogTrigger, onChange: setNewLogTrigger },
+                { label: t("ql.review.response"), value: newLogResponse, onChange: setNewLogResponse },
+                { label: t("beh.notes"), value: newLogNotes, onChange: setNewLogNotes },
               ]}
+              intensity={newLogIntensity}
+              onIntensityChange={setNewLogIntensity}
+              context={newLogContext}
+              contextOptions={CONTEXTS}
+              onContextChange={(c) => setNewLogContext(c as BehaviorContext)}
+              durationMinutes={newLogDuration}
+              onDurationChange={setNewLogDuration}
               photoSrc={newLogPhoto || undefined}
               onEdit={() => setReviewOpen(false)}
               onDiscard={discardReview}

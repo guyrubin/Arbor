@@ -29,6 +29,10 @@ import FirstStepsRail from "../onboarding/FirstStepsRail";
 // completes (journey.wow === "pending" in lib/onboardingJourney); self-gating,
 // legacy devices migrate to done and never see it.
 import WowOnboarding from "../onboarding/WowOnboarding";
+// AI-CAP-7: post-confirm coach handoff — ONE global dismissible strip shared by
+// every gated capture confirm (BehaviorsTab review + QuickLogModal); prefills
+// Ask Arbor via seedCoach(source 'post-capture'), never auto-sends.
+import PostCaptureCoachStrip from "../overview/PostCaptureCoachStrip";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -342,6 +346,9 @@ export default function Shell() {
       </div>
 
       <MobileNav />
+      {/* AI-CAP-7: fixed above MobileNav (z-30 < nav z-40) — non-blocking,
+          dismissible, appears only right after a confirmed capture. */}
+      <PostCaptureCoachStrip />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <PaywallModal />

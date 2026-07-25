@@ -182,6 +182,25 @@ function useArborState() {
     setActiveTab("coach");
     try { track("coach_seed", { source: opts.source ?? "unknown" }); } catch { /* noop */ }
   };
+
+  /**
+   * AI-CAP-7 — post-confirm coach handoff. A gated capture confirm (BehaviorsTab
+   * confirmReview / QuickLogModal confirm) may offer ONE dismissible, non-blocking
+   * "want a next step?" CTA built from the just-confirmed log. Contract: never
+   * auto-send (accept only PREFILLS the composer via the seedCoach seam, source
+   * 'post-capture'), shown once per confirm (each confirm replaces the offer),
+   * dismiss leaves no residue, and NOTHING here touches the behavior-log write
+   * path. The offer carries only the prompt string — no scores, no verdicts.
+   */
+  const [postCaptureCoachPrompt, setPostCaptureCoachPrompt] = useState<string | null>(null);
+  const offerPostCaptureCoach = (prompt: string) => setPostCaptureCoachPrompt(prompt);
+  const dismissPostCaptureCoach = () => setPostCaptureCoachPrompt(null);
+  const acceptPostCaptureCoach = () => {
+    if (!postCaptureCoachPrompt) return;
+    // Prefill only — the parent still presses send themselves.
+    seedCoach({ prompt: postCaptureCoachPrompt, source: "post-capture" });
+    setPostCaptureCoachPrompt(null);
+  };
   // UC-wireframe: the right-hand AI "how Arbor helps" rail is a third column the
   // wireframe does not have. Default it OFF (opt-in via the topbar toggle) so the
   // content column breathes; the parent's choice still persists in localStorage.
@@ -1055,6 +1074,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     chatInput,
     setChatInput,
     seedCoach,
+    postCaptureCoachPrompt,
+    offerPostCaptureCoach,
+    dismissPostCaptureCoach,
+    acceptPostCaptureCoach,
     pendingCaptureMode,
     requestCapture,
     consumeCaptureRequest,

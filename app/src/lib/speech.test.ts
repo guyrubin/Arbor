@@ -73,7 +73,9 @@ describe("AI-CAP-2 — both dictation call sites thread the parent's language (s
       path.resolve(__dirname, "..", "components", "tabs", "BehaviorsTab.tsx"),
       "utf8",
     );
-    expect(code).toMatch(/startDictation\(\s*\{[\s\S]*?\},\s*(?:\/\/[^\n]*\n\s*)*uiLang === "he" \? "he-IL" : "en-US",?\s*\)/);
+    // AI-CAP-6 loosened the tail: an opts object (continuous dictation) may
+    // follow the lang argument — the guard pins only the language selection.
+    expect(code).toMatch(/startDictation\(\s*\{[\s\S]*?\},\s*(?:\/\/[^\n]*\n\s*)*uiLang === "he" \? "he-IL" : "en-US",/);
   });
 
   it("CoachTab's dictation loop derives he-IL/en-US from aiLang", async () => {

@@ -9,7 +9,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
-import { BEHAVIOR_TYPES, behaviorTypeLabel, normalizeExtractedLog } from "../../content/behaviorTaxonomy";
+import { BEHAVIOR_TYPES, EXTRACT_CONTEXTS, behaviorTypeLabel, normalizeExtractedLog } from "../../content/behaviorTaxonomy";
 import type { BehaviorContext } from "../../types";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview). */
@@ -23,11 +23,15 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
     setNewLogTrigger,
     newLogResponse,
     setNewLogResponse,
+    newLogDuration,
     setNewLogDuration,
+    newLogContext,
     setNewLogContext,
+    newLogNotes,
     setNewLogNotes,
     childProfile,
     handleAddLog,
+    offerPostCaptureCoach,
   } = useArbor();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -104,11 +108,29 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
   };
 
   const confirm = (e: React.FormEvent) => {
+    // AI-CAP-5: inline review editing can empty a required field — keep the
+    // review open with a calm error instead of a silent failed write.
+    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
+      e.preventDefault();
+      toast(t("ql.errToast"), "error");
+      return;
+    }
+    // AI-CAP-7: snapshot the confirmed fields BEFORE handleAddLog resets the
+    // form, then offer the ONE dismissible post-capture coach CTA (rendered
+    // globally by PostCaptureCoachStrip; prefill-only via seedCoach
+    // source 'post-capture', never auto-sent, no write-path change).
+    const confirmedPrompt = t("beh.postCapture.prompt", {
+      name: (childProfile.name || "").split(" ")[0],
+      type: behaviorTypeLabel(newLogType, t),
+      trigger: newLogTrigger,
+      response: newLogResponse,
+    });
     handleAddLog(e);
     setReviewing(false);
     setSource("text");
     onClose();
     toast(t("ql.okToast"), "success");
+    offerPostCaptureCoach(confirmedPrompt);
   };
 
   const discard = () => {
@@ -135,12 +157,24 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
           </button>
         </div>
       ) : reviewing ? <ConfirmCaptureReview
+        // AI-CAP-5: same 7-field honest review as BehaviorsTab — intensity,
+        // context, and duration (the fields extraction guesses hardest) are
+        // shown and inline-correctable in place; setters write straight into
+        // the one draft state the confirmed write reads.
         source={source}
         rows={[
           { label: t("ql.type"), value: behaviorTypeLabel(newLogType, t) },
-          { label: t("ql.review.trigger"), value: newLogTrigger },
-          { label: t("ql.review.response"), value: newLogResponse },
+          { label: t("ql.review.trigger"), value: newLogTrigger, onChange: setNewLogTrigger },
+          { label: t("ql.review.response"), value: newLogResponse, onChange: setNewLogResponse },
+          { label: t("beh.notes"), value: newLogNotes, onChange: setNewLogNotes },
         ]}
+        intensity={newLogIntensity}
+        onIntensityChange={setNewLogIntensity}
+        context={newLogContext}
+        contextOptions={[...EXTRACT_CONTEXTS]}
+        onContextChange={(c) => setNewLogContext(c as BehaviorContext)}
+        durationMinutes={newLogDuration}
+        onDurationChange={setNewLogDuration}
         onEdit={() => setReviewing(false)}
         onDiscard={discard}
         onConfirm={confirm}

@@ -141,3 +141,59 @@ describe("TODAY-3/CODEX-7 — review copy: EN+HE parity, factual, zero confidenc
     expect(review).not.toMatch(/ביטחון/);
   });
 });
+
+describe("AI-CAP-5 — review honesty: the AI-guessed fields are visible and inline-correctable", () => {
+  it("the shared component renders intensity (1-5 stepper), context (chip row), and duration rows in place", () => {
+    expect(review).toMatch(/ql\.review\.intensity/);
+    expect(review).toMatch(/ql\.review\.context/);
+    expect(review).toMatch(/ql\.review\.duration/);
+    // stepper clamps to the 1-5 band
+    expect(review).toMatch(/onIntensityChange\(Math\.max\(1, intensity - 1\)\)/);
+    expect(review).toMatch(/onIntensityChange\(Math\.min\(5, intensity \+ 1\)\)/);
+    // context chips select in place
+    expect(review).toMatch(/onContextChange\(c\)/);
+    // duration corrects in place
+    expect(review).toMatch(/onDurationChange\(/);
+    // text rows are tap-to-edit (a row with onChange renders an inline editor)
+    expect(review).toMatch(/ql\.review\.tapToEdit/);
+  });
+
+  it("BOTH consumers pass the intensity/context/duration draft state + text setters into the SAME component (no fork)", () => {
+    for (const surface of [modal, behaviors]) {
+      expect(surface).toMatch(/intensity=\{newLogIntensity\}/);
+      expect(surface).toMatch(/onIntensityChange=\{setNewLogIntensity\}/);
+      expect(surface).toMatch(/context=\{newLogContext\}/);
+      expect(surface).toMatch(/durationMinutes=\{newLogDuration\}/);
+      expect(surface).toMatch(/onDurationChange=\{setNewLogDuration\}/);
+      expect(surface).toMatch(/onChange: setNewLogTrigger/);
+      expect(surface).toMatch(/onChange: setNewLogResponse/);
+      expect(surface).toMatch(/onChange: setNewLogNotes/);
+    }
+  });
+
+  it("'from your note' is a FACTUAL provenance tag: gated on AI-populated sources only, keys exist EN+HE", () => {
+    // the tag renders only for voice / ai-draft drafts — never on hand-typed rows
+    expect(review).toMatch(/source === "voice" \|\| source === "ai-draft"/);
+    for (const key of [
+      "ql.review.intensity",
+      "ql.review.intensityDown",
+      "ql.review.intensityUp",
+      "ql.review.context",
+      "ql.review.duration",
+      "ql.review.fromNote",
+      "ql.review.tapToEdit",
+    ]) {
+      expect(en[key], `en missing ${key}`).toBeTruthy();
+      expect(he[key], `he missing ${key}`).toBeTruthy();
+    }
+    // (the ql.review.* confidence-wording scan above covers the new keys too)
+  });
+
+  it("inline correction updates the confirmed write WITHOUT leaving the review (setters are the same draft state handleAddLog reads)", () => {
+    // BehaviorsTab: the review's setters are the context draft setters — the
+    // confirmed write (handleAddLog) reads newLogIntensity/newLogContext/etc.
+    // directly, so a stepper tap inside review is already in the write.
+    expect(behaviors).toMatch(/onContextChange=\{\(c\) => setNewLogContext\(c as BehaviorContext\)\}/);
+    expect(modal).toMatch(/onContextChange=\{\(c\) => setNewLogContext\(c as BehaviorContext\)\}/);
+  });
+});

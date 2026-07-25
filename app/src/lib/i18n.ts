@@ -493,6 +493,13 @@ export const en: Dict = {
   "beh.capture.happened": "What happened?",
   "beh.capture.tried": "What did you try?",
   "beh.capture.optional": "Optional — helps Arbor notice context over time",
+  // AI-CAP-6 — live dictation caption (shown until the first words arrive).
+  "beh.capture.listening": "Listening — take your time, pauses are okay.",
+  // AI-CAP-7 — post-confirm coach handoff strip (one optional CTA per confirm).
+  "beh.postCapture.body": "Want a next step for this moment?",
+  "beh.postCapture.cta": "Ask Arbor",
+  "beh.postCapture.dismiss": "Not now",
+  "beh.postCapture.prompt": "I just logged this moment for {name}: {type}. What happened: {trigger}. What I tried: {response}. What would be a good next step?",
   "beh.speak": "Speak",
   "beh.stop": "Stop",
   "beh.parsing": "Arbor is filling in the form for you…",
@@ -1273,6 +1280,17 @@ export const en: Dict = {
   "ql.review.notSaved": "This draft is not yet part of your child's record.",
   "ql.review.trigger": "What happened before",
   "ql.review.response": "What you tried",
+  // AI-CAP-5 — review honesty: the AI-guessed fields (intensity/context/
+  // duration) render in the review with inline correction; "From your note"
+  // is a FACTUAL provenance label (where the value came from), never a
+  // certainty claim (CODEX-7 scan applies to every ql.review.* key).
+  "ql.review.intensity": "Intensity",
+  "ql.review.intensityDown": "Lower intensity",
+  "ql.review.intensityUp": "Raise intensity",
+  "ql.review.context": "Where it happened",
+  "ql.review.duration": "How long (minutes)",
+  "ql.review.fromNote": "From your note",
+  "ql.review.tapToEdit": "Tap to edit",
   // add child modal
   "ac.title": "Add a child",
   "ac.titleStep": "Add a child · Step {step} of 3",
@@ -2703,6 +2721,13 @@ export const he: Dict = {
   "beh.capture.happened": "מה קרה?",
   "beh.capture.tried": "מה ניסיתם?",
   "beh.capture.optional": "אופציונלי — עוזר לארבור לזהות הקשר לאורך זמן",
+  // AI-CAP-6 — live dictation caption (he).
+  "beh.capture.listening": "מקשיבים — קחו את הזמן, הפסקות זה בסדר.",
+  // AI-CAP-7 — post-confirm coach handoff strip (he).
+  "beh.postCapture.body": "רוצים צעד הבא לרגע הזה?",
+  "beh.postCapture.cta": "שאלו את ארבור",
+  "beh.postCapture.dismiss": "לא עכשיו",
+  "beh.postCapture.prompt": "הרגע תיעדתי את הרגע הזה עבור {name}: {type}. מה קרה: {trigger}. מה ניסיתי: {response}. מה יכול להיות צעד הבא טוב?",
   "beh.speak": "דברו",
   "beh.stop": "עצור",
   "beh.parsing": "ארבור ממלאת את הטופס בשבילכם…",
@@ -3468,6 +3493,14 @@ export const he: Dict = {
   "ql.review.notSaved": "הטיוטה עדיין לא נשמרה ברשומה של הילד.",
   "ql.review.trigger": "מה קרה לפני",
   "ql.review.response": "מה ניסיתם",
+  // AI-CAP-5 — review honesty (he).
+  "ql.review.intensity": "עוצמה",
+  "ql.review.intensityDown": "הפחתת עוצמה",
+  "ql.review.intensityUp": "הגברת עוצמה",
+  "ql.review.context": "איפה זה קרה",
+  "ql.review.duration": "כמה זמן (דקות)",
+  "ql.review.fromNote": "מתוך התיאור שלכם",
+  "ql.review.tapToEdit": "הקישו לעריכה",
   "ac.title": "הוספת ילד",
   "ac.titleStep": "הוספת ילד · שלב {step} מתוך 3",
   "ac.limitTitle": "ריבוי ילדים הוא תכונה של ארבור פלוס",
