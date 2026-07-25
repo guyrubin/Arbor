@@ -116,9 +116,6 @@ export default function CoachTab() {
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
   const [showAllLenses, setShowAllLenses] = useState(false);
 
-  // E2 hero CTA target — focusing the input also scrolls it into view.
-  const chatInputRef = useRef<HTMLInputElement>(null);
-
   // Realtime voice coach: prefers Gemini Live (true bidirectional audio) when the
   // server reports it's available, and falls back to a hands-free browser loop —
   // listen (STT) → ask → speak (TTS) → listen again.
@@ -269,7 +266,9 @@ export default function CoachTab() {
         </header>
 
         {/* Composer-first: the parent's question is the primary job on this page.
-            The existing in-thread composer remains available for follow-up turns. */}
+            COACH-4: this hero composer is the ONE input on the surface — the
+            mirrored in-thread composer was removed; follow-up turns also send
+            from here (the thread auto-scrolls to the streaming answer). */}
         <section className="border-y py-5 sm:py-6" aria-label={t("elev.hero.ask.cta")} style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="flex items-center gap-3 mb-3">
             <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={21} fill={1} /></span>
@@ -302,9 +301,27 @@ export default function CoachTab() {
               <Icon name={uiLang === "he" ? "arrow_back" : "arrow_forward"} size={20} />
             </button>
           </div>
+          {/* Multimodal capture entry points (photo / document / voice) — the ONLY
+              instances on the surface (COACH-4 firewall condition: they survive
+              the composer consolidation). */}
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <button type="button" onClick={() => setVisionMode("observe")} className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="photo_camera" size={14} /> {t("coach.photo")}</button>
-            <button type="button" onClick={toggleVoice} className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="mic" size={14} /> {voiceLabel}</button>
+            <button type="button" onClick={() => setVisionMode("document")} className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={14} /> {t("coach.document")}</button>
+            <button
+              type="button"
+              onClick={toggleVoice}
+              aria-pressed={voicePhase !== "off"}
+              aria-label={voiceLabel}
+              className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold"
+              style={voicePhase !== "off"
+                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
+                : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+            >
+              {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
+              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
+            </button>
+            {/* EU AI Act Art. 50 — persistent AI-interaction transparency line.
+                Always visible on the Ask surface, never behind a toggle. */}
             <span className="ms-auto inline-flex items-center gap-1 text-[10px]" style={{ color: "var(--arbor-muted)" }}><Icon name="shield" size={13} /> {t("coach.aiDisclosure")}</span>
           </div>
         </section>
@@ -443,8 +460,11 @@ export default function CoachTab() {
         })}
       </div>
 
-      {/* Chat Viewport Area */}
-      <div className={`${cardCls} flex h-[min(70dvh,560px)] min-h-[460px] min-w-0 flex-col justify-between overflow-hidden`}>
+      {/* Chat thread — COACH-4: no fixed-height inner scroll; the thread flows
+          with the page (ArborContext auto-scrolls the viewport to the streaming
+          answer via chatBottomRef). The min-height keeps the conversation canvas
+          from shrinking below the previous min(70dvh,560px) viewport. */}
+      <div className={`${cardCls} flex min-h-[min(70dvh,560px)] min-w-0 flex-col overflow-hidden`}>
         {/* Persistent named-coach identity strip. The lens/context frame is kept but
             visually subordinate so the conversation is the hero. Green primary —
             never the design's sapphire — per the parent color lock. */}
@@ -465,15 +485,16 @@ export default function CoachTab() {
           </span>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="flex-1 p-4 md:p-6">
          <div className="max-w-[760px] mx-auto space-y-3.5">
-          {/* Empty state — orient a first-run parent on what Ask Arbor does. */}
+          {/* Empty state — orient a first-run parent on what Ask Arbor does.
+              COACH-4: the title line lives ONCE, on the hero composer above;
+              the thread empty state keeps only the mascot + body copy. */}
           {chatMessages.length <= 1 && !isChatLoading && (
             <div className="flex flex-col items-center justify-center text-center gap-3 py-10 px-4">
               <div className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden" style={{ background: "var(--arbor-green-soft)" }} aria-hidden>
                 <ArborMascot size={52} />
               </div>
-              <p className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("coach.empty.title", { name: childFirst })}</p>
               <p className="text-sm max-w-md leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.empty.body")}</p>
             </div>
           )}
@@ -696,102 +717,37 @@ export default function CoachTab() {
          </div>
         </div>
 
-        <div className="flex flex-col gap-2 p-4" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
-          {/* Multimodal capture: show Arbor a photo or document, or talk hands-free */}
-          <div className="order-2 flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setVisionMode("observe")}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-            >
-              <Icon name="photo_camera" size={14} /> {t("coach.photo")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setVisionMode("document")}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-            >
-              <Icon name="description" size={14} /> {t("coach.document")}
-            </button>
-            <button
-              type="button"
-              onClick={toggleVoice}
-              aria-pressed={voicePhase !== "off"}
-              aria-label={voiceLabel}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-              style={voicePhase !== "off"
-                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-            >
-              {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
-              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
-            </button>
-            {/* Council (multi-lens) — demoted from a second primary send to a subtle
-                secondary affordance beside the input. Sends the current question to
-                three scholars, then Arbor reconciles. One primary send remains below. */}
-            <button
-              type="button"
-              onClick={() => handleCouncilSend()}
-              disabled={isChatLoading}
-              title={t("coach.councilHint")}
-              aria-label={t("coach.councilHint")}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-            >
-              <Icon name="group" size={14} /> {t("coach.council")}
-            </button>
-          </div>
-          <div className="order-1 flex items-center gap-2">
-            {/* Capsule input + circular send. The send arrow is logical (Arrow
-                flips Left/Right by uiLang) so it never points backwards in RTL. */}
-            <input
-              ref={chatInputRef}
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
-              disabled={isChatLoading}
-              placeholder={t("coach.placeholder", { name: childFirst })}
-              className="flex-1 rounded-full px-[18px] py-3.5 text-sm focus:outline-none transition"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-            />
-            <button
-              onClick={() => handleChatSend()}
-              disabled={isChatLoading}
-              aria-label={t("coach.send.aria")}
-              className="text-white rounded-full transition flex items-center justify-center flex-shrink-0 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-              style={{ width: 48, height: 48, background: T.gradientCta }}
-            >
-              {uiLang === "he"
-                ? <Icon name="arrow_back" size={20} />
-                : <Icon name="arrow_forward" size={20} />}
-            </button>
-          </div>
-          {/* EU AI Act Art. 50 — persistent AI-interaction transparency line. Always
-              visible on the Ask surface, calm and non-intrusive, never behind a toggle. */}
-          <p className="order-3 text-[10px] text-center leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-            {t("coach.aiDisclosure")}
-          </p>
-          {/* ia-b6: persistent Ask-pillar door into the Ask-a-Specialist warm handoff.
-              Navigation only — stays enabled while a coach answer is streaming. */}
-          <div className="order-4 pt-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-            <button
-              type="button"
-              onClick={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}
-              aria-label={t("coach.specialist.aria")}
-              className="inline-flex items-center gap-1.5 min-h-[44px] py-2 text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
-              style={{ color: "var(--arbor-muted)" }}
-            >
-              <Icon name="stethoscope" size={14} style={{ color: "var(--arbor-green-ink)" }} />
-              <span>{t("coach.specialist.lead")}</span>
-              <span style={{ color: "var(--arbor-green-ink)" }}>{t("coach.specialist.cta")}</span>
-              {uiLang === "he"
-                ? <Icon name="chevron_left" size={14} style={{ color: "var(--arbor-green-ink)" }} />
-                : <Icon name="chevron_right" size={14} style={{ color: "var(--arbor-green-ink)" }} />}
-            </button>
-          </div>
+        {/* COACH-4: the mirrored bottom composer (input+send+photo/mic row) was
+            deleted — the hero composer above is the one input. What remains under
+            the thread is a compact secondary row: Council (multi-lens send of the
+            current question) + the Ask-a-Specialist warm handoff (ia-b6,
+            navigation only — stays enabled while an answer is streaming). */}
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
+          <button
+            type="button"
+            onClick={() => handleCouncilSend()}
+            disabled={isChatLoading}
+            title={t("coach.councilHint")}
+            aria-label={t("coach.councilHint")}
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <Icon name="group" size={14} /> {t("coach.council")}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}
+            aria-label={t("coach.specialist.aria")}
+            className="ms-auto inline-flex items-center gap-1.5 min-h-[44px] py-2 text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <Icon name="stethoscope" size={14} style={{ color: "var(--arbor-green-ink)" }} />
+            <span>{t("coach.specialist.lead")}</span>
+            <span style={{ color: "var(--arbor-green-ink)" }}>{t("coach.specialist.cta")}</span>
+            {uiLang === "he"
+              ? <Icon name="chevron_left" size={14} style={{ color: "var(--arbor-green-ink)" }} />
+              : <Icon name="chevron_right" size={14} style={{ color: "var(--arbor-green-ink)" }} />}
+          </button>
         </div>
       </div>
 

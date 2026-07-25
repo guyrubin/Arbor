@@ -143,6 +143,7 @@ export default function BehaviorsTab() {
   // Refs for the QuickLog tiles: scroll the form into view, focus the photo input.
   const formRef = useRef<HTMLFormElement | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const triggerInputRef = useRef<HTMLInputElement | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -151,6 +152,31 @@ export default function BehaviorsTab() {
     if (showDetails) setDetailsOpen(true);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    });
+  };
+
+  // COACH-8: the capture bar is a REAL single-line input (honest affordance —
+  // it used to be a button styled as a text field, so a parent's first
+  // keystrokes were lost). Typing opens the capture form with the typed text
+  // prefilled into newLogTrigger ("What happened?") and moves focus there;
+  // Enter opens the form rather than submitting. Prefill of EXISTING form
+  // state only — zero new capture paths (saving still goes through the one
+  // form → submitLog → handleAddLog seam).
+  const [barText, setBarText] = useState("");
+  const openFromBar = (text: string) => {
+    if (text.trim()) setNewLogTrigger(text);
+    setCaptureOpen(true);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        // block:"start" keeps the focused field above the mobile keyboard at 390px.
+        formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        const el = triggerInputRef.current;
+        if (el) {
+          el.focus();
+          el.setSelectionRange(el.value.length, el.value.length);
+        }
+        setBarText("");
+      });
     });
   };
   const openPhoto = () => {
@@ -381,7 +407,16 @@ export default function BehaviorsTab() {
       <section className="min-w-0" aria-label={t("beh.captureTitle")}>
         {/* QuickLog mode tiles — Voice / Photo / Text */}
         <div className="overflow-hidden rounded-[20px] bg-white" style={{ border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
-          <button type="button" onClick={() => focusForm()} className="block min-h-[88px] w-full px-4 py-4 text-start text-sm sm:px-5" style={{ color: "var(--arbor-muted)" }}>{captureCopy.intro}</button>
+          <input
+            type="text"
+            value={barText}
+            onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); openFromBar(barText); } }}
+            placeholder={captureCopy.intro}
+            aria-label={captureCopy.open}
+            className="block min-h-[88px] w-full bg-transparent px-4 py-4 text-start text-sm focus:outline-none sm:px-5"
+            style={{ color: "var(--arbor-ink)" }}
+          />
           <div className="flex flex-wrap items-center gap-1 border-t px-2 py-2 sm:px-3" style={{ borderColor: "var(--arbor-rule)" }}>
             {quickModes.map((m) => {
               const p = PASTEL[m.tone];
@@ -730,7 +765,7 @@ export default function BehaviorsTab() {
 
             <div className="mt-4 space-y-1.5">
               <label className="text-xs font-bold block" style={{ color: "var(--arbor-ink)" }}>{captureCopy.happened} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
-              <input type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder={t("beh.triggerPlaceholder")} className="min-h-11 w-full rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+              <input ref={triggerInputRef} type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder={t("beh.triggerPlaceholder")} className="min-h-11 w-full rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
 
             <div className="mt-4 space-y-1.5">
