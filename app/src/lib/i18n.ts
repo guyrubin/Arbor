@@ -638,6 +638,18 @@ export const en: Dict = {
   "ms.runHint": "Tap \"Find next steps\" above to map progress and suggest playful next exercises.",
   "ms.discussCoach": "Discuss in Coach",
   "ms.watchPoints": "Gentle watch points",
+  // UND-3 — derived watch-points card: real domain names + COUNTS only (clinical
+  // firewall — never severity or verdict language, nothing fabricated).
+  "ms.watch.corrected": "Because {name} arrived early, Arbor is comparing milestones against a corrected age of about {corrected} months rather than {chrono} — preemies catch up on their own timeline.",
+  "ms.watch.area.one": "1 {area} skill that's typically seen by now hasn't been noticed yet.",
+  "ms.watch.area.many": "{n} {area} skills typically seen by now haven't been noticed yet.",
+  "ms.watch.none": "Nothing stands out right now. Keep noticing everyday moments and revisit in a few weeks.",
+  "ms.watch.close": "That's common and rarely a concern on its own. If something feels persistent, or you'd simply like reassurance, you can ask Arbor or share a development snapshot with your pediatrician or teacher.",
+  "ms.watch.childFallback": "your child",
+  // UND-8 — inline rename/delete (replaces native window.prompt/confirm).
+  "ms.renameSave": "Save",
+  "ms.deleteConfirm": "Delete this custom milestone?",
+  "ms.deleteYes": "Delete",
   "ms.noMilestones": "No milestones in this domain yet.",
   "ms.correctedAge": "Corrected age",
   "ms.bornEarly": "Born early?",
@@ -772,6 +784,8 @@ export const en: Dict = {
   "screen.introTitle": "Check for {name} · {band}",
   "screen.intro.body": "You'll answer {n} quick questions about everyday things you can observe. It takes under 4 minutes. There's no score and no labels, just whether any area is worth keeping an eye on. Children develop at their own pace.",
   "screen.intro.basis": "Based on widely-used developmental guidance (CDC / AAP-style milestones). Non-diagnostic.",
+  // UND-5 — corrected-age (preterm) intro sentence: observational, never a verdict.
+  "screen.intro.corrected": "Because {name} arrived early, this check uses a corrected age of about {months} months — the same corrected age the milestone map uses. Preemies catch up on their own timeline.",
   "screen.last.line": "Last checked {date} · {status}",
   "screen.last.flagged": "{n} area(s) flagged",
   "screen.last.calm": "no areas flagged",
@@ -1943,6 +1957,9 @@ export const en: Dict = {
   "growth.focus.try": "Choose an activity",
   "growth.focus.check": "Start the check",
   "growth.focus.review": "Review milestones",
+  // UND-6 — "watch for" (marked not-sure) vs "try" (not noticed yet) framing.
+  "growth.focus.watchHint": "You marked this one \"not sure\" — watch for it during everyday play this week.",
+  "growth.focus.tryHint": "Not noticed yet — try it together this week.",
   "growth.recent.title": "Recent observations",
   "growth.recent.body": "Parent-recorded moments that inform this picture — not a score or verdict.",
   "growth.recent.empty": "Try an activity and record what you notice",
@@ -2673,6 +2690,17 @@ export const he: Dict = {
   "ms.runHint": "הקישו \"מצאו צעדים הבאים\" למעלה כדי למפות התקדמות ולהציע תרגילים משחקיים.",
   "ms.discussCoach": "המשיכו עם המאמן",
   "ms.watchPoints": "נקודות תשומת לב עדינות",
+  // UND-3 — כרטיס נקודות תשומת לב נגזר: שמות תחומים וספירות בלבד.
+  "ms.watch.corrected": "בגלל ש{name} נולד/ה מוקדם, Arbor משווה אבני דרך מול גיל מתוקן של כ-{corrected} חודשים במקום {chrono} — פגים מתקדמים בקצב משלהם.",
+  "ms.watch.area.one": "מיומנות אחת בתחום {area} שנראית בדרך כלל עד גיל זה טרם סומנה.",
+  "ms.watch.area.many": "{n} מיומנויות בתחום {area} שנראות בדרך כלל עד גיל זה טרם סומנו.",
+  "ms.watch.none": "שום דבר לא בולט כרגע. המשיכו לשים לב לרגעים יום-יומיים וחזרו לבדוק בעוד כמה שבועות.",
+  "ms.watch.close": "זה נפוץ ולרוב אינו סיבה לדאגה בפני עצמו. אם משהו מרגיש מתמשך, או שפשוט תרצו ביטחון, אפשר לשאול את Arbor או לשתף תמונת התפתחות עם רופא הילדים או הצוות החינוכי.",
+  "ms.watch.childFallback": "הילד/ה שלכם",
+  // UND-8 — שינוי שם/מחיקה בתוך המסך (במקום דיאלוגים של הדפדפן).
+  "ms.renameSave": "שמירה",
+  "ms.deleteConfirm": "למחוק את אבן הדרך המותאמת הזו?",
+  "ms.deleteYes": "מחיקה",
   "ms.noMilestones": "אין עדיין אבני דרך בתחום זה.",
   "ms.correctedAge": "גיל מתוקן",
   "ms.bornEarly": "נולד מוקדם?",
@@ -2814,6 +2842,8 @@ export const he: Dict = {
   "screen.introTitle": "בדיקה עבור {name} · {band}",
   "screen.intro.body": "תענו על {n} שאלות קצרות על דברים יום-יומיים שאפשר להבחין בהם. זה לוקח פחות מ-4 דקות. אין ציון ואין תוויות — רק האם יש תחום ששווה לשים לב אליו. ילדים מתפתחים בקצב שלהם.",
   "screen.intro.basis": "מבוסס על הנחיות התפתחות מקובלות (בסגנון אבני הדרך של CDC / AAP). לא אבחנתי.",
+  // UND-5 — משפט גיל מתוקן (פגות) בפתיח הבדיקה: תצפיתי, לעולם לא שיפוטי.
+  "screen.intro.corrected": "בגלל ש{name} נולד/ה מוקדם, הבדיקה משתמשת בגיל מתוקן של כ-{months} חודשים — אותו גיל מתוקן שבו משתמשת מפת אבני הדרך. פגים מתקדמים בקצב משלהם.",
   "screen.last.line": "נבדק לאחרונה {date} · {status}",
   "screen.last.flagged": "{n} תחומים סומנו",
   "screen.last.calm": "לא סומנו תחומים",
@@ -3932,6 +3962,9 @@ export const he: Dict = {
   "growth.focus.try": "בחרו פעילות",
   "growth.focus.check": "התחילו את הבדיקה",
   "growth.focus.review": "סקירת אבני דרך",
+  // UND-6 — הבחנה בין "שימו לב" (סומן לא בטוח) ל"נסו" (טרם סומן).
+  "growth.focus.watchHint": "סימנתם \"לא בטוח/ה\" — שימו לב לזה במהלך משחק יום-יומי השבוע.",
+  "growth.focus.tryHint": "טרם סומן — נסו את זה יחד השבוע.",
   "growth.recent.title": "תצפיות אחרונות",
   "growth.recent.body": "רגעים שתועדו בידי ההורה ומסייעים לבנות את התמונה — לא ציון או קביעה.",
   "growth.recent.empty": "נסו פעילות ותעדו מה שמתם לב אליו",

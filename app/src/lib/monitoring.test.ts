@@ -6,6 +6,7 @@ import {
   buildMonitoringReportDoc,
   pickHighestWatchSignal,
   monitoredDomainToPlayHint,
+  watchPointsSummary,
   MONITORED_DOMAIN_LABEL,
 } from "./monitoring.js";
 import type { BehaviorLog, Milestone } from "../types";
@@ -303,5 +304,91 @@ describe("buildMonitoringReportDoc", () => {
     const doc = buildMonitoringReportDoc(res, "Mila Cohen", 2);
     const discuss = doc.sections.find((s) => s.heading === "Areas to discuss")!;
     expect(String(discuss.body)).toMatch(/No areas/);
+  });
+});
+
+// ── UND-3 — "Gentle watch points" card content (real domains + counts only) ──
+describe("watchPointsSummary (UND-3)", () => {
+  it("all-checked child → empty (card hidden / neutral — NO fabricated claim)", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 5,
+        milestones: [
+          milestone({ checked: true, ageGroup: "18 months" }),
+          milestone({ checked: true, domain: "social_development", ageGroup: "2 years" }),
+        ],
+        now: NOW,
+      },
+      "Mila",
+    );
+    expect(watchPointsSummary(res)).toEqual([]);
+  });
+
+  it("surfaces a real unobserved past-band domain with its true count", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 4,
+        milestones: [
+          milestone({ ageGroup: "18 months" }), // language, overdue for a 4yo
+          milestone({ ageGroup: "2 years" }),   // language, overdue too
+        ],
+        now: NOW,
+      },
+      "Mila",
+    );
+    expect(watchPointsSummary(res)).toEqual([
+      { domain: "language_communication", count: 2 },
+    ]);
+  });
+
+  it("no language (code-switching-class) claim unless a language item is actually unobserved", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 4,
+        milestones: [
+          milestone({ checked: true, ageGroup: "18 months" }), // language observed
+          milestone({ domain: "sensory_motor_patterns", ageGroup: "18 months" }), // motor overdue
+        ],
+        now: NOW,
+      },
+      "Mila",
+    );
+    const points = watchPointsSummary(res);
+    expect(points.map((p) => p.domain)).toEqual(["sensory_motor_patterns"]);
+    expect(points.some((p) => p.domain === "language_communication")).toBe(false);
+  });
+
+  it("excludes behavior-pattern-only domains (the card is about the not-seen milestone column)", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 4,
+        milestones: [],
+        behaviorLogs: [log(), log(), log()], // 3 intense unresolved → regulation pattern
+        now: NOW,
+      },
+      "Mila",
+    );
+    expect(res.elevated).toBe(true); // the monitoring layer still flags it…
+    expect(watchPointsSummary(res)).toEqual([]); // …but the milestone card stays silent
+  });
+
+  it("caps at two domains, largest count first", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 6,
+        milestones: [
+          milestone({ domain: "language_communication", ageGroup: "18 months" }),
+          milestone({ domain: "social_development", ageGroup: "2 years" }),
+          milestone({ domain: "social_development", ageGroup: "18 months" }),
+          milestone({ domain: "sensory_motor_patterns", ageGroup: "2 years" }),
+        ],
+        now: NOW,
+      },
+      "Mila",
+    );
+    const points = watchPointsSummary(res);
+    expect(points).toHaveLength(2);
+    expect(points[0]).toEqual({ domain: "social_development", count: 2 });
+    expect(points[1].count).toBe(1);
   });
 });

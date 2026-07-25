@@ -6,7 +6,9 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
 import { PageHeader, SectionCard, cardCls, Chip, IconBadge, TrustSafetyBar } from "../ui/kit";
-import { bandForAge, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
+import { bandForAgeMonths, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
+import { comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import { computeRecheckDueAt, isRecheckDue } from "../../lib/screeningRecheck";
 import { buildMonitoringReportDoc, type DomainSignal } from "../../lib/monitoring";
 import { useMonitoring } from "../../hooks/useMonitoring";
@@ -132,7 +134,17 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
   const { toast } = useToast();
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
-  const band = useMemo(() => bandForAge(childProfile.age), [childProfile.age]);
+
+  // UND-5 — months-precise, corrected-age band selection: the SAME corrected
+  // comparison age the Milestones map uses (B0 spine + AAP preterm correction),
+  // so a preemie is never screened against the uncorrected band one click away
+  // from the corrected milestone view. Term children: comparisonAgeMonths is
+  // the chronological months, so band selection is unchanged.
+  const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+  const gestationalWeeks = childProfile.preterm?.gestationalWeeks;
+  const corrected = correctedAge(chronoMonths, gestationalWeeks);
+  const comparisonMonths = comparisonAgeMonths(chronoMonths, gestationalWeeks);
+  const band = useMemo(() => bandForAgeMonths(comparisonMonths), [comparisonMonths]);
 
   const col = useChildCollection<SavedScreening>(childProfile.id, "screenings");
   const last = useMemo(
@@ -190,6 +202,18 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
             <Icon name="verified_user" size={14} style={{ color: "var(--arbor-green-ink)" }} />
             {t("screen.intro.basis")}
           </div>
+          {/* UND-5 — corrected-age treatment is visible, not silent: badge (same
+              pattern as the Milestones map) + one observational intro sentence. */}
+          {corrected.applied && (
+            <div className="mt-3 space-y-1.5" data-testid="screen-corrected-intro">
+              <span className="inline-block text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
+                {t("ms.correctedBadge")} · {corrected.correctedMonths}m
+              </span>
+              <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                {t("screen.intro.corrected", { name: first, months: Math.round(corrected.correctedMonths) })}
+              </p>
+            </div>
+          )}
           {last && (
             <div className="mt-4 rounded-2xl p-3.5 space-y-2" style={{ background: "var(--arbor-paper-deep)" }}>
               <div className="flex items-center justify-between gap-3">

@@ -379,3 +379,70 @@ export function bandForAgeMonths(ageMonths: number): { months: number; label: st
   }
   return band;
 }
+
+/* ───────────────────────────── Weekly focus selection (UND-6) ───────────────────────────── */
+
+/** How the weekly focus should be framed: "watch" = the parent marked it
+ *  "not sure" (watch for it during everyday play), "try" = not yet / unmarked
+ *  (try it together). Observational framing only — never a verdict. */
+export type WeeklyFocusMode = "watch" | "try";
+
+export interface WeeklyFocusSelection {
+  milestone: Milestone;
+  mode: WeeklyFocusMode;
+}
+
+/**
+ * Pick the single milestone worth focusing on this week, age-aware (UND-6).
+ *
+ * Priority:
+ *  1. "not sure" items in the child's CURRENT (corrected) band — the uncertainty
+ *     signal is the natural "watch for this during play" focus.
+ *  2. not-yet / unmarked items in the current band.
+ *  3. The NEAREST EARLIER band with an open item ("not sure" preferred there too).
+ *  4. null — the caller shows its existing empty state.
+ *
+ * Never selects an ahead-of-band item, and never an item from a far-earlier
+ * band while current-band items exist. `comparisonMonths` is the corrected
+ * (preterm-adjusted) age in months — see comparisonAgeMonths().
+ */
+export function selectWeeklyFocus(milestones: Milestone[], comparisonMonths: number): WeeklyFocusSelection | null {
+  const currentBandMonths = bandForAgeMonths(comparisonMonths).months;
+  const bandOf = (m: Milestone): number | null =>
+    typeof m.ageMonths === "number" ? bandForAgeMonths(m.ageMonths).months : null;
+  const open = milestones.filter((m) => !m.checked);
+
+  const inBand = open.filter((m) => bandOf(m) === currentBandMonths);
+  const inBandNotSure = inBand.find((m) => m.observationStatus === "not_sure");
+  if (inBandNotSure) return { milestone: inBandNotSure, mode: "watch" };
+  if (inBand.length > 0) return { milestone: inBand[0], mode: "try" };
+
+  // Nearest earlier band with an open item.
+  const earlier = open.filter((m) => {
+    const b = bandOf(m);
+    return b !== null && b < currentBandMonths;
+  });
+  if (earlier.length > 0) {
+    const nearestBandMonths = Math.max(...earlier.map((m) => bandOf(m) as number));
+    const nearest = earlier.filter((m) => bandOf(m) === nearestBandMonths);
+    const notSure = nearest.find((m) => m.observationStatus === "not_sure");
+    if (notSure) return { milestone: notSure, mode: "watch" };
+    return { milestone: nearest[0], mode: "try" };
+  }
+  return null;
+}
+
+/* ───────────────────────────── Explain prompt (UND-8) ───────────────────────────── */
+
+/**
+ * The AI "explain this milestone" prompt, months-precise for under-24-month
+ * children (a "9-month-old", never a "0-year-old"). Pure and exported so the
+ * infant phrasing is snapshot-tested.
+ */
+export function explainMilestonePrompt(title: string, chronoMonths: number): string {
+  const safeMonths = Math.max(0, Math.round(Number.isFinite(chronoMonths) ? chronoMonths : 0));
+  const ageDescriptor = safeMonths < 24
+    ? `${safeMonths}-month-old`
+    : `${Math.floor(safeMonths / 12)}-year-old`;
+  return `Briefly explain the developmental milestone "${title}" for a ${ageDescriptor}. Cover: typical age range, what it looks like in everyday life, and 2 concrete ways a parent can support it. Non-diagnostic, warm, short. Use the headings ### Typical age, ### What it looks like, ### How to support.`;
+}

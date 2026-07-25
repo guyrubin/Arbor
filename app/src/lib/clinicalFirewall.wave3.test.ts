@@ -235,10 +235,13 @@ describe("Wave-3 clinical firewall — i18n keys are non-diagnostic", () => {
     // "sec.screen.*" keys — every one of those lines is scanned too, so the
     // rephrased calm result copy can never regress to the 'on-track' verdict
     // class the wave-3 firewall banned.
+    // UND-3/UND-6 extension: the derived watch-points card ("ms.watch.*") and
+    // the weekly-focus framing ("growth.focus.*") are parent-facing
+    // developmental copy — scanned under the same ban.
     const banned = /\b(improves|boosts?|reduces?|on[\s-]?track|behind|clinically|therapeutically|autism|adhd|anxiety|spd|arfid|dyslexia)\b/i;
     const lines = i18n.split(/\r?\n/);
     const suspectLines = lines.filter((l) =>
-      /"(devscore\.|trends\.recall|beh\.count|sec\.screen\.|screen\.)/.test(l) && l.includes(":") && !l.trim().startsWith("//"),
+      /"(devscore\.|trends\.recall|beh\.count|sec\.screen\.|screen\.|ms\.watch\.|growth\.focus\.)/.test(l) && l.includes(":") && !l.trim().startsWith("//"),
     );
     for (const l of suspectLines) {
       expect(l, `banned token in i18n line: ${l}`).not.toMatch(banned);

@@ -256,6 +256,32 @@ export function deriveMonitoring(input: MonitoringInput, childFirstName = ""): M
 }
 
 /**
+ * UND-3 — the "Gentle watch points" card content, derived from the SAME
+ * canonical monitoring derivation as every other watch surface. Real domain
+ * names + counts only: a domain appears IFF it has unobserved milestones past
+ * the child's (corrected) age band, with the count of those milestones.
+ * Behavior-pattern-only domains are excluded (the card is about the
+ * "not seen yet" milestone column, and a 0-skill count would be a false
+ * claim). Empty array = nothing is unobserved → the caller hides the card or
+ * shows a neutral line. Never severity/verdict language — the caller renders
+ * counts through i18n templates.
+ */
+export function watchPointsSummary(
+  result: MonitoringResult,
+  max = 2,
+): { domain: MonitoredDomainId; count: number }[] {
+  return result.watchAreas
+    .filter((d) => d.reasons.includes("milestone_overdue") && d.overdueMilestones.length > 0)
+    .sort(
+      (a, b) =>
+        b.overdueMilestones.length - a.overdueMilestones.length ||
+        a.domain.localeCompare(b.domain),
+    )
+    .slice(0, max)
+    .map((d) => ({ domain: d.domain, count: d.overdueMilestones.length }));
+}
+
+/**
  * Pick the single highest-signal domain to surface in the "Arbor noticed" card.
  *
  * Priority: a domain with BOTH reasons > milestone_overdue only >

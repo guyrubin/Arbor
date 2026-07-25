@@ -8,9 +8,12 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { cardCls, ProgressBar, RadialProgress, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
-import { bandForAgeMonths, comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
+import { bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt } from "../../lib/milestoneData";
 // B0 — months-precise age spine
 import { ageMonthsFromProfile } from "../../lib/childAge";
+// UND-3 — the ONE canonical watch derivation feeds the "Gentle watch points" card.
+import { useMonitoring } from "../../hooks/useMonitoring";
+import { watchPointsSummary } from "../../lib/monitoring";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import framework from "../../framework.json";
 import { DevelopmentalDomainId, Milestone } from "../../types";
@@ -52,6 +55,11 @@ export default function MilestonesTab() {
   const [openDomain, setOpenDomain] = useState<string | null>(null);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [explaining, setExplaining] = useState<Record<string, boolean>>({});
+  // UND-8 — inline rename/delete for custom milestones (replaces the native
+  // window.prompt/window.confirm dialogs — jarring, untranslated, un-themeable).
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // ── Corrected age (preterm) ──────────────────────────────────────────────
   // B0: prefer months-precise value from birthDate/ageMonths over the legacy
@@ -61,6 +69,12 @@ export default function MilestonesTab() {
   const corrected = correctedAge(chronoMonths, gestationalWeeks);
   const comparisonMonths = comparisonAgeMonths(chronoMonths, gestationalWeeks);
   const currentBand = bandForAgeMonths(comparisonMonths);
+
+  // UND-3 — "Gentle watch points" derives from the canonical useMonitoring
+  // watch-area derivation: real domain names + COUNTS only (clinical firewall —
+  // never severity, verdicts, or fabricated claims). Empty → neutral/hidden.
+  const monitoring = useMonitoring();
+  const watchPoints = useMemo(() => watchPointsSummary(monitoring), [monitoring]);
 
   const [showGestation, setShowGestation] = useState(false);
   const [gestationDraft, setGestationDraft] = useState<string>(gestationalWeeks ? String(gestationalWeeks) : "");
@@ -93,7 +107,9 @@ export default function MilestonesTab() {
         method: "POST",
         headers: await authHeaders(),
         body: JSON.stringify({
-          message: `Briefly explain the developmental milestone "${item.title}" for a ${childProfile.age}-year-old. Cover: typical age range, what it looks like in everyday life, and 2 concrete ways a parent can support it. Non-diagnostic, warm, short. Use the headings ### Typical age, ### What it looks like, ### How to support.`,
+          // UND-8 — months-precise for under-24-month children ("a 9-month-old",
+          // never "a 0-year-old"); the B0 chronoMonths spine is the source.
+          message: explainMilestonePrompt(item.title, chronoMonths),
           childProfile,
           scholarLens: "Integrated Balanced",
           language: getAiLanguage(),
@@ -147,9 +163,9 @@ export default function MilestonesTab() {
         <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full" style={{ background: item.checked ? "var(--arbor-green-soft)" : "var(--arbor-paper-deep)", color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}><Icon name={item.checked ? "check" : item.observationStatus === "not_sure" ? "question_mark" : "remove"} size={14} /></span>
         <div className="space-y-0.5 flex-1">
           <span className="font-bold block" style={{ color: item.checked ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{item.title}</span>
-          <span className="text-[10px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.description}</span>
+          <span className="text-[12px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.description}</span>
           {item.skillLooksLike && (
-            <span className="text-[10px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+            <span className="text-[12px] block leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
               <span className="font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.looksLike")} </span>
               {item.skillLooksLike}
             </span>
@@ -162,20 +178,20 @@ export default function MilestonesTab() {
               ["not_yet", t("ms.observe.notYet")],
             ] as const).map(([status, label]) => {
               const selected = (item.observationStatus ?? (item.checked ? "yes" : undefined)) === status;
-              return <button key={status} type="button" onClick={() => { setMilestoneObservation(item.id, status); if (status === "yes" && !item.checked) celebrate(); }} aria-pressed={selected} className="min-h-9 rounded-lg px-1.5 text-[10px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "rgba(52,178,119,0.30)" : "var(--arbor-rule)"}` }}>{label}</button>;
+              return <button key={status} type="button" onClick={() => { setMilestoneObservation(item.id, status); if (status === "yes" && !item.checked) celebrate(); }} aria-pressed={selected} className="min-h-9 rounded-lg px-1.5 text-[11px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "rgba(52,178,119,0.30)" : "var(--arbor-rule)"}` }}>{label}</button>;
             })}
           </div>
-          {item.observationStatus === "not_sure" && <p className="pt-1 text-[10px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
+          {item.observationStatus === "not_sure" && <p className="pt-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
           <div className="flex items-center gap-2 flex-wrap pt-1">
-            {item.checked && <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.observed")}</span>}
-            {item.ageGroup && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.age")} {item.ageGroup}</span>}
-            {item.custom && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
+            {item.checked && <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.observed")}</span>}
+            {item.ageGroup && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.age")} {item.ageGroup}</span>}
+            {item.custom && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
             {item.custom && (
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); const nt = window.prompt("Rename milestone", item.title); if (nt) updateMilestoneTitle(item.id, nt); }}
+                onClick={(e) => { e.preventDefault(); setConfirmDeleteId(null); setRenameDraft(item.title); setRenamingId(item.id); }}
                 aria-label={t("aria.renameCustomMilestone")}
-                className="text-[9px] transition"
+                className="text-[11px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 <Icon name="edit" size={11} />
@@ -184,16 +200,16 @@ export default function MilestonesTab() {
             {item.custom && (
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); if (window.confirm("Delete this custom milestone?")) deleteMilestone(item.id); }}
+                onClick={(e) => { e.preventDefault(); setRenamingId(null); setConfirmDeleteId(item.id); }}
                 aria-label={t("aria.deleteCustomMilestone")}
-                className="text-[9px] transition"
+                className="text-[11px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 <Icon name="delete" size={11} />
               </button>
             )}
             {item.references?.map((r, i) => (
-              <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold flex items-center gap-0.5" style={{ color: "var(--arbor-sky-ink)" }}>
+              <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[11px] font-bold flex items-center gap-0.5" style={{ color: "var(--arbor-sky-ink)" }}>
                 {r.label} <Icon name="open_in_new" size={11} />
               </a>
             ))}
@@ -203,7 +219,7 @@ export default function MilestonesTab() {
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-[9px] font-bold flex items-center gap-0.5"
+                className="text-[11px] font-bold flex items-center gap-0.5"
                 style={{ color: "var(--arbor-sky-ink)" }}
               >
                 {DOMAIN_REFERENCES[item.domain].label} <Icon name="open_in_new" size={11} />
@@ -213,13 +229,40 @@ export default function MilestonesTab() {
               type="button"
               onClick={(e) => { e.preventDefault(); void explain(item); }}
               disabled={explaining[item.id]}
-              className="text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+              className="text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
               style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
             >
               {explaining[item.id] ? <Icon name="progress_activity" size={11} className="animate-spin" /> : <Icon name="menu_book" size={11} />}
               {explanations[item.id] ? t("ms.hide") : t("ms.explain")}
             </button>
           </div>
+          {/* UND-8 — inline rename form (the gestation form is the pattern):
+              in-app, translated, themed — no native window.prompt. */}
+          {item.custom && renamingId === item.id && (
+            <form
+              onSubmit={(e) => { e.preventDefault(); const nt = renameDraft.trim(); if (nt) updateMilestoneTitle(item.id, nt); setRenamingId(null); }}
+              className="flex flex-col sm:flex-row gap-2 items-stretch pt-2"
+            >
+              <input
+                autoFocus
+                value={renameDraft}
+                onChange={(e) => setRenameDraft(e.target.value)}
+                aria-label={t("aria.renameCustomMilestone")}
+                className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              />
+              <button type="submit" className="text-white font-extrabold text-xs px-4 py-2 rounded-xl transition" style={{ background: "var(--arbor-clay)" }}>{t("ms.renameSave")}</button>
+              <button type="button" onClick={() => setRenamingId(null)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
+            </form>
+          )}
+          {/* UND-8 — inline delete confirm row — no native window.confirm. */}
+          {item.custom && confirmDeleteId === item.id && (
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <span className="text-[11px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ms.deleteConfirm")}</span>
+              <button type="button" onClick={() => { deleteMilestone(item.id); setConfirmDeleteId(null); }} className="text-xs font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "var(--arbor-clay-deep)" }}>{t("ms.deleteYes")}</button>
+              <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
+            </div>
+          )}
         </div>
         {item.checked && (
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -267,7 +310,7 @@ export default function MilestonesTab() {
     const itemsInDom = milestones.filter((m) => m.domain === domId);
     const bands = groupByBand(itemsInDom);
     if (itemsInDom.length === 0) {
-      return <p className="text-[10px] italic" style={{ color: "var(--arbor-muted)" }}>{t("ms.noMilestones")}</p>;
+      return <p className="text-[11px] italic" style={{ color: "var(--arbor-muted)" }}>{t("ms.noMilestones")}</p>;
     }
     return (
       <div className="space-y-2.5">
@@ -287,12 +330,12 @@ export default function MilestonesTab() {
                 style={{ cursor: isEarlier ? "pointer" : "default" }}
               >
                 <span className="flex items-center gap-2">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: isCurrent ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{band.label}</span>
-                  {isCurrent && <span className="text-[8px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.currentBand")}</span>}
-                  {isAhead && <span className="text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.aheadBand")}</span>}
+                  <span className="text-[11px] font-extrabold uppercase tracking-wide" style={{ color: isCurrent ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{band.label}</span>
+                  {isCurrent && <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.currentBand")}</span>}
+                  {isAhead && <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.aheadBand")}</span>}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-bold" style={{ color: "var(--arbor-muted)" }}>{checkedInBand}/{band.items.length}</span>
+                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{checkedInBand}/{band.items.length}</span>
                   {isEarlier && (
                     <Icon name="expand_more" size={16} className="transition-transform" style={{ color: "var(--arbor-muted)", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }} />
                   )}
@@ -309,7 +352,7 @@ export default function MilestonesTab() {
                 <button
                   type="button"
                   onClick={() => setOpenEarlierBands((p) => ({ ...p, [band.months]: true }))}
-                  className="text-[10px] font-bold"
+                  className="text-[11px] font-bold"
                   style={{ color: "var(--arbor-green-ink)" }}
                 >
                   {t("ms.showEarlier")}
@@ -366,7 +409,7 @@ export default function MilestonesTab() {
           <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
             {/* Development Map summary — count headline only, no verdict score. */}
             <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
-              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.developmentMap")}</span>
+              <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.developmentMap")}</span>
               {/* Ring/dial visual — CLINICAL FIREWALL: the number inside is a COUNT of
                   noticed milestones (never a %/score/verdict); the ring fill is only the
                   checked/total count-proportion, and it is not labelled as competence. */}
@@ -374,7 +417,7 @@ export default function MilestonesTab() {
                 <RadialProgress value={checkedMilestones} total={totalMilestones} tone="mint" size={92} thickness={10}>
                   <span className="text-center leading-none">
                     <span className="block text-[26px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{checkedMilestones}</span>
-                    <span className="block text-[10px] font-bold mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")} {totalMilestones}</span>
+                    <span className="block text-[11px] font-bold mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")} {totalMilestones}</span>
                   </span>
                 </RadialProgress>
                 <div className="min-w-0">
@@ -387,10 +430,10 @@ export default function MilestonesTab() {
               {comparisonMonths < 24 && (
                 <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[9px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
+                    <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
                     <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{currentBand.label}</span>
                     {corrected.applied && (
-                      <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "#fff" }}>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "#fff" }}>
                         {t("ms.correctedBadge")} · {corrected.correctedMonths}m
                       </span>
                     )}
@@ -409,7 +452,7 @@ export default function MilestonesTab() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ms.bornEarly")}</span>
                       {corrected.applied && (
-                        <span className="text-[9px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
+                        <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
                           {t("ms.correctedBadge")} · {corrected.correctedMonths}m
                         </span>
                       )}
@@ -584,7 +627,7 @@ export default function MilestonesTab() {
           <div className="p-4 rounded-xl text-xs leading-relaxed space-y-3 select-text bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
             <MarkdownBlock text={milestoneAnalysisOfGaps} className="space-y-2" />
             <div className="pt-2.5 flex justify-end" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-              <button type="button" onClick={() => seedCoach({ prompt: `Regarding the scaffolding gap analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?`, lens: "Vygotsky's Scaffolding", source: "milestones-gap" })} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
+              <button type="button" onClick={() => seedCoach({ prompt: `Regarding the scaffolding gap analysis on milestones:\n\n${milestoneAnalysisOfGaps}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?`, lens: "Vygotsky's Scaffolding", source: "milestones-gap" })} className="text-[11px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
                 {t("ms.discussCoach")}
               </button>
             </div>
@@ -596,18 +639,38 @@ export default function MilestonesTab() {
         )}
       </div>
 
-      <div className="p-5 rounded-2xl flex items-start gap-4 text-xs" style={{ background: "var(--arbor-yellow-soft)" }}>
-        <Icon name="visibility" size={20} className="mt-0.5" style={{ color: "var(--arbor-yellow-ink)" }} />
-        <div className="space-y-1 leading-relaxed">
-          <strong className="text-sm block" style={{ color: "var(--arbor-ink)" }}>{t("ms.watchPoints")}</strong>
-          <p style={{ color: "var(--arbor-muted)" }}>
-            {corrected.applied && (
-              <>Because {childProfile.name || "your child"} arrived early, Arbor is comparing milestones against a corrected age of about {corrected.correctedMonths} months rather than {corrected.chronologicalMonths} — preemies catch up on their own timeline. </>
-            )}
-            A few areas are still in the &ldquo;not seen yet&rdquo; column for this age — including comfort code-switching between {childProfile.languages.join(" and ") || "home and school languages"}. That&apos;s common and rarely a concern on its own. Keep noticing, keep playing, and revisit in a few weeks. If something feels persistent, or you&apos;d simply like reassurance, you can ask Arbor or share a development snapshot with your pediatrician or teacher.
-          </p>
+      {/* UND-3 — "Gentle watch points" is DERIVED, never fabricated: real domain
+          names + counts from the canonical useMonitoring derivation (clinical
+          firewall: counts only, no severity/verdict language). Neutral line when
+          nothing is in the not-seen column; hidden entirely when there is also
+          no corrected-age note to carry. */}
+      {(watchPoints.length > 0 || corrected.applied) && (
+        <div data-testid="ms-watch-points" className="p-5 rounded-2xl flex items-start gap-4 text-xs" style={{ background: "var(--arbor-yellow-soft)" }}>
+          <Icon name="visibility" size={20} className="mt-0.5" style={{ color: "var(--arbor-yellow-ink)" }} />
+          <div className="space-y-1 leading-relaxed">
+            <strong className="text-sm block" style={{ color: "var(--arbor-ink)" }}>{t("ms.watchPoints")}</strong>
+            <p style={{ color: "var(--arbor-muted)" }}>
+              {corrected.applied && (
+                <>{t("ms.watch.corrected", { name: firstName || t("ms.watch.childFallback"), corrected: Math.round(corrected.correctedMonths), chrono: corrected.chronologicalMonths })} </>
+              )}
+              {watchPoints.length > 0 ? (
+                <>
+                  {watchPoints
+                    .map((w) =>
+                      w.count === 1
+                        ? t("ms.watch.area.one", { area: t(`screen.domain.${w.domain}`).toLowerCase() })
+                        : t("ms.watch.area.many", { n: w.count, area: t(`screen.domain.${w.domain}`).toLowerCase() }),
+                    )
+                    .join(" ")}{" "}
+                  {t("ms.watch.close")}
+                </>
+              ) : (
+                t("ms.watch.none")
+              )}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </motion.div>
   );
 }
