@@ -26,6 +26,8 @@ export const SHARE_SCOPE_IDS = [
   "report_teacher",
   "report_therapist",
   "report_pediatrician",
+  "report_slp",
+  "report_behavioral_health",
 ] as const;
 
 export type ShareScopeId = (typeof SHARE_SCOPE_IDS)[number];
@@ -40,6 +42,8 @@ export const REPORT_SCOPE_BY_TYPE: Record<ProfessionalReportType, ShareScopeId> 
   teacher: "report_teacher",
   therapist: "report_therapist",
   pediatrician: "report_pediatrician",
+  slp: "report_slp",
+  behavioral_health: "report_behavioral_health",
 };
 
 /** Legacy migration map: grants created before CARE-3 stored the English

@@ -31,12 +31,14 @@ export type ReportContext = {
  *  serializer (`src/consult/packet.ts`) — audience data ceilings + the
  *  fail-closed clinical scan — and reuse only this module's print shell.
  *  This module itself builds the PARENT's own records. */
-export type ProfessionalReportType = "teacher" | "therapist" | "pediatrician";
+export type ProfessionalReportType = "teacher" | "therapist" | "pediatrician" | "slp" | "behavioral_health";
 export type ParentReportType = "weekly" | "snapshot" | "behavior" | "language" | "growth";
 export type ReportType = ParentReportType | ProfessionalReportType;
 
+const PROFESSIONAL_REPORT_TYPES: readonly ProfessionalReportType[] = ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"];
+
 export function isProfessionalReportType(type: ReportType): type is ProfessionalReportType {
-  return type === "teacher" || type === "therapist" || type === "pediatrician";
+  return (PROFESSIONAL_REPORT_TYPES as readonly string[]).includes(type);
 }
 
 const esc = (s: string) =>

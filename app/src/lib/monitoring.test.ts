@@ -305,6 +305,47 @@ describe("buildMonitoringReportDoc", () => {
     const discuss = doc.sections.find((s) => s.heading === "Areas to discuss")!;
     expect(String(discuss.body)).toMatch(/No areas/);
   });
+
+  // UND-4 — the printable preserves the parent's actual response: a "not sure"
+  // milestone is its OWN category with its date, never collapsed into not-yet.
+  it("splits 'not sure' from 'not yet' with the parent's observation dates", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 3,
+        milestones: [
+          milestone({
+            title: "Uses several single words",
+            observationStatus: "not_sure",
+            observationUpdatedAt: "2026-06-01T10:00:00.000Z",
+          }),
+          milestone({
+            title: "Points to things when named",
+            observationStatus: "not_yet",
+            observationUpdatedAt: "2026-06-02T10:00:00.000Z",
+          }),
+          milestone({ title: "Legacy undated item" }), // no explicit status/date
+        ],
+        now: NOW,
+      },
+      "Mila",
+    );
+    const doc = buildMonitoringReportDoc(res, "Mila Cohen", 3);
+    const notSure = doc.sections.find((s) => s.heading.includes("not sure about"))!;
+    expect(notSure).toBeDefined();
+    const notSureBody = (notSure.body as string[]).join("\n");
+    expect(notSureBody).toContain("Uses several single words");
+    expect(notSureBody).toContain('parent marked "not sure" on 2026-06-01');
+    const notYet = doc.sections.find((s) => s.heading === "Skills not yet observed (past typical window)")!;
+    const notYetBody = (notYet.body as string[]).join("\n");
+    expect(notYetBody).toContain("Points to things when named");
+    expect(notYetBody).toContain('parent marked "not yet" on 2026-06-02');
+    expect(notYetBody).toContain("Legacy undated item");
+    expect(notYetBody).not.toContain("Uses several single words"); // never double-listed
+    // Counts-only guarantee holds for the whole doc (the builder also runs
+    // assertClinicianExportCeiling — this is the readable assertion).
+    const all = doc.sections.flatMap((s) => (Array.isArray(s.body) ? s.body : [s.body])).join("\n");
+    expect(all).not.toMatch(/\d+(\.\d+)?\s*%/);
+  });
 });
 
 // ── UND-3 — "Gentle watch points" card content (real domains + counts only) ──

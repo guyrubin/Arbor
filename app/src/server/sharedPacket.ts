@@ -173,7 +173,19 @@ export class FirestoreSharedChildSource implements SharedChildRecordSource {
       }),
       milestones: milestonesSnap.docs.map((d) => {
         const m = d.data() as Record<string, unknown>;
-        return { domain: str(m.domain), title: str(m.title), checked: m.checked === true };
+        // UND-4: pass the parent's actual response through (validated against
+        // the closed literal set — anything else is dropped, fail quiet).
+        const status =
+          m.observationStatus === "yes" || m.observationStatus === "not_sure" || m.observationStatus === "not_yet"
+            ? m.observationStatus
+            : undefined;
+        return {
+          domain: str(m.domain),
+          title: str(m.title),
+          checked: m.checked === true,
+          status,
+          observedAt: str(m.observationUpdatedAt) || undefined,
+        };
       }),
       plans: plansSnap.docs.map((d) => {
         const p = d.data() as Record<string, unknown>;

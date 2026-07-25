@@ -69,7 +69,7 @@ describe("share scope normalization (CARE-3)", () => {
   });
 
   it("every professional consult preset type has a stable scope ID", () => {
-    expect(Object.keys(REPORT_SCOPE_BY_TYPE).sort()).toEqual(["pediatrician", "teacher", "therapist"]);
+    expect(Object.keys(REPORT_SCOPE_BY_TYPE).sort()).toEqual(["behavioral_health", "pediatrician", "slp", "teacher", "therapist"]);
     for (const id of Object.values(REPORT_SCOPE_BY_TYPE)) expect(isShareScopeId(id)).toBe(true);
   });
 });
