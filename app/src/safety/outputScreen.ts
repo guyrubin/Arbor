@@ -24,6 +24,12 @@ import { screenModelOutputLexical, type OutputScreenVerdict } from "./outputScre
 const classifierEnabled = () =>
   ["1", "true", "yes", "on"].includes((process.env.ENABLE_OUTPUT_SAFETY_CLASSIFIER || "").toLowerCase());
 
+/** AI-V1/AIR-2 (voice-cadence): whether the semantic output classifier is on.
+ *  /voice keys its behavior on this — classifier ON keeps the full-buffer
+ *  screen-once-then-emit path (the classifier needs the whole reply);
+ *  classifier OFF enables sentence-boundary streaming over the lexical floor. */
+export const outputClassifierEnabled = (): boolean => classifierEnabled();
+
 /**
  * Semantic layer: one cheap structured call judging the response against the
  * non-diagnostic contract. Fails OPEN (never blocks delivery on classifier

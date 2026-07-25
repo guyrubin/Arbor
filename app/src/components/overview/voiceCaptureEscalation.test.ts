@@ -105,7 +105,10 @@ describe("AI-CAP-1 — voice capture goes through the ONE hardened extraction se
 describe("VC-4 — CoachTab voice loop: escalation stops the loop, resources land on screen", () => {
   it("the streamVoice call wires the done payload through handleVoiceDone", () => {
     expect(coach).toMatch(/import \{ handleVoiceDone \} from ["']\.\.\/\.\.\/lib\/voiceSafetyEvents["']/);
-    expect(coach).toMatch(/onEvent: \(event, data\) => \{\s*if \(event !== "done"\) return;\s*handleVoiceDone\(data, \{/);
+    // AI-V5 added a delta branch (screened-sentence token registration) ahead
+    // of the done gate; the safety invariant stays: every done payload routes
+    // through handleVoiceDone.
+    expect(coach).toMatch(/if \(event !== "done"\) return;\s*handleVoiceDone\(data, \{/);
   });
 
   it("stopLoop kills the hands-free loop flag — the ONLY auto-relisten sites are guarded by it", () => {

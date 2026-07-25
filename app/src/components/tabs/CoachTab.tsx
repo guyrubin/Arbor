@@ -25,10 +25,17 @@ import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
+// AI-V3: recognition restart with backoff + circuit breaker lives in the pure
+// dictation loop, so the phase label is always truthful (see lib/dictationLoop).
+import { createDictationLoop, type DictationLoop } from "../../lib/dictationLoop";
 import { splitCompleteSentences } from "../../lib/sentenceStream";
 import { publishedHardMomentCards } from "../../content/hardMomentCards";
 import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
+import { voiceState } from "../../lib/voice";
+// AI-V5: screened-sentence tokens + next-sentence audio prefetch keep the
+// neural pipeline gapless without weakening the /api/tts trust boundary.
+import { prefetchNaturalAudio, registerTtsToken } from "../../lib/naturalVoice";
 // VC-8: pure shared module — lets a client-side (lexical) crisis stop render
 // the SAME escalation resources the server paths carry, so a crisis stop is
 // never resource-less on screen.
@@ -139,7 +146,7 @@ export default function CoachTab() {
   const [liveAvail, setLiveAvail] = useState(false);
   const liveCtlRef = useRef<null | { stop: () => void }>(null);
   const voiceOnRef = useRef(false);
-  const stopDictationRef = useRef<null | (() => void)>(null);
+  const dictationLoopRef = useRef<DictationLoop | null>(null);
   // Streaming-voice TTS queue (speak each sentence as it streams in).
   const ttsQueueRef = useRef<string[]>([]);
   const ttsSpeakingRef = useRef(false);
@@ -155,6 +162,14 @@ export default function CoachTab() {
     api.liveAvailability().then((r) => { if (!cancelled && r.available) setLiveAvail(true); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // AI-V5: while sentence N plays, start fetching sentence N+1's audio so the
+  // inter-sentence gap is playback-bound, not network-bound. Neural engine
+  // only — the browser floor needs no network. Idempotent per sentence.
+  const prefetchUpNext = () => {
+    const upNext = ttsQueueRef.current[0];
+    if (upNext && voiceState().engine === "natural") prefetchNaturalAudio(upNext);
+  };
 
   // Speak queued sentences one at a time; when drained after a turn, resume listening.
   const pumpTts = () => {
@@ -173,13 +188,20 @@ export default function CoachTab() {
     ttsSpeakingRef.current = true;
     setVoicePhase("speaking");
     if (ttsSupported()) {
+      prefetchUpNext();
       speak(next, () => { ttsSpeakingRef.current = false; pumpTts(); });
     } else {
       ttsSpeakingRef.current = false;
       pumpTts();
     }
   };
-  const enqueueSpeak = (s: string) => { if (s.trim()) { ttsQueueRef.current.push(s.trim()); pumpTts(); } };
+  const enqueueSpeak = (s: string) => {
+    if (!s.trim()) return;
+    ttsQueueRef.current.push(s.trim());
+    // Queued behind a playing sentence → it is the (new) up-next: prefetch.
+    if (ttsSpeakingRef.current) prefetchUpNext();
+    pumpTts();
+  };
 
   // A streaming voice turn: stream the answer token-by-token and speak each
   // sentence the moment it completes (real-time, not wait-then-speak).
@@ -215,6 +237,16 @@ export default function CoachTab() {
           // appended markdown goes through appendVoiceAiDelta directly —
           // persisted + visible but never enqueued for speech.
           onEvent: (event, data) => {
+            if (event === "delta") {
+              // AI-V5: deltas carry a short-TTL screened-sentence token —
+              // register it so /api/tts can skip the model re-screen for
+              // exactly this text (its lexical floor still always runs).
+              const tts = (data as { tts?: { text?: unknown; token?: unknown } }).tts;
+              if (tts && typeof tts.text === "string" && typeof tts.token === "string") {
+                registerTtsToken(tts.text, tts.token);
+              }
+              return;
+            }
             if (event !== "done") return;
             handleVoiceDone(data, {
               stopLoop: () => { voiceOnRef.current = false; },
@@ -240,19 +272,37 @@ export default function CoachTab() {
   const startListening = () => {
     if (!speechSupported()) { toast(t("coach.toast.voiceUnsupported"), "info"); voiceOnRef.current = false; setVoicePhase("off"); return; }
     setVoicePhase("listening");
-    stopDictationRef.current = startDictation(
-      {
-        onResult: (text) => {
-          if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
-          // COACH-2: persist the dictated turn through the existing
-          // chat-message write seam before asking.
-          appendVoiceUserTurn(text);
-          void streamVoiceTurn(text);
-        },
-        onError: () => { if (voiceOnRef.current) setVoicePhase("listening"); },
+    // AI-V3: the dictation loop owns recognition restarts — recoverable errors
+    // ('no-speech', transient network) restart with backoff behind a max-retry
+    // circuit breaker, silent ends auto-cycle the mic, and fatal errors stop
+    // voice with a truthful phase + toast. The "listening" label is only ever
+    // shown while the loop is actually cycling.
+    dictationLoopRef.current?.stop();
+    const loop = createDictationLoop({
+      start: startDictation,
+      lang: aiLang === "he" ? "he-IL" : "en-US",
+      isActive: () => voiceOnRef.current,
+      onTranscript: (text) => {
+        if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
+        // COACH-2: persist the dictated turn through the existing
+        // chat-message write seam before asking.
+        appendVoiceUserTurn(text);
+        void streamVoiceTurn(text);
       },
-      aiLang === "he" ? "he-IL" : "en-US",
-    );
+      onFatal: (reason) => {
+        stopVoice();
+        toast(
+          reason === "permission"
+            ? t("coach.toast.micPermission")
+            : reason === "retry-exhausted"
+              ? t("coach.toast.micRetryStopped")
+              : t("coach.toast.voiceUnsupported"),
+          "info",
+        );
+      },
+    });
+    dictationLoopRef.current = loop;
+    loop.start();
   };
 
   const stopVoice = () => {
@@ -261,7 +311,8 @@ export default function CoachTab() {
     ttsQueueRef.current = [];
     ttsSpeakingRef.current = false;
     voiceAbortRef.current?.abort();
-    stopDictationRef.current?.();
+    dictationLoopRef.current?.stop();
+    dictationLoopRef.current = null;
     stopSpeaking();
     liveCtlRef.current?.stop();
     liveCtlRef.current = null;
@@ -350,7 +401,7 @@ export default function CoachTab() {
   };
 
   // Stop any audio/recognition on unmount.
-  useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
+  useEffect(() => () => { dictationLoopRef.current?.stop(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
 
   const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
   // COACH-2: live caption text on the voicePhase chip while the answer streams

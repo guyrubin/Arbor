@@ -22,6 +22,17 @@
 /** Boundary: terminal punctuation immediately followed by whitespace. */
 export const SENTENCE_BOUNDARY = /(?<=[.!?])\s+/;
 
+/**
+ * Scanning form of the SAME boundary for byte-accurate server-side slicing
+ * (AI-V1: /voice releases each screened sentence as its own SSE delta and
+ * needs the boundary's END index, which a lookbehind split cannot give).
+ * Matches the terminal punctuation TOGETHER with its trailing whitespace, so
+ * `match.index + 1` is the sentence end and `match.index + match[0].length`
+ * is where the next sentence starts. Kept next to SENTENCE_BOUNDARY so the
+ * client split and the server slice can never disagree on what a sentence is.
+ */
+export const SENTENCE_BOUNDARY_SCAN = /[.!?]\s+/;
+
 export type SentenceSplit = {
   /** Sentences whose boundary has been seen — safe to enqueue for speech. */
   complete: string[];

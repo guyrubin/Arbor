@@ -130,8 +130,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setAuthTokenProvider(getIdToken);
     setAnalyticsUser(() => user?.uid);
-    // Epic A: activate the neural-voice engine when built with VITE_TTS_PROVIDER
-    // and the server reports /api/tts configured. No-op otherwise (browser floor).
+    // Epic A / AI-V4: activate the neural-voice engine when the server reports
+    // /api/tts configured (TTS_PROVIDER — single server env flip, no client
+    // build flag). No-op otherwise (browser floor).
     void initNaturalVoice();
   }, [user?.uid]);
 

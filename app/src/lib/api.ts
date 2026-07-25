@@ -127,9 +127,16 @@ const get = <T>(url: string) => request<T>(url, "GET");
 const del = <T>(url: string) => request<T>(url, "DELETE");
 
 /**
- * Realtime streaming voice coach (RT-2). POSTs to /api/voice and invokes onDelta
- * with each plain-text token as it streams, so the caller can speak sentences the
- * moment they arrive. Resolves when the stream completes.
+ * Realtime streaming voice coach (RT-2 / AI-V1). POSTs to /api/voice and invokes
+ * onDelta once per SCREENED SENTENCE: the server splits the model stream at
+ * sentence boundaries, screens the cumulative alias-restored text at each
+ * boundary, and emits each sentence as its own delta only after its screen
+ * passes — so the caller speaks sentence 1 while the rest is still generating.
+ * (When the semantic output classifier is enabled server-side, the whole reply
+ * arrives as one delta instead.) Delta events may carry a `tts` payload — a
+ * short-TTL screened-sentence token for /api/tts (AI-V5); callers on the voice
+ * loop register it via registerTtsToken (lib/naturalVoice.ts). Resolves when
+ * the stream completes.
  *
  * VC-4: `opts.onEvent` receives EVERY parsed SSE event (delta / done / error)
  * with its payload. The server's `done` event is safety-load-bearing — it

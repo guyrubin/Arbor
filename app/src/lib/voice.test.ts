@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   isActive,
+  resetVoicePickCacheForTest,
   setNaturalSynth,
   setVoiceEngine,
   speakText,
@@ -11,6 +12,7 @@ import {
   type NaturalSynth,
   type SpeakHandlers,
 } from "./voice";
+import { setAiLanguage } from "./api";
 
 /** Minimal SpeechSynthesis fake (the test env is `node`, no DOM). */
 type FakeUtterance = {
@@ -203,5 +205,79 @@ describe("voice controller", () => {
     expect(voiceState().engine).toBe("natural");
     expect(fn).toHaveBeenCalledWith({ speaking: false, engine: "natural" });
     unsub();
+  });
+});
+
+// ── AI-V4: language + voice selection · AI-V5: prefetched watchdog skip ─────
+describe("voice controller — AI-V4 lang/voice + AI-V5 watchdog", () => {
+  type FakeVoice = { name: string; lang: string; localService: boolean };
+  const withVoices = (voices: FakeVoice[]) => {
+    (globalThis as any).window.speechSynthesis.getVoices = () => voices;
+  };
+
+  beforeEach(() => {
+    resetVoicePickCacheForTest();
+    setAiLanguage("en");
+  });
+
+  afterEach(() => {
+    setAiLanguage("en");
+  });
+
+  it("an HE utterance carries lang='he-IL', a Hebrew voice when available, at rate 1.0", () => {
+    const carmit = { name: "Carmit", lang: "he-IL", localService: true };
+    withVoices([{ name: "Google US English", lang: "en-US", localService: false }, carmit]);
+    speakText("שלום, בוקר טוב", {}, "he");
+    expect(spoken).toHaveLength(1);
+    const u = spoken[0] as any;
+    expect(u.lang).toBe("he-IL");
+    expect(u.voice).toBe(carmit);
+    expect(u.rate).toBe(1.0);
+  });
+
+  it("an EN utterance prefers a local natural/neural-named voice over a plain remote one", () => {
+    const plain = { name: "Basic English", lang: "en-US", localService: false };
+    const natural = { name: "Emma (Natural)", lang: "en-US", localService: true };
+    withVoices([plain, natural]);
+    speakText("hello there", {}, "en");
+    expect((spoken[0] as any).voice).toBe(natural);
+    expect((spoken[0] as any).lang).toBe("en-US");
+  });
+
+  it("defaults the utterance language to the session AI language (getAiLanguage)", () => {
+    withVoices([]);
+    setAiLanguage("he");
+    speakText("שלום");
+    expect((spoken[0] as any).lang).toBe("he-IL");
+  });
+
+  it("an empty voice list is never cached — the pick recovers once voices load (voiceschanged)", () => {
+    withVoices([]);
+    speakText("one", {}, "en");
+    expect((spoken[0] as any).voice).toBeUndefined();
+    const samantha = { name: "Samantha", lang: "en-US", localService: true };
+    withVoices([samantha]);
+    speakText("two", {}, "en");
+    expect((spoken[1] as any).voice).toBe(samantha);
+  });
+
+  it("AI-V5: a prefetched natural handle does NOT arm the TTFB watchdog — no mid-answer downgrade", () => {
+    vi.useFakeTimers();
+    setNaturalSynth(() => ({ stop: vi.fn(), prefetched: true }));
+    setVoiceEngine("natural");
+    speakText("a prefetched sentence");
+    vi.advanceTimersByTime(5_000);
+    expect(voiceState().engine).toBe("natural"); // never degraded
+    expect(spoken).toHaveLength(0); // the browser floor was never invoked
+  });
+
+  it("a NON-prefetched natural utterance keeps the watchdog (falls back after 1500ms of silence)", () => {
+    vi.useFakeTimers();
+    setNaturalSynth(() => ({ stop: vi.fn() }));
+    setVoiceEngine("natural");
+    speakText("a cold-start sentence");
+    vi.advanceTimersByTime(1_600);
+    expect(voiceState().engine).toBe("basic");
+    expect(spoken).toHaveLength(1);
   });
 });

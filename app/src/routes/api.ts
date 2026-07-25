@@ -14,7 +14,9 @@ import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type } from "@google/genai";
 import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../server/redaction.js";
-import { screenModelOutput, renderBlockedOutputMarkdown } from "../safety/outputScreen.js";
+import { screenModelOutput, screenModelOutputLexical, renderBlockedOutputMarkdown, outputClassifierEnabled, type OutputScreenVerdict } from "../safety/outputScreen.js";
+import { SENTENCE_BOUNDARY_SCAN } from "../lib/sentenceStream.js";
+import { mintTtsToken, verifyTtsToken } from "../server/ttsToken.js";
 import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.js";
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
@@ -25,7 +27,7 @@ import { buildConsultRequest, type ConsultStore } from "../server/consultRequest
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
-import { screenAndSynthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
+import { screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { isAdmin } from "../server/admin.js";
@@ -114,6 +116,9 @@ const VOICE_SAFETY_FALLBACKS = {
 
 const voiceSafetyFallback = (language: unknown) =>
   VOICE_SAFETY_FALLBACKS[language === "he" ? "he" : "en"];
+
+/** Spoken when the model produced an empty reply on /voice (pre-cadence literal, unchanged). */
+const VOICE_EMPTY_REPLY_FALLBACK = "Let's take this one step at a time — tell me a little more about what's happening.";
 
 export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource }: ApiDeps) => {
   const router = express.Router();
@@ -639,15 +644,18 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
   });
 
   // RT-2 (v6): STREAMING voice coach over SSE, independent of the Live bidi API.
-  // EVAL-2 (2026-07-25): today this handler deliberately BUFFERS the entire
-  // reply, screens it once (SAFE-V1 below), and emits ONE delta — so
-  // time-to-first-audio equals full generation time. That trade-off is now an
-  // EXPLICIT, TESTED decision, not an accident: the voice-loop-v1 cadence test
-  // (routes/voiceLoopEval.test.ts, marked it.fails) stays red until the
-  // voice-cadence entry (AI-V1+AIR-2) lands sentence-boundary screening here —
-  // splitting at lib/sentenceStream boundaries, screening the CUMULATIVE
-  // alias-restored text at each boundary, and emitting each passed sentence as
-  // its own delta so the client can speak sentence 1 while 2..N generate.
+  // AI-V1+AIR-2 (voice-cadence, 2026-07-25): sentence-boundary screened
+  // streaming. The reply is split at lib/sentenceStream boundaries, the output
+  // screen runs on the CUMULATIVE alias-restored text at every boundary (never
+  // a sentence in isolation), and each sentence is emitted as its own delta
+  // ONLY after its screen passes — the client speaks sentence 1 while 2..N
+  // generate, and nothing unscreened ever leaves the server. On any flag the
+  // stream stops and the calm localized fallback is emitted instead; the
+  // flagged span appears in NO SSE frame. When the semantic classifier is ON
+  // (ENABLE_OUTPUT_SAFETY_CLASSIFIER=true) the pre-cadence full-buffer
+  // behavior is kept, config-gated, because the classifier needs the whole
+  // reply. Cadence contract pinned by evals/voice-loop-v1
+  // (routes/voiceLoopEval.test.ts) + routes/voiceCadence.test.ts.
   router.post("/voice", async (req, res) => {
     const { message, childProfile, scholarLens, language } = req.body;
     if (!message || typeof message !== "string") {
@@ -693,66 +701,135 @@ Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
 The parent just said: "${message}"
 Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
 
-      // SAFE-V1: the output-safety screen (AI-2) MUST gate /voice the same way it
-      // gates /chat and /council. /voice feeds TTS, so a token-by-token relay would
-      // speak a diagnosis or a medication dose aloud before any screen could run.
-      // We therefore BUFFER the full assembled (alias-restored) reply, run the SAME
-      // screenModelOutput function, and only THEN speak it. Safety beats the few
-      // hundred ms of streaming latency for a non-diagnostic children's product.
+      // SAFE-V1 + AI-V1/AIR-2: the output-safety screen (AI-2) MUST gate /voice
+      // the same way it gates /chat and /council — nothing unscreened ever
+      // leaves the server. Delivery is config-gated:
+      //   - classifier OFF (default): sentence-boundary streaming. Each
+      //     complete sentence is screened via the lexical floor on the
+      //     CUMULATIVE alias-restored text (cross-sentence diagnosis spans
+      //     stay caught) and released as its own delta only after it passes.
+      //   - classifier ON: the pre-cadence full-buffer path — assemble, run
+      //     screenModelOutput once (lexical + semantic), then emit ONE delta.
       // SEC/CMP P0: redacted prompt in; aliases restored on the way out.
       const restorer = privacy.createStreamRestorer();
-      let assembled = "";
-      for await (const chunk of modelProvider.streamText({ route: "analysis_structured", prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6 })) {
-        if (abortController.signal.aborted) { res.end(); return; }
-        assembled += restorer.push(chunk || "");
-      }
-      assembled += restorer.flush();
-      assembled = assembled.trim();
-      if (abortController.signal.aborted) { res.end(); return; }
+      // AI-V5: each screened sentence carries a short-TTL HMAC token so
+      // /api/tts can skip ONLY the model re-screen for text that /voice
+      // already screened (its lexical floor still runs unconditionally).
+      const ttsLang = language === "he" ? "he" : "en";
+      const streamRequest = { route: "analysis_structured" as const, prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6 };
 
-      // Screen the assembled text BEFORE it is sent to TTS / streamed to the client.
-      if (assembled) {
-        const outputVerdict = await screenModelOutput(modelProvider, assembled);
-        if (outputVerdict.flagged) {
-          logger.warn("Voice output blocked by output safety screen", {
-            requestId: requestIdOf(req),
-            category: outputVerdict.category,
-            reason: outputVerdict.reason,
-          });
-          // VC-8: crisis-category output speaks the CRISIS redirect and puts
-          // the full resources block on screen — never the generic blocked
-          // state. The `escalation` key makes handleVoiceDone stop the loop,
-          // so the mic never resumes after a crisis turn (input-path parity).
-          if (outputVerdict.category === "crisis") {
-            const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
-            writeSse(res, "delta", { text: voiceSafetyFallback(language).escalation });
-            writeSse(res, "done", {
-              escalation: crisisMatch.category,
-              resourcesMarkdown: renderEscalationMarkdown(crisisMatch),
-              outputBlocked: true,
-              blockedCategory: "crisis",
-            });
-            res.end();
-            return;
-          }
-          // Never speak the flagged draft. Speak a calm, non-diagnostic spoken
-          // fallback that mirrors the /chat blocked behavior (handoff to a real
-          // professional) instead — localized per VC-6. blockedMarkdown gives
-          // the client a VISIBLE blocked state with byte parity to /chat's
-          // renderBlockedOutputMarkdown surface (VC-4 condition 3).
-          writeSse(res, "delta", { text: voiceSafetyFallback(language).blocked });
+      // Flagged-output SSE tail, shared by both delivery paths — payloads are
+      // byte-identical to the pre-cadence SAFE-V1 behavior.
+      const emitBlocked = (outputVerdict: OutputScreenVerdict) => {
+        logger.warn("Voice output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        // VC-8: crisis-category output speaks the CRISIS redirect and puts
+        // the full resources block on screen — never the generic blocked
+        // state. The `escalation` key makes handleVoiceDone stop the loop,
+        // so the mic never resumes after a crisis turn (input-path parity).
+        if (outputVerdict.category === "crisis") {
+          const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
+          writeSse(res, "delta", { text: voiceSafetyFallback(language).escalation });
           writeSse(res, "done", {
+            escalation: crisisMatch.category,
+            resourcesMarkdown: renderEscalationMarkdown(crisisMatch),
             outputBlocked: true,
-            blockedCategory: outputVerdict.category,
-            blockedMarkdown: renderBlockedOutputMarkdown()
+            blockedCategory: "crisis",
           });
           res.end();
           return;
         }
+        // Never speak the flagged draft. Speak a calm, non-diagnostic spoken
+        // fallback that mirrors the /chat blocked behavior (handoff to a real
+        // professional) instead — localized per VC-6. blockedMarkdown gives
+        // the client a VISIBLE blocked state with byte parity to /chat's
+        // renderBlockedOutputMarkdown surface (VC-4 condition 3).
+        writeSse(res, "delta", { text: voiceSafetyFallback(language).blocked });
+        writeSse(res, "done", {
+          outputBlocked: true,
+          blockedCategory: outputVerdict.category,
+          blockedMarkdown: renderBlockedOutputMarkdown()
+        });
+        res.end();
+      };
+
+      if (outputClassifierEnabled()) {
+        // Full-buffer path (config-gated): the semantic classifier judges the
+        // WHOLE reply, so buffer, screen once, then emit everything at once.
+        let assembled = "";
+        for await (const chunk of modelProvider.streamText(streamRequest)) {
+          if (abortController.signal.aborted) { res.end(); return; }
+          assembled += restorer.push(chunk || "");
+        }
+        assembled += restorer.flush();
+        assembled = assembled.trim();
+        if (abortController.signal.aborted) { res.end(); return; }
+
+        // Screen the assembled text BEFORE it is sent to TTS / streamed to the client.
+        if (assembled) {
+          const outputVerdict = await screenModelOutput(modelProvider, assembled);
+          if (outputVerdict.flagged) { emitBlocked(outputVerdict); return; }
+        }
+        const spoken = assembled || VOICE_EMPTY_REPLY_FALLBACK;
+        writeSse(res, "delta", { text: spoken, tts: { text: spoken, token: mintTtsToken(spoken, ttsLang) } });
+        writeSse(res, "done", {});
+        res.end();
+        return;
       }
 
-      const spoken = assembled || "Let's take this one step at a time — tell me a little more about what's happening.";
-      writeSse(res, "delta", { text: spoken });
+      // Streaming path (default): release each sentence the moment its
+      // cumulative screen passes. `released` = alias-restored bytes already
+      // emitted (all screened); `pending` = bytes still waiting for a
+      // sentence boundary. Byte-exact slicing keeps the concatenated deltas
+      // identical to the full restored reply, so the client splitter
+      // (lib/sentenceStream, same module) reconstructs the same sentences.
+      let released = "";
+      let pending = "";
+      const releaseCompleteSentences = (): OutputScreenVerdict | null => {
+        for (;;) {
+          const boundary = SENTENCE_BOUNDARY_SCAN.exec(pending);
+          if (!boundary) return null;
+          const sliceEnd = boundary.index + boundary[0].length;
+          const bytes = pending.slice(0, sliceEnd);
+          // Cumulative alias-restored screen — never a sentence in isolation.
+          const verdict = screenModelOutputLexical((released + bytes).trim());
+          if (verdict.flagged) return verdict;
+          const sentence = bytes.trim();
+          writeSse(res, "delta", { text: bytes, tts: { text: sentence, token: mintTtsToken(sentence, ttsLang) } });
+          released += bytes;
+          pending = pending.slice(sliceEnd);
+        }
+      };
+
+      for await (const chunk of modelProvider.streamText(streamRequest)) {
+        if (abortController.signal.aborted) { res.end(); return; }
+        pending += restorer.push(chunk || "");
+        const verdict = releaseCompleteSentences();
+        if (verdict) { emitBlocked(verdict); return; }
+      }
+      pending += restorer.flush();
+      if (abortController.signal.aborted) { res.end(); return; }
+      const verdict = releaseCompleteSentences();
+      if (verdict) { emitBlocked(verdict); return; }
+
+      // End of stream: run the SAME combined screen seam as SAFE-V1 over the
+      // FULL cumulative text before releasing the trailing fragment. (The
+      // semantic layer is a no-op in this branch — classifier is off — so
+      // this stays synchronous-fast while keeping the seam identical.)
+      const finalText = (released + pending).trim();
+      if (finalText) {
+        const outputVerdict = await screenModelOutput(modelProvider, finalText);
+        if (outputVerdict.flagged) { emitBlocked(outputVerdict); return; }
+      }
+      if (!finalText) {
+        writeSse(res, "delta", { text: VOICE_EMPTY_REPLY_FALLBACK, tts: { text: VOICE_EMPTY_REPLY_FALLBACK, token: mintTtsToken(VOICE_EMPTY_REPLY_FALLBACK, ttsLang) } });
+      } else if (pending.trim()) {
+        const sentence = pending.trim();
+        writeSse(res, "delta", { text: pending, tts: { text: sentence, token: mintTtsToken(sentence, ttsLang) } });
+      }
       writeSse(res, "done", {});
       res.end();
     } catch (error: any) {
@@ -1095,13 +1172,27 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
       res.status(503).json({ configured: false, error: "Neural TTS is not configured" });
       return;
     }
-    const { text, language } = req.body ?? {};
+    const { text, language, screenedToken } = req.body ?? {};
     if (!text || typeof text !== "string" || !text.trim()) {
       res.status(400).json({ error: "text is required" });
       return;
     }
+    const clipped = text.slice(0, 4000);
+    const lang: "en" | "he" = language === "he" ? "he" : "en";
     try {
-      const result = await screenAndSynthesizeSpeech(config, modelProvider, { text: text.slice(0, 4000), lang: language === "he" ? "he" : "en" });
+      // AI-V5 firewall condition 3: the synchronous lexical floor runs
+      // UNCONDITIONALLY on every /api/tts call — even with a valid screened
+      // token (belt for HMAC bugs).
+      const lexical = screenModelOutputLexical(clipped);
+      if (lexical.flagged) throw new UnsafeTtsOutputError(lexical);
+      // A valid short-TTL HMAC token (minted by /voice ONLY for sentences that
+      // passed its own cumulative screen, over these exact bytes + lang) skips
+      // ONLY the model re-screen. Absent / invalid / expired / text-altered →
+      // the FULL screen runs (fail closed) — 'already-screened' provenance is
+      // proven cryptographically, never client-asserted.
+      const result = verifyTtsToken(screenedToken, clipped, lang)
+        ? await synthesizeSpeech(config, { text: clipped, lang })
+        : await screenAndSynthesizeSpeech(config, modelProvider, { text: clipped, lang });
       res.json(result);
     } catch (error: any) {
       if (error instanceof UnsafeTtsOutputError) {

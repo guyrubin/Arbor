@@ -14,16 +14,13 @@
  *    render, zero audio released); screening-endpoint-down → VISIBLE degrade
  *    (onFailClosed), never an optimistic release (VC-5).
  *
- * CADENCE (documented RED — flip with the voice-cadence entry AI-V1+AIR-2):
- * "voice-long-answer-cadence" is registered with it.fails below. It drives the
- * extracted CoachTab splitter (lib/sentenceStream) with the real /voice SSE
- * stream and asserts the first sentence is enqueued for speech BEFORE the
- * model finishes generating. Today /voice deliberately buffers the whole
- * reply and emits ONE delta (see the RT-2/EVAL-2 comment in routes/api.ts),
- * so the assertions fail — it.fails keeps the suite green while making the
- * buffering trade-off an explicit, tested decision. When AI-V1 lands
- * per-sentence deltas, this test starts PASSING, it.fails starts failing,
- * and the cadence entry must flip it to a plain it().
+ * CADENCE (GREEN since the voice-cadence entry AI-V1+AIR-2 landed):
+ * "voice-long-answer-cadence" drives the extracted CoachTab splitter
+ * (lib/sentenceStream) with the real /voice SSE stream and asserts the first
+ * sentence is enqueued for speech BEFORE the model finishes generating —
+ * /voice now emits per-sentence deltas, each screened on the CUMULATIVE
+ * alias-restored text at its boundary (see routes/api.ts + the deeper route
+ * tests in routes/voiceCadence.test.ts).
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import express from "express";
@@ -368,12 +365,11 @@ describe("voice-loop-v1 — /api/voice deterministic tier", () => {
     expect(done?.escalation).toBeUndefined(); // diagnosis, not crisis routing
   });
 
-  // ── THE CADENCE TEST — documented RED until voice-cadence (AI-V1+AIR-2) ──
-  // it.fails = the suite stays green while /voice still buffers the full
-  // reply into ONE delta. The moment /voice emits per-sentence deltas, this
-  // starts passing, it.fails starts FAILING, and the cadence entry must flip
-  // it to a plain it() (its acceptance requires exactly that).
-  it.fails("voice-long-answer-cadence: first sentence is enqueued for speech BEFORE the model finishes (RED until AI-V1)", async () => {
+  // ── THE CADENCE TEST — flipped to a plain it() by voice-cadence (AI-V1) ──
+  // /voice emits per-sentence deltas (each screened on the cumulative
+  // alias-restored text), so the first sentence is speakable while the model
+  // is still generating.
+  it("voice-long-answer-cadence: first sentence is enqueued for speech BEFORE the model finishes", async () => {
     const s = scenario("voice-long-answer-cadence");
     providerChunks = [...s.input.stubbedModelStreamChunks];
     providerDelayMs = 25;
