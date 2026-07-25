@@ -28,7 +28,6 @@ import { startDictation, speechSupported } from "../../lib/speech";
 import { publishedHardMomentCards } from "../../content/hardMomentCards";
 import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
-import { LIVE_SYSTEM_INSTRUCTION } from "../../lib/livePersona";
 import { usePrefersReducedMotion } from "../ui/playkit";
 
 type Risk = "Low" | "Moderate" | "High";
@@ -271,20 +270,61 @@ export default function CoachTab() {
     // Prefer true Gemini Live when the server says it's provisioned.
     if (liveAvail) {
       try {
-        const fresh = await api.liveToken();
+        // AI-V9: the session language picks the server-pinned persona + voice;
+        // childId scopes the per-turn screen (requireChildOwnership).
+        const fresh = await api.liveToken({ language: getAiLanguage(), childId: childProfile.id });
         if (fresh.available && fresh.token && fresh.model) {
           const { startGeminiLive } = await import("../../lib/geminiLiveClient");
           setVoicePhase("thinking");
-          // FW-NEW-P0: the persona is server-pinned into the token's
-          // liveConnectConstraints at mint time — this shared constant just
-          // keeps the client connect config byte-identical to the pin.
+          // VC-1/2/3/5: every Live turn routes through the liveTurnGuard —
+          // audio buffers per turn and releases only after the shared lexical
+          // floor AND the server verdict from /api/live/turn both pass. The
+          // guard closes the session BEFORE any crisis/blocked/degrade render.
           liveCtlRef.current = await startGeminiLive(
-            fresh.token,
-            fresh.model,
-            LIVE_SYSTEM_INSTRUCTION,
+            {
+              token: fresh.token,
+              model: fresh.model,
+              // FW-NEW-P0: the persona/voice are server-pinned into the token's
+              // liveConnectConstraints at mint time — echoing them back keeps
+              // the client connect config byte-identical to the pin.
+              systemInstruction: fresh.systemInstruction || "",
+              speechConfig: fresh.speechConfig,
+            },
             {
               onPhase: (p) => setVoicePhase(p === "closed" ? "off" : p === "connecting" ? "thinking" : p),
               onError: () => { liveCtlRef.current = null; toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
+              screenTurn: (role, text) =>
+                api.liveTurn({ role, text, language: getAiLanguage(), childId: childProfile.id }),
+              // COACH-2 / VC-3: Live turns persist through the SAME reducers the
+              // browser loop uses (appendVoiceUser / applyVoiceDelta /
+              // settleVoiceTurn → the existing conversationsCol upsert) — no
+              // new capture path, conversations stays in CHILD_SUBCOLLECTIONS.
+              onUserTurn: (text) => appendVoiceUserTurn(text),
+              onModelTurn: (text) => { appendVoiceAiDelta(text); finalizeVoiceAiTurn(); },
+              onCrisis: (v) => {
+                // Session is ALREADY stopped (guard halts before rendering).
+                liveCtlRef.current = null;
+                voiceOnRef.current = false;
+                if (v.resourcesMarkdown) appendVoiceAiDelta(v.resourcesMarkdown);
+                finalizeVoiceAiTurn();
+                if (v.spokenText) speak(v.spokenText);
+                setVoicePhase("off");
+              },
+              onBlocked: (v) => {
+                liveCtlRef.current = null;
+                voiceOnRef.current = false;
+                if (v.blockedMarkdown) appendVoiceAiDelta(v.blockedMarkdown);
+                finalizeVoiceAiTurn();
+                if (v.spokenText) speak(v.spokenText);
+                setVoicePhase("off");
+              },
+              // VC-5: screening unavailability degrades VISIBLY to the screened
+              // browser voice loop (/voice screens every turn server-side).
+              onFailClosed: () => {
+                liveCtlRef.current = null;
+                toast(t("coach.toast.voiceStandardMode"), "info");
+                startBrowserVoice();
+              },
             },
           );
           return;

@@ -425,6 +425,7 @@ export const en: Dict = {
   "coach.toast.logPrefilled": "Pre-filled a log from this guidance — review and save",
   "coach.toast.voiceUnsupported": "Voice input isn't supported in this browser",
   "coach.toast.voiceFallback": "Switched to standard voice",
+  "coach.toast.voiceStandardMode": "Voice switched to standard mode",
   "coach.toast.noteCopied": "Note copied — paste it into your Consult summary",
   "coach.toast.photoCaptured": "Captured from the photo — review and save",
   // COACH-5 — composer memory-disclosure line + lens-row collapse label.
@@ -2604,6 +2605,7 @@ export const he: Dict = {
   "coach.toast.logPrefilled": "תיעוד מולא מראש מתוך ההדרכה — בדקו ושמרו",
   "coach.toast.voiceUnsupported": "קלט קולי אינו נתמך בדפדפן הזה",
   "coach.toast.voiceFallback": "עברנו לקול רגיל",
+  "coach.toast.voiceStandardMode": "הקול עבר למצב רגיל",
   "coach.toast.noteCopied": "הפתק הועתק — הדביקו אותו בסיכום הייעוץ",
   "coach.toast.photoCaptured": "נקלט מהתמונה — בדקו ושמרו",
   // COACH-5 — composer memory-disclosure line + lens-row collapse label (he).

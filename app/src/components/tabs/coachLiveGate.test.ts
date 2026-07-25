@@ -38,12 +38,16 @@ describe("AI-V8 — CoachTab mount probe mints nothing", () => {
   it("api.liveToken appears exactly once — inside toggleVoice (fresh token per session)", () => {
     expect(coach.match(/api\.liveToken\(/g)?.length).toBe(1);
     const toggle = /const toggleVoice = async[\s\S]*?\n  };/.exec(coach)?.[0] ?? "";
-    expect(toggle).toContain("api.liveToken()");
+    expect(toggle).toContain("api.liveToken(");
   });
 
-  it("the Live persona is the shared server-pinned constant, not an inline string", () => {
-    expect(coach).toContain("LIVE_SYSTEM_INSTRUCTION");
+  it("the Live persona comes from the token response (server-pinned), never a client string", () => {
+    // AI-V9: the mint pins buildLiveSystemInstruction(language) into the token
+    // constraints and echoes it back; the client passes the echo verbatim.
+    expect(coach).toContain("fresh.systemInstruction");
+    expect(coach).toContain("fresh.speechConfig");
     expect(coach).not.toContain("You are Arbor, a warm, calm, non-diagnostic parenting coach");
+    expect(coach).not.toContain("speaking OUT LOUD to a parent");
   });
 });
 
@@ -77,8 +81,11 @@ describe("VC-7 — gate wiring stays fail-closed", () => {
     expect(quotaBlock).toContain('"/api/live/turn"');
   });
 
-  it("the shared persona constant is non-diagnostic and calm-register", () => {
-    expect(LIVE_SYSTEM_INSTRUCTION).toMatch(/non-diagnostic/);
+  it("the shared persona instruction is non-diagnostic and calm-register", () => {
+    // AI-V9: the instruction now embeds the full NON_DIAGNOSTIC_CONTRACT plus
+    // the shared spoken persona (prompt-level only — never a screen substitute).
     expect(LIVE_SYSTEM_INSTRUCTION).toMatch(/Never diagnose/);
+    expect(LIVE_SYSTEM_INSTRUCTION).toMatch(/never a diagnosis/i);
+    expect(LIVE_SYSTEM_INSTRUCTION).toMatch(/warm, calm parenting coach/);
   });
 });

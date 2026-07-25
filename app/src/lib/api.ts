@@ -264,7 +264,14 @@ export const api = {
   // AI-V8: config-only availability probe (no SDK call, no token mint server-side).
   // Probe THIS on mount; call liveToken only when the parent toggles voice on.
   liveAvailability: () => get<{ available: boolean }>("/api/live/availability"),
-  liveToken: () => post<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string }>("/api/live/token", {}),
+  // AI-V9: the session language selects the server-pinned persona + voice; the
+  // pinned systemInstruction/speechConfig are echoed back for the connect call.
+  liveToken: (payload: { language?: "en" | "he"; childId?: string } = {}) =>
+    post<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown }>("/api/live/token", payload),
+  // VC-2/VC-3: the authoritative per-turn Live screen. The liveTurnGuard treats
+  // ANY failure of this call (network / non-200 / timeout) as FLAGGED (VC-5).
+  liveTurn: (payload: { role: "user" | "model"; text: string; language?: "en" | "he"; childId?: string }) =>
+    post<import("./liveTurnGuard").LiveTurnVerdict>("/api/live/turn", payload),
   // MON-1: plan + limits + usage for the signed-in parent.
   entitlement: () => get<EntitlementInfo>("/api/entitlement"),
   // MON-2: start a hosted checkout for a plan + cadence; returns the URL to open.

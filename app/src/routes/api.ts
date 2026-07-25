@@ -27,7 +27,7 @@ import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
 import { screenAndSynthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
 import { billingCheckoutUrl } from "../server/billing.js";
-import { LIVE_SYSTEM_INSTRUCTION } from "../lib/livePersona.js";
+import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
@@ -643,10 +643,12 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
     res.on("close", () => { if (!res.writableEnded) abortController.abort(); });
     try {
       const scholar = resolveScholar(scholarLens);
-      const languageDirective = language === "he" ? " Reply in warm, natural spoken Hebrew." : "";
+      // AI-V9: persona + language directive come from the ONE shared spoken
+      // persona module (lib/livePersona.ts) — byte-shared with the Live path.
+      const languageDirective = spokenLanguageDirective(language);
       const privacy = createRedaction(childProfile?.name);
       const prompt = `${NON_DIAGNOSTIC_CONTRACT}
-You are Arbor, a warm, calm parenting coach speaking OUT LOUD to a parent. Apply this lens: ${scholar.name} — ${scholar.method}
+${SPOKEN_COACH_PERSONA} Apply this lens: ${scholar.name} — ${scholar.method}
 Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
 The parent just said: "${message}"
 Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
@@ -737,19 +739,24 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
       const ai = new GoogleGenAI({ apiKey });
       const model = config.liveModel;
       const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+      // AI-V9: the instruction + voice are built per session language from the
+      // ONE shared spoken-persona module and pinned server-side.
+      const systemInstruction = buildLiveSystemInstruction(req.body?.language);
+      const speechConfig = liveSpeechConfig(req.body?.language);
       const token = await ai.authTokens.create({
         config: {
           uses: 1,
           expireTime,
-          // FW-NEW-P0: pin the persona and transcription-on INTO the token's
-          // constraints at mint time. The Live API rejects a connect config
-          // that conflicts with these, so a modified client cannot substitute
-          // an arbitrary systemInstruction or disable the transcription the
-          // upcoming turn-guard screens against.
+          // FW-NEW-P0: pin the persona, voice, and transcription-on INTO the
+          // token's constraints at mint time. The Live API rejects a connect
+          // config that conflicts with these, so a modified client cannot
+          // substitute an arbitrary systemInstruction, swap the voice, or
+          // disable the transcription the turn-guard screens against.
           liveConnectConstraints: {
             model,
             config: {
-              systemInstruction: LIVE_SYSTEM_INSTRUCTION,
+              systemInstruction,
+              speechConfig,
               inputAudioTranscription: {},
               outputAudioTranscription: {},
             },
@@ -757,10 +764,74 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
           httpOptions: { apiVersion: "v1alpha" }
         }
       });
-      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime });
+      // The pinned instruction/speechConfig are echoed back so the client's
+      // connect config stays byte-identical to the pin (cosmetic — the token
+      // constraints are authoritative).
+      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig });
     } catch (error: any) {
       logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req) });
       res.json({ available: false, reason: error.message });
+    }
+  });
+
+  // VC-2 + VC-3 (live-turn-guard): the authoritative per-turn screen + audit
+  // log for Gemini Live. The client liveTurnGuard posts every finalized turn
+  // here and releases NOTHING until this verdict says "continue" (a failure to
+  // answer is treated as FLAGGED client-side — VC-5 fail-closed). Sits inside
+  // createApiRouter (inherits /api auth) + requireChildOwnership on childId,
+  // and on the createAiQuota allow-list (createApp.ts).
+  router.post("/live/turn", requireOwnership, async (req, res) => {
+    const { role, text, language } = req.body ?? {};
+    if ((role !== "user" && role !== "model") || typeof text !== "string" || !text.trim()) {
+      res.status(400).json({ error: "role ('user' or 'model') and a non-empty text are required" });
+      return;
+    }
+    // VC-3 condition 2: every turn is auditable even when clean — chars +
+    // verdict category ONLY, NEVER the transcript text (child-data minimalism).
+    const audit = (verdictCategory: string | null) =>
+      logger.info("live.turn", {
+        requestId: requestIdOf(req),
+        uid: actorOf(req).uid,
+        role,
+        chars: text.length,
+        verdictCategory,
+      });
+    try {
+      if (role === "user") {
+        const match = screenForImmediateEscalation({ text });
+        audit(match?.category ?? null);
+        if (match) {
+          // VC-2 condition 3: resources are renderEscalationMarkdown VERBATIM
+          // (the CRITICAL_HELPLINE_LITERALS tripwire covers this path); the
+          // spoken redirect is the localized VC-6 fallback line.
+          res.json({
+            action: "stop_crisis",
+            category: match.category,
+            resourcesMarkdown: renderEscalationMarkdown(match),
+            spokenText: voiceSafetyFallback(language).escalation,
+          });
+          return;
+        }
+        res.json({ action: "continue" });
+        return;
+      }
+      const verdict = await screenModelOutput(modelProvider, text);
+      audit(verdict.category);
+      if (verdict.flagged) {
+        res.json({
+          action: "stop_blocked",
+          category: verdict.category,
+          blockedMarkdown: renderBlockedOutputMarkdown(),
+          spokenText: voiceSafetyFallback(language).blocked,
+        });
+        return;
+      }
+      res.json({ action: "continue" });
+    } catch (error: any) {
+      // Fail CLOSED: a screening error must never read as a clean verdict —
+      // the non-200 makes the client guard drop the turn and halt the session.
+      logger.error("Arbor Live Turn Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Live turn screening failed" });
     }
   });
 

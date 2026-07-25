@@ -57,7 +57,7 @@ import { createConsultStore } from "../server/consultRequests.js";
 import { createAdminMetricsStore } from "../server/adminMetrics.js";
 import { createWaitlistStore } from "../server/waitlist.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
-import { LIVE_SYSTEM_INSTRUCTION } from "../lib/livePersona.js";
+import { LIVE_SYSTEM_INSTRUCTION, buildLiveSystemInstruction, HE_SPOKEN_DIRECTIVE } from "../lib/livePersona.js";
 
 const stubModelProvider = {
   async *streamText() {
@@ -209,16 +209,37 @@ describe("POST /api/live/token (VC-7) — gated on liveEnabled && geminiApiKey",
   });
 
   it("FW-NEW-P0: the mint pins the server persona AND transcription-on into liveConnectConstraints", async () => {
-    await postToken(flagOnUrl);
+    const { body } = await postToken(flagOnUrl);
     const arg = sdkSpies.create.mock.calls[0][0] as any;
     const constraints = arg.config.liveConnectConstraints;
     expect(constraints.model).toBe("gemini-2.0-flash-live-001");
-    // Byte-identical to the shared constant the client also uses — a modified
-    // client cannot substitute the persona (the token constraint wins).
+    // Byte-identical to the shared constant — a modified client cannot
+    // substitute the persona (the token constraint wins).
     expect(constraints.config.systemInstruction).toBe(LIVE_SYSTEM_INSTRUCTION);
-    // Transcription cannot be disabled by the client either.
+    // Transcription cannot be disabled by the client either (the turn-guard
+    // treats transcription absence as flagged — VC-1 condition 1).
     expect(constraints.config.inputAudioTranscription).toEqual({});
     expect(constraints.config.outputAudioTranscription).toEqual({});
+    // AI-V9: the per-language voice is pinned too, and the pinned instruction +
+    // speechConfig are echoed back so the client connect config matches the pin.
+    expect(constraints.config.speechConfig.languageCode).toBe("en-US");
+    expect(body.systemInstruction).toBe(LIVE_SYSTEM_INSTRUCTION);
+    expect((body.speechConfig as any).languageCode).toBe("en-US");
+  });
+
+  it("AI-V9: language:'he' pins the Hebrew directive + he-IL voice into the token", async () => {
+    const res = await fetch(`${flagOnUrl}/api/live/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language: "he" }),
+    });
+    const body = (await res.json()) as Record<string, any>;
+    const arg = sdkSpies.create.mock.calls[0][0] as any;
+    const cfg = arg.config.liveConnectConstraints.config;
+    expect(cfg.systemInstruction).toBe(buildLiveSystemInstruction("he"));
+    expect(cfg.systemInstruction).toContain(HE_SPOKEN_DIRECTIVE.trim());
+    expect(cfg.speechConfig.languageCode).toBe("he-IL");
+    expect(body.systemInstruction).toBe(buildLiveSystemInstruction("he"));
   });
 
   it("each voice toggle gets a FRESH token (one mint per POST, no caching)", async () => {
