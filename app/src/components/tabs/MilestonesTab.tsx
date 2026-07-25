@@ -531,7 +531,7 @@ export default function MilestonesTab() {
             <div className={`${cardCls} p-6`}>
               <h3 className="text-[15px] font-extrabold mb-4" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.developmentMap")}</h3>
               <div className="flex flex-col gap-3.5">
-                {domainOptions.map((dom) => {
+                {domainOptions.filter((dom) => (domainStats[dom.id]?.total ?? 0) > 0).map((dom) => {
                   const s = domainStats[dom.id] || { total: 0, checked: 0 };
                   const dv = domainVisual(dom.id);
                   const Icon = dv.icon;

@@ -2443,7 +2443,7 @@ export const he: Dict = {
   "devscore.coach.headline": "רוצים כמה רעיונות פשוטים להשבוע?",
   "devscore.coach.prompt": "אשמח לכמה רעיונות פשוטים ומותאמי־גיל לטיפוח ההתפתחות של {name} השבוע. מה דבר אחד שאפשר לנסות?",
   "devscore.note": "תמונת מצב לא־אבחנתית מאבני הדרך ששמתם לב אליהן — נקודת התחלה, לא פסק דין.",
-  "devscore.noticed": "{reached} מתוך {total} אבני דרך גילאיות מצאתם לב",
+  "devscore.noticed": "שמתם לב ל־{reached} מתוך {total} אבני דרך גילאיות",
   "devscore.noticed.short": "שמתם לב",
   "devscore.noticed.aria": "{domain}: {reached} מתוך {total} אבני דרך שמתם לב אליהן",
   "devscore.noticed.aria.striptoday": "תמונת התפתחות: {reached} מתוך {total} אבני דרך שמתם לב אליהן. הקישו לפתיחה.",
