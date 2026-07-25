@@ -25,6 +25,7 @@ import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
+import { splitCompleteSentences } from "../../lib/sentenceStream";
 import { publishedHardMomentCards } from "../../content/hardMomentCards";
 import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
@@ -196,9 +197,12 @@ export default function CoachTab() {
           // the delta accumulates into a live AI bubble in the thread.
           appendVoiceAiDelta(delta);
           voiceBufRef.current += delta;
-          const parts = voiceBufRef.current.split(/(?<=[.!?])\s+/);
-          while (parts.length > 1) enqueueSpeak(parts.shift() as string);
-          voiceBufRef.current = parts[0] || "";
+          // EVAL-2: the splitter is the shared pure lib function so the
+          // cadence contract is pinned by evals/voice-loop-v1 (see
+          // routes/voiceLoopEval.test.ts) — same semantics as before.
+          const { complete, rest } = splitCompleteSentences(voiceBufRef.current);
+          for (const sentence of complete) enqueueSpeak(sentence);
+          voiceBufRef.current = rest;
         },
         {
           signal: controller.signal,

@@ -638,10 +638,16 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
     }
   });
 
-  // RT-2 (v6): realtime STREAMING voice coach. Streams plain spoken-friendly text
-  // token-by-token over SSE so the client can speak each sentence the moment it
-  // arrives (sentence-streamed TTS) — a true low-latency voice loop on Gemini
-  // streaming (which is entitled here), independent of the Live bidi API.
+  // RT-2 (v6): STREAMING voice coach over SSE, independent of the Live bidi API.
+  // EVAL-2 (2026-07-25): today this handler deliberately BUFFERS the entire
+  // reply, screens it once (SAFE-V1 below), and emits ONE delta — so
+  // time-to-first-audio equals full generation time. That trade-off is now an
+  // EXPLICIT, TESTED decision, not an accident: the voice-loop-v1 cadence test
+  // (routes/voiceLoopEval.test.ts, marked it.fails) stays red until the
+  // voice-cadence entry (AI-V1+AIR-2) lands sentence-boundary screening here —
+  // splitting at lib/sentenceStream boundaries, screening the CUMULATIVE
+  // alias-restored text at each boundary, and emitting each passed sentence as
+  // its own delta so the client can speak sentence 1 while 2..N generate.
   router.post("/voice", async (req, res) => {
     const { message, childProfile, scholarLens, language } = req.body;
     if (!message || typeof message !== "string") {

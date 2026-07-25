@@ -13,6 +13,7 @@
     "test": "vitest run --config scripts/vitest.config.mjs",
     "test:coverage": "vitest run --config scripts/vitest.config.mjs --coverage",
     "eval:safety": "tsx scripts/safety-eval.mts",
+    "eval:voice-live": "tsx scripts/voice-smoke.mts",
     "check:framework": "node scripts/framework-check.mjs",
     "check:floors": "node scripts/capability-floors.mjs"
   },
