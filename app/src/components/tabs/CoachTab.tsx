@@ -28,6 +28,7 @@ import { startDictation, speechSupported } from "../../lib/speech";
 import { publishedHardMomentCards } from "../../content/hardMomentCards";
 import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
+import { LIVE_SYSTEM_INSTRUCTION } from "../../lib/livePersona";
 import { usePrefersReducedMotion } from "../ui/playkit";
 
 type Risk = "Low" | "Moderate" | "High";
@@ -142,10 +143,12 @@ export default function CoachTab() {
   const streamDoneRef = useRef(false);
   const voiceAbortRef = useRef<AbortController | null>(null);
 
-  // Probe Gemini Live availability once.
+  // AI-V8: probe Gemini Live availability once, from the config-only GET —
+  // zero ephemeral tokens are minted on mount; a fresh single-use token is
+  // minted only inside toggleVoice when the parent actually starts talking.
   useEffect(() => {
     let cancelled = false;
-    api.liveToken().then((r) => { if (!cancelled && r.available) setLiveAvail(true); }).catch(() => {});
+    api.liveAvailability().then((r) => { if (!cancelled && r.available) setLiveAvail(true); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -272,10 +275,13 @@ export default function CoachTab() {
         if (fresh.available && fresh.token && fresh.model) {
           const { startGeminiLive } = await import("../../lib/geminiLiveClient");
           setVoicePhase("thinking");
+          // FW-NEW-P0: the persona is server-pinned into the token's
+          // liveConnectConstraints at mint time — this shared constant just
+          // keeps the client connect config byte-identical to the pin.
           liveCtlRef.current = await startGeminiLive(
             fresh.token,
             fresh.model,
-            "You are Arbor, a warm, calm, non-diagnostic parenting coach. Keep spoken replies short, kind, and practical. Never diagnose; suggest professional help for safety concerns.",
+            LIVE_SYSTEM_INSTRUCTION,
             {
               onPhase: (p) => setVoicePhase(p === "closed" ? "off" : p === "connecting" ? "thinking" : p),
               onError: () => { liveCtlRef.current = null; toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },

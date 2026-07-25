@@ -212,6 +212,10 @@ export const createApp = (config: ArborConfig) => {
       "/api/generate-scene",
       "/api/generate-comic",
       "/api/live/token",
+      // VC-7: the upcoming screened Live turn endpoint sits under the SAME
+      // per-user metering as the token mint, so Live usage is bounded and
+      // visible the moment that route lands (firewall condition 4).
+      "/api/live/turn",
       "/api/tts",
     ],
     createAiQuota(counters)

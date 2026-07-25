@@ -27,6 +27,7 @@ import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
 import { screenAndSynthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
 import { billingCheckoutUrl } from "../server/billing.js";
+import { LIVE_SYSTEM_INSTRUCTION } from "../lib/livePersona.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
@@ -705,26 +706,54 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
     }
   });
 
+  // VC-7 (live-enablement-gate): Live is available ONLY when the explicit
+  // LIVE_ENABLED flag AND the key are both set. Keying on the key alone made
+  // the GD-3 hazard an accidental env change — setting GEMINI_API_KEY for any
+  // other reason would have silently routed all voice around the screened
+  // /voice path. Flipping the flag to true IS the GD-3 unlock (Guy decision).
+  const liveConfigured = () => Boolean(config.liveEnabled && config.geminiApiKey);
+
+  // AI-V8: availability computed from config alone — no SDK call, no token
+  // mint, no network. CoachTab probes THIS on mount; a real ephemeral token is
+  // minted only when the parent actually toggles voice. (An availability
+  // endpoint keyed on the key alone would recreate the VC-7 hazard.)
+  router.get("/live/availability", (_req, res) => {
+    res.json({ available: liveConfigured() });
+  });
+
   // RT-1 (v6): Gemini Live streaming. Mint a short-lived ephemeral token so the
   // browser can open a Live (bidiGenerateContent) audio session DIRECTLY without
   // ever seeing the server key. Reports availability so the client can fall back
   // to the browser voice loop when Live isn't configured/provisioned.
+  // Metered by createAiQuota in createApp.ts (same list as the other paid mints).
   router.post("/live/token", async (req, res) => {
-    const apiKey = config.geminiApiKey;
-    if (!apiKey) {
-      res.json({ available: false, reason: "Gemini Live is not configured on this server." });
+    if (!liveConfigured()) {
+      res.json({ available: false, reason: "Gemini Live is not enabled on this server." });
       return;
     }
+    const apiKey = config.geminiApiKey as string;
     try {
       const { GoogleGenAI } = await import("@google/genai");
       const ai = new GoogleGenAI({ apiKey });
-      const model = process.env.LIVE_MODEL || "gemini-2.0-flash-live-001";
+      const model = config.liveModel;
       const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
       const token = await ai.authTokens.create({
         config: {
           uses: 1,
           expireTime,
-          liveConnectConstraints: { model },
+          // FW-NEW-P0: pin the persona and transcription-on INTO the token's
+          // constraints at mint time. The Live API rejects a connect config
+          // that conflicts with these, so a modified client cannot substitute
+          // an arbitrary systemInstruction or disable the transcription the
+          // upcoming turn-guard screens against.
+          liveConnectConstraints: {
+            model,
+            config: {
+              systemInstruction: LIVE_SYSTEM_INSTRUCTION,
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+            },
+          },
           httpOptions: { apiVersion: "v1alpha" }
         }
       });
