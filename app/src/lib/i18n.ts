@@ -624,6 +624,9 @@ export const en: Dict = {
   "ms.observeNotSureHint": "Try watching for the example during familiar play. There is no need to test or push.",
   "ms.age": "Age:",
   "ms.looksLike": "What this looks like:",
+  // UND-7 — governed example-media slot (ships empty; renders fail-closed).
+  "ms.mediaExample": "Illustrated example",
+  "ms.mediaCredit": "Credit:",
   "ms.custom": "Custom",
   "ms.explain": "Explain",
   "ms.hide": "Hide",
@@ -2765,6 +2768,9 @@ export const he: Dict = {
   "ms.observeNotSureHint": "נסו לצפות בדוגמה במהלך משחק מוכר. אין צורך לבדוק או ללחוץ.",
   "ms.age": "גיל:",
   "ms.looksLike": "איך זה נראה:",
+  // UND-7 — משבצת מדיה מנוהלת (נשלחת ריקה; מוצגת רק לאחר אישור מלא).
+  "ms.mediaExample": "דוגמה מומחשת",
+  "ms.mediaCredit": "קרדיט:",
   "ms.custom": "מותאם",
   "ms.explain": "הסבר",
   "ms.hide": "הסתר",

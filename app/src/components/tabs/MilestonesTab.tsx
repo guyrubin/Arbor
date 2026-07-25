@@ -9,6 +9,9 @@ import { cardCls, ProgressBar, RadialProgress, Split, domainVisual, PASTEL } fro
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import { bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt } from "../../lib/milestoneData";
+// UND-7 — fail-closed gate for the governed milestone example-media slot
+// (missing reviewer/rightsRef → never renders; ships with zero media entries).
+import { isRenderableMilestoneMedia } from "../../content/governance";
 // B0 — months-precise age spine
 import { ageMonthsFromProfile } from "../../lib/childAge";
 // UND-3 — the ONE canonical watch derivation feeds the "Gentle watch points" card.
@@ -169,6 +172,25 @@ export default function MilestonesTab() {
               <span className="font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.looksLike")} </span>
               {item.skillLooksLike}
             </span>
+          )}
+          {/* UND-7 — governed example-media slot (AR-CAP-08/AR-CONT-07). FAIL-CLOSED:
+              renders only a fully governed record (missing reviewer/rightsRef →
+              never renders — isRenderableMilestoneMedia mirrors the AR-CONT-01
+              gate) in the viewer's locale. Ships with ZERO media entries, so prod
+              stays visually unchanged until licensed media (Guy-gated, GD-8) lands. */}
+          {isRenderableMilestoneMedia(item.exampleMedia) && item.exampleMedia.locale === uiLang && (
+            <figure className="mt-2 overflow-hidden rounded-xl" style={{ border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
+              {item.exampleMedia.kind === "video" ? (
+                <video src={item.exampleMedia.src} controls playsInline preload="metadata" className="w-full max-h-56" aria-label={item.exampleMedia.alt} />
+              ) : (
+                <img src={item.exampleMedia.src} alt={item.exampleMedia.alt} loading="lazy" className="w-full max-h-56 object-cover" />
+              )}
+              <figcaption className="px-3 py-1.5 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                <span className="font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.mediaExample")}</span>
+                {" · "}
+                {t("ms.mediaCredit")} {item.exampleMedia.credit}
+              </figcaption>
+            </figure>
           )}
           {/* UND-1 — observation labels resolve through i18n keys (were inline ternaries). */}
           <div className="grid grid-cols-3 gap-1.5 pt-2" role="group" aria-label={t("ms.observePrompt")}>

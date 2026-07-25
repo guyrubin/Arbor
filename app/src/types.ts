@@ -221,6 +221,33 @@ export interface PlayLog {
 
 export type { ActionLoopEntry, ActionCapacity, ActionOutcome } from "./actionLoop/model";
 
+/**
+ * UND-7 (AR-CAP-08 / AR-CONT-07) — governed media slot for an illustrated or
+ * video example of a milestone skill (the CDC Milestone Tracker reference).
+ * The seam SHIPS EMPTY: no milestone carries media until licensing/source
+ * approval lands (Guy-gated, GD-8). Rendering is fail-closed through
+ * `isRenderableMilestoneMedia` (content/governance.ts, mirroring the
+ * AR-CONT-01 publication gate): a record missing its named reviewer or its
+ * rights reference NEVER renders.
+ */
+export interface MilestoneExampleMedia {
+  kind: "illustration" | "video";
+  /** Asset location — bundled path or rights-approved storage URL. */
+  src: string;
+  /** Accessible description of what the example shows. */
+  alt: string;
+  /** Attribution line surfaced next to the media. */
+  credit: string;
+  /** Licensing/rights record reference — REQUIRED or nothing renders. */
+  rightsRef: string;
+  /** Named clinical/content reviewer — REQUIRED or nothing renders. */
+  reviewer: string;
+  /** ISO date of the review stamp. */
+  reviewedAt: string;
+  /** The locale this media was authored/reviewed for. */
+  locale: "en" | "he";
+}
+
 export interface Milestone {
   id: string;
   domain: DevelopmentalDomainId;
@@ -244,6 +271,11 @@ export interface Milestone {
   observationUpdatedAt?: string;
   checked: boolean;
   references?: { label: string; url: string }[];
+  /**
+   * UND-7 — optional governed example media (ships with ZERO entries; renders
+   * only through the fail-closed `isRenderableMilestoneMedia` gate).
+   */
+  exampleMedia?: MilestoneExampleMedia;
   custom?: boolean;
 }
 

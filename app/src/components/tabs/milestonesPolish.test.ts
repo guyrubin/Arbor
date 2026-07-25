@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+import { ALL_MILESTONES } from "../../lib/milestoneData";
 
 /**
  * UND-3 / UND-8 — source-based guards for the Milestones journey polish
@@ -50,6 +51,25 @@ describe("UND-3 — watch points card is derived, never fabricated", () => {
     expect(code).toContain("useMonitoring");
     expect(code).toContain("watchPointsSummary");
     expect(code).toContain('t("ms.watch.none")');
+  });
+});
+
+describe("UND-7 — governed milestone example-media seam ships empty, renders fail-closed", () => {
+  const code = read("components/tabs/MilestonesTab.tsx");
+
+  it("the render site sits behind the fail-closed governance guard + locale match", () => {
+    // The JSX block must OPEN with the guard: no path reaches the media record
+    // without isRenderableMilestoneMedia (missing reviewer/rightsRef → never
+    // renders) AND the viewer-locale check.
+    expect(code).toMatch(
+      /\{isRenderableMilestoneMedia\(item\.exampleMedia\) && item\.exampleMedia\.locale === uiLang && \(/,
+    );
+    expect(code).toContain('import { isRenderableMilestoneMedia } from "../../content/governance"');
+  });
+
+  it("ships with ZERO media entries — prod stays visually unchanged until GD-8", () => {
+    expect(ALL_MILESTONES.length).toBeGreaterThan(0);
+    expect(ALL_MILESTONES.every((m) => m.exampleMedia === undefined)).toBe(true);
   });
 });
 
