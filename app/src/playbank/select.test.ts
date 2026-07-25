@@ -332,7 +332,7 @@ describe("KID-3 session-length honesty", () => {
     }
   });
 
-  it("never offers a session length whose bucket is empty for the band (extended today)", () => {
+  it("never offers a session length whose bucket is empty for the band", () => {
     for (const { band, ageYears } of bandAges) {
       const offered = availableSessionLengths(ageYears);
       for (const s of SESSION_LENGTHS) {
@@ -358,6 +358,26 @@ describe("KID-3 session-length honesty", () => {
           expect(p.activity.durationMin).toBeLessThanOrEqual(maxDur);
         }
       }
+    }
+  });
+
+  // KID-3 content wave: the buckets the chips depend on are now honestly
+  // stocked — extended (21–30 min) for every band EXCEPT infant (a 25–30 min
+  // guided session is not an honest ask of that band), standard for infant.
+  it("the extended chip is now offered for toddler / preschool / early-school, and NOT for infant", () => {
+    for (const { band, ageYears } of bandAges) {
+      const offered = availableSessionLengths(ageYears);
+      if (band === "infant") {
+        expect(offered, "infant must not be offered the extended chip").not.toContain("extended");
+      } else {
+        expect(offered, `band "${band}" should now offer the extended chip`).toContain("extended");
+      }
+    }
+  });
+
+  it("every band is offered the standard chip (infant standard bucket stocked by the KID-3 wave)", () => {
+    for (const { band, ageYears } of bandAges) {
+      expect(availableSessionLengths(ageYears), `band "${band}" missing the standard chip`).toContain("standard");
     }
   });
 

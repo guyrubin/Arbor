@@ -75,9 +75,11 @@ export const MIN_SESSION_BUCKET = 3;
 /**
  * KID-3: the session lengths that may honestly be offered for a child of
  * this age — a bucket qualifies only when it holds at least
- * MIN_SESSION_BUCKET activities matching the child's band. The extended
- * bucket is currently empty (0/252 activities), so it never renders;
- * authoring extended-duration activities is the AR-CONT-02 content wave.
+ * MIN_SESSION_BUCKET activities matching the child's band. The AR-CONT-02
+ * content wave stocked the extended (21–30 min) bucket for toddler /
+ * preschool / early-school and the standard bucket for infants; infants
+ * deliberately have NO extended activities (a 25–30 minute guided session is
+ * not an honest ask of that band), so the extended chip stays hidden there.
  */
 export function availableSessionLengths(ageYears: number): SessionLength[] {
   const band = bandForAge(ageYears);

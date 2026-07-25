@@ -194,6 +194,11 @@ export const en: Dict = {
   "play.session.standard": "Standard (15 min)",
   "play.session.extended": "Extended (25-30 min)",
   "play.session.hint": "A focused 10-min activity looks good around {time} today — from your log.",
+  // KID-5: guided-play section labels (chrome only — field copy lives in the playbank)
+  "play.guided.easier": "Make it easier:",
+  "play.guided.harder": "Add a stretch:",
+  "play.guided.notice": "What to notice:",
+  "play.guided.after": "Afterwards:",
   // Daily Play Courses
   "course.eyebrow": "Play course",
   "course.progress": "{done} of {total} done",
@@ -2408,6 +2413,11 @@ export const he: Dict = {
   "play.session.standard": "רגיל (15 דק׳)",
   "play.session.extended": "מורחב (30-25 דק׳)",
   "play.session.hint": "על פי היומן שלך, חלון טוב לפעילות קצרה הוא סביב {time} היום.",
+  // KID-5: guided-play section labels (chrome only — field copy lives in the playbank)
+  "play.guided.easier": "להקל:",
+  "play.guided.harder": "להוסיף אתגר:",
+  "play.guided.notice": "למה לשים לב:",
+  "play.guided.after": "אחר כך:",
   // Daily Play Courses
   "course.eyebrow": "מסלול משחק",
   "course.progress": "{done} מתוך {total} הושלמו",

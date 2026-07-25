@@ -55,6 +55,45 @@ export interface CoverageSummary {
   thinnestStages: { stage: Stage; domainsCovered: number }[];
 }
 
+/* ── KID-5 / AR-CONT-02: guided-play authoring rank ─────────────────────────
+ * The content wave authors the four guided fields (easierVariation /
+ * harderVariation / whatToNotice / outcomePrompt) for the TOP-50 activities,
+ * ranked by domain coverage × band: each activity scores the sum, over its
+ * band×domain cells, of 1/(activities in that cell) — so activities carrying
+ * thin cells rank first and the authored set spreads across the whole grid
+ * instead of pooling in the fattest cells. Deterministic (ties break by id). */
+
+export const GUIDED_AUTHORING_COUNT = 50;
+
+/** All activities, ranked for guided-play authoring (rarity-weighted band×domain coverage). */
+export function guidedAuthoringRank(activities: PlayActivity[] = PLAY_ACTIVITIES): PlayActivity[] {
+  const cellCount = new Map<string, number>();
+  for (const a of activities) {
+    for (const band of a.bands) {
+      const key = `${band}|${a.domain}`;
+      cellCount.set(key, (cellCount.get(key) ?? 0) + 1);
+    }
+  }
+  const score = (a: PlayActivity) =>
+    a.bands.reduce((sum, band) => sum + 1 / (cellCount.get(`${band}|${a.domain}`) ?? 1), 0);
+  return [...activities].sort((x, y) => score(y) - score(x) || (x.id < y.id ? -1 : 1));
+}
+
+/** The top-N activities the guided-play content wave must cover. */
+export function topGuidedActivities(
+  activities: PlayActivity[] = PLAY_ACTIVITIES,
+  count = GUIDED_AUTHORING_COUNT
+): PlayActivity[] {
+  return guidedAuthoringRank(activities).slice(0, count);
+}
+
+/** True when every guided-play field is authored (non-empty) on the activity. */
+export function hasGuidedFields(a: PlayActivity): boolean {
+  return Boolean(
+    a.easierVariation?.trim() && a.harderVariation?.trim() && a.whatToNotice?.trim() && a.outcomePrompt?.trim()
+  );
+}
+
 export function coverageSummary(activities: PlayActivity[] = PLAY_ACTIVITIES): CoverageSummary {
   const cells = buildCoverage(activities);
   const filled = cells.filter((c) => c.count > 0).length;

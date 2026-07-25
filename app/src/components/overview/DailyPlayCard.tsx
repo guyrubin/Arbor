@@ -169,15 +169,64 @@ export default function DailyPlayCard({
           <Icon name="expand_more" size={18} className="transition" style={{ transform: open ? "rotate(180deg)" : "none" }} />
         </button>
         {open && (
-          <ol className="mt-3 space-y-2.5">
-            {activity.steps.map((s, i) => (
-              <li key={i} className="flex gap-3 text-[14px] leading-relaxed" style={{ color: INK }}>
-                <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-extrabold"
-                  style={{ background: GREEN_SOFT, color: GREEN }}>{i + 1}</span>
-                <span style={{ textWrap: "pretty" } as React.CSSProperties}>{s}</span>
-              </li>
-            ))}
-          </ol>
+          <>
+            <ol className="mt-3 space-y-2.5">
+              {activity.steps.map((s, i) => (
+                <li key={i} className="flex gap-3 text-[14px] leading-relaxed" style={{ color: INK }}>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-extrabold"
+                    style={{ background: GREEN_SOFT, color: GREEN }}>{i + 1}</span>
+                  <span style={{ textWrap: "pretty" } as React.CSSProperties}>{s}</span>
+                </li>
+              ))}
+            </ol>
+
+            {/* KID-5 / AR-CONT-02: guided-play layer — authored variations and
+                observational prompts, shown only where authored. Labels are
+                bilingual i18n chrome; field copy is EN now, HE arrives via the
+                native transcreation packet (localizeActivity EN-fallback).
+                Register stays observational (notice/describe — never a verdict);
+                demoMediaId deliberately renders nothing (video is Guy-gated). */}
+            {(activity.easierVariation || activity.harderVariation || activity.whatToNotice || activity.outcomePrompt) && (
+              <div className="mt-4 space-y-3 rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)", border: `1px solid ${RULE}` }}>
+                {activity.easierVariation && (
+                  <div className="flex gap-2.5">
+                    <Icon name="remove" size={16} className="flex-shrink-0 mt-0.5" style={{ color: GREEN }} />
+                    <p className="text-[13px] leading-relaxed" style={{ color: INK }}>
+                      <span className="font-bold" style={{ color: GREEN }}>{t("play.guided.easier")} </span>
+                      {activity.easierVariation}
+                    </p>
+                  </div>
+                )}
+                {activity.harderVariation && (
+                  <div className="flex gap-2.5">
+                    <Icon name="add" size={16} className="flex-shrink-0 mt-0.5" style={{ color: GREEN }} />
+                    <p className="text-[13px] leading-relaxed" style={{ color: INK }}>
+                      <span className="font-bold" style={{ color: GREEN }}>{t("play.guided.harder")} </span>
+                      {activity.harderVariation}
+                    </p>
+                  </div>
+                )}
+                {activity.whatToNotice && (
+                  <div className="flex gap-2.5">
+                    <Icon name="visibility" size={16} className="flex-shrink-0 mt-0.5" style={{ color: GREEN }} />
+                    <p className="text-[13px] leading-relaxed" style={{ color: INK }}>
+                      <span className="font-bold" style={{ color: GREEN }}>{t("play.guided.notice")} </span>
+                      {activity.whatToNotice}
+                    </p>
+                  </div>
+                )}
+                {activity.outcomePrompt && (
+                  <div className="flex gap-2.5">
+                    <Icon name="chat_bubble" size={16} className="flex-shrink-0 mt-0.5" style={{ color: GREEN }} />
+                    <p className="text-[13px] leading-relaxed" style={{ color: INK }}>
+                      <span className="font-bold" style={{ color: GREEN }}>{t("play.guided.after")} </span>
+                      {activity.outcomePrompt}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Actions */}
