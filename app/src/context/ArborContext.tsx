@@ -35,7 +35,7 @@ import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
 import { sortActionLoop, todayActionId } from "../actionLoop/model";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
-import { appendChatAck, applyChatDelta, settleChatTurn, abortChatStream } from "../lib/chatStream";
+import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
 import { useLanguage } from "./LanguageContext";
 
 const readLS = (key: string): string | null => {
@@ -106,19 +106,11 @@ export type ChatMessage = {
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
 
-export const WELCOME_MESSAGE: ChatMessage = {
-  sender: "ai",
-  text:
-    "### Welcome to Arbor Parent Coach\n" +
-    "I help turn parenting concerns into age-aware, non-diagnostic next steps. Share a hard moment, a behavior pattern, or a developmental question your child is facing.\n\n" +
-    "### Suggested starting points:\n" +
-    "- **\"Transition tantrums when leaving for school in the mornings.\"**\n" +
-    "- **\"Refuses to switch off the screen at night and screams.\"**\n" +
-    "- **\"Suggestions for improving confidence when switching between languages.\"**\n\n" +
-    "Select a **Scholar Lens** above to focus guidance through a developmental frame (Vygotsky, Bowlby, Piaget, Winnicott, etc.).",
-  lens: "Integrated Balanced",
-};
-
+// ASK-7: the English WELCOME_MESSAGE bubble was deleted — a fresh thread is
+// simply []. Orientation lives ONCE on the surface itself (mascot empty state
+// + fast-start scenarios); guards key off hasUserTurn/hasAiTurn predicates
+// instead of message-count checks. Legacy saved conversations that still
+// contain the old welcome bubble render it as an ordinary AI message.
 
 /**
  * Holds the full Arbor application state and the API handlers that were
@@ -281,7 +273,7 @@ function useArborState() {
   // store (lib/onboardingJourney); the coach composer starts pre-filled with it
   // on the very first session. takeCoachSeed() is read-once-and-clear.
   const [chatInput, setChatInput] = useState<string>(() => takeCoachSeed() ?? "");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   // Multi-thread coach conversations (persisted per child).
   const conversationsCol = useChildCollection<Conversation>(childProfile.id, "conversations");
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -459,12 +451,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     if (loadedChatChild.current === childProfile.id) return;
     loadedChatChild.current = childProfile.id;
     setActiveConversationId(null);
-    setChatMessages([WELCOME_MESSAGE]);
+    setChatMessages([]);
   }, [childProfile.id]);
 
-  // Persist the active conversation (once it has real content).
+  // Persist the active conversation (once it has real content — ASK-7/ASK-8:
+  // "real" means the parent actually asked something; ack-only or error-only
+  // states never reach Firestore because no error bubbles are appended and a
+  // thread without a user turn is skipped here).
   useEffect(() => {
-    if (!activeConversationId || chatMessages.length <= 1) return;
+    if (!activeConversationId || !hasUserTurn(chatMessages)) return;
     const firstUser = chatMessages.find((m) => m.sender === "user");
     const title = (firstUser ? firstUser.text : "Conversation").replace(/[#*]/g, "").trim().slice(0, 48) || "Conversation";
     void conversationsCol.upsert({
@@ -496,13 +491,13 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   // Coach conversation thread controls.
   const newConversation = () => {
     setActiveConversationId(null);
-    setChatMessages([WELCOME_MESSAGE]);
+    setChatMessages([]);
   };
   const openConversation = (id: string) => {
     const c = conversationsCol.items.find((x) => x.id === id);
     if (!c) return;
     setActiveConversationId(id);
-    setChatMessages(c.messages.length ? c.messages : [WELCOME_MESSAGE]);
+    setChatMessages(c.messages);
   };
   const deleteConversation = (id: string) => {
     void conversationsCol.remove(id);
@@ -702,8 +697,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     // ASK-1: the user turn + an IMMEDIATE locally-rendered acknowledgment
     // bubble — the parent sees a response begin the moment they send, then the
     // first screened streamed sentence replaces the ack copy.
+    // ASK-8: appendChatUser dedupes the retry path — after a failed turn the
+    // thread already ends with this exact question, so Retry never re-appends.
     setChatMessages((prev) =>
-      appendChatAck([...prev, { sender: "user" as const, text: promptValue, lens: selectedLens }], t("coach.ack"), selectedLens),
+      appendChatAck(appendChatUser(prev, promptValue, selectedLens), t("coach.ack"), selectedLens),
     );
     setIsChatLoading(true);
 
@@ -754,22 +751,19 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     } catch (err: any) {
       console.error(err);
       if (err.name === "AbortError") {
-        // Keep any screened partial prose (parity with the voice loop); an
-        // ack-only bubble is dropped so no placeholder survives the stop.
-        setChatMessages((prev) => [
-          ...abortChatStream(prev),
-          { sender: "ai", text: "### Request Stopped\nThe live Arbor response was cancelled before completion." },
-        ]);
+        // ASK-8: keep any screened partial prose (parity with the voice loop);
+        // an ack-only bubble is dropped so no placeholder survives the stop.
+        // No cancel bubble is appended — a stop is the parent's own action,
+        // not a message from Arbor, and it must never persist into the thread.
+        setChatMessages((prev) => abortChatStream(prev));
         return;
       }
+      // ASK-8: a failure surfaces as ONE calm role=alert retry card (CoachTab
+      // renders t("coach.error") — never the raw err.message). No error bubble
+      // is appended, so no Firestore/index/provider internals ever land in a
+      // stressed parent's thread or in the persisted conversation.
       setApiError(err.message || "An exception occurred while connecting to Arbor services.");
-      setChatMessages((prev) => [
-        ...abortChatStream(prev),
-        {
-          sender: "ai",
-          text: renderApiConnectionError(err.message),
-        },
-      ]);
+      setChatMessages((prev) => abortChatStream(prev));
     } finally {
       setIsChatLoading(false);
       setChatStreamStatus(null);
@@ -787,7 +781,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setChatStreamStatus(t("coach.status.council"));
     if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
 
-    setChatMessages((prev) => [...prev, { sender: "user" as const, text: promptValue, lens: selectedLens }]);
+    // ASK-8: same retry-dedupe seam as handleChatSend — a council retry after
+    // a failure reuses the trailing user question instead of duplicating it.
+    setChatMessages((prev) => appendChatUser(prev, promptValue, selectedLens));
     setIsChatLoading(true);
     try {
       const data = await api.council({
@@ -807,11 +803,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       if (err instanceof PaywallError) {
         openPaywall(err.feature, err.plan);
       } else {
+        // ASK-8: the calm retry card is the single error affordance — no
+        // raw err.message bubble is appended to (or persisted with) the thread.
         setApiError(err.message || "The scholar council could not be reached.");
-        setChatMessages((prev) => [
-          ...prev,
-          { sender: "ai", text: `### Council unavailable\n${err.message}` },
-        ]);
       }
     } finally {
       setIsChatLoading(false);

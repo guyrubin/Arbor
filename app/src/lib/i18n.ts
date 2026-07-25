@@ -375,6 +375,9 @@ export const en: Dict = {
   "coach.aiDisclosure": "Arbor's guidance is AI-generated and doesn't replace professional advice. In an emergency, contact your care provider.",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "Integrated Balanced",
+  // ASK-9 — the demoted single-line lens affordance below the fast-start scenarios.
+  "coach.perspective": "Perspective",
+  "coach.perspective.change": "change",
   "coach.lens.integratedHint": "The default: connection first, then the next achievable step, then the environment. Pick a named lens when one angle should lead.",
   "coach.lens.browseAll": "Browse all lenses",
   "coach.alignedWith": "Aligned with {lens}",
@@ -411,6 +414,8 @@ export const en: Dict = {
   // COACH-1 — CoachAnswerCards panel chrome (the flagship structured answer).
   "coach.cards.council": "The council weighed in · {n} voices",
   "coach.cards.happening": "What may be happening",
+  // ASK-3 — hypotheses collapse into a calm disclosure below the script + plan.
+  "coach.cards.why": "Why this might be happening",
   "coach.cards.tryToday": "Try today",
   "coach.cards.saveAsPlan": "Save as plan",
   "coach.cards.sayThis": "Say this",
@@ -2566,6 +2571,9 @@ export const he: Dict = {
   "coach.aiDisclosure": "ההכוונה של ארבור נוצרת בבינה מלאכותית ואינה תחליף לייעוץ מקצועי. במקרה חירום פנו לגורם המטפל שלכם.",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "משולב מאוזן",
+  // ASK-9 — שורת נקודת המבט המצומצמת מתחת לתרחישי הפתיחה המהירה.
+  "coach.perspective": "נקודת מבט",
+  "coach.perspective.change": "שינוי",
   "coach.lens.integratedHint": "ברירת המחדל: קשר תחילה, אחר כך הצעד הבא בר-השגה, ואז הסביבה. בחרו עדשה ממוקדת כשצריך להוביל מזווית אחת.",
   "coach.lens.browseAll": "עיון בכל העדשות",
   "coach.alignedWith": "מותאם ל-{lens}",
@@ -2603,6 +2611,8 @@ export const he: Dict = {
   // wide release, per the transcreation gate.
   "coach.cards.council": "המועצה התייעצה · {n} קולות",
   "coach.cards.happening": "מה אולי קורה",
+  // ASK-3 — ההשערות מתקפלות לגילוי רגוע מתחת לתסריט ולתוכנית.
+  "coach.cards.why": "למה זה אולי קורה",
   "coach.cards.tryToday": "לנסות היום",
   "coach.cards.saveAsPlan": "שמירה כתוכנית",
   "coach.cards.sayThis": "אפשר להגיד",

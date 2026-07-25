@@ -24,6 +24,27 @@ import type { ChatMessage, ChatResponsePayload } from "../context/ArborContext";
  * /api/chat); the reducers add no unscreened render path.
  */
 
+/** ASK-7: thread-shape predicates. The WELCOME_MESSAGE bubble is gone, so
+ *  "is this a fresh thread" is no longer a length check — orientation blocks
+ *  key off whether a REAL user/AI turn exists (legacy saved conversations may
+ *  still open with an old welcome bubble, which counts as an AI turn only). */
+export const hasUserTurn = (msgs: ChatMessage[]): boolean => msgs.some((m) => m.sender === "user");
+export const hasAiTurn = (msgs: ChatMessage[]): boolean => msgs.some((m) => m.sender === "ai");
+
+/**
+ * ASK-8: append the parent's turn WITHOUT duplicating it on retry. After a
+ * failed turn the thread ends with the user's question (the error path drops
+ * the live bubble and appends nothing); Retry resends the same text, so a
+ * trailing user message with identical text is reused rather than re-pushed.
+ * A deliberate repeat after a successful answer still appends (the last
+ * message is then an AI turn).
+ */
+export const appendChatUser = (prev: ChatMessage[], text: string, lens?: string): ChatMessage[] => {
+  const last = prev[prev.length - 1];
+  if (last && last.sender === "user" && last.text === text) return prev;
+  return [...prev, { sender: "user", text, lens }];
+};
+
 /** Append the immediate local acknowledgment bubble for a fresh ask turn. */
 export const appendChatAck = (prev: ChatMessage[], ackText: string, lens?: string): ChatMessage[] => [
   ...prev,

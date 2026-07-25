@@ -271,20 +271,19 @@ function renderCardsHe(riskLevel: string): string {
 describe("COACH-1 — uiLang=he renders zero English chrome", () => {
   const HE_CHROME = [
     "המועצה התייעצה",        // council panel title
-    "מה אולי קורה",           // what may be happening
+    "למה זה אולי קורה",       // why this might be happening (ASK-3 disclosure)
     "לנסות היום",             // try today
     "שמירה כתוכנית",          // save as plan
     "אפשר להגיד",             // say this
     "ממה להימנע",             // avoid
     "למה לשים לב",            // watch for
-    "מסגרת התפתחותית",        // developmental frame
     "שמירה לתוכנית",          // save to plan
     "פתק למורה",              // teacher note
-    "מטרה",                   // frame chip: aim
   ];
   const EN_CHROME = [
     "The council weighed in",
     "What may be happening",
+    "Why this might be happening",
     "Try today",
     "Save as plan",
     "Say this",
@@ -321,8 +320,64 @@ describe("COACH-1 — uiLang=he renders zero English chrome", () => {
         onAddToHandoff: noop,
       })
     );
-    for (const s of ["What may be happening", "Try today", "Say this", "Watch for", "Developmental frame", "Save to plan", "Teacher note"]) {
+    for (const s of ["Why this might be happening", "Try today", "Say this", "Watch for", "Save to plan", "Teacher note"]) {
       expect(html, `missing EN chrome "${s}"`).toContain(s);
     }
+  });
+});
+
+/**
+ * ASK-3 — answer stack reorder: the first screenful of any contract answer is
+ * the exact words ("Say this") + the 1-3 steps ("Try today"); hypotheses are
+ * analysis and collapse into a "Why this might be happening" disclosure; the
+ * six-frame routing panel (internal orchestration vocabulary: "shadow",
+ * "marriage", "shepherd") never renders on the parent surface — it stays in
+ * the contract for telemetry/evals only.
+ */
+describe("ASK-3 — script + plan lead, hypotheses collapse, frames never render", () => {
+  function renderFullEn(): string {
+    return renderToStaticMarkup(
+      React.createElement(CoachAnswerCards, {
+        contract: makeFullContract("low"),
+        lang: "en",
+        onSaveToPlan: noop,
+        onCreateLog: noop,
+        onAddToHandoff: noop,
+      })
+    );
+  }
+
+  it("parentScript renders before todayPlan, and todayPlan before the hypotheses disclosure", () => {
+    const html = renderFullEn();
+    const script = html.indexOf("Say this");
+    const plan = html.indexOf("Try today");
+    const why = html.indexOf("Why this might be happening");
+    expect(script).toBeGreaterThan(-1);
+    expect(plan).toBeGreaterThan(-1);
+    expect(why).toBeGreaterThan(-1);
+    expect(script, "script must lead the stack").toBeLessThan(plan);
+    expect(plan, "plan must precede the hypotheses disclosure").toBeLessThan(why);
+  });
+
+  it("the frameRouting panel and its values are never visible to the parent", () => {
+    const html = renderFullEn();
+    // Panel title gone in both idioms + the contract's frame VALUES never leak.
+    expect(html).not.toContain("Developmental frame");
+    expect(html).not.toContain("Calmer exits");     // frameRouting.aim value
+    expect(html).not.toContain("Warm but firm");    // frameRouting.twoAxes value
+  });
+
+  it("hypotheses disclosure is collapsed by default but the content stays in the DOM", () => {
+    const html = renderFullEn();
+    expect(html).toContain("Why this might be happening");
+    // Content present (hidden, never unmounted) — same idiom as the citation drawer.
+    expect(html).toContain("Transition fatigue");
+    expect(html).toContain("Long day, short notice.");
+  });
+
+  it("hypotheses disclosure renders in Hebrew with zero English chrome", () => {
+    const html = renderCardsHe("low");
+    expect(html).toContain("למה זה אולי קורה");
+    expect(html).not.toContain("Why this might be happening");
   });
 });

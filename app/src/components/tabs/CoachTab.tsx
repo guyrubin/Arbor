@@ -35,6 +35,9 @@ import VoiceOverlay from "../coach/VoiceOverlay";
 // dictation loop, so the phase label is always truthful (see lib/dictationLoop).
 import { createDictationLoop, type DictationLoop } from "../../lib/dictationLoop";
 import { splitCompleteSentences } from "../../lib/sentenceStream";
+// ASK-7: thread-shape predicates — orientation/follow-up/trust guards key off
+// real user/AI turns, never message-count checks (the welcome bubble is gone).
+import { hasUserTurn, hasAiTurn } from "../../lib/chatStream";
 import { publishedHardMomentCards } from "../../content/hardMomentCards";
 import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
@@ -126,12 +129,18 @@ export default function CoachTab() {
   // Last thing the parent asked — used to power the error-state Retry button.
   const lastUserText = [...chatMessages].reverse().find((m) => m.sender === "user")?.text;
 
+  // ASK-7: fresh-thread orientation and follow-up gating derive from real
+  // turns. A legacy saved conversation that still opens with the old welcome
+  // bubble counts as an AI turn only — orientation never doubles up.
+  const userTurnExists = hasUserTurn(chatMessages);
+  const aiTurnExists = hasAiTurn(chatMessages);
+
   // ASK-1: the post-hoc typewriter is GONE — /chat streams real screened
   // sentence deltas into the live bubble (chatLive), and settled answers
   // render instantly. Follow-up chips wait until no bubble is still live.
   const lastMessage = chatMessages[chatMessages.length - 1];
   const showFollowUps =
-    !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && !lastMessage.chatLive && chatMessages.length > 1;
+    !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && !lastMessage.chatLive && userTurnExists;
 
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
@@ -139,7 +148,11 @@ export default function CoachTab() {
   // Which answer's overflow ("…") menu is open. Only Copy stays inline; Log /
   // Plan / Share fold into this menu so a settled answer reads as calm text.
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
-  const [showAllLenses, setShowAllLenses] = useState(false);
+  // ASK-9: the lens machinery is DEMOTED — collapsed to a single "Perspective:
+  // {lens} · change" affordance below the fast-start scenarios; one tap opens
+  // the full radiogroup (all lenses, arrow-key nav). Selection persistence and
+  // seedCoach lens steering are untouched.
+  const [lensOpen, setLensOpen] = useState(false);
 
   // Realtime voice coach: prefers Gemini Live (true bidirectional audio) when the
   // server reports it's available, and falls back to a hands-free browser loop —
@@ -461,23 +474,20 @@ export default function CoachTab() {
       ? lastMessage.text
       : "";
 
-  return (
-    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
-      {/* One coaching workspace: orientation, optional lens, conversation, composer. */}
-      <div className="space-y-4">
-        <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
-            <h1 className="mt-1.5 text-[28px] font-extrabold leading-[1.08] sm:text-[34px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.hero.ask.title")}</h1>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
-          </div>
-        </header>
-
-        {/* Composer-first: the parent's question is the primary job on this page.
-            COACH-4: this hero composer is the ONE input on the surface — the
-            mirrored in-thread composer was removed; follow-up turns also send
-            from here (the thread auto-scrolls to the streaming answer). */}
-        <section className="border-y py-5 sm:py-6" aria-label={t("elev.hero.ask.cta")} style={{ borderColor: "var(--arbor-rule)" }}>
+  // ASK-2: the docked state — the SAME single composer element renders in the
+  // hero position on a fresh thread and docks sticky at the viewport bottom
+  // once the thread has a user turn, so a follow-up never needs scroll-hunting.
+  // COACH-4 single-input invariant holds: this JSX renders in exactly ONE of
+  // the two positions, so there is always exactly one textarea in the DOM,
+  // and the voice/photo capture chips travel with it.
+  const composerDocked = userTurnExists;
+  const composerSection = (
+        <section
+          className={composerDocked ? "py-2.5" : "border-y py-5 sm:py-6"}
+          aria-label={t("elev.hero.ask.cta")}
+          style={composerDocked ? undefined : { borderColor: "var(--arbor-rule)" }}
+        >
+          {!composerDocked && (
           <div className="flex items-center gap-3 mb-3">
             <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={21} fill={1} /></span>
             <div className="min-w-0">
@@ -487,6 +497,7 @@ export default function CoachTab() {
               </p>
             </div>
           </div>
+          )}
           <div className="flex items-end gap-2 rounded-[20px] p-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
             <textarea
               value={chatInput}
@@ -536,95 +547,30 @@ export default function CoachTab() {
             <span className="ms-auto inline-flex items-center gap-1 text-[10px]" style={{ color: "var(--arbor-muted)" }}><Icon name="shield" size={13} /> {t("coach.aiDisclosure")}</span>
           </div>
         </section>
+  );
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.lens")}</span>
-            {/* E8: the research-anchored trust chip lives beside the lens row. */}
-            <EvidenceChip />
-            {/* IA: the inline picker selects between lenses; the library browses/learns them. */}
-            <button
-              type="button"
-              onClick={() => setShowAllLenses((v) => !v)}
-              aria-expanded={showAllLenses}
-              className="ms-auto inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
-              style={{ color: "var(--arbor-muted)" }}
-            >
-              <span>{showAllLenses ? t("coach.lens.fewer") : t("coach.lens.browseAll")}</span>
-              <Icon name={showAllLenses ? "expand_less" : "expand_more"} size={14} />
-            </button>
+  return (
+    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
+      {/* One coaching workspace: orientation, conversation, composer. */}
+      <div className="space-y-4">
+        <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
+            <h1 className="mt-1.5 text-[28px] font-extrabold leading-[1.08] sm:text-[34px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.hero.ask.title")}</h1>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
           </div>
-          {(() => {
-            // Single-select lens control with proper radiogroup a11y + arrow-key nav.
-            const lensNames = ["Integrated Balanced", ...scholarsInfo.map((s) => s.name)];
-            const moveLens = (dir: 1 | -1) => {
-              const cur = lensNames.indexOf(selectedLens);
-              const next = ((cur < 0 ? 0 : cur) + dir + lensNames.length) % lensNames.length;
-              setSelectedLens(lensNames[next]);
-            };
-            const onKeyDown = (e: React.KeyboardEvent) => {
-              if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); moveLens(1); }
-              else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); moveLens(-1); }
-            };
-            return (
-              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("coach.lens")} onKeyDown={onKeyDown}>
-                {(() => {
-                  const on = selectedLens === "Integrated Balanced";
-                  return (
-                    <button
-                      role="radio"
-                      aria-checked={on}
-                      tabIndex={on ? 0 : -1}
-                      onClick={() => setSelectedLens("Integrated Balanced")}
-                      className="px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                      style={on
-                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                        : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                    >
-                      {t("coach.lens.integrated")}
-                    </button>
-                  );
-                })()}
-                {showAllLenses && scholarsInfo.map((s, idx) => {
-                  const on = selectedLens === s.name;
-                  return (
-                    <button
-                      key={idx}
-                      role="radio"
-                      aria-checked={on}
-                      tabIndex={on ? 0 : -1}
-                      onClick={() => setSelectedLens(s.name)}
-                      className="px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                      style={on
-                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                        : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                    >
-                      <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? T.paperElevated : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }} aria-hidden>
-                        {s.initial}
-                      </span>
-                      {s.name} ({s.concept})
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })()}
-          {/* "Use this lens when…" — makes the lens choice practical, not academic */}
-          {showAllLenses && (() => {
-            const active = scholarsInfo.find((s) => s.name === selectedLens);
-            const hint = active?.useWhen
-              || (selectedLens === "Integrated Balanced" ? t("coach.lens.integratedHint") : null);
-            return hint ? (
-              <p className="text-[11px] leading-relaxed rounded-lg p-2.5 mt-1" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                {hint}
-              </p>
-            ) : null;
-          })()}
-        </div>
+        </header>
+
+        {/* Composer-first: the parent's question is the primary job on this page.
+            COACH-4: this hero composer is the ONE input on the surface — the
+            mirrored in-thread composer was removed; follow-up turns also send
+            from here. ASK-2: once the thread has a user turn the SAME element
+            docks sticky at the bottom of the page instead (see below). */}
+        {!composerDocked && composerSection}
       </div>
 
       {/* Fast-start scenarios (IA-2) — calm bordered chips on a fresh conversation */}
-      {chatMessages.length <= 1 && (
+      {!userTurnExists && (
         <div className="space-y-2">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -649,7 +595,7 @@ export default function CoachTab() {
           chip calls the EXISTING seedCoach seam with the card context; the
           seed embeds the governed escalation VERBATIM (never paraphrased) and
           is covered by evals/coach-hardmoment-seed-v1. */}
-      {chatMessages.length <= 1 && publishedHardMomentCards.length > 0 && (
+      {!userTurnExists && publishedHardMomentCards.length > 0 && (
         <div className="space-y-2" data-testid="coach-hard-moments">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("hm.coach.heading")}</span>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -669,6 +615,82 @@ export default function CoachTab() {
           </div>
         </div>
       )}
+
+      {/* ASK-9: the lens machinery, DEMOTED below the fast-start scenarios —
+          prime mobile real estate belongs to the composer + scenarios. Default
+          is one calm affordance ("Perspective: Integrated · change"); one tap
+          opens the FULL radiogroup (arrow-key nav, RTL-safe logical props).
+          Selection persistence (arbor.lens) + seedCoach lens steering intact. */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* E8: the research-anchored trust chip lives beside the lens affordance. */}
+          <EvidenceChip />
+          <button
+            type="button"
+            onClick={() => setLensOpen((v) => !v)}
+            aria-expanded={lensOpen}
+            className="inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <span>
+              {t("coach.perspective")}: <span style={{ color: "var(--arbor-green-ink)" }}>{selectedLens === "Integrated Balanced" ? t("coach.lens.integrated") : selectedLens}</span> · {t("coach.perspective.change")}
+            </span>
+            <Icon name={lensOpen ? "expand_less" : "expand_more"} size={14} />
+          </button>
+        </div>
+        {lensOpen && (() => {
+          // Single-select lens control with proper radiogroup a11y + arrow-key nav.
+          const lensNames = ["Integrated Balanced", ...scholarsInfo.map((s) => s.name)];
+          const moveLens = (dir: 1 | -1) => {
+            const cur = lensNames.indexOf(selectedLens);
+            const next = ((cur < 0 ? 0 : cur) + dir + lensNames.length) % lensNames.length;
+            setSelectedLens(lensNames[next]);
+          };
+          const onKeyDown = (e: React.KeyboardEvent) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); moveLens(1); }
+            else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); moveLens(-1); }
+          };
+          const active = scholarsInfo.find((s) => s.name === selectedLens);
+          const hint = active?.useWhen
+            || (selectedLens === "Integrated Balanced" ? t("coach.lens.integratedHint") : null);
+          return (
+            <>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("coach.lens")} onKeyDown={onKeyDown}>
+                {lensNames.map((name) => {
+                  const on = selectedLens === name;
+                  const scholar = scholarsInfo.find((s) => s.name === name);
+                  return (
+                    <button
+                      key={name}
+                      role="radio"
+                      aria-checked={on}
+                      tabIndex={on ? 0 : -1}
+                      onClick={() => setSelectedLens(name)}
+                      className="px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                      style={on
+                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
+                        : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                    >
+                      {scholar && (
+                        <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? T.paperElevated : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }} aria-hidden>
+                          {scholar.initial}
+                        </span>
+                      )}
+                      {scholar ? `${scholar.name} (${scholar.concept})` : t("coach.lens.integrated")}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* "Use this lens when…" — makes the lens choice practical, not academic */}
+              {hint && (
+                <p className="text-[11px] leading-relaxed rounded-lg p-2.5 mt-1" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+                  {hint}
+                </p>
+              )}
+            </>
+          );
+        })()}
+      </div>
 
       {/* Conversation threads */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -727,8 +749,11 @@ export default function CoachTab() {
          <div className="max-w-[760px] mx-auto space-y-3.5">
           {/* Empty state — orient a first-run parent on what Ask Arbor does.
               COACH-4: the title line lives ONCE, on the hero composer above;
-              the thread empty state keeps only the mascot + body copy. */}
-          {chatMessages.length <= 1 && !isChatLoading && (
+              the thread empty state keeps only the mascot + body copy.
+              ASK-7: this is THE single orientation block (with the scenarios)
+              — it hides the moment any real turn exists, including a legacy
+              conversation that still opens with the old welcome bubble. */}
+          {!userTurnExists && !aiTurnExists && !isChatLoading && (
             <div className="flex flex-col items-center justify-center text-center gap-3 py-10 px-4">
               <div className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden" style={{ background: "var(--arbor-green-soft)" }} aria-hidden>
                 <ArborMascot size={52} />
@@ -954,7 +979,9 @@ export default function CoachTab() {
             </div>
           )}
 
-          <div ref={chatBottomRef} />
+          {/* ASK-2: scroll-margin keeps the auto-scrolled thread end clear of
+              the docked sticky composer below. */}
+          <div ref={chatBottomRef} style={{ scrollMarginBottom: 132 }} />
          </div>
         </div>
 
@@ -993,13 +1020,27 @@ export default function CoachTab() {
       </div>
 
       {/* Trust & Safety — surfaces the model's real risk + escalation (TS-1/TS-3) */}
-      {lastMessage?.sender === "ai" && chatMessages.length > 1 && (
+      {lastMessage?.sender === "ai" && userTurnExists && (
         <TrustSafetyBar
           risk={lastMessage.contract ? riskFromLevel(lastMessage.contract.riskLevel) : parseRisk(lastMessage.text)}
           note={t("coach.trust.note")}
           lang={uiLang}
           onEscalate={() => setActiveTab("consult")}
         />
+      )}
+
+      {/* ASK-2: the docked composer — the SAME single element from the hero
+          position, now sticky at the viewport bottom so the follow-up loop
+          never requires scrolling back up. bottom-16 clears the fixed
+          MobileNav bar; from lg the sidebar layout has no bottom bar. */}
+      {composerDocked && (
+        <div
+          data-testid="coach-docked-composer"
+          className="sticky bottom-16 lg:bottom-0 z-30"
+          style={{ background: "var(--arbor-paper)", borderTop: "1px solid var(--arbor-rule)", boxShadow: "0 -6px 16px rgba(41,51,63,0.05)" }}
+        >
+          {composerSection}
+        </div>
       )}
 
       {/* The parent-approved memory moderation queue was removed from Ask Arbor to

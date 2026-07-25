@@ -5,7 +5,7 @@
  * blocked markdown (streamed text is retractable — ASK-1 CONDITION 2).
  */
 import { describe, it, expect } from "vitest";
-import { appendChatAck, applyChatDelta, settleChatTurn, abortChatStream } from "./chatStream.js";
+import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn, hasAiTurn } from "./chatStream.js";
 import type { ChatMessage, ChatResponsePayload } from "../context/ArborContext";
 
 const user: ChatMessage = { sender: "user", text: "Mornings are a battle." };
@@ -90,5 +90,61 @@ describe("chatStream reducers", () => {
   it("abortChatStream is a no-op when nothing is live", () => {
     const settled: ChatMessage[] = [user, { sender: "ai", text: "Done answer." }];
     expect(abortChatStream(settled)).toBe(settled);
+  });
+});
+
+/**
+ * ASK-8 — Retry must not duplicate the parent's question. After a failure the
+ * thread ends with the user turn (the error path appends no bubbles), so
+ * resending the same text reuses that trailing turn.
+ */
+describe("appendChatUser (ASK-8 retry dedupe)", () => {
+  it("appends a fresh user turn on a normal send", () => {
+    const next = appendChatUser([], "Mornings are a battle.", "Integrated Balanced");
+    expect(next).toHaveLength(1);
+    expect(next[0]).toMatchObject({ sender: "user", text: "Mornings are a battle." });
+  });
+
+  it("does NOT re-append when the thread already ends with the same question (retry after error)", () => {
+    const afterFailure: ChatMessage[] = [user];
+    const retried = appendChatUser(afterFailure, user.text);
+    expect(retried).toBe(afterFailure);
+    expect(retried.filter((m) => m.sender === "user")).toHaveLength(1);
+  });
+
+  it("a deliberate repeat AFTER a successful answer still appends", () => {
+    const answered: ChatMessage[] = [user, { sender: "ai", text: "Here is a plan." }];
+    const next = appendChatUser(answered, user.text);
+    expect(next).toHaveLength(3);
+    expect(next[2]).toMatchObject({ sender: "user", text: user.text });
+  });
+
+  it("a different question always appends", () => {
+    const next = appendChatUser([user], "Bedtime is worse.");
+    expect(next).toHaveLength(2);
+  });
+});
+
+/**
+ * ASK-7 — thread-shape predicates replace message-count guards now that the
+ * welcome bubble is gone. A legacy conversation that still opens with the old
+ * welcome message counts as an AI turn only.
+ */
+describe("hasUserTurn / hasAiTurn (ASK-7 predicates)", () => {
+  it("an empty fresh thread has neither turn", () => {
+    expect(hasUserTurn([])).toBe(false);
+    expect(hasAiTurn([])).toBe(false);
+  });
+
+  it("a legacy welcome-only thread has an AI turn but no user turn", () => {
+    const legacy: ChatMessage[] = [{ sender: "ai", text: "### Welcome to Arbor Parent Coach" }];
+    expect(hasUserTurn(legacy)).toBe(false);
+    expect(hasAiTurn(legacy)).toBe(true);
+  });
+
+  it("a real conversation has both", () => {
+    const msgs: ChatMessage[] = [user, { sender: "ai", text: "Answer." }];
+    expect(hasUserTurn(msgs)).toBe(true);
+    expect(hasAiTurn(msgs)).toBe(true);
   });
 });
