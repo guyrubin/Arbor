@@ -422,7 +422,7 @@ export default function OverviewTab() {
       <section className="border-y py-5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("today.feed.title", { name: firstName })}>
         <div className="mb-3 flex items-center justify-between gap-3 px-1">
           <div>
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-clay)" }}>{uiLang === "he" ? "לשחק יחד" : "Try together"}</div>
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-clay)" }}>{t("today.feed.eyebrow")}</div>
             <h2 className="mt-1 text-[17px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.feed.title", { name: firstName })}</h2>
           </div>
           {hasRecentActivity && <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--arbor-clay)" }} />{t("today.live")}</span>}

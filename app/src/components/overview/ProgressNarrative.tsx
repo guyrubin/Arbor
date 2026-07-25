@@ -20,8 +20,9 @@ export default function ProgressNarrative({
   actions: ActionLoopEntry[];
   onOpenEvidence: () => void;
 }) {
-  const { uiLang } = useLanguage();
-  const he = uiLang === "he";
+  // TODAY-5/PLAT-4/CODEX-6: copy lives in i18n.ts (today.narrative.*), never an
+  // inline per-language ternary object — keys stay visible to the parity test.
+  const { t } = useLanguage();
   const weekAgo = Date.now() - 7 * 86_400_000;
   const recentBehaviors = behaviorLogs.filter((item) => new Date(item.timestamp).getTime() >= weekAgo);
   const recentPlay = playLogs.filter((item) => new Date(item.timestamp).getTime() >= weekAgo);
@@ -29,20 +30,13 @@ export default function ProgressNarrative({
   const evidence = [...recentBehaviors, ...recentPlay]
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
     .slice(0, 3);
-  const copy = he ? {
-    eyebrow: "התמונה המתפתחת", title: `מה השתנה אצל ${childName}`, changed: "מה השתנה",
-    evidence: "הראיות שלכם", next: "מה הלאה", open: "פתיחת המקורות",
-    noChange: "עוד אין מספיק רגעים מאושרים כדי לתאר שינוי. רגע אחד אמיתי מספיק כדי להתחיל.",
-    changedBody: `${recentBehaviors.length} רגעים ו-${recentPlay.length} פעילויות נשמרו השבוע. ${noticedMilestones} אבני דרך סומנו עד כה.`,
-    nextBody: latestOutcome?.outcome === "not_today" ? "הצעד האחרון לא התאים היום. Arbor תציע בפעם הבאה גרסה קלה או אחרת." : latestOutcome ? "התוצאה האחרונה תעזור ל-Arbor לדייק את הצעד הבא." : "בחרו צעד אחד קטן ודווחו מה קרה כדי שההמלצה הבאה תהיה מדויקת יותר.",
-    parentOnly: "מבוסס רק על מה שתיעדתם — ללא ציון, אחוזון או אבחנה.",
-  } : {
-    eyebrow: "The developing picture", title: `What changed for ${childName}`, changed: "What changed",
-    evidence: "Your evidence", next: "What comes next", open: "Open source moments",
-    noChange: "There are not enough confirmed moments to describe change yet. One real moment is enough to begin.",
-    changedBody: `${recentBehaviors.length} moments and ${recentPlay.length} activities were saved this week. ${noticedMilestones} milestones have been noticed so far.`,
-    nextBody: latestOutcome?.outcome === "not_today" ? "The last step did not fit today. Arbor will offer a smaller or different version next time." : latestOutcome ? "Your latest outcome will help Arbor shape the next step." : "Choose one small step and report what happened so the next recommendation can become more precise.",
-    parentOnly: "Based only on what you recorded — never a score, percentile, or diagnosis.",
+  const copy = {
+    eyebrow: t("today.narrative.eyebrow"), title: t("today.narrative.title", { name: childName }), changed: t("today.narrative.changed"),
+    evidence: t("today.narrative.evidence"), next: t("today.narrative.next"), open: t("today.narrative.open"),
+    noChange: t("today.narrative.noChange"),
+    changedBody: t("today.narrative.changedBody", { moments: recentBehaviors.length, plays: recentPlay.length, milestones: noticedMilestones }),
+    nextBody: latestOutcome?.outcome === "not_today" ? t("today.narrative.nextNotToday") : latestOutcome ? t("today.narrative.nextOutcome") : t("today.narrative.nextNone"),
+    parentOnly: t("today.narrative.parentOnly"),
   };
   const hasEvidence = evidence.length > 0 || noticedMilestones > 0;
 

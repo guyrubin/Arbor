@@ -11,14 +11,17 @@
  *    (numbered-heading prefix, "(high/medium/low)" markers, evidence tails)
  *    + first sentence + 150-char clamp. There is deliberately NO keyword
  *    override branch — canned copy never replaces live guidance.
+ *  - TODAY-5/PLAT-4: the artifact-strip patterns are bilingual (EN + HE
+ *    equivalents in the same regexes) so Hebrew model output gets the SAME
+ *    scrub and clamp — never a canned override (CODEX-2 class stays banned).
  */
 export function focusHeadlineFrom(text: string | null | undefined): string | null {
   const raw = text?.trim();
   if (!raw) return null;
   const cleaned = raw
-    .replace(/^\s*\d+\.\s*What May Be Happening\s*[-:–—]\s*/i, "")
-    .replace(/\s*\((?:high|medium|low)\)\s*:?/gi, "")
-    .replace(/\s*(?:Profile mentions|Based on|Evidence:)\s+.*$/i, "")
+    .replace(/^\s*\d+\.\s*(?:What May Be Happening|מה (?:אולי |ייתכן ש|כנראה )?קורה)\s*[-:–—]\s*/i, "")
+    .replace(/\s*\((?:high|medium|low|גבוהה?|בינונית?|נמוכה|נמוך)\)\s*:?/gi, "")
+    .replace(/\s*(?:Profile mentions|Based on|Evidence:|הפרופיל מציין|בהתבסס על|מבוסס על|ראיות:|עדויות:)\s+.*$/i, "")
     .replace(/\s+/g, " ")
     .trim();
   const sentence = cleaned.split(/(?<=[.!?])\s+/)[0] || cleaned;

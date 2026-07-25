@@ -55,6 +55,32 @@ describe("focusHeadlineFrom — pure scrub (CODEX-2 firewall condition)", () => 
     expect(out.endsWith("…")).toBe(true);
   });
 
+  // TODAY-5/PLAT-4 — the artifact scrub is language-aware: Hebrew model output
+  // gets the SAME strip + clamp as English (no canned override may return).
+  it("scrubs the Hebrew numbered-heading prefix and severity markers", () => {
+    expect(focusHeadlineFrom("1. מה אולי קורה - (גבוה): קראו לרגש לפני הבקשה."))
+      .toBe("קראו לרגש לפני הבקשה.");
+  });
+
+  it("scrubs Hebrew evidence tails", () => {
+    expect(focusHeadlineFrom("הציעו בחירה בשעת השינה מבוסס על 4 רגעים שתועדו"))
+      .toBe("הציעו בחירה בשעת השינה");
+    expect(focusHeadlineFrom("נסו אזהרת מעבר של שתי דקות ראיות: ההורה תיעד 3 מעברים"))
+      .toBe("נסו אזהרת מעבר של שתי דקות");
+  });
+
+  it("clamps a Hebrew hero headline to 150 chars with an ellipsis", () => {
+    const long = `נסו ${"רגע רגוע מאוד ".repeat(30)}בלי סימני פיסוק בסוף`;
+    const out = focusHeadlineFrom(long)!;
+    expect(out.length).toBeLessThanOrEqual(150);
+    expect(out.endsWith("…")).toBe(true);
+  });
+
+  it("keeps clean Hebrew guidance untouched (no canned override)", () => {
+    const real = "תנו התראה של חמש דקות לפני כל מעבר ממסך היום.";
+    expect(focusHeadlineFrom(real)).toBe(real);
+  });
+
   it("NEVER replaces transition/screen-time/dysregulation guidance with canned copy", () => {
     const real = "Give a five-minute heads-up before every screen time transition today.";
     expect(focusHeadlineFrom(real)).toBe(real);
