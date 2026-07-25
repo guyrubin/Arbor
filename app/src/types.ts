@@ -171,6 +171,9 @@ export interface CouncilTake {
 }
 
 export interface CoachContract {
+  /** ASK-1/AIR-1: leading parent-facing prose (empathic opening + heart of the
+   *  answer) — streamed as screened sentence deltas before the cards settle. */
+  text?: string;
   riskLevel: string;
   ageBand: string;
   domains: DevelopmentalDomainId[];

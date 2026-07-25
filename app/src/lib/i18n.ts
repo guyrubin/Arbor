@@ -340,6 +340,17 @@ export const en: Dict = {
   "coach.document": "Document",
   "coach.stop": "Stop",
   "coach.loading": "Arbor is synthesizing guidance…",
+  // ask-cadence (ASK-1): honest, milestone-driven streaming stages + the
+  // immediate local acknowledgment bubble. Stage keys arrive from the server
+  // (`status` events carry {stage}); the copy is owned here so HE never sees
+  // an English status string.
+  "coach.status.connecting": "Connecting to Arbor…",
+  "coach.status.memory": "Reading {name}'s memory…",
+  "coach.status.sources": "Checking sources…",
+  "coach.status.plan": "Shaping today's plan…",
+  "coach.status.stopping": "Stopping…",
+  "coach.status.council": "Convening the scholar council…",
+  "coach.ack": "On it — reading what you shared.",
   "coach.memReview": "Memory Review",
   "coach.memQueue": "Parent approval queue",
   "coach.memDesc": "Arbor saves proposed observations as pending review. They become active child memory only after approval.",
@@ -2523,6 +2534,14 @@ export const he: Dict = {
   "coach.document": "מסמך",
   "coach.stop": "עצור",
   "coach.loading": "ארבור מנסח הנחיה…",
+  // ask-cadence (ASK-1): שלבי סטרימינג כנים + בועת אישור מיידית.
+  "coach.status.connecting": "מתחבר לארבור…",
+  "coach.status.memory": "קורא את הזיכרון של {name}…",
+  "coach.status.sources": "בודק מקורות…",
+  "coach.status.plan": "מגבש את הצעד להיום…",
+  "coach.status.stopping": "עוצר…",
+  "coach.status.council": "מכנס את מועצת המומחים…",
+  "coach.ack": "ארבור כאן — קורא את מה ששיתפת.",
   "coach.memReview": "סקירת זיכרון",
   "coach.memQueue": "תור אישור הורה",
   "coach.memDesc": "ארבור שומר תצפיות מוצעות כממתינות לסקירה. הן הופכות לזיכרון פעיל של הילד רק לאחר אישור.",

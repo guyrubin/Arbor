@@ -16,6 +16,7 @@ import { Type } from "@google/genai";
 import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../server/redaction.js";
 import { screenModelOutput, screenModelOutputLexical, renderBlockedOutputMarkdown, outputClassifierEnabled, type OutputScreenVerdict } from "../safety/outputScreen.js";
 import { SENTENCE_BOUNDARY_SCAN } from "../lib/sentenceStream.js";
+import { createJsonTextFieldExtractor } from "../server/jsonTextStream.js";
 import { mintTtsToken, verifyTtsToken } from "../server/ttsToken.js";
 import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.js";
 import { logger, requestIdOf } from "../server/logger.js";
@@ -386,9 +387,20 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     res.on("close", () => { if (!res.writableEnded) abortController.abort(); });
 
     try {
+      // ASK-1 Phase 1: SSE opens immediately and `status` events carry honest,
+      // MILESTONE-driven stage keys (memory → sources → plan) instead of the
+      // old fixed English sentence + character counters. The client owns the
+      // localized copy (i18n `coach.status.*`), so a Hebrew session never sees
+      // an English status string.
+      if (streamResponse) {
+        beginSse(res);
+        writeSse(res, "status", { stage: "memory" });
+      }
+
       const childId = toChildId(childProfile);
       const familyId = toFamilyId(childProfile);
       const approvedMemory = await getApprovedMemoryContext(memoryStore, childId, config.memoryPromptMaxFacts);
+      if (streamResponse) writeSse(res, "status", { stage: "sources" });
       // SCH-3: the selected lens is now load-bearing — its scholar's card(s) are
       // guaranteed into the context and lead, alongside age/domain matches.
       const scholar = resolveScholar(scholarLens);
@@ -424,20 +436,70 @@ Ground "What To Do Today" and the parent script in this lens, and prefer Six Fra
 Parent question:
 ${message}
 
-Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used.${languageDirective}
+Return only JSON that matches the response schema. Open with the "text" field FIRST: 2-4 warm, plain sentences that briefly acknowledge the parent and give the heart of your answer — no headings, no lists, no labels. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used.${languageDirective}
 `;
 
       // SEC/CMP P0: child PII never reaches the model — redact at the call seam,
       // restore in the parsed output so the product stays personalized.
       const privacy = createRedaction(childProfile?.name);
 
-      let rawResponse = "";
-      if (streamResponse) {
-        beginSse(res);
-        writeSse(res, "status", {
-          text: "Arbor is routing the question through child memory, AI Wiki cards, safety, and Six Frames."
+      // VC-8 parity, shared by the mid-stream flag and the done-time flag so
+      // the blocked-fallback payload shapes stay byte-identical (AIR-1 cond 5).
+      const buildBlockedPayload = (outputVerdict: OutputScreenVerdict) => {
+        logger.warn("Coach output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
         });
-      }
+        // VC-8: crisis-category output routes to the SAME crisis surface as a
+        // crisis INPUT (renderEscalationMarkdown resources + urgent risk) —
+        // harm-normalizing model language must end in crisis help, never the
+        // generic renderBlockedOutputMarkdown.
+        if (outputVerdict.category === "crisis") {
+          const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
+          return {
+            text: renderEscalationMarkdown(crisisMatch),
+            riskLevel: "urgent",
+            escalationCategory: crisisMatch.category,
+            outputBlocked: true,
+            blockedCategory: "crisis" as const,
+          };
+        }
+        return { text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category };
+      };
+
+      // ASK-1 Phase 2 + AIR-1: real streaming. The contract's leading `text`
+      // prose field is tailed out of the raw JSON stream (jsonTextStream), fed
+      // through the alias RESTORER FIRST (the NAME_SUBJECT lexical floor
+      // assumes restored names — same ordering as /voice), and released as
+      // sentence deltas — each only after screenModelOutputLexical passes on
+      // the CUMULATIVE restored prose. On any flag the stream stops and `done`
+      // carries the standard blocked payload; the flagged span reaches NO SSE
+      // frame. Structured panels stay gated at `done`, where the full
+      // pre-cadence screen (lexical + optional semantic classifier) still runs
+      // on the complete rendered answer — a done-time flag makes the client
+      // RETRACT the streamed bubble and replace it (firewall CONDITIONS 1-3).
+      const restorer = privacy.createStreamRestorer();
+      const proseExtractor = createJsonTextFieldExtractor("text");
+      let released = "";
+      let pending = "";
+      const releaseCompleteSentences = (): OutputScreenVerdict | null => {
+        for (;;) {
+          const boundary = SENTENCE_BOUNDARY_SCAN.exec(pending);
+          if (!boundary) return null;
+          const sliceEnd = boundary.index + boundary[0].length;
+          const bytes = pending.slice(0, sliceEnd);
+          // Cumulative alias-restored screen — never a sentence in isolation.
+          const verdict = screenModelOutputLexical((released + bytes).trim());
+          if (verdict.flagged) return verdict;
+          writeSse(res, "delta", { text: bytes });
+          released += bytes;
+          pending = pending.slice(sliceEnd);
+        }
+      };
+
+      let rawResponse = "";
+      if (streamResponse) writeSse(res, "status", { stage: "plan" });
 
       for await (const chunk of modelProvider.generateJsonStream({
         route: "coach_high_stakes",
@@ -447,8 +509,28 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       })) {
         if (abortController.signal.aborted) return;
         rawResponse += chunk;
-        if (streamResponse) writeSse(res, "chunk", { characters: rawResponse.length });
+        if (!streamResponse) continue;
+        pending += restorer.push(proseExtractor.push(chunk));
+        const verdict = releaseCompleteSentences();
+        if (verdict) {
+          writeSse(res, "done", buildBlockedPayload(verdict));
+          res.end();
+          return;
+        }
       }
+      if (streamResponse) {
+        pending += restorer.flush();
+        const verdict = releaseCompleteSentences();
+        if (verdict) {
+          writeSse(res, "done", buildBlockedPayload(verdict));
+          res.end();
+          return;
+        }
+        // The trailing prose fragment (no sentence boundary yet) is NOT
+        // emitted as a delta — the full, screened text arrives in `done` and
+        // the client swaps it in.
+      }
+      if (abortController.signal.aborted) return;
 
       const structured = privacy.restoreDeep(coachResponseZodSchema.parse(parseJson(rawResponse.trim())));
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
@@ -462,28 +544,10 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       const renderedText = renderCoachResponse(structured);
       const outputVerdict = await screenModelOutput(modelProvider, renderedText);
       if (outputVerdict.flagged) {
-        logger.warn("Coach output blocked by output safety screen", {
-          requestId: requestIdOf(req),
-          category: outputVerdict.category,
-          reason: outputVerdict.reason,
-        });
-        // VC-8: crisis-category output routes to the SAME crisis surface as a
-        // crisis INPUT (renderEscalationMarkdown resources + urgent risk) —
-        // harm-normalizing model language must end in crisis help, never the
-        // generic renderBlockedOutputMarkdown.
-        const blockedPayload =
-          outputVerdict.category === "crisis"
-            ? (() => {
-                const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
-                return {
-                  text: renderEscalationMarkdown(crisisMatch),
-                  riskLevel: "urgent",
-                  escalationCategory: crisisMatch.category,
-                  outputBlocked: true,
-                  blockedCategory: "crisis" as const,
-                };
-              })()
-            : { text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category };
+        // Done-time flag (lexical floor on the FULL rendered answer + the
+        // semantic classifier when enabled): same payload as the mid-stream
+        // flag — the client retracts any streamed bubble and replaces it.
+        const blockedPayload = buildBlockedPayload(outputVerdict);
         if (streamResponse) {
           writeSse(res, "done", blockedPayload);
           res.end();

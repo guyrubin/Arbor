@@ -13,7 +13,6 @@ import { Avatar } from "../ui/Avatar";
 import { ArborMascot } from "../ui/ArborMascot";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
-import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
 import { TrustSafetyBar, cardCls } from "../ui/kit";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
@@ -127,16 +126,12 @@ export default function CoachTab() {
   // Last thing the parent asked — used to power the error-state Retry button.
   const lastUserText = [...chatMessages].reverse().find((m) => m.sender === "user")?.text;
 
-  // Animate (typewriter) only AI messages that arrive after mount, not restored history.
-  const revealedRef = useRef<number | null>(null);
-  if (revealedRef.current === null) revealedRef.current = chatMessages.length - 1;
-
+  // ASK-1: the post-hoc typewriter is GONE — /chat streams real screened
+  // sentence deltas into the live bubble (chatLive), and settled answers
+  // render instantly. Follow-up chips wait until no bubble is still live.
   const lastMessage = chatMessages[chatMessages.length - 1];
-  // COACH-2: a live voice caption bubble streams its own text delta-by-delta —
-  // mark it revealed so the typewriter never re-animates it after it settles,
-  // and hold the follow-up chips until the spoken answer is done.
-  if (lastMessage?.sender === "ai" && lastMessage.voiceLive) revealedRef.current = chatMessages.length - 1;
-  const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && chatMessages.length > 1;
+  const showFollowUps =
+    !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && !lastMessage.chatLive && chatMessages.length > 1;
 
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
@@ -764,6 +759,11 @@ export default function CoachTab() {
                 )}
                 {msg.sender === "ai" ? (
                   msg.contract ? (
+                    <>
+                    {/* ASK-1: the streamed prose lead stays visible after the
+                        cards settle — the words the parent watched arrive
+                        never vanish at done. */}
+                    {msg.contract.text?.trim() && <MarkdownBlock text={msg.contract.text} className="mb-3" />}
                     <CoachAnswerCards
                       contract={msg.contract}
                       lens={msg.lens}
@@ -801,22 +801,18 @@ export default function CoachTab() {
                         toast(t("coach.toast.teacherNoteCopied"), "info");
                       }}
                     />
+                    </>
                   ) : (
-                    <TypewriterMarkdown
-                      text={msg.text}
-                      // COACH-2: a live voice caption streams its own deltas —
-                      // render instantly (the stream IS the typewriter).
-                      enabled={!reducedMotion && !msg.voiceLive && idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
-                      onDone={() => {
-                        revealedRef.current = idx;
-                      }}
-                    />
+                    // ASK-1: no fake typewriter — a live bubble (voice caption
+                    // or ask stream) grows with its real deltas; settled text
+                    // renders complete immediately.
+                    <MarkdownBlock text={msg.text} />
                   )
                 ) : (
                   <MarkdownBlock text={msg.text} />
                 )}
 
-                {msg.sender === "ai" && !msg.contract && !msg.voiceLive && (
+                {msg.sender === "ai" && !msg.contract && !msg.voiceLive && !msg.chatLive && (
                   // Calm: answers read as text. Copy stays inline; everything else
                   // folds into a single "…" overflow so it's not a toolbar.
                   // Touch: always visible. Desktop: calm hover reveal. Keyboard: focus reveals.
@@ -866,9 +862,10 @@ export default function CoachTab() {
                           >
                             <Icon name="playlist_add" size={14} style={{ color: "var(--arbor-muted)" }} /> {t("coach.action.plan")}
                           </button>
-                          {/* mk-p0-3: 1-tap branded share of a settled answer (not while streaming). */}
-                          {idx > (revealedRef.current ?? -1) ? null : (
-                            <div className="px-1 py-0.5" onClick={() => setOpenMenuIdx(null)}>
+                          {/* mk-p0-3: 1-tap branded share of a settled answer — this
+                              menu only exists on settled bubbles (live ones hide the
+                              whole actions row). */}
+                          <div className="px-1 py-0.5" onClick={() => setOpenMenuIdx(null)}>
                               <ShareButton
                                 artifact="answer_card"
                                 surface="ask"
@@ -887,7 +884,6 @@ export default function CoachTab() {
                                 variant="ghost"
                               />
                             </div>
-                          )}
                         </div>
                       </>
                     )}

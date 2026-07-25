@@ -35,6 +35,8 @@ import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
 import { sortActionLoop, todayActionId } from "../actionLoop/model";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
+import { appendChatAck, applyChatDelta, settleChatTurn, abortChatStream } from "../lib/chatStream";
+import { useLanguage } from "./LanguageContext";
 
 const readLS = (key: string): string | null => {
   try {
@@ -94,6 +96,12 @@ export type ChatMessage = {
   /** COACH-2: true while this AI bubble is the live voice caption still
    *  accumulating streamed deltas; stripped when the voice turn settles. */
   voiceLive?: boolean;
+  /** ASK-1/AIR-1: true while this AI bubble is the live Ask answer still
+   *  accumulating streamed (server-screened) deltas; stripped on settle. */
+  chatLive?: boolean;
+  /** ASK-1: the bubble still shows the LOCAL acknowledgment copy — replaced
+   *  (never appended to) by the first real streamed delta. */
+  chatAck?: boolean;
 };
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
@@ -119,6 +127,10 @@ export const WELCOME_MESSAGE: ChatMessage = {
  */
 function useArborState() {
   const showSandboxBanner = import.meta.env.VITE_HAS_GEMINI_API !== "true";
+  // ASK-1: honest streaming statuses + the acknowledgment bubble are localized
+  // through the SAME i18n dictionaries as the rest of the UI — a Hebrew
+  // session must never see an English status string.
+  const { t } = useLanguage();
 
   // Active child comes from ProfileContext so every AI call, log, and plan is
   // scoped to the selected child rather than a hardcoded profile.
@@ -596,6 +608,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setMemoryReviewItems(data.items || []);
   };
 
+  // ASK-1: map a server milestone stage key to its localized status line.
+  const childFirstName = (childProfile.name || "").trim().split(/\s+/)[0] || "";
+  const chatStageStatus = (stage: string): string => {
+    if (stage === "memory") return t("coach.status.memory", { name: childFirstName });
+    if (stage === "sources") return t("coach.status.sources");
+    if (stage === "plan") return t("coach.status.plan");
+    return t("coach.loading");
+  };
+
   const readStreamingChatResponse = async (res: Response): Promise<ChatResponsePayload> => {
     const reader = res.body?.getReader();
     if (!reader) throw new Error("Streaming response body unavailable");
@@ -621,9 +642,13 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
       const data = JSON.parse(dataLines.join("\n"));
       if (eventName === "status") {
-        setChatStreamStatus(data.text || "Arbor is preparing the developmental response...");
-      } else if (eventName === "chunk") {
-        setChatStreamStatus(`Receiving structured guidance (${data.characters || 0} chars)`);
+        // ASK-1 Phase 1: the server sends honest milestone STAGE KEYS
+        // (memory → sources → plan); the localized copy is owned here.
+        setChatStreamStatus(chatStageStatus(String(data.stage || "")));
+      } else if (eventName === "delta") {
+        // ASK-1 Phase 2 / AIR-1: server-screened sentence delta — fold it
+        // into the live bubble (the first one replaces the local ack copy).
+        setChatMessages((prev) => applyChatDelta(prev, String(data.text || ""), selectedLens));
       } else if (eventName === "done") {
         finalPayload = data as ChatResponsePayload;
       } else if (eventName === "error") {
@@ -658,7 +683,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   };
 
   const handleCancelChat = () => {
-    setChatStreamStatus("Stopping request...");
+    setChatStreamStatus(t("coach.status.stopping"));
     chatAbortRef.current?.abort();
   };
 
@@ -669,13 +694,17 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
     if (!customPrompt) setChatInput("");
     setApiError(null);
-    setChatStreamStatus("Connecting to Arbor...");
+    setChatStreamStatus(t("coach.status.connecting"));
 
     // Begin a persisted conversation on the first message of a fresh thread.
     if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
 
-    const updatedMessages = [...chatMessages, { sender: "user" as const, text: promptValue, lens: selectedLens }];
-    setChatMessages(updatedMessages);
+    // ASK-1: the user turn + an IMMEDIATE locally-rendered acknowledgment
+    // bubble — the parent sees a response begin the moment they send, then the
+    // first screened streamed sentence replaces the ack copy.
+    setChatMessages((prev) =>
+      appendChatAck([...prev, { sender: "user" as const, text: promptValue, lens: selectedLens }], t("coach.ack"), selectedLens),
+    );
     setIsChatLoading(true);
 
     const controller = new AbortController();
@@ -701,7 +730,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         if (res.status === 402) {
           openPaywall(errData?.upgrade?.feature || "coach_unlimited", errData?.upgrade?.plan === "family" ? "family" : "plus");
           setChatMessages((prev) => [
-            ...prev,
+            ...abortChatStream(prev),
             {
               sender: "ai",
               text:
@@ -717,20 +746,25 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       if (data.memoryReviewItems) {
         setMemoryReviewItems(data.memoryReviewItems);
       }
-      setChatMessages((prev) => [...prev, { sender: "ai", text: data.text, lens: selectedLens, contract: data.contract }]);
+      // ASK-1/AIR-1: settle the live bubble with the final payload. On a
+      // done-time output-screen flag (payload.outputBlocked) this RETRACTS the
+      // streamed prose and replaces it with the blocked/crisis markdown.
+      setChatMessages((prev) => settleChatTurn(prev, data, selectedLens));
       track("coach_message", { lens: selectedLens });
     } catch (err: any) {
       console.error(err);
       if (err.name === "AbortError") {
+        // Keep any screened partial prose (parity with the voice loop); an
+        // ack-only bubble is dropped so no placeholder survives the stop.
         setChatMessages((prev) => [
-          ...prev,
+          ...abortChatStream(prev),
           { sender: "ai", text: "### Request Stopped\nThe live Arbor response was cancelled before completion." },
         ]);
         return;
       }
       setApiError(err.message || "An exception occurred while connecting to Arbor services.");
       setChatMessages((prev) => [
-        ...prev,
+        ...abortChatStream(prev),
         {
           sender: "ai",
           text: renderApiConnectionError(err.message),
@@ -750,7 +784,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
     if (!customPrompt) setChatInput("");
     setApiError(null);
-    setChatStreamStatus("Convening the scholar council…");
+    setChatStreamStatus(t("coach.status.council"));
     if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
 
     setChatMessages((prev) => [...prev, { sender: "user" as const, text: promptValue, lens: selectedLens }]);

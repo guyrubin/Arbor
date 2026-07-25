@@ -22,6 +22,12 @@ export const frameRoutingSchema = z.object({
 });
 
 export const coachResponseZodSchema = z.object({
+  // ASK-1/AIR-1 (ask-cadence): the leading parent-facing prose — a warm
+  // empathic opening + the heart of the answer in a few plain sentences.
+  // Declared FIRST so providers emit it first and /chat can stream it as
+  // screened sentence deltas while the structured fields still generate.
+  // Optional for back-compat with pre-cadence contracts and stubs.
+  text: z.string().optional(),
   riskLevel: z.string().min(1),
   ageBand: z.string().min(1),
   domains: z.array(z.string().min(1)).min(1),
@@ -82,6 +88,7 @@ export const buildSourceCards = (
 export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) => ({
   type: Type.OBJECT,
   required: [
+    "text",
     "riskLevel",
     "ageBand",
     "domains",
@@ -97,6 +104,8 @@ export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) 
     "sourceCardsUsed"
   ],
   properties: {
+    // ASK-1/AIR-1: keep `text` FIRST — the ask-cadence stream tails this field.
+    text: { type: Type.STRING },
     riskLevel: { type: Type.STRING },
     ageBand: { type: Type.STRING },
     domains: {
@@ -161,7 +170,12 @@ export const renderCoachResponse = (response: CoachResponse) => {
     .map((item) => `- **${item.label}** (${item.confidence}): ${item.rationale}`)
     .join("\n");
 
-  return `### 1. What May Be Happening
+  // ASK-1/AIR-1: the streamed prose leads the rendered answer, so the
+  // done-time output screen (lexical + optional semantic) always covers the
+  // exact text that was previewed as deltas — one screened rendering, no fork.
+  const lead = response.text?.trim() ? `${response.text.trim()}\n\n` : "";
+
+  return `${lead}### 1. What May Be Happening
 ${hypotheses || "One possibility is a temporary mismatch between the child's developmental capacity, the environment, and the demand being placed on them."}
 
 ### 2. Why It May Be Happening
