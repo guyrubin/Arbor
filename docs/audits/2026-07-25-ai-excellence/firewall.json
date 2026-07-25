@@ -1,0 +1,299 @@
+{
+ "rulings": [
+  {
+   "id": "AI-V1",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: /voice SSE (routes/api.ts:608-648, SAFE-V1). Guard: screenModelOutput on alias-restored text. Conditions (acceptance, verbatim): (1) screen runs on the CUMULATIVE restored text (after createStreamRestorer) at each sentence boundary — never a sentence in isolation; (2) when ENABLE_OUTPUT_SAFETY_CLASSIFIER=true, keep today's full-buffer behavior (align with AIR-2 — this is ONE implementation, merge the two cards); (3) route test: flagged sentence 2 emits sentence 1 + calm fallback, flagged text never in any SSE frame; (4) ships only with evals/voice-loop-v1 (EVAL-2) green including a new mid-stream-flag scenario; (5) escalation path at :587-593 byte-identical."
+  },
+  {
+   "id": "AI-V2",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: playback control only — screened-before-emit invariant (api.ts:627, tts.ts:136-140) untouched. Condition: the Live interrupted-handling (retained sources, stop(), playHead reset) must be implemented inside/behind VC-1's liveTurnGuard, not as a second direct caller of playChunk — VC-1 makes playChunk module-private and AI-V2(b) must not reopen it. Fallback-path barge-in (a) is PASS as written; on-screen crisis resources (VC-4) remain the durable channel if a parent interrupts a spoken fallback."
+  },
+  {
+   "id": "AI-V3",
+   "ruling": "PASS",
+   "guard": "No firewall surface. Recognition restart only; every final transcript still passes screenForImmediateEscalation at routes/api.ts:587 before any model call. Circuit-breaker + not-allowed handling already in acceptance."
+  },
+  {
+   "id": "AI-V4",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: /api/tts client gate collapse. Guard: screenAndSynthesizeSpeech (server/tts.ts:136-140) is the trust boundary. Conditions: (1) zero change to the server screen seam — the collapse removes only the VITE build flag; engine flip driven solely by GET /api/tts configured probe; (2) UnsafeTtsOutputError route test (422 path, api.ts:889-892) stays green; (3) prod TTS_PROVIDER flip remains gate:guy as carded. Lang/voice selection in browser TTS: PASS, speaks already-screened text."
+  },
+  {
+   "id": "AI-V5",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: /api/tts public trust boundary — the HMAC skip weakens it unless bound tightly. Conditions: (1) token = HMAC(server secret) over sha256(exact text)+lang+expiry, constant-time verify, minted by /voice ONLY for sentences that passed its own screen; (2) any absent/invalid/expired/text-mismatch token → full screen (fail closed) — existing tts tests green; (3) screenModelOutputLexical still runs UNCONDITIONALLY on /api/tts even with a valid token (synchronous, ~free — belt for HMAC bugs); (4) route test: one-char-altered text with a valid token is fully screened; (5) prefetch keeps single-owner interruption semantics."
+  },
+  {
+   "id": "AI-V6",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: Live path safety (the standing P0). gate:clinical stays. Conditions: (1) ONE implementation with VC-1/2/3 — the authoritative screen is SERVER-side screenForImmediateEscalation via /api/live/turn; a client lexicon copy may only be an additional fast path, never the sole screen (drift risk); (2) ships inert behind VC-7's LIVE_ENABLED=false; (3) turns persist ONLY via appendVoiceUser/applyVoiceDelta/settleVoiceTurn → conversationsCol (conversations ∈ CHILD_SUBCOLLECTIONS, childData.ts:27 — GDPR export/erase holds, no new collection); (4) crisis copy EN+HE gets clinical sign-off; (5) eval: Live crisis-trigger scenario added to evals/voice-loop-v1 (session closes <1 turn, resources render)."
+  },
+  {
+   "id": "AI-V7",
+   "ruling": "PASS",
+   "guard": "UI only; no new capture path (chip stays entry point per acceptance); captions render the parent's own words + already-screened /voice output (voiceTranscript.ts documents the SAFE-V1 provenance). Register/RTL/reduced-motion conditions already in the card's acceptance."
+  },
+  {
+   "id": "AI-V8",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: Live availability probe. Condition: GET /api/live/availability must return available:false unless config.liveEnabled (VC-7) && geminiApiKey — an availability endpoint computed from the key alone would recreate the one-env-var-away unscreened-Live hazard VC-7 exists to close. LIVE_MODEL surfacing fine; model choice stays gate:guy (GD-3)."
+  },
+  {
+   "id": "AI-V9",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: Live persona. Shared persona module (one source for NON_DIAGNOSTIC_CONTRACT) is right. Conditions: (1) the prompt-level contract is NOT a screening substitute — card may not be cited as satisfying VC-1/VC-2; (2) at GD-3 provisioning, pin the systemInstruction server-side into the token's liveConnectConstraints at mint time (routes/api.ts:674-681) so a modified client cannot substitute the persona — today the instruction is wholly client-supplied (CoachTab.tsx:260)."
+  },
+  {
+   "id": "VC-1",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: Live output audio — verified zero screening today (geminiLiveClient.ts:74,78). The buffered-release liveTurnGuard is the required fail-closed design. Conditions: (1) transcription absence = unscreened = never release — if outputAudioTranscription stops arriving mid-session, zero further audio and session close (state this as an acceptance line + test); (2) playChunk module-private with the unreachability unit test as carded; (3) release requires lexical pass AND server verdict (VC-3) — the async verdict may not be optimistic (VC-5 contract); (4) outputScreen lexical extraction to a shared module keeps the server import path byte-identical (outputScreen tests green); (5) ships inert behind VC-7; (6) guard scenarios land in evals/voice-loop-v1."
+  },
+  {
+   "id": "VC-2",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: Live input screening — verified raw PCM to Gemini with nothing between (geminiLiveClient.ts:92-95). Conditions: (1) same screenForImmediateEscalation server-side, never a reimplementation; (2) on stop_crisis the session stop() may not wait on in-flight model audio — stop first, then render; (3) resources rendered via renderEscalationMarkdown verbatim (CRITICAL_HELPLINE_LITERALS tripwire applies) + persisted as a ChatMessage; (4) spoken redirect localized per VC-6; (5) /api/live/turn requires child ownership and logs chars/verdict only — never transcript text."
+  },
+  {
+   "id": "VC-3",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: Live turn logging + persistence. Guard held: conversations ∈ CHILD_SUBCOLLECTIONS (childData.ts:27) + childData.subcollections.test.ts — so persisting via the COACH-2 reducers (voiceTranscript.ts:20-46) keeps Live transcripts inside GDPR export/erase with no new capture path. Conditions: (1) persist ONLY through appendVoiceUser/applyVoiceDelta/settleVoiceTurn → the existing conversationsCol upsert — any new collection is a VETO-level regression of the allow-list; (2) logger.info('live.turn') carries {requestId, uid, role, chars, verdictCategory} and NEVER the transcript text (child-data minimalism in server logs); (3) endpoint inside createApiRouter auth + requireChildOwnership on childId; (4) role model → screenModelOutput, role user → screenForImmediateEscalation, both with route tests as carded."
+  },
+  {
+   "id": "VC-4",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: voice crisis parity — verified: /voice buries category in done (api.ts:589-593) and streamVoice drops done entirely (lib/api.ts:165-166); voice parents get strictly less crisis help than typists TODAY. Fix required. Conditions: (1) resourcesMarkdown = renderEscalationMarkdown(match) verbatim — the escalationLiteralsIntact tripwire must cover the path; (2) do NOT resume listening after escalation; (3) outputBlocked done renders a visible blocked state (parity with /chat's renderBlockedOutputMarkdown); (4) EN+HE per VC-6; (5) the '988 on screen' test as carded. Ship this ahead of any cadence work on /voice."
+  },
+  {
+   "id": "VC-5",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: fail-closed contract for Live screening outages — this codifies the posture tts.ts:136-139 and api.ts:608-613 already set. Conditions: (1) network error/non-200/timeout = FLAGGED, by construction (no catch-and-continue branch — the carded structural test is mandatory); (2) degrade target is the screened /voice loop with a visible notice, never silent; (3) no code path resumes Live without a fresh passing verdict; (4) add the transcription-stops-arriving case (VC-1 condition 1) to this contract's test matrix."
+  },
+  {
+   "id": "VC-6",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: crisis fallback language parity — verified hardcoded EN at api.ts:590 and :638 while detection covers HE (escalation.ts:40,57,73). Conditions: (1) HE crisis copy gets clinical sign-off (same gate as AI-V6); (2) if HE resource strings restate numbers, extend CRITICAL_HELPLINE_LITERALS so the fail-loud tripwire covers them; (3) HE self_harm → Hebrew fallback scenario added to evals/voice-loop-v1; (4) Live systemInstruction language directive comes from the AI-V9 shared persona module, not a second string."
+  },
+  {
+   "id": "VC-7",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: Live enablement gate — verified: availability is solely !config.geminiApiKey (api.ts:664-668); the GD-3 hazard is real. Conditions: (1) MERGE ORDER — LIVE_ENABLED (default false) lands BEFORE any other Live card ships; VC-1..VC-6 all ship inert behind it; (2) flag flip to true = the GD-3 unlock = explicit Guy gate, never a side effect; (3) pin systemInstruction into liveConnectConstraints at token mint (see AI-V9/FW-NEW-1); (4) /api/live/turn under the same metering; (5) the flag-off-with-key-present test as carded."
+  },
+  {
+   "id": "VC-8",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: output-screen crisis category — verified the gap (outputScreen.ts:70-113 has exactly 3 categories; semantic layer default-OFF fails open :127,:153-155). gate:clinical stays. Conditions: (1) the help-directive allow-list is the risk — implement as narrow, fixture-locked frames; when uncertain, FLAG (over-block routes to crisis resources, a safe failure; under-block speaks harm aloud); (2) flagged crisis output routes to crisis fallback + resources, never generic renderBlockedOutputMarkdown; (3) pattern set + exemption frames get clinical sign-off; (4) named suites: outputScreen.test.ts extension with zero regressions on existing clean fixtures, plus crisis-output scenarios in evals/voice-loop-v1 and evals/coach-core-v1; (5) applies to /voice, /chat, and the VC-3 model-role screen in the same PR."
+  },
+  {
+   "id": "ASK-1",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: /chat streaming. Phase 1 (honest statuses, no typewriter) PASS as-is. Phase 2 conditions: (1) lexical screen runs on the CUMULATIVE alias-RESTORED text per delta (restore order matches api.ts:615-627); (2) when ENABLE_OUTPUT_SAFETY_CLASSIFIER=true and it flags at done, the client RETRACTS the streamed bubble and replaces it with renderBlockedOutputMarkdown — text is retractable, add the test; structured panels stay gated at done; (3) escalation pre-screen at :328 unchanged; (4) named suite: evals/coach-core-v1 (EVAL-5) green + the AIR-1 SSE mid-stream-flag test. ONE implementation with AIR-1."
+  },
+  {
+   "id": "ASK-2",
+   "ruling": "PASS",
+   "guard": "Layout only. Single-input invariant (COACH-4) explicitly preserved in acceptance ('only one textarea exists in the DOM'); no screening or export surface touched."
+  },
+  {
+   "id": "ASK-3",
+   "ruling": "PASS",
+   "guard": "Register improvement: removes frameRouting (internal orchestration vocabulary) from the parent surface while keeping it in the contract — which stays inside the screened renderCoachResponse text (contracts/coach.ts:185-191), so the output screen is unchanged. No verdicts added; hypotheses/confidence collapse into a disclosure is calmer, not more clinical."
+  },
+  {
+   "id": "ASK-4",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: new generative parent-facing field. Condition (the one that matters): followUps MUST be appended to renderCoachResponse (contracts/coach.ts:159) so screenModelOutput covers them — verified today that every rendered contract field flows through that screened text; a rendered-but-unscreened field would be the first bypass of the AI-2 output screen. Also: zod cap (≤3 items, short strings); localized via languageDirective; the carded eval case lands in evals/coach-core-v1. Council empty-input fix: PASS."
+  },
+  {
+   "id": "ASK-5",
+   "ruling": "PASS",
+   "guard": "i18n + displayText honesty fix — the user bubble shows what the parent actually tapped while the canonical EN prompt goes to the model; no screening, capture, or export surface touched. Follows the approved hardMomentSurface pattern."
+  },
+  {
+   "id": "ASK-6",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: memory visibility in-thread. Counts-only is the correct firewall shape. Conditions: (1) approvedMemoryFactsUsed is an integer count ONLY — no fact content, no percentage, no 'confidence' in the footer row; (2) the review chip names that something is pending, never its content, in-thread ('zero memory CONTENT rendered in-thread' from the card's acceptance is the binding line — keep verbatim); (3) queue mechanics and parent approval unchanged (api.ts:137 propose seam untouched)."
+  },
+  {
+   "id": "ASK-7",
+   "ruling": "PASS",
+   "guard": "Removes redundant EN welcome bubble; orientation consolidation only. Conversation persistence/title guards covered by the card's own acceptance; no firewall surface."
+  },
+  {
+   "id": "ASK-8",
+   "ruling": "PASS",
+   "guard": "Register repair — removes infra internals (Firestore/index/provider vocabulary) from a stressed parent's thread and stops persisting error bubbles into conversations (less retained data, not more). Card's acceptance already pins 'no stack/infra vocabulary in either language'."
+  },
+  {
+   "id": "ASK-9",
+   "ruling": "PASS",
+   "guard": "Layout demotion of lens chrome; lens steering and 'aligned with' chip preserved per acceptance. No firewall surface."
+  },
+  {
+   "id": "AI-CAP-1",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: LIVE fail-open crisis path — VERIFIED in source: BehaviorsTab.parseVoice (:200-239) posts to /chat, escalation returns 200 markdown (api.ts:328-343), regex finds no JSON, catch stuffs the raw crisis transcript into newLogTrigger with a friendly toast. This is a live P0 breach of fail-closed; ship this card FIRST in the slate. gate:clinical stays. Conditions: (1) on 409, render renderEscalationMarkdown content (resources visible, not a toast) and ZERO draft-field writes — the carded test next to confirmCaptureReview.test.ts is mandatory; (2) the 500/network fallback keeps raw-transcript-into-trigger ONLY after the escalation branch, exactly as carded; (3) clamp/validate all fields; (4) named suite: evals/capture-extract-v1 (EVAL-3) escalation-bait scenario covers the regression permanently."
+  },
+  {
+   "id": "AI-CAP-2",
+   "ruling": "PASS",
+   "guard": "Language threading only; escalation screen on /extract-log input (api.ts:700-708) unchanged and its HE patterns already exist (escalation.ts:40,57,73). HE/RTL parity fix on the capture flagship — no guard weakened."
+  },
+  {
+   "id": "AI-CAP-3",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: typed capture → extractLog. Conditions the card omits: (1) HTTP 409 with escalationCategory on the TYPED path must render the escalation surface and populate NO draft field — same contract as AI-CAP-1 (the client api wrapper throws ApiError on non-2xx; it must not fall through to 'sentence into trigger'); (2) when extraction filled the fields, provenance is 'ai-draft' (AI-CAP-4's source), not 'text' — the review line must not claim the parent wrote what the model drafted; (3) review gate (setNeedsReview) armed on every extraction-filled draft, as carded; (4) neutral placeholder for empty response is fine — it must be visibly editable in review (AI-CAP-5)."
+  },
+  {
+   "id": "AI-CAP-4",
+   "ruling": "PASS",
+   "guard": "Closes a real review-gate bypass (AI-originated draft writing via submitLog without ConfirmCaptureReview, and mis-stated provenance). Routes through the ONE existing gate with factual 'ai-draft' wording; acceptance already pins no-confidence-wording via the CODEX-7 test extension. Guard: TODAY-3 review contract, strengthened not weakened."
+  },
+  {
+   "id": "AI-CAP-5",
+   "ruling": "PASS",
+   "guard": "Honesty fix: surfaces exactly the AI-inferred fields (intensity/context/duration) the parent currently confirms blind. 'From your note' provenance label is factual, and the card's own acceptance pins no-confidence wording + single shared component. Guard: ConfirmCaptureReview stays the one gate for both consumers."
+  },
+  {
+   "id": "AI-CAP-6",
+   "ruling": "PASS",
+   "guard": "Dictation UX only; interim captions show the parent's own words; the final transcript still flows through the AI-CAP-1-fixed extraction path with its server escalation screen. No new capture path, no register issue (calm tokens specified)."
+  },
+  {
+   "id": "AI-CAP-7",
+   "ruling": "PASS",
+   "guard": "One dismissible, never-auto-send, once-per-confirm parent-facing CTA via the existing seedCoach seam — not a pressure mechanic and not child-facing. Acceptance already pins no-nag and no write-path change."
+  },
+  {
+   "id": "AI-CAP-8",
+   "ruling": "PASS",
+   "guard": "Taxonomy normalization; the canonical six labels are observational ('Transition Refusal'), not clinical; free labels preserved in notes. No firewall or export surface — counts get MORE honest (no singleton-bucket fragmentation)."
+  },
+  {
+   "id": "AIR-1",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: /chat real streaming + ClaudeVertexProvider stream. ONE implementation with ASK-1 Phase 2. Conditions: (1) deltas screened via screenModelOutputLexical on CUMULATIVE, alias-RESTORED text (the NAME_SUBJECT floor at outputScreen.ts:83 assumes restored names — screen after the stream restorer, matching api.ts ordering); (2) semantic classifier (when enabled) gates done with client retract-and-replace on flag, tested; (3) the carded 'Mia has autism mid-stream never renders' SSE test is the acceptance anchor; (4) named suite: evals/coach-core-v1 (EVAL-5) green before merge; (5) escalation pre-screen and blocked-fallback payload shapes unchanged."
+  },
+  {
+   "id": "AIR-2",
+   "ruling": "CONDITIONS",
+   "guard": "Duplicate of AI-V1 — merge to ONE implementation (this card's classifier-on full-buffer clause is the better spec; adopt it in the merged card). Same conditions as AI-V1: cumulative restored-text screening, flagged-sentence-3 route test, EVAL-2 suite green, escalation/abort unchanged. Fail-closed survives as specified; silence on the scan would have been a VETO — this card states it correctly."
+  },
+  {
+   "id": "AIR-3",
+   "ruling": "PASS",
+   "guard": "Latency knob only. Note checked: thinkingBudget 0 on analysis_structured also touches the optional semantic classifier call — acceptable because it is default-OFF and fails open by design; screenModelOutputLexical remains the hard floor and is untouched. Telemetry addition is pure win."
+  },
+  {
+   "id": "AIR-4",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: model swap on the highest-stakes parent surface. gate:guy stays. Conditions: (1) evals/coach-core-v1 (EVAL-5) + eval:safety + the hard-moment suite re-run green against the NEW resolved model id before the prod flip — a model change without its eval re-run is exactly what EVAL-8 exists to block; (2) evals/pinned-models.json refreshed in the same PR; (3) EU-residency policy_denied test stays green as carded."
+  },
+  {
+   "id": "AIR-5",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: NEW generative parent-facing endpoint (Today's Focus). The card fixes metering but omits the screen. Conditions: (1) the focus route's output passes screenModelOutput (lexical floor minimum) before return, with a route test — a new lightweight endpoint that skips the AI-2 screen would be the first unscreened parent-facing generative surface; (2) prompt includes NON_DIAGNOSTIC_CONTRACT; (3) focus text = observations/next-step only, no severity or readiness framing (2-field schema helps); (4) cache serves only screened payloads."
+  },
+  {
+   "id": "AIR-6",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: /api/tts quota + screen scope. Conditions: (1) screenModelOutputLexical stays UNCONDITIONAL on every /api/tts call (card says keep it — make it an acceptance line); (2) 'arrived from an already-screened response' must be proven via AI-V5's server-minted HMAC token, never a client-asserted flag; (3) UnsafeTtsOutputError test green as carded. Metering change itself: no firewall surface."
+  },
+  {
+   "id": "AIR-7",
+   "ruling": "PASS",
+   "guard": "Middleware round-trip collapse; quota/meter enforcement semantics and their tests unchanged per acceptance. No firewall surface."
+  },
+  {
+   "id": "AIR-8",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: TTS dispatch seam. If the registry becomes the dispatch path, condition: screenAndSynthesizeSpeech (tts.ts:136-140) remains the ONLY publicly reachable synthesis path — registry.execute must not expose unscreened synthesizeSpeech to any route; not_configured fails closed with tests as carded. Deleting the registry instead: PASS."
+  },
+  {
+   "id": "AIR-9",
+   "ruling": "PASS",
+   "guard": "Deadlines + calm parent-register error mapping — reliability win, existing error copy reused per acceptance. No screening or export surface touched."
+  },
+  {
+   "id": "AIX-S1",
+   "ruling": "PASS",
+   "guard": "i18n + language directive threading on /vision, mirroring the /digest pattern (api.ts:1892). COPPA 451 fail-closed consent gate and non-diagnostic vision prompts untouched; HE parity on a consent-gated surface is a trust win."
+  },
+  {
+   "id": "AIX-S2",
+   "ruling": "PASS",
+   "guard": "Generative-honesty fix: suppresses a machine 'sounds different' verdict about a child that is provably false in HE (en-US recognition on Hebrew speech), degrading to the parent-scoring floor with honest copy. Exactly the direction the firewall enforces — the machine may not assert beyond what it can hear."
+  },
+  {
+   "id": "AIX-S3",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: vision → memory/handoff loops. Verified: POST /memory/:childId/propose exists behind requireOwnership (api.ts:137). Conditions: (1) suggestedMemory items land ONLY in the pending-approval queue — nothing auto-approves, per-item CTA, parent act per item; (2) handoff-note prefill lands in the consult COMPOSER, parent-editable, and no share/send happens without the existing explicit consult send act — prefill is not consent; (3) both CTAs i18n'd per AIX-S1 as carded."
+  },
+  {
+   "id": "AIX-S4",
+   "ruling": "PASS",
+   "guard": "Seed localization via the already-approved hardMomentSurface/t() pattern, locked by a grep-test. Prompts to the model unchanged in meaning; no screening surface touched."
+  },
+  {
+   "id": "AIX-S5",
+   "ruling": "CONDITIONS",
+   "guard": "Surface: device-local persistence of child-derivative art (IndexedDB). Data-minimalism conditions: (1) the IndexedDB store is purged on child erase (wire into the same client-side erase flow the CHILD_SUBCOLLECTIONS-driven deletion triggers) and on sign-out — a GDPR-erased child must not leave comic pages on the device; (2) keyed per child; (3) never uploaded/synced — device-local only, no new export surface (add a test or lint that no network write reads this store); (4) honesty copy layer ('Rebuild this book') ships with or before the durability layer."
+  },
+  {
+   "id": "AIX-S6",
+   "ruling": "PASS",
+   "guard": "AI-provenance-tagged tryThisWeek text into the existing acceptTodayAction seam; actionLoops ∈ CHILD_SUBCOLLECTIONS (childData.ts:30) so the write stays inside GDPR export/erase; CTA absent on fallback digests per acceptance; the counts-only digest core (digest.ts firewall-guarded payload) untouched."
+  },
+  {
+   "id": "AIX-S7",
+   "ruling": "PASS",
+   "guard": "i18n of the ComicsTab bookends with the card's own condition that the never-a-real-photo/provenance-watermark claims survive verbatim in meaning — that clause is the guard; keep it in acceptance as written."
+  },
+  {
+   "id": "EVAL-1",
+   "ruling": "PASS",
+   "guard": "Builds the enforcement seam every generative CONDITIONS verdict in this slate cites (suite schema validation incl. mandatory safety-trip scenario + pinned judge). Strengthens the firewall's instrument; no product surface touched."
+  },
+  {
+   "id": "EVAL-2",
+   "ruling": "CONDITIONS",
+   "guard": "This suite is the named instrument for AI-V1/AIR-2/VC-6/VC-8/AI-V6. Conditions — add to the scenario list: (1) mid-stream flagged-sentence (sentence N flagged → prior sentences + fallback only) once sentence streaming lands; (2) HE escalation input → Hebrew spoken fallback + on-screen resources (VC-6); (3) Live turn-guard scenarios (crisis close <1 turn; screening-endpoint-down → degrade) once VC-1/VC-5 land. With those, PASS — the deterministic tier already runs the real /voice handler, the right shape."
+  },
+  {
+   "id": "EVAL-3",
+   "ruling": "PASS",
+   "guard": "Named suite for AI-CAP-1/2/3. Rubric is firewall-correct as authored: neutrality = 1.0 HARD (observation language, no labels), escalation-bait → deterministic 409, fidelity ≥0.8 against invention. Cite as evals/capture-extract-v1."
+  },
+  {
+   "id": "EVAL-4",
+   "ruling": "PASS",
+   "guard": "Implements the judge runner the ai-eval-harness discipline requires (append-only results.jsonl, pinned judge, hard-fail on safe===false and escalationVerbatim<1.0). Enforcement infrastructure only."
+  },
+  {
+   "id": "EVAL-5",
+   "ruling": "CONDITIONS",
+   "guard": "Named suite for ASK-1/ASK-4/AIR-1/AIR-4. Conditions: (1) sharpen the riskLevel assertion — assert riskLevel is contract-internal ONLY: it may tier escalation prominence (CoachAnswerCards.tsx:52-53) but its VALUE never renders as text in any parent-facing field and never reaches an export (clinicalFirewall.wave3/wave4 tests remain the export guard); 'riskLevel present' alone reads as licensing display — it must not; (2) noDiagnosis = 1.0 hard stays; (3) once ASK-4 lands, followUps scenarios join this suite and followUps are inside the screened rendered text (see ASK-4)."
+  },
+  {
+   "id": "EVAL-6",
+   "ruling": "PASS",
+   "guard": "Prompt version-pinning with hash guard + telemetry stamping — makes every future prompt change to the 6+ routes embedding NON_DIAGNOSTIC_CONTRACT visible and eval-invalidating. Pure enforcement win; the contract getting its own version is exactly right."
+  },
+  {
+   "id": "EVAL-7",
+   "ruling": "PASS",
+   "guard": "Latency fields in usage telemetry at the modelRouter seam. No product or firewall surface; prerequisite for honest cadence budgets."
+  },
+  {
+   "id": "EVAL-8",
+   "ruling": "PASS",
+   "guard": "Pins eval-to-prod model identity (pinned-models.json + resolved-id stamping + drift fail). Directly enforces the AIR-4 condition; no product surface."
+  },
+  {
+   "id": "FW-NEW-P0",
+   "ruling": "CONDITIONS",
+   "guard": "NEW FIREWALL FINDINGS (unprompted, own P0/P1 standing): (P0-live) BehaviorsTab.parseVoice crisis fail-open is IN PROD NOW — a spoken 'I'm afraid I'll hurt him' becomes an ordinary editable draft with a friendly toast and no resources (verified BehaviorsTab.tsx:200-239 + api.ts:328-343). AI-CAP-1 is the fix; sequence it FIRST, ahead of all cadence work. (P0-live) streamVoice discards the escalation done payload TODAY (lib/api.ts:165-166) — voice parents in acute distress get one generic sentence and the loop resumes listening; VC-4 is the fix, sequence second. (P1-new, uncarded) /api/live/token mints ephemeral tokens whose liveConnectConstraints pin only the MODEL (api.ts:674-681) — the systemInstruction is wholly client-supplied (CoachTab.tsx:260), so at GD-3 a modified client could open a Live session with an arbitrary persona and zero screening; pin systemInstruction (and disable transcription-off configs) into the token constraints at mint time — add as an acceptance line to VC-7. (P2, trivial) CoachAnswerCards.tsx:125 comment still says the meta header shows 'risk' — it does not (chips are lens/age/domains); fix the stale comment so future editors don't reintroduce a risk chip believing it was intended."
+  }
+ ]
+}

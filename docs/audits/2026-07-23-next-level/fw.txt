@@ -1,0 +1,349 @@
+{
+ "rulings": [
+  {
+   "id": "TODAY-1",
+   "ruling": "PASS",
+   "guard": "[TODAY hub] actionLoops already in CHILD_SUBCOLLECTIONS (childData.ts:30); no clinical surface; card's acceptance (no fallback text persisted, acceptTodayAction unreachable when focus null) is sound"
+  },
+  {
+   "id": "TODAY-2",
+   "ruling": "PASS",
+   "guard": "[TODAY hub] design-only consolidation; no firewall surface touched"
+  },
+  {
+   "id": "TODAY-3",
+   "ruling": "CONDITIONS",
+   "guard": "[TODAY hub] one shared ConfirmCaptureReview contract, no forked capture path; no behavior-log write from any Today-originated capture without explicit confirm; provenance line stays factual — no confidence/verdict wording (pairs with CODEX-7)"
+  },
+  {
+   "id": "TODAY-4",
+   "ruling": "PASS",
+   "guard": "[TODAY hub] CSS/layout only; no firewall surface"
+  },
+  {
+   "id": "TODAY-5",
+   "ruling": "PASS",
+   "guard": "[TODAY hub] i18n hygiene; no firewall surface; HE cleanup must not add canned overrides (CODEX-2 removes that class)"
+  },
+  {
+   "id": "TODAY-6",
+   "ruling": "CONDITIONS",
+   "guard": "[TODAY hub] comparative sentence = counts only ('N moments this week vs M last week'), zero trend adjectives (easing/rising banned per wave-3); add the template to a wave-3-style banned-token scan; evidence deep-links carry no derived scores"
+  },
+  {
+   "id": "TODAY-7",
+   "ruling": "PASS",
+   "guard": "[TODAY hub] token hygiene; no firewall surface"
+  },
+  {
+   "id": "TODAY-1",
+   "ruling": "CONDITIONS",
+   "guard": "[UNDERSTAND] HE translations of clinical item prompts and result framing require named clinical review before publish (CONT-1-hardened governance); MUST NOT port the 'looks on track'/'On track' verdict literals (Screening.tsx:222,240) verbatim into i18n — 'on-track' is a wave-3 banned token (clinicalFirewall.wave3.test.ts:198); rephrase to observational counts or obtain explicit clinical ratification, and extend the banned-token scan to the new sec.screen.* keys"
+  },
+  {
+   "id": "TODAY-2",
+   "ruling": "PASS",
+   "guard": "[UNDERSTAND] recheckDueAt written into the existing screenings subcollection (in CHILD_SUBCOLLECTIONS, childData.ts:31); no new capture path; toast-honesty acceptance sound"
+  },
+  {
+   "id": "TODAY-3",
+   "ruling": "CONDITIONS",
+   "guard": "[UNDERSTAND] derived watch-points card = real domain names + counts only, never severity/verdict language; hidden or neutral when nothing is unobserved; new i18n keys pass the wave-3 banned-token scan; unit test proves copy matches milestone state"
+  },
+  {
+   "id": "TODAY-4",
+   "ruling": "CONDITIONS",
+   "guard": "[UNDERSTAND] observationStatus is parent-reported observation (allowed); extended packet payload must pass assertWithinCeiling (consult/packet.ts:255) and the forbidden-token guard; packet.test.ts extended; no percentage or verdict introduced"
+  },
+  {
+   "id": "TODAY-5",
+   "ruling": "CONDITIONS",
+   "guard": "[UNDERSTAND] screening band selection is clinical logic: preemie fixture unit test required, corrected-age intro copy stays observational, and the band-selection change is flagged to the named clinical reviewer alongside the localization pass"
+  },
+  {
+   "id": "TODAY-6",
+   "ruling": "PASS",
+   "guard": "[UNDERSTAND] selection heuristic only; 'watch for' vs 'try' framing is observational; no verdict emitted"
+  },
+  {
+   "id": "TODAY-7",
+   "ruling": "CONDITIONS",
+   "guard": "[UNDERSTAND] exampleMedia renders fail-closed (missing reviewer/rightsRef => never renders) with a test mirroring the AR-CONT-01 pattern; ships with zero media; media licensing stays Guy-gated"
+  },
+  {
+   "id": "TODAY-8",
+   "ruling": "PASS",
+   "guard": "[UNDERSTAND] UI polish; no firewall surface; months-precise prompt improves generative honesty"
+  },
+  {
+   "id": "COACH-1",
+   "ruling": "CONDITIONS",
+   "guard": "HE TrustSafetyBar/escalation strings must preserve escalation semantics, be native-reviewed, and stay clear of graded-risk phrasing; the wave-3 kit.tsx guard (no 'Risk: <grade>' text, clinicalFirewall.wave3.test.ts:44-49) stays green after keying"
+  },
+  {
+   "id": "COACH-2",
+   "ruling": "CONDITIONS",
+   "guard": "captioned/persisted text must be the same screened output the voice pipeline already gates (SAFE-V1 /api/voice); writes only via existing conversation persistence (conversations in CHILD_SUBCOLLECTIONS); no new capture path"
+  },
+  {
+   "id": "COACH-3",
+   "ruling": "PASS",
+   "guard": "strengthens fail-closed provider eligibility (selectProvider policy_denied); behavior identical for current config; the wire-or-delete acceptance is correct"
+  },
+  {
+   "id": "COACH-4",
+   "ruling": "CONDITIONS",
+   "guard": "coach.aiDisclosure (EU AI-Act Art. 50) line and the photo/voice entry points must survive the consolidation — the rejected codex ask-journal-clarity branch deleted exactly these (see CODEX-9)"
+  },
+  {
+   "id": "COACH-5",
+   "ruling": "PASS",
+   "guard": "i18n/token hygiene; no firewall surface"
+  },
+  {
+   "id": "COACH-6",
+   "ruling": "PASS",
+   "guard": "improves generative honesty — real source titles from the server knowledge registry; optional contract field; coach.test.ts extended"
+  },
+  {
+   "id": "COACH-7",
+   "ruling": "CONDITIONS",
+   "guard": "Live stays provision-gated OFF in prod until: every Live model turn is transcript-logged with a screening verdict via screenModelOutput; a flagged turn hard-stops audio within that turn; and suite evals/voice-live-crisis-v1 (ai-eval-harness, version-pinned) passes — crisis cases (self-harm, harm-to-child, abuse disclosure, medical emergency) at 100% escalation+hard-stop, worried-parent set at 0 unhelpful refusals. Guy gates the build and the TTS flip"
+  },
+  {
+   "id": "COACH-8",
+   "ruling": "PASS",
+   "guard": "prefill of existing form state only; explicitly zero new capture paths; honest-affordance fix"
+  },
+  {
+   "id": "JRNL-1",
+   "ruling": "CONDITIONS",
+   "guard": "violation VERIFIED live (WeeklyTab.tsx:199 wk.avgIntensity, reportExport.ts:73/86 'Average intensity X / 5' in parent weekly/behavior reports). Fix must ALSO remove avgIntensity + intensityTrend easing/intensifying from server/digest.ts parent-visible payload and fallbackDigestNarrative (digest.ts:96 'Hard moments are easing' — same banned verdict class, unflagged by the slate), and extend clinicalFirewall.wave3.test.ts to scan WeeklyTab.tsx, lib/reportExport.ts and server/digest.ts"
+  },
+  {
+   "id": "JRNL-2",
+   "ruling": "PASS",
+   "guard": "encoding fix; no firewall surface"
+  },
+  {
+   "id": "JRNL-3",
+   "ruling": "PASS",
+   "guard": "i18n refactor keeps signalTimeline pure/structured; no verdict fields added; wave-3 scans on signalTimeline.ts stay green"
+  },
+  {
+   "id": "JRNL-4",
+   "ruling": "PASS",
+   "guard": "corrects provenance honesty (parent vs Arbor authorship) — the AR-AI-08/09 trust guard; kind->provenance table locked by unit test"
+  },
+  {
+   "id": "JRNL-5",
+   "ruling": "PASS",
+   "guard": "timestamp plumbing only; no firewall surface"
+  },
+  {
+   "id": "JRNL-6",
+   "ruling": "CONDITIONS",
+   "guard": "domain chip omitted when classifyBehaviorDomain returns null — never guess; labels restricted to the existing developmental-domain vocabulary; no severity or condition-name label may enter the chip"
+  },
+  {
+   "id": "JRNL-7",
+   "ruling": "PASS",
+   "guard": "loading-gate + label truthfulness; no firewall surface"
+  },
+  {
+   "id": "JRNL-8",
+   "ruling": "PASS",
+   "guard": "layout only; no firewall surface"
+  },
+  {
+   "id": "TODAY-1",
+   "ruling": "CONDITIONS",
+   "guard": "[KID WORLD] kid.* i18n namespace must never be referenced from parent surfaces (register separation — add the test); HE values stay behind the native transcreation gate with EN fallback; no parent clinical framing enters kid keys"
+  },
+  {
+   "id": "TODAY-2",
+   "ruling": "PASS",
+   "guard": "[KID WORLD] inert/focus-trap strengthens the kid-mode lock; kidMode.test.ts write-path guard preserved"
+  },
+  {
+   "id": "TODAY-3",
+   "ruling": "PASS",
+   "guard": "[KID WORLD] honesty fix — badge shows real durationMin; no pressure mechanic introduced"
+  },
+  {
+   "id": "TODAY-4",
+   "ruling": "PASS",
+   "guard": "[KID WORLD] honors existing tile->world mapping; per-game deep-link redesign stays Guy-gated as noted"
+  },
+  {
+   "id": "TODAY-5",
+   "ruling": "CONDITIONS",
+   "guard": "[KID WORLD] whatToNotice/outcomePrompt copy must stay observational (notice/describe, never assess/score); add the four new fields to a banned-token scan mirroring clinicalFirewall.wave3.test.ts:198; HE authoring goes through the native transcreation gate"
+  },
+  {
+   "id": "TODAY-6",
+   "ruling": "PASS",
+   "guard": "[KID WORLD] enforces the no-pressure-mechanics rule — removes loss-framed streak badges/copy per lib/streak.ts + practice/signals.ts:77-95 doctrine; monotonic replacements only"
+  },
+  {
+   "id": "TODAY-7",
+   "ruling": "PASS",
+   "guard": "[KID WORLD] art consistency; no firewall surface"
+  },
+  {
+   "id": "TODAY-8",
+   "ruling": "PASS",
+   "guard": "[KID WORLD] review packet built from static content.ts strings only — no child data leaves the family; Guy-gated named reviewer stamps content.ts"
+  },
+  {
+   "id": "TODAY-1",
+   "ruling": "CONDITIONS",
+   "guard": "[CARE/SHARE] fake control VERIFIED (TrustedSharing.tsx:121-124 confirm+alert, zero API call). Wire to eraseEverything (childData.ts:142) so erasure runs through the CHILD_SUBCOLLECTIONS allow-list + POST /privacy/erase; childData.subcollections.test.ts stays green; typed child-name confirm in-app Modal; DeletionReceipt rendered; network-asserted test; merge-blocking for any trust-surface release"
+  },
+  {
+   "id": "TODAY-2",
+   "ruling": "CONDITIONS",
+   "guard": "[CARE/SHARE] child data to third parties: the consult preset serializer is the ONLY egress — GET /shared/:grantId/packet builds exclusively through serializePresetPacket/buildConsultPacket so assertWithinCeiling + forbidden-token scan (packet.ts:226-264) runs on every payload; server-side scope enforcement per grant; revoked/expired => 403 with test; read-only; a test proves no endpoint returns raw subcollection documents to a recipient"
+  },
+  {
+   "id": "TODAY-3",
+   "ruling": "CONDITIONS",
+   "guard": "[CARE/SHARE] scope migration fails closed: an unrecognized legacy English scope string maps to NO access, never a broader default; server enforces stable scope IDs; tests cover legacy grants in both directions"
+  },
+  {
+   "id": "TODAY-4",
+   "ruling": "PASS",
+   "guard": "[CARE/SHARE] encoding fix; no firewall surface"
+  },
+  {
+   "id": "TODAY-5",
+   "ruling": "PASS",
+   "guard": "[CARE/SHARE] adult-facing pricing honesty; removes dark-pattern-adjacent withholding; no child surface touched"
+  },
+  {
+   "id": "TODAY-6",
+   "ruling": "PASS",
+   "guard": "[CARE/SHARE] owner-parent's own grant metadata as audit history; no expansion of child-data egress; grants ARE the audit record"
+  },
+  {
+   "id": "TODAY-7",
+   "ruling": "CONDITIONS",
+   "guard": "[CARE/SHARE] delta section = counts only, through assertWithinCeiling; SLP + behavioral-health presets reuse the clinician ceiling + forbidden-token guard with tests mirroring packet.test.ts; authored question banks/guidance stay publication-blocked behind named clinical review (CONT-1-hardened governance), fails closed"
+  },
+  {
+   "id": "TODAY-8",
+   "ruling": "PASS",
+   "guard": "[CARE/SHARE] UI merge of an existing roster; no data-ceiling change"
+  },
+  {
+   "id": "TODAY-9",
+   "ruling": "CONDITIONS",
+   "guard": "[CARE/SHARE] design doc ONLY, zero app code; doc must specify the private-adult-history data boundary, DPIA notes, and fail-closed grant->membership migration (existing email grants never silently widen); Guy gates any implementation"
+  },
+  {
+   "id": "TODAY-1",
+   "ruling": "PASS",
+   "guard": "[PLATFORM] token-scope unification; card explicitly preserves the .arbor-play kid scope — register separation intact"
+  },
+  {
+   "id": "TODAY-2",
+   "ruling": "PASS",
+   "guard": "[PLATFORM] Guy-gated visual identity decision; no firewall surface"
+  },
+  {
+   "id": "TODAY-3",
+   "ruling": "PASS",
+   "guard": "[PLATFORM] breakpoint fix; no firewall surface"
+  },
+  {
+   "id": "TODAY-4",
+   "ruling": "PASS",
+   "guard": "[PLATFORM] i18n registry migration; parity guard strengthened; no firewall surface"
+  },
+  {
+   "id": "TODAY-5",
+   "ruling": "PASS",
+   "guard": "[PLATFORM] accessibility improvement (MotionConfig reducedMotion=user); no firewall surface"
+  },
+  {
+   "id": "TODAY-6",
+   "ruling": "PASS",
+   "guard": "[PLATFORM] hex-creep guard hardening; no firewall surface"
+  },
+  {
+   "id": "CONT-1",
+   "ruling": "PASS",
+   "guard": "VERIFIED: governance.ts:10-32 has no reviewedBy and no content binding — this card makes the named-clinical-review gate real (named reviewer, date validation, content hash demoting post-approval edits). Adopt acceptance as written; land before or with CONT-2"
+  },
+  {
+   "id": "CONT-2",
+   "ruling": "CONDITIONS",
+   "guard": "surfaces consume ONLY publishedHardMomentCards (isPublishableContent fails closed; CONT-1 hardening in the same PR or first); escalation band rendered verbatim from the governed record, never paraphrased; the 'Talk this through' coach seed covered by evals/coach-hardmoment-seed-v1 (ai-eval-harness — rubric: answer stays within card scope, no diagnosis/verdict, escalation boundary preserved verbatim; pass bar 100% on escalation preservation); tests assert both rendered-with-approved-fixture and zero-UI-with-all-draft states"
+  },
+  {
+   "id": "CONT-3",
+   "ruling": "CONDITIONS",
+   "guard": "option (a) honest-narrow now (metadata must not over-claim coverage); any newly authored 6-9/10-12 variants are draft-status and publication-blocked until named clinical review under the CONT-1-hardened gate"
+  },
+  {
+   "id": "CONT-4",
+   "ruling": "CONDITIONS",
+   "guard": "authored escalation text is clinical content: stays draft and fails closed until named clinical review; thresholds phrased as observable counts/behaviors, never timelines presented as diagnostic cutoffs; uniqueness test as specified"
+  },
+  {
+   "id": "CONT-5",
+   "ruling": "PASS",
+   "guard": "personalization/honesty fix; {{childName}} substitution at display time; no firewall surface"
+  },
+  {
+   "id": "CONT-6",
+   "ruling": "CONDITIONS",
+   "guard": "selector must never return draft or retired records (tested — the retired-fails-publication gap the card names); concern IDs are internal routing metadata: rename 'separation-anxiety' to 'separation' so no diagnostic-shaped label exists to leak, and if concerns ever render on a parent surface their i18n labels must pass the wave-3 banned-token scan"
+  },
+  {
+   "id": "CODEX-1",
+   "ruling": "PASS",
+   "guard": "dedup/layout; no firewall surface"
+  },
+  {
+   "id": "CODEX-2",
+   "ruling": "CONDITIONS",
+   "guard": "restoring live model text to the Today hero is a generative-surface change: keep the format-scrub + length clamp, and keep useTodaysFocus's existing verdict-strip guard (useTodaysFocus.ts:56 — no 'average intensity X/5' / 'readiness X%' from the model) pinned with unit cases asserting the scrub still applies to the rendered headline"
+  },
+  {
+   "id": "CODEX-3",
+   "ruling": "PASS",
+   "guard": "asset optimization; no firewall surface"
+  },
+  {
+   "id": "CODEX-4",
+   "ruling": "PASS",
+   "guard": "Guy-gated theme ratification; no firewall surface; guard test must encode the ratified value either way"
+  },
+  {
+   "id": "CODEX-5",
+   "ruling": "CONDITIONS",
+   "guard": "consuming surface reads ONLY publishedHardMomentCards (same fail-closed condition as CONT-2); 'Dylan' replaced with the {{childName}} placeholder BEFORE the named clinical review so the reviewer stamps the shipping text; ai/capabilities wired-or-deleted per COACH-3"
+  },
+  {
+   "id": "CODEX-6",
+   "ruling": "PASS",
+   "guard": "i18n/token hygiene; no firewall surface"
+  },
+  {
+   "id": "CODEX-7",
+   "ruling": "PASS",
+   "guard": "removes an asserted-not-computed 'high confidence' system verdict from capture review — firewall-positive per generative-honesty rule; no static confidence wording may return"
+  },
+  {
+   "id": "CODEX-8",
+   "ruling": "CONDITIONS",
+   "guard": "arbor-senior.html must be out of app/public before the next hosting deploy, and a CI/test guard added asserting app/public/marketing contains only approved files. Publication as-is would be VETO-class: unvalidated HMO-connection and monitoring claims reaching third parties (seniors/HMOs) under the Arbor brand with zero review. Removal path passes"
+  },
+  {
+   "id": "CODEX-9",
+   "ruling": "CONDITIONS",
+   "guard": "ask-journal-clarity is never merged as-is — its diff deletes coach.aiDisclosure (AI-Act Art. 50) and the photo/voice entry points; any native re-implementation of the dedup must retain both plus the 70dvh viewport; v2-architecture-foundation stays reference-only; branch deletions Guy-confirmed"
+  }
+ ]
+}
