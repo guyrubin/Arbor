@@ -109,6 +109,22 @@ export const escalationCategories: {
   }
 ];
 
+/**
+ * VC-8 (crisis output category): resolve the full escalation record for a
+ * category so a crisis verdict from the OUTPUT screen can route to the SAME
+ * resources surface the input screen shows (renderEscalationMarkdown verbatim —
+ * the CRITICAL_HELPLINE_LITERALS tripwire covers it). Falls back to
+ * caregiver_distress when the category is unknown/missing: its resources cover
+ * both self-directed and child-directed harm, so a crisis stop can never
+ * arrive on screen without renderable crisis help.
+ */
+export const escalationMatchForCategory = (category?: string | null): EscalationMatch => {
+  const record =
+    escalationCategories.find((c) => c.category === category) ??
+    escalationCategories.find((c) => c.category === "caregiver_distress")!;
+  return { category: record.category, label: record.label, resources: record.resources };
+};
+
 const extractSafetyText = (fields: Record<string, unknown>) =>
   Object.entries(fields)
     .filter(([, value]) => typeof value === "string")

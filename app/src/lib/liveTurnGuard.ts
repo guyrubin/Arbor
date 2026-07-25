@@ -40,7 +40,12 @@ export type LiveTurnVerdict = {
   spokenText?: string;
 };
 
-export type LexicalVerdict = { flagged: boolean; category: string | null };
+export type LexicalVerdict = {
+  flagged: boolean;
+  category: string | null;
+  /** VC-8: set when category === "crisis" — which escalation resource set applies. */
+  escalationCategory?: string;
+};
 
 export type LiveTurnGuardDeps = {
   /** POST /api/live/turn — MUST reject on network error / non-200. */
@@ -211,6 +216,17 @@ export function createLiveTurnGuard(deps: LiveTurnGuardDeps): LiveTurnGuard {
         // Fire the server screen too so the turn is still AUDITED server-side
         // (VC-3: every turn logged) — but the block does not depend on it.
         deps.screenTurn("model", transcript).catch(() => { /* audit-only */ });
+        // VC-8: a crisis-category lexical hit takes the CRISIS stop path
+        // (onCrisis renders crisis resources), never the generic blocked
+        // state. The verdict carries the escalation category so the caller
+        // can render the matching resources locally (safety/escalation is a
+        // pure shared module) without waiting on the server round-trip.
+        if (lexical.category === "crisis") {
+          stopWith(() =>
+            deps.onCrisis?.({ action: "stop_crisis", category: lexical.escalationCategory ?? "caregiver_distress" }),
+          );
+          return;
+        }
         stopWith(() => deps.onBlocked?.({ action: "stop_blocked", category: lexical.category ?? undefined }));
         return;
       }

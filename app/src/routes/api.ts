@@ -4,7 +4,7 @@ import type { ModelProvider } from "../ai/modelRouter.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
-import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
+import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 import { resolveScholar } from "../services/scholars.js";
@@ -373,7 +373,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     }
 
     const abortController = new AbortController();
-    req.on("close", () => abortController.abort());
+    // Abort generation when the CLIENT goes away. Same seam as /voice: the
+    // request's own 'close' fires as soon as the request MESSAGE completes
+    // (right after the JSON body is consumed — long before the response ends),
+    // so it can abort a perfectly healthy in-flight answer. The real
+    // disconnect signal is the RESPONSE 'close' while writableEnded is false.
+    res.on("close", () => { if (!res.writableEnded) abortController.abort(); });
 
     try {
       const childId = toChildId(childProfile);
@@ -457,7 +462,23 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
           category: outputVerdict.category,
           reason: outputVerdict.reason,
         });
-        const blockedPayload = { text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category };
+        // VC-8: crisis-category output routes to the SAME crisis surface as a
+        // crisis INPUT (renderEscalationMarkdown resources + urgent risk) —
+        // harm-normalizing model language must end in crisis help, never the
+        // generic renderBlockedOutputMarkdown.
+        const blockedPayload =
+          outputVerdict.category === "crisis"
+            ? (() => {
+                const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
+                return {
+                  text: renderEscalationMarkdown(crisisMatch),
+                  riskLevel: "urgent",
+                  escalationCategory: crisisMatch.category,
+                  outputBlocked: true,
+                  blockedCategory: "crisis" as const,
+                };
+              })()
+            : { text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category };
         if (streamResponse) {
           writeSse(res, "done", blockedPayload);
           res.end();
@@ -588,6 +609,19 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
           category: outputVerdict.category,
           reason: outputVerdict.reason,
         });
+        // VC-8: crisis output → crisis resources, never the generic blocked state.
+        if (outputVerdict.category === "crisis") {
+          const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
+          res.json({
+            text: renderEscalationMarkdown(crisisMatch),
+            riskLevel: "urgent",
+            escalationCategory: crisisMatch.category,
+            outputBlocked: true,
+            blockedCategory: "crisis",
+            council: [],
+          });
+          return;
+        }
         res.json({ text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category, council: [] });
         return;
       }
@@ -679,6 +713,22 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
             category: outputVerdict.category,
             reason: outputVerdict.reason,
           });
+          // VC-8: crisis-category output speaks the CRISIS redirect and puts
+          // the full resources block on screen — never the generic blocked
+          // state. The `escalation` key makes handleVoiceDone stop the loop,
+          // so the mic never resumes after a crisis turn (input-path parity).
+          if (outputVerdict.category === "crisis") {
+            const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
+            writeSse(res, "delta", { text: voiceSafetyFallback(language).escalation });
+            writeSse(res, "done", {
+              escalation: crisisMatch.category,
+              resourcesMarkdown: renderEscalationMarkdown(crisisMatch),
+              outputBlocked: true,
+              blockedCategory: "crisis",
+            });
+            res.end();
+            return;
+          }
           // Never speak the flagged draft. Speak a calm, non-diagnostic spoken
           // fallback that mirrors the /chat blocked behavior (handoff to a real
           // professional) instead — localized per VC-6. blockedMarkdown gives
@@ -818,6 +868,19 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
       const verdict = await screenModelOutput(modelProvider, text);
       audit(verdict.category);
       if (verdict.flagged) {
+        // VC-8: crisis-category MODEL output stops the session with the SAME
+        // crisis surface as a user-role crisis (resources verbatim + spoken
+        // redirect) — never the generic blocked state.
+        if (verdict.category === "crisis") {
+          const crisisMatch = escalationMatchForCategory(verdict.escalationCategory);
+          res.json({
+            action: "stop_crisis",
+            category: crisisMatch.category,
+            resourcesMarkdown: renderEscalationMarkdown(crisisMatch),
+            spokenText: voiceSafetyFallback(language).escalation,
+          });
+          return;
+        }
         res.json({
           action: "stop_blocked",
           category: verdict.category,

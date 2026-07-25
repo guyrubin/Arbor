@@ -28,6 +28,10 @@ import { startDictation, speechSupported } from "../../lib/speech";
 import { publishedHardMomentCards } from "../../content/hardMomentCards";
 import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
+// VC-8: pure shared module — lets a client-side (lexical) crisis stop render
+// the SAME escalation resources the server paths carry, so a crisis stop is
+// never resource-less on screen.
+import { escalationMatchForCategory, renderEscalationMarkdown } from "../../safety/escalation";
 import { usePrefersReducedMotion } from "../ui/playkit";
 
 type Risk = "Low" | "Moderate" | "High";
@@ -305,7 +309,12 @@ export default function CoachTab() {
                 // Session is ALREADY stopped (guard halts before rendering).
                 liveCtlRef.current = null;
                 voiceOnRef.current = false;
-                if (v.resourcesMarkdown) appendVoiceAiDelta(v.resourcesMarkdown);
+                // VC-8: the guard's client-side lexical crisis stop carries no
+                // server resourcesMarkdown — render the matching escalation
+                // resources locally so crisis help ALWAYS lands on screen.
+                appendVoiceAiDelta(
+                  v.resourcesMarkdown ?? renderEscalationMarkdown(escalationMatchForCategory(v.category)),
+                );
                 finalizeVoiceAiTurn();
                 if (v.spokenText) speak(v.spokenText);
                 setVoicePhase("off");

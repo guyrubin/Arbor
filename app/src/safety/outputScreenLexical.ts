@@ -6,15 +6,24 @@
  * byte-identical) AND the browser Live turn-guard (`lib/liveTurnGuard.ts`),
  * which must run the SAME patterns client-side without dragging the
  * `@google/genai` `Type` dependency (or the model-router types) into the main
- * bundle. This module therefore has ZERO imports — patterns + verdict only.
- * The semantic layer, the combined `screenModelOutput`, and the blocked-output
- * markdown remain in `./outputScreen.ts` (server-side).
+ * bundle. This module therefore imports ONLY `./escalation.ts` — itself a pure,
+ * zero-import data module (VC-8 reuses its compiled crisis pattern lists) —
+ * so the bundle stays free of heavy deps. The semantic layer, the combined
+ * `screenModelOutput`, and the blocked-output markdown remain in
+ * `./outputScreen.ts` (server-side).
  */
+import { escalationCategories } from "./escalation.js";
+
+/** VC-8: the escalation resource sets a crisis OUTPUT verdict can route to. */
+export type CrisisEscalationCategory = "self_harm" | "abuse_or_unsafe_home" | "caregiver_distress";
 
 export type OutputScreenVerdict = {
   flagged: boolean;
-  category: "diagnosis" | "medication" | "treatment_directive" | "semantic_unsafe" | null;
+  category: "diagnosis" | "medication" | "treatment_directive" | "crisis" | "semantic_unsafe" | null;
   reason: string | null;
+  /** Set ONLY when category === "crisis": which escalation resource set applies
+   *  (routes to the crisis fallback + resources, never the generic blocked state). */
+  escalationCategory?: CrisisEscalationCategory;
 };
 
 const CONDITION_TOKENS = [
@@ -93,9 +102,105 @@ const TREATMENT_PATTERNS = [
   /\b(?:stop|discontinue|skip|double|increase|decrease)\b.{0,30}\b(?:medication|meds|prescription|dose|dosage)\b/i,
 ];
 
+/* ── VC-8: crisis output category ────────────────────────────────────────────
+ * Crisis patterns existed only on the INPUT side (escalation.ts), so a
+ * pathological model output that echoes or normalizes self-harm / abuse /
+ * caregiver-harm language ("sounds like you want to hurt him — that's
+ * understandable") passed the voice floor and was spoken aloud. This screen
+ * reuses the COMPILED escalationCategories pattern lists (self_harm,
+ * abuse_or_unsafe_home, caregiver_distress) against MODEL output, plus a small
+ * set of output-side harm-NORMALIZING frames the first-person input patterns
+ * structurally miss. A crisis verdict routes to the crisis fallback +
+ * resources (never the generic blocked markdown) — see routes/api.ts.
+ *
+ * Pattern set + exemption frames are queued for clinical sign-off (GG-4);
+ * the fail-closed behavior ships now. Bias per the firewall ruling: when
+ * uncertain, FLAG — over-block routes to crisis resources (a safe failure),
+ * under-block speaks harm aloud.
+ */
+const CRISIS_INPUT_CATEGORIES: readonly CrisisEscalationCategory[] = [
+  "self_harm",
+  "abuse_or_unsafe_home",
+  "caregiver_distress",
+];
+
+const CRISIS_PATTERN_GROUPS: { escalationCategory: CrisisEscalationCategory; patterns: readonly RegExp[] }[] =
+  CRISIS_INPUT_CATEGORIES.map((category) => ({
+    escalationCategory: category,
+    // Reuse — never re-declare — the compiled input-side pattern lists.
+    patterns: escalationCategories.find((c) => c.category === category)!.patterns,
+  }));
+
+// Output-side harm-normalization frames: the input lists are written for
+// FIRST-person parent speech ("I hit him", "afraid I will hurt"), so a model
+// reply that echoes/normalizes the same harm in SECOND person slips past them.
+const HARM_NORMALIZING_GROUPS: { escalationCategory: CrisisEscalationCategory; patterns: readonly RegExp[] }[] = [
+  {
+    escalationCategory: "self_harm",
+    patterns: [
+      /\byou (?:clearly |really |just |sometimes |secretly )?(?:want|wanted|deserve) to (?:hurt|harm|kill) yourself\b/i,
+      /\b(?:it'?s|that'?s|it is|that is) (?:understandable|okay|ok|normal|natural)\b[^.!?\n]{0,60}\b(?:hurt|harm|kill)(?:ing)? yourself\b/i,
+    ],
+  },
+  {
+    escalationCategory: "caregiver_distress",
+    patterns: [
+      // Optional adverbs are a closed whitelist — "you never/don't want to
+      // hurt him" (legitimate reassurance) must NOT match.
+      /\byou (?:clearly |really |just |sometimes |secretly )?(?:want|wanted) to (?:hurt|hit|harm|shake|slap) (?:him|her|them|your (?:child|son|daughter|baby|kid))\b/i,
+      /\b(?:it'?s|that'?s|it is|that is) (?:understandable|okay|ok|normal|natural)\b[^.!?\n]{0,60}\bto (?:hurt|hit|harm|shake|slap) (?:him|her|them|your (?:child|son|daughter|baby|kid))\b/i,
+      /\b(?:hurting|hitting|shaking|slapping) (?:him|her|them|your (?:child|son|daughter|baby|kid)) (?:is|would be|can be) (?:understandable|okay|ok|normal|natural)\b/i,
+    ],
+  },
+];
+
+/**
+ * VC-8 help-directive allow-list — NARROW, fixture-locked frames (see
+ * outputScreen.test.ts) exempting legitimate coach referral language that
+ * necessarily contains the trigger phrases ("if you're having thoughts of
+ * suicide, call 988"). A sentence is exempt ONLY when it pairs a contact verb
+ * with a recognized crisis-help target IN THE SAME SENTENCE. Anything less
+ * specific stays flagged (over-block = safe failure). Queued for clinical
+ * sign-off with the pattern set (GG-4).
+ */
+const HELP_DIRECTIVE_FRAMES: readonly RegExp[] = [
+  // EN: "call/text/contact/reach out to … 988 / 112 / a helpline / a professional"
+  /\b(?:call|text|dial|phone|contact|reach out(?: to)?)\b[^.!?\n]{0,80}(?:112|911|988|101|100|1201|113\b|1813|0800[-\s]?0113|0800[-\s]?2000|1[-\s]?800[-\s]?422[-\s]?4453|emergency services|crisis (?:line|team|lifeline)|helpline|hotline|lifeline|suicide prevention|veilig thuis|findahelpline|a (?:professional|doctor|therapist|pediatrician)|your (?:doctor|pediatrician|huisarts)|local support line)/i,
+  // HE: "התקשרו ל… 1201 / ער"ן / קו סיוע / איש מקצוע"
+  /(?:התקשר|התקשרי|התקשרו|חייג|חייגי|חייגו|פנה|פני|פנו)[^.!?\n]{0,80}(?:112|911|988|1201|101|100|ער"ן|ערן|קו סיוע|קו חירום|מוקד|שירותי חירום|איש מקצוע)/,
+  // NL: "bel … 113 / 0800-0113 / Veilig Thuis / een professional"
+  /\b(?:bel|neem contact op(?: met)?)\b[^.!?\n]{0,80}(?:112|113\b|0800[-\s]?0113|0800[-\s]?2000|1813|veilig thuis|hulplijn|zelfmoordpreventie|een (?:professional|arts|huisarts))/i,
+];
+
+// The exemption is strictly SENTENCE-scoped: a help directive in one sentence
+// never launders crisis language in another.
+const SENTENCE_SPLIT = /(?<=[.!?…])\s+|\n+/u;
+
+const screenCrisisOutput = (text: string): OutputScreenVerdict | null => {
+  for (const sentence of text.split(SENTENCE_SPLIT)) {
+    if (!sentence.trim()) continue;
+    const hit = [...CRISIS_PATTERN_GROUPS, ...HARM_NORMALIZING_GROUPS].find((group) =>
+      group.patterns.some((pattern) => pattern.test(sentence)),
+    );
+    if (!hit) continue;
+    if (HELP_DIRECTIVE_FRAMES.some((frame) => frame.test(sentence))) continue;
+    return {
+      flagged: true,
+      category: "crisis",
+      reason: `Crisis-adjacent language (${hit.escalationCategory}) in model output.`,
+      escalationCategory: hit.escalationCategory,
+    };
+  }
+  return null;
+};
+
 /** Fast lexical screen — always on; pure, synchronous, testable. */
 export const screenModelOutputLexical = (text: string): OutputScreenVerdict => {
   const t = text || "";
+  // VC-8: crisis runs FIRST — it is the most severe category and has its own
+  // routing (crisis fallback + resources, never the generic blocked state).
+  const crisis = screenCrisisOutput(t);
+  if (crisis) return crisis;
   for (const p of DIAGNOSIS_PATTERNS) {
     if (p.test(t)) return { flagged: true, category: "diagnosis", reason: "Definitive diagnostic claim in model output." };
   }

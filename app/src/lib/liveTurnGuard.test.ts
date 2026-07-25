@@ -128,6 +128,54 @@ describe("liveTurnGuard — lexical floor blocks before a single sample (VC-1)",
   });
 });
 
+describe("liveTurnGuard — crisis-category MODEL output (VC-8)", () => {
+  it("a harm-normalizing model transcript takes the CRISIS stop path (never blocked), zero audio", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription(
+      "It sounds like you want to hurt him — and that's understandable after a day like this.",
+    );
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    // The lexical crisis verdict routes to onCrisis with the ESCALATION
+    // category (resources rendering path), not to onBlocked.
+    expect(h.calls).toContain("crisis:caregiver_distress");
+    expect(h.calls.filter((c) => c.startsWith("blocked:"))).toEqual([]);
+    // halt (session close) strictly precedes the crisis render.
+    expect(h.calls.indexOf("halt")).toBeLessThan(h.calls.indexOf("crisis:caregiver_distress"));
+    expect(h.guard.halted).toBe(true);
+    // The flagged turn is still sent for the server-side audit log (VC-3).
+    expect(h.deps.screenTurn).toHaveBeenCalledWith(
+      "model",
+      "It sounds like you want to hurt him — and that's understandable after a day like this.",
+    );
+  });
+
+  it("a server stop_crisis verdict on a lexically-clean model turn also takes the crisis path", async () => {
+    const h = makeHarness({
+      screenTurn: async (role) =>
+        role === "model"
+          ? { action: "stop_crisis", category: "self_harm", resourcesMarkdown: "### Get help now\n**988**", spokenText: "redirect" }
+          : CONTINUE,
+    });
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription("A perfectly lexically-clean sentence.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    expect(h.calls).toContain("crisis:self_harm");
+    expect(h.guard.halted).toBe(true);
+  });
+
+  it("the legitimate help-referral model sentence releases audio (allow-list)", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription("If you ever feel you might hurt your child, call 112 right away.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual(["a1"]);
+    expect(h.guard.halted).toBe(false);
+  });
+});
+
 describe("liveTurnGuard — user crisis turns (VC-2)", () => {
   it("a self_harm verdict halts the session BEFORE onCrisis renders, zero audio", async () => {
     const h = makeHarness({
