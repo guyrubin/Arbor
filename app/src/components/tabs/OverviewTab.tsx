@@ -10,6 +10,7 @@ import DailyPlayCard from "../overview/DailyPlayCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import TodayRecommendation from "../overview/TodayRecommendation";
 import TodayActionLoop from "../overview/TodayActionLoop";
+import HardMomentTodayOffer from "../overview/HardMomentTodayOffer";
 import ProgressNarrative from "../overview/ProgressNarrative";
 import QuickLogModal from "../overview/QuickLogModal";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
@@ -351,6 +352,12 @@ export default function OverviewTab() {
               } : undefined}
             />
           )}
+          {/* CONT-2 — hard-moment offer (AR-CONT-01). Fail-closed on
+              publishedHardMomentCards via selectCards; offers a matched card's
+              doNow through the EXISTING acceptTodayAction seam (outline button
+              — the hero keeps the single gradient-primary CTA). Renders
+              nothing until clinical review publishes cards (GD-10). */}
+          <HardMomentTodayOffer />
         </div>
         {/* ── Development-Map card (right, 1fr) ─────────────────────────────────
             Clinical firewall: a milestone-count ring + a COUNT-based 3-stat

@@ -11,6 +11,7 @@ import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
 import { HubHero } from "../ui/HubHero";
 import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
+import HardMomentsSection from "../behaviors/HardMomentsSection";
 import { Modal } from "../ui/Modal";
 import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCaptureReview";
 import { speechSupported, startDictation } from "../../lib/speech";
@@ -489,6 +490,11 @@ export default function BehaviorsTab() {
           </div>
         </div>
       </section>
+
+      {/* CONT-2 — Hard moments (AR-CONT-01). Fail-closed: reads ONLY
+          publishedHardMomentCards, so the section is invisible until named
+          clinical review stamps the pack (GD-10). */}
+      <HardMomentsSection />
 
       {/* Row 2 — events main column + right rail (patterns) */}
       <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">

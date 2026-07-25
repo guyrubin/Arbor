@@ -24,6 +24,8 @@ import { api, streamVoice, getAiLanguage } from "../../lib/api";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
+import { publishedHardMomentCards } from "../../content/hardMomentCards";
+import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { usePrefersReducedMotion } from "../ui/playkit";
 
@@ -94,6 +96,7 @@ export default function CoachTab() {
     openConversation,
     deleteConversation,
     apiError,
+    seedCoach,
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
@@ -458,6 +461,33 @@ export default function CoachTab() {
                 style={{ color: T.ink, border: "1px solid var(--arbor-rule)" }}
               >
                 <span aria-hidden>{s.emoji}</span> {t(s.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* CONT-2 — hard-moment "Talk this through" (AR-CONT-01). Reads ONLY
+          publishedHardMomentCards (fail-closed governance), so this group is
+          invisible until named clinical review stamps the pack (GD-10). Each
+          chip calls the EXISTING seedCoach seam with the card context; the
+          seed embeds the governed escalation VERBATIM (never paraphrased) and
+          is covered by evals/coach-hardmoment-seed-v1. */}
+      {chatMessages.length <= 1 && publishedHardMomentCards.length > 0 && (
+        <div className="space-y-2" data-testid="coach-hard-moments">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("hm.coach.heading")}</span>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {publishedHardMomentCards.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => seedCoach({ prompt: buildHardMomentSeedPrompt(card, aiLang === "he" ? "he" : "en", childFirst), source: "hard-moment-card" })}
+                disabled={isChatLoading}
+                className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl px-4 py-3 text-start text-sm font-bold transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
+              >
+                <Icon name="forum" size={15} style={{ color: "var(--arbor-green-ink)" }} />
+                <span className="min-w-0 truncate">{t("hm.talkThrough")} · {locText(card.title, uiLang === "he" ? "he" : "en")}</span>
               </button>
             ))}
           </div>
