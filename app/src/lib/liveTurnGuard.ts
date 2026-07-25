@@ -67,6 +67,10 @@ export type LiveTurnGuardDeps = {
   /** VC-5 fail-closed degrade: session already halted; caller shows the visible
    *  notice and starts the screened browser voice loop. */
   onFailClosed?: (reason: string) => void;
+  /** AI-V2(b): stop already-released playback NOW (retained sources + playHead
+   *  reset live sink-side; the guard drives them so barge-in handling stays
+   *  behind the guard — playChunk remains module-private). */
+  onInterrupt?: () => void;
   /** Server-verdict deadline (default 3000ms). */
   timeoutMs?: number;
   /** Output-transcription watchdog while audio is buffered (default 5000ms). */
@@ -82,6 +86,10 @@ export type LiveTurnGuard = {
   pushInputTranscription(text: string): void;
   /** Model turn completed — screen and (only on a full pass) release. */
   endModelTurn(): Promise<void>;
+  /** AI-V2(b): server VAD barge-in (serverContent.interrupted) — drop the
+   *  in-flight turn's unreleased buffer and stop released playback via
+   *  deps.onInterrupt. The session stays OPEN (the parent is talking). */
+  interrupt(): void;
   /** Tear down (session closed externally). */
   dispose(): void;
   readonly halted: boolean;
@@ -252,6 +260,20 @@ export function createLiveTurnGuard(deps: LiveTurnGuardDeps): LiveTurnGuard {
       // Full pass: release the buffered audio IN ORDER — the single sink site.
       for (const chunk of audio) deps.sink(chunk);
       deps.onModelTurn?.(transcript);
+    },
+
+    interrupt() {
+      if (halted) return;
+      // The interrupted model turn will never complete — its buffered audio
+      // was never screened and must never play. The parent's input
+      // transcription keeps accumulating (they are the one talking).
+      pendingAudio = [];
+      turnTranscript = "";
+      clearSilenceTimer();
+      // Sink-side: stop retained (already-released, i.e. already-screened)
+      // sources and reset the schedule head. Routed through the guard so
+      // playback control has exactly one owner.
+      deps.onInterrupt?.();
     },
 
     dispose() {

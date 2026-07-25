@@ -24,6 +24,8 @@
 
 type DictationHandlers = {
   onResult: (text: string) => void;
+  /** AI-V7: live partial transcript (full text so far) while still speaking. */
+  onInterim?: (text: string) => void;
   onError?: (err: string) => void;
   onEnd?: () => void;
 };
@@ -44,6 +46,10 @@ export type DictationLoopOptions = {
   onTranscript: (text: string) => void;
   /** The loop stopped itself; the caller must reflect a truthful "off" state. */
   onFatal: (reason: DictationFatalReason) => void;
+  /** AI-V7: live interim transcript of the CURRENT session (parent's own
+   *  words) — forwarded to lib/speech's onInterim, which flips interimResults
+   *  on. Omitting it keeps recognition in final-only mode. */
+  onInterim?: (text: string) => void;
   /** Circuit breaker: consecutive recoverable restarts before giving up. */
   maxRestarts?: number;
   /** First backoff delay; doubles per consecutive restart, capped at 2s. */
@@ -97,6 +103,12 @@ export function createDictationLoop(opts: DictationLoopOptions): DictationLoop {
     let settled = false;
     stopRecognition = opts.start(
       {
+        onInterim: opts.onInterim
+          ? (text) => {
+              if (settled || stopped) return;
+              opts.onInterim?.(text);
+            }
+          : undefined,
         onResult: (text) => {
           if (settled || stopped) return;
           settled = true;

@@ -31,6 +31,9 @@ export type LiveHandlers = {
   screenTurn: (role: LiveTurnRole, text: string) => Promise<LiveTurnVerdict>;
   /** Screened user transcript → persist via the COACH-2 appendVoiceUser seam. */
   onUserTurn?: (text: string) => void;
+  /** AI-V7: incremental input transcription — the PARENT'S OWN words only,
+   *  surfaced as the live caption while they speak (never model output). */
+  onUserInterim?: (textDelta: string) => void;
   /** Released (screened) model transcript → persist via applyVoiceDelta/settle. */
   onModelTurn?: (text: string) => void;
   /** Crisis stop — the session is ALREADY closed when this fires. */
@@ -86,6 +89,11 @@ export async function startGeminiLive(
   const outCtx = new AudioContext({ sampleRate: 24000 });
   let playHead = 0;
 
+  // AI-V2(b): every scheduled source is RETAINED so a server-VAD barge-in
+  // (serverContent.interrupted) can stop already-released audio instantly
+  // instead of letting it play on top of the parent's new words.
+  const activeSources = new Set<AudioBufferSourceNode>();
+
   // Module-PRIVATE playback (VC-1 condition 2): the only reference to this
   // function is the guard's sink below — no socket message can reach it.
   const playChunk = (b64: string) => {
@@ -96,10 +104,24 @@ export async function startGeminiLive(
     const src = outCtx.createBufferSource();
     src.buffer = buffer;
     src.connect(outCtx.destination);
+    activeSources.add(src);
+    src.onended = () => activeSources.delete(src);
     const now = outCtx.currentTime;
     playHead = Math.max(playHead, now);
     src.start(playHead);
     playHead += buffer.duration;
+  };
+
+  // AI-V2(b): the guard's onInterrupt sink — stop every retained source and
+  // reset the schedule head so the next released turn starts immediately.
+  // Reachable ONLY through guard.interrupt() (playChunk stays module-private
+  // and this never plays anything — it only silences).
+  const stopPlayback = () => {
+    for (const src of activeSources) {
+      try { src.stop(); } catch { /* already ended */ }
+    }
+    activeSources.clear();
+    playHead = 0;
   };
 
   let stopped = false;
@@ -122,6 +144,7 @@ export async function startGeminiLive(
     // The guard halts the WHOLE session (socket, mic, audio) before any
     // crisis/blocked/degrade callback renders — stop() before render (VC-2).
     halt: stopAll,
+    onInterrupt: stopPlayback,
     onUserTurn: handlers.onUserTurn,
     onModelTurn: handlers.onModelTurn,
     onCrisis: handlers.onCrisis,
@@ -147,8 +170,21 @@ export async function startGeminiLive(
         // ALL playback routes through the guard — buffered, screened, released.
         if (msg?.data) guard.pushAudio(msg.data);
         const sc = msg?.serverContent;
-        if (sc?.inputTranscription?.text) guard.pushInputTranscription(sc.inputTranscription.text);
+        if (sc?.inputTranscription?.text) {
+          guard.pushInputTranscription(sc.inputTranscription.text);
+          // Caption of the parent's own words (AI-V7) — not model output.
+          handlers.onUserInterim?.(sc.inputTranscription.text);
+        }
         if (sc?.outputTranscription?.text) guard.pushOutputTranscription(sc.outputTranscription.text);
+        // AI-V2(b): the parent spoke over the model — Gemini's server VAD
+        // reports the barge-in. ALL interruption handling routes through the
+        // guard: it drops the in-flight turn's unreleased buffer and drives
+        // the retained-source stop via its onInterrupt sink (playChunk keeps
+        // exactly one caller — the guard's release sink).
+        if (sc?.interrupted) {
+          guard.interrupt();
+          if (!guard.halted) handlers.onPhase?.("listening");
+        }
         if (sc?.turnComplete) {
           void guard.endModelTurn().then(() => {
             if (!guard.halted) handlers.onPhase?.("listening");

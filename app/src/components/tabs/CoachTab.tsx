@@ -25,6 +25,13 @@ import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
+// AI-V2(a): the chip/orb tap contract (start / interrupt / stop) is a pure
+// tested decision function — while Arbor speaks on the fallback loop a tap
+// INTERRUPTS (voice stays on); a second tap during listening turns voice off.
+import { voiceChipAction } from "../../lib/voiceChipAction";
+// AI-V7: the calm bottom-sheet voice surface (orb + live captions), owned by
+// voicePhase !== "off". The chip below stays the ONLY entry point.
+import VoiceOverlay from "../coach/VoiceOverlay";
 // AI-V3: recognition restart with backoff + circuit breaker lives in the pure
 // dictation loop, so the phase label is always truthful (see lib/dictationLoop).
 import { createDictationLoop, type DictationLoop } from "../../lib/dictationLoop";
@@ -144,6 +151,13 @@ export default function CoachTab() {
   // listen (STT) → ask → speak (TTS) → listen again.
   const [voicePhase, setVoicePhase] = useState<"off" | "listening" | "thinking" | "speaking">("off");
   const [liveAvail, setLiveAvail] = useState(false);
+  // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
+  // browser-STT partials / Live input transcription — never model output).
+  const [voiceInterim, setVoiceInterim] = useState("");
+  // Render-tracked mirror of liveCtlRef: true while a Gemini Live session is
+  // active (the overlay orb only offers tap-to-interrupt on the fallback loop;
+  // Live barge-in is voice-driven via the server VAD).
+  const [liveSession, setLiveSession] = useState(false);
   const liveCtlRef = useRef<null | { stop: () => void }>(null);
   const voiceOnRef = useRef(false);
   const dictationLoopRef = useRef<DictationLoop | null>(null);
@@ -262,8 +276,13 @@ export default function CoachTab() {
     } catch {
       // COACH-2: keep the partial caption on abort/error — the parent keeps
       // whatever was already said instead of the turn vanishing.
-      finalizeVoiceAiTurn();
-      if (voiceOnRef.current) startListening(); else setVoicePhase("off");
+      // AI-V2(a): an ABORT is always driven by bargeInVoice/stopVoice, which
+      // already settled the caption + phase (barge-in is synchronously back
+      // in "listening") — only a genuine stream failure recovers here.
+      if (!controller.signal.aborted) {
+        finalizeVoiceAiTurn();
+        if (voiceOnRef.current) startListening(); else setVoicePhase("off");
+      }
     } finally {
       voiceAbortRef.current = null;
     }
@@ -282,7 +301,12 @@ export default function CoachTab() {
       start: startDictation,
       lang: aiLang === "he" ? "he-IL" : "en-US",
       isActive: () => voiceOnRef.current,
+      // AI-V7: surface interim partials as the overlay's live caption of the
+      // parent's own words (<500ms after speech starts — straight from the
+      // recognizer, no model round-trip).
+      onInterim: (text) => setVoiceInterim(text),
       onTranscript: (text) => {
+        setVoiceInterim("");
         if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
         // COACH-2: persist the dictated turn through the existing
         // chat-message write seam before asking.
@@ -316,15 +340,38 @@ export default function CoachTab() {
     stopSpeaking();
     liveCtlRef.current?.stop();
     liveCtlRef.current = null;
+    setLiveSession(false);
+    setVoiceInterim("");
     // COACH-2: settle (and keep) any partial caption when the parent stops.
     finalizeVoiceAiTurn();
     setVoicePhase("off");
   };
 
+  // AI-V2(a): barge-in on the browser fallback loop — interrupt, don't kill.
+  // Flush every queued sentence, cut the current utterance, abort a still-open
+  // /voice stream, settle the partial caption (the parent keeps what was
+  // already said), and go straight back to listening. Voice STAYS on; a
+  // second tap during "listening" stops (voiceChipAction pins the contract).
+  const bargeInVoice = () => {
+    ttsQueueRef.current = [];
+    ttsSpeakingRef.current = false;
+    streamDoneRef.current = false;
+    voiceAbortRef.current?.abort();
+    stopSpeaking();
+    finalizeVoiceAiTurn();
+    setVoiceInterim("");
+    // VC-4 invariant: every automatic re-listen is guarded by the hands-free
+    // flag — a crisis-stopped loop (stopLoop set voiceOnRef=false) can never
+    // be re-armed by a barge-in tap; that tap falls through to stopVoice.
+    if (voiceOnRef.current) startListening();
+  };
+
   const startBrowserVoice = () => { voiceOnRef.current = true; startListening(); };
 
   const toggleVoice = async () => {
-    if (voiceOnRef.current || voicePhase !== "off" || liveCtlRef.current) { stopVoice(); return; }
+    const action = voiceChipAction(voicePhase, Boolean(liveCtlRef.current));
+    if (action === "interrupt" && voiceOnRef.current) { bargeInVoice(); return; }
+    if (action !== "start" || voiceOnRef.current || liveCtlRef.current) { stopVoice(); return; }
 
     // Prefer true Gemini Live when the server says it's provisioned.
     if (liveAvail) {
@@ -351,18 +398,22 @@ export default function CoachTab() {
             },
             {
               onPhase: (p) => setVoicePhase(p === "closed" ? "off" : p === "connecting" ? "thinking" : p),
-              onError: () => { liveCtlRef.current = null; toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
+              onError: () => { liveCtlRef.current = null; setLiveSession(false); toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
               screenTurn: (role, text) =>
                 api.liveTurn({ role, text, language: getAiLanguage(), childId: childProfile.id }),
               // COACH-2 / VC-3: Live turns persist through the SAME reducers the
               // browser loop uses (appendVoiceUser / applyVoiceDelta /
               // settleVoiceTurn → the existing conversationsCol upsert) — no
               // new capture path, conversations stays in CHILD_SUBCOLLECTIONS.
-              onUserTurn: (text) => appendVoiceUserTurn(text),
+              onUserTurn: (text) => { setVoiceInterim(""); appendVoiceUserTurn(text); },
+              // AI-V7: Live input transcription = the parent's own words —
+              // accumulate into the overlay caption while they speak.
+              onUserInterim: (delta) => setVoiceInterim((prev) => (prev + delta).trimStart()),
               onModelTurn: (text) => { appendVoiceAiDelta(text); finalizeVoiceAiTurn(); },
               onCrisis: (v) => {
                 // Session is ALREADY stopped (guard halts before rendering).
                 liveCtlRef.current = null;
+                setLiveSession(false);
                 voiceOnRef.current = false;
                 // VC-8: the guard's client-side lexical crisis stop carries no
                 // server resourcesMarkdown — render the matching escalation
@@ -376,6 +427,7 @@ export default function CoachTab() {
               },
               onBlocked: (v) => {
                 liveCtlRef.current = null;
+                setLiveSession(false);
                 voiceOnRef.current = false;
                 if (v.blockedMarkdown) appendVoiceAiDelta(v.blockedMarkdown);
                 finalizeVoiceAiTurn();
@@ -386,15 +438,18 @@ export default function CoachTab() {
               // browser voice loop (/voice screens every turn server-side).
               onFailClosed: () => {
                 liveCtlRef.current = null;
+                setLiveSession(false);
                 toast(t("coach.toast.voiceStandardMode"), "info");
                 startBrowserVoice();
               },
             },
           );
+          setLiveSession(true);
           return;
         }
       } catch {
         liveCtlRef.current = null; // fall through to the browser loop
+        setLiveSession(false);
       }
     }
     startBrowserVoice();
@@ -475,12 +530,10 @@ export default function CoachTab() {
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
                 : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
             >
+              {/* AI-V7: the truncated 180px chip caption moved into the
+                  VoiceOverlay bottom sheet (full-width, dir="auto", aria-live)
+                  — the chip stays the sole ENTRY point. */}
               {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
-              {liveVoiceText && (
-                <span dir="auto" aria-live="polite" className="max-w-[180px] truncate text-[10px] font-medium" style={{ color: "var(--arbor-muted)" }}>
-                  {liveVoiceText}
-                </span>
-              )}
               {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
             </button>
             {/* EU AI Act Art. 50 — persistent AI-interaction transparency line.
@@ -958,6 +1011,24 @@ export default function CoachTab() {
           forget of approved facts) lives in its real home: Profile › Child Memory
           (route "memory" → src/components/sections/ChildMemory.tsx), which renders
           the same pending/approved lists via the same handleMemoryDecision. */}
+
+      {/* AI-V7: the voice surface — orb + live captions in a calm bottom
+          sheet, owned entirely by voicePhase (unmounts when voice is off).
+          Captions carry only the parent's own words (voiceInterim) and the
+          already-screened spoken answer (liveVoiceText). Tap-orb = barge-in
+          on the fallback loop (AI-V2(a)); X = end voice. */}
+      {voicePhase !== "off" && (
+        <VoiceOverlay
+          phase={voicePhase}
+          lang={uiLang}
+          interimText={voiceInterim}
+          answerText={liveVoiceText}
+          canInterrupt={voicePhase === "speaking" && !liveSession}
+          reducedMotion={reducedMotion}
+          onOrbTap={() => { if (voicePhase === "speaking" && !liveCtlRef.current && voiceOnRef.current) bargeInVoice(); }}
+          onClose={stopVoice}
+        />
+      )}
 
       <ArborVision
         open={!!visionMode}

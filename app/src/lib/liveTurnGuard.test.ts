@@ -268,3 +268,68 @@ describe("liveTurnGuard — fail-closed contract (VC-5)", () => {
     expect(code).toMatch(/catch\s*\{\s*failClosed\("screen-unavailable"\);\s*return;\s*\}/);
   });
 });
+
+describe("liveTurnGuard.interrupt — AI-V2(b) server-VAD barge-in", () => {
+  it("drops the in-flight turn's unreleased buffer and drives onInterrupt, session stays OPEN", async () => {
+    const h = makeHarness({ onInterrupt: undefined });
+    const interrupts: number[] = [];
+    const h2 = makeHarness({ onInterrupt: () => interrupts.push(1) });
+    // Buffered (unscreened) audio + partial transcript, then the parent talks over.
+    h2.guard.pushAudio("a1");
+    h2.guard.pushOutputTranscription("Try naming ");
+    h2.guard.pushAudio("a2");
+    h2.guard.interrupt();
+    expect(interrupts).toEqual([1]); // retained-source stop routed via the guard
+    expect(h2.played).toEqual([]); // the cut-off turn NEVER plays
+    expect(h2.guard.halted).toBe(false); // barge-in is not a stop — the parent is talking
+    expect(h2.calls).not.toContain("halt");
+    // The interrupted turn is fully discarded — a late turnComplete releases nothing.
+    await h2.guard.endModelTurn();
+    expect(h2.played).toEqual([]);
+    expect(h2.calls.filter((c) => c.startsWith("model:"))).toEqual([]);
+    // ...and a guard without onInterrupt tolerates interrupt() (optional dep).
+    h.guard.interrupt();
+    expect(h.guard.halted).toBe(false);
+  });
+
+  it("the NEXT turn after an interrupt screens and releases normally", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("cut");
+    h.guard.pushOutputTranscription("half a sen");
+    h.guard.interrupt();
+    h.guard.pushAudio("b1");
+    h.guard.pushOutputTranscription("Short goodbyes help.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual(["b1"]);
+    expect(h.deps.screenTurn).toHaveBeenCalledWith("model", "Short goodbyes help.");
+  });
+
+  it("keeps the parent's input transcription across an interrupt (their words persist)", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("cut"); // model mid-answer
+    h.guard.pushInputTranscription("what about "); // parent starts talking over
+    h.guard.interrupt(); // server VAD barge-in
+    h.guard.pushInputTranscription("mornings?");
+    h.guard.pushAudio("b1"); // next model turn begins → flushes the user turn
+    h.guard.pushOutputTranscription("Mornings: keep the routine visual.");
+    await h.guard.endModelTurn();
+    expect(h.calls).toContain("user:what about mornings?");
+  });
+
+  it("interrupt after halt is a no-op (no onInterrupt on a dead session)", () => {
+    const interrupts: number[] = [];
+    const h = makeHarness({ onInterrupt: () => interrupts.push(1) });
+    h.guard.dispose();
+    h.guard.interrupt();
+    expect(interrupts).toEqual([]);
+  });
+
+  it("clears the transcription watchdog with the dropped buffer (no late failClosed)", async () => {
+    const h = makeHarness({ transcriptionSilenceMs: 20 });
+    h.guard.pushAudio("a1"); // arms the watchdog (audio, no transcription yet)
+    h.guard.interrupt();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(h.calls).not.toContain("failClosed:transcription-missing");
+    expect(h.guard.halted).toBe(false);
+  });
+});

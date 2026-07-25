@@ -165,3 +165,40 @@ describe("createDictationLoop", () => {
     expect(fatals).toEqual([]);
   });
 });
+
+describe("AI-V7 — onInterim passthrough", () => {
+  type InterimHandlers = Session["handlers"] & { onInterim?: (t: string) => void };
+
+  it("forwards interim partials to the caller while the session is live", () => {
+    const interims: string[] = [];
+    const loop = makeLoop({ onInterim: (t) => interims.push(t) });
+    loop.start();
+    const h = sessions[0].handlers as InterimHandlers;
+    expect(h.onInterim).toBeTypeOf("function");
+    h.onInterim?.("hel");
+    h.onInterim?.("hello th");
+    expect(interims).toEqual(["hel", "hello th"]);
+    loop.stop();
+  });
+
+  it("suppresses interim partials after the session settled or the loop stopped", () => {
+    const interims: string[] = [];
+    const loop = makeLoop({ onInterim: (t) => interims.push(t) });
+    loop.start();
+    const h = sessions[0].handlers as InterimHandlers;
+    sessions[0].handlers.onResult("final transcript");
+    h.onInterim?.("late partial");
+    expect(interims).toEqual([]); // settled → no stray caption updates
+    loop.stop();
+    h.onInterim?.("post-stop partial");
+    expect(interims).toEqual([]);
+  });
+
+  it("callers without onInterim keep final-only recognition (no handler passed down)", () => {
+    const loop = makeLoop();
+    loop.start();
+    const h = sessions[0].handlers as InterimHandlers;
+    expect(h.onInterim).toBeUndefined();
+    loop.stop();
+  });
+});
