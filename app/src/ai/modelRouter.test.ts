@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createTestConfig } from "../testConfig.js";
 import { AiProviderError } from "./capabilities/contracts.js";
-import { modelForGeminiRequest, modelForRoute, routeDecisionFor, toAnthropicVertexModelId, type ModelRoute } from "./modelRouter.js";
+import { modelForGeminiRequest, modelForRoute, routeDecisionFor, thinkingConfigForRoute, toAnthropicVertexModelId, type ModelRoute } from "./modelRouter.js";
 
 describe("model route decisions", () => {
   it("routes high-stakes coach calls to Claude on Vertex and other routes to Gemini on Vertex", () => {
@@ -63,5 +63,26 @@ describe("model route decisions", () => {
 
     expect(modelForGeminiRequest(config, "coach_high_stakes", [{ data: "QUJD", mimeType: "image/png" }]))
       .toBe("gemini-2.5-pro");
+  });
+});
+
+// AIR-3: fast-path routes stop paying default dynamic-thinking latency.
+describe("per-route Gemini thinking budget (AIR-3)", () => {
+  it("turns thinking OFF for analysis_structured on 2.5 Flash (covers /extract-log, /voice streamText, /digest, Today's Focus)", () => {
+    expect(thinkingConfigForRoute("analysis_structured", "gemini-2.5-flash")).toEqual({ thinkingBudget: 0 });
+    expect(thinkingConfigForRoute("analysis_structured", "gemini-2.5-flash-lite")).toEqual({ thinkingBudget: 0 });
+  });
+
+  it("keeps the model default (dynamic thinking) for coach and creative routes", () => {
+    expect(thinkingConfigForRoute("coach_high_stakes", "gemini-2.5-flash")).toBeUndefined();
+    expect(thinkingConfigForRoute("creative_low_risk", "gemini-2.5-flash")).toBeUndefined();
+    expect(thinkingConfigForRoute("handoff_structured", "gemini-2.5-flash")).toBeUndefined();
+  });
+
+  it("never sends a zero budget to models that reject it (2.5 Pro min 128; non-2.5 models reject the field)", () => {
+    expect(thinkingConfigForRoute("analysis_structured", "gemini-2.5-pro")).toBeUndefined();
+    expect(thinkingConfigForRoute("analysis_structured", "gemini-2.0-flash")).toBeUndefined();
+    expect(thinkingConfigForRoute("analysis_structured", "claude-3-5-sonnet@anthropic")).toBeUndefined();
+    expect(thinkingConfigForRoute("analysis_structured", "gemini-2.5-flash-image")).toBeUndefined();
   });
 });

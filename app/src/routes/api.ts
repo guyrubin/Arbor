@@ -1,6 +1,7 @@
 import express from "express";
 import type { ArborConfig } from "../config/env.js";
-import type { ModelProvider } from "../ai/modelRouter.js";
+import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
+import { abortableIterate, raceWithAbort } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
@@ -88,6 +89,62 @@ const writeSse = (res: express.Response, event: string, data: unknown) => {
 const parseJson = <T>(value: unknown) => {
   const parsed = typeof value === "string" ? JSON.parse(value) : value;
   return parsed as T;
+};
+
+/**
+ * AIR-9: per-route deadline budgets. No provider call may run unbounded — a
+ * wedged upstream used to mean an indefinite parent-facing spinner (the /chat
+ * req-close abort only stopped the SSE relay; the upstream call kept running
+ * and billing). Each AI route now threads an AbortSignal budget into the
+ * provider, tied BOTH to a deadline and to the client going away, and maps
+ * deadline expiry to a calm parent-register error in the existing payload
+ * shape. Budgets are env-tunable (ARBOR_BUDGET_<KIND>_MS) so tests and ops can
+ * adjust without code changes.
+ */
+const ROUTE_BUDGET_DEFAULTS_MS = { coach: 45_000, analysis: 15_000, voice: 20_000, image: 60_000 } as const;
+type RouteBudgetKind = keyof typeof ROUTE_BUDGET_DEFAULTS_MS;
+const routeBudgetMs = (kind: RouteBudgetKind): number => {
+  const fromEnv = Number(process.env[`ARBOR_BUDGET_${kind.toUpperCase()}_MS`]);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : ROUTE_BUDGET_DEFAULTS_MS[kind];
+};
+
+/** Calm parent-register copy for a deadline expiry — never technical, never alarming. */
+const DEADLINE_ERROR = {
+  error: "Arbor is taking longer than usual",
+  details: "Nothing is wrong with your question — the answer just took too long to prepare. Please try again in a moment.",
+} as const;
+
+type RouteBudget = {
+  budget: ModelCallBudget;
+  signal: AbortSignal;
+  /** True when the abort came from the DEADLINE (→ calm error), not the client leaving. */
+  readonly timedOut: boolean;
+  /** True when the abort came from the client going away (→ end silently). */
+  clientGone(): boolean;
+  /** Stop the deadline timer once the response has been produced. */
+  settle(): void;
+};
+
+const createRouteBudget = (res: express.Response, kind: RouteBudgetKind): RouteBudget => {
+  const totalMs = routeBudgetMs(kind);
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, totalMs);
+  (timer as { unref?: () => void }).unref?.();
+  // The real client-disconnect signal is the RESPONSE 'close' while the
+  // response is not yet ended (the request's own 'close' fires as soon as the
+  // JSON body is consumed — long before an SSE response ends).
+  res.on("close", () => {
+    if (!res.writableEnded) controller.abort();
+    clearTimeout(timer);
+  });
+  return {
+    budget: { signal: controller.signal, deadlineAt: Date.now() + totalMs, totalMs },
+    signal: controller.signal,
+    get timedOut() { return timedOut; },
+    clientGone: () => controller.signal.aborted && !timedOut,
+    settle: () => clearTimeout(timer),
+  };
 };
 
 /**
@@ -379,13 +436,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       return;
     }
 
-    const abortController = new AbortController();
-    // Abort generation when the CLIENT goes away. Same seam as /voice: the
-    // request's own 'close' fires as soon as the request MESSAGE completes
-    // (right after the JSON body is consumed — long before the response ends),
-    // so it can abort a perfectly healthy in-flight answer. The real
-    // disconnect signal is the RESPONSE 'close' while writableEnded is false.
-    res.on("close", () => { if (!res.writableEnded) abortController.abort(); });
+    // AIR-9: 45s coach budget — aborts the upstream call on deadline OR when
+    // the client goes away (the old res-close abort only stopped the SSE relay).
+    const budget = createRouteBudget(res, "coach");
 
     try {
       // ASK-1 Phase 1: SSE opens immediately and `status` events carry honest,
@@ -506,13 +559,16 @@ Return only JSON that matches the response schema. Open with the "text" field FI
       let rawResponse = "";
       if (streamResponse) writeSse(res, "status", { stage: "plan" });
 
-      for await (const chunk of modelProvider.generateJsonStream({
+      // The stream is ALSO raced at the route seam (abortableIterate) so even a
+      // provider that ignores the signal cannot outlive the budget.
+      for await (const chunk of abortableIterate(modelProvider.generateJsonStream({
         route: "coach_high_stakes",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: coachResponseSchema,
-        temperature: 0.45
-      })) {
-        if (abortController.signal.aborted) return;
+        temperature: 0.45,
+        budget: budget.budget
+      }), budget.signal)) {
+        if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
         rawResponse += chunk;
         if (!streamResponse) continue;
         pending += restorer.push(proseExtractor.push(chunk));
@@ -535,7 +591,7 @@ Return only JSON that matches the response schema. Open with the "text" field FI
         // emitted as a delta — the full, screened text arrives in `done` and
         // the client swaps it in.
       }
-      if (abortController.signal.aborted) return;
+      if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
 
       const structured = privacy.restoreDeep(coachResponseZodSchema.parse(parseJson(rawResponse.trim())));
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
@@ -570,6 +626,7 @@ Return only JSON that matches the response schema. Open with the "text" field FI
         prompt: message,
         frameRouting: structured.frameRouting
       });
+      budget.settle();
       const payload = { text: renderedText, contract: structured, memoryReviewItems };
       if (streamResponse) {
         writeSse(res, "done", payload);
@@ -578,7 +635,21 @@ Return only JSON that matches the response schema. Open with the "text" field FI
         res.json(payload);
       }
     } catch (error: any) {
-      if (abortController.signal.aborted) return;
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        // AIR-9: deadline expiry → calm parent-register error, same payload
+        // shape as the existing error event (client copy stays localized).
+        logger.warn("Arbor Chat deadline exceeded", { requestId: requestIdOf(req) });
+        if (streamResponse) {
+          if (!res.headersSent) beginSse(res);
+          writeSse(res, "error", DEADLINE_ERROR);
+          res.end();
+        } else {
+          res.status(504).json(DEADLINE_ERROR);
+        }
+        return;
+      }
       logger.error("Arbor Chat Error", error, { requestId: requestIdOf(req) });
       const payload = { error: "Failed to query Arbor parent coach", details: error.message };
       if (streamResponse) {
@@ -609,6 +680,8 @@ Return only JSON that matches the response schema. Open with the "text" field FI
       language === "he"
         ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
         : "";
+    // AIR-9: one 45s budget covers the whole council (parallel takes + synthesis).
+    const budget = createRouteBudget(res, "coach");
     try {
       const childId = toChildId(childProfile);
       const familyId = toFamilyId(childProfile);
@@ -622,12 +695,14 @@ Return only JSON that matches the response schema. Open with the "text" field FI
       // SEC/CMP P0: scholar agents and the synthesizer only ever see redacted input.
       const privacy = createRedaction(childProfile?.name);
 
-      // 1) Each scholar agent deliberates in parallel.
-      const takes = await runScholarTakes(modelProvider, council, {
+      // 1) Each scholar agent deliberates in parallel (raced at the route seam
+      // too, so a signal-ignoring provider cannot outlive the budget).
+      const takes = await raceWithAbort(runScholarTakes(modelProvider, council, {
         message: privacy.redact(message),
         childProfile: redactProfile(privacy, childProfile),
-        language
-      });
+        language,
+        budget: budget.budget
+      }), budget.signal);
 
       // 2) Ground the synthesis in the council's cards + approved memory.
       const scholarCards = await loadCardsByIds(council.flatMap((s) => s.cardIds));
@@ -665,12 +740,13 @@ ${message}
 Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed. Include followUps: 2-3 short, natural next questions this parent is likely to ask after this answer, each under 100 characters, in the same language as your other text values.${languageDirective}
 `;
 
-      const raw = await modelProvider.generateJson({
+      const raw = await raceWithAbort(modelProvider.generateJson({
         route: "coach_high_stakes",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: coachResponseSchema,
-        temperature: 0.4
-      });
+        temperature: 0.4,
+        budget: budget.budget
+      }), budget.signal);
       const structured = privacy.restoreDeep(coachResponseZodSchema.parse(raw));
       const restoredTakes = privacy.restoreDeep(takes);
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
@@ -712,8 +788,16 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
         prompt: message,
         frameRouting: structured.frameRouting
       });
+      budget.settle();
       res.json({ text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems });
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Council deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Council Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to convene the scholar council", details: error.message });
     }
@@ -756,15 +840,10 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
       return;
     }
 
-    const abortController = new AbortController();
-    // Abort generation when the CLIENT goes away. NOTE: `req.on("close")` is
-    // the wrong signal here — in modern Node the request's 'close' fires as
-    // soon as the request MESSAGE completes (right after the JSON body is
-    // consumed, long before the SSE response ends), so depending on
-    // middleware timing it can abort a perfectly healthy stream. The real
-    // disconnect signal is the RESPONSE 'close' while the response is not
-    // yet ended (writableEnded === false).
-    res.on("close", () => { if (!res.writableEnded) abortController.abort(); });
+    // AIR-9: 20s voice budget. Combines the deadline with the client-gone
+    // abort (the RESPONSE 'close' while not ended — see createRouteBudget) and
+    // threads the signal into the provider so the upstream call actually stops.
+    const budget = createRouteBudget(res, "voice");
     try {
       const scholar = resolveScholar(scholarLens);
       // AI-V9: persona + language directive come from the ONE shared spoken
@@ -792,7 +871,7 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
       // /api/tts can skip ONLY the model re-screen for text that /voice
       // already screened (its lexical floor still runs unconditionally).
       const ttsLang = language === "he" ? "he" : "en";
-      const streamRequest = { route: "analysis_structured" as const, prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6 };
+      const streamRequest = { route: "analysis_structured" as const, prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6, budget: budget.budget };
 
       // Flagged-output SSE tail, shared by both delivery paths — payloads are
       // byte-identical to the pre-cadence SAFE-V1 behavior.
@@ -836,13 +915,13 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
         // Full-buffer path (config-gated): the semantic classifier judges the
         // WHOLE reply, so buffer, screen once, then emit everything at once.
         let assembled = "";
-        for await (const chunk of modelProvider.streamText(streamRequest)) {
-          if (abortController.signal.aborted) { res.end(); return; }
+        for await (const chunk of abortableIterate(modelProvider.streamText(streamRequest), budget.signal)) {
+          if (budget.signal.aborted) { if (!budget.timedOut) { res.end(); return; } throw newAbortError(); }
           assembled += restorer.push(chunk || "");
         }
         assembled += restorer.flush();
         assembled = assembled.trim();
-        if (abortController.signal.aborted) { res.end(); return; }
+        if (budget.signal.aborted) { if (!budget.timedOut) { res.end(); return; } throw newAbortError(); }
 
         // Screen the assembled text BEFORE it is sent to TTS / streamed to the client.
         if (assembled) {
@@ -880,14 +959,14 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
         }
       };
 
-      for await (const chunk of modelProvider.streamText(streamRequest)) {
-        if (abortController.signal.aborted) { res.end(); return; }
+      for await (const chunk of abortableIterate(modelProvider.streamText(streamRequest), budget.signal)) {
+        if (budget.signal.aborted) { if (!budget.timedOut) { res.end(); return; } throw newAbortError(); }
         pending += restorer.push(chunk || "");
         const verdict = releaseCompleteSentences();
         if (verdict) { emitBlocked(verdict); return; }
       }
       pending += restorer.flush();
-      if (abortController.signal.aborted) { res.end(); return; }
+      if (budget.signal.aborted) { if (!budget.timedOut) { res.end(); return; } throw newAbortError(); }
       const verdict = releaseCompleteSentences();
       if (verdict) { emitBlocked(verdict); return; }
 
@@ -906,10 +985,21 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
         const sentence = pending.trim();
         writeSse(res, "delta", { text: pending, tts: { text: sentence, token: mintTtsToken(sentence, ttsLang) } });
       }
+      budget.settle();
       writeSse(res, "done", {});
       res.end();
     } catch (error: any) {
-      if (abortController.signal.aborted) return;
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        // AIR-9: deadline expiry → calm parent-register error (the client
+        // stops the loop and shows the retry state, never a hung orb).
+        logger.warn("Arbor Voice deadline exceeded", { requestId: requestIdOf(req) });
+        if (!res.headersSent) beginSse(res);
+        writeSse(res, "error", DEADLINE_ERROR);
+        res.end();
+        return;
+      }
       logger.error("Arbor Voice Stream Error", error, { requestId: requestIdOf(req) });
       if (!res.headersSent) beginSse(res);
       writeSse(res, "error", { error: "Voice stream failed", details: error.message });
@@ -1078,6 +1168,9 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
       return;
     }
 
+    // AIR-9: 15s analysis budget — "logging a moment" must fail calm and fast,
+    // never spin on a wedged upstream.
+    const budget = createRouteBudget(res, "analysis");
     try {
       // AI-CAP-2: mirror /chat's languageDirective — a Hebrew-speaking parent's
       // draft must come back in Hebrew. behaviorType/context stay per schema
@@ -1104,10 +1197,11 @@ Rules:
 Return only JSON matching the schema.${languageDirective}`;
 
       const privacy = createRedaction(childProfile?.name);
-      const draft = await modelProvider.generateJson({
+      const draft = await raceWithAbort(modelProvider.generateJson({
         route: "analysis_structured",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.2,
+        budget: budget.budget,
         schema: {
           type: Type.OBJECT,
           required: ["behaviorType", "intensity", "durationMinutes", "context", "trigger", "response", "notes"],
@@ -1121,11 +1215,135 @@ Return only JSON matching the schema.${languageDirective}`;
             notes: { type: Type.STRING }
           }
         }
-      });
+      }), budget.signal);
+      budget.settle();
       res.json(privacy.restoreDeep(draft));
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Log Extraction deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Log Extraction Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to draft a log", details: error.message });
+    }
+  });
+
+  // ── AIR-5: Today's Focus — a dedicated LIGHTWEIGHT generation path. The
+  // Overview card used to POST /api/chat (the heaviest route in the app:
+  // Claude, memory fetch, wiki retrieval, full coach schema) and throw away
+  // everything but three sentences — while silently burning the free plan's
+  // daily coach meter on an ambient card the parent never asked for. This
+  // endpoint runs analysis_structured (flash, thinking off per AIR-3) with a
+  // 2-field schema, sits INSIDE the hourly AI quota but OUTSIDE the coach
+  // meter (createApp.ts), and caches per user+child per calendar day.
+  //
+  // Firewall CONDITIONS (AIR-5): (1) output passes screenModelOutput before
+  // return — this must never become the first unscreened parent-facing
+  // generative surface; (2) prompt embeds NON_DIAGNOSTIC_CONTRACT; (3) focus
+  // text is observation/next-step only (the 2-field schema enforces shape,
+  // the prompt bans assessments/scores/percentages/trends); (4) the cache
+  // stores only payloads that already passed the screen (it is written
+  // strictly AFTER the verdict).
+  const focusDateKey = () => new Date().toISOString().slice(0, 10);
+  const focusCache = new Map<string, Record<string, unknown>>();
+  const FOCUS_CACHE_MAX = 1000;
+
+  router.post("/todays-focus", async (req, res) => {
+    const { childProfile, signals, language } = req.body ?? {};
+    const count = Math.max(0, Math.min(500, Number(signals?.count ?? 0) || 0));
+    const topTrigger = String(signals?.topTrigger ?? "").slice(0, 80);
+    const lastActionRecommendation = String(signals?.lastActionRecommendation ?? "").slice(0, 300);
+    const lastActionOutcome = ["helped", "somewhat", "not_today"].includes(signals?.lastActionOutcome)
+      ? (signals.lastActionOutcome as string)
+      : "";
+    const lang = language === "he" ? "he" : "en";
+    const dateKey = focusDateKey();
+
+    const cacheKey = `${actorOf(req).uid}:${childProfile?.id ?? "none"}:${dateKey}:${lang}`;
+    const cached = focusCache.get(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
+    // AIR-9: focus is ambient — it gets the tight analysis budget.
+    const budget = createRouteBudget(res, "analysis");
+    try {
+      const languageDirective =
+        lang === "he"
+          ? "\nIMPORTANT: The parent speaks Hebrew. Write both fields in natural, warm Hebrew (עברית)."
+          : "";
+      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
+You are Arbor's Today's Focus writer for a calm parenting app.
+Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+What the parent has logged this week: ${count} moment${count === 1 ? "" : "s"}, most often around "${topTrigger || "transitions"}".${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
+Write today's single most useful parenting focus:
+- "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
+- "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
+Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
+Return only JSON matching the schema.`;
+
+      const privacy = createRedaction(childProfile?.name);
+      const draft = (await raceWithAbort(modelProvider.generateJson({
+        route: "analysis_structured",
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        temperature: 0.5,
+        budget: budget.budget,
+        schema: {
+          type: Type.OBJECT,
+          required: ["focus", "tryToday"],
+          properties: {
+            focus: { type: Type.STRING },
+            tryToday: { type: Type.STRING }
+          }
+        }
+      }), budget.signal)) as { focus?: unknown; tryToday?: unknown };
+
+      const restored = privacy.restoreDeep(draft) as { focus?: unknown; tryToday?: unknown };
+      const focus = String(restored.focus ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 400);
+      const tryToday = String(restored.tryToday ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 300);
+      const text = [focus, tryToday].filter(Boolean).join(" ");
+      if (!text) {
+        budget.settle();
+        res.status(502).json({ error: "Focus generation returned no usable text" });
+        return;
+      }
+
+      // Firewall condition 1: the FULL output screen gates the return. Flagged
+      // output never reaches the parent (and never reaches the cache).
+      const outputVerdict = await screenModelOutput(modelProvider, text);
+      budget.settle();
+      if (outputVerdict.flagged) {
+        logger.warn("Todays Focus output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later." });
+        return;
+      }
+
+      const payload = { text, focus, tryToday, generatedAt: new Date().toISOString(), dateKey };
+      // Firewall condition 4: only screened payloads are cached.
+      if (focusCache.size >= FOCUS_CACHE_MAX) {
+        const oldest = focusCache.keys().next().value;
+        if (oldest !== undefined) focusCache.delete(oldest);
+      }
+      focusCache.set(cacheKey, payload);
+      res.json(payload);
+    } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Todays Focus deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
+      logger.error("Arbor Todays Focus Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to draft today's focus", details: error.message });
     }
   });
 
@@ -1381,11 +1599,15 @@ ${cues ? `Loose appearance cues (stylize, do not copy literally): ${cues}.` : "U
 ${referenceImage ? "A reference photo is attached ONLY to capture general vibe (approximate hair colour, age). Produce a cartoon character inspired by it — never a realistic reproduction of the person." : ""}
 Framing: head-and-shoulders portrait, centered, simple soft background, warm and calm. Single character only. No text, no logos, no words drawn into the image.`;
 
+    // AIR-9: 60s image budget.
+    const budget = createRouteBudget(res, "image");
     try {
-      const image = await modelProvider.generateImage({
+      const image = await raceWithAbort(modelProvider.generateImage({
         prompt,
-        images: referenceImage ? [referenceImage] : undefined
-      });
+        images: referenceImage ? [referenceImage] : undefined,
+        budget: budget.budget
+      }), budget.signal);
+      budget.settle();
       // The reference photo (referenceImage) is intentionally discarded here — it is
       // never written to storage, logs, or the response.
       res.json({
@@ -1394,6 +1616,13 @@ Framing: head-and-shoulders portrait, centered, simple soft background, warm and
         source: referenceImage ? "photo" : "descriptor"
       });
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Avatar deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Avatar Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Couldn't create that avatar — please try again", details: error.message });
     }
@@ -1436,13 +1665,24 @@ ${referenceImage
   : "Feature a single friendly child character as the hero."}
 Gentle, non-scary, age-appropriate for ages 4-8. Calm, soft palette. No text, words, letters, or logos drawn in the image.`;
 
+    // AIR-9: 60s image budget.
+    const budget = createRouteBudget(res, "image");
     try {
-      const image = await modelProvider.generateImage({
+      const image = await raceWithAbort(modelProvider.generateImage({
         prompt,
-        images: referenceImage ? [referenceImage] : undefined
-      });
+        images: referenceImage ? [referenceImage] : undefined,
+        budget: budget.budget
+      }), budget.signal);
+      budget.settle();
       res.json({ dataUrl: `data:${image.mimeType};base64,${image.data}` });
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Scene deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Scene Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Couldn't illustrate this scene", details: error.message });
     }
@@ -1501,13 +1741,24 @@ Include 2-3 BIG, bold, stylized comic sound-effect words bursting in the scene w
 ${dialogueLine ? `Include ONE clean white speech bubble with a bold tail, containing the short, legible, friendly line: "${dialogueLine}".` : "Do not draw any speech bubbles or sentences — only the short sound-effect words."}
 Wholesome and age-appropriate for young children: confident, joyful and exciting, but NO real violence, weapons, blood, fear, or scary imagery. Keep all text short, correctly spelled, and clearly legible.`;
 
+    // AIR-9: 60s image budget.
+    const budget = createRouteBudget(res, "image");
     try {
-      const image = await modelProvider.generateImage({
+      const image = await raceWithAbort(modelProvider.generateImage({
         prompt,
-        images: referenceImage ? [referenceImage] : undefined
-      });
+        images: referenceImage ? [referenceImage] : undefined,
+        budget: budget.budget
+      }), budget.signal);
+      budget.settle();
       res.json({ dataUrl: `data:${image.mimeType};base64,${image.data}` });
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Comic deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Comic Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Couldn't create this comic", details: error.message });
     }

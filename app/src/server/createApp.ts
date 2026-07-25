@@ -15,10 +15,10 @@ import { LocalConsentStore, FirestoreConsentStore } from "../sharing/consent.js"
 import { loadFramework } from "../services/framework.js";
 import { createApiRouter } from "../routes/api.js";
 import { createAuthMiddleware } from "./authMiddleware.js";
-import { createAiQuota } from "./aiQuota.js";
+import { createAiQuota, createCoachGate, createTtsQuota } from "./aiQuota.js";
 import { createImageQuota } from "./imageQuota.js";
 import { createCounterStore } from "./quotaStore.js";
-import { createEntitlementStore, createCoachMeter, requirePlusFeature } from "./entitlements.js";
+import { createEntitlementStore, requirePlusFeature } from "./entitlements.js";
 import { createReferralStore } from "./referral.js";
 import { createBillingWebhookRouter } from "./billing.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
@@ -196,8 +196,6 @@ export const createApp = (config: ArborConfig) => {
   // tighter daily image cap below (S2 — image generation is a pricier SKU).
   app.use(
     [
-      "/api/chat",
-      "/api/council",
       "/api/voice",
       "/api/extract-log",
       "/api/vision",
@@ -216,10 +214,19 @@ export const createApp = (config: ArborConfig) => {
       // per-user metering as the token mint, so Live usage is bounded and
       // visible the moment that route lands (firewall condition 4).
       "/api/live/turn",
-      "/api/tts",
+      // AIR-5: the lightweight Today's Focus generator is a model call, so it
+      // sits inside the hourly AI quota — but NOT under the coach meter (an
+      // ambient card must never silently burn the free plan's daily coach
+      // messages; the /chat+/council coach gate below deliberately excludes it).
+      "/api/todays-focus",
     ],
     createAiQuota(counters)
   );
+  // AIR-6: /api/tts left the model-call quota — spoken sentences are not model
+  // calls and must never 429 a voice conversation mid-session. It gets its own
+  // character-based daily meter (Cloud TTS bills per character). The lexical
+  // safety screen inside the /tts handler is untouched and unconditional.
+  app.use("/api/tts", createTtsQuota(counters));
   // S2: per-user DAILY image-generation cap + global circuit breaker. Closes the
   // unbounded-cost leak on the three image endpoints (avatar / scene / comic),
   // which previously had no quota at all.
@@ -229,7 +236,11 @@ export const createApp = (config: ArborConfig) => {
   );
   // MON-1: free-tier coach meter + Plus-only feature gates. Production enforces
   // by default; local beta can still opt out with ENFORCE_ENTITLEMENTS=false.
-  app.use(["/api/chat", "/api/council"], createCoachMeter(entitlementStore, counters));
+  // AIR-7: /chat and /council use ONE combined gate (hourly quota + entitlement
+  // resolved concurrently, coach meter after) instead of the serial
+  // aiQuota→coachMeter pair — same headers, same 429/402 payloads, fewer
+  // sequential Firestore round-trips before the first model token.
+  app.use(["/api/chat", "/api/council"], createCoachGate(counters, entitlementStore));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
   app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore }));

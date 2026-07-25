@@ -48,26 +48,34 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
   const generate = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/chat", {
+      // AIR-5: dedicated lightweight endpoint (analysis route, 2-field schema,
+      // server-side output screen + daily cache). The old path POSTed /api/chat —
+      // the heaviest route in the app — and silently burned the free plan's
+      // daily coach meter on an ambient card. /api/todays-focus sits inside the
+      // hourly AI quota but NEVER touches the coach meter.
+      //
+      // Wave-3 clinical subtraction (2026-06-26) stays pinned: the payload
+      // carries only flat parent-log counts + the top pattern (a parent-tagged
+      // category) — never the intensity average nor the milestone percentage,
+      // both verdict primitives (pinned by lib/todayFocus.test.ts).
+      const res = await fetch("/api/todays-focus", {
         method: "POST",
         headers: await authHeaders(),
         body: JSON.stringify({
-          // Wave-3 clinical subtraction (2026-06-26): the prompt no longer feeds
-          // the model `average intensity X/5` nor `milestone readiness X%` —
-          // both are verdict primitives a child metric could re-emit. Only flat
-          // parent-log counts + the top pattern (a parent-tagged category) are
-          // passed. The model is asked for a mechanism-only focus.
-          message: `In 2 short sentences, give me today's single most useful parenting focus for ${child.name} (age ${child.age}). What the parent has logged this week: ${signals.count} moment${signals.count === 1 ? "" : "s"}, most often around "${signals.topTrigger || "transitions"}".${signals.lastActionRecommendation && signals.lastActionOutcome ? ` The parent last tried "${signals.lastActionRecommendation}" and reported the attempt as "${signals.lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""} Suggest ONE small, concrete thing to try — a developmental mechanism (serve-and-return, co-regulation, a transition cue), not an assessment, score, percentage, trend, diagnosis, or outcome claim. Warm, non-diagnostic, no headings or markdown.`,
           childProfile: child,
-          scholarLens: "Integrated Balanced",
+          signals: {
+            count: signals.count,
+            topTrigger: signals.topTrigger,
+            lastActionRecommendation: signals.lastActionRecommendation,
+            lastActionOutcome: signals.lastActionOutcome,
+          },
           language: getAiLanguage(),
         }),
       });
       if (!res.ok) throw new Error("focus generation failed");
       const data = await res.json();
-      // /api/chat returns the FULL structured coach response; the Today card only
-      // wants a glanceable focus, so keep the first few sentences (the UI also
-      // clamps + offers Read-more as a safety net for any cached long text).
+      // The server already returns a short, screened focus; the clamp stays as
+      // a safety net for any cached long text.
       const cleaned = String(data.text || "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim();
       const short = cleaned.split(/(?<=[.!?])\s+/).slice(0, 3).join(" ");
       const text = short.length > 360 ? `${short.slice(0, 357).trimEnd()}…` : short || cleaned.slice(0, 240);

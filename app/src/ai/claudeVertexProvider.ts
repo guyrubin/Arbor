@@ -2,7 +2,7 @@ import { GoogleAuth } from "google-auth-library";
 import type { ArborConfig } from "../config/env.js";
 import { coachResponseZodSchema } from "../contracts/coach.js";
 import { withModelRetry } from "./modelRetry.js";
-import { recordUsage } from "./usage.js";
+import { recordUsage, startCallTimer } from "./usage.js";
 import type { GenerateJsonOptions, ModelRoute } from "./modelRouter.js";
 
 const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
@@ -62,9 +62,11 @@ export class ClaudeVertexProvider {
    * complete document at `done` — this seam stays validation-free on purpose.
    */
   async *generateJsonStream(options: GenerateJsonOptions) {
+    const timer = startCallTimer();
     const { url, headers, body, model } = await this.buildRequest(options, true);
     const response = await withModelRetry(async () => {
-      const r = await fetch(url, { method: "POST", headers, body: JSON.stringify({ ...body, stream: true }) });
+      // AIR-9: the budget signal cancels the upstream fetch for real (stops billing).
+      const r = await fetch(url, { method: "POST", headers, body: JSON.stringify({ ...body, stream: true }), signal: options.budget?.signal });
       if (!r.ok) {
         // Surface the status on the error so withModelRetry can detect 429/503 and back off.
         const err: any = new Error(`Claude on Vertex stream failed (${r.status}): ${await r.text()}`);
@@ -72,7 +74,7 @@ export class ClaudeVertexProvider {
         throw err;
       }
       return r;
-    });
+    }, 3, options.budget);
     if (!response.body) throw new Error("Claude on Vertex returned no response stream.");
 
     const usage: Record<string, number> = {};
@@ -102,14 +104,14 @@ export class ClaudeVertexProvider {
           if (event?.type === "content_block_delta") {
             const delta = event.delta;
             const chunk = delta?.type === "input_json_delta" ? delta.partial_json : delta?.type === "text_delta" ? delta.text : "";
-            if (chunk) yield chunk as string;
+            if (chunk) { timer.markFirstChunk(); yield chunk as string; }
           }
         }
       }
     } finally {
       try { reader.releaseLock(); } catch { /* stream already closed */ }
     }
-    recordUsage({ route: options.route, provider: "vertex_claude", model }, Object.keys(usage).length ? usage : undefined);
+    recordUsage({ route: options.route, provider: "vertex_claude", model }, Object.keys(usage).length ? usage : undefined, timer.finish());
   }
 
   private async buildRequest(options: GenerateJsonOptions, stream: boolean) {
@@ -140,9 +142,11 @@ export class ClaudeVertexProvider {
   }
 
   private async callClaude(options: GenerateJsonOptions) {
+    const timer = startCallTimer();
     const { url, headers, body, model } = await this.buildRequest(options, false);
     const payload = await withModelRetry(async () => {
-      const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+      // AIR-9: the budget signal cancels the upstream fetch for real (stops billing).
+      const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: options.budget?.signal });
 
       if (!response.ok) {
         // Surface the status on the error so withModelRetry can detect 429/503 and back off.
@@ -151,9 +155,9 @@ export class ClaudeVertexProvider {
         throw err;
       }
       return response.json();
-    });
+    }, 3, options.budget);
 
-    recordUsage({ route: options.route, provider: "vertex_claude", model }, payload?.usage);
+    recordUsage({ route: options.route, provider: "vertex_claude", model }, payload?.usage, timer.finish());
     const parsed = extractToolInput(payload);
     if (options.route === "coach_high_stakes") return coachResponseZodSchema.parse(parsed);
     return parsed;
