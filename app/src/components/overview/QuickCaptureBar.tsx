@@ -15,7 +15,10 @@ import type { CaptureMode } from "../../context/ArborContext";
    the existing QuickLogModal inline (text), and the mic / photo tiles hand the
    mode to the EXISTING requestCapture() seam — the same one JournalTab's
    compose tiles use (BehaviorsTab consumes it once and opens the real
-   voice/photo flow). Convenience, not a nag. */
+   voice/photo flow). TODAY-3: every handoff from here arms BehaviorsTab's
+   explicit-confirm gate, so nothing captured via this bar writes a behavior
+   log without passing the shared ConfirmCaptureReview (same contract as the
+   QuickLogModal text path). Convenience, not a nag. */
 
 const GREEN = "var(--arbor-green-ink)";
 const RULE = "var(--arbor-rule)";

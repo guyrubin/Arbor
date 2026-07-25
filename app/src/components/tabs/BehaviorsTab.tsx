@@ -11,6 +11,8 @@ import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
 import { HubHero } from "../ui/HubHero";
 import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
+import { Modal } from "../ui/Modal";
+import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCaptureReview";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { authHeaders } from "../../lib/api";
 import { fileToThumbnail } from "../../lib/image";
@@ -140,6 +142,16 @@ export default function BehaviorsTab() {
   const [parsing, setParsing] = useState(false);
   const stopRef = useRef<(() => void) | null>(null);
 
+  // TODAY-3: voice-originated and Today/Journal-handoff captures must pass the
+  // SHARED ConfirmCaptureReview contract (same component QuickLogModal renders
+  // — one contract, no forked capture path) before the behavior-log write.
+  // `needsReview` arms the gate; `captureSource` is the FACTUAL provenance
+  // ("written by you" / "voice transcription" / "photo") shown in the review —
+  // no confidence/verdict wording (CODEX-7 firewall condition).
+  const [needsReview, setNeedsReview] = useState(false);
+  const [captureSource, setCaptureSource] = useState<CaptureSource>("text");
+  const [reviewOpen, setReviewOpen] = useState(false);
+
   // Refs for the QuickLog tiles: scroll the form into view, focus the photo input.
   const formRef = useRef<HTMLFormElement | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
@@ -186,6 +198,11 @@ export default function BehaviorsTab() {
 
   const parseVoice = async (text: string) => {
     setParsing(true);
+    // TODAY-3: the draft now originates from a voice transcription (both the
+    // parsed and the raw-fallback branch fill the form from it) — record the
+    // factual provenance and arm the explicit-confirm gate.
+    setCaptureSource("voice");
+    setNeedsReview(true);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -346,9 +363,38 @@ export default function BehaviorsTab() {
       toast(t("beh.toast.fillBoth"), "error");
       return;
     }
+    // TODAY-3: while the gate is armed (voice-originated or a Today/Journal
+    // requestCapture handoff) NOTHING writes here — surface the shared review
+    // instead; the only path to handleAddLog is confirmReview below.
+    if (needsReview) {
+      setReviewOpen(true);
+      return;
+    }
     const wasEditing = !!editingLogId;
     handleAddLog(e);
     toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
+    setCaptureOpen(false);
+    setDetailsOpen(false);
+  };
+
+  // TODAY-3: explicit confirm — the ONLY behavior-log write for gated captures.
+  const confirmReview = (e: React.FormEvent) => {
+    const wasEditing = !!editingLogId;
+    handleAddLog(e);
+    toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
+    setReviewOpen(false);
+    setNeedsReview(false);
+    setCaptureSource("text");
+    setCaptureOpen(false);
+    setDetailsOpen(false);
+  };
+
+  // TODAY-3: discard — the draft never enters the child's record.
+  const discardReview = () => {
+    cancelEditLog(); // resetLogForm: clears trigger/response/notes/photo + edit state
+    setReviewOpen(false);
+    setNeedsReview(false);
+    setCaptureSource("text");
     setCaptureOpen(false);
     setDetailsOpen(false);
   };
@@ -361,10 +407,15 @@ export default function BehaviorsTab() {
     { key: "text", icon: "keyboard", label: t("beh.mode.text"), onClick: () => focusForm(), tone: "coral" },
   ];
 
-  // A capture entry tile elsewhere (Journal) named the modality it promised —
-  // open that mode here, then clear the request so it fires exactly once.
+  // A capture entry tile elsewhere (Today's QuickCaptureBar, Journal's compose
+  // tiles) named the modality it promised — open that mode here, then clear
+  // the request so it fires exactly once. TODAY-3: EVERY handoff arms the
+  // explicit-confirm gate, so no Today-originated capture can write a behavior
+  // log without passing ConfirmCaptureReview.
   useEffect(() => {
     if (!pendingCaptureMode) return;
+    setNeedsReview(true);
+    setCaptureSource(pendingCaptureMode === "photo" ? "photo" : pendingCaptureMode === "voice" ? "voice" : "text");
     quickModes.find((m) => m.key === pendingCaptureMode)?.onClick();
     consumeCaptureRequest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -844,6 +895,26 @@ export default function BehaviorsTab() {
           </motion.form>
           )}
           </AnimatePresence>
+
+          {/* TODAY-3 — the shared confirmed-capture review (same ConfirmCaptureReview
+              contract QuickLogModal renders). Gated captures reach handleAddLog
+              ONLY through confirmReview; Edit returns to the form, Discard drops
+              the draft entirely. */}
+          <Modal open={reviewOpen} onClose={() => setReviewOpen(false)} title={t("ql.title")}>
+            <ConfirmCaptureReview
+              source={captureSource}
+              rows={[
+                { label: t("beh.typeLabel"), value: newLogType },
+                { label: t("ql.review.trigger"), value: newLogTrigger },
+                { label: t("ql.review.response"), value: newLogResponse },
+                { label: t("beh.notes"), value: newLogNotes },
+              ]}
+              photoSrc={newLogPhoto || undefined}
+              onEdit={() => setReviewOpen(false)}
+              onDiscard={discardReview}
+              onConfirm={confirmReview}
+            />
+          </Modal>
         </div>
 
         {/* Right rail — detected patterns + flat-count card */}

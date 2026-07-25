@@ -1194,6 +1194,9 @@ export const en: Dict = {
   // return here (guarded by todayConsolidation.test.ts).
   "ql.review.title": "Review before saving",
   "ql.review.source": "Source: written by you",
+  "ql.review.source.voice": "Source: voice transcription",
+  "ql.review.source.photo": "Source: photo added by you",
+  "ql.review.photoAlt": "Photo attached to this draft",
   "ql.review.edit": "Edit",
   "ql.review.discard": "Discard",
   "ql.review.confirm": "Confirm and save to record",
@@ -3318,6 +3321,9 @@ export const he: Dict = {
   // rendering byte-identical); provenance line stays factual (CODEX-7).
   "ql.review.title": "בדקו לפני השמירה",
   "ql.review.source": "מקור: נכתב על ידכם",
+  "ql.review.source.voice": "מקור: תמלול קולי",
+  "ql.review.source.photo": "מקור: תמונה שהוספתם",
+  "ql.review.photoAlt": "תמונה שצורפה לטיוטה",
   "ql.review.edit": "עריכה",
   "ql.review.discard": "מחיקה",
   "ql.review.confirm": "אישור ושמירה ברשומה",

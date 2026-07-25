@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Modal } from "../ui/Modal";
+import ConfirmCaptureReview from "./ConfirmCaptureReview";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -21,17 +22,12 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
   const { t } = useLanguage();
   const [reviewing, setReviewing] = useState(false);
   useEffect(() => { if (!open) setReviewing(false); }, [open]);
-  // CODEX-7: the provenance line states only the factual source ("written by
-  // you"). NO static confidence/certainty wording may return here — an
-  // unconditional "high confidence" is an asserted-not-computed system verdict
-  // (firewall generative-honesty rule; guarded by todayConsolidation.test.ts).
-  // TODAY-5/PLAT-4/CODEX-6: review copy lives in i18n.ts (ql.review.*), never
-  // an inline per-language ternary object.
-  const copy = {
-    reviewTitle: t("ql.review.title"), source: t("ql.review.source"),
-    edit: t("ql.review.edit"), discard: t("ql.review.discard"), confirm: t("ql.review.confirm"),
-    notSaved: t("ql.review.notSaved"), trigger: t("ql.review.trigger"), response: t("ql.review.response"),
-  };
+  // TODAY-3: the review step is the SHARED ConfirmCaptureReview contract
+  // (also rendered by BehaviorsTab for voice/photo/handoff captures — one
+  // contract, never a forked path). CODEX-7: its provenance line states only
+  // the factual source ("written by you"); NO static confidence/certainty
+  // wording may return (firewall generative-honesty rule; guarded by
+  // todayConsolidation.test.ts + confirmCaptureReview.test.ts).
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,21 +54,17 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
 
   return (
     <Modal open={open} onClose={onClose} title={t("ql.title")}>
-      {reviewing ? <form onSubmit={confirm} className="space-y-4 text-sm">
-        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule)" }} role="status">
-          <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{copy.reviewTitle}</p>
-          <p className="mt-1 text-[11px]" style={{ color: "var(--arbor-muted)" }}>{copy.source}</p>
-          <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{copy.notSaved}</p>
-        </div>
-        <ReviewRow label={t("ql.type")} value={newLogType} />
-        <ReviewRow label={copy.trigger} value={newLogTrigger} />
-        <ReviewRow label={copy.response} value={newLogResponse} />
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <button type="button" onClick={() => setReviewing(false)} className="min-h-11 rounded-xl px-3 text-xs font-bold" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}>{copy.edit}</button>
-          <button type="button" onClick={discard} className="min-h-11 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{copy.discard}</button>
-          <button type="submit" className="col-span-2 min-h-11 rounded-xl px-3 text-xs font-extrabold text-white sm:col-span-1" style={{ background: "var(--arbor-gradient-primary)" }}>{copy.confirm}</button>
-        </div>
-      </form> : <form onSubmit={submit} className="space-y-4 text-sm">
+      {reviewing ? <ConfirmCaptureReview
+        source="text"
+        rows={[
+          { label: t("ql.type"), value: newLogType },
+          { label: t("ql.review.trigger"), value: newLogTrigger },
+          { label: t("ql.review.response"), value: newLogResponse },
+        ]}
+        onEdit={() => setReviewing(false)}
+        onDiscard={discard}
+        onConfirm={confirm}
+      /> : <form onSubmit={submit} className="space-y-4 text-sm">
         <div className="space-y-1.5">
           <label htmlFor="quick-log-type" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.type")}</label>
           <select id="quick-log-type" value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
@@ -106,8 +98,4 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
       </form>}
     </Modal>
   );
-}
-
-function ReviewRow({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}><p className="text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ color: "var(--arbor-green-ink)" }}>{label}</p><p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{value}</p></div>;
 }

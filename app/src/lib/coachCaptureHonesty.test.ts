@@ -87,8 +87,12 @@ describe("COACH-8 — Behaviors capture bar is an honest input", () => {
     expect(code).toMatch(/e\.key === "Enter"[\s\S]{0,60}preventDefault\(\);\s*openFromBar/);
   });
 
-  it("zero new capture paths — saving still goes only through the one form submit", () => {
-    // Exactly one write call site: submitLog → handleAddLog (the existing seam).
-    expect(count(code, "handleAddLog(e)")).toBe(1);
+  it("zero new capture paths — saving still goes only through the one write seam", () => {
+    // Exactly two call sites into the SAME existing handleAddLog seam:
+    // ungated submitLog, and confirmReview (TODAY-3 wave-3: the explicit
+    // ConfirmCaptureReview confirm for voice/photo/handoff captures — an
+    // interposed review on the existing seam, not a new capture path;
+    // pinned in detail by confirmCaptureReview.test.ts).
+    expect(count(code, "handleAddLog(e)")).toBe(2);
   });
 });
