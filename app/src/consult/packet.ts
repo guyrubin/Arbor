@@ -244,6 +244,17 @@ export function serializePacket(packet: ConsultPacket, excludedIds: Set<string> 
   return lines.join("\n").trim() + "\n";
 }
 
+/** AIX-S3(a): append a parent-reviewed note (e.g. the Arbor Vision handoff
+ *  note) to a serialized packet under its own heading. Pure + total: an empty
+ *  or whitespace note returns the packet unchanged, so callers can pass the
+ *  composer's live value directly. The note is parent-editable text — it rides
+ *  only into exports the parent explicitly triggers. */
+export function appendParentNote(packetMarkdown: string, note: string, heading: string): string {
+  const trimmed = note.trim();
+  if (!trimmed) return packetMarkdown;
+  return `${packetMarkdown.trimEnd()}\n\n## ${heading}\n\n${trimmed}\n`;
+}
+
 /** Count of includable items (for the UI's "N details selected"). */
 export function countIncluded(packet: ConsultPacket, excludedIds: Set<string>): number {
   return packet.sections.reduce(

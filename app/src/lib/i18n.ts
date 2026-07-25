@@ -253,6 +253,11 @@ export const en: Dict = {
   "consult.send": "Send to a professional",
   "consult.opening": "Opening report…",
   "consult.exportError": "Couldn't build that report — try again.",
+  // AIX-S3(a) — Vision handoff note prefills the consult composer (parent-editable).
+  "consult.visionNote.title": "Note from Arbor Vision",
+  "consult.visionNote.hint": "Drafted by Arbor from your document — check and edit it. It is shared only when you export or send.",
+  "consult.visionNote.heading": "Parent note (drafted with Arbor, parent-reviewed)",
+  "consult.visionNote.remove": "Remove",
   "consult.empty.title": "Nothing to summarise yet",
   "consult.empty.body": "Log a moment or check a milestone and Arbor will build a shareable summary here.",
   "consult.empty.cta": "Log a moment",
@@ -459,6 +464,8 @@ export const en: Dict = {
   "coach.toast.voiceFallback": "Switched to standard voice",
   "coach.toast.voiceStandardMode": "Voice switched to standard mode",
   "coach.toast.noteCopied": "Note copied — paste it into your Consult summary",
+  // AIX-S3(a) — the handoff note now prefills the Consult composer directly.
+  "coach.toast.handoffPrefilled": "Note added to your consult summary — review and edit it before sharing",
   "coach.toast.photoCaptured": "Captured from the photo — review and save",
   // COACH-5 — composer memory-disclosure line + lens-row collapse label.
   "coach.memoryLine": "Uses the memory you approved about {name} · you control what is remembered",
@@ -1384,6 +1391,8 @@ export const en: Dict = {
   // TODAY-5/PLAT-4/CODEX-6 — TodayActionLoop copy migrated from an inline
   // he-ternary object so the en/he parity test guards it.
   "today.action.eyebrow": "Today's step",
+  // AIX-S6 — provenance line when the step was accepted from the weekly digest.
+  "today.action.eyebrow.digest": "This week's step, from your weekly review",
   "today.action.tried": "What happened when you tried it?",
   "today.action.helped": "Helped",
   "today.action.somewhat": "A little",
@@ -1545,6 +1554,8 @@ export const en: Dict = {
   "wk.aiInsight": "What Arbor noticed",
   "wk.watchFor": "Worth watching:",
   "wk.tryThisWeek": "Try this week:",
+  // AIX-S6 — the digest's tryThisWeek feeds the Today action loop.
+  "wk.todayStepSet": "Set as today's step — see it on Today",
   "wk.milestoneWins": "Milestone wins ({n})",
   "wk.noMilestones": "No milestones checked in this report.",
   "wk.reviewMilestones": "Review milestones →",
@@ -2291,6 +2302,11 @@ export const en: Dict = {
   "vis.action.handoff": "Use in a handoff",
   "vis.action.copy": "Copy",
   "vis.action.copied": "Copied",
+  // AIX-S3(b) — per-item memory propose CTA (pending-approval queue only).
+  "vis.memory.save": "Save to {name}'s memory",
+  "vis.memory.saved": "Waiting for your approval",
+  "vis.memory.retry": "Try again",
+  "vis.memory.pendingNote": "Saved items wait for your approval in Profile › Child Memory — nothing is used until you approve it.",
   "vis.seed.observe": "About the photo I showed you: {observation}. What's one thing to try this week?",
   "vis.seed.observeWithNote": "About the photo I showed you ({note}): {observation}. What's one thing to try this week?",
   "vis.seed.document": "Here's what a {docType} from my child's school/clinic says: {summary}. What should I take from this and do next?",
@@ -2576,6 +2592,11 @@ export const he: Dict = {
   "consult.send": "שליחה לאיש מקצוע",
   "consult.opening": "פותח דוח…",
   "consult.exportError": "לא הצלחנו לבנות את הדוח — נסו שוב.",
+  // AIX-S3(a) — פתק ה־Vision ממלא מראש את חלון הייעוץ (ניתן לעריכה על ידי ההורה).
+  "consult.visionNote.title": "פתק מ־Arbor Vision",
+  "consult.visionNote.hint": "נוסח על ידי Arbor מתוך המסמך שלכם — בדקו וערכו אותו. הוא משותף רק כשאתם מייצאים או שולחים.",
+  "consult.visionNote.heading": "הערת הורה (נוסחה עם Arbor, נבדקה על ידי ההורה)",
+  "consult.visionNote.remove": "הסרה",
   "consult.empty.title": "אין עדיין מה לסכם",
   "consult.empty.body": "תעדו רגע או סמנו אבן דרך, וארבור יבנה כאן סיכום לשיתוף.",
   "consult.empty.cta": "תיעוד רגע",
@@ -2735,6 +2756,8 @@ export const he: Dict = {
   "coach.toast.voiceFallback": "עברנו לקול רגיל",
   "coach.toast.voiceStandardMode": "הקול עבר למצב רגיל",
   "coach.toast.noteCopied": "הפתק הועתק — הדביקו אותו בסיכום הייעוץ",
+  // AIX-S3(a) — פתק המסירה ממלא כעת ישירות את סיכום הייעוץ.
+  "coach.toast.handoffPrefilled": "הפתק נוסף לסיכום הייעוץ — בדקו וערכו אותו לפני שיתוף",
   "coach.toast.photoCaptured": "נקלט מהתמונה — בדקו ושמרו",
   // COACH-5 — composer memory-disclosure line + lens-row collapse label (he).
   "coach.memoryLine": "משתמש בזיכרון שאישרתם על {name} · אתם שולטים במה שנשמר",
@@ -3638,6 +3661,8 @@ export const he: Dict = {
   // TODAY-5/PLAT-4/CODEX-6 — TodayActionLoop copy migrated verbatim from the
   // inline he-ternary object (HE rendering byte-identical).
   "today.action.eyebrow": "הצעד של היום",
+  // AIX-S6 — שורת מקור כשהצעד התקבל מהסיכום השבועי.
+  "today.action.eyebrow.digest": "הצעד של השבוע, מהסקירה השבועית שלכם",
   "today.action.tried": "מה קרה כשניסיתם?",
   "today.action.helped": "עזר",
   "today.action.somewhat": "קצת",
@@ -3765,6 +3790,8 @@ export const he: Dict = {
   "wk.aiInsight": "מה ארבור שמה לב אליו",
   "wk.watchFor": "כדאי לשים לב:",
   "wk.tryThisWeek": "נסו השבוע:",
+  // AIX-S6 — ה-tryThisWeek של הסיכום מזין את לולאת הפעולה של היום.
+  "wk.todayStepSet": "נקבע כצעד של היום — רואים אותו במסך היום",
   "wk.milestoneWins": "אבני דרך שהושגו ({n})",
   "wk.noMilestones": "לא סומנו אבני דרך בדוח זה.",
   "wk.reviewMilestones": "סקרו אבני דרך →",
@@ -4503,6 +4530,11 @@ export const he: Dict = {
   "vis.action.handoff": "לשימוש במסירת מידע",
   "vis.action.copy": "העתקה",
   "vis.action.copied": "הועתק",
+  // AIX-S3(b) — כפתור הצעת זיכרון לכל פריט (תור ממתין לאישור בלבד).
+  "vis.memory.save": "לשמור לזיכרון של {name}",
+  "vis.memory.saved": "ממתין לאישור שלכם",
+  "vis.memory.retry": "לנסות שוב",
+  "vis.memory.pendingNote": "פריטים שנשמרו ממתינים לאישורכם בפרופיל › זיכרון הילד — שום דבר לא נכנס לשימוש עד שתאשרו.",
   "vis.seed.observe": "לגבי התמונה שהראיתי לך: {observation}. מה דבר אחד שכדאי לנסות השבוע?",
   "vis.seed.observeWithNote": "לגבי התמונה שהראיתי לך ({note}): {observation}. מה דבר אחד שכדאי לנסות השבוע?",
   "vis.seed.document": "הנה מה שכתוב ב{docType} מבית הספר/מהמרפאה של הילד/ה שלי: {summary}. מה כדאי לי לקחת מזה ומה לעשות עכשיו?",

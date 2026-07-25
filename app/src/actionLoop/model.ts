@@ -1,10 +1,16 @@
 export type ActionCapacity = "tiny" | "standard" | "roomy";
 export type ActionOutcome = "helped" | "somewhat" | "not_today";
 
+/** Provenance of an accepted action. AIX-S6: `digest` marks a step accepted
+ *  from the weekly digest's AI-generated tryThisWeek text — only `generated:
+ *  "ai"` digests may reach the accept seam (TODAY-1: actionLoops carry only
+ *  model-generated focus text, never fallback copy). */
+export type ActionSource = "today-guidance" | "digest";
+
 export interface ActionLoopEntry {
   id: string;
   recommendation: string;
-  source: "today-guidance";
+  source: ActionSource;
   capacity: ActionCapacity;
   status: "accepted" | "completed";
   acceptedAt: string;

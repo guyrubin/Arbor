@@ -12,7 +12,8 @@
  */
 import { api, PaywallError } from "./api";
 import { HERO_STORIES, getStorySpec } from "./heroJourneys";
-import { getScene, resolveScene } from "./sceneCache";
+import { getScene, resolveScene, setScene } from "./sceneCache";
+import { getComicPage, hasComicPage, putComicPage } from "./comicPageStore";
 import type { HeroStorySpec } from "../types";
 
 /** Per-story viral comic copy (bilingual): the heroic panel cue, a shout, and SFX. */
@@ -180,6 +181,55 @@ export function rehydrateSavedPages(adventureId: string, lang: ComicLang, avatar
   return urls;
 }
 
+/** The number of pages a book has (cover + every non-decision beat). */
+export function bookPageCount(adventureId: string): number {
+  return 1 + (getStorySpec(adventureId)?.beats || []).filter((b) => b.id !== "decision").length;
+}
+
+/** AIX-S5 — durable rehydration: memory cache first, then the device-local
+ *  IndexedDB page store (warming the memory cache on a hit). All-or-nothing
+ *  like `rehydrateSavedPages`: returns the full index-aligned list only when
+ *  EVERY page resolves, else [] so the reader falls back to a fresh build.
+ *  Zero /generate-comic calls happen here — this is a pure read path. */
+export async function rehydrateSavedPagesFromStore(
+  childId: string,
+  adventureId: string,
+  lang: ComicLang,
+  avatarOrHash: string,
+): Promise<string[]> {
+  const total = bookPageCount(adventureId);
+  const urls: string[] = [];
+  for (let i = 0; i < total; i++) {
+    const key = comicKey(avatarOrHash, adventureId, lang, i);
+    let url = getScene(key);
+    if (!url) {
+      url = await getComicPage(childId, key);
+      if (url) setScene(key, url); // warm the in-session cache
+    }
+    if (!url) return [];
+    urls.push(url);
+  }
+  return urls;
+}
+
+/** AIX-S5 honesty probe: are ALL pages of a saved book available on this
+ *  device (memory or IndexedDB) — WITHOUT loading the art? Drives the shelf
+ *  badge: true → "Read again"; false → "Rebuild this book". */
+export async function savedPagesAvailable(
+  childId: string,
+  adventureId: string,
+  lang: ComicLang,
+  avatarOrHash: string,
+): Promise<boolean> {
+  const total = bookPageCount(adventureId);
+  for (let i = 0; i < total; i++) {
+    const key = comicKey(avatarOrHash, adventureId, lang, i);
+    if (getScene(key) !== undefined) continue;
+    if (!(await hasComicPage(childId, key))) return false;
+  }
+  return true;
+}
+
 const shortHash = (s: string): string => {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
@@ -255,6 +305,10 @@ export interface GeneratePageArgs {
   heroDataUrl?: string;
   page: ComicPageData;
   beatPrompt?: string;
+  /** AIX-S5: when present, pages read through / write through the device-local
+   *  IndexedDB page store (comicPageStore) so saved books survive the session.
+   *  Without it behavior is unchanged (memory cache only). */
+  childId?: string;
 }
 
 /** Generate (or reuse a cached/in-flight) panel for one page. Resolves to a
@@ -262,10 +316,22 @@ export interface GeneratePageArgs {
  *  prompt. Results are cached + concurrent identical requests deduped via the
  *  shared persistent scene cache (lib/sceneCache). */
 export async function generatePage(args: GeneratePageArgs): Promise<string> {
-  const { adventure, lang, heroName, heroDataUrl, page, beatPrompt } = args;
+  const { adventure, lang, heroName, heroDataUrl, page, beatPrompt, childId } = args;
   const he = lang === "he";
   const baseTheme = he ? adventure.copy.themeHe : adventure.copy.theme;
   const key = comicKey(heroDataUrl || "no-hero", adventure.id, lang, page.index);
+
+  // AIX-S5 read-through: memory cache, then the device-local IndexedDB store —
+  // a persisted page never re-pays a /generate-comic call.
+  const memHit = getScene(key);
+  if (memHit !== undefined) return memHit;
+  if (childId) {
+    const persisted = await getComicPage(childId, key);
+    if (persisted !== undefined) {
+      setScene(key, persisted);
+      return persisted;
+    }
+  }
 
   const theme = page.cover
     ? `${baseTheme} — dramatic comic-book COVER with the title, no panels`
@@ -273,7 +339,7 @@ export async function generatePage(args: GeneratePageArgs): Promise<string> {
 
   // S3: persist generated pages (and dedupe concurrent identical requests) via
   // the shared scene cache, so re-opening a book never re-pays generation.
-  return resolveScene(key, () =>
+  const url = await resolveScene(key, () =>
     api
       .generateComic({
         ...(heroDataUrl ? { avatar: { dataUrl: heroDataUrl } } : {}),
@@ -286,6 +352,9 @@ export async function generatePage(args: GeneratePageArgs): Promise<string> {
       })
       .then((r) => r.dataUrl),
   );
+  // AIX-S5 write-through (device-local only; never uploaded/synced).
+  if (childId) void putComicPage(childId, key, url);
+  return url;
 }
 
 /** Build a whole book by generating pages sequentially, reporting each as it
@@ -304,6 +373,8 @@ export async function buildComicBook(
   pages: ComicPageData[],
   beatPrompts: Record<number, string>,
   onPage: (page: ComicPageData) => void,
+  /** AIX-S5: enables the device-local page store (see GeneratePageArgs). */
+  childId?: string,
 ): Promise<ComicPageData[]> {
   const out = pages.map((p) => ({ ...p }));
   for (const page of out) {
@@ -315,6 +386,7 @@ export async function buildComicBook(
         heroDataUrl,
         page,
         beatPrompt: beatPrompts[page.index],
+        childId,
       });
       page.dataUrl = dataUrl;
       page.status = "ready";

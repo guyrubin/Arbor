@@ -13,4 +13,13 @@ describe("action loop model", () => {
     expect(sortActionLoop(items).map((item) => item.id)).toEqual(["new", "old"]);
     expect(items[0].id).toBe("old");
   });
+
+  // AIX-S6: digest provenance is a first-class source — an entry accepted from
+  // the weekly digest's AI tryThisWeek text sorts and resolves like any other.
+  it("accepts digest-provenance entries", () => {
+    const digestEntry: ActionLoopEntry = { ...entry("digest-step", "2026-07-23T10:00:00Z"), source: "digest" };
+    const items = [entry("guidance-step", "2026-07-22T10:00:00Z"), digestEntry];
+    expect(latestAction(items)?.source).toBe("digest");
+    expect(sortActionLoop(items)[0].id).toBe("digest-step");
+  });
 });

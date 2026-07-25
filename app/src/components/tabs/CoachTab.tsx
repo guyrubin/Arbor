@@ -124,6 +124,8 @@ export default function CoachTab() {
     apiError,
     seedCoach,
     requestCapture,
+    requestConsultPrefill,
+    proposeMemory,
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
@@ -1117,7 +1119,14 @@ export default function CoachTab() {
         onClose={() => setVisionMode(null)}
         childProfile={childProfile}
         onSeedCoach={(prompt) => { setChatInput(prompt); }}
-        onGoHandoff={() => { setActiveTab("consult"); toast(t("coach.toast.noteCopied"), "info"); }}
+        // AIX-S3(a): the handoff note is CONSUMED, not dropped — it prefills
+        // the Consult composer (parent-editable) via the context seam. Prefill
+        // is not consent: sharing still requires the explicit consult act.
+        onGoHandoff={(note) => { requestConsultPrefill(note); setActiveTab("consult"); toast(t("coach.toast.handoffPrefilled"), "info"); }}
+        // AIX-S3(b): suggestedMemory items route through the EXISTING parent-
+        // approved propose seam — they land ONLY in the pending-approval queue
+        // (Profile › Child Memory); nothing auto-approves.
+        onProposeMemory={(fact) => proposeMemory(fact, { source: "vision", prompt: "vision:document" })}
         onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); setActiveTab("behaviors"); toast(t("coach.toast.photoCaptured"), "info"); }}
       />
     </motion.div>

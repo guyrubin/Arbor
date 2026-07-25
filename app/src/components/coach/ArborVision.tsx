@@ -25,7 +25,7 @@ const List = ({ icon, title, tint, items }: { icon: React.ReactNode; title: stri
     </div>
   ) : null;
 
-export default function ArborVision({ open, mode, onClose, childProfile, onSeedCoach, onGoHandoff, onGoBehaviors }: {
+export default function ArborVision({ open, mode, onClose, childProfile, onSeedCoach, onGoHandoff, onGoBehaviors, onProposeMemory }: {
   open: boolean;
   mode: "observe" | "document";
   onClose: () => void;
@@ -33,6 +33,10 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
   onSeedCoach: (prompt: string) => void;
   onGoHandoff: (note: string) => void;
   onGoBehaviors: (note: string) => void;
+  /** AIX-S3(b): per-item "Save to {name}'s memory" — routes through the existing
+   *  parent-approved propose seam (POST /memory/:childId/propose). Items land
+   *  ONLY in the pending-approval queue; nothing auto-approves. */
+  onProposeMemory: (fact: string) => Promise<void>;
 }) {
   const { t } = useLanguage();
   const [dataUrl, setDataUrl] = useState<string>("");
@@ -41,9 +45,21 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
   const [result, setResult] = useState<VisionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // Per-item propose state for the suggestedMemory list (index-keyed).
+  const [memoryState, setMemoryState] = useState<Record<number, "busy" | "done" | "error">>({});
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const reset = () => { setDataUrl(""); setNote(""); setResult(null); setError(null); setLoading(false); };
+  const proposeItem = async (fact: string, idx: number) => {
+    setMemoryState((s) => ({ ...s, [idx]: "busy" }));
+    try {
+      await onProposeMemory(fact);
+      setMemoryState((s) => ({ ...s, [idx]: "done" }));
+    } catch {
+      setMemoryState((s) => ({ ...s, [idx]: "error" }));
+    }
+  };
+
+  const reset = () => { setDataUrl(""); setNote(""); setResult(null); setError(null); setLoading(false); setMemoryState({}); };
   const close = () => { reset(); onClose(); };
 
   const onPick = async (file?: File) => {
@@ -177,7 +193,40 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
           </div>
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{(result as VisionDocument).summary}</p>
           <List icon={<Icon name="checklist" size={12} />} title={t("vis.sec.keyPoints")} tint="var(--arbor-green-ink)" items={(result as VisionDocument).keyPoints} />
-          <List icon={<Icon name="bookmark" size={12} />} title={t("vis.sec.remember")} tint="var(--arbor-yellow-ink)" items={(result as VisionDocument).suggestedMemory} />
+          {/* AIX-S3(b): suggestedMemory is no longer a dead-end list — each item
+              carries a "Save to {name}'s memory" CTA through the parent-approved
+              propose seam. Items land in the pending queue only (Profile › Child
+              Memory); the parent approves each one there. */}
+          {((result as VisionDocument).suggestedMemory?.length ?? 0) > 0 && (
+            <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider mb-1.5" style={{ color: "var(--arbor-yellow-ink)" }}>
+                <Icon name="bookmark" size={12} /> {t("vis.sec.remember")}
+              </span>
+              <ul className="space-y-2 text-[12.5px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
+                {(result as VisionDocument).suggestedMemory.map((fact, i) => (
+                  <li key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="flex-1 min-w-[60%]">{fact}</span>
+                    {memoryState[i] === "done" ? (
+                      <span className="inline-flex items-center gap-1 text-[10.5px] font-bold" style={{ color: "var(--arbor-green-ink)" }} role="status">
+                        <Icon name="check" size={12} /> {t("vis.memory.saved")}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => proposeItem(fact, i)}
+                        disabled={memoryState[i] === "busy"}
+                        className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-1 rounded-lg bg-white disabled:opacity-60"
+                        style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
+                      >
+                        <Icon name={memoryState[i] === "busy" ? "sync" : "bookmark_add"} size={12} className={memoryState[i] === "busy" ? "animate-spin" : undefined} />
+                        {memoryState[i] === "error" ? t("vis.memory.retry") : t("vis.memory.save", { name: (childProfile.name || "").split(" ")[0] })}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] mt-2" style={{ color: "var(--arbor-muted)" }}>{t("vis.memory.pendingNote")}</p>
+            </div>
+          )}
           <List icon={<Icon name="chat" size={12} />} title={t("vis.sec.askPro")} tint="var(--arbor-lav-ink)" items={(result as VisionDocument).questionsForProfessional} />
           <div className="flex flex-wrap gap-2 pt-1">
             <button onClick={() => { const n = (result as VisionDocument).handoffNote || (result as VisionDocument).summary; copy(n); onGoHandoff(n); close(); }}

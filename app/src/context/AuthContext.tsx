@@ -12,6 +12,7 @@ import { auth, firebaseEnabled } from "../lib/firebase";
 import { setAuthTokenProvider } from "../lib/api";
 import { initNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
+import { purgeAllComicPages } from "../lib/comicPageStore";
 
 export type AuthUser = {
   uid: string;
@@ -117,6 +118,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // AIX-S5 firewall condition: sign-out purges the device-local IndexedDB
+    // comic-page store (all children) — child-derivative art never outlives
+    // the session owner on a shared device. Best effort, before auth teardown,
+    // and independent of firebaseEnabled (the store is device-local).
+    try {
+      await purgeAllComicPages();
+    } catch {
+      /* best effort */
+    }
     if (!firebaseEnabled || !auth) return;
     await firebaseSignOut(auth);
   };

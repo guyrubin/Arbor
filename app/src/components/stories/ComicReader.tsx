@@ -44,6 +44,7 @@ export function ComicReader({
   onClose,
   onPaywall,
   registerBack,
+  childId,
 }: {
   adventure: Adventure;
   lang: ComicLang;
@@ -51,6 +52,9 @@ export function ComicReader({
   heroDataUrl?: string;
   /** A previously-saved book to re-open instantly from cache (zero new calls). */
   saved?: HeroComic;
+  /** AIX-S5: enables the device-local IndexedDB page store — generated pages
+   *  persist across sessions on this device (purged on erase/sign-out). */
+  childId?: string;
   onSave: (comic: HeroComic) => void;
   onClose: () => void;
   /** Surfaces a PaywallError from the book build (or a page retry) to the host,
@@ -112,6 +116,7 @@ export function ComicReader({
         if (!active) return;
         setPages((prev) => prev.map((p) => (p.index === page.index ? page : p)));
       },
+      childId,
     )
       .then((finalPages) => {
         if (!active) return;
@@ -198,7 +203,7 @@ export function ComicReader({
     const page = pages.find((p) => p.index === index);
     if (!page) return;
     setPages((prev) => prev.map((p) => (p.index === index ? { ...p, status: "pending" } : p)));
-    generatePage({ adventure, lang, heroName, heroDataUrl, page, beatPrompt: beatPrompts[index] })
+    generatePage({ adventure, lang, heroName, heroDataUrl, page, beatPrompt: beatPrompts[index], childId })
       .then((dataUrl) =>
         setPages((prev) => prev.map((p) => (p.index === index ? { ...p, dataUrl, status: "ready" } : p))),
       )

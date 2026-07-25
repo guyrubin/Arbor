@@ -168,6 +168,18 @@ function useArborState() {
   const consumeJournalFocus = () => setPendingJournalFocusId(null);
 
   /**
+   * AIX-S3 — Vision handoff-note → Consult composer prefill seam (mirrors the
+   * capture seam above). ArborVision's document flow produces a handoffNote;
+   * CoachTab threads it here and the Consult flow (AskSpecialist) consumes it
+   * into a PARENT-EDITABLE note field. Prefill is NOT consent: nothing is
+   * shared or sent without the existing explicit consult act (copy / download
+   * / export / send), all of which stay behind the reviewed-checkbox gate.
+   */
+  const [pendingConsultNote, setPendingConsultNote] = useState<string | null>(null);
+  const requestConsultPrefill = (note: string) => setPendingConsultNote(note);
+  const consumeConsultPrefill = () => setPendingConsultNote(null);
+
+  /**
    * The single seam for handing a prompt to Ask Arbor from anywhere in the app.
    * Historically 18+ surfaces hand-rolled the same `setChatInput(...) +
    * (setSelectedLens(...)) + setActiveTab("coach")` triple; that sprawl had no
@@ -260,10 +272,13 @@ function useArborState() {
     () => actionLoop.find((entry) => entry.id === todayActionId(childProfile.id)) ?? null,
     [actionLoop, childProfile.id]
   );
-  const acceptTodayAction = (recommendation: string, capacity: ActionCapacity) => {
-    const item: ActionLoopEntry = { id: todayActionId(childProfile.id), recommendation: recommendation.trim(), source: "today-guidance", capacity, status: "accepted", acceptedAt: new Date().toISOString() };
+  // AIX-S6: `source` carries provenance — "today-guidance" (default) or
+  // "digest" (the weekly digest's AI-generated tryThisWeek text). Callers own
+  // the TODAY-1 guard: only model-generated focus text may reach this seam.
+  const acceptTodayAction = (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance") => {
+    const item: ActionLoopEntry = { id: todayActionId(childProfile.id), recommendation: recommendation.trim(), source, capacity, status: "accepted", acceptedAt: new Date().toISOString() };
     void actionLoopCol.upsert(item);
-    try { track("today_action_accepted", { capacity }); } catch { /* noop */ }
+    try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
   };
   const recordTodayOutcome = (id: string, outcome: ActionOutcome) => {
     const item = actionLoop.find((entry) => entry.id === id);
@@ -1084,6 +1099,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     pendingJournalFocusId,
     requestJournalFocus,
     consumeJournalFocus,
+    pendingConsultNote,
+    requestConsultPrefill,
+    consumeConsultPrefill,
     chatMessages,
     conversations,
     activeConversationId,

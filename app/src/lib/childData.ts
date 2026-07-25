@@ -1,6 +1,7 @@
 import { collection, deleteDoc, doc, getDocs } from "firebase/firestore";
 import { db, firebaseEnabled } from "./firebase";
 import { api } from "./api";
+import { purgeComicPages } from "./comicPageStore";
 import { ChildProfile, DeletionReceipt } from "../types";
 
 /** Per-child subcollections that hold parent-generated data. */
@@ -99,6 +100,15 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
 /** Client-side wipe only: all subcollections + the child doc (Firestore or
  *  localStorage). Server erasure is handled separately by `api.privacyErase`. */
 async function wipeClientChildData(uid: string | undefined, childId: string) {
+  // AIX-S5 firewall condition: the device-local IndexedDB comic-page store is
+  // purged in the SAME erase flow as the registered subcollections — a
+  // GDPR-erased child leaves no comic pages on this device. Runs in both the
+  // remote and sandbox branches (the store is device-local either way).
+  try {
+    await purgeComicPages(childId);
+  } catch {
+    /* best effort */
+  }
   if (remoteActive(uid) && db) {
     for (const name of CHILD_SUBCOLLECTIONS) {
       try {
