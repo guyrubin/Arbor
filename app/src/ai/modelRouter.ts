@@ -3,6 +3,8 @@ import type { ArborConfig } from "../config/env.js";
 import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
 import { withModelRetry } from "./modelRetry.js";
 import { recordUsage } from "./usage.js";
+import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "./capabilities/policy.js";
+import type { CapabilityRequest } from "./capabilities/contracts.js";
 
 export { withModelRetry } from "./modelRetry.js";
 
@@ -108,7 +110,9 @@ export type ModelProvider = {
   routeDecision(route: ModelRoute): RouteDecision;
 };
 
-export const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
+/** The raw config→model map (no policy). Internal: production callers go
+ *  through modelForRoute / routeDecisionFor, which enforce the route policy. */
+const modelIdForRoute = (config: ArborConfig, route: ModelRoute) => {
   if (config.modelProvider === "gemini_dev") return config.geminiModel;
 
   const map: Record<ModelRoute, string> = {
@@ -119,6 +123,51 @@ export const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
   };
   return map[route];
 };
+
+// ── COACH-3: the ai/capabilities policy layer is WIRED here, not scaffolding.
+// Every structured-text/stream route decision executes selectProvider against
+// the RoutePolicy built from ArborConfig, so provider eligibility (region /
+// no-training / retention) is actually enforced on production request paths —
+// and fails closed (AiProviderError "policy_denied") on a misconfigured region
+// instead of silently routing family data to an ineligible provider.
+
+const CANDIDATE_SCORE = { quality: 3, safety: 3, reliability: 3, latencyFitness: 3, costFitness: 3 } as const;
+
+/** The single provider candidate the current config yields for a route,
+ *  declared with its real residency/retention posture for the policy gate. */
+export const structuredTextCandidateFor = (config: ArborConfig, route: ModelRoute): ProviderCandidate => {
+  if (config.modelProvider === "gemini_dev") {
+    return {
+      // AI-Studio developer API has no regional endpoint — declared honestly as
+      // "global", which the route policy only admits outside prod.
+      ref: { provider: "gemini_dev", model: config.geminiModel, region: "global" },
+      capabilities: ["structured_text", "text_stream"],
+      audiences: ["parent", "professional", "internal"],
+      dataClasses: ["public", "account", "child_profile"],
+      trainsOnCustomerData: false,
+      retentionDays: 30,
+      score: CANDIDATE_SCORE
+    };
+  }
+  return {
+    ref: {
+      provider: route === "coach_high_stakes" ? "vertex_claude" : "vertex_gemini",
+      model: modelIdForRoute(config, route),
+      region: providerRegion(config.vertexLocation)
+    },
+    capabilities: ["structured_text", "text_stream"],
+    audiences: ["parent", "professional", "internal"],
+    dataClasses: ["public", "account", "child_profile"],
+    trainsOnCustomerData: false,
+    retentionDays: 0,
+    score: CANDIDATE_SCORE
+  };
+};
+
+/** Policy-enforced model id for a route (throws policy_denied when the
+ *  configured provider violates the route policy — fail closed). */
+export const modelForRoute = (config: ArborConfig, route: ModelRoute) =>
+  routeDecisionFor(config, route).model;
 
 const isClaudeVertexModel = (model: string) => /^claude-/i.test(model);
 
@@ -140,15 +189,16 @@ export const modelForGeminiRequest = (config: ArborConfig, route: ModelRoute, im
 };
 
 export const routeDecisionFor = (config: ArborConfig, route: ModelRoute): RouteDecision => {
-  if (config.modelProvider === "gemini_dev") {
-    return { route, provider: "gemini_dev", model: config.geminiModel };
-  }
-
-  if (route === "coach_high_stakes") {
-    return { route, provider: "vertex_claude", model: config.vertexModelChat };
-  }
-
-  return { route, provider: "vertex_gemini", model: modelForRoute(config, route) };
+  const request: CapabilityRequest<"structured_text"> = {
+    capability: "structured_text",
+    route,
+    audience: "parent",
+    locale: "en",
+    dataClasses: ["child_profile"],
+    risk: route === "coach_high_stakes" ? "high" : "moderate"
+  };
+  const decision = selectProvider(request, routePolicyFor(config), [structuredTextCandidateFor(config, route)]);
+  return { route, provider: decision.selected.ref.provider as ProviderId, model: decision.selected.ref.model };
 };
 
 export const toAnthropicVertexModelId = (model: string) => {

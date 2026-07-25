@@ -3,7 +3,11 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import type { ArborConfig } from "../config/env.js";
-import { createModelProvider } from "../ai/modelRouter.js";
+import { createModelProvider, type GenerateJsonOptions, type ModelProvider } from "../ai/modelRouter.js";
+import { CapabilityRegistry } from "../ai/capabilities/registry.js";
+import { providerRegion } from "../ai/capabilities/policy.js";
+import type { CapabilityAdapter } from "../ai/capabilities/contracts.js";
+import { synthesizeSpeech, type TtsInput, type TtsResult } from "./tts.js";
 import { LocalMemoryStore } from "../memory/localMemoryStore.js";
 import { FirestoreMemoryStore } from "../memory/firestoreMemoryStore.js";
 import { LocalShareStore, FirestoreShareStore } from "../sharing/shares.js";
@@ -56,6 +60,39 @@ const cspDirectives = () => ({
   frameSrc: ["'self'", "https://*.firebaseapp.com", "https://accounts.google.com"],
 });
 
+/**
+ * COACH-3: the CapabilityRegistry the app boots with — the AR-AI-02 adapter
+ * surface, no longer dead scaffolding. Registers the providers the current
+ * config actually runs (google Cloud TTS for speech_synthesis; the Gemini and
+ * Claude structured-text adapters over the existing ModelProvider). Exact-match
+ * only: policy (selectProvider, executed inside modelForRoute/synthesizeSpeech)
+ * chooses an eligible provider first, and no implicit fallback can weaken it.
+ */
+export const buildCapabilityRegistry = (config: ArborConfig, modelProvider: ModelProvider): CapabilityRegistry => {
+  const registry = new CapabilityRegistry();
+  const region = providerRegion(config.vertexLocation);
+
+  const ttsAdapter: CapabilityAdapter<"speech_synthesis", TtsInput, TtsResult> = {
+    capability: "speech_synthesis",
+    provider: { provider: "google", model: "cloud-tts-v1", region },
+    execute: (input) => synthesizeSpeech(config, input),
+  };
+  registry.register(ttsAdapter);
+
+  const structuredText = (provider: string, model: string): CapabilityAdapter<"structured_text", GenerateJsonOptions, unknown> => ({
+    capability: "structured_text",
+    provider: { provider, model, region: provider === "gemini_dev" ? "global" : region },
+    execute: (options) => modelProvider.generateJson(options),
+  });
+  if (config.modelProvider === "vertex") {
+    registry.register(structuredText("vertex_claude", config.vertexModelChat));
+    registry.register(structuredText("vertex_gemini", config.vertexModelAnalysis));
+  } else {
+    registry.register(structuredText("gemini_dev", config.geminiModel));
+  }
+  return registry;
+};
+
 export const createApp = (config: ArborConfig) => {
   const app = express();
   // Cloud Run (and Firebase Hosting rewrites) front the app with a proxy, so the
@@ -65,6 +102,10 @@ export const createApp = (config: ArborConfig) => {
   app.set("trust proxy", 1);
   const framework = loadFramework();
   const modelProvider = createModelProvider(config);
+  // COACH-3: register the config's real AI adapters at boot (duplicate or
+  // malformed registrations throw here, not mid-request) and expose the
+  // registry app-wide for capability callers.
+  app.set("aiCapabilityRegistry", buildCapabilityRegistry(config, modelProvider));
   const memoryStore = config.memoryAdapter === "firestore"
     ? new FirestoreMemoryStore(config)
     : new LocalMemoryStore();

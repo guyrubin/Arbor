@@ -1,6 +1,8 @@
 import { GoogleAuth } from "google-auth-library";
 import type { ArborConfig } from "../config/env.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
+import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "../ai/capabilities/policy.js";
+import type { CapabilityRequest } from "../ai/capabilities/contracts.js";
 import { screenModelOutput, type OutputScreenVerdict } from "../safety/outputScreen.js";
 import { logger } from "./logger.js";
 
@@ -94,10 +96,35 @@ async function synthesizeGoogle(config: ArborConfig, input: TtsInput): Promise<T
   return { audio, mimeType: "audio/mpeg" };
 }
 
-/** Synthesize already-screened text. Throws NotConfiguredError when disabled/off. */
+/** COACH-3: the speech_synthesis provider candidate the current config yields.
+ *  Cloud TTS runs on the app's own GCP project, so its declared residency
+ *  follows the configured Vertex location. */
+export const ttsCandidateFor = (config: ArborConfig): ProviderCandidate => ({
+  ref: { provider: "google", model: "cloud-tts-v1", region: providerRegion(config.vertexLocation) },
+  capabilities: ["speech_synthesis"],
+  audiences: ["parent", "child"],
+  // TTS input is app-rendered, already-screened output text — never raw child data.
+  dataClasses: ["public", "account"],
+  trainsOnCustomerData: false,
+  retentionDays: 0,
+  score: { quality: 3, safety: 3, reliability: 3, latencyFitness: 3, costFitness: 3 },
+});
+
+/** Synthesize already-screened text. Throws NotConfiguredError when disabled/off,
+ *  and AiProviderError("policy_denied") when the configured provider violates
+ *  the route policy (COACH-3 — fail closed, e.g. a non-EU region in prod). */
 export async function synthesizeSpeech(config: ArborConfig, input: TtsInput): Promise<TtsResult> {
   if (!ttsConfigured(config)) throw new NotConfiguredError();
-  switch (config.ttsProvider) {
+  const request: CapabilityRequest<"speech_synthesis"> = {
+    capability: "speech_synthesis",
+    route: "creative_low_risk",
+    audience: "parent",
+    locale: input.lang,
+    dataClasses: ["public"],
+    risk: "low",
+  };
+  const decision = selectProvider(request, routePolicyFor(config), [ttsCandidateFor(config)]);
+  switch (decision.selected.ref.provider) {
     case "google":
       return synthesizeGoogle(config, input);
     default:

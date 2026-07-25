@@ -34,6 +34,7 @@ import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
 import { sortActionLoop, todayActionId } from "../actionLoop/model";
+import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 
 const readLS = (key: string): string | null => {
   try {
@@ -84,7 +85,16 @@ function tabFromHash(): ActiveTab | null {
   }
 }
 
-export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract; council?: CouncilTake[] };
+export type ChatMessage = {
+  sender: "user" | "ai";
+  text: string;
+  lens?: string;
+  contract?: CoachContract;
+  council?: CouncilTake[];
+  /** COACH-2: true while this AI bubble is the live voice caption still
+   *  accumulating streamed deltas; stripped when the voice turn settles. */
+  voiceLive?: boolean;
+};
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
 
@@ -453,6 +463,23 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatMessages, activeConversationId]);
+
+  // COACH-2: the browser voice loop writes its transcript through the SAME
+  // conversation persistence as typed chat (the upsert effect above) — the
+  // dictated user turn and the streaming, SAFE-V1-screened AI reply land in
+  // chatMessages, so a voice session survives a conversation switch. No new
+  // capture path: this is the existing chat-message write seam.
+  const appendVoiceUserTurn = (text: string) => {
+    if (!text.trim()) return;
+    if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
+    setChatMessages((prev) => appendVoiceUser(prev, text, selectedLens));
+  };
+  const appendVoiceAiDelta = (delta: string) => {
+    setChatMessages((prev) => applyVoiceDelta(prev, delta, selectedLens));
+  };
+  const finalizeVoiceAiTurn = () => {
+    setChatMessages((prev) => settleVoiceTurn(prev));
+  };
 
   // Coach conversation thread controls.
   const newConversation = () => {
@@ -1061,6 +1088,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     handleCancelChat,
     handleChatSend,
     handleCouncilSend,
+    appendVoiceUserTurn,
+    appendVoiceAiDelta,
+    finalizeVoiceAiTurn,
     handleAddLog,
     handleAnalyzeBehaviors,
     handleGenerateActionPlan,

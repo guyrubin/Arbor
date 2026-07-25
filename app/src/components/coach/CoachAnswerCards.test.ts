@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import CoachAnswerCards, { sourcesLabel, escalationTier } from "./CoachAnswerCards";
+import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows } from "./CoachAnswerCards";
 import type { CoachContract } from "../../types";
 
 /**
@@ -128,6 +128,80 @@ describe("escalationTier (prominence helper)", () => {
 
   it("unrecognized levels fail safe to prominent", () => {
     expect(escalationTier("unexpected")).toBe("prominent");
+  });
+});
+
+/**
+ * COACH-6 — the citation drawer shows REAL source titles + type chips from the
+ * server knowledge registry ("Transition Bridge · intervention"-style rows),
+ * never dash-stripped slugs for grounded answers; ids the server could not
+ * resolve keep the legacy slug fallback.
+ */
+describe("citationRows (COACH-6)", () => {
+  const base = makeContract("low");
+
+  it("resolves ids to title + type rows, preserving citation order", () => {
+    const contract: CoachContract = {
+      ...base,
+      sourceCardsUsed: ["transition-bridge-3-5y", "bowlby-attachment"],
+      sourceCards: [
+        { id: "bowlby-attachment", title: "Bowlby: Secure Base", type: "scholar" },
+        { id: "transition-bridge-3-5y", title: "Transition Bridge (3-5y)", type: "intervention" },
+      ],
+    };
+    expect(citationRows(contract)).toEqual([
+      { id: "transition-bridge-3-5y", title: "Transition Bridge (3-5y)", type: "intervention" },
+      { id: "bowlby-attachment", title: "Bowlby: Secure Base", type: "scholar" },
+    ]);
+  });
+
+  it("keeps a null-title slug fallback for ids the server did not resolve", () => {
+    const contract: CoachContract = {
+      ...base,
+      sourceCardsUsed: ["mystery-card"],
+      sourceCards: [],
+    };
+    expect(citationRows(contract)).toEqual([{ id: "mystery-card", title: null, type: null }]);
+  });
+
+  it("renders from sourceCards alone when sourceCardsUsed is absent, and is empty when both are", () => {
+    const withCardsOnly: CoachContract = {
+      ...base,
+      sourceCards: [{ id: "a", title: "A Card", type: "concept" }],
+    };
+    expect(citationRows(withCardsOnly)).toEqual([{ id: "a", title: "A Card", type: "concept" }]);
+    expect(citationRows(base)).toEqual([]);
+  });
+});
+
+describe("citation drawer rendering (COACH-6)", () => {
+  function renderWithSources(): string {
+    const contract: CoachContract = {
+      ...makeContract("low"),
+      sourceCardsUsed: ["transition-bridge-3-5y"],
+      sourceCards: [{ id: "transition-bridge-3-5y", title: "Transition Bridge (3-5y)", type: "intervention" }],
+    };
+    return renderToStaticMarkup(
+      React.createElement(CoachAnswerCards, {
+        contract,
+        onSaveToPlan: noop,
+        onCreateLog: noop,
+        onAddToHandoff: noop,
+      })
+    );
+  }
+
+  it("shows the real title + type chip, never the dash-stripped slug", () => {
+    const html = renderWithSources();
+    expect(html).toContain("Transition Bridge (3-5y)");
+    expect(html).toContain("intervention");
+    expect(html).not.toContain("transition bridge 3 5y"); // the old debug-looking row
+  });
+
+  it("keeps the calm Cited badge + grounded-in count header", () => {
+    const html = renderWithSources();
+    expect(html).toContain("Cited");
+    expect(html).toContain("Grounded in 1 source");
   });
 });
 

@@ -2,7 +2,7 @@ import express from "express";
 import type { ArborConfig } from "../config/env.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 import type { MemoryStore } from "../memory/types.js";
-import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse } from "../contracts/coach.js";
+import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -414,6 +414,9 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((card) => card.id);
       }
+      // COACH-6: resolve the cited ids to real titles + types from the server
+      // knowledge registry so the citation drawer never shows raw slugs.
+      structured.sourceCards = buildSourceCards(structured.sourceCardsUsed, knowledgeCards);
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       const renderedText = renderCoachResponse(structured);
@@ -543,6 +546,8 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((c) => c.id);
       }
+      // COACH-6: same citation-title resolution as /chat.
+      structured.sourceCards = buildSourceCards(structured.sourceCardsUsed, knowledgeCards);
 
       // AI-2: output-side safety screen.
       const renderedText = renderCoachResponse(structured);

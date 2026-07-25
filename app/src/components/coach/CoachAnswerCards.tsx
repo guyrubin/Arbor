@@ -17,6 +17,30 @@ export function sourcesLabel(n: number, lang: UiLang = "en"): string {
   return translate(lang, "cite.drawer.header", { n, plural: lang === "he" ? "ות" : "s" });
 }
 
+/** COACH-6: one resolved citation drawer row. `title`/`type` are null when the
+ *  server sent no metadata for the id (the row falls back to slug rendering). */
+export type CitationRow = { id: string; title: string | null; type: string | null };
+
+/**
+ * Pure helper (COACH-6): the citation drawer rows for a contract. Ids from
+ * sourceCardsUsed lead (compatibility); each is enriched with the real title +
+ * card type the server resolved into sourceCards. Ids without metadata keep a
+ * null title so the renderer can fall back to the legacy slug row. Exported so
+ * tests can cover it without a DOM harness.
+ */
+export function citationRows(contract: CoachContract): CitationRow[] {
+  const byId = new Map((contract.sourceCards ?? []).map((card) => [card.id, card]));
+  const ids = contract.sourceCardsUsed?.length
+    ? contract.sourceCardsUsed
+    : (contract.sourceCards ?? []).map((card) => card.id);
+  return ids.map((id) => {
+    const card = byId.get(id);
+    return card
+      ? { id, title: card.title, type: card.type || null }
+      : { id, title: null, type: null };
+  });
+}
+
 /**
  * Pure helper: presentation tier for the "Reach out for help if" footer.
  * Low (or absent) risk → "quiet": a calm, collapsed disclosure so routine
@@ -78,7 +102,8 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   const [escalateOpen, setEscalateOpen] = useState(false);
 
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
-  const sources = contract.sourceCardsUsed ?? [];
+  // COACH-6: real titles + type chips from the server registry, slug fallback.
+  const sources = citationRows(contract);
   const hasSources = sources.length > 0;
 
   const showLens = lens && lens !== "Integrated Balanced";
@@ -283,24 +308,40 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
             </span>
           </button>
 
-          {/* Disclosure drawer — list of source chips */}
-          {citationsOpen && (
-            <div
-              className="px-3.5 pb-3 pt-2 space-y-1.5"
-              style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}
-              dir={lang === "he" ? "rtl" : "ltr"}
-            >
-              {sources.map((src) => (
-                <div
-                  key={src}
-                  className="rounded-lg px-2.5 py-1.5 text-[11.5px] leading-snug"
-                  style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                >
-                  {t("cite.based", { source: src.replace(/-/g, " ") })}
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Disclosure drawer — real source titles + type chips (COACH-6).
+              Collapsed = hidden, not unmounted (same idiom as the escalation
+              disclosure) so the rows are testable and stay in the DOM. */}
+          <div
+            hidden={!citationsOpen}
+            className="px-3.5 pb-3 pt-2 space-y-1.5"
+            style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}
+            dir={lang === "he" ? "rtl" : "ltr"}
+          >
+            {sources.map((src) => (
+              <div
+                key={src.id}
+                className="rounded-lg px-2.5 py-1.5 text-[11.5px] leading-snug flex flex-wrap items-center gap-x-2 gap-y-1"
+                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              >
+                {src.title ? (
+                  <>
+                    <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{src.title}</span>
+                    {src.type && (
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: "white", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                      >
+                        {src.type.replace(/_/g, " ")}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  // Slug fallback: no registry metadata for this id.
+                  <span>{t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

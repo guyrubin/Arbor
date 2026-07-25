@@ -185,6 +185,11 @@ export interface CoachContract {
   handoffNotes: { teacher: string; professional: string };
   /** Knowledge-card IDs used to ground this answer (populated by the server). */
   sourceCardsUsed?: string[];
+  /** COACH-6: resolved source-card metadata (real title + card type from the
+   *  server knowledge registry) for the citation drawer. Parallel to
+   *  sourceCardsUsed, which stays for compatibility; ids missing here fall
+   *  back to slug rendering. */
+  sourceCards?: { id: string; title: string; type: string }[];
 }
 
 export interface BehaviorLog {

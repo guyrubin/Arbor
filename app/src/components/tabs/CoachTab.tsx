@@ -74,6 +74,9 @@ export default function CoachTab() {
     setChatInput,
     handleChatSend,
     handleCouncilSend,
+    appendVoiceUserTurn,
+    appendVoiceAiDelta,
+    finalizeVoiceAiTurn,
     chatBottomRef,
     setActiveTab,
     setPlanChallengeTopic,
@@ -106,7 +109,11 @@ export default function CoachTab() {
   if (revealedRef.current === null) revealedRef.current = chatMessages.length - 1;
 
   const lastMessage = chatMessages[chatMessages.length - 1];
-  const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && chatMessages.length > 1;
+  // COACH-2: a live voice caption bubble streams its own text delta-by-delta —
+  // mark it revealed so the typewriter never re-animates it after it settles,
+  // and hold the follow-up chips until the spoken answer is done.
+  if (lastMessage?.sender === "ai" && lastMessage.voiceLive) revealedRef.current = chatMessages.length - 1;
+  const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && chatMessages.length > 1;
 
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
@@ -145,6 +152,9 @@ export default function CoachTab() {
     if (!next) {
       if (streamDoneRef.current) {
         streamDoneRef.current = false;
+        // COACH-2: the spoken answer is fully delivered — settle the live
+        // caption bubble into a normal persisted turn.
+        finalizeVoiceAiTurn();
         if (voiceOnRef.current) startListening(); else setVoicePhase("off");
       }
       return;
@@ -172,6 +182,9 @@ export default function CoachTab() {
       await streamVoice(
         { message: text, childProfile, scholarLens: selectedLens, language: getAiLanguage() },
         (delta) => {
+          // COACH-2: caption + persist the SAME screened text that is spoken —
+          // the delta accumulates into a live AI bubble in the thread.
+          appendVoiceAiDelta(delta);
           voiceBufRef.current += delta;
           const parts = voiceBufRef.current.split(/(?<=[.!?])\s+/);
           while (parts.length > 1) enqueueSpeak(parts.shift() as string);
@@ -184,6 +197,9 @@ export default function CoachTab() {
       streamDoneRef.current = true;
       pumpTts();
     } catch {
+      // COACH-2: keep the partial caption on abort/error — the parent keeps
+      // whatever was already said instead of the turn vanishing.
+      finalizeVoiceAiTurn();
       if (voiceOnRef.current) startListening(); else setVoicePhase("off");
     } finally {
       voiceAbortRef.current = null;
@@ -197,6 +213,9 @@ export default function CoachTab() {
       {
         onResult: (text) => {
           if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
+          // COACH-2: persist the dictated turn through the existing
+          // chat-message write seam before asking.
+          appendVoiceUserTurn(text);
           void streamVoiceTurn(text);
         },
         onError: () => { if (voiceOnRef.current) setVoicePhase("listening"); },
@@ -215,6 +234,8 @@ export default function CoachTab() {
     stopSpeaking();
     liveCtlRef.current?.stop();
     liveCtlRef.current = null;
+    // COACH-2: settle (and keep) any partial caption when the parent stops.
+    finalizeVoiceAiTurn();
     setVoicePhase("off");
   };
 
@@ -252,6 +273,12 @@ export default function CoachTab() {
   useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
 
   const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
+  // COACH-2: live caption text on the voicePhase chip while the answer streams
+  // in / is spoken (the same screened text that fills the thread bubble).
+  const liveVoiceText =
+    (voicePhase === "thinking" || voicePhase === "speaking") && lastMessage?.sender === "ai" && lastMessage.voiceLive
+      ? lastMessage.text
+      : "";
 
   return (
     <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
@@ -318,6 +345,11 @@ export default function CoachTab() {
                 : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
             >
               {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
+              {liveVoiceText && (
+                <span dir="auto" aria-live="polite" className="max-w-[180px] truncate text-[10px] font-medium" style={{ color: "var(--arbor-muted)" }}>
+                  {liveVoiceText}
+                </span>
+              )}
               {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
             </button>
             {/* EU AI Act Art. 50 — persistent AI-interaction transparency line.
@@ -561,7 +593,9 @@ export default function CoachTab() {
                   ) : (
                     <TypewriterMarkdown
                       text={msg.text}
-                      enabled={!reducedMotion && idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
+                      // COACH-2: a live voice caption streams its own deltas —
+                      // render instantly (the stream IS the typewriter).
+                      enabled={!reducedMotion && !msg.voiceLive && idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
                       onDone={() => {
                         revealedRef.current = idx;
                       }}
@@ -571,7 +605,7 @@ export default function CoachTab() {
                   <MarkdownBlock text={msg.text} />
                 )}
 
-                {msg.sender === "ai" && !msg.contract && (
+                {msg.sender === "ai" && !msg.contract && !msg.voiceLive && (
                   // Calm: answers read as text. Copy stays inline; everything else
                   // folds into a single "…" overflow so it's not a toolbar.
                   // Touch: always visible. Desktop: calm hover reveal. Keyboard: focus reveals.

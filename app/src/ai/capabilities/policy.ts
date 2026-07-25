@@ -1,3 +1,4 @@
+import type { ArborConfig } from "../../config/env.js";
 import { AiProviderError, type AiAudience, type AiCapability, type AiDataClass, type CapabilityRequest, type ProviderRef } from "./contracts.js";
 
 export interface ProviderCandidate {
@@ -18,6 +19,28 @@ export interface RoutePolicy {
 }
 
 export interface PolicyDecision { selected: ProviderCandidate; eligible: readonly ProviderCandidate[]; rejected: readonly { candidate: ProviderRef; reasons: readonly string[] }[]; }
+
+/** COACH-3: coarse data-residency region for a GCP location string
+ *  ("europe-west4" → "eu", "us-central1" → "us"). Unset/unknown → "global"
+ *  so a config that never declared a region is only admitted where the
+ *  policy explicitly allows "global" (never in prod). */
+export const providerRegion = (location?: string): string => {
+  const value = (location || "").toLowerCase();
+  if (value === "eu" || value.startsWith("europe")) return "eu";
+  if (value.startsWith("us") || value.startsWith("northamerica")) return "us";
+  if (!value || value === "global") return "global";
+  return "other";
+};
+
+/** COACH-3: the single RoutePolicy production request paths enforce.
+ *  Prod is EU-resident-only; non-prod additionally admits "global" (the
+ *  AI-Studio dev key has no regional endpoint). No-training and bounded
+ *  retention are required in EVERY environment. */
+export const routePolicyFor = (config: Pick<ArborConfig, "arborEnv">): RoutePolicy => ({
+  allowedRegions: config.arborEnv === "prod" ? ["eu"] : ["eu", "global"],
+  requireNoTraining: true,
+  maxRetentionDays: 30,
+});
 
 const rejectionReasons = (request: CapabilityRequest, policy: RoutePolicy, candidate: ProviderCandidate): string[] => {
   const reasons: string[] = [];
