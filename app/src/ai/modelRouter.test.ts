@@ -7,7 +7,7 @@ describe("model route decisions", () => {
   it("routes high-stakes coach calls to Claude on Vertex and other routes to Gemini on Vertex", () => {
     const config = createTestConfig();
     const expected: Record<ModelRoute, { provider: string; model: string }> = {
-      coach_high_stakes: { provider: "vertex_claude", model: "claude-3-5-sonnet@anthropic" },
+      coach_high_stakes: { provider: "vertex_claude", model: "claude-sonnet-5@anthropic" },
       creative_low_risk: { provider: "vertex_gemini", model: "gemini-2.5-flash" },
       analysis_structured: { provider: "vertex_gemini", model: "gemini-2.5-pro" },
       handoff_structured: { provider: "vertex_gemini", model: "gemini-2.5-flash" }
@@ -27,7 +27,14 @@ describe("model route decisions", () => {
   });
 
   it("normalizes the Claude shorthand to the Vertex Anthropic model id", () => {
+    // Legacy pin keeps resolving envs that still carry the 2024 shorthand.
     expect(toAnthropicVertexModelId("claude-3-5-sonnet@anthropic")).toBe("claude-3-5-sonnet-v2@20241022");
+  });
+
+  // AIR-4: alias→resolved-id assertion for the current coach model — the id
+  // pinned in evals/pinned-models.json must match what the provider calls.
+  it("resolves the current Claude Sonnet alias to the bare Vertex publisher id", () => {
+    expect(toAnthropicVertexModelId("claude-sonnet-5@anthropic")).toBe("claude-sonnet-5");
   });
 
   // COACH-3: every route decision now executes selectProvider — provider
@@ -46,7 +53,7 @@ describe("model route decisions", () => {
   });
 
   it("keeps the EU Vertex config and the local gemini_dev config eligible (behavior unchanged)", () => {
-    expect(modelForRoute(createTestConfig(), "coach_high_stakes")).toBe("claude-3-5-sonnet@anthropic");
+    expect(modelForRoute(createTestConfig(), "coach_high_stakes")).toBe("claude-sonnet-5@anthropic");
     expect(modelForRoute(createTestConfig({ modelProvider: "gemini_dev" }), "coach_high_stakes")).toBe("gemini-2.5-flash");
   });
 
@@ -57,7 +64,7 @@ describe("model route decisions", () => {
 
   it("uses a Gemini model for image requests even when the route normally maps to Claude", () => {
     const config = createTestConfig({
-      vertexModelChat: "claude-3-5-sonnet@anthropic",
+      vertexModelChat: "claude-sonnet-5@anthropic",
       vertexModelAnalysis: "gemini-2.5-pro",
     });
 
@@ -82,7 +89,7 @@ describe("per-route Gemini thinking budget (AIR-3)", () => {
   it("never sends a zero budget to models that reject it (2.5 Pro min 128; non-2.5 models reject the field)", () => {
     expect(thinkingConfigForRoute("analysis_structured", "gemini-2.5-pro")).toBeUndefined();
     expect(thinkingConfigForRoute("analysis_structured", "gemini-2.0-flash")).toBeUndefined();
-    expect(thinkingConfigForRoute("analysis_structured", "claude-3-5-sonnet@anthropic")).toBeUndefined();
+    expect(thinkingConfigForRoute("analysis_structured", "claude-sonnet-5@anthropic")).toBeUndefined();
     expect(thinkingConfigForRoute("analysis_structured", "gemini-2.5-flash-image")).toBeUndefined();
   });
 });

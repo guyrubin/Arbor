@@ -128,7 +128,12 @@ export const loadConfig = (): ArborConfig => {
     gcpProjectId: process.env.GCP_PROJECT_ID,
     gcpRegion: process.env.GCP_REGION || "europe-west4",
     vertexLocation: process.env.VERTEX_LOCATION || process.env.GCP_REGION || "europe-west4",
-    vertexModelChat: process.env.VERTEX_MODEL_CHAT || "claude-3-5-sonnet@anthropic",
+    // AIR-4: default coach model is the current Claude Sonnet generation on
+    // Vertex (resolved to the bare publisher id `claude-sonnet-5`). The PROD
+    // env-var flip + quality sign-off remain Guy's gate (GG-3): coach-core-v1 +
+    // eval:safety + the hard-moment suite must re-run green against the new
+    // resolved id, and evals/pinned-models.json is refreshed in the same PR.
+    vertexModelChat: process.env.VERTEX_MODEL_CHAT || "claude-sonnet-5@anthropic",
     vertexModelStory: process.env.VERTEX_MODEL_STORY || "gemini-2.5-flash",
     vertexModelAnalysis: process.env.VERTEX_MODEL_ANALYSIS || "gemini-2.5-flash",
     vertexModelHandoff: process.env.VERTEX_MODEL_HANDOFF || "gemini-2.5-flash",

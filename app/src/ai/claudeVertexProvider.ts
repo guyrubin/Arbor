@@ -16,9 +16,21 @@ const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
 };
 
 const toAnthropicVertexModelId = (model: string) => {
+  // Legacy pin: envs still carrying the 2024 shorthand keep resolving to the
+  // dated v2 snapshot. Current-generation Claude models on Vertex use the bare
+  // first-party id (e.g. claude-sonnet-5@anthropic -> claude-sonnet-5).
   if (model === "claude-3-5-sonnet@anthropic") return "claude-3-5-sonnet-v2@20241022";
   return model.replace(/@anthropic$/, "");
 };
+
+/**
+ * AIR-4: Claude Sonnet 5 / Opus 4.7+ / Fable 5 reject non-default sampling
+ * parameters (`temperature`/`top_p`/`top_k` return HTTP 400). Older Claude
+ * models still accept them. Checked against the RESOLVED Vertex model id so a
+ * pinned dated snapshot of a new-generation model is matched too.
+ */
+export const claudeRejectsSamplingParams = (resolvedModel: string): boolean =>
+  /^claude-(sonnet-5|opus-4-[7-9]|fable|mythos)/i.test(resolvedModel);
 
 const toJsonSchema = (schema: any): any => {
   if (!schema || typeof schema !== "object") return schema;
@@ -128,7 +140,9 @@ export class ClaudeVertexProvider {
     const body = {
       anthropic_version: "vertex-2023-10-16",
       max_tokens: this.config.maxOutputTokens,
-      temperature: options.temperature ?? 0.45,
+      // AIR-4: new-generation Claude models 400 on any sampling parameter —
+      // omit temperature entirely for them (prompting steers behavior instead).
+      ...(claudeRejectsSamplingParams(model) ? {} : { temperature: options.temperature ?? 0.45 }),
       system: "You are Arbor. Return structured data by calling the provided tool. Do not include markdown prose.",
       messages: [{ role: "user", content: options.prompt }],
       tools: schema ? [{

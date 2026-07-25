@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ArborConfig } from "../config/env.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 import { AiProviderError } from "../ai/capabilities/contracts.js";
-import { NotConfiguredError, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, UnsafeTtsOutputError } from "./tts.js";
+import { CapabilityRegistry } from "../ai/capabilities/registry.js";
+import { createTtsCapabilityAdapter, dispatchSpeechSynthesis, NotConfiguredError, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, UnsafeTtsOutputError } from "./tts.js";
 
 // Stub ADC so no real credentials/network are needed.
 vi.mock("google-auth-library", () => ({
@@ -128,5 +129,70 @@ describe("synthesizeSpeech", () => {
     );
     expect(result.mimeType).toBe("audio/mpeg");
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+});
+
+// AIR-8: the CapabilityRegistry is the live TTS dispatch seam — resolution goes
+// registry.get("speech_synthesis", provider).execute, fails closed on a missing
+// adapter, and the adapter itself re-runs the lexical floor (no unscreened
+// synthesis is reachable through the registry).
+describe("dispatchSpeechSynthesis (registry dispatch seam)", () => {
+  const registryFor = (config: ArborConfig) => {
+    const registry = new CapabilityRegistry();
+    registry.register(createTtsCapabilityAdapter(config));
+    return registry;
+  };
+
+  it("resolves synthesis through the registered adapter (production wiring)", async () => {
+    const config = cfg();
+    const result = await dispatchSpeechSynthesis(registryFor(config), config, { text: "hi there", lang: "en" });
+    expect(result).toEqual({ audio: "QkFTRTY0QVVESU8=", mimeType: "audio/mpeg" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("fails CLOSED with AiProviderError not_configured when the adapter is missing", async () => {
+    const empty = new CapabilityRegistry();
+    const attempt = dispatchSpeechSynthesis(empty, cfg(), { text: "hi", lang: "en" });
+    await expect(attempt).rejects.toBeInstanceOf(AiProviderError);
+    await dispatchSpeechSynthesis(empty, cfg(), { text: "hi", lang: "en" }).catch((error) => {
+      expect((error as AiProviderError).code).toBe("not_configured");
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("throws NotConfiguredError before any lookup when TTS is off/killed", async () => {
+    await expect(
+      dispatchSpeechSynthesis(new CapabilityRegistry(), cfg({ ttsProvider: "none" }), { text: "hi", lang: "en" }),
+    ).rejects.toBeInstanceOf(NotConfiguredError);
+  });
+
+  it("adapter.execute blocks lexically-unsafe text before any provider call (no unscreened synthesis via registry)", async () => {
+    const config = cfg();
+    const attempt = dispatchSpeechSynthesis(registryFor(config), config, {
+      text: "Your child has autism and needs treatment.",
+      lang: "en",
+    });
+    await expect(attempt).rejects.toBeInstanceOf(UnsafeTtsOutputError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("screenAndSynthesizeSpeech dispatches through the registry when one is supplied", async () => {
+    const config = cfg();
+    const registry = registryFor(config);
+    const adapter = registry.get("speech_synthesis", "google");
+    const executeSpy = vi.spyOn(adapter, "execute");
+    const result = await screenAndSynthesizeSpeech(config, {} as ModelProvider, { text: "You are doing great.", lang: "en" }, registry);
+    expect(result.mimeType).toBe("audio/mpeg");
+    expect(executeSpy).toHaveBeenCalledOnce();
+  });
+
+  it("adapter still enforces the region policy fail-closed (policy_denied through the registry path)", async () => {
+    const config = cfg({ vertexLocation: "us-central1" });
+    const attempt = dispatchSpeechSynthesis(registryFor(config), config, { text: "hi", lang: "en" });
+    await expect(attempt).rejects.toBeInstanceOf(AiProviderError);
+    await dispatchSpeechSynthesis(registryFor(config), config, { text: "hi", lang: "en" }).catch((error) => {
+      expect((error as AiProviderError).code).toBe("policy_denied");
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

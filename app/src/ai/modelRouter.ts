@@ -231,6 +231,9 @@ export const routeDecisionFor = (config: ArborConfig, route: ModelRoute): RouteD
 };
 
 export const toAnthropicVertexModelId = (model: string) => {
+  // Legacy pin: the 2024 shorthand keeps resolving to the dated v2 snapshot.
+  // Current-generation Claude models on Vertex use the bare first-party id
+  // (e.g. claude-sonnet-5@anthropic -> claude-sonnet-5).
   if (model === "claude-3-5-sonnet@anthropic") return "claude-3-5-sonnet-v2@20241022";
   return model.replace(/@anthropic$/, "");
 };

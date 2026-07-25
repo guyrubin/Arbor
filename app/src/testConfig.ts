@@ -9,7 +9,7 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   gcpProjectId: "arbor-test",
   gcpRegion: "europe-west4",
   vertexLocation: "europe-west4",
-  vertexModelChat: "claude-3-5-sonnet@anthropic",
+  vertexModelChat: "claude-sonnet-5@anthropic",
   vertexModelStory: "gemini-2.5-flash",
   vertexModelAnalysis: "gemini-2.5-pro",
   vertexModelHandoff: "gemini-2.5-flash",

@@ -10,7 +10,7 @@ Production Arbor uses Vertex AI through the Arbor model router. `coach_high_stak
 
 | Arbor endpoint | Route | Default target |
 |---|---|---|
-| `/api/chat` | `coach_high_stakes` | `VERTEX_MODEL_CHAT`, default `claude-3-5-sonnet@anthropic` via `ClaudeVertexProvider` |
+| `/api/chat` | `coach_high_stakes` | `VERTEX_MODEL_CHAT`, default `claude-sonnet-5@anthropic` via `ClaudeVertexProvider` |
 | `/api/generate-story` | `creative_low_risk` | `VERTEX_MODEL_STORY`, default Gemini Flash |
 | `/api/analyze-behavior` | `analysis_structured` | `VERTEX_MODEL_ANALYSIS`, default Gemini |
 | `/api/generate-handoff` | `handoff_structured` | `VERTEX_MODEL_HANDOFF`, default Gemini |

@@ -7,7 +7,7 @@ import { createModelProvider, type GenerateJsonOptions, type ModelProvider } fro
 import { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { providerRegion } from "../ai/capabilities/policy.js";
 import type { CapabilityAdapter } from "../ai/capabilities/contracts.js";
-import { synthesizeSpeech, type TtsInput, type TtsResult } from "./tts.js";
+import { createTtsCapabilityAdapter } from "./tts.js";
 import { LocalMemoryStore } from "../memory/localMemoryStore.js";
 import { FirestoreMemoryStore } from "../memory/firestoreMemoryStore.js";
 import { LocalShareStore, FirestoreShareStore } from "../sharing/shares.js";
@@ -61,23 +61,23 @@ const cspDirectives = () => ({
 });
 
 /**
- * COACH-3: the CapabilityRegistry the app boots with — the AR-AI-02 adapter
- * surface, no longer dead scaffolding. Registers the providers the current
- * config actually runs (google Cloud TTS for speech_synthesis; the Gemini and
- * Claude structured-text adapters over the existing ModelProvider). Exact-match
- * only: policy (selectProvider, executed inside modelForRoute/synthesizeSpeech)
- * chooses an eligible provider first, and no implicit fallback can weaken it.
+ * COACH-3 + AIR-8: the CapabilityRegistry the app boots with. Since AIR-8 the
+ * registry has a REAL request-time consumer: /api/tts resolves synthesis
+ * through `registry.get("speech_synthesis", ...)` (server/tts.ts
+ * dispatchSpeechSynthesis), so this is the live TTS dispatch seam — not
+ * boot-only scaffolding. The structured-text adapters remain a declared
+ * surface (routes call the ModelProvider directly; the policy layer inside
+ * modelForRoute is what is live there). Exact-match only: policy
+ * (selectProvider) chooses an eligible provider first, and no implicit
+ * fallback can weaken it; a missing adapter fails closed (not_configured).
+ * The TTS adapter itself runs the unconditional lexical safety floor, so the
+ * registry never exposes unscreened synthesis to any caller.
  */
 export const buildCapabilityRegistry = (config: ArborConfig, modelProvider: ModelProvider): CapabilityRegistry => {
   const registry = new CapabilityRegistry();
   const region = providerRegion(config.vertexLocation);
 
-  const ttsAdapter: CapabilityAdapter<"speech_synthesis", TtsInput, TtsResult> = {
-    capability: "speech_synthesis",
-    provider: { provider: "google", model: "cloud-tts-v1", region },
-    execute: (input) => synthesizeSpeech(config, input),
-  };
-  registry.register(ttsAdapter);
+  registry.register(createTtsCapabilityAdapter(config));
 
   const structuredText = (provider: string, model: string): CapabilityAdapter<"structured_text", GenerateJsonOptions, unknown> => ({
     capability: "structured_text",
@@ -102,10 +102,11 @@ export const createApp = (config: ArborConfig) => {
   app.set("trust proxy", 1);
   const framework = loadFramework();
   const modelProvider = createModelProvider(config);
-  // COACH-3: register the config's real AI adapters at boot (duplicate or
-  // malformed registrations throw here, not mid-request) and expose the
-  // registry app-wide for capability callers.
-  app.set("aiCapabilityRegistry", buildCapabilityRegistry(config, modelProvider));
+  // COACH-3 + AIR-8: register the config's real AI adapters at boot (duplicate
+  // or malformed registrations throw here, not mid-request). The registry is
+  // handed to the API router — /api/tts dispatches synthesis through it.
+  const aiCapabilityRegistry = buildCapabilityRegistry(config, modelProvider);
+  app.set("aiCapabilityRegistry", aiCapabilityRegistry);
   const memoryStore = config.memoryAdapter === "firestore"
     ? new FirestoreMemoryStore(config)
     : new LocalMemoryStore();
@@ -243,7 +244,7 @@ export const createApp = (config: ArborConfig) => {
   app.use(["/api/chat", "/api/council"], createCoachGate(counters, entitlementStore));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, aiCapabilityRegistry }));
 
   return app;
 };

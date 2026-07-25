@@ -30,7 +30,9 @@ import { buildConsultRequest, type ConsultStore } from "../server/consultRequest
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
-import { screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
+import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
+import { AiProviderError } from "../ai/capabilities/contracts.js";
+import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { isAdmin } from "../server/admin.js";
@@ -58,6 +60,10 @@ type ApiDeps = {
   /** CARE-2: read seam for the recipient shared view (injectable for tests);
    *  defaults to the Firestore/local source derived from config. */
   sharedChildSource?: SharedChildRecordSource;
+  /** AIR-8: the boot-time CapabilityRegistry. When present (production wiring
+   *  via createApp), /api/tts resolves synthesis through
+   *  registry.get("speech_synthesis", ...) — the live dispatch seam. */
+  aiCapabilityRegistry?: CapabilityRegistry;
 };
 
 /** Redact PII from a profile object by round-tripping its JSON through the redactor. */
@@ -179,7 +185,7 @@ const voiceSafetyFallback = (language: unknown) =>
 /** Spoken when the model produced an empty reply on /voice (pre-cadence literal, unchanged). */
 const VOICE_EMPTY_REPLY_FALLBACK = "Let's take this one step at a time — tell me a little more about what's happening.";
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, aiCapabilityRegistry }: ApiDeps) => {
   const router = express.Router();
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
@@ -1491,9 +1497,16 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
       // ONLY the model re-screen. Absent / invalid / expired / text-altered →
       // the FULL screen runs (fail closed) — 'already-screened' provenance is
       // proven cryptographically, never client-asserted.
+      // AIR-8: with the boot registry present (production wiring), synthesis
+      // resolves through registry.get("speech_synthesis", ...).execute — the
+      // registry is the dispatch seam, and its adapter re-runs the lexical
+      // floor, so no branch reaches unscreened synthesis.
+      const ttsInput = { text: clipped, lang } as const;
       const result = verifyTtsToken(screenedToken, clipped, lang)
-        ? await synthesizeSpeech(config, { text: clipped, lang })
-        : await screenAndSynthesizeSpeech(config, modelProvider, { text: clipped, lang });
+        ? await (aiCapabilityRegistry
+            ? dispatchSpeechSynthesis(aiCapabilityRegistry, config, ttsInput)
+            : synthesizeSpeech(config, ttsInput))
+        : await screenAndSynthesizeSpeech(config, modelProvider, ttsInput, aiCapabilityRegistry);
       res.json(result);
     } catch (error: any) {
       if (error instanceof UnsafeTtsOutputError) {
@@ -1502,6 +1515,14 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
         return;
       }
       if (error instanceof TtsNotConfigured) {
+        res.status(503).json({ configured: false });
+        return;
+      }
+      // AIR-8: a registry missing the speech_synthesis adapter fails CLOSED —
+      // visible degrade to the browser SpeechSynthesis floor, never a silent
+      // fallback to a direct provider call.
+      if (error instanceof AiProviderError && error.code === "not_configured") {
+        logger.warn("Arbor TTS registry not_configured (fail closed)", { requestId: requestIdOf(req) });
         res.status(503).json({ configured: false });
         return;
       }

@@ -6,7 +6,7 @@
  * — one chunk at the very end, TTFT = full generation time.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
+import { ClaudeVertexProvider, claudeRejectsSamplingParams } from "./claudeVertexProvider.js";
 import { createTestConfig } from "../testConfig.js";
 import { Type } from "@google/genai";
 
@@ -87,10 +87,15 @@ describe("ClaudeVertexProvider.generateJsonStream (streamRawPredict)", () => {
 
     expect(fetchCalls).toHaveLength(1);
     expect(fetchCalls[0].url).toContain(":streamRawPredict");
+    // AIR-4: routeDecision/model assertion — the coach route calls the current
+    // Claude Sonnet's bare Vertex publisher id (alias resolved from testConfig).
+    expect(fetchCalls[0].url).toContain("/publishers/anthropic/models/claude-sonnet-5:streamRawPredict");
     const body = JSON.parse(String(fetchCalls[0].init.body));
     expect(body.stream).toBe(true);
     expect(body.anthropic_version).toBe("vertex-2023-10-16");
     expect(body.tool_choice).toEqual({ type: "tool", name: "arbor_coach_response" });
+    // AIR-4: Sonnet 5 rejects non-default sampling params — temperature omitted.
+    expect(body.temperature).toBeUndefined();
   });
 
   it("yields text_delta chunks when no schema/tool is supplied", async () => {
@@ -107,6 +112,30 @@ describe("ClaudeVertexProvider.generateJsonStream (streamRawPredict)", () => {
     const chunks: string[] = [];
     for await (const c of provider.generateJsonStream({ route: "coach_high_stakes", prompt: "hi" })) chunks.push(c);
     expect(chunks).toEqual(["Hello ", "there."]);
+  });
+
+  // AIR-4: the sampling gate — new-generation Claude models 400 on any
+  // temperature/top_p/top_k; legacy pins keep the tuned 0.45 default.
+  it("omits temperature for new-generation models and keeps it for legacy pins", async () => {
+    expect(claudeRejectsSamplingParams("claude-sonnet-5")).toBe(true);
+    expect(claudeRejectsSamplingParams("claude-opus-4-8")).toBe(true);
+    expect(claudeRejectsSamplingParams("claude-fable-5")).toBe(true);
+    expect(claudeRejectsSamplingParams("claude-3-5-sonnet-v2@20241022")).toBe(false);
+    expect(claudeRejectsSamplingParams("claude-sonnet-4-5@20250929")).toBe(false);
+
+    globalThis.fetch = (async (url: any, init: any) => {
+      fetchCalls.push({ url: String(url), init });
+      return streamResponse(sseBody(anthropicEvents()));
+    }) as typeof fetch;
+
+    const provider = new ClaudeVertexProvider(createTestConfig({ vertexModelChat: "claude-3-5-sonnet@anthropic" }));
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _chunk of provider.generateJsonStream({ route: "coach_high_stakes", prompt: "hi" })) {
+      /* drain */
+    }
+    const body = JSON.parse(String(fetchCalls[0].init.body));
+    expect(fetchCalls[0].url).toContain("/models/claude-3-5-sonnet-v2@20241022:streamRawPredict");
+    expect(body.temperature).toBe(0.45);
   });
 
   it("surfaces the HTTP status on connection errors so withModelRetry can back off", async () => {
