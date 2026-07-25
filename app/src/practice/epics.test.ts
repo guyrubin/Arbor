@@ -134,15 +134,35 @@ describe("journey composer", () => {
 
 describe("achievements + adaptive difficulty", () => {
   it("badges are effort-based and start unearned", () => {
-    const none = computeAchievements({ speech: [], mimic: [], missions: [], adventures: [], events: [], stats: [], streak: 0, heroRuns: 0 });
+    const none = computeAchievements({ speech: [], mimic: [], missions: [], adventures: [], events: [], stats: [], daysPracticed: 0, heroRuns: 0 });
     expect(none.every((a) => !a.earned)).toBe(true);
     const some = computeAchievements({
       speech: [{ id: "s", sound: "s", level: "word", target: "sun", result: "got", method: "parent", timestamp: new Date().toISOString() } as SpeechAttempt],
-      mimic: [], missions: [], adventures: [], events: [], stats: [], streak: 3, heroRuns: 1,
+      mimic: [], missions: [], adventures: [], events: [], stats: [], daysPracticed: 3, heroRuns: 1,
     });
     expect(some.find((a) => a.id === "first-step")!.earned).toBe(true);
-    expect(some.find((a) => a.id === "streak-3")!.earned).toBe(true);
+    expect(some.find((a) => a.id === "days-3")!.earned).toBe(true);
     expect(some.find((a) => a.id === "story-hero")!.earned).toBe(true);
+  });
+
+  // KID-6: the no-pressure doctrine, locked in tests. Day-count badges key off
+  // MONOTONIC daysPracticed (distinct practice days — only ever grows), never a
+  // resettable consecutive-day streak, and no badge copy is loss-framed.
+  it("day-count badges are monotonic — 3 spread-out days earn them, and copy has no streak language", () => {
+    const base = { speech: [], mimic: [], missions: [], adventures: [], events: [], stats: [], heroRuns: 0 };
+    // 3 distinct NON-consecutive practice days would reset any streak to 1;
+    // daysPracticed still counts 3, so the badge is earned.
+    const spread = computeAchievements({ ...base, daysPracticed: 3 });
+    expect(spread.find((a) => a.id === "days-3")!.earned).toBe(true);
+    expect(spread.find((a) => a.id === "days-7")!.earned).toBe(false);
+    const seven = computeAchievements({ ...base, daysPracticed: 7 });
+    expect(seven.find((a) => a.id === "days-7")!.earned).toBe(true);
+    // No badge may carry loss-framed streak copy ("streak", "in a row",
+    // "straight days") — the old streak-3/streak-7 badges must never return.
+    for (const a of seven) {
+      expect(`${a.id} ${a.title} ${a.detail}`).not.toMatch(/streak|in a row|straight day/i);
+    }
+    expect(seven.some((a) => a.id === "streak-3" || a.id === "streak-7")).toBe(false);
   });
 
   it("memory grid grows with sustained success and eases back", () => {

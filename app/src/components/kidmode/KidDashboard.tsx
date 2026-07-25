@@ -1,9 +1,10 @@
 /**
  * KidDashboard — the personalized Kid Mode home (viral redesign P0 shell + P1
  * avatar-in-scene art, see docs/KID-MODE-VIRAL-REDESIGN-PLAN.md). Renders the
- * greeting header, the Today's-adventure banner, the four growth-adventure tiles
+ * greeting header, the Today's-adventure banner, the growth-adventure tiles
  * and the games grid. Every tile is a navigation entry that opens an EXISTING
- * surface unchanged — re-shell, never rewrite.
+ * surface unchanged — re-shell, never rewrite. KID-4: every game tile is named
+ * after the real HeroArcade world it opens and pre-selects that world.
  *
  * Avatar-everywhere (P1): each tile + the banner use <WorldScene> — the same
  * production component HeroArcade ships — to generate a themed scene STARRING the
@@ -29,7 +30,7 @@
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Gamepad2, HeartPulse, Palette, Sparkles, Star, ChevronRight, ShieldCheck } from "lucide-react";
+import { BookOpen, Brain, Gamepad2, Heart, HeartPulse, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight, ShieldCheck } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useHeroAvatar, HeroAvatar } from "../ui/HeroAvatar";
@@ -39,13 +40,14 @@ import { HoldExitButton } from "./HoldExitButton";
 
 export type KidSurface = "journeys" | "arcade" | "feelings";
 
-type Accent = "green" | "clay" | "lav" | "peach" | "sky";
+type Accent = "green" | "clay" | "lav" | "peach" | "sky" | "pink";
 const ACCENT_BG: Record<Accent, string> = {
   green: "var(--arbor-green-soft)",
   clay: "var(--arbor-clay-soft)",
   lav: "var(--arbor-lav-soft)",
   peach: "var(--arbor-peach-soft)",
   sky: "var(--arbor-sky-soft)",
+  pink: "var(--arbor-pink-soft)",
 };
 const ACCENT_INK: Record<Accent, string> = {
   green: "var(--arbor-green-ink)",
@@ -55,12 +57,15 @@ const ACCENT_INK: Record<Accent, string> = {
   lav: "var(--arbor-lav-ink)",
   peach: "var(--arbor-peach-ink)",
   sky: "var(--arbor-sky-ink)",
+  pink: "var(--arbor-pink-ink)",
 };
 
 // `art` = the pre-made comic-hero card image (the existing image repository in
 // public/visuals/cards). It is the DEFAULT tile art shown when the child has no
-// custom avatar yet — so the grid is rich comic art out of the box, never bare
-// icons. A custom avatar then personalizes each tile via WorldScene generation.
+// custom avatar yet — so the grid is rich comic art out of the box. A custom
+// avatar then personalizes each tile via WorldScene generation. KID-7: art files
+// are UNIQUE per visible tile — a tile with no distinct asset omits `art` and
+// shows its accent icon fallback instead of a wrong recycled image.
 // KID-1: tile copy lives in lib/i18n.ts under `kid.adv.<id>.*` / `kid.game.<id>.*`
 // — the defs here carry only ids, art and routing. kidMode.test.ts asserts every
 // id below has its title/sub key pair in BOTH language maps.
@@ -69,33 +74,46 @@ interface AdventureDef {
   worldId: string;
   accent: Accent;
   imagePrompt: string;
-  art: string;
+  art?: string;
   Icon: React.ComponentType<{ className?: string }>;
   surface: KidSurface;
 }
 
-// The four growth adventures. `surface` routes into an existing tab. Studio maps
-// to the arcade for now; the exact games↔worlds mapping is a confirmed-with-Guy
-// decision (plan §9.5) before per-game deep-links land.
+// The growth adventures. `surface` routes into an existing tab. KID-4: the old
+// "Studio" tile was dropped — it had no live counterpart of its own (Mimic
+// Studio is a named game tile below; a distinct creative studio stays gated on
+// the games↔worlds decision, plan §9.5).
 const ADVENTURES: AdventureDef[] = [
-  { id: "playbank", worldId: "kid-playbank", accent: "green", Icon: Gamepad2, surface: "arcade", art: "/visuals/cards/sm/game-adventures.webp", imagePrompt: "a joyful playroom full of colorful building blocks, learning toys and a friendly little dinosaur" },
-  { id: "hero", worldId: "kid-hero", accent: "clay", Icon: BookOpen, surface: "journeys", art: "/visuals/cards/sm/game-courage-steps.webp", imagePrompt: "an epic storybook castle on a hill with a glowing open magic book and a brave flowing cape" },
+  { id: "playbank", worldId: "kid-playbank", accent: "green", Icon: Gamepad2, surface: "arcade", art: "/visuals/cards/sm/game-order-builder.webp", imagePrompt: "a joyful playroom full of colorful building blocks, learning toys and a friendly little dinosaur" },
+  { id: "hero", worldId: "kid-hero", accent: "clay", Icon: BookOpen, surface: "journeys", art: "/visuals/cards/sm/game-adventures.webp", imagePrompt: "an epic storybook castle on a hill with a glowing open magic book and a brave flowing cape" },
   { id: "feelings", worldId: "kid-feelings", accent: "lav", Icon: HeartPulse, surface: "feelings", art: "/visuals/cards/sm/game-feelings.webp", imagePrompt: "a gentle dreamy landscape of friendly emotion characters under a warm glowing sky" },
-  { id: "studio", worldId: "kid-studio", accent: "peach", Icon: Palette, surface: "arcade", art: "/visuals/cards/sm/game-mimic.webp", imagePrompt: "a bright art studio with paints, a tall easel and a colorful rocket-ship drawing" },
 ];
 
-// Games grid. In the shell every game opens the arcade; per-game deep-links land
-// once the games↔worlds mapping is confirmed. No level badges yet (P3).
-interface GameDef { id: string; worldId: string; accent: Accent; imagePrompt: string; art: string }
+// Games grid — KID-4 honest navigation. Every tile is named EXACTLY after the
+// live HeroArcade world it opens (`worldId` = the arcade world id) and reuses
+// that world's color + scene prompt, so tile and destination are visually the
+// same object. The tile passes its worldId through onOpenSurface so the arcade
+// opens with the world pre-selected — honoring the existing mapping only; the
+// per-game deep-link redesign stays a Guy-gated decision (plan §9.5).
+interface GameDef {
+  id: string;
+  /** The HeroArcade world this tile opens — also the WorldScene cache key, so a
+   *  generated tile scene is the SAME scene the arcade card shows. */
+  worldId: string;
+  accent: Accent;
+  Icon: React.ComponentType<{ className?: string }>;
+  imagePrompt: string;
+  art?: string;
+}
 const GAMES: GameDef[] = [
-  { id: "memory-match", worldId: "kid-memory", accent: "sky", art: "/visuals/cards/sm/game-memory.webp", imagePrompt: "a table of glowing colorful matching picture cards" },
-  { id: "feelings-detective", worldId: "kid-detective", accent: "green", art: "/visuals/cards/sm/game-feelings.webp", imagePrompt: "a playful detective scene spotting cheerful emoji feelings with a big magnifying glass" },
-  { id: "mimic-studio", worldId: "kid-mimic", accent: "lav", art: "/visuals/cards/sm/game-mimic.webp", imagePrompt: "a fun mirror studio copying silly happy poses, sparkles all around" },
-  { id: "sound-explorer", worldId: "kid-sound", accent: "peach", art: "/visuals/cards/sm/game-speech.webp", imagePrompt: "a bright sound studio with big headphones and floating musical notes" },
-  { id: "sequence-quest", worldId: "kid-sequence", accent: "clay", art: "/visuals/cards/sm/game-pattern.webp", imagePrompt: "glowing stars, moons and shapes arranged in a magical sequence" },
-  { id: "calm-builder", worldId: "kid-calm", accent: "sky", art: "/visuals/cards/sm/game-feelings.webp", imagePrompt: "a cozy blanket-fort calm corner glowing with warm fairy lights" },
-  { id: "rhythm-hero", worldId: "kid-rhythm", accent: "lav", art: "/visuals/cards/sm/game-beat.webp", imagePrompt: "a colorful music stage with drums and bouncing musical notes" },
-  { id: "puzzle-planet", worldId: "kid-puzzle", accent: "green", art: "/visuals/cards/sm/game-order-builder.webp", imagePrompt: "a friendly planet made of colorful glowing jigsaw pieces in space" },
+  { id: "sound-lab", worldId: "speech", accent: "sky", Icon: Mic, art: "/visuals/cards/sm/game-speech.webp", imagePrompt: "a bright sound-and-music studio with a big microphone, floating letters and musical notes" },
+  { id: "mood-mountain", worldId: "feelings", accent: "lav", Icon: Heart, imagePrompt: "a friendly mountain landscape with cheerful emotion characters (happy, sad, calm) and a warm sky" },
+  { id: "mind-vault", worldId: "memory", accent: "pink", Icon: Brain, art: "/visuals/cards/sm/game-memory.webp", imagePrompt: "opening a glowing memory vault full of colorful matching cards" },
+  { id: "beat-keeper", worldId: "beat", accent: "clay", Icon: Music, art: "/visuals/cards/sm/game-beat.webp", imagePrompt: "a colorful music stage with drums, rhythm bars and bouncing musical notes" },
+  { id: "hero-pose", worldId: "pose", accent: "sky", Icon: PersonStanding, imagePrompt: "a dynamic superhero action pose with bold motion lines" },
+  { id: "pattern-power", worldId: "pattern", accent: "lav", Icon: Shapes, imagePrompt: "a puzzle world of glowing shapes arranged in patterns" },
+  { id: "story-quest", worldId: "adventures", accent: "peach", Icon: Map, imagePrompt: "an adventurous storybook landscape, holding a treasure map with a compass on a cliff" },
+  { id: "mimic-studio", worldId: "mimic", accent: "clay", Icon: Smile, art: "/visuals/cards/sm/game-mimic.webp", imagePrompt: "a playful mirror studio copying silly happy poses, sparkles all around" },
 ];
 
 /** A calm, one-shot count-up of an already-earned number. Reveals on mount only —
@@ -170,7 +188,9 @@ function SceneTile({
   title: string;
   sub: string;
   imagePrompt: string;
-  art: string;
+  /** KID-7: omitted when no distinct asset exists — the accent icon fallback
+   *  renders instead of a recycled image from another tile. */
+  art?: string;
   heroUrl?: string;
   onClick: () => void;
   big?: boolean;
@@ -201,7 +221,7 @@ function SceneTile({
           <span aria-hidden="true" className="absolute inset-0 grid place-items-center" style={{ color: ACCENT_INK[accent], opacity: 0.9 }}>
             <Icon className={big ? "w-10 h-10" : "w-8 h-8"} />
           </span>
-          <img src={art} alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+          {art && <img src={art} alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />}
         </span>
       </WorldScene>
       {/* Legibility scrim — dark at the bottom so white text reads over art OR icon. */}
@@ -228,7 +248,9 @@ export default function KidDashboard({
   onOpenSurface,
   onExit,
 }: {
-  onOpenSurface: (s: KidSurface) => void;
+  /** KID-4: game tiles pass the HeroArcade worldId so the arcade opens with
+   *  that world pre-selected — the tile's name appears verbatim on arrival. */
+  onOpenSurface: (s: KidSurface, arcadeWorldId?: string) => void;
   onExit: () => void;
 }) {
   const { childProfile } = useArbor();
@@ -307,12 +329,14 @@ export default function KidDashboard({
           minBlockSize: "190px",
         }}
       >
-        <WorldScene worldId="kid-quest" imagePrompt="building a glowing blanket-fort calm corner with warm fairy lights, cozy and magical" heroUrl={hero.url ?? undefined}>
+        {/* KID-7: banner copy ("Start a hero story") + prompt + art depict the
+            SAME scene — an epic storybook hero moment, never a recycled tile. */}
+        <WorldScene worldId="kid-quest" imagePrompt="an epic storybook hero scene — a castle on a hill, a glowing open magic book and a brave cape mid-adventure" heroUrl={hero.url ?? undefined}>
           <span className="relative block w-full h-full">
             <span aria-hidden="true" className="absolute inset-0 grid place-items-center" style={{ color: "var(--arbor-sky-ink)", opacity: 0.9 }}>
               <Sparkles className="w-10 h-10" />
             </span>
-            <img src="/visuals/cards/sm/game-feelings.webp" alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+            <img src="/visuals/cards/sm/game-courage-steps.webp" alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
           </span>
         </WorldScene>
         <span
@@ -363,7 +387,7 @@ export default function KidDashboard({
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px" }}>
           {GAMES.map((g, i) => (
-            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={Gamepad2} title={t(`kid.game.${g.id}.title`)} sub={t(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} art={g.art} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade")} />
+            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={t(`kid.game.${g.id}.title`)} sub={t(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} art={g.art} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
         </div>
       </section>

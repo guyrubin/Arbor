@@ -55,10 +55,11 @@ export default function JourneyTab() {
       adventures: data.adventures.items,
       events: data.events.items,
       stats: data.stats,
-      streak: data.streak,
+      // KID-6: monotonic distinct-day count — never the loss-framed streak.
+      daysPracticed: data.daysPracticed,
       heroRuns: copilot.heroRunCount,
     }),
-    [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, data.stats, data.streak, copilot.heroRunCount]
+    [data.speech.items, data.mimic.items, data.missions.items, data.adventures.items, data.events.items, data.stats, data.daysPracticed, copilot.heroRunCount]
   );
   const earnedCount = achievements.filter((a) => a.earned).length;
 

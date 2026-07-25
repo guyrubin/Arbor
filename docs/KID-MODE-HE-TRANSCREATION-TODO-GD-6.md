@@ -47,23 +47,27 @@
 | `kid.adv.hero.sub` | You're the star |
 | `kid.adv.feelings.title` | Feelings |
 | `kid.adv.feelings.sub` | Explore & understand |
-| `kid.adv.studio.title` | Studio |
-| `kid.adv.studio.sub` | Create & express |
-| `kid.game.memory-match.title` | Memory Match |
-| `kid.game.memory-match.sub` | Find the pairs |
-| `kid.game.feelings-detective.title` | Feelings Detective |
-| `kid.game.feelings-detective.sub` | Spot the feeling |
+| `kid.game.sound-lab.title` | Sound Lab |
+| `kid.game.sound-lab.sub` | Speak & play |
+| `kid.game.mood-mountain.title` | Mood Mountain |
+| `kid.game.mood-mountain.sub` | Spot the feeling |
+| `kid.game.mind-vault.title` | Mind Vault |
+| `kid.game.mind-vault.sub` | Find the pairs |
+| `kid.game.beat-keeper.title` | Beat Keeper |
+| `kid.game.beat-keeper.sub` | Tap the beat |
+| `kid.game.hero-pose.title` | Hero Pose |
+| `kid.game.hero-pose.sub` | Strike a pose |
+| `kid.game.pattern-power.title` | Pattern Power |
+| `kid.game.pattern-power.sub` | What comes next? |
+| `kid.game.story-quest.title` | Story Quest |
+| `kid.game.story-quest.sub` | Choose the way |
 | `kid.game.mimic-studio.title` | Mimic Studio |
 | `kid.game.mimic-studio.sub` | Copy the moves |
-| `kid.game.sound-explorer.title` | Sound Explorer |
-| `kid.game.sound-explorer.sub` | Listen & match |
-| `kid.game.sequence-quest.title` | Sequence Quest |
-| `kid.game.sequence-quest.sub` | What comes next? |
-| `kid.game.calm-builder.title` | Calm Builder |
-| `kid.game.calm-builder.sub` | Design your space |
-| `kid.game.rhythm-hero.title` | Rhythm Hero |
-| `kid.game.rhythm-hero.sub` | Tap the beat |
-| `kid.game.puzzle-planet.title` | Puzzle Planet |
-| `kid.game.puzzle-planet.sub` | Piece it together |
+
+> KID-4 (2026-07-25): game tiles were renamed to the VERBATIM HeroArcade world
+> names (honest navigation) and the "Studio" adventure tile plus "Calm Builder"
+> were dropped (no live counterpart). Game TITLES are product names shared with
+> the arcade — transcreate them together with the arcade surface, or keep them
+> EN as brand names (reviewer's call). Subs are kid-register copy to transcreate.
 
 Related (separate finding, same reviewer session): the self-declared first-draft Hebrew playbank + kid SFX copy (KID-8 / group finding "Hebrew playbank + kid SFX copy is self-declared first-draft, unreviewed") should be bundled into the same native review.

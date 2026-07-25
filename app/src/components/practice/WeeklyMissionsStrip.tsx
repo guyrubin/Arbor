@@ -29,7 +29,8 @@ import type { PracticeDomain } from "../../types";
 // This is the canonical domain→colour map for the weekly strip; it is deliberately
 // a TS constant (not a CSS addition) so index.css is not touched.
 //
-// Convention matches the existing Chip tone assignments in MissionsTab.tsx:
+// Convention matches the app's standing Chip tone assignments per domain
+// (originally set by the retired MissionsPanel, deleted in KID-6):
 //   speech    → mint/green  (matches tone="mint")
 //   language  → sky         (matches tone="sky")
 //   cognition → lav         (matches tone="lav")

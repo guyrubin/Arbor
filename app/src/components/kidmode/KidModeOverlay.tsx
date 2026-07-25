@@ -46,11 +46,22 @@ export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
   const { t } = useLanguage();
   const [view, setView] = useState<View>("home");
+  // KID-4: when a dashboard game tile opens the arcade, it names the HeroArcade
+  // world to pre-select so the tile's title appears verbatim on arrival.
+  const [arcadeWorldId, setArcadeWorldId] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+
+  const openSurface = (s: KidSurface, worldId?: string) => {
+    setArcadeWorldId(worldId ?? null);
+    setView(s);
+  };
 
   // Reset to the home dashboard whenever the overlay opens.
   useEffect(() => {
-    if (isKidModeOpen) setView("home");
+    if (isKidModeOpen) {
+      setView("home");
+      setArcadeWorldId(null);
+    }
   }, [isKidModeOpen]);
 
   // Block Escape inside Kid Mode — a child must not press Escape to exit. The
@@ -189,14 +200,18 @@ export default function KidModeOverlay() {
           >
             <AnimatePresence mode="wait">
               <motion.div
-                key={view}
+                key={view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.14 }}
               >
                 {view === "home" ? (
-                  <KidDashboard onOpenSurface={setView} onExit={closeKidMode} />
+                  <KidDashboard onOpenSurface={openSurface} onExit={closeKidMode} />
+                ) : view === "arcade" ? (
+                  <Suspense fallback={<TabSkeleton />}>
+                    <PracticeHubTab initialWorldId={arcadeWorldId ?? undefined} />
+                  </Suspense>
                 ) : (
                   <Suspense fallback={<TabSkeleton />}>{surface && <surface.Comp />}</Suspense>
                 )}

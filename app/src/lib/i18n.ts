@@ -1300,10 +1300,11 @@ export const en: Dict = {
   "ov.tools.hide": "Hide",
   "ov.focus.more": "Read more",
   "ov.focus.less": "Show less",
-  "ov.mission.title": "Today's mission",
-  "ov.mission.streakA11y": "{n}-day practice streak",
-  "ov.mission.more": "See this week's rotation",
-  "ov.mission.toastDone": "Done. That keeps {name}'s streak alive.",
+  // KID-6: gain-framed completion toast — celebrates what was ADDED, never
+  // warns about a streak to protect (loss-framed streak copy is banned on
+  // child-adjacent surfaces). The old MissionsPanel is deleted; the key stays
+  // for the next mission-completion surface.
+  "ov.mission.toastDone": "Done! Another practice day added to {name}'s story.",
   "ov.mission.toastErr": "Couldn't save that just now — try again.",
   "ov.askAbout": "Ask about {name}",
   "ov.howDoing": "How {name} is doing",
@@ -2098,24 +2099,28 @@ export const en: Dict = {
   "kid.adv.hero.sub": "You're the star",
   "kid.adv.feelings.title": "Feelings",
   "kid.adv.feelings.sub": "Explore & understand",
-  "kid.adv.studio.title": "Studio",
-  "kid.adv.studio.sub": "Create & express",
-  "kid.game.memory-match.title": "Memory Match",
-  "kid.game.memory-match.sub": "Find the pairs",
-  "kid.game.feelings-detective.title": "Feelings Detective",
-  "kid.game.feelings-detective.sub": "Spot the feeling",
+  // KID-4: game tile titles are VERBATIM HeroArcade world names — the tile's
+  // name is exactly what the child sees on the surface it opens (honest
+  // navigation; kidMode.test.ts locks the pairing). The old fantasy-named
+  // tiles (Memory Match, Feelings Detective, Calm Builder, …) promised games
+  // that did not exist by those names. World names stay EN in both maps until
+  // the arcade itself localizes (GD-6 native transcreation gate).
+  "kid.game.sound-lab.title": "Sound Lab",
+  "kid.game.sound-lab.sub": "Speak & play",
+  "kid.game.mood-mountain.title": "Mood Mountain",
+  "kid.game.mood-mountain.sub": "Spot the feeling",
+  "kid.game.mind-vault.title": "Mind Vault",
+  "kid.game.mind-vault.sub": "Find the pairs",
+  "kid.game.beat-keeper.title": "Beat Keeper",
+  "kid.game.beat-keeper.sub": "Tap the beat",
+  "kid.game.hero-pose.title": "Hero Pose",
+  "kid.game.hero-pose.sub": "Strike a pose",
+  "kid.game.pattern-power.title": "Pattern Power",
+  "kid.game.pattern-power.sub": "What comes next?",
+  "kid.game.story-quest.title": "Story Quest",
+  "kid.game.story-quest.sub": "Choose the way",
   "kid.game.mimic-studio.title": "Mimic Studio",
   "kid.game.mimic-studio.sub": "Copy the moves",
-  "kid.game.sound-explorer.title": "Sound Explorer",
-  "kid.game.sound-explorer.sub": "Listen & match",
-  "kid.game.sequence-quest.title": "Sequence Quest",
-  "kid.game.sequence-quest.sub": "What comes next?",
-  "kid.game.calm-builder.title": "Calm Builder",
-  "kid.game.calm-builder.sub": "Design your space",
-  "kid.game.rhythm-hero.title": "Rhythm Hero",
-  "kid.game.rhythm-hero.sub": "Tap the beat",
-  "kid.game.puzzle-planet.title": "Puzzle Planet",
-  "kid.game.puzzle-planet.sub": "Piece it together",
 };
 
 export const he: Dict = {
@@ -3374,10 +3379,8 @@ export const he: Dict = {
   "ov.tools.hide": "הסתר",
   "ov.focus.more": "קראו עוד",
   "ov.focus.less": "הצג פחות",
-  "ov.mission.title": "המשימה של היום",
-  "ov.mission.streakA11y": "רצף תרגול של {n} ימים",
-  "ov.mission.more": "לרצף השבועי המלא",
-  "ov.mission.toastDone": "יופי. זה שומר על הרצף של {name}.",
+  // KID-6: ניסוח של רווח — חוגגים את מה שנוסף, בלי "רצף" שצריך לשמור עליו.
+  "ov.mission.toastDone": "יופי! עוד יום תרגול נוסף לסיפור של {name}.",
   "ov.mission.toastErr": "לא הצלחנו לשמור כרגע — נסו שוב.",
   "ov.askAbout": "שאל על {name}",
   "ov.howDoing": "איך {name} מתקדם",
@@ -4135,24 +4138,28 @@ export const he: Dict = {
   "kid.adv.hero.sub": "You're the star",
   "kid.adv.feelings.title": "Feelings",
   "kid.adv.feelings.sub": "Explore & understand",
-  "kid.adv.studio.title": "Studio",
-  "kid.adv.studio.sub": "Create & express",
-  "kid.game.memory-match.title": "Memory Match",
-  "kid.game.memory-match.sub": "Find the pairs",
-  "kid.game.feelings-detective.title": "Feelings Detective",
-  "kid.game.feelings-detective.sub": "Spot the feeling",
+  // KID-4: game tile titles are VERBATIM HeroArcade world names — the tile's
+  // name is exactly what the child sees on the surface it opens (honest
+  // navigation; kidMode.test.ts locks the pairing). The old fantasy-named
+  // tiles (Memory Match, Feelings Detective, Calm Builder, …) promised games
+  // that did not exist by those names. World names stay EN in both maps until
+  // the arcade itself localizes (GD-6 native transcreation gate).
+  "kid.game.sound-lab.title": "Sound Lab",
+  "kid.game.sound-lab.sub": "Speak & play",
+  "kid.game.mood-mountain.title": "Mood Mountain",
+  "kid.game.mood-mountain.sub": "Spot the feeling",
+  "kid.game.mind-vault.title": "Mind Vault",
+  "kid.game.mind-vault.sub": "Find the pairs",
+  "kid.game.beat-keeper.title": "Beat Keeper",
+  "kid.game.beat-keeper.sub": "Tap the beat",
+  "kid.game.hero-pose.title": "Hero Pose",
+  "kid.game.hero-pose.sub": "Strike a pose",
+  "kid.game.pattern-power.title": "Pattern Power",
+  "kid.game.pattern-power.sub": "What comes next?",
+  "kid.game.story-quest.title": "Story Quest",
+  "kid.game.story-quest.sub": "Choose the way",
   "kid.game.mimic-studio.title": "Mimic Studio",
   "kid.game.mimic-studio.sub": "Copy the moves",
-  "kid.game.sound-explorer.title": "Sound Explorer",
-  "kid.game.sound-explorer.sub": "Listen & match",
-  "kid.game.sequence-quest.title": "Sequence Quest",
-  "kid.game.sequence-quest.sub": "What comes next?",
-  "kid.game.calm-builder.title": "Calm Builder",
-  "kid.game.calm-builder.sub": "Design your space",
-  "kid.game.rhythm-hero.title": "Rhythm Hero",
-  "kid.game.rhythm-hero.sub": "Tap the beat",
-  "kid.game.puzzle-planet.title": "Puzzle Planet",
-  "kid.game.puzzle-planet.sub": "Piece it together",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and

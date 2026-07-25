@@ -140,10 +140,13 @@ export const WORLDS: World[] = [
   {
     id: "missions",
     title: "Development Missions",
-    status: "live",
-    // src/components/practice/MissionsTab.tsx (MissionsPanel) — 5-day mission
-    // rotation, Fitbit-style Development Score (practice consistency, not
-    // ability), streak, weekly focus from milestone gaps, copilot re-aim.
+    status: "scaffolded",
+    // KID-6: the MissionsPanel UI (MissionsTab.tsx) was DELETED — it was dead
+    // code (imported by nothing) and its streak pill / "keeps the streak alive"
+    // framing violated the no-pressure doctrine (lib/streak.ts,
+    // practice/signals.ts). Mission RECORDS still accrue via the daily-plan
+    // seams (WeeklyMissionsStrip reads them); a dedicated missions surface
+    // needs a fresh no-streak design + an explicit revival decision.
   },
   {
     id: "journey",

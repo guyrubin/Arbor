@@ -17,14 +17,12 @@ import type { SoundStats } from "./signals";
  * rule. `cosmeticUnlockEligible(eventType)` is the chokepoint any future
  * unlock path must pass through.
  *
- * NOTE on the streak badges in computeAchievements: their `streak` is
- * `streakDays(missions)` — consecutive DAYS the child completed a practice
- * mission, i.e. an aggregate over logged development actions, NOT a login or
- * app-open streak. The trigger that earns the badge is the practice event
- * ("mission-completed"); the day-count is only how many such actions are
- * required. The guard below names the allowed trigger categories so a future
- * caller cannot quietly substitute a login/time-in-app counter for the
- * practice signal.
+ * KID-6 — no streak badges. The old consecutive-day badges were loss-framed
+ * and resettable (streak anxiety); they were replaced with MONOTONIC
+ * `daysPracticed` equivalents (practice/signals.ts offers daysPracticed as the
+ * child-safe replacement: distinct practice days only ever accumulate, never
+ * reset). No badge here may ever be earned-then-lost, and no badge may count
+ * consecutive days.
  */
 export const DEVELOPMENT_ACTION_TRIGGERS = [
   "speech-attempt",
@@ -71,7 +69,9 @@ export interface AchievementInput {
   adventures: AdventureResult[];
   events: PracticeEvent[];
   stats: SoundStats[];
-  streak: number;
+  /** MONOTONIC count of distinct days with completed practice (signals.ts
+   *  daysPracticed) — never a consecutive-day streak. */
+  daysPracticed: number;
   heroRuns: number;
 }
 
@@ -90,8 +90,8 @@ export function computeAchievements(x: AchievementInput): Achievement[] {
 
   return [
     { id: "first-step", emoji: "🌱", title: "First step", detail: "Completed the very first practice of any kind.", earned: x.speech.length + missionsDone + x.adventures.length + x.events.length + x.mimic.length > 0 },
-    { id: "streak-3", emoji: "🔥", title: "3-day streak", detail: "Practiced three days in a row.", earned: x.streak >= 3 },
-    { id: "streak-7", emoji: "🏆", title: "Full week", detail: "Seven straight days of practice.", earned: x.streak >= 7 },
+    { id: "days-3", emoji: "🌟", title: "3 days of play", detail: "Practiced on three different days — any pace counts.", earned: x.daysPracticed >= 3 },
+    { id: "days-7", emoji: "🏆", title: "7 days of play", detail: "Practiced on seven different days, whenever they happened.", earned: x.daysPracticed >= 7 },
     { id: "explorer", emoji: "🧭", title: "Explorer", detail: "Tried all four practice areas.", earned: modulesUsed >= 4 },
     { id: "sound-master", emoji: "🎙️", title: "Sound on the rise", detail: "Took one sound above 80% with 10+ tries.", earned: x.stats.some((s) => s.attempts >= 10 && s.recentAccuracy >= 80) },
     { id: "word-collector", emoji: "📚", title: "Word collector", detail: "Finished 15 Words & Express rounds.", earned: wordRounds >= 15 },

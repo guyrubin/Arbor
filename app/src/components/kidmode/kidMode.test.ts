@@ -266,7 +266,7 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
     // without keys fails here instead of rendering a raw key string.
     const src = stripComments(readSelf("KidDashboard.tsx"));
     const ids = [...src.matchAll(/\{ id: "([a-z-]+)"/g)].map((m) => m[1]);
-    expect(ids.length, "expected the 4 adventure + 8 game tile defs").toBeGreaterThanOrEqual(12);
+    expect(ids.length, "expected the 3 adventure + 8 game tile defs").toBeGreaterThanOrEqual(11);
     for (const id of ids) {
       const base = `kid.adv.${id}.title` in en ? `kid.adv.${id}` : `kid.game.${id}`;
       for (const suffix of [".title", ".sub"]) {
@@ -366,6 +366,111 @@ describe("KID-1 register separation: kid.* i18n keys never referenced outside ki
       if (/["'`]kid\./.test(src)) offenders.push(path.relative(SRC_ROOT, file));
     }
     expect(offenders, `parent surfaces referencing kid.* keys: ${offenders.join(", ")}`).toEqual([]);
+  });
+});
+
+// ── KID-4: honest navigation — game tiles are named after the worlds they open ─
+// Static cross-file contract: every KidDashboard GAMES tile carries the id of a
+// live HeroArcade world, and the tile's EN title is VERBATIM that world's name.
+// (The arcade also renders `open.name` as the opened panel's heading, so the
+// title the child tapped is the title they land on.)
+describe("KID-4: kid-dashboard game tiles match their HeroArcade destination", () => {
+  const dashSrc = stripComments(readSelf("KidDashboard.tsx"));
+  const arcadeSrc = stripComments(
+    readFileSync(path.join(__dirname, "..", "practice", "HeroArcade.tsx"), "utf8"),
+  );
+
+  // HeroArcade world registry: id → display name.
+  const worldNames = new Map(
+    [...arcadeSrc.matchAll(/\{ id: "([a-z-]+)", name: "([^"]+)"/g)].map((m) => [m[1], m[2]]),
+  );
+
+  // KidDashboard tile defs carrying a worldId. Game tiles reference arcade
+  // world ids directly; adventure tiles use "kid-*" scene ids (not arcade
+  // destinations) and are excluded.
+  const gameTiles = [...dashSrc.matchAll(/\{ id: "([a-z-]+)", worldId: "([a-z-]+)"/g)]
+    .map((m) => ({ id: m[1], worldId: m[2] }))
+    .filter((tile) => !tile.worldId.startsWith("kid-"));
+
+  it("finds the 8 game tiles and the arcade world registry", () => {
+    expect(gameTiles.length).toBe(8);
+    expect(worldNames.size).toBeGreaterThanOrEqual(8);
+  });
+
+  it.each(gameTiles.map((g) => [g.id, g.worldId]))(
+    "tile %s → world %s: title is the world's name, verbatim",
+    (id, worldId) => {
+      const worldName = worldNames.get(worldId as string);
+      expect(worldName, `no HeroArcade world with id "${worldId}"`).toBeTruthy();
+      expect(en[`kid.game.${id}.title`]).toBe(worldName);
+      expect(he[`kid.game.${id}.title`]).toBe(worldName); // EN placeholder until GD-6
+    },
+  );
+
+  it("the opened world panel announces its own name (verbatim arrival)", () => {
+    // The open-world branch renders the world's name as a heading.
+    expect(arcadeSrc).toContain("{open.name}");
+  });
+
+  it("every pre-selectable world is live (has a component)", () => {
+    for (const { worldId } of gameTiles) {
+      // The world entry declares a Comp — a tile may never point at a
+      // name-only world (that is the broken promise KID-4 removes).
+      const entry = arcadeSrc.slice(arcadeSrc.indexOf(`{ id: "${worldId}", name:`));
+      expect(entry.slice(0, entry.indexOf("\n")), `world ${worldId} must be live`).toMatch(/Comp: \w+/);
+    }
+  });
+});
+
+// ── KID-7: coherent art — no two visible tiles share an art file ─────────────
+describe("KID-7: kid-dashboard art is unique per visible tile", () => {
+  it("no art file is referenced twice in KidDashboard.tsx", () => {
+    const src = stripComments(readSelf("KidDashboard.tsx"));
+    const arts = [...src.matchAll(/\/visuals\/cards\/[\w/.-]+/g)].map((m) => m[0]);
+    const dupes = arts.filter((a, i) => arts.indexOf(a) !== i);
+    expect(dupes, `recycled art files: ${dupes.join(", ")}`).toEqual([]);
+  });
+
+  it("the banner art matches its hero-story copy (not the old calm-corner scene)", () => {
+    const src = readSelf("KidDashboard.tsx");
+    expect(src).toContain("game-courage-steps.webp");
+    expect(stripComments(src)).not.toContain("blanket-fort");
+  });
+});
+
+// ── KID-6: no streak remnants on child-adjacent surfaces ─────────────────────
+describe("KID-6: no loss-framed streak copy on child-adjacent surfaces", () => {
+  const CHILD_ADJACENT = [
+    path.join(__dirname, "KidDashboard.tsx"),
+    path.join(__dirname, "KidModeOverlay.tsx"),
+    path.join(__dirname, "HoldExitButton.tsx"),
+    path.join(__dirname, "ParentChallenge.tsx"),
+    path.join(__dirname, "..", "practice", "HeroArcade.tsx"),
+    path.join(__dirname, "..", "practice", "JourneyTab.tsx"),
+  ];
+
+  it.each(CHILD_ADJACENT.map((f) => [path.basename(f), f]))(
+    "%s contains no streak reference in live code",
+    (_name, file) => {
+      const src = stripComments(readFileSync(file as string, "utf8"));
+      expect(src).not.toMatch(/streak/i);
+    },
+  );
+
+  it("the dead MissionsPanel (streak pill UI) stays deleted", () => {
+    expect(
+      () => statSync(path.join(__dirname, "..", "practice", "MissionsTab.tsx")),
+      "MissionsTab.tsx was deleted in KID-6 — a revival needs an explicit no-streak redesign decision",
+    ).toThrow();
+  });
+
+  it("the mission completion toast is gain-framed in EN and HE", () => {
+    for (const dict of [en, he]) {
+      const toast = dict["ov.mission.toastDone"];
+      expect(toast).toBeTruthy();
+      expect(toast).not.toMatch(/streak|alive/i);
+      expect(toast).not.toContain("רצף");
+    }
   });
 });
 
