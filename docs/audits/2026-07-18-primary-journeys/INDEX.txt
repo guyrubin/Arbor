@@ -1,0 +1,7 @@
+Arbor primary-journeys audit 2026-07-18 — evidence pack (sandbox :4805, hidden-pane session: no screenshots; DOM/console/network evidence)
+evidence-01-today-overview-and-addchild-dialog.txt — Today hub tree, dual-nav check, add-child Plus gate
+evidence-02-rtl-child-rename.txt — RTL rename to Hebrew name, bidi scan, drawer fields, multi-child gate
+evidence-03-ask-arbor-worried-parent.txt — coach send, /api/chat failure handling, Dr. Levi authority strip
+evidence-04-consult-professional-share.txt — consent gate + redaction toggle verification
+evidence-05-kidmode-handback.txt — kid overlay content, pressure-mechanics scan, hold->math->exit gate, margin click-through
+Findings + Interaction Manifest: returned to the orchestrating session (report text), not stored here.

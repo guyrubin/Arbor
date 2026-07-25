@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import CoachAnswerCards, { sourcesLabel, escalationTier } from "./CoachAnswerCards";
+import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows } from "./CoachAnswerCards";
 import type { CoachContract } from "../../types";
 
 /**
@@ -131,6 +131,80 @@ describe("escalationTier (prominence helper)", () => {
   });
 });
 
+/**
+ * COACH-6 — the citation drawer shows REAL source titles + type chips from the
+ * server knowledge registry ("Transition Bridge · intervention"-style rows),
+ * never dash-stripped slugs for grounded answers; ids the server could not
+ * resolve keep the legacy slug fallback.
+ */
+describe("citationRows (COACH-6)", () => {
+  const base = makeContract("low");
+
+  it("resolves ids to title + type rows, preserving citation order", () => {
+    const contract: CoachContract = {
+      ...base,
+      sourceCardsUsed: ["transition-bridge-3-5y", "bowlby-attachment"],
+      sourceCards: [
+        { id: "bowlby-attachment", title: "Bowlby: Secure Base", type: "scholar" },
+        { id: "transition-bridge-3-5y", title: "Transition Bridge (3-5y)", type: "intervention" },
+      ],
+    };
+    expect(citationRows(contract)).toEqual([
+      { id: "transition-bridge-3-5y", title: "Transition Bridge (3-5y)", type: "intervention" },
+      { id: "bowlby-attachment", title: "Bowlby: Secure Base", type: "scholar" },
+    ]);
+  });
+
+  it("keeps a null-title slug fallback for ids the server did not resolve", () => {
+    const contract: CoachContract = {
+      ...base,
+      sourceCardsUsed: ["mystery-card"],
+      sourceCards: [],
+    };
+    expect(citationRows(contract)).toEqual([{ id: "mystery-card", title: null, type: null }]);
+  });
+
+  it("renders from sourceCards alone when sourceCardsUsed is absent, and is empty when both are", () => {
+    const withCardsOnly: CoachContract = {
+      ...base,
+      sourceCards: [{ id: "a", title: "A Card", type: "concept" }],
+    };
+    expect(citationRows(withCardsOnly)).toEqual([{ id: "a", title: "A Card", type: "concept" }]);
+    expect(citationRows(base)).toEqual([]);
+  });
+});
+
+describe("citation drawer rendering (COACH-6)", () => {
+  function renderWithSources(): string {
+    const contract: CoachContract = {
+      ...makeContract("low"),
+      sourceCardsUsed: ["transition-bridge-3-5y"],
+      sourceCards: [{ id: "transition-bridge-3-5y", title: "Transition Bridge (3-5y)", type: "intervention" }],
+    };
+    return renderToStaticMarkup(
+      React.createElement(CoachAnswerCards, {
+        contract,
+        onSaveToPlan: noop,
+        onCreateLog: noop,
+        onAddToHandoff: noop,
+      })
+    );
+  }
+
+  it("shows the real title + type chip, never the dash-stripped slug", () => {
+    const html = renderWithSources();
+    expect(html).toContain("Transition Bridge (3-5y)");
+    expect(html).toContain("intervention");
+    expect(html).not.toContain("transition bridge 3 5y"); // the old debug-looking row
+  });
+
+  it("keeps the calm Cited badge + grounded-in count header", () => {
+    const html = renderWithSources();
+    expect(html).toContain("Cited");
+    expect(html).toContain("Grounded in 1 source");
+  });
+});
+
 describe("escalation footer rendering", () => {
   it("low risk: escalateIf content is present in the DOM inside the quiet disclosure", () => {
     const html = renderCards("low");
@@ -152,5 +226,103 @@ describe("escalation footer rendering", () => {
     const html = renderCards("high");
     expect(html).toContain(ESCALATE_ITEM);
     expect(html).toContain("Reach out for help if");
+  });
+});
+
+/**
+ * COACH-1 — HE/EN parity on the flagship answer surface.
+ *
+ * With lang="he" a full contract answer must render ZERO English chrome:
+ * every panel title, action label and chip is asserted in Hebrew, and the
+ * English literals are asserted absent. (CoachTab passes lang={uiLang}, so
+ * this covers the uiLang=he path end-to-end for the card stack.)
+ */
+function makeFullContract(riskLevel: string): CoachContract {
+  return {
+    riskLevel,
+    ageBand: "4-5",
+    domains: ["attachment_regulation"],
+    nonDiagnosticHypotheses: [{ label: "Transition fatigue", confidence: "possible", rationale: "Long day, short notice." }],
+    todayPlan: ["Give a two-minute warning before leaving."],
+    parentScript: "I see this is hard. We leave in two minutes.",
+    avoid: ["Long explanations in the moment"],
+    observe: ["Whether warnings shorten the storm"],
+    escalateIf: [ESCALATE_ITEM],
+    frameRouting: { aim: "Calmer exits", twoAxes: "Warm but firm", story: "", shadow: "", marriage: "", shepherd: "" },
+    memoryProposals: [],
+    handoffNotes: { teacher: "Transitions are hard this week.", professional: "" },
+  };
+}
+
+function renderCardsHe(riskLevel: string): string {
+  return renderToStaticMarkup(
+    React.createElement(CoachAnswerCards, {
+      contract: makeFullContract(riskLevel),
+      lens: "Dr. Becky Kennedy",
+      council: [{ scholarId: "s1", name: "Dr. Ross Greene", concept: "CPS", takeaway: "Skill, not will.", suggestion: "Solve it together." }],
+      lang: "he",
+      onSaveToPlan: noop,
+      onCreateLog: noop,
+      onAddToHandoff: noop,
+    })
+  );
+}
+
+describe("COACH-1 — uiLang=he renders zero English chrome", () => {
+  const HE_CHROME = [
+    "המועצה התייעצה",        // council panel title
+    "מה אולי קורה",           // what may be happening
+    "לנסות היום",             // try today
+    "שמירה כתוכנית",          // save as plan
+    "אפשר להגיד",             // say this
+    "ממה להימנע",             // avoid
+    "למה לשים לב",            // watch for
+    "מסגרת התפתחותית",        // developmental frame
+    "שמירה לתוכנית",          // save to plan
+    "פתק למורה",              // teacher note
+    "מטרה",                   // frame chip: aim
+  ];
+  const EN_CHROME = [
+    "The council weighed in",
+    "What may be happening",
+    "Try today",
+    "Save as plan",
+    "Say this",
+    "Watch for",
+    "Developmental frame",
+    "Save to plan",
+    "Teacher note",
+    "Reach out for help if",
+    "When to seek help",
+    "Aligned with",
+  ];
+
+  it("quiet tier (low risk): every panel title and action renders in Hebrew", () => {
+    const html = renderCardsHe("low");
+    for (const s of HE_CHROME) expect(html, `missing HE chrome "${s}"`).toContain(s);
+    expect(html).toContain("מתי כדאי לפנות לעזרה"); // quiet escalation disclosure title
+    for (const s of EN_CHROME) expect(html, `EN chrome "${s}" leaked into HE render`).not.toContain(s);
+  });
+
+  it("prominent tier (moderate risk): escalation headline is Hebrew, semantics preserved", () => {
+    const html = renderCardsHe("moderate");
+    expect(html).toContain("פנו לעזרה מקצועית אם"); // clear reach-out call — never a graded verdict
+    expect(html).toContain(ESCALATE_ITEM);          // content itself is never dropped
+    for (const s of EN_CHROME) expect(html, `EN chrome "${s}" leaked into HE render`).not.toContain(s);
+  });
+
+  it("EN render still carries the original English chrome (no regression)", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CoachAnswerCards, {
+        contract: makeFullContract("low"),
+        lang: "en",
+        onSaveToPlan: noop,
+        onCreateLog: noop,
+        onAddToHandoff: noop,
+      })
+    );
+    for (const s of ["What may be happening", "Try today", "Say this", "Watch for", "Developmental frame", "Save to plan", "Teacher note"]) {
+      expect(html, `missing EN chrome "${s}"`).toContain(s);
+    }
   });
 });

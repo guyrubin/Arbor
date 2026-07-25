@@ -58,12 +58,17 @@ export default function Topbar() {
         <div className="hidden lg:block">
           <KidModeButton />
         </div>
+        {/* PLAT-3: the rail toggle's visibility breakpoint must match AiRail's
+            (2xl) and Shell's third grid column (2xl) — at xl widths (1280-1535px)
+            the rail never renders, so a visible toggle there was a silent no-op
+            (aria-pressed flipped with no layout change). Guarded by
+            layoutTokens.test.ts breakpoint-alignment test. */}
         <button
           onClick={() => setShowAiRail(!showAiRail)}
           aria-label={t("top.howHelps")}
           aria-pressed={showAiRail}
           title={t("top.howHelps")}
-          className="hidden xl:inline-flex items-center justify-center w-11 h-11 rounded-xl transition flex-shrink-0"
+          className="hidden 2xl:inline-flex items-center justify-center w-11 h-11 rounded-xl transition flex-shrink-0"
           style={showAiRail
             ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
             : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}

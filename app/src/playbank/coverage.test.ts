@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { buildCoverage, coverageGaps, coverageSummary, activityStages, PLAY_DOMAINS } from "./coverage";
+import {
+  buildCoverage, coverageGaps, coverageSummary, activityStages, PLAY_DOMAINS,
+  guidedAuthoringRank, topGuidedActivities, hasGuidedFields, GUIDED_AUTHORING_COUNT,
+} from "./coverage";
 import { STAGES } from "./stages";
 import { PLAY_ACTIVITIES, PLAY_ACTIVITIES_HE, PLAY_BANDS } from "./content";
 import type { PlayActivity } from "./content";
@@ -67,6 +70,82 @@ describe("content coverage", () => {
   it("every activity has a matching Hebrew translation (parity)", () => {
     const missing = PLAY_ACTIVITIES.filter((a) => !PLAY_ACTIVITIES_HE[a.id]).map((a) => a.id);
     expect(missing).toEqual([]);
+  });
+
+  // ── KID-5 / AR-CONT-02: guided-play authoring wave ──────────────────────
+  describe("guided-play fields (KID-5)", () => {
+    it(`the top-${GUIDED_AUTHORING_COUNT} activities (domain coverage × band) carry all four guided fields in EN`, () => {
+      const missing = topGuidedActivities()
+        .filter((a) => !hasGuidedFields(a))
+        .map((a) => a.id);
+      expect(missing, `top-${GUIDED_AUTHORING_COUNT} activities missing guided-play fields`).toEqual([]);
+    });
+
+    it("guidedAuthoringRank is deterministic and covers the whole bank", () => {
+      const a = guidedAuthoringRank().map((x) => x.id);
+      const b = guidedAuthoringRank().map((x) => x.id);
+      expect(a).toEqual(b);
+      expect(a.length).toBe(PLAY_ACTIVITIES.length);
+    });
+
+    it("HE guided slots are tracked but gated: any present HE guided field is non-empty (native transcreation, KID-8/GD-7)", () => {
+      // HE guided copy only lands via the native transcreation packet — until
+      // then the slots stay absent and the UI falls back to EN. This test
+      // tracks the slot without forcing machine-translated content in.
+      for (const a of PLAY_ACTIVITIES) {
+        const he = PLAY_ACTIVITIES_HE[a.id];
+        if (!he) continue;
+        for (const key of ["easierVariation", "harderVariation", "whatToNotice", "outcomePrompt"] as const) {
+          const v = he[key];
+          if (v !== undefined) expect(v.trim().length, `${a.id} HE ${key} present but empty`).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    it("demoMediaId ships EMPTY — demonstration video is Guy-gated production", () => {
+      const withMedia = PLAY_ACTIVITIES.filter((a) => a.demoMediaId !== undefined).map((a) => a.id);
+      expect(withMedia).toEqual([]);
+    });
+
+    it("guided-play copy stays observational — banned-token scan mirroring clinicalFirewall.wave3", () => {
+      // Firewall CONDITION on KID-5: whatToNotice/outcomePrompt (and the two
+      // variation fields) must stay notice/describe — never assess/score.
+      // Mirrors the wave-3 banned lexicon plus the assess/score verdict class.
+      const banned =
+        /\b(improves?|boosts?|reduces?|on[\s-]?track|behind|delay(?:ed|s)?|clinically|therapeutically|autism|adhd|anxiety|spd|arfid|dyslexia|assess(?:es|ing|ment)?|scor(?:e|es|ing|ed)|grade[sd]?|grading|measur(?:e|es|ing|ement)|evaluat(?:e|es|ing|ion)|diagnos\w*|percentile|milestones?)\b/i;
+      for (const a of PLAY_ACTIVITIES) {
+        const he = PLAY_ACTIVITIES_HE[a.id];
+        for (const key of ["easierVariation", "harderVariation", "whatToNotice", "outcomePrompt"] as const) {
+          for (const v of [a[key], he?.[key]]) {
+            if (!v) continue;
+            expect(v, `banned token in ${a.id}.${key}: "${v}"`).not.toMatch(banned);
+          }
+        }
+      }
+    });
+  });
+
+  // ── KID-3 content wave: session-length buckets are honestly stocked ──────
+  describe("session-length content (KID-3)", () => {
+    it("the extended (21–30 min) bucket is no longer empty", () => {
+      const extended = PLAY_ACTIVITIES.filter((a) => a.durationMin > 20);
+      expect(extended.length).toBeGreaterThan(0);
+      for (const a of extended) {
+        expect(a.durationMin, `${a.id} extended duration out of honest range`).toBeLessThanOrEqual(30);
+      }
+    });
+
+    it("infants deliberately have NO extended activities (not an honest ask of that band)", () => {
+      const infantExtended = PLAY_ACTIVITIES.filter(
+        (a) => a.durationMin > 20 && a.bands.includes("infant")
+      ).map((a) => a.id);
+      expect(infantExtended).toEqual([]);
+    });
+  });
+
+  it("themeableContextSlot coverage reaches the CI-29 floor (>= 60) so the interest engine actually fires", () => {
+    const themeable = PLAY_ACTIVITIES.filter((a) => a.themeableContextSlot === true);
+    expect(themeable.length).toBeGreaterThanOrEqual(60);
   });
 
   it("early-infant (0–12 month) coverage is now populated (gap closed by the content-expansion wave)", () => {

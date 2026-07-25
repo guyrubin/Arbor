@@ -100,8 +100,8 @@ describe("serializePacket (redaction)", () => {
  * preset data ceilings, mirroring schoolBrief.test.ts: a red test here means
  * the audience-preset serializer is BLOCKED. */
 
-const AUDIENCES: readonly ConsultAudience[] = ["teacher", "therapist", "pediatrician"];
-const CLINICIANS: readonly ConsultAudience[] = ["therapist", "pediatrician"];
+const AUDIENCES: readonly ConsultAudience[] = ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"];
+const CLINICIANS: readonly ConsultAudience[] = ["therapist", "pediatrician", "slp", "behavioral_health"];
 
 describe("IA W4.1 — per-preset data ceilings", () => {
   it("teacher preset is capped at the curated ceiling: no log patterns, no milestone coverage, no memory facts", () => {
@@ -186,6 +186,127 @@ describe("IA W4.1 — forbidden tokens appear in NO export (any audience)", () =
         };
         expect(() => serializePresetPacket(audience, poisoned)).toThrow(token);
       }
+    }
+  });
+});
+
+/* UND-4 (AR-CAP-08) — the packet preserves the parent's actual response:
+ * observed / not sure / not yet, each its own group WITH observation dates. */
+
+describe("UND-4 — development snapshot preserves observed / not sure / not yet with dates", () => {
+  const withStatuses: BuildPacketInput = {
+    ...base,
+    milestones: [
+      { domain: "Language", title: "Two-word phrases", checked: true, status: "yes", observedAt: "2026-05-20T09:00:00.000Z" },
+      { domain: "Motor", title: "Hops on one foot", checked: false, status: "not_sure", observedAt: "2026-06-01T10:00:00.000Z" },
+      { domain: "Social", title: "Takes turns in games", checked: false, status: "not_yet", observedAt: "2026-06-03T08:00:00.000Z" },
+      // Legacy item with no explicit status: derived from `checked`.
+      { domain: "Language", title: "Follows two-step directions", checked: false },
+    ],
+  };
+
+  it("a 'not sure' milestone appears as its OWN category with its date — never collapsed into not-yet", () => {
+    for (const audience of CLINICIANS) {
+      const md = serializePresetPacket(audience, buildPresetPacket(audience, withStatuses));
+      expect(md).toMatch(/Not sure yet \(1\): Hops on one foot \(Motor, 2026-06-01\)/);
+      expect(md).toMatch(/Observed \(1\): Two-word phrases \(Language, 2026-05-20\)/);
+      expect(md).toMatch(/Not yet observed \(2\):.*Takes turns in games \(Social, 2026-06-03\)/);
+    }
+  });
+
+  it("legacy milestones without a status derive from `checked` (checked → observed, unchecked → not yet)", () => {
+    const p = buildConsultPacket(base); // base fixture has no status fields
+    const dev = p.sections.find((s) => s.id === "development")!;
+    const text = dev.items.map((it) => it.text).join("\n");
+    expect(text).toMatch(/Observed \(1\): Two-word phrases/);
+    expect(text).toMatch(/Not yet observed \(1\): Hops on one foot/);
+    expect(text).not.toMatch(/Not sure yet/); // no unfounded uncertainty claim
+  });
+
+  it("the grouped snapshot stays counts-only: no percentage, score, or verdict wording", () => {
+    for (const audience of CLINICIANS) {
+      const md = serializePresetPacket(audience, buildPresetPacket(audience, withStatuses));
+      expect(md).not.toMatch(/\d+(\.\d+)?\s*%/);
+      expect(md).not.toMatch(/on[\s-]?track|behind|delayed|score/i);
+    }
+  });
+});
+
+/* CARE-7 — SLP + behavioral-health presets reuse the ONE clinician ceiling,
+ * and the computed "Since the last export" delta appears only with a prior
+ * export on record. */
+
+describe("CARE-7 — SLP + behavioral-health presets mirror the clinician ceiling exactly", () => {
+  it("both new presets carry the same sections, data ceiling, and term-scan policy as the therapist preset", () => {
+    for (const audience of ["slp", "behavioral_health"] as const) {
+      const preset = CONSULT_PRESETS[audience];
+      expect([...preset.sections]).toEqual([...CONSULT_PRESETS.therapist.sections]);
+      expect(preset.dataCeiling).toEqual(CONSULT_PRESETS.therapist.dataCeiling);
+      expect(preset.clinicalTermScan).toBe(false);
+    }
+  });
+
+  it("new presets build the full clinician packet (patterns + memory in ceiling)", () => {
+    for (const audience of ["slp", "behavioral_health"] as const) {
+      const p = buildPresetPacket(audience, base);
+      expect(p.sections.map((s) => s.id)).toEqual(["about", "patterns", "development", "tried", "memory"]);
+    }
+  });
+});
+
+describe("CARE-7 — 'Since the last export' delta (counts only, prior-export gated)", () => {
+  const withDelta: BuildPacketInput = {
+    ...base,
+    milestones: [
+      { domain: "Language", title: "Two-word phrases", checked: true, status: "yes", observedAt: new Date(NOW - 2 * DAY).toISOString() },
+      { domain: "Motor", title: "Hops on one foot", checked: true, status: "yes", observedAt: new Date(NOW - 20 * DAY).toISOString() },
+    ],
+    plans: [
+      { title: "Smoother mornings", issue: "leaving for school", createdAt: NOW - 1 * DAY },
+      { title: "Older plan", issue: "bedtime", createdAt: NOW - 30 * DAY },
+    ],
+    lastExportedAt: new Date(NOW - 7 * DAY).toISOString(),
+  };
+
+  it("NO prior export → NO delta section (for any audience)", () => {
+    for (const audience of AUDIENCES) {
+      const p = buildPresetPacket(audience, base); // base has no lastExportedAt
+      expect(p.sections.some((s) => s.id === "since-last-visit")).toBe(false);
+    }
+  });
+
+  it("prior export → clinician packets gain the delta with correct counts and no percentages", () => {
+    for (const audience of CLINICIANS) {
+      const p = buildPresetPacket(audience, withDelta);
+      const delta = p.sections.find((s) => s.id === "since-last-visit")!;
+      expect(delta).toBeDefined();
+      expect(delta.title).toContain(new Date(NOW - 7 * DAY).toISOString().slice(0, 10));
+      const text = delta.items.map((it) => it.text).join("\n");
+      expect(text).toMatch(/3 new moments logged\./);        // all base logs are within 7 days
+      expect(text).toMatch(/1 action plan added\./);          // only the 1-day-old plan
+      expect(text).toMatch(/1 milestone newly noticed\./);    // only the 2-day-old observation
+      expect(text).not.toMatch(/\d+(\.\d+)?\s*%/);
+    }
+  });
+
+  it("teacher stays behind the curated ceiling — the log-derived delta NEVER reaches a teacher export", () => {
+    const p = buildPresetPacket("teacher", withDelta);
+    expect(p.sections.map((s) => s.id)).toEqual(["about", "tried"]);
+    const md = serializePresetPacket("teacher", p);
+    expect(md).not.toMatch(/Since the last export/);
+    expect(md).not.toMatch(/new moment/);
+  });
+
+  it("the delta rides the fail-closed egress guards like every other section", () => {
+    for (const audience of CLINICIANS) {
+      const p = buildPresetPacket(audience, withDelta);
+      const poisoned: ConsultPacket = {
+        ...p,
+        sections: p.sections.map((s) =>
+          s.id === "since-last-visit" ? { ...s, items: [...s.items, { id: "delta-x", text: "milestonesPercent: 80" }] } : s
+        ),
+      };
+      expect(() => serializePresetPacket(audience, poisoned)).toThrow("milestonesPercent");
     }
   });
 });

@@ -6,6 +6,10 @@ import { useArbor } from "../../context/ArborContext";
 import { HubHero } from "../ui/HubHero";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { countSince, WEEK_MS } from "../../lib/pulse";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { isRecheckDue, latestRecheckDueAt } from "../../lib/screeningRecheck";
+import { comparisonAgeMonths, selectWeeklyFocus } from "../../lib/milestoneData";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import DevScoreCard from "../sections/DevScoreCard";
 import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
@@ -53,21 +57,45 @@ export default function DevelopmentTab() {
   const [checkOpen, setCheckOpen] = useState(false);
   const firstName = (childProfile.name || "").split(" ")[0];
 
+  // UND-2 — read-only view of the saved screenings (existing child collection):
+  // once a parent-requested re-check comes due, the pointer row says so.
+  const screenings = useChildCollection<{ id: string; answeredAt: string; recheckDueAt?: string }>(
+    childProfile.id,
+    "screenings"
+  );
+  const recheckDue = useMemo(
+    () => isRecheckDue(latestRecheckDueAt(screenings.items)),
+    [screenings.items]
+  );
+
+  // UND-6 — age-aware weekly focus: "not sure" items in the current corrected
+  // band first (watch for it this week), then not-yet/unmarked in-band, then
+  // the nearest earlier band — never an infant item for a 4-year-old while
+  // in-band items exist. Corrected (preterm-adjusted) months, same spine as
+  // the Milestones map.
+  const comparisonMonths = useMemo(() => {
+    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    return comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks);
+  }, [childProfile]);
+
   const weeklyFocus = useMemo(() => {
-    const nextMilestone = milestones.find((m) => !m.checked);
-    if (nextMilestone) {
+    const selected = selectWeeklyFocus(milestones, comparisonMonths);
+    if (selected) {
       return {
-        title: nextMilestone.title,
-        body: nextMilestone.skillLooksLike || nextMilestone.description,
+        title: selected.milestone.title,
+        body: selected.milestone.skillLooksLike || selected.milestone.description,
+        // "watch for" vs "try" — observational framing only, never a verdict.
+        hint: selected.mode === "watch" ? t("growth.focus.watchHint") : t("growth.focus.tryHint"),
         action: "daily-play" as const,
       };
     }
     return {
       title: t("growth.focus.empty.title"),
       body: t("growth.focus.empty.body"),
+      hint: null,
       action: "check" as const,
     };
-  }, [milestones, t]);
+  }, [milestones, comparisonMonths, t]);
 
   const recentMoments = useMemo(() => {
     const moments = [
@@ -166,6 +194,9 @@ export default function DevelopmentTab() {
               <Icon name="explore" size={16} /> {t("growth.focus.eyebrow")}
             </span>
             <h2 id="growth-weekly-focus" className="mt-2 break-words text-xl font-semibold leading-tight sm:text-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{weeklyFocus.title}</h2>
+            {weeklyFocus.hint && (
+              <p className="mt-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>{weeklyFocus.hint}</p>
+            )}
             <p className="mt-2 max-w-2xl break-words text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{weeklyFocus.body}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <button type="button" onClick={() => weeklyFocus.action === "check" ? setCheckOpen(true) : setActiveTab("daily-play")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-white transition active:scale-[0.98]" style={{ background: "var(--arbor-clay)" }}>
@@ -218,6 +249,17 @@ export default function DevelopmentTab() {
             ? t("dev.watching.line", { name: firstName })
             : t("dev.watching.lineGeneric")}
         </span>
+        {/* UND-2 — the parent's saved re-check reminder surfaces HERE once due
+            (neutral reminder chip — never a verdict; CLINICAL FIREWALL). */}
+        {recheckDue && (
+          <span
+            data-testid="dev-recheck-due"
+            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold"
+            style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-ink)" }}
+          >
+            <Icon name="notifications" size={12} /> {t("dev.watching.recheckDue")}
+          </span>
+        )}
         <span className="ms-12 inline-flex flex-shrink-0 items-center gap-1 text-[12px] font-bold sm:ms-0" style={{ color: "var(--arbor-green-ink)" }}>
           {t("dev.watching.cta")}
           <Icon name="chevron_right" size={16} className="rtl:rotate-180" />

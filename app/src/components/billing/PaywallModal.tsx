@@ -4,6 +4,7 @@ import { Modal } from "../ui/Modal";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useCheckout } from "../../hooks/useCheckout";
+import { PlanPrices } from "./PlanPrices";
 
 /**
  * MON-2: the conversion moment. Opened by ArborContext when a metered/Plus-gated
@@ -41,6 +42,9 @@ export default function PaywallModal() {
             </button>
           ))}
         </div>
+
+        {/* CARE-5: the real price, in the parent's language, BEFORE any redirect. */}
+        <PlanPrices cadence={cadence} />
 
         <div className="flex flex-wrap gap-2">
           <button onClick={() => void startCheckout("plus", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-sm font-bold rounded-xl px-4 py-2.5 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: "#fff" }}>

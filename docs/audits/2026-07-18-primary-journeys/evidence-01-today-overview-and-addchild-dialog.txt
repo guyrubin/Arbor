@@ -1,0 +1,22 @@
+CAPTURE 01 — Today/Overview @1440x900 + Add-child dialog
+Time: 2026-07-18 (sandbox arbor-sandbox :4805, seeded child "Dylan, Age 5", user "Sandbox Parent")
+Method: mcp__Claude_Browser__read_page a11y tree (screenshots unavailable — Browser pane hidden in non-interactive session; document.visibilityState="hidden", screenshot tool times out)
+
+Today/Overview blocks in order:
+1. "First steps with Arbor" checklist — "2 of 4 done" (Add your child=Done, Meet the coach, Capture a moment=Done, Create the first comic)
+2. "Today's guidance" hero — heading "Log a hard moment or ask Arbor a question, and you'll get a calm, age-aware next step, plus a pictur…" + [Begin]
+3. "Development picture" — "0 of 133 age-appropriate milestones noticed" + "Parent observation, not an assessment." (counts only — firewall OK)
+4. "Dylan's activity" — Play idea card "Two-person team job" (Quick/Standard/Extended, How to play, We did this, Coach me on this) + 4x "Logged a moment" entries
+5. "Arbor Coach — Always here" + [Ask Arbor]
+6. "Your daily tools" — mood 1-5, sleep slider 10h, appetite good/ok/poor
+
+Topbar: search, Kid Mode ("Parent-locked — your child can't exit or delete"), How Arbor helps, 7 unread notifications, child switcher.
+Dual nav check via JS: mobile bottom-nav + secondary banner are display:none at 1440x900 (no duplication rendered). documentElement.scrollWidth <= innerWidth (no horizontal overflow).
+
+Child switcher listbox: Dylan (checked) + "Add child".
+Add-child dialog (opened via switcher > Add child):
+  heading "Add a child"
+  "Multiple children is an Arbor Plus feature"
+  "The free plan covers one child. Arbor Plus adds up to 6 children, unlimited coaching, professional r…"
+  CTA: "Tell me when Plus launches"  <-- stale vs LIVE Stripe billing; no upgrade path
+Console after interactions: only [track] app_open + repeated warn "Could not load memory review items SyntaxError: Unexpected token '<'" (sandbox API endpoint returns index.html — data call failing silently on a core surface).

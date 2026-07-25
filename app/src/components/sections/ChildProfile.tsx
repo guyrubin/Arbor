@@ -9,6 +9,7 @@ import { PageHeader, SectionCard, Chip, IconBadge, InitialsTile, cardCls, PASTEL
 import { HubHero } from "../ui/HubHero";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { api } from "../../lib/api";
+import { scopeDisplayLabels } from "../../lib/shareScopes";
 import type { ShareGrant } from "../../types";
 import ProfileEditDrawer from "../profile/ProfileEditDrawer";
 
@@ -157,7 +158,7 @@ export default function ChildProfile() {
                   key={s.id}
                   name={s.recipientEmail}
                   tone="sky"
-                  roleLine={t(`cp.family.role.${s.role}`, { scopes: s.scopes.join(", ") || "—" })}
+                  roleLine={t(`cp.family.role.${s.role}`, { scopes: scopeDisplayLabels(s.scopes, t).join(", ") || "—" })}
                 />
               ))}
               {shares.length === 0 && (

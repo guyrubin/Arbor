@@ -27,6 +27,7 @@ export default function DailyPlayCard({
   goalLabel,
   sessionLength,
   onSessionLengthChange,
+  ageYears,
   sessionTapped,
   rhythmHintTime,
 }: {
@@ -39,10 +40,13 @@ export default function DailyPlayCard({
   concernLabel?: string;
   /** CI-28: label of the active goal that drove this pick (for "because" line). */
   goalLabel?: string;
-  /** CI-31: currently selected session length (controls chip row + duration badge). */
+  /** CI-31: currently selected session length (controls chip row). */
   sessionLength?: SessionLength;
   /** CI-31: called when the parent taps a chip. */
   onSessionLengthChange?: (v: SessionLength) => void;
+  /** KID-3: child's age in years — required for the chip row to render, so
+   *  SessionLengthChips only offers honestly-stocked buckets for the band. */
+  ageYears?: number;
   /** CI-31: true once any chip has been tapped this session (hides rhythm hint). */
   sessionTapped?: boolean;
   /** CI-31: rhythm calmWindow hour label (e.g. "10am") for the hint line. */
@@ -53,14 +57,10 @@ export default function DailyPlayCard({
   const { reason, matchedInterest } = pick;
   const activity = localizeActivity(pick.activity, uiLang);
 
-  // CI-31: duration badge text — shows selected chip range when a chip has been
-  // chosen, otherwise falls back to the activity's own durationMin.
-  const durationLabel: string = (() => {
-    if (!sessionLength) return t("play.min", { n: activity.durationMin });
-    if (sessionLength === "short")    return t("play.session.short");
-    if (sessionLength === "extended") return t("play.session.extended");
-    return t("play.session.standard");
-  })();
+  // KID-3: duration badge is ALWAYS the picked activity's real durationMin —
+  // never the selected chip's range. When the pool falls back (or an off-range
+  // pick surfaces), the parent still sees the honest number.
+  const durationLabel: string = t("play.min", { n: activity.durationMin });
 
   // CI-29: interest-match why-line variants (FIX 2: no effect-verb on child capacity;
   // FIX 5: parent-facing "about the child", never kid-companion second-person).
@@ -146,10 +146,11 @@ export default function DailyPlayCard({
         {/* CI-31: Session-length chips — inserted when the card owns the chip row
             (i.e. on the Overview/Today hero card; in DailyPlayTab the row is
             lifted to tab level and NOT rendered here). */}
-        {sessionLength && onSessionLengthChange && (
+        {sessionLength && onSessionLengthChange && ageYears !== undefined && (
           <SessionLengthChips
             value={sessionLength}
             onChange={onSessionLengthChange}
+            ageYears={ageYears}
             rhythmHintTime={rhythmHintTime}
             tapped={sessionTapped ?? false}
           />
@@ -168,15 +169,64 @@ export default function DailyPlayCard({
           <Icon name="expand_more" size={18} className="transition" style={{ transform: open ? "rotate(180deg)" : "none" }} />
         </button>
         {open && (
-          <ol className="mt-3 space-y-2.5">
-            {activity.steps.map((s, i) => (
-              <li key={i} className="flex gap-3 text-[14px] leading-relaxed" style={{ color: INK }}>
-                <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-extrabold"
-                  style={{ background: GREEN_SOFT, color: GREEN }}>{i + 1}</span>
-                <span style={{ textWrap: "pretty" } as React.CSSProperties}>{s}</span>
-              </li>
-            ))}
-          </ol>
+          <>
+            <ol className="mt-3 space-y-2.5">
+              {activity.steps.map((s, i) => (
+                <li key={i} className="flex gap-3 text-[14px] leading-relaxed" style={{ color: INK }}>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-extrabold"
+                    style={{ background: GREEN_SOFT, color: GREEN }}>{i + 1}</span>
+                  <span style={{ textWrap: "pretty" } as React.CSSProperties}>{s}</span>
+                </li>
+              ))}
+            </ol>
+
+            {/* KID-5 / AR-CONT-02: guided-play layer — authored variations and
+                observational prompts, shown only where authored. Labels are
+                bilingual i18n chrome; field copy is EN now, HE arrives via the
+                native transcreation packet (localizeActivity EN-fallback).
+                Register stays observational (notice/describe — never a verdict);
+                demoMediaId deliberately renders nothing (video is Guy-gated). */}
+            {(activity.easierVariation || activity.harderVariation || activity.whatToNotice || activity.outcomePrompt) && (
+              <div className="mt-4 space-y-3 rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)", border: `1px solid ${RULE}` }}>
+                {activity.easierVariation && (
+                  <div className="flex gap-2.5">
+                    <Icon name="remove" size={16} className="flex-shrink-0 mt-0.5" style={{ color: GREEN }} />
+                    <p className="text-[13px] leading-relaxed" style={{ color: INK }}>
+                      <span className="font-bold" style={{ color: GREEN }}>{t("play.guided.easier")} </span>
+                      {activity.easierVariation}
+                    </p>
+                  </div>
+                )}
+                {activity.harderVariation && (
+                  <div className="flex gap-2.5">
+                    <Icon name="add" size={16} className="flex-shrink-0 mt-0.5" style={{ color: GREEN }} />
+                    <p className="text-[13px] leading-relaxed" style={{ color: INK }}>
+                      <span className="font-bold" style={{ color: GREEN }}>{t("play.guided.harder")} </span>
+                      {activity.harderVariation}
+                    </p>
+                  </div>
+                )}
+                {activity.whatToNotice && (
+                  <div className="flex gap-2.5">
+                    <Icon name="visibility" size={16} className="flex-shrink-0 mt-0.5" style={{ color: GREEN }} />
+                    <p className="text-[13px] leading-relaxed" style={{ color: INK }}>
+                      <span className="font-bold" style={{ color: GREEN }}>{t("play.guided.notice")} </span>
+                      {activity.whatToNotice}
+                    </p>
+                  </div>
+                )}
+                {activity.outcomePrompt && (
+                  <div className="flex gap-2.5">
+                    <Icon name="chat_bubble" size={16} className="flex-shrink-0 mt-0.5" style={{ color: GREEN }} />
+                    <p className="text-[13px] leading-relaxed" style={{ color: INK }}>
+                      <span className="font-bold" style={{ color: GREEN }}>{t("play.guided.after")} </span>
+                      {activity.outcomePrompt}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Actions */}

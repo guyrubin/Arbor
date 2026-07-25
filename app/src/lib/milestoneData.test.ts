@@ -7,9 +7,11 @@ import {
   correctedAge,
   comparisonAgeMonths,
   bandForAgeMonths,
+  selectWeeklyFocus,
+  explainMilestonePrompt,
   MILESTONE_AGE_BANDS,
 } from "./milestoneData";
-import type { DevelopmentalDomainId } from "../types";
+import type { DevelopmentalDomainId, Milestone } from "../types";
 
 // The four CDC domains map onto these Arbor domain ids.
 const VALID_DOMAINS: DevelopmentalDomainId[] = [
@@ -154,5 +156,88 @@ describe("age-band grouping", () => {
       if (m.custom) continue;
       expect(m.checked).toBe(false);
     }
+  });
+});
+
+// ── UND-6 — age-aware weekly focus selection ────────────────────────────────
+describe("selectWeeklyFocus (UND-6)", () => {
+  const ms = (over: Partial<Milestone>): Milestone => ({
+    id: Math.random().toString(36).slice(2),
+    domain: "language_communication",
+    ageGroup: "4 years",
+    title: "A milestone",
+    description: "desc",
+    checked: false,
+    ...over,
+  });
+
+  it("48-month fixture: never selects an under-1 item while current-band items exist", () => {
+    const infant = ms({ id: "infant", ageMonths: 2, ageGroup: "2 months", title: "Smiles at people" });
+    const inBand = ms({ id: "in-band", ageMonths: 48, title: "Says sentences of four+ words" });
+    // The infant item sorts FIRST — the old find(!checked) bug would pick it.
+    const sel = selectWeeklyFocus([infant, inBand], 48);
+    expect(sel).not.toBeNull();
+    expect(sel!.milestone.id).toBe("in-band");
+    expect(sel!.mode).toBe("try");
+  });
+
+  it("prefers a 'not sure' in-band item over untouched in-band items (watch framing)", () => {
+    const untouched = ms({ id: "untouched", ageMonths: 48 });
+    const notSure = ms({ id: "not-sure", ageMonths: 48, observationStatus: "not_sure" });
+    const sel = selectWeeklyFocus([untouched, notSure], 48);
+    expect(sel!.milestone.id).toBe("not-sure");
+    expect(sel!.mode).toBe("watch");
+  });
+
+  it("treats not_yet like unmarked (try framing), not like not_sure", () => {
+    const notYet = ms({ id: "not-yet", ageMonths: 48, observationStatus: "not_yet" });
+    const sel = selectWeeklyFocus([notYet], 48);
+    expect(sel!.milestone.id).toBe("not-yet");
+    expect(sel!.mode).toBe("try");
+  });
+
+  it("falls back to the NEAREST earlier band when the current band is done", () => {
+    const infant = ms({ id: "infant", ageMonths: 2, ageGroup: "2 months" });
+    const threeYears = ms({ id: "three", ageMonths: 36, ageGroup: "3 years" });
+    const inBandDone = ms({ id: "done", ageMonths: 48, checked: true, observationStatus: "yes" });
+    const sel = selectWeeklyFocus([infant, inBandDone, threeYears], 48);
+    expect(sel!.milestone.id).toBe("three"); // nearest earlier band, not the infant one
+  });
+
+  it("never selects checked or ahead-of-band items; empty when nothing qualifies", () => {
+    const done = ms({ id: "done", ageMonths: 48, checked: true });
+    const ahead = ms({ id: "ahead", ageMonths: 60, ageGroup: "5 years" });
+    expect(selectWeeklyFocus([done, ahead], 48)).toBeNull();
+    expect(selectWeeklyFocus([], 48)).toBeNull();
+  });
+
+  it("uses the corrected band for a preemie (comparison months drive selection)", () => {
+    // 13-month-old born at 28 weeks → corrected ≈ 10.2 months → 9-month band.
+    const comparison = comparisonAgeMonths(13, 28);
+    const nineMonth = ms({ id: "nine", ageMonths: 9, ageGroup: "9 months" });
+    const twelveMonth = ms({ id: "twelve", ageMonths: 12, ageGroup: "12 months" });
+    const sel = selectWeeklyFocus([twelveMonth, nineMonth], comparison);
+    expect(sel!.milestone.id).toBe("nine");
+  });
+});
+
+// ── UND-8 — months-precise explain() prompt ─────────────────────────────────
+describe("explainMilestonePrompt (UND-8)", () => {
+  it("infant snapshot: months-precise, never 'a 0-year-old'", () => {
+    // Pinned prompt text — the explain() seam sends exactly this for a 9-month-old.
+    expect(explainMilestonePrompt("Sits without support", 9)).toBe(
+      'Briefly explain the developmental milestone "Sits without support" for a 9-month-old. Cover: typical age range, what it looks like in everyday life, and 2 concrete ways a parent can support it. Non-diagnostic, warm, short. Use the headings ### Typical age, ### What it looks like, ### How to support.',
+    );
+  });
+
+  it("newborn edge: 0 months reads '0-month-old', not '0-year-old'", () => {
+    const p = explainMilestonePrompt("Calms when comforted", 0);
+    expect(p).toContain("for a 0-month-old");
+    expect(p).not.toContain("year-old");
+  });
+
+  it("switches to whole years from 24 months", () => {
+    expect(explainMilestonePrompt("Kicks a ball", 24)).toContain("for a 2-year-old");
+    expect(explainMilestonePrompt("Hops on one foot", 54)).toContain("for a 4-year-old");
   });
 });

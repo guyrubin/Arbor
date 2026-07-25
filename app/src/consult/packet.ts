@@ -26,8 +26,22 @@ export interface PacketInputLog {
   response?: string;
   resolved?: boolean;
 }
-export interface PacketInputMilestone { domain: string; title: string; checked: boolean }
-export interface PacketInputPlan { title: string; issue?: string }
+export interface PacketInputMilestone {
+  domain: string;
+  title: string;
+  checked: boolean;
+  /** UND-4 (AR-CAP-08): the parent's actual response — preserved end-to-end.
+   *  Absent on legacy items; derived from `checked` in that case. */
+  status?: "yes" | "not_sure" | "not_yet";
+  /** When the parent recorded the observation (ISO). */
+  observedAt?: string;
+}
+export interface PacketInputPlan {
+  title: string;
+  issue?: string;
+  /** When the plan was created (ISO or ms) — feeds the CARE-7 delta counts. */
+  createdAt?: string | number;
+}
 export interface PacketInputMemory { fact: string; status: string }
 
 export interface PacketItem { id: string; text: string }
@@ -51,7 +65,23 @@ export interface BuildPacketInput {
   memory: PacketInputMemory[];
   nowMs: number;
   windowDays?: number;
+  /** CARE-7: when this audience last received an export (ISO or ms). Present
+   *  ⇒ the packet gains a computed, counts-only "Since the last export" delta
+   *  section. Absent (no prior export) ⇒ no delta section — fail quiet. */
+  lastExportedAt?: string | number;
 }
+
+/** Effective parent response for a milestone: the explicit wave-2 observation
+ *  status when present, else derived from the legacy `checked` flag. */
+const effectiveObservation = (m: PacketInputMilestone): "yes" | "not_sure" | "not_yet" =>
+  m.status ?? (m.checked ? "yes" : "not_yet");
+
+/** ISO date (YYYY-MM-DD) or null when the timestamp is absent/invalid. */
+const isoDay = (ts?: string | number): string | null => {
+  if (ts == null || ts === "") return null;
+  const t = toMs(ts);
+  return Number.isFinite(t) ? new Date(t).toISOString().slice(0, 10) : null;
+};
 
 /** Assemble the packet from the child's record. Empty sources yield no section. */
 export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
@@ -87,22 +117,46 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     sections.push({
       id: "patterns",
       title: `What we've been seeing (last ${windowDays} days)`,
-      note: "Parent-logged moments, not a diagnosis.",
+      // Deliberately scan-clean wording (CARE-2): the fail-closed clinical-term
+      // scan runs on non-clinician egress, so the reassurance note itself must
+      // not contain a scanned term.
+      note: "Parent-logged moments — observations only, never an assessment.",
       items,
     });
   }
 
-  // 3) Development snapshot — milestone coverage, lightly.
+  // 3) Development snapshot — milestone coverage in the parent's OWN response
+  //    groups (UND-4 / AR-CAP-08: the packet preserves observed / not sure /
+  //    not yet, with observation dates — for a provider, "parent is unsure"
+  //    vs "parent has not seen it" is the useful distinction). Counts and
+  //    factual titles only — never a percentage, score, or verdict.
   if (milestones.length) {
-    const done = milestones.filter((m) => m.checked).length;
+    const observed = milestones.filter((m) => effectiveObservation(m) === "yes");
+    const notSure = milestones.filter((m) => effectiveObservation(m) === "not_sure");
+    const notYet = milestones.filter((m) => effectiveObservation(m) === "not_yet");
+    const MAX_LISTED = 6;
+    const groupLine = (id: string, label: string, group: PacketInputMilestone[]): PacketItem | null => {
+      if (group.length === 0) return null;
+      const listed = group.slice(0, MAX_LISTED).map((m) => {
+        const date = isoDay(m.observedAt);
+        return `${m.title} (${m.domain}${date ? `, ${date}` : ""})`;
+      });
+      const more = group.length > MAX_LISTED ? `; and ${group.length - MAX_LISTED} more` : "";
+      return { id, text: `${label} (${group.length}): ${listed.join("; ")}${more}.` };
+    };
     const byDomain = new Map<string, { done: number; total: number }>();
     for (const m of milestones) {
       const d = byDomain.get(m.domain) ?? { done: 0, total: 0 };
-      d.total += 1; if (m.checked) d.done += 1;
+      d.total += 1; if (effectiveObservation(m) === "yes") d.done += 1;
       byDomain.set(m.domain, d);
     }
     const items: PacketItem[] = [
-      { id: "dev-overall", text: `${done} of ${milestones.length} tracked milestones noticed so far.` },
+      { id: "dev-overall", text: `${observed.length} of ${milestones.length} tracked milestones noticed so far.` },
+      ...[
+        groupLine("dev-observed", "Observed", observed),
+        groupLine("dev-not-sure", "Not sure yet", notSure),
+        groupLine("dev-not-yet", "Not yet observed", notYet),
+      ].filter((it): it is PacketItem => it !== null),
       ...[...byDomain.entries()].map(([domain, d], i) => ({ id: `dev-${i}`, text: `${domain}: ${d.done}/${d.total}.` })),
     ];
     sections.push({ id: "development", title: "Development snapshot", items });
@@ -127,6 +181,41 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       note: "Approved notes from your history with Arbor.",
       items,
     });
+  }
+
+  // 6) Since the last export (CARE-7) — a computed, counts-only delta that
+  //    appears ONLY when a prior export to this audience exists. It rides the
+  //    same fail-closed ceiling guards as every other section; no authored
+  //    clinical content lives here.
+  if (input.lastExportedAt != null) {
+    const lastMs = toMs(input.lastExportedAt);
+    if (Number.isFinite(lastMs) && lastMs > 0 && lastMs <= nowMs) {
+      const newLogs = logs.filter((l) => {
+        const t = toMs(l.timestamp);
+        return Number.isFinite(t) && t > lastMs;
+      }).length;
+      const newPlans = plans.filter((p) => {
+        if (p.createdAt == null) return false;
+        const t = toMs(p.createdAt);
+        return Number.isFinite(t) && t > lastMs;
+      }).length;
+      const newlyNoticed = milestones.filter((m) => {
+        if (effectiveObservation(m) !== "yes" || !m.observedAt) return false;
+        const t = toMs(m.observedAt);
+        return Number.isFinite(t) && t > lastMs;
+      }).length;
+      const s = (n: number) => (n === 1 ? "" : "s");
+      sections.push({
+        id: "since-last-visit",
+        title: `Since the last export (${isoDay(lastMs)})`,
+        note: "What was added since this summary was last prepared for this audience — counts only.",
+        items: [
+          { id: "delta-logs", text: `${newLogs} new moment${s(newLogs)} logged.` },
+          { id: "delta-plans", text: `${newPlans} action plan${s(newPlans)} added.` },
+          { id: "delta-milestones", text: `${newlyNoticed} milestone${s(newlyNoticed)} newly noticed.` },
+        ],
+      });
+    }
   }
 
   return {
@@ -163,24 +252,26 @@ export function countIncluded(packet: ConsultPacket, excludedIds: Set<string>): 
   );
 }
 
-/* Audience presets (IA W4.1) — one packet builder, three audiences, each with
- * a DEFINED data ceiling:
+/* Audience presets (IA W4.1 + CARE-7) — one packet builder, five audiences,
+ * each with a DEFINED data ceiling:
  *
  *  - teacher (non-clinician): capped at the School-Brief curated ceiling —
  *    profile-level context + what the family already tries. NO log-derived
- *    patterns, NO milestone coverage, NO memory-ledger facts (the packet never
- *    carries raw behavior-log fields for ANY audience; for a teacher even the
- *    derived sections stay behind the ceiling). The shared fail-closed
- *    clinical-term scan (`src/lib/clinicalScan.ts`) runs on every teacher
- *    build AND serialization.
- *  - therapist / pediatrician (clinicians): log-derived patterns + approved
- *    memory facts are IN ceiling. EXEMPT from the term scan by policy —
- *    "speech delay" is legitimate shorthand in a pediatrician summary.
+ *    patterns, NO milestone coverage, NO memory-ledger facts, NO log-derived
+ *    delta counts (the packet never carries raw behavior-log fields for ANY
+ *    audience; for a teacher even the derived sections stay behind the
+ *    ceiling). The shared fail-closed clinical-term scan
+ *    (`src/lib/clinicalScan.ts`) runs on every teacher build AND serialization.
+ *  - therapist / pediatrician / slp / behavioral_health (clinicians):
+ *    log-derived patterns + approved memory facts + the computed
+ *    since-last-export delta are IN ceiling. EXEMPT from the term scan by
+ *    policy — "speech delay" is legitimate shorthand in an SLP or
+ *    pediatrician summary.
  *
  * No preset, clinician or not, may export "riskLevel", "milestonesPercent",
  * or a percentage readiness figure — those tokens appear in NO export. */
 
-export type ConsultAudience = "teacher" | "therapist" | "pediatrician";
+export type ConsultAudience = "teacher" | "therapist" | "pediatrician" | "slp" | "behavioral_health";
 
 export interface ConsultPreset {
   audience: ConsultAudience;
@@ -196,6 +287,17 @@ export interface ConsultPreset {
   clinicalTermScan: boolean;
 }
 
+/** The single clinician ceiling every clinician audience reuses (CARE-7):
+ *  same sections, same data ceiling, term-scan exempt — one policy, no forks. */
+const CLINICIAN_SECTIONS = ["about", "patterns", "development", "tried", "memory", "since-last-visit"] as const;
+const CLINICIAN_CEILING = { logDerivedPatterns: true, approvedMemoryFacts: true } as const;
+const clinicianPreset = (audience: ConsultAudience): ConsultPreset => ({
+  audience,
+  sections: CLINICIAN_SECTIONS,
+  dataCeiling: { ...CLINICIAN_CEILING },
+  clinicalTermScan: false,
+});
+
 export const CONSULT_PRESETS: Record<ConsultAudience, ConsultPreset> = {
   teacher: {
     audience: "teacher",
@@ -203,18 +305,10 @@ export const CONSULT_PRESETS: Record<ConsultAudience, ConsultPreset> = {
     dataCeiling: { logDerivedPatterns: false, approvedMemoryFacts: false },
     clinicalTermScan: true,
   },
-  therapist: {
-    audience: "therapist",
-    sections: ["about", "patterns", "development", "tried", "memory"],
-    dataCeiling: { logDerivedPatterns: true, approvedMemoryFacts: true },
-    clinicalTermScan: false,
-  },
-  pediatrician: {
-    audience: "pediatrician",
-    sections: ["about", "patterns", "development", "tried", "memory"],
-    dataCeiling: { logDerivedPatterns: true, approvedMemoryFacts: true },
-    clinicalTermScan: false,
-  },
+  therapist: clinicianPreset("therapist"),
+  pediatrician: clinicianPreset("pediatrician"),
+  slp: clinicianPreset("slp"),
+  behavioral_health: clinicianPreset("behavioral_health"),
 };
 
 /** Tokens that appear in NO export, for ANY audience (clinician or not). */
@@ -287,6 +381,58 @@ export function serializePresetPacket(
   const md = serializePacket(capToPreset(preset, packet), excludedIds);
   assertWithinCeiling(preset, md);
   return md;
+}
+
+/* ── CARE-2 — recipient shared view ──────────────────────────────────────────
+ * The read-only packet a share RECIPIENT (co-parent / viewer / professional)
+ * may see. This is the ONLY egress for recipient-facing child data: it builds
+ * through `buildConsultPacket`, caps sections to exactly what the grant's
+ * stable scope IDs (lib/shareScopes.ts) unlock, and re-runs the same
+ * fail-closed guards (`assertWithinCeiling`: forbidden tokens for everyone,
+ * clinical-diagnosis term scan for non-clinician recipients) on the final
+ * text. Raw subcollection documents never leave the server — only these
+ * derived, counts-only section lines do.
+ */
+
+/** Stable share-scope ID → the packet sections it unlocks. FAILS CLOSED: a
+ *  scope not in this map (e.g. an unmigrated legacy string) unlocks nothing.
+ *  The report_* scopes mirror their audience preset ceilings exactly. */
+export const SHARED_SCOPE_SECTIONS: Record<string, readonly string[]> = {
+  story_timeline: ["patterns"],
+  weekly_insight: ["patterns", "development"],
+  behavior_patterns: ["patterns"],
+  milestones: ["development"],
+  report_teacher: CONSULT_PRESETS.teacher.sections,
+  report_therapist: CONSULT_PRESETS.therapist.sections,
+  report_pediatrician: CONSULT_PRESETS.pediatrician.sections,
+  report_slp: CONSULT_PRESETS.slp.sections,
+  report_behavioral_health: CONSULT_PRESETS.behavioral_health.sections,
+};
+
+/** Build the recipient's read-only packet: exactly the sections the granted
+ *  scopes unlock, guard-checked at this egress seam. Non-clinician recipients
+ *  (co_parent / viewer) ride the non-clinician ceiling — the fail-closed
+ *  clinical-diagnosis term scan runs, mirroring the teacher preset policy.
+ *  Professionals ride the clinician ceiling (term-scan exempt by the same
+ *  policy as therapist/pediatrician presets). The forbidden-token scan runs
+ *  for EVERY recipient. Throws `ClinicalLanguageError` (fail closed) rather
+ *  than ever emitting guarded content. */
+export function buildSharedScopePacket(
+  scopes: readonly string[],
+  recipientIsClinician: boolean,
+  input: BuildPacketInput
+): ConsultPacket {
+  const allowed = new Set<string>();
+  for (const scope of scopes) {
+    for (const sectionId of SHARED_SCOPE_SECTIONS[scope] ?? []) allowed.add(sectionId);
+  }
+  const packet = buildConsultPacket(input);
+  const capped: ConsultPacket = { ...packet, sections: packet.sections.filter((s) => allowed.has(s.id)) };
+  const guardPreset: ConsultPreset = recipientIsClinician
+    ? CONSULT_PRESETS.therapist
+    : { audience: "teacher", sections: [...allowed], dataCeiling: CONSULT_PRESETS.teacher.dataCeiling, clinicalTermScan: true };
+  assertWithinCeiling(guardPreset, packetToText(capped));
+  return capped;
 }
 
 /** Print-shell section shape — matches `ReportDoc.sections` in

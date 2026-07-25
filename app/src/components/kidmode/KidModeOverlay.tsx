@@ -10,15 +10,19 @@
  *
  * Parent gate: hold-to-exit button (3 s hold), now reused in both the dashboard
  * header and the surface back-bar. Pure friction — no PIN, no Firestore call, no
- * child-data mutation on enter OR exit. Escape is blocked; focus is trapped.
+ * child-data mutation on enter OR exit. Escape is blocked; focus is trapped
+ * for real (KID-2): while open, every sibling of the Kid Mode layers in the
+ * Shell mount node is made inert + aria-hidden via shieldShellSiblings, so
+ * Tab can never walk focus into the invisible parent shell.
  *
  * Styling: TOKEN-ONLY (var(--arbor-*), zero raw hex), RTL-safe (logical CSS
  * properties), scoped under `.arbor-play` for the child type scale.
  */
-import React, { lazy, Suspense, useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft } from "lucide-react";
 import { useKidMode } from "./KidModeContext";
+import { shieldShellSiblings } from "./kidModeShield";
 import { TabSkeleton } from "../ui/Skeleton";
 import { useLanguage } from "../../context/LanguageContext";
 import KidDashboard, { type KidSurface } from "./KidDashboard";
@@ -29,10 +33,11 @@ const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
 const PracticeHubTab = lazy(() => import("../practice/PracticeHubTab"));
 const FeelingsLabTab = lazy(() => import("../practice/FeelingsLabTab"));
 
-const SURFACE_META: Record<KidSurface, { label: string; Comp: React.ComponentType }> = {
-  journeys: { label: "Hero Stories", Comp: HeroJourneyTab },
-  arcade: { label: "Playbank", Comp: PracticeHubTab },
-  feelings: { label: "Feelings", Comp: FeelingsLabTab },
+// KID-1: labels are i18n keys (kid.* namespace) resolved with t() at render.
+const SURFACE_META: Record<KidSurface, { labelKey: string; Comp: React.ComponentType }> = {
+  journeys: { labelKey: "kid.surface.journeys", Comp: HeroJourneyTab },
+  arcade: { labelKey: "kid.surface.arcade", Comp: PracticeHubTab },
+  feelings: { labelKey: "kid.surface.feelings", Comp: FeelingsLabTab },
 };
 
 type View = "home" | KidSurface;
@@ -41,10 +46,22 @@ export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
   const { t } = useLanguage();
   const [view, setView] = useState<View>("home");
+  // KID-4: when a dashboard game tile opens the arcade, it names the HeroArcade
+  // world to pre-select so the tile's title appears verbatim on arrival.
+  const [arcadeWorldId, setArcadeWorldId] = useState<string | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+
+  const openSurface = (s: KidSurface, worldId?: string) => {
+    setArcadeWorldId(worldId ?? null);
+    setView(s);
+  };
 
   // Reset to the home dashboard whenever the overlay opens.
   useEffect(() => {
-    if (isKidModeOpen) setView("home");
+    if (isKidModeOpen) {
+      setView("home");
+      setArcadeWorldId(null);
+    }
   }, [isKidModeOpen]);
 
   // Block Escape inside Kid Mode — a child must not press Escape to exit. The
@@ -61,6 +78,19 @@ export default function KidModeOverlay() {
     return () => document.removeEventListener("keydown", onKey, true);
   }, [isKidModeOpen]);
 
+  // KID-2: the keyboard half of the lock. Pointer events are swallowed by the
+  // backdrop, but Tab could still walk focus into invisible parent-shell
+  // controls (nav, capture, settings, sign-out) behind the overlay. While Kid
+  // Mode is open, every sibling of the Kid Mode layers inside the Shell mount
+  // node is made inert + aria-hidden (shieldShellSiblings) so focus can never
+  // leave the overlay; the cleanup restores the shell exactly on close.
+  useEffect(() => {
+    if (!isKidModeOpen) return;
+    const parent = overlayRef.current?.parentElement;
+    if (!parent) return;
+    return shieldShellSiblings(Array.from(parent.children));
+  }, [isKidModeOpen]);
+
   const surface = view === "home" ? null : SURFACE_META[view];
 
   return (
@@ -73,6 +103,7 @@ export default function KidModeOverlay() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22 }}
           aria-hidden="true"
+          data-kid-mode-layer="true"
           onPointerDown={(e) => e.stopPropagation()}
           // F4: the overlay itself animates with scale, so its margins briefly expose the
           // parent shell during enter/exit. This non-transformed full-viewport backdrop
@@ -84,6 +115,8 @@ export default function KidModeOverlay() {
       {isKidModeOpen && (
         <motion.div
           key="kid-mode-overlay"
+          ref={overlayRef}
+          data-kid-mode-layer="true"
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.97 }}
@@ -119,7 +152,7 @@ export default function KidModeOverlay() {
             >
               <button
                 onClick={() => setView("home")}
-                aria-label="Back to home"
+                aria-label={t("kid.back.homeAria")}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -137,7 +170,7 @@ export default function KidModeOverlay() {
                 }}
               >
                 <ChevronLeft className="w-4 h-4" aria-hidden="true" />
-                Home
+                {t("kid.back.home")}
               </button>
               <span
                 style={{
@@ -149,9 +182,9 @@ export default function KidModeOverlay() {
                   minWidth: 0,
                 }}
               >
-                {surface.label}
+                {t(surface.labelKey)}
               </span>
-              <HoldExitButton onExit={closeKidMode} idleLabel="Back to parent" ariaIdle="Hold to go back to parent" />
+              <HoldExitButton onExit={closeKidMode} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
             </header>
           )}
 
@@ -167,14 +200,18 @@ export default function KidModeOverlay() {
           >
             <AnimatePresence mode="wait">
               <motion.div
-                key={view}
+                key={view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.14 }}
               >
                 {view === "home" ? (
-                  <KidDashboard onOpenSurface={setView} onExit={closeKidMode} />
+                  <KidDashboard onOpenSurface={openSurface} onExit={closeKidMode} />
+                ) : view === "arcade" ? (
+                  <Suspense fallback={<TabSkeleton />}>
+                    <PracticeHubTab initialWorldId={arcadeWorldId ?? undefined} />
+                  </Suspense>
                 ) : (
                   <Suspense fallback={<TabSkeleton />}>{surface && <surface.Comp />}</Suspense>
                 )}

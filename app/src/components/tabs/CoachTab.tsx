@@ -24,6 +24,8 @@ import { api, streamVoice, getAiLanguage } from "../../lib/api";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
+import { publishedHardMomentCards } from "../../content/hardMomentCards";
+import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { usePrefersReducedMotion } from "../ui/playkit";
 
@@ -74,6 +76,9 @@ export default function CoachTab() {
     setChatInput,
     handleChatSend,
     handleCouncilSend,
+    appendVoiceUserTurn,
+    appendVoiceAiDelta,
+    finalizeVoiceAiTurn,
     chatBottomRef,
     setActiveTab,
     setPlanChallengeTopic,
@@ -91,6 +96,7 @@ export default function CoachTab() {
     openConversation,
     deleteConversation,
     apiError,
+    seedCoach,
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
@@ -106,7 +112,11 @@ export default function CoachTab() {
   if (revealedRef.current === null) revealedRef.current = chatMessages.length - 1;
 
   const lastMessage = chatMessages[chatMessages.length - 1];
-  const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && chatMessages.length > 1;
+  // COACH-2: a live voice caption bubble streams its own text delta-by-delta —
+  // mark it revealed so the typewriter never re-animates it after it settles,
+  // and hold the follow-up chips until the spoken answer is done.
+  if (lastMessage?.sender === "ai" && lastMessage.voiceLive) revealedRef.current = chatMessages.length - 1;
+  const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && chatMessages.length > 1;
 
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
@@ -115,9 +125,6 @@ export default function CoachTab() {
   // Plan / Share fold into this menu so a settled answer reads as calm text.
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
   const [showAllLenses, setShowAllLenses] = useState(false);
-
-  // E2 hero CTA target — focusing the input also scrolls it into view.
-  const chatInputRef = useRef<HTMLInputElement>(null);
 
   // Realtime voice coach: prefers Gemini Live (true bidirectional audio) when the
   // server reports it's available, and falls back to a hands-free browser loop —
@@ -148,6 +155,9 @@ export default function CoachTab() {
     if (!next) {
       if (streamDoneRef.current) {
         streamDoneRef.current = false;
+        // COACH-2: the spoken answer is fully delivered — settle the live
+        // caption bubble into a normal persisted turn.
+        finalizeVoiceAiTurn();
         if (voiceOnRef.current) startListening(); else setVoicePhase("off");
       }
       return;
@@ -175,6 +185,9 @@ export default function CoachTab() {
       await streamVoice(
         { message: text, childProfile, scholarLens: selectedLens, language: getAiLanguage() },
         (delta) => {
+          // COACH-2: caption + persist the SAME screened text that is spoken —
+          // the delta accumulates into a live AI bubble in the thread.
+          appendVoiceAiDelta(delta);
           voiceBufRef.current += delta;
           const parts = voiceBufRef.current.split(/(?<=[.!?])\s+/);
           while (parts.length > 1) enqueueSpeak(parts.shift() as string);
@@ -187,6 +200,9 @@ export default function CoachTab() {
       streamDoneRef.current = true;
       pumpTts();
     } catch {
+      // COACH-2: keep the partial caption on abort/error — the parent keeps
+      // whatever was already said instead of the turn vanishing.
+      finalizeVoiceAiTurn();
       if (voiceOnRef.current) startListening(); else setVoicePhase("off");
     } finally {
       voiceAbortRef.current = null;
@@ -194,12 +210,15 @@ export default function CoachTab() {
   };
 
   const startListening = () => {
-    if (!speechSupported()) { toast("Voice input isn't supported in this browser", "info"); voiceOnRef.current = false; setVoicePhase("off"); return; }
+    if (!speechSupported()) { toast(t("coach.toast.voiceUnsupported"), "info"); voiceOnRef.current = false; setVoicePhase("off"); return; }
     setVoicePhase("listening");
     stopDictationRef.current = startDictation(
       {
         onResult: (text) => {
           if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
+          // COACH-2: persist the dictated turn through the existing
+          // chat-message write seam before asking.
+          appendVoiceUserTurn(text);
           void streamVoiceTurn(text);
         },
         onError: () => { if (voiceOnRef.current) setVoicePhase("listening"); },
@@ -218,6 +237,8 @@ export default function CoachTab() {
     stopSpeaking();
     liveCtlRef.current?.stop();
     liveCtlRef.current = null;
+    // COACH-2: settle (and keep) any partial caption when the parent stops.
+    finalizeVoiceAiTurn();
     setVoicePhase("off");
   };
 
@@ -239,7 +260,7 @@ export default function CoachTab() {
             "You are Arbor, a warm, calm, non-diagnostic parenting coach. Keep spoken replies short, kind, and practical. Never diagnose; suggest professional help for safety concerns.",
             {
               onPhase: (p) => setVoicePhase(p === "closed" ? "off" : p === "connecting" ? "thinking" : p),
-              onError: () => { liveCtlRef.current = null; toast("Switched to standard voice", "info"); startBrowserVoice(); },
+              onError: () => { liveCtlRef.current = null; toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
             },
           );
           return;
@@ -255,6 +276,12 @@ export default function CoachTab() {
   useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
 
   const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
+  // COACH-2: live caption text on the voicePhase chip while the answer streams
+  // in / is spoken (the same screened text that fills the thread bubble).
+  const liveVoiceText =
+    (voicePhase === "thinking" || voicePhase === "speaking") && lastMessage?.sender === "ai" && lastMessage.voiceLive
+      ? lastMessage.text
+      : "";
 
   return (
     <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
@@ -267,6 +294,72 @@ export default function CoachTab() {
             <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
           </div>
         </header>
+
+        {/* Composer-first: the parent's question is the primary job on this page.
+            COACH-4: this hero composer is the ONE input on the surface — the
+            mirrored in-thread composer was removed; follow-up turns also send
+            from here (the thread auto-scrolls to the streaming answer). */}
+        <section className="border-y py-5 sm:py-6" aria-label={t("elev.hero.ask.cta")} style={{ borderColor: "var(--arbor-rule)" }}>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={21} fill={1} /></span>
+            <div className="min-w-0">
+              <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.empty.title", { name: childFirst })}</p>
+              <p className="text-[11px] leading-relaxed truncate" style={{ color: "var(--arbor-muted)" }}>
+                {t("coach.memoryLine", { name: childFirst })}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-end gap-2 rounded-[20px] p-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
+            <textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChatSend(); } }}
+              disabled={isChatLoading}
+              rows={2}
+              placeholder={t("coach.placeholder", { name: childFirst })}
+              className="flex-1 bg-transparent resize-none px-2.5 py-2 text-sm leading-relaxed focus:outline-none min-h-[58px]"
+              style={{ color: "var(--arbor-ink)" }}
+            />
+            <button
+              type="button"
+              onClick={() => handleChatSend()}
+              disabled={isChatLoading || !chatInput.trim()}
+              aria-label={t("coach.send.aria")}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-white flex-shrink-0 disabled:opacity-40 transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              style={{ background: T.gradientCta }}
+            >
+              <Icon name={uiLang === "he" ? "arrow_back" : "arrow_forward"} size={20} />
+            </button>
+          </div>
+          {/* Multimodal capture entry points (photo / document / voice) — the ONLY
+              instances on the surface (COACH-4 firewall condition: they survive
+              the composer consolidation). */}
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={() => setVisionMode("observe")} className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="photo_camera" size={14} /> {t("coach.photo")}</button>
+            <button type="button" onClick={() => setVisionMode("document")} className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={14} /> {t("coach.document")}</button>
+            <button
+              type="button"
+              onClick={toggleVoice}
+              aria-pressed={voicePhase !== "off"}
+              aria-label={voiceLabel}
+              className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[11px] font-bold"
+              style={voicePhase !== "off"
+                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
+                : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+            >
+              {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
+              {liveVoiceText && (
+                <span dir="auto" aria-live="polite" className="max-w-[180px] truncate text-[10px] font-medium" style={{ color: "var(--arbor-muted)" }}>
+                  {liveVoiceText}
+                </span>
+              )}
+              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
+            </button>
+            {/* EU AI Act Art. 50 — persistent AI-interaction transparency line.
+                Always visible on the Ask surface, never behind a toggle. */}
+            <span className="ms-auto inline-flex items-center gap-1 text-[10px]" style={{ color: "var(--arbor-muted)" }}><Icon name="shield" size={13} /> {t("coach.aiDisclosure")}</span>
+          </div>
+        </section>
 
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
@@ -281,7 +374,7 @@ export default function CoachTab() {
               className="ms-auto inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
               style={{ color: "var(--arbor-muted)" }}
             >
-              <span>{showAllLenses ? (uiLang === "he" ? "פחות אפשרויות" : "Fewer options") : t("coach.lens.browseAll")}</span>
+              <span>{showAllLenses ? t("coach.lens.fewer") : t("coach.lens.browseAll")}</span>
               <Icon name={showAllLenses ? "expand_less" : "expand_more"} size={14} />
             </button>
           </div>
@@ -358,16 +451,43 @@ export default function CoachTab() {
       {chatMessages.length <= 1 && (
         <div className="space-y-2">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {SCENARIOS.map((s) => (
               <button
                 key={s.labelKey}
                 onClick={() => handleChatSend(s.prompt)}
                 disabled={isChatLoading}
-                className="inline-flex min-h-[44px] flex-shrink-0 items-center gap-2 rounded-xl bg-white px-3.5 py-2 text-start text-[12px] font-bold transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                className="inline-flex items-center gap-2 rounded-2xl px-4 py-3 min-h-[48px] text-start text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                 style={{ color: T.ink, border: "1px solid var(--arbor-rule)" }}
               >
                 <span aria-hidden>{s.emoji}</span> {t(s.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* CONT-2 — hard-moment "Talk this through" (AR-CONT-01). Reads ONLY
+          publishedHardMomentCards (fail-closed governance), so this group is
+          invisible until named clinical review stamps the pack (GD-10). Each
+          chip calls the EXISTING seedCoach seam with the card context; the
+          seed embeds the governed escalation VERBATIM (never paraphrased) and
+          is covered by evals/coach-hardmoment-seed-v1. */}
+      {chatMessages.length <= 1 && publishedHardMomentCards.length > 0 && (
+        <div className="space-y-2" data-testid="coach-hard-moments">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("hm.coach.heading")}</span>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {publishedHardMomentCards.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => seedCoach({ prompt: buildHardMomentSeedPrompt(card, aiLang === "he" ? "he" : "en", childFirst), source: "hard-moment-card" })}
+                disabled={isChatLoading}
+                className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl px-4 py-3 text-start text-sm font-bold transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
+              >
+                <Icon name="forum" size={15} style={{ color: "var(--arbor-green-ink)" }} />
+                <span className="min-w-0 truncate">{t("hm.talkThrough")} · {locText(card.title, uiLang === "he" ? "he" : "en")}</span>
               </button>
             ))}
           </div>
@@ -402,8 +522,11 @@ export default function CoachTab() {
         })}
       </div>
 
-      {/* Chat Viewport Area */}
-      <div className={`${cardCls} flex h-[330px] min-h-[330px] min-w-0 flex-col justify-between overflow-hidden`}>
+      {/* Chat thread — COACH-4: no fixed-height inner scroll; the thread flows
+          with the page (ArborContext auto-scrolls the viewport to the streaming
+          answer via chatBottomRef). The min-height keeps the conversation canvas
+          from shrinking below the previous min(70dvh,560px) viewport. */}
+      <div className={`${cardCls} flex min-h-[min(70dvh,560px)] min-w-0 flex-col overflow-hidden`}>
         {/* Persistent named-coach identity strip. The lens/context frame is kept but
             visually subordinate so the conversation is the hero. Green primary —
             never the design's sapphire — per the parent color lock. */}
@@ -424,15 +547,16 @@ export default function CoachTab() {
           </span>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="flex-1 p-4 md:p-6">
          <div className="max-w-[760px] mx-auto space-y-3.5">
-          {/* Empty state — orient a first-run parent on what Ask Arbor does. */}
+          {/* Empty state — orient a first-run parent on what Ask Arbor does.
+              COACH-4: the title line lives ONCE, on the hero composer above;
+              the thread empty state keeps only the mascot + body copy. */}
           {chatMessages.length <= 1 && !isChatLoading && (
             <div className="flex flex-col items-center justify-center text-center gap-3 py-10 px-4">
               <div className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden" style={{ background: "var(--arbor-green-soft)" }} aria-hidden>
                 <ArborMascot size={52} />
               </div>
-              <p className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("coach.empty.title", { name: childFirst })}</p>
               <p className="text-sm max-w-md leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.empty.body")}</p>
             </div>
           )}
@@ -463,15 +587,16 @@ export default function CoachTab() {
                       contract={msg.contract}
                       lens={msg.lens}
                       council={msg.council}
+                      lang={uiLang}
                       onSaveToPlan={(topic) => {
                         setPlanChallengeTopic((topic || msg.text).replace(/[#*]/g, "").slice(0, 140));
                         setActiveTab("plans");
-                        toast("Seeded the plan generator — tap Generate", "info");
+                        toast(t("coach.toast.planSeeded"), "info");
                       }}
                       onCreateLog={async () => {
                         const prior = chatMessages[idx - 1];
                         const source = prior?.sender === "user" ? prior.text : msg.text;
-                        toast("Drafting a log from this moment…", "info");
+                        toast(t("coach.toast.draftingLog"), "info");
                         try {
                           const d = await api.extractLog({ message: source, childProfile });
                           if (d.behaviorType) setNewLogType(d.behaviorType);
@@ -483,22 +608,24 @@ export default function CoachTab() {
                           if (d.response) setNewLogResponse(d.response);
                           setNewLogNotes(d.notes || "");
                           setActiveTab("behaviors");
-                          toast("Arbor drafted a log — review and save", "success");
+                          toast(t("coach.toast.logDrafted"), "success");
                         } catch {
                           setNewLogNotes(msg.contract!.nonDiagnosticHypotheses?.[0]?.rationale?.slice(0, 300) || source.slice(0, 300));
                           setActiveTab("behaviors");
-                          toast("Capture the moment — a note is pre-filled", "info");
+                          toast(t("coach.toast.notePrefilled"), "info");
                         }
                       }}
                       onAddToHandoff={() => {
                         setActiveTab("consult");
-                        toast("Teacher note copied — paste it into your Consult summary", "info");
+                        toast(t("coach.toast.teacherNoteCopied"), "info");
                       }}
                     />
                   ) : (
                     <TypewriterMarkdown
                       text={msg.text}
-                      enabled={!reducedMotion && idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
+                      // COACH-2: a live voice caption streams its own deltas —
+                      // render instantly (the stream IS the typewriter).
+                      enabled={!reducedMotion && !msg.voiceLive && idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
                       onDone={() => {
                         revealedRef.current = idx;
                       }}
@@ -508,7 +635,7 @@ export default function CoachTab() {
                   <MarkdownBlock text={msg.text} />
                 )}
 
-                {msg.sender === "ai" && !msg.contract && (
+                {msg.sender === "ai" && !msg.contract && !msg.voiceLive && (
                   // Calm: answers read as text. Copy stays inline; everything else
                   // folds into a single "…" overflow so it's not a toolbar.
                   // Touch: always visible. Desktop: calm hover reveal. Keyboard: focus reveals.
@@ -540,7 +667,7 @@ export default function CoachTab() {
                               setNewLogNotes(msg.text.replace(/[#*]/g, "").trim().slice(0, 400));
                               setActiveTab("behaviors");
                               setOpenMenuIdx(null);
-                              toast("Pre-filled a log from this guidance — review and save", "info");
+                              toast(t("coach.toast.logPrefilled"), "info");
                             }}
                             className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-[40px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
                           >
@@ -552,7 +679,7 @@ export default function CoachTab() {
                               setPlanChallengeTopic(msg.text.replace(/[#*]/g, "").slice(0, 140));
                               setActiveTab("plans");
                               setOpenMenuIdx(null);
-                              toast("Seeded the plan generator — tap Generate", "info");
+                              toast(t("coach.toast.planSeeded"), "info");
                             }}
                             className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-[40px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
                           >
@@ -654,102 +781,37 @@ export default function CoachTab() {
          </div>
         </div>
 
-        <div className="flex flex-col gap-2 p-4" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
-          {/* Multimodal capture: show Arbor a photo or document, or talk hands-free */}
-          <div className="order-2 flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setVisionMode("observe")}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-            >
-              <Icon name="photo_camera" size={14} /> {t("coach.photo")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setVisionMode("document")}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-            >
-              <Icon name="description" size={14} /> {t("coach.document")}
-            </button>
-            <button
-              type="button"
-              onClick={toggleVoice}
-              aria-pressed={voicePhase !== "off"}
-              aria-label={voiceLabel}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-              style={voicePhase !== "off"
-                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-            >
-              {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
-              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
-            </button>
-            {/* Council (multi-lens) — demoted from a second primary send to a subtle
-                secondary affordance beside the input. Sends the current question to
-                three scholars, then Arbor reconciles. One primary send remains below. */}
-            <button
-              type="button"
-              onClick={() => handleCouncilSend()}
-              disabled={isChatLoading}
-              title={t("coach.councilHint")}
-              aria-label={t("coach.councilHint")}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-            >
-              <Icon name="group" size={14} /> {t("coach.council")}
-            </button>
-          </div>
-          <div className="order-1 flex items-center gap-2">
-            {/* Capsule input + circular send. The send arrow is logical (Arrow
-                flips Left/Right by uiLang) so it never points backwards in RTL. */}
-            <input
-              ref={chatInputRef}
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
-              disabled={isChatLoading}
-              placeholder={t("coach.placeholder", { name: childFirst })}
-              className="flex-1 rounded-full px-[18px] py-3.5 text-sm focus:outline-none transition"
-              style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-            />
-            <button
-              onClick={() => handleChatSend()}
-              disabled={isChatLoading}
-              aria-label={t("coach.send.aria")}
-              className="text-white rounded-full transition flex items-center justify-center flex-shrink-0 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-              style={{ width: 48, height: 48, background: T.gradientCta }}
-            >
-              {uiLang === "he"
-                ? <Icon name="arrow_back" size={20} />
-                : <Icon name="arrow_forward" size={20} />}
-            </button>
-          </div>
-          {/* EU AI Act Art. 50 — persistent AI-interaction transparency line. Always
-              visible on the Ask surface, calm and non-intrusive, never behind a toggle. */}
-          <p className="order-3 text-[10px] text-center leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-            {t("coach.aiDisclosure")}
-          </p>
-          {/* ia-b6: persistent Ask-pillar door into the Ask-a-Specialist warm handoff.
-              Navigation only — stays enabled while a coach answer is streaming. */}
-          <div className="order-4 pt-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-            <button
-              type="button"
-              onClick={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}
-              aria-label={t("coach.specialist.aria")}
-              className="inline-flex items-center gap-1.5 min-h-[44px] py-2 text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
-              style={{ color: "var(--arbor-muted)" }}
-            >
-              <Icon name="stethoscope" size={14} style={{ color: "var(--arbor-green-ink)" }} />
-              <span>{t("coach.specialist.lead")}</span>
-              <span style={{ color: "var(--arbor-green-ink)" }}>{t("coach.specialist.cta")}</span>
-              {uiLang === "he"
-                ? <Icon name="chevron_left" size={14} style={{ color: "var(--arbor-green-ink)" }} />
-                : <Icon name="chevron_right" size={14} style={{ color: "var(--arbor-green-ink)" }} />}
-            </button>
-          </div>
+        {/* COACH-4: the mirrored bottom composer (input+send+photo/mic row) was
+            deleted — the hero composer above is the one input. What remains under
+            the thread is a compact secondary row: Council (multi-lens send of the
+            current question) + the Ask-a-Specialist warm handoff (ia-b6,
+            navigation only — stays enabled while an answer is streaming). */}
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
+          <button
+            type="button"
+            onClick={() => handleCouncilSend()}
+            disabled={isChatLoading}
+            title={t("coach.councilHint")}
+            aria-label={t("coach.councilHint")}
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <Icon name="group" size={14} /> {t("coach.council")}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}
+            aria-label={t("coach.specialist.aria")}
+            className="ms-auto inline-flex items-center gap-1.5 min-h-[44px] py-2 text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <Icon name="stethoscope" size={14} style={{ color: "var(--arbor-green-ink)" }} />
+            <span>{t("coach.specialist.lead")}</span>
+            <span style={{ color: "var(--arbor-green-ink)" }}>{t("coach.specialist.cta")}</span>
+            {uiLang === "he"
+              ? <Icon name="chevron_left" size={14} style={{ color: "var(--arbor-green-ink)" }} />
+              : <Icon name="chevron_right" size={14} style={{ color: "var(--arbor-green-ink)" }} />}
+          </button>
         </div>
       </div>
 
@@ -757,7 +819,8 @@ export default function CoachTab() {
       {lastMessage?.sender === "ai" && chatMessages.length > 1 && (
         <TrustSafetyBar
           risk={lastMessage.contract ? riskFromLevel(lastMessage.contract.riskLevel) : parseRisk(lastMessage.text)}
-          note="Arbor's read of this answer"
+          note={t("coach.trust.note")}
+          lang={uiLang}
           onEscalate={() => setActiveTab("consult")}
         />
       )}
@@ -774,8 +837,8 @@ export default function CoachTab() {
         onClose={() => setVisionMode(null)}
         childProfile={childProfile}
         onSeedCoach={(prompt) => { setChatInput(prompt); }}
-        onGoHandoff={() => { setActiveTab("consult"); toast("Note copied — paste it into your Consult summary", "info"); }}
-        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); setActiveTab("behaviors"); toast("Captured from the photo — review and save", "info"); }}
+        onGoHandoff={() => { setActiveTab("consult"); toast(t("coach.toast.noteCopied"), "info"); }}
+        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); setActiveTab("behaviors"); toast(t("coach.toast.photoCaptured"), "info"); }}
       />
     </motion.div>
   );

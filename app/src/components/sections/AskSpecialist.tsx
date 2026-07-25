@@ -83,7 +83,13 @@ export default function AskSpecialist() {
         schoolContext: childProfile.schoolContext, strengths: childProfile.strengths, challenges: childProfile.challenges,
       },
       logs: behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, intensity: l.intensity, timestamp: l.timestamp, resolved: l.resolved })),
-      milestones: milestones.map((m) => ({ domain: m.domain, title: m.title, checked: m.checked })),
+      // UND-4 (AR-CAP-08): preserve the parent's actual response + date —
+      // observed / not sure / not yet — in the redactable packet card too.
+      milestones: milestones.map((m) => ({
+        domain: m.domain, title: m.title, checked: m.checked,
+        status: m.observationStatus ?? (m.checked ? "yes" : "not_yet"),
+        observedAt: m.observationUpdatedAt,
+      })),
       plans: actionPlans.map((p) => ({ title: p.title, issue: p.issue })),
       memory: approvedMemoryItems.map((m) => ({ fact: m.fact, status: m.status })),
       nowMs: Date.now(),

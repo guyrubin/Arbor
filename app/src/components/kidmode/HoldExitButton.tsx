@@ -8,25 +8,28 @@
  *
  * The hold interaction, ring visual, and idle/holding label props are
  * unchanged; the kid-facing side stays graphic (ring + X glyph).
+ *
+ * KID-1: all visible/accessible copy comes from the i18n `kid.*` namespace
+ * (defaults included) — zero hardcoded English.
  */
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { X } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 import { holdProgress, holdComplete, HOLD_MS } from "./parentGate";
 import { ParentChallenge } from "./ParentChallenge";
 
 interface HoldExitButtonProps {
   onExit: () => void;
-  /** Idle caption under the button. */
+  /** Idle caption under the button. Defaults to t("kid.exit.holdIdle"). */
   idleLabel?: string;
-  /** Accessible name when idle. */
+  /** Accessible name when idle. Defaults to t("kid.exit.holdAria"). */
   ariaIdle?: string;
 }
 
-export function HoldExitButton({
-  onExit,
-  idleLabel = "Hold to exit",
-  ariaIdle = "Hold to exit Kid Mode",
-}: HoldExitButtonProps) {
+export function HoldExitButton({ onExit, idleLabel, ariaIdle }: HoldExitButtonProps) {
+  const { t } = useLanguage();
+  const idle = idleLabel ?? t("kid.exit.holdIdle");
+  const aria = ariaIdle ?? t("kid.exit.holdAria");
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -77,7 +80,7 @@ export function HoldExitButton({
   return (
     <div style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
       <button
-        aria-label={holding ? `${ariaIdle} — ${Math.round(progress)}%` : ariaIdle}
+        aria-label={holding ? `${aria} — ${Math.round(progress)}%` : aria}
         aria-live="polite"
         onMouseDown={beginHold}
         onTouchStart={beginHold}
@@ -139,7 +142,7 @@ export function HoldExitButton({
           lineHeight: 1.2,
         }}
       >
-        {holding ? `Hold… ${Math.ceil((HOLD_MS - elapsed) / 1000)}s` : idleLabel}
+        {holding ? t("kid.exit.holding", { n: Math.ceil((HOLD_MS - elapsed) / 1000) }) : idle}
       </span>
       {challengeOpen && (
         <ParentChallenge

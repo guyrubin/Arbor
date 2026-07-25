@@ -2,7 +2,7 @@ import express from "express";
 import type { ArborConfig } from "../config/env.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 import type { MemoryStore } from "../memory/types.js";
-import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse } from "../contracts/coach.js";
+import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -25,12 +25,13 @@ import { buildConsultRequest, type ConsultStore } from "../server/consultRequest
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
-import { synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured } from "../server/tts.js";
+import { screenAndSynthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
+import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
 
 type ApiDeps = {
   config: ArborConfig;
@@ -48,6 +49,9 @@ type ApiDeps = {
   waitlistNotifier?: WaitlistNotifier | null;
   /** C2: push token store (FCM). Off-by-default client-side via VITE_FIREBASE_VAPID_KEY. */
   pushTokenStore?: import("../server/pushTokens.js").PushTokenStore;
+  /** CARE-2: read seam for the recipient shared view (injectable for tests);
+   *  defaults to the Firestore/local source derived from config. */
+  sharedChildSource?: SharedChildRecordSource;
 };
 
 /** Redact PII from a profile object by round-tripping its JSON through the redactor. */
@@ -81,8 +85,10 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource }: ApiDeps) => {
   const router = express.Router();
+  // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
+  const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
@@ -228,7 +234,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     const { uid } = actorOf(req);
     try {
       const childId = req.query.childId ? String(req.query.childId) : undefined;
-      res.json({ shares: await shareStore.listByOwner(uid, childId) });
+      // CARE-6: ?history=1 includes revoked/expired grants — the owner's own
+      // grant records ARE the sharing audit trail (created/expired/revoked
+      // dates). Owner-only; recipient reads never resolve inactive grants.
+      const includeInactive = req.query.history === "1";
+      res.json({ shares: await shareStore.listByOwner(uid, childId, { includeInactive }) });
     } catch (error: any) {
       logger.error("Arbor Share List Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to list shares", details: error.message });
@@ -259,6 +269,32 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     } catch (error: any) {
       logger.error("Arbor Shared-With-Me Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to list shares", details: error.message });
+    }
+  });
+
+  // CARE-2: the recipient shared VIEW — a read-only, scope-exact packet for a
+  // live grant. All authorization (recipient email, server-enforced
+  // expiry/revocation, CARE-3 fail-closed scope resolution) and the fail-closed
+  // egress guards (forbidden-token scan + non-clinician clinical-term scan) run
+  // inside resolveSharedPacket → buildSharedScopePacket — the ONLY egress for
+  // recipient-facing child data. Never returns raw subcollection documents.
+  router.get("/shared/:grantId/packet", async (req, res) => {
+    const { email } = actorOf(req);
+    try {
+      const result = await resolveSharedPacket({
+        grantId: req.params.grantId,
+        recipientEmail: email,
+        shareStore,
+        source: sharedSource,
+      });
+      if (result.status === 200) {
+        res.json(result.view);
+        return;
+      }
+      res.status(result.status).json({ error: result.error });
+    } catch (error: any) {
+      logger.error("Arbor Shared Packet Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to load the shared view", details: error.message });
     }
   });
 
@@ -378,6 +414,9 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((card) => card.id);
       }
+      // COACH-6: resolve the cited ids to real titles + types from the server
+      // knowledge registry so the citation drawer never shows raw slugs.
+      structured.sourceCards = buildSourceCards(structured.sourceCardsUsed, knowledgeCards);
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       const renderedText = renderCoachResponse(structured);
@@ -507,6 +546,8 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((c) => c.id);
       }
+      // COACH-6: same citation-title resolution as /chat.
+      structured.sourceCards = buildSourceCards(structured.sourceCardsUsed, knowledgeCards);
 
       // AI-2: output-side safety screen.
       const renderedText = renderCoachResponse(structured);
@@ -842,9 +883,14 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
       return;
     }
     try {
-      const result = await synthesizeSpeech(config, { text: text.slice(0, 4000), lang: language === "he" ? "he" : "en" });
+      const result = await screenAndSynthesizeSpeech(config, modelProvider, { text: text.slice(0, 4000), lang: language === "he" ? "he" : "en" });
       res.json(result);
     } catch (error: any) {
+      if (error instanceof UnsafeTtsOutputError) {
+        logger.warn("Arbor TTS safety block", { requestId: requestIdOf(req), category: error.verdict.category });
+        res.status(422).json({ error: "This text cannot be spoken by Arbor." });
+        return;
+      }
       if (error instanceof TtsNotConfigured) {
         res.status(503).json({ configured: false });
         return;

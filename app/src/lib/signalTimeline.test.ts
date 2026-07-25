@@ -4,6 +4,13 @@ import {
   computeMomentum,
   deriveNextStep,
   groupByDay,
+  isAutoSignal,
+  SIGNAL_PROVENANCE,
+  signalDetail,
+  signalMeta,
+  signalTitle,
+  type SignalKind,
+  type TranslateFn,
 } from "./signalTimeline.js";
 import type { BehaviorLog, Milestone, ActionPlan } from "../types";
 
@@ -73,6 +80,101 @@ describe("buildTimeline", () => {
     });
     expect(signals).toHaveLength(0);
   });
+
+  // JRNL-5 — a confirmed observation carries the day the parent noticed it.
+  it("dates a checked milestone from observationUpdatedAt; legacy undated stays Ongoing", () => {
+    const dated = milestone({ id: "dated", checked: true, observationUpdatedAt: daysAgo(0) });
+    const legacy = milestone({ id: "legacy", checked: true });
+    const signals = buildTimeline({ milestones: [dated, legacy] });
+
+    expect(signals.find((s) => s.id === "milestone-dated")?.at).toBe(daysAgo(0));
+    expect(signals.find((s) => s.id === "milestone-legacy")?.at).toBeNull();
+
+    const groups = groupByDay(signals, NOW, { locale: "en" });
+    expect(groups[0].label).toBe("Today");
+    expect(groups[0].signals.map((s) => s.id)).toContain("milestone-dated");
+    expect(groups[groups.length - 1].label).toBe("Ongoing");
+    expect(groups[groups.length - 1].signals.map((s) => s.id)).toContain("milestone-legacy");
+  });
+
+  // JRNL-3 — signals are structured; no baked display English in the stream.
+  it("emits structured signals with no baked English UI copy", () => {
+    const serialized = JSON.stringify(buildTimeline({
+      behaviorLogs: [log()],
+      milestones: [milestone({ checked: true, observationUpdatedAt: daysAgo(0) })],
+      plans: [plan()],
+      memory: [{ memoryId: "m1", childId: "c", status: "approved", fact: "Loves trains", source: "chat", retention: "30 days", createdAt: daysAgo(2), latestEventId: "e" }],
+      conversations: [{ id: "conv1", title: "Bedtime help", updatedAt: daysAgo(0) }],
+      play: [{ id: "pl1", activityId: "a", title: "Freeze dance", domain: "motor", reason: "concern-match", source: "today", timestamp: daysAgo(1) }],
+    }));
+    for (const baked of [
+      "Logged moment", "Observed:", "Growth plan", " steps",
+      "Approved to memory", "Coach session", "Played:", "Builds ",
+      "matched to a recent pattern",
+    ]) {
+      expect(serialized).not.toContain(baked);
+    }
+  });
+});
+
+// JRNL-4 — provenance honesty: the parent authored moments, confirmed
+// milestones and play; Arbor authored coach sessions, memory facts and plans.
+describe("signal provenance", () => {
+  it("locks the kind → provenance table (MANUAL = moment/milestone/play)", () => {
+    expect(SIGNAL_PROVENANCE).toEqual({
+      moment: "manual",
+      milestone: "manual",
+      play: "manual",
+      plan: "auto",
+      memory: "auto",
+      coach: "auto",
+    });
+    expect(isAutoSignal("moment")).toBe(false);
+    expect(isAutoSignal("milestone")).toBe(false);
+    expect(isAutoSignal("play")).toBe(false);
+    expect(isAutoSignal("plan")).toBe(true);
+    expect(isAutoSignal("memory")).toBe(true);
+    expect(isAutoSignal("coach")).toBe(true);
+  });
+});
+
+// JRNL-3 — render helpers label structured signals through i18n keys only.
+describe("signal render labels", () => {
+  const t: TranslateFn = (key, vars) => `[${key}${vars ? "|" + Object.entries(vars).map(([k, v]) => `${k}=${v}`).join(",") : ""}]`;
+
+  it("resolves every kind's title through timeline.* keys", () => {
+    const signals = buildTimeline({
+      behaviorLogs: [log({ id: "b1", behaviorType: "Sensory Meltdown" }), log({ id: "b2", behaviorType: "" })],
+      milestones: [milestone({ id: "m1", checked: true, title: "First words" })],
+      plans: [plan({ id: "p1", title: "" })],
+      memory: [{ memoryId: "mem1", childId: "c", status: "approved", fact: "Loves trains", source: "chat", retention: "30 days", createdAt: daysAgo(2), latestEventId: "e" }],
+      conversations: [{ id: "c1", title: "Bedtime help", updatedAt: daysAgo(0) }],
+      play: [{ id: "pl1", activityId: "a", title: "Freeze dance", domain: "motor", reason: "stage-match", source: "today", timestamp: daysAgo(1) }],
+    });
+    const byId = (id: string) => signals.find((s) => s.id === id)!;
+
+    expect(signalTitle(byId("moment-b1"), t)).toBe("Sensory Meltdown");
+    expect(signalTitle(byId("moment-b2"), t)).toBe("[timeline.title.moment]");
+    expect(signalTitle(byId("milestone-m1"), t)).toBe("[timeline.title.observed|title=First words]");
+    expect(signalTitle(byId("plan-p1"), t)).toBe("[timeline.title.plan]");
+    expect(signalTitle(byId("memory-mem1"), t)).toBe("[timeline.title.memory]");
+    expect(signalTitle(byId("coach-c1"), t)).toBe("[timeline.title.coach]");
+    expect(signalTitle(byId("play-pl1"), t)).toBe("[timeline.title.played|title=Freeze dance]");
+  });
+
+  it("localizes play detail, plan steps, duration and pattern-match meta", () => {
+    const signals = buildTimeline({
+      behaviorLogs: [log({ id: "b1", context: "Home", durationMinutes: 15 })],
+      plans: [plan({ id: "p1" })],
+      play: [{ id: "pl1", activityId: "a", title: "Freeze dance", domain: "motor", reason: "concern-match", source: "today", timestamp: daysAgo(1) }],
+    });
+    const byId = (id: string) => signals.find((s) => s.id === id)!;
+
+    expect(signalDetail(byId("play-pl1"), t)).toBe("[timeline.detail.builds|domain=[timeline.playdomain.motor]]");
+    expect(signalMeta(byId("play-pl1"), t)).toBe("[timeline.meta.match]");
+    expect(signalMeta(byId("plan-p1"), t)).toBe("[timeline.meta.steps|done=1,total=2]");
+    expect(signalMeta(byId("moment-b1"), t)).toBe("Home · [timeline.meta.minutes|n=15]");
+  });
 });
 
 describe("computeMomentum", () => {
@@ -131,9 +233,23 @@ describe("groupByDay", () => {
       behaviorLogs: [log({ timestamp: daysAgo(0) }), log({ timestamp: daysAgo(1) })],
       plans: [plan()],
     });
-    const groups = groupByDay(signals, NOW);
+    const groups = groupByDay(signals, NOW, { locale: "en" });
     expect(groups[0].label).toBe("Today");
     expect(groups.some((g) => g.label === "Yesterday")).toBe(true);
     expect(groups[groups.length - 1].label).toBe("Ongoing");
+  });
+
+  // JRNL-3 — day-group labels localize via Intl + the ongoing label is injected.
+  it("localizes day labels for Hebrew and honors the injected ongoing label", () => {
+    const signals = buildTimeline({
+      behaviorLogs: [log({ timestamp: daysAgo(0) }), log({ timestamp: daysAgo(1) })],
+      plans: [plan()],
+    });
+    const groups = groupByDay(signals, NOW, { locale: "he", ongoingLabel: "מתמשך" });
+    expect(groups[0].label).toBe("היום");
+    expect(groups.some((g) => g.label === "אתמול")).toBe(true);
+    expect(groups[groups.length - 1].label).toBe("מתמשך");
+    // No English leaks into any HE group label.
+    for (const g of groups) expect(g.label).not.toMatch(/[A-Za-z]/);
   });
 });

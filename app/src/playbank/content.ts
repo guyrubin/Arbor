@@ -50,6 +50,26 @@ export interface PlayActivity {
    * are touched here. Default: false (undefined = false).
    */
   themeableContextSlot?: boolean;
+  /* ── KID-5 / AR-CONT-02: guided-play fields ─────────────────────────────
+   * Four optional authored slots that turn a bare activity into guided play.
+   * Copy register (firewall CONDITION): observational only — notice/describe,
+   * never assess/score/verdict language. Enforced by the banned-token scan in
+   * coverage.test.ts. EN authored now; HE routes through the native
+   * transcreation packet (KID-8/GD-7) — never machine-translated. */
+  /** A way to soften the activity for a child who finds it hard today. */
+  easierVariation?: string;
+  /** A gentle stretch for a child who is breezing through it. */
+  harderVariation?: string;
+  /** What the parent can watch for during play — observational, no judging. */
+  whatToNotice?: string;
+  /** A warm after-play reflection or question to close the loop. */
+  outcomePrompt?: string;
+  /**
+   * KID-5: id of a 60–90s demonstration video in the governed media registry.
+   * ALWAYS undefined today — demonstration video production is Guy-gated
+   * (rights + production pipeline, GD-8 class). The UI renders nothing for it.
+   */
+  demoMediaId?: string;
 }
 
 export const PLAY_BANDS: { band: PlayBand; label: string; minYears: number; maxYears: number }[] = [
@@ -252,6 +272,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Celebrate the smooth switch, even a small one.",
     ],
     durationMin: 6,
+    easierVariation: "Shrink to a one-minute timer with one tiny job — beat the beep, cheer, done.",
+    harderVariation: "Hand them the timer: they set it, they announce it, they run the countdown.",
+    whatToNotice: "Notice the beep moment — the body's first reaction before the job name kicks in.",
+    outcomePrompt: "Afterwards, ask what job name tomorrow's switch should have — the sillier the smoother.",
   },
   {
     id: "sock-basketball",
@@ -268,6 +292,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Cheer for the throw, not just the basket.",
     ],
     durationMin: 12,
+    easierVariation: "Move the basket closer and make it huge — a laundry basket right at their feet counts.",
+    harderVariation: "Add a bounce: the sock ball has to bounce once on a cushion before it lands in the basket.",
+    whatToNotice: "Notice the waiting between turns — how they hold themselves while it's not their throw.",
+    outcomePrompt: "Afterwards, ask: which throw felt best? Recreate that one in slow motion together.",
+    themeableContextSlot: true,
   },
   {
     id: "kitchen-band",
@@ -284,6 +313,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Follow their lead more than you lead.",
     ],
     durationMin: 7,
+    easierVariation: "One pot, one spoon, and just copy their beat — no turns needed yet.",
+    harderVariation: "Play a copy-me pattern of three beats and let them echo it back exactly.",
+    whatToNotice: "Notice the loud-to-quiet switch — how their whole body changes with the volume.",
+    outcomePrompt: "Afterwards, name the band together — every kitchen band needs a name for its next concert.",
   },
   {
     id: "narrate-the-day",
@@ -306,6 +339,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
       kind: "research",
     },
+    easierVariation: "Narrate just one moment — the banana, start to finish — and stop while it's fun.",
+    harderVariation: "Leave gaps in the commentary — 'you're picking up the…' — and let them fill the word.",
+    whatToNotice: "Notice where their eyes go — the thing they look at is the word they're ready for.",
+    outcomePrompt: "Afterwards, think back to the word they echoed — weave it into tomorrow's commentary.",
   },
   {
     id: "story-swap",
@@ -323,6 +360,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 10,
     themeableContextSlot: true,
+    easierVariation: "You carry the story and leave them the fun decisions: 'and the dragon's favourite food was…?'",
+    harderVariation: "Add a story rule — it must include a chair, a storm, and somebody laughing.",
+    whatToNotice: "Notice whether they build on your line or swerve somewhere new — both are storytelling muscles.",
+    outcomePrompt: "Afterwards, give the story a title together and 'shelve' it for retelling tomorrow.",
   },
   {
     id: "sort-the-laundry",
@@ -339,6 +380,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let them carry their own pile to put away.",
     ],
     durationMin: 12,
+    easierVariation: "Sort just the socks, into two piles — theirs and yours.",
+    harderVariation: "Sort the same pile twice by different rules: first by colour, then by owner.",
+    whatToNotice: "Notice what they do with the tricky item that fits two piles — that hesitation is thinking.",
+    outcomePrompt: "Afterwards, ask: what other pile could we have made? Strangest rule wins.",
   },
   {
     id: "treasure-hunt",
@@ -356,6 +401,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 10,
     themeableContextSlot: true,
+    easierVariation: "Two treasures, one room, and hunt as a team holding the list together.",
+    harderVariation: "Make the list rhyme or riddle — 'something soft that says meow' — so each find takes a think.",
+    whatToNotice: "Notice how they hold the list in mind — do they hunt one thing at a time, or all five at once?",
+    outcomePrompt: "Afterwards, lay out the treasures and retell the hunt: which was found first? Which hid best?",
   },
   {
     id: "turn-taking-tower",
@@ -373,6 +422,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 8,
     themeableContextSlot: true,
+    easierVariation: "Use big soft blocks and say the rhythm out loud together: 'me… you… me… you.'",
+    harderVariation: "Add a rule: each block has to be a different colour from the one below.",
+    whatToNotice: "Notice the wait on their turn-off — what they do with their hands while it's yours.",
+    outcomePrompt: "Afterwards, ask: taller next time or faster? Let them set tomorrow's tower goal.",
   },
   {
     id: "helper-of-the-day",
@@ -389,6 +442,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Thank them for the specific help, not just 'good job'.",
     ],
     durationMin: 8,
+    easierVariation: "Shrink the job to one clear action — one fork on the table is a real contribution.",
+    harderVariation: "Give them the job for the whole week and let them teach it to someone else.",
+    whatToNotice: "Notice their face when the job is done and it stood — before you say anything.",
+    outcomePrompt: "Afterwards, ask: what job should be yours tomorrow? Let them pick the next one.",
   },
   {
     id: "mirror-faces",
@@ -411,6 +468,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
       kind: "research",
     },
+    easierVariation: "Stick to two big faces — happy and surprised — and hold each one longer.",
+    harderVariation: "Add a sound to each face and let them match the pair back to you.",
+    whatToNotice: "Notice how long they study your face before trying it on their own.",
+    outcomePrompt: "Afterwards, think back: which face made them light up? Lead with it next time.",
   },
 
   // ── 12–30 month window (the thin band) + early infant ──────────────────
@@ -473,6 +534,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Hide one under a cloth and find it together.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
   {
     id: "name-the-feeling-toddler",
@@ -527,6 +589,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Thank them for the help, specifically.",
     ],
     durationMin: 6,
+    easierVariation: "One step with a gesture, celebrated big — the two-step comes when one feels easy.",
+    harderVariation: "Try a silly pair — 'put the sock on the table, then knock three times' — order intact.",
+    whatToNotice: "Notice what happens between step one and step two — the pause where they hold the plan.",
+    outcomePrompt: "Afterwards, swap roles: they give YOU a two-step mission and check your work.",
   },
   {
     id: "pretend-snack",
@@ -543,6 +609,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Follow their story wherever it goes.",
     ],
     durationMin: 8,
+    easierVariation: "You host first — feed teddy two bites, narrate it, and hand the cup over.",
+    harderVariation: "Give teddy a wish — 'teddy wants something cold!' — and let them invent the menu.",
+    whatToNotice: "Notice the caring gestures they add on their own — wiping teddy's chin, a second helping.",
+    outcomePrompt: "Afterwards, ask what teddy's favourite dish was, and who's invited next time.",
+    themeableContextSlot: true,
   },
   {
     id: "peekaboo",
@@ -607,6 +678,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Wrap them straight into a warm towel afterward.",
     ],
     durationMin: 10,
+    easierVariation: "Shorten it to the last five minutes before pyjamas — the slow pour and the quiet voice are the whole game.",
+    harderVariation: "Let them pour the water over their own arm, matching your slow rhythm.",
+    whatToNotice: "Notice where in the ritual their body softens — the pour, the low light, or the wrap-up.",
+    outcomePrompt: "Afterwards, note which part settled them most, and keep that part exactly the same tomorrow.",
   },
 
   // infant × cognitive (was 0)
@@ -753,6 +828,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Add a 'wobble and recover' game to practise balancing.",
     ],
     durationMin: 8,
+    easierVariation: "Make the line short and wide — two strips of tape side by side — and hold one hand.",
+    harderVariation: "Add a beanbag or soft toy balanced on their head for the final crossing.",
+    whatToNotice: "Notice the arms — when the wobble comes, watch what they do to catch themselves.",
+    outcomePrompt: "Afterwards, ask: which crossing was trickiest? Walk it once more together, slow as you like.",
   },
 
   // preschool × cognitive (was 2 → depth) + preschool × language
@@ -771,6 +850,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let them invent a pattern for you to finish.",
     ],
     durationMin: 8,
+    easierVariation: "Two items only — spoon, fork, spoon, fork — said out loud like a song.",
+    harderVariation: "Grow to a three-item pattern, or sneak in a wrong piece and let them catch it.",
+    whatToNotice: "Notice the moment they say the next item BEFORE placing it — the pattern moved into their head.",
+    outcomePrompt: "Afterwards, hunt one more pattern together somewhere in the house — tiles, stripes, songs.",
+    themeableContextSlot: true,
   },
   {
     id: "i-spy-sounds",
@@ -787,6 +871,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Swap roles and let them set the next clue.",
     ],
     durationMin: 7,
+    easierVariation: "Use their own name's first sound — the sound they know best in the world.",
+    harderVariation: "Try ending sounds: 'I spy something that ends with sss…'",
+    whatToNotice: "Notice them mouthing the sound while they hunt — sounding it out is the whole skill.",
+    outcomePrompt: "Afterwards, ask them to set you a really tricky one, and be delightfully stumped.",
+    themeableContextSlot: true,
   },
 
   // early-school × language (was 1)
@@ -805,6 +894,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Swap and let them question yours.",
     ],
     durationMin: 9,
+    themeableContextSlot: true,
   },
 
   // early-school × motor (was 1)
@@ -823,6 +913,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Track today's best score and try to beat it tomorrow.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
 
   // early-school × cognitive (was 1)
@@ -841,6 +932,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Swap roles so they get to hold the secret too.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
 
   // early-school × social (was 1)
@@ -901,6 +993,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let them be the one who stops the music sometimes.",
     ],
     durationMin: 8,
+    easierVariation: "Freeze together holding hands, so the stop is something you do as a pair.",
+    harderVariation: "Add freeze shapes — 'freeze like a star, like a stone, like a flamingo'.",
+    whatToNotice: "Notice the stop itself — how quickly the body obeys the silence, and what it costs them.",
+    outcomePrompt: "Afterwards, ask which freeze pose was the funniest, and take a photo-pose encore.",
+    themeableContextSlot: true,
   },
   {
     id: "obstacle-cushions",
@@ -917,6 +1014,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let them design the next course.",
     ],
     durationMin: 12,
+    easierVariation: "Two cushions, one move — step, step, cheer. Build from there.",
+    harderVariation: "Run it backwards, or add a carry — a soft toy that has to survive the crossing.",
+    whatToNotice: "Notice the pause before a tricky gap — the planning look before the body commits.",
+    outcomePrompt: "Afterwards, let them design tomorrow's course and walk you through it as the guide.",
+    themeableContextSlot: true,
   },
   {
     id: "kitchen-helper-pour",
@@ -933,6 +1035,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Thank them for the specific help.",
     ],
     durationMin: 10,
+    easierVariation: "Big cup, big bowl, water only — spills are the curriculum.",
+    harderVariation: "Add a recipe card of three pours to follow in order: two cups of this, one of that.",
+    whatToNotice: "Notice the wrist slowing down as the cup fills — that careful tilt is the skill itself.",
+    outcomePrompt: "Afterwards, thank them for the specific job, and ask which pour needed the most care.",
   },
   {
     id: "feelings-charades",
@@ -955,6 +1061,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.drdansiegel.com/book/the-whole-brain-child/",
       kind: "research",
     },
+    easierVariation: "Use just two feelings they know well and act them big and obvious.",
+    harderVariation: "Act the feeling with your face hidden — body only — and see if it still lands.",
+    whatToNotice: "Notice which feelings they read easily and which ones they puzzle over.",
+    outcomePrompt: "Afterwards, ask: when did you last feel the one that was hardest to guess?",
   },
   {
     id: "rhyme-time",
@@ -971,6 +1081,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Try a new starter word each round.",
     ],
     durationMin: 6,
+    easierVariation: "You supply the rhymes in a silly voice — their job is just to catch the funny ones.",
+    harderVariation: "Rhyme ping-pong: back and forth on one word until someone runs dry, giggling allowed.",
+    whatToNotice: "Notice the made-up rhymes — nonsense that rhymes is the ear working perfectly.",
+    outcomePrompt: "Afterwards, pick the family's favourite nonsense word of the day and use it at dinner.",
   },
   {
     id: "memory-pairs",
@@ -987,6 +1101,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Add more pairs as their memory stretches.",
     ],
     durationMin: 10,
+    easierVariation: "Start with three pairs face UP and just find the matches — memory comes next round.",
+    harderVariation: "After each round, add one pair — and let them deal the grid themselves.",
+    whatToNotice: "Notice their remembering out loud — 'the star was THERE' — memory becoming words.",
+    outcomePrompt: "Afterwards, ask: which card kept hiding from us? One more round to catch it.",
+    themeableContextSlot: true,
   },
   {
     id: "soft-toy-comfort",
@@ -1009,6 +1128,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.drdansiegel.com/book/the-whole-brain-child/",
       kind: "research",
     },
+    easierVariation: "You comfort teddy first and narrate — they watch the caring before trying it.",
+    harderVariation: "Give teddy a specific trouble — 'teddy's tower broke' — and let them find what helps.",
+    whatToNotice: "Notice which comfort they offer teddy — it's often the comfort that works on them.",
+    outcomePrompt: "Afterwards, ask: what helped teddy most? File that away for the next hard moment.",
+    themeableContextSlot: true,
   },
 
   // ── regulation pack ──
@@ -1208,6 +1332,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.zerotothree.org/resource/your-calm-is-their-calm-co-regulation-strategies-for-infants-and-toddlers/",
       kind: "guideline",
     },
+    easierVariation: "You blow, they pop — their calm comes from watching the slow bubbles rise.",
+    harderVariation: "Challenge: one giant bubble, which only the longest, softest breath can make.",
+    whatToNotice: "Notice the out-breath stretching as they chase the perfect bubble.",
+    outcomePrompt: "Afterwards, ask: soft breath or big breath — which made the better bubbles?",
   },
   {
     id: "reg-belly-breath-buddy",
@@ -1230,6 +1358,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.healthychildren.org/English/healthy-living/emotional-wellness/Pages/Just-Breathe-The-Importance-of-Meditation-Breaks-for-Kids.aspx",
       kind: "guideline",
     },
+    easierVariation: "Skip the toy — lie together and just feel your own tummies rise and fall.",
+    harderVariation: "Count the toy's rides together — five slow ups and downs before you check how the body feels.",
+    whatToNotice: "Notice where the breath goes — chest or belly — and how the shoulders sit by the last ride.",
+    outcomePrompt: "Afterwards, ask the buddy toy (in its voice): 'was that a smooth ride?'",
   },
   {
     id: "reg-calm-corner-cozy",
@@ -1252,6 +1384,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.zerotothree.org/resource/your-calm-is-their-calm-co-regulation-strategies-for-infants-and-toddlers/",
       kind: "guideline",
     },
+    easierVariation: "Start with just a pillow and one soft toy in the corner — the spot matters more than the stuff.",
+    harderVariation: "Let them design an upgrade — one new comfort item of their choosing each week.",
+    whatToNotice: "Notice when they glance at or drift toward the corner — the noticing itself is the skill arriving.",
+    outcomePrompt: "Afterwards, visit it together when everyone's calm and ask what the corner still needs.",
   },
   {
     id: "reg-feelings-faces-book",
@@ -1290,6 +1426,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.healthychildren.org/English/healthy-living/emotional-wellness/Pages/Just-Breathe-The-Importance-of-Meditation-Breaks-for-Kids.aspx",
       kind: "guideline",
     },
+    easierVariation: "One candle, one puff, big celebration — build the cake later.",
+    harderVariation: "Five candles, but the last one only goes out with the SLOWEST puff they can make.",
+    whatToNotice: "Notice the in-breath getting deeper on its own as the game repeats.",
+    outcomePrompt: "Afterwards, ask how many candles tomorrow's cake should have.",
   },
   {
     id: "reg-big-squeeze-hug",
@@ -1306,6 +1446,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let go slowly and notice together how the body feels.",
     ],
     durationMin: 4,
+    easierVariation: "Offer a hand squeeze instead — some moments are too big for a whole hug.",
+    harderVariation: "Let them run it: they say tighter, softer, and when to let go — full control of the squeeze.",
+    whatToNotice: "Notice the breath during the hold — where in the squeeze it slows and drops.",
+    outcomePrompt: "Afterwards, ask: tighter or softer next time? Their answer is the recipe for the next hard moment.",
   },
   {
     id: "reg-stomp-it-out",
@@ -1322,6 +1466,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Finish with a deep breath and a wobble into stillness.",
     ],
     durationMin: 5,
+    easierVariation: "Stomp sitting down — feet drumming the floor — if standing feels like too much right now.",
+    harderVariation: "Let them lead the whole arc: they choose the animal, the speed, and when the tiptoes come.",
+    whatToNotice: "Notice where the stomps start to slow on their own — the feeling moving through, not stuck.",
+    outcomePrompt: "Afterwards, ask: where did the big feeling go? Stomped into the floor is a fine answer.",
   },
   {
     id: "reg-first-then",
@@ -1338,6 +1486,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Point along it at switch time: 'first this, then that.'",
     ],
     durationMin: 7,
+    easierVariation: "Use two photos instead of drawings — real pictures of the real things.",
+    harderVariation: "Let them draw both boxes themselves and narrate the plan to you.",
+    whatToNotice: "Notice which box they point to at switch time — leaning on the plan is the plan working.",
+    outcomePrompt: "Afterwards, ask: did the plan happen? Draw a tick together in the 'then' box.",
   },
   {
     id: "reg-goodbye-song",
@@ -1376,6 +1528,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://developingchild.harvard.edu/resources/handouts-tools/activities-guide-enhancing-and-practicing-executive-function-skills/",
       kind: "framework",
     },
+    easierVariation: "You call, they switch — and hold each mode a little longer so the contrast sinks in.",
+    harderVariation: "Add a middle animal — a talking cat — so there are three volumes to find and hold.",
+    whatToNotice: "Notice the switch itself — how fast the loud body can find the quiet one on cue.",
+    outcomePrompt: "Afterwards, ask which animal was hardest to stay — lion or mouse?",
   },
 
   // ── PRESCHOOL (calming tools, naming, pausing before acting) ────────────
@@ -1686,6 +1842,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Keep it handy for when a hard moment needs a reset.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
   {
     id: "reg-name-it-to-tame-it",
@@ -1761,6 +1918,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 5,
     source: S.hanenWait,
+    easierVariation: "Wait after their name only — one word, then the long friendly pause.",
+    harderVariation: "Stretch the wait a little longer than comfortable, keeping your face warm and open.",
+    whatToNotice: "Notice what fills the silence — a look, a squeal, a lean — every one is a turn taken.",
+    outcomePrompt: "Afterwards, recall the best reply of the day and answer it again at bedtime.",
   },
   {
     id: "lang-dressing-play-by-play",
@@ -1795,6 +1956,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 5,
     source: S.ashaAct,
+    easierVariation: "Stay with one favourite animal all week — the same 'woof' lands deeper than five new ones.",
+    harderVariation: "Ask the flip question: make the sound and let them find the right animal.",
+    whatToNotice: "Notice the look between you, the picture, and your mouth — that triangle is the whole game.",
+    outcomePrompt: "Afterwards, recall which sound they tried back — greet them with it at breakfast tomorrow.",
   },
   {
     id: "lang-babble-tennis",
@@ -1846,6 +2011,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 5,
     source: S.cdc,
+    easierVariation: "Hum just the tune during cuddles — the melody carries the words in later.",
+    harderVariation: "Stop before the last word of every line, not just the end, and wait.",
+    whatToNotice: "Notice the 'again' signal — the wiggle, the look, the sound that asks for one more round.",
+    outcomePrompt: "Afterwards, note where in the rhyme they joined in — a bounce, a hum, a hand movement.",
   },
   {
     id: "lang-name-that-part",
@@ -1863,6 +2032,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 6,
     source: S.ashaAct,
+    easierVariation: "Pick just three parts — toes, tummy, nose — and repeat the same three every bath.",
+    harderVariation: "Pause before naming and ask 'where are your toes?' — let them show you first.",
+    whatToNotice: "Notice anticipation — do they wiggle the toes before you get to the word?",
+    outcomePrompt: "Afterwards, think: which word got a reaction? That's the one to keep repeating this week.",
   },
   {
     id: "lang-first-sounds-echo",
@@ -1933,6 +2106,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 6,
     source: S.aapLit,
+    themeableContextSlot: true,
   },
   {
     id: "lang-add-one-word",
@@ -2001,6 +2175,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 7,
     source: S.z2tTalk,
+    themeableContextSlot: true,
   },
   {
     id: "lang-photo-people-talk",
@@ -2035,6 +2210,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 8,
     source: S.ashaAct,
+    easierVariation: "One food, three words — 'cold, round, red' — and hand it over to hold.",
+    harderVariation: "Describe a food with eyes closed, by touch and smell only, and let them name it.",
+    whatToNotice: "Notice which sense pulls the most words from them — the feel, the smell, the look.",
+    outcomePrompt: "Afterwards, ask them to describe dinner to someone who wasn't there.",
   },
   {
     id: "lang-fill-in-the-blank",
@@ -2052,6 +2231,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 6,
     source: S.hanenBook,
+    easierVariation: "Use their single most-read book and leave only the very last word of the very last page.",
+    harderVariation: "Leave two words hanging, or pause mid-sentence somewhere new in the book.",
+    whatToNotice: "Notice the lean-in at the pause — the held breath before the word arrives.",
+    outcomePrompt: "Afterwards, note which blank they filled proudly — start there next reading.",
   },
   {
     id: "lang-two-word-builder",
@@ -2139,6 +2322,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 8,
     source: S.ashaLit,
+    easierVariation: "Use two very different objects — a spoon and a sock — and give the answer choices out loud.",
+    harderVariation: "No object names allowed in clues at all — only how it feels, sounds, and is used.",
+    whatToNotice: "Notice the words they reach for when the name is off-limits — that stretch is the skill.",
+    outcomePrompt: "Afterwards, ask which clue cracked it, and let them restock the bag for tomorrow.",
+    themeableContextSlot: true,
   },
   {
     id: "lang-category-round",
@@ -2156,6 +2344,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 7,
     source: S.ashaPre,
+    easierVariation: "Pick a category they live in — their favourite things — and accept every answer.",
+    harderVariation: "Add a rule: each new word has to be different from everyone's in some named way.",
+    whatToNotice: "Notice the strategy — do they wander the room with their eyes hunting for answers?",
+    outcomePrompt: "Afterwards, ask which category you should both sleep on and replay at breakfast.",
+    themeableContextSlot: true,
   },
   {
     id: "lang-picture-story-tell",
@@ -2173,6 +2366,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 9,
     source: S.ashaLit,
+    themeableContextSlot: true,
   },
   {
     id: "lang-fancy-word-day",
@@ -2190,6 +2384,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 6,
     source: S.ashaPre,
+    easierVariation: "Pick a sound-fun word — 'squelch', 'zigzag' — the taste of the word is the point.",
+    harderVariation: "Two fancy words a day, and a bonus for using them both in one sentence.",
+    whatToNotice: "Notice where they deploy the word — dinner-table use means it's really theirs now.",
+    outcomePrompt: "Afterwards, count today's uses together and let them choose tomorrow's word.",
   },
   {
     id: "lang-opposites-game",
@@ -2224,6 +2422,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 8,
     source: S.z2tTalk,
+    themeableContextSlot: true,
   },
   {
     id: "lang-recipe-directions",
@@ -2241,6 +2440,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 10,
     source: S.ashaPre,
+    easierVariation: "Two steps only — spread, then top — with the order words said big and clear.",
+    harderVariation: "Let them dictate the recipe to you from memory while YOU follow their steps exactly.",
+    whatToNotice: "Notice the order words coming back — a 'first' or a 'next' arriving in their own sentences.",
+    outcomePrompt: "Afterwards, ask them to teach the recipe to another grown-up at dinner.",
   },
 
   // ── EARLY-SCHOOL (5–6+) ───────────────────────────────────────────────────
@@ -2276,6 +2479,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Take a turn answering their question too.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
   {
     id: "lang-word-family-ladder",
@@ -2327,6 +2531,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 8,
     source: S.ashaLit,
+    themeableContextSlot: true,
   },
   {
     id: "lang-describe-and-draw",
@@ -2343,6 +2548,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Compare the two and laugh at the gaps, then swap roles.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
   {
     id: "lang-riddle-and-pun",
@@ -2359,6 +2565,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Challenge them to invent one of their own.",
     ],
     durationMin: 6,
+    themeableContextSlot: true,
   },
   {
     id: "lang-menu-writer",
@@ -2376,6 +2583,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 12,
     source: S.ashaLit,
+    themeableContextSlot: true,
   },
   {
     id: "lang-kid-reporter",
@@ -2392,6 +2600,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Swap so they get interviewed too.",
     ],
     durationMin: 9,
+    themeableContextSlot: true,
   },
   {
     id: "lang-print-spotting",
@@ -2682,6 +2891,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.aap.org/en/patient-care/early-childhood/early-childhood-health-and-development/power-of-play/",
       kind: "guideline",
     },
+    themeableContextSlot: true,
   },
   {
     id: "motor-push-the-basket",
@@ -2907,6 +3117,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Add a big splashy 'whoosh!' for a soft landing.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
   {
     id: "motor-tong-transfer",
@@ -2967,6 +3178,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.aap.org/en/patient-care/early-childhood/early-childhood-health-and-development/power-of-play/",
       kind: "guideline",
     },
+    themeableContextSlot: true,
   },
   {
     id: "motor-plank-balance-walk",
@@ -3015,6 +3227,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let them invent an animal and its silly walk.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
   {
     id: "motor-hole-punch-art",
@@ -3388,6 +3601,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 8,
     source: NAEYC_MATH_HOME,
+    themeableContextSlot: true,
   },
   {
     id: "cog-color-cup-match",
@@ -3469,6 +3683,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "When one's tricky, offer a clue rather than the answer.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
   {
     id: "cog-diy-puzzle",
@@ -3485,6 +3700,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Keep pieces big and few so success comes quickly.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
   {
     id: "cog-sock-pattern-match",
@@ -3517,6 +3733,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Talk about why: 'we stir with the spoon in the cup.'",
     ],
     durationMin: 7,
+    themeableContextSlot: true,
   },
   {
     id: "cog-lids-and-jars",
@@ -3554,6 +3771,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 10,
     source: NAEYC_MATH_PLAY,
+    themeableContextSlot: true,
   },
   {
     id: "cog-count-the-steps",
@@ -3588,6 +3806,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 9,
     source: ZTT_THINKING_12_24,
+    themeableContextSlot: true,
   },
   {
     id: "cog-mystery-bag",
@@ -3604,6 +3823,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Pull it out to check, then swap who hides the objects.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
   {
     id: "cog-button-sort-ways",
@@ -3620,6 +3840,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Ask them for a third way to group them.",
     ],
     durationMin: 9,
+    themeableContextSlot: true,
   },
   {
     id: "cog-simon-says",
@@ -3637,6 +3858,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 8,
     source: HARVARD_EF,
+    themeableContextSlot: true,
   },
   {
     id: "cog-recipe-steps",
@@ -3669,6 +3891,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Choose a new shape — squares, triangles — for the next round.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
   {
     id: "cog-more-or-less",
@@ -3702,6 +3925,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let them build a puzzle for you to solve.",
     ],
     durationMin: 8,
+    themeableContextSlot: true,
   },
 
   // ──────────────────────── EARLY-SCHOOL (10) ──────────────────────────
@@ -3738,6 +3962,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 12,
     source: HARVARD_EF,
+    themeableContextSlot: true,
   },
   {
     id: "cog-packed-my-bag",
@@ -3755,6 +3980,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 8,
     source: HARVARD_EF,
+    themeableContextSlot: true,
   },
   {
     id: "cog-story-problems",
@@ -3771,6 +3997,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Let them invent a tricky story to stump you.",
     ],
     durationMin: 9,
+    themeableContextSlot: true,
   },
   {
     id: "cog-category-race",
@@ -3788,6 +4015,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 7,
     source: HARVARD_EF,
+    themeableContextSlot: true,
   },
   {
     id: "cog-guess-my-rule",
@@ -3804,6 +4032,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "When they crack it, they invent the next secret rule.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
   {
     id: "cog-bridge-challenge",
@@ -3820,6 +4049,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Celebrate the version that finally holds.",
     ],
     durationMin: 14,
+    themeableContextSlot: true,
   },
   {
     id: "cog-tic-tac-toe",
@@ -3852,6 +4082,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Add more objects as their memory stretches, and let them test you.",
     ],
     durationMin: 9,
+    themeableContextSlot: true,
   },
   {
     id: "cog-estimate-and-check",
@@ -3869,6 +4100,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 10,
     source: NAEYC_MATH_PLAY,
+    themeableContextSlot: true,
   },
 
   // ── social pack ──
@@ -4092,6 +4324,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.zerotothree.org/resource/stages-of-play-from-12-24-months-young-toddlers-are-problem-solvers/",
       kind: "guideline",
     },
+    themeableContextSlot: true,
   },
   {
     id: "soc-side-by-side-build",
@@ -4184,6 +4417,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.zerotothree.org/resource/24-36-months-social-emotional-development/",
       kind: "guideline",
     },
+    themeableContextSlot: true,
   },
   {
     id: "soc-door-greetings",
@@ -4216,6 +4450,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Take turns being the leader of the parade.",
     ],
     durationMin: 7,
+    themeableContextSlot: true,
   },
   {
     id: "soc-gentle-hands",
@@ -4278,6 +4513,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://www.healthychildren.org/English/family-life/power-of-play/Pages/pretend-play-ways-children-can-exercise-their-imagination.aspx",
       kind: "guideline",
     },
+    themeableContextSlot: true,
   },
   {
     id: "soc-restaurant-play",
@@ -4294,6 +4530,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Trade jobs so both get to serve and be served.",
     ],
     durationMin: 12,
+    themeableContextSlot: true,
   },
   {
     id: "soc-vet-clinic",
@@ -4310,6 +4547,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Send each patient home feeling better with a cuddle.",
     ],
     durationMin: 12,
+    themeableContextSlot: true,
   },
   {
     id: "soc-build-one-tower",
@@ -4414,6 +4652,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       url: "https://casel.org/fundamentals-of-sel/",
       kind: "framework",
     },
+    themeableContextSlot: true,
   },
   {
     id: "soc-roll-and-move",
@@ -4430,6 +4669,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Cheer each other on, not just yourself, to the finish.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
   {
     id: "soc-superhero-team",
@@ -4446,6 +4686,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Celebrate the team win, naming what each hero did.",
     ],
     durationMin: 12,
+    themeableContextSlot: true,
   },
 
   // ── EARLY-SCHOOL (10) — teamwork, perspective-taking, friendship ──────────
@@ -4546,6 +4787,7 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Swap describer and guesser each round.",
     ],
     durationMin: 10,
+    themeableContextSlot: true,
   },
   {
     id: "soc-repair-role-play",
@@ -4682,6 +4924,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Lie still a moment and feel how loose and heavy the body is.",
     ],
     durationMin: 5,
+    easierVariation: "Melt just the arms — a mini-melt for a mini-moment.",
+    harderVariation: "Melt in slow motion to a count of ten, and refreeze on 'winter!' for another round.",
+    whatToNotice: "Notice which body parts truly let go and which stay stiff — shoulders usually melt last.",
+    outcomePrompt: "Afterwards, lying in the puddle, ask: heavy or light? Warm or cool? Just noticing together.",
   },
   {
     id: "lang-i-spy-describe",
@@ -4699,6 +4945,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 8,
     source: S.ashaPre,
+    easierVariation: "Describe things they can touch from where they sit, and start with colour only.",
+    harderVariation: "Three clues maximum — so each clue has to work harder.",
+    whatToNotice: "Notice which clue lands — colour, size, or shape — and which they use when it's their turn.",
+    outcomePrompt: "Afterwards, ask them for the trickiest clue they can invent about something in plain sight.",
+    themeableContextSlot: true,
   },
   {
     id: "lang-story-stones",
@@ -4716,6 +4967,11 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 12,
     source: S.ashaLit,
+    easierVariation: "Three stones, and you carry the story — they flip and name the picture.",
+    harderVariation: "Draw one 'problem stone' (a storm, a locked door) that must show up in the middle.",
+    whatToNotice: "Notice how they bridge two pictures that don't fit — that stretch is storytelling.",
+    outcomePrompt: "Afterwards, retell tonight's best version at bedtime, and let them fix your mistakes.",
+    themeableContextSlot: true,
   },
   {
     id: "motor-newspaper-crumple",
@@ -4732,6 +4988,10 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
       "Flatten a ball back out for an extra finger workout.",
     ],
     durationMin: 8,
+    easierVariation: "Pre-tear the sheets and just crumple together — two hands are fine to start.",
+    harderVariation: "One-hand-only round: crumple and toss with the same hand, then swap sides.",
+    whatToNotice: "Notice the grip — whole-fist scrunching and fingertip scrunching are different workouts.",
+    outcomePrompt: "Afterwards, count the paper balls in the basket together and stack them into a pyramid.",
   },
   {
     id: "cog-sink-or-float",
@@ -4749,6 +5009,335 @@ export const PLAY_ACTIVITIES: PlayActivity[] = [
     ],
     durationMin: 10,
     source: HARVARD_EF,
+    easierVariation: "Drop just two objects — one sinker, one floater — and replay them again and again.",
+    harderVariation: "Sort the objects into 'will sink' and 'will float' piles BEFORE any of them touch the water.",
+    whatToNotice: "Notice the guess before the splash — and their face when the water disagrees.",
+    outcomePrompt: "Afterwards, ask: which one surprised you most? Hunt the house for one more surprise object.",
+  },
+  /* ── KID-3 content wave: standard (11–20 min) + extended (21–30 min) ──────
+   * Authored so the CI-31 session-length buckets stop being empty and the
+   * chips can be offered honestly (availableSessionLengths / MIN_SESSION_BUCKET).
+   * Infant deliberately gets NO extended activities — a 25–30 minute guided
+   * session is not an honest ask of that band, so the chip stays hidden. */
+  {
+    id: "std-infant-book-nest",
+    title: "Cozy book nest",
+    bands: ["infant"],
+    domain: "language",
+    skillTags: ["shared-reading", "early-words", "connection"],
+    householdItems: ["two or three sturdy baby books", "pillows or a folded blanket"],
+    whatItBuilds: "Warm, unhurried time with books, voices, and turning pages together.",
+    steps: [
+      "Make a small nest of pillows and settle in together.",
+      "Read one book slowly, naming what you both see on each page.",
+      "Let them pat, point, or chew a corner — that's reading too, at this age.",
+      "Sing one quiet song before you climb out of the nest.",
+    ],
+    durationMin: 12,
+    source: {
+      name: "Reading Aloud to Children: The Evidence",
+      org: "Reach Out and Read",
+      url: "https://reachoutandread.org/article/reading-aloud-to-children-the-evidence/",
+      kind: "research",
+    },
+    easierVariation: "One book, three pages, done — a happy thirty seconds beats a restless ten minutes.",
+    harderVariation: "Pause on a favourite page and wait — leave room for a pat, a sound, or a point before you turn.",
+    whatToNotice: "Notice which page makes them still — where their eyes settle and their hands reach.",
+    outcomePrompt: "Afterwards, think back: which book did they come back to? Keep it in the nest for tomorrow.",
+  },
+  {
+    id: "std-infant-treasure-basket",
+    title: "Everyday-things treasure basket",
+    bands: ["infant"],
+    domain: "cognitive",
+    skillTags: ["exploration", "focus", "sensory-play"],
+    householdItems: ["a shallow basket or box", "six safe household objects — wooden spoon, fabric scrap, plastic cup"],
+    whatItBuilds: "Deep, self-directed looking and turning-things-over — baby-led discovery.",
+    steps: [
+      "Fill a shallow basket with six or so safe, interesting everyday objects.",
+      "Set it in front of them and stay close, but let them choose.",
+      "Watch what they pick up, mouth, and return to, without directing.",
+      "Swap two objects for new ones next time to keep the basket interesting.",
+    ],
+    durationMin: 15,
+    easierVariation: "Start with just two or three objects with very different feels — wood, fabric, metal spoon.",
+    harderVariation: "Add a container to the basket — dropping things in and tipping them out is the next game.",
+    whatToNotice: "Notice which object holds them longest, and what they do with it — bang, mouth, turn, pass hand to hand.",
+    outcomePrompt: "Afterwards, jot the favourite object — swapping the ignored ones keeps tomorrow's basket alive.",
+  },
+  {
+    id: "std-infant-floor-circuit",
+    title: "Little floor play circuit",
+    bands: ["infant"],
+    domain: "motor",
+    skillTags: ["tummy-time", "reaching", "rolling"],
+    householdItems: ["a blanket on the floor", "two or three toys", "a cushion"],
+    whatItBuilds: "Reaching, rolling, and pushing up — one little station at a time.",
+    steps: [
+      "Lay out three stations: a toy to reach for, a cushion to push up on, a mirror or book to study.",
+      "Start with tummy time at the first station for as long as it stays happy.",
+      "Move between stations at their pace, resting when they signal enough.",
+      "Finish with a favourite — a song or a gentle lift into the air.",
+    ],
+    durationMin: 12,
+    easierVariation: "Shorten each station to a happy minute and lie down at their level for all of it.",
+    harderVariation: "Place the reach-toy just past their fingertips so getting there takes a wriggle or a roll.",
+    whatToNotice: "Notice how they get from station to station — the pivots, pushes, and almost-rolls along the way.",
+    outcomePrompt: "Afterwards, recall which station they stayed at longest — start there next time.",
+  },
+  {
+    id: "std-toddler-car-wash",
+    title: "Toy wash station",
+    bands: ["toddler"],
+    domain: "motor",
+    skillTags: ["hand-strength", "two-handed-work", "water-play"],
+    householdItems: ["a bowl of soapy water", "a sponge or cloth", "washable toys", "a towel"],
+    whatItBuilds: "Two-handed work — dunking, scrubbing, squeezing, and drying.",
+    steps: [
+      "Set a towel down with a bowl of soapy water on it.",
+      "Line up the grubby 'customers' — cars, animals, blocks.",
+      "Wash each one together: dunk, scrub, squeeze, dry.",
+      "Park the clean ones in a row and admire the work.",
+    ],
+    durationMin: 15,
+    themeableContextSlot: true,
+    easierVariation: "One toy, one sponge, lots of splashing — the washing matters more than the clean.",
+    harderVariation: "Add a rinse bowl so each customer goes wash, rinse, dry — a real three-step production line.",
+    whatToNotice: "Notice the squeeze — wringing a sponge out is serious hand work at this age.",
+    outcomePrompt: "Afterwards, ask which customer was the dirtiest — and let them line up tomorrow's queue.",
+  },
+  {
+    id: "std-toddler-teddy-picnic",
+    title: "Teddy bear picnic",
+    bands: ["toddler"],
+    domain: "social",
+    skillTags: ["pretend-play", "caring", "sharing"],
+    householdItems: ["a blanket", "toy plates or real cups", "stuffed animals", "a small real snack"],
+    whatItBuilds: "Caring for others and simple hosting — serving, sharing, saying thank you.",
+    steps: [
+      "Spread the blanket and seat the guests in a circle.",
+      "Hand out plates and let them 'serve' every guest as host.",
+      "Voice a guest — 'more please!' — and let them respond.",
+      "End the picnic together: guests say thank you, hosts wave goodbye.",
+    ],
+    durationMin: 15,
+    themeableContextSlot: true,
+    easierVariation: "Invite just one guest — teddy and a cup is a whole party at this age.",
+    harderVariation: "Give a guest a small problem — 'dolly spilled her tea!' — and see how the host helps.",
+    whatToNotice: "Notice the caring moves they invent — patting, feeding, tucking a napkin — without being shown.",
+    outcomePrompt: "Afterwards, ask the host: which guest had the best time? Why?",
+  },
+  {
+    id: "std-toddler-block-city",
+    title: "Build a little block city",
+    bands: ["toddler"],
+    domain: "cognitive",
+    skillTags: ["building", "planning", "pretend-play"],
+    householdItems: ["blocks or stacking cups", "toy figures or cars", "a stretch of floor"],
+    whatItBuilds: "Building with an idea in mind — a road, a tower, a garage — then playing inside it.",
+    steps: [
+      "Clear a stretch of floor and tip out the blocks.",
+      "Ask what the city needs first and build it together.",
+      "Add a road between the buildings for cars or animals.",
+      "Let them knock it down at the end — demolition is part of city life.",
+    ],
+    durationMin: 15,
+    themeableContextSlot: true,
+    easierVariation: "Build one tower together, hand over hand, and save the big crash for the finale.",
+    harderVariation: "Ask them to name the next building BEFORE placing a block — a plan in words first.",
+    whatToNotice: "Notice whether they build with a story in mind — who lives here, where the road goes.",
+    outcomePrompt: "Afterwards, ask for a tour of the city before the crash — every builder loves a visitor.",
+  },
+  {
+    id: "ext-cardboard-box-town",
+    title: "Build a cardboard box town",
+    bands: ["toddler", "preschool"],
+    domain: "cognitive",
+    skillTags: ["planning", "pretend-play", "spatial-thinking"],
+    householdItems: ["a few cardboard boxes or shoeboxes", "crayons or markers", "toy figures or cars"],
+    whatItBuilds: "Holding a plan in mind and growing it, one building at a time.",
+    steps: [
+      "Gather a few boxes and decide together what the town needs first — a house? a garage?",
+      "Draw doors and windows on each box and set them out along 'streets'.",
+      "Add toy figures or cars and let the town come to life.",
+      "Leave it standing so tomorrow's play can pick up where today's ended.",
+    ],
+    durationMin: 25,
+    themeableContextSlot: true,
+    source: HARVARD_EF,
+    easierVariation: "Start with a single house for one favourite toy — one box, one door, done together.",
+    harderVariation: "Ask them to plan three buildings out loud before building starts, then follow their plan in order.",
+    whatToNotice: "Notice how they decide what the town needs — do they copy your ideas or bring their own?",
+    outcomePrompt: "Afterwards, ask for a guided tour: which building comes first, and what happens inside it?",
+  },
+  {
+    id: "ext-kitchen-bake-together",
+    title: "Bake something simple together",
+    bands: ["toddler", "preschool"],
+    domain: "cognitive",
+    skillTags: ["sequencing", "patience", "real-jobs"],
+    householdItems: ["a simple recipe (cookies or muffins)", "a bowl and spoon", "measuring cups"],
+    whatItBuilds: "Following steps in order and waiting for a result worth waiting for.",
+    steps: [
+      "Pick a short recipe and read it out loud together before starting.",
+      "Hand over the real jobs: pouring, stirring, spooning into the tray.",
+      "Talk through each step as it happens: first, next, last.",
+      "While it bakes, clean up together and guess how it will smell.",
+    ],
+    durationMin: 30,
+    easierVariation: "Pre-portion the ingredients into little bowls so their whole job is pouring and stirring.",
+    harderVariation: "Let them recall the recipe and tell YOU the next step each time — the chef gives the orders.",
+    whatToNotice: "Notice how they handle the waiting while it bakes — what helps the wait feel okay?",
+    outcomePrompt: "Afterwards, ask which job was their favourite — and let them serve what they made.",
+  },
+  {
+    id: "ext-big-floor-mural",
+    title: "Giant floor mural",
+    bands: ["toddler", "preschool"],
+    domain: "motor",
+    skillTags: ["drawing", "big-arm-movements", "persistence"],
+    householdItems: ["a large sheet of paper or an opened-up cardboard box", "crayons, markers, or paint", "tape"],
+    whatItBuilds: "Big arm movements and staying with one creation long enough to finish it.",
+    steps: [
+      "Tape a big sheet of paper to the floor.",
+      "Start a shared scene — a road, a garden, a sea — and each claim a corner.",
+      "Swap corners halfway and add to each other's drawings.",
+      "Hang the finished mural somewhere everyone can see it.",
+    ],
+    durationMin: 25,
+    themeableContextSlot: true,
+    easierVariation: "Trade the scene for one giant shared scribble — big arm circles side by side.",
+    harderVariation: "Agree the scene together first and draw a 'plan' in one corner before the big version starts.",
+    whatToNotice: "Notice the grip and the sweep — whole-arm strokes and small careful details are different jobs.",
+    outcomePrompt: "Afterwards, ask them to present the mural: what's happening in each corner?",
+  },
+  {
+    id: "ext-blanket-fort-story",
+    title: "Blanket fort story camp",
+    bands: ["toddler", "preschool"],
+    domain: "regulation",
+    skillTags: ["wind-down", "cozy-ritual", "shared-reading"],
+    householdItems: ["blankets and chairs", "pillows", "a torch or small lamp", "two or three favourite books"],
+    whatItBuilds: "A slow, cozy wind-down that ends calmer than it started.",
+    steps: [
+      "Build the fort together — chairs for walls, blankets for the roof, pillows inside.",
+      "Crawl in with the books and a soft light.",
+      "Read in a quieter and quieter voice, letting bodies settle.",
+      "Finish with one whispered favourite part each.",
+    ],
+    durationMin: 25,
+    themeableContextSlot: true,
+    easierVariation: "Skip the build — drape one blanket over a table and crawl straight into the reading part.",
+    harderVariation: "Let them run the camp: they choose the books, the seating, and who reads (or retells) first.",
+    whatToNotice: "Notice the settling — where in the fort ritual their body actually slows down.",
+    outcomePrompt: "Afterwards, whisper-ask: what should the fort have next time? One wish, for tomorrow.",
+  },
+  {
+    id: "ext-treasure-map-hunt",
+    title: "Draw a treasure map, run the hunt",
+    bands: ["preschool", "early-school"],
+    domain: "cognitive",
+    skillTags: ["planning", "spatial-thinking", "symbols"],
+    householdItems: ["paper", "pens or crayons", "a small 'treasure' to hide"],
+    whatItBuilds: "Turning a plan on paper into real steps through real rooms.",
+    steps: [
+      "Hide a small treasure while they wait in another room.",
+      "Draw a simple map of the home together, with an X on the spot.",
+      "Let them navigate — resist pointing, let the map do the work.",
+      "Swap roles: they hide, they draw, you hunt.",
+    ],
+    durationMin: 25,
+    themeableContextSlot: true,
+    source: HARVARD_EF,
+    easierVariation: "Shrink the map to one room and add a warm-cold soundtrack as they search.",
+    harderVariation: "Add two riddle clues along the route — the map gets them close, the clues take them home.",
+    whatToNotice: "Notice how they hold the map to the room — turning it, matching doors and corners to the drawing.",
+    outcomePrompt: "Afterwards, ask the map-maker: which part of the map worked best? What fooled the hunter?",
+  },
+  {
+    id: "ext-sock-puppet-show",
+    title: "Make puppets, put on the show",
+    bands: ["preschool", "early-school"],
+    domain: "language",
+    skillTags: ["storytelling", "character-voices", "performance"],
+    householdItems: ["odd socks", "markers", "buttons or fabric scraps", "a sofa back as a stage"],
+    whatItBuilds: "Inventing characters and giving them voices — from making, to plotting, to performing.",
+    steps: [
+      "Turn an odd sock each into a character with markers and scraps.",
+      "Decide one thing about each puppet: a name, a voice, a favourite word.",
+      "Make up a short show behind the sofa — a meeting, a problem, an ending.",
+      "Perform it for a stuffed-animal audience, then swap puppets and replay it.",
+    ],
+    durationMin: 30,
+    themeableContextSlot: true,
+    easierVariation: "Skip the show — just make one puppet each and let them chat about their day.",
+    harderVariation: "Give the show three acts announced out loud: the meeting, the problem, the fix.",
+    whatToNotice: "Notice the voice they invent — how the puppet says things they might not say as themselves.",
+    outcomePrompt: "Afterwards, interview the puppet: what was the best part of the show, in its own voice?",
+  },
+  {
+    id: "ext-family-restaurant-night",
+    title: "Run tonight's family restaurant",
+    bands: ["preschool", "early-school"],
+    domain: "social",
+    skillTags: ["real-jobs", "pretend-play", "hosting"],
+    householdItems: ["paper for menus", "pens", "the dinner you were making anyway"],
+    whatItBuilds: "Running a real job start to finish — greeting, serving, and being thanked.",
+    steps: [
+      "Write and decorate tonight's menu together.",
+      "They set the table, seat the guests, and take orders like a real waiter.",
+      "Serve the food course by course, with big thank-yous.",
+      "Swap roles for dessert — now they're the guest.",
+    ],
+    durationMin: 30,
+    themeableContextSlot: true,
+    easierVariation: "One job only: they hand out the menus and take one order, then sit down as a guest.",
+    harderVariation: "Add a kitchen call-out — the waiter repeats each order back to the 'chef' from memory.",
+    whatToNotice: "Notice how they carry the role — the waiter walk, the greeting, the pride in getting an order right.",
+    outcomePrompt: "Afterwards, ask the waiter: which guest was trickiest, and what would the restaurant do differently tomorrow?",
+  },
+  {
+    id: "ext-invent-a-board-game",
+    title: "Invent your own board game",
+    bands: ["early-school"],
+    domain: "social",
+    skillTags: ["rule-making", "negotiation", "fair-play"],
+    householdItems: ["paper or cardboard", "pens", "a die and buttons or coins as pieces"],
+    whatItBuilds: "Making rules together, testing them, and renegotiating when they don't work.",
+    steps: [
+      "Draw a winding path of squares across the board.",
+      "Invent rules together: what happens on red squares? On stars?",
+      "Play a first round and let the broken rules show themselves.",
+      "Fix the rules together and play the improved version.",
+    ],
+    durationMin: 30,
+    themeableContextSlot: true,
+    source: HARVARD_EF,
+    easierVariation: "Copy a game they already know and change just ONE rule — their rule.",
+    harderVariation: "Add a rule budget: exactly five rules allowed, so every rule has to earn its place.",
+    whatToNotice: "Notice what happens when a rule fails mid-game — the negotiation is the actual game.",
+    outcomePrompt: "Afterwards, ask: which rule would you change for round two? Write the new rule on the board.",
+  },
+  {
+    id: "ext-nature-collection-museum",
+    title: "Pocket-museum of found things",
+    bands: ["early-school"],
+    domain: "cognitive",
+    skillTags: ["sorting", "close-looking", "explaining"],
+    householdItems: ["a box or egg carton", "found things from outside — stones, leaves, seeds", "paper for labels"],
+    whatItBuilds: "Looking closely, sorting by real features, and explaining choices out loud.",
+    steps: [
+      "Walk outside and collect eight or ten small found things.",
+      "Back home, sort them: by colour, by texture, by where they came from.",
+      "Make little labels and arrange the 'museum' in the carton.",
+      "Host a tour — they're the guide, you're the visitor with questions.",
+    ],
+    durationMin: 25,
+    themeableContextSlot: true,
+    easierVariation: "Collect just five things and sort them one way — big and small is plenty.",
+    harderVariation: "Ask for a second sorting of the SAME collection by a different rule, and labels for both.",
+    whatToNotice: "Notice the sorting rule they choose — and how they defend an item that almost fits two groups.",
+    outcomePrompt: "Afterwards, ask the curator: which exhibit is the rarest, and where should tomorrow's expedition search?",
   },
 ];
 
@@ -4761,6 +5350,13 @@ export interface PlayActivityHe {
   whatItBuilds: string;
   steps: string[];
   householdItems: string[];
+  /* KID-5: HE slots for the guided-play fields. Tracked but EMPTY until the
+   * native transcreation packet (KID-8/GD-7) lands — guided-play copy is
+   * never machine-translated. While absent, the UI falls back to EN. */
+  easierVariation?: string;
+  harderVariation?: string;
+  whatToNotice?: string;
+  outcomePrompt?: string;
 }
 
 export const PLAY_ACTIVITIES_HE: Record<string, PlayActivityHe> = {
@@ -7560,6 +8156,174 @@ export const PLAY_ACTIVITIES_HE: Record<string, PlayActivityHe> = {
     ],
     householdItems: ["קערה או כיור עם מים", "כמה חפצים בטוחים מהבית", "מגבת"],
   },
+  /* KID-3 content wave — HE first drafts (same review packet as the rest:
+     KID-8/GD-7 native review). Guided-play fields intentionally ABSENT here —
+     they arrive only via the native transcreation packet. */
+  "std-infant-book-nest": {
+    title: "קן ספרים מפנק",
+    whatItBuilds: "זמן חמים ולא ממהר עם ספרים, קולות ודפדוף משותף.",
+    steps: [
+      "בנו קן קטן מכריות והתמקמו בו יחד.",
+      "קראו ספר אחד לאט, ותנו שם למה ששניכם רואים בכל עמוד.",
+      "תנו להם לטפוח, להצביע או ללעוס פינה — גם זו קריאה, בגיל הזה.",
+      "שירו שיר שקט אחד לפני שיוצאים מהקן.",
+    ],
+    householdItems: ["שניים-שלושה ספרי תינוקות קשיחים", "כריות או שמיכה מקופלת"],
+  },
+  "std-infant-treasure-basket": {
+    title: "סל אוצרות של חפצים יומיומיים",
+    whatItBuilds: "התבוננות עמוקה בקצב שלהם והפיכת חפצים מכל צד — גילוי בהובלת התינוק.",
+    steps: [
+      "מלאו סל שטוח בכשישה חפצים יומיומיים בטוחים ומעניינים.",
+      "הניחו אותו מולם והישארו קרובים, אבל תנו להם לבחור.",
+      "התבוננו במה שהם מרימים, טועמים וחוזרים אליו, בלי לכוון.",
+      "החליפו שני חפצים בחדשים בפעם הבאה כדי לשמור על הסל מעניין.",
+    ],
+    householdItems: ["סל או קופסה שטוחים", "שישה חפצים ביתיים בטוחים — כף עץ, פיסת בד, כוס פלסטיק"],
+  },
+  "std-infant-floor-circuit": {
+    title: "מסלול משחק קטן על הרצפה",
+    whatItBuilds: "הושטה, התגלגלות ודחיפה מעלה — תחנה קטנה אחת בכל פעם.",
+    steps: [
+      "פרסו שלוש תחנות: צעצוע להושיט אליו יד, כרית להתרומם עליה, מראה או ספר להתבונן בהם.",
+      "התחילו בזמן בטן בתחנה הראשונה כל עוד זה נשאר שמח.",
+      "עברו בין התחנות בקצב שלהם, עם הפסקות כשהם מאותתים שמספיק.",
+      "סיימו במשהו אהוב — שיר או הרמה עדינה באוויר.",
+    ],
+    householdItems: ["שמיכה על הרצפה", "שניים-שלושה צעצועים", "כרית"],
+  },
+  "std-toddler-car-wash": {
+    title: "תחנת רחיצת צעצועים",
+    whatItBuilds: "עבודה בשתי ידיים — טבילה, קרצוף, סחיטה וייבוש.",
+    steps: [
+      "פרסו מגבת והניחו עליה קערה עם מים וסבון.",
+      "העמידו בתור את ה'לקוחות' המלוכלכים — מכוניות, חיות, קוביות.",
+      "רחצו כל אחד יחד: לטבול, לקרצף, לסחוט, לייבש.",
+      "החנו את הנקיים בשורה והתפעלו מהעבודה.",
+    ],
+    householdItems: ["קערה עם מי סבון", "ספוג או מטלית", "צעצועים רחיצים", "מגבת"],
+  },
+  "std-toddler-teddy-picnic": {
+    title: "פיקניק דובים",
+    whatItBuilds: "דאגה לאחרים ואירוח פשוט — להגיש, לחלוק, להגיד תודה.",
+    steps: [
+      "פרסו את השמיכה והושיבו את האורחים במעגל.",
+      "חלקו צלחות ותנו להם 'להגיש' לכל אורח בתור המארחים.",
+      "דובבו אורח — 'עוד בבקשה!' — ותנו להם להגיב.",
+      "סיימו את הפיקניק יחד: האורחים אומרים תודה, המארחים מנופפים לשלום.",
+    ],
+    householdItems: ["שמיכה", "צלחות צעצוע או כוסות אמיתיות", "בובות פרווה", "חטיף אמיתי קטן"],
+  },
+  "std-toddler-block-city": {
+    title: "בונים עיר קוביות קטנה",
+    whatItBuilds: "בנייה עם רעיון בראש — כביש, מגדל, מוסך — ואז לשחק בתוכה.",
+    steps: [
+      "פנו קטע רצפה ושפכו את הקוביות.",
+      "שאלו מה העיר צריכה קודם ובנו את זה יחד.",
+      "הוסיפו כביש בין הבניינים למכוניות או לחיות.",
+      "תנו להם להפיל הכול בסוף — הריסות הן חלק מחיי העיר.",
+    ],
+    householdItems: ["קוביות או כוסות מגדל", "דמויות צעצוע או מכוניות", "קטע רצפה פנוי"],
+  },
+  "ext-cardboard-box-town": {
+    title: "בונים עיר מקופסאות קרטון",
+    whatItBuilds: "להחזיק תוכנית בראש ולהצמיח אותה, בניין אחד בכל פעם.",
+    steps: [
+      "אספו כמה קופסאות והחליטו יחד מה העיר צריכה קודם — בית? מוסך?",
+      "ציירו דלתות וחלונות על כל קופסה וסדרו אותן לאורך 'רחובות'.",
+      "הוסיפו דמויות צעצוע או מכוניות ותנו לעיר לקום לחיים.",
+      "השאירו אותה בנויה, כך שהמשחק של מחר ימשיך מאיפה שהיום נגמר.",
+    ],
+    householdItems: ["כמה קופסאות קרטון או קופסאות נעליים", "צבעים או טושים", "דמויות צעצוע או מכוניות"],
+  },
+  "ext-kitchen-bake-together": {
+    title: "אופים משהו פשוט יחד",
+    whatItBuilds: "לעקוב אחרי שלבים בסדר הנכון ולחכות לתוצאה ששווה לחכות לה.",
+    steps: [
+      "בחרו מתכון קצר וקראו אותו בקול יחד לפני שמתחילים.",
+      "מסרו את העבודות האמיתיות: למזוג, לערבב, להעביר בכף לתבנית.",
+      "דברו על כל שלב תוך כדי: קודם, אחר כך, בסוף.",
+      "בזמן האפייה סדרו יחד ונחשו איך זה יריח.",
+    ],
+    householdItems: ["מתכון פשוט (עוגיות או מאפינס)", "קערה וכף", "כוסות מדידה"],
+  },
+  "ext-big-floor-mural": {
+    title: "ציור קיר ענק על הרצפה",
+    whatItBuilds: "תנועות זרוע גדולות והישארות עם יצירה אחת מספיק זמן כדי לסיים אותה.",
+    steps: [
+      "הדביקו גיליון נייר גדול לרצפה.",
+      "התחילו סצנה משותפת — כביש, גינה, ים — וכל אחד לוקח פינה.",
+      "התחלפו בפינות באמצע והוסיפו לציורים אחד של השני.",
+      "תלו את היצירה המוכנה במקום שכולם רואים.",
+    ],
+    householdItems: ["גיליון נייר גדול או קופסת קרטון פתוחה", "צבעים, טושים או צבע", "נייר דבק"],
+  },
+  "ext-blanket-fort-story": {
+    title: "מחנה סיפורים במבצר שמיכות",
+    whatItBuilds: "רגיעה איטית ונעימה שמסתיימת רגועה יותר משהתחילה.",
+    steps: [
+      "בנו את המבצר יחד — כיסאות לקירות, שמיכות לגג, כריות בפנים.",
+      "זחלו פנימה עם הספרים ואור רך.",
+      "קראו בקול שקט יותר ויותר, ותנו לגוף להירגע.",
+      "סיימו בקטע אהוב אחד בלחישה, כל אחד בתורו.",
+    ],
+    householdItems: ["שמיכות וכיסאות", "כריות", "פנס או מנורה קטנה", "שניים-שלושה ספרים אהובים"],
+  },
+  "ext-treasure-map-hunt": {
+    title: "מציירים מפת אוצר ויוצאים לחפש",
+    whatItBuilds: "להפוך תוכנית על נייר לצעדים אמיתיים בחדרים אמיתיים.",
+    steps: [
+      "החביאו אוצר קטן בזמן שהם מחכים בחדר אחר.",
+      "ציירו יחד מפה פשוטה של הבית, עם X על המקום.",
+      "תנו להם לנווט — התאפקו מלהצביע, תנו למפה לעבוד.",
+      "התחלפו: הם מחביאים, הם מציירים, אתם מחפשים.",
+    ],
+    householdItems: ["נייר", "עטים או צבעים", "'אוצר' קטן להחביא"],
+  },
+  "ext-sock-puppet-show": {
+    title: "מכינים בובות ומעלים הצגה",
+    whatItBuilds: "להמציא דמויות ולתת להן קולות — מהכנה, דרך עלילה, ועד הופעה.",
+    steps: [
+      "הפכו גרב בודדה לדמות עם טושים וחומרים מהבית, כל אחד את שלו.",
+      "החליטו דבר אחד על כל בובה: שם, קול, מילה אהובה.",
+      "המציאו הצגה קצרה מאחורי הספה — פגישה, בעיה, סוף.",
+      "הופיעו בפני קהל של בובות פרווה, ואז התחלפו בבובות ושחזרו.",
+    ],
+    householdItems: ["גרביים בודדות", "טושים", "כפתורים או פיסות בד", "גב ספה כבמה"],
+  },
+  "ext-family-restaurant-night": {
+    title: "מנהלים הערב מסעדה משפחתית",
+    whatItBuilds: "להריץ עבודה אמיתית מההתחלה עד הסוף — לקבל פנים, להגיש, ולקבל תודה.",
+    steps: [
+      "כתבו וקשטו יחד את התפריט של הערב.",
+      "הם עורכים את השולחן, מושיבים את האורחים ולוקחים הזמנות כמו מלצר אמיתי.",
+      "הגישו את האוכל מנה אחרי מנה, עם המון תודות.",
+      "התחלפו בתפקידים לקינוח — עכשיו הם האורחים.",
+    ],
+    householdItems: ["נייר לתפריטים", "עטים", "ארוחת הערב שהכנתם ממילא"],
+  },
+  "ext-invent-a-board-game": {
+    title: "ממציאים משחק קופסה משלכם",
+    whatItBuilds: "להמציא חוקים יחד, לנסות אותם, ולנהל משא ומתן כשהם לא עובדים.",
+    steps: [
+      "ציירו שביל מתפתל של משבצות על הלוח.",
+      "המציאו חוקים יחד: מה קורה במשבצות אדומות? בכוכבים?",
+      "שחקו סיבוב ראשון ותנו לחוקים השבורים להתגלות.",
+      "תקנו את החוקים יחד ושחקו את הגרסה המשופרת.",
+    ],
+    householdItems: ["נייר או קרטון", "עטים", "קובייה וכפתורים או מטבעות ככלי משחק"],
+  },
+  "ext-nature-collection-museum": {
+    title: "מוזיאון כיס של מציאות מהטבע",
+    whatItBuilds: "התבוננות מקרוב, מיון לפי תכונות אמיתיות, והסבר הבחירות בקול רם.",
+    steps: [
+      "צאו החוצה ואספו שמונה-עשרה מציאות קטנות.",
+      "בבית, מיינו אותן: לפי צבע, לפי מרקם, לפי מאיפה שהגיעו.",
+      "הכינו תוויות קטנות וסדרו את 'המוזיאון' בתבנית הביצים.",
+      "ערכו סיור מודרך — הם המדריכים, אתם המבקרים עם השאלות.",
+    ],
+    householdItems: ["קופסה או תבנית ביצים", "מציאות מבחוץ — אבנים, עלים, זרעים", "נייר לתוויות"],
+  },
 };
 
 /** Parent-facing label for each developmental domain — used to name the
@@ -7583,5 +8347,17 @@ export function localizeActivity(activity: PlayActivity, lang: "en" | "he"): Pla
   if (lang !== "he") return activity;
   const he = PLAY_ACTIVITIES_HE[activity.id];
   if (!he) return activity;
-  return { ...activity, title: he.title, whatItBuilds: he.whatItBuilds, steps: he.steps, householdItems: he.householdItems };
+  return {
+    ...activity,
+    title: he.title,
+    whatItBuilds: he.whatItBuilds,
+    steps: he.steps,
+    householdItems: he.householdItems,
+    // KID-5: guided fields swap in only once the native transcreation lands;
+    // until then the EN copy carries through (EN-fallback doctrine, GD-6/GD-7).
+    easierVariation: he.easierVariation ?? activity.easierVariation,
+    harderVariation: he.harderVariation ?? activity.harderVariation,
+    whatToNotice: he.whatToNotice ?? activity.whatToNotice,
+    outcomePrompt: he.outcomePrompt ?? activity.outcomePrompt,
+  };
 }

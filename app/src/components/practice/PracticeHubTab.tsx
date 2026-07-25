@@ -10,14 +10,16 @@ import HeroArcade from "./HeroArcade";
    Replaces the flat HubTabs strip with the comic-book arcade home.
    AP-059 weekly missions strip is preserved above the arcade. */
 
-export default function PracticeHubTab() {
+export default function PracticeHubTab({ initialWorldId }: { initialWorldId?: string } = {}) {
   return (
     <div className="space-y-4">
       {/* AP-059: 7-day weekly missions progress strip — DISTINCT from the daily-goal
           ring (this is a weekly cadence layer; the ring shows today's circular
           progress and lives in separate components/overview surfaces). */}
       <WeeklyMissionsStrip />
-      <HeroArcade />
+      {/* KID-4: initialWorldId pre-selects a world when a kid-dashboard game
+          tile named after that world opened the arcade. */}
+      <HeroArcade initialWorldId={initialWorldId} />
     </div>
   );
 }

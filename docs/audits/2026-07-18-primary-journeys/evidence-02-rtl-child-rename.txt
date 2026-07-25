@@ -1,0 +1,14 @@
+CAPTURE 02 — Multi-child + RTL journey
+Method: ProfileEditDrawer opened (JS click on button[aria-label="Edit child profile"]), name input set to "נועה" via native setter + input event, "Save changes" clicked.
+Result: switcher aria-label -> "Active child: נועה. Switch child"; sidebar h4 text "נועה" dir="auto" computedDir=rtl (VIS-2/VIS-3 fix present).
+Multi-child: switcher lists ONE child + "Add child" -> opens Plus-gate dialog: "Multiple children is an Arbor Plus feature… The free plan covers one child." CTA "Tell me when Plus launches" (no live upgrade path despite Stripe LIVE). Cannot add a second child in free sandbox -> switch interaction untestable beyond listbox.
+Bidi scan (TreeWalker, all text nodes containing Hebrew name + Latin): 7 mixed-direction strings, ALL with dir=null, computedDir=ltr, no <bdi>, no Unicode isolates:
+  "One small thing for נועה today" (topbar span)
+  "נועה's activity" (span — possessive suffix on RTL run)
+  "A good fit for where נועה is right now." (p)
+  "Here whenever you need a next step with נועה." (div)
+  "What is נועה really into right now?" (p)
+  "Arbor uses this to frame activities in things נועה already l…" (p)
+ProfileEditDrawer fields: name/age/context/languages inputs have empty programmatic labels (labels[] empty, no aria-label) — a11y check follows via axe.
+Drawer also exposes "Export נועה's data (JSON)" + "Delete this child & all data" (data-rights present in-profile).
+Artifact note: drawer/dialog enter+exit animations freeze (hidden-pane rAF); modal-not-closing is NOT a product bug (visibilityState=hidden confirmed).

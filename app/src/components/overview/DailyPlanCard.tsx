@@ -48,6 +48,9 @@ interface DailyPlanCardProps {
   /** CI-31: session length controlled from DailyPlayTab. */
   sessionLength: SessionLength;
   onSessionLengthChange: (s: SessionLength) => void;
+  /** KID-3: child's age in years — SessionLengthChips only offers
+   *  honestly-stocked buckets for the child's band. */
+  ageYears: number;
   /** Called when parent taps "Set a focus goal" in the no-goal state. */
   onSetGoal: () => void;
 }
@@ -64,6 +67,7 @@ export default function DailyPlanCard({
   onObservationSubmit,
   sessionLength,
   onSessionLengthChange,
+  ageYears,
   onSetGoal,
 }: DailyPlanCardProps) {
   const { t, uiLang } = useLanguage();
@@ -118,12 +122,9 @@ export default function DailyPlanCard({
 
   const activity = localizeActivity(plan.scoredActivity.activity, uiLang);
 
-  // Duration badge label — mirrors DailyPlayCard pattern.
-  const durationLabel: string = (() => {
-    if (sessionLength === "short") return t("play.session.short");
-    if (sessionLength === "extended") return t("play.session.extended");
-    return t("play.session.standard");
-  })();
+  // KID-3: duration badge is ALWAYS the plan activity's real durationMin —
+  // never the selected chip's range (mirrors DailyPlayCard).
+  const durationLabel: string = t("play.min", { n: activity.durationMin });
 
   // ── OBSERVING state (post-activity observation inline view) ─────────────────
   if (cardState === "observing") {
@@ -340,6 +341,7 @@ export default function DailyPlanCard({
         <SessionLengthChips
           value={sessionLength}
           onChange={handleSessionLength}
+          ageYears={ageYears}
           tapped={sessionTapped}
         />
 

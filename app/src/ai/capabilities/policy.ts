@@ -1,0 +1,72 @@
+import type { ArborConfig } from "../../config/env.js";
+import { AiProviderError, type AiAudience, type AiCapability, type AiDataClass, type CapabilityRequest, type ProviderRef } from "./contracts.js";
+
+export interface ProviderCandidate {
+  ref: ProviderRef;
+  capabilities: readonly AiCapability[];
+  audiences: readonly AiAudience[];
+  dataClasses: readonly AiDataClass[];
+  trainsOnCustomerData: boolean;
+  retentionDays: number;
+  score: { quality: number; safety: number; reliability: number; latencyFitness: number; costFitness: number };
+}
+
+export interface RoutePolicy {
+  allowedRegions: readonly string[];
+  requireNoTraining: boolean;
+  maxRetentionDays: number;
+  weights?: Partial<ProviderCandidate["score"]>;
+}
+
+export interface PolicyDecision { selected: ProviderCandidate; eligible: readonly ProviderCandidate[]; rejected: readonly { candidate: ProviderRef; reasons: readonly string[] }[]; }
+
+/** COACH-3: coarse data-residency region for a GCP location string
+ *  ("europe-west4" → "eu", "us-central1" → "us"). Unset/unknown → "global"
+ *  so a config that never declared a region is only admitted where the
+ *  policy explicitly allows "global" (never in prod). */
+export const providerRegion = (location?: string): string => {
+  const value = (location || "").toLowerCase();
+  if (value === "eu" || value.startsWith("europe")) return "eu";
+  if (value.startsWith("us") || value.startsWith("northamerica")) return "us";
+  if (!value || value === "global") return "global";
+  return "other";
+};
+
+/** COACH-3: the single RoutePolicy production request paths enforce.
+ *  Prod is EU-resident-only; non-prod additionally admits "global" (the
+ *  AI-Studio dev key has no regional endpoint). No-training and bounded
+ *  retention are required in EVERY environment. */
+export const routePolicyFor = (config: Pick<ArborConfig, "arborEnv">): RoutePolicy => ({
+  allowedRegions: config.arborEnv === "prod" ? ["eu"] : ["eu", "global"],
+  requireNoTraining: true,
+  maxRetentionDays: 30,
+});
+
+const rejectionReasons = (request: CapabilityRequest, policy: RoutePolicy, candidate: ProviderCandidate): string[] => {
+  const reasons: string[] = [];
+  if (!candidate.capabilities.includes(request.capability)) reasons.push("capability");
+  if (!candidate.audiences.includes(request.audience)) reasons.push("audience");
+  if (request.dataClasses.some((value) => !candidate.dataClasses.includes(value))) reasons.push("data_class");
+  if (!candidate.ref.region || !policy.allowedRegions.includes(candidate.ref.region)) reasons.push("region");
+  if (policy.requireNoTraining && candidate.trainsOnCustomerData) reasons.push("training");
+  if (candidate.retentionDays > policy.maxRetentionDays) reasons.push("retention");
+  return reasons;
+};
+
+const weightedScore = (candidate: ProviderCandidate, policy: RoutePolicy): number => {
+  const weights = { quality: 1, safety: 1, reliability: 1, latencyFitness: 1, costFitness: 1, ...policy.weights };
+  return Object.entries(candidate.score).reduce((total, [key, value]) => total + value * weights[key as keyof typeof weights], 0);
+};
+
+/** Eligibility is evaluated before scoring. If every candidate violates policy, selection fails closed. */
+export const selectProvider = (request: CapabilityRequest, policy: RoutePolicy, candidates: readonly ProviderCandidate[]): PolicyDecision => {
+  const rejected: PolicyDecision["rejected"][number][] = [];
+  const eligible = candidates.filter((candidate) => {
+    const reasons = rejectionReasons(request, policy, candidate);
+    if (reasons.length) rejected.push({ candidate: candidate.ref, reasons });
+    return reasons.length === 0;
+  });
+  if (!eligible.length) throw new AiProviderError("policy_denied", `No eligible provider for ${request.capability}`, false);
+  const selected = [...eligible].sort((a, b) => weightedScore(b, policy) - weightedScore(a, policy))[0];
+  return { selected, eligible, rejected };
+};

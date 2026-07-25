@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
 import InviteCard from "../referral/InviteCard";
+import { PlanPrices } from "../billing/PlanPrices";
 import { useLanguage, type AiLang } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
@@ -98,7 +99,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
       const { url } = await api.billingCheckout(plan, cadence);
       window.location.href = url;
     } catch {
-      toast(t("set.plan.checkoutSoon"), "success");
+      // CARE-5: checkout being unavailable is information, not a success.
+      toast(t("set.plan.checkoutSoon"), "info");
     } finally {
       setBusy(false);
     }
@@ -175,6 +177,10 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                     {t(c === "monthly" ? "set.plan.monthly" : "set.plan.annual")}
                   </button>
                 ))}
+              </div>
+              {/* CARE-5: the real price, in the parent's language, BEFORE any redirect. */}
+              <div className="mt-2.5">
+                <PlanPrices cadence={cadence} />
               </div>
               <div className="flex flex-wrap gap-2 mt-2.5">
                 <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>

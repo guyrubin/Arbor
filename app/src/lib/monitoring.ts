@@ -47,8 +47,11 @@ export interface DomainSignal {
   level: WatchLevel;
   /** The contributing reasons, present only when level === "monitor". */
   reasons: MonitoringReason[];
-  /** Milestones expected by the child's age that have not yet been observed. */
-  overdueMilestones: { id: string; title: string; ageGroup: string }[];
+  /** Milestones expected by the child's age that have not yet been observed.
+   *  UND-4: the parent's actual response survives — `status` distinguishes
+   *  "parent is not sure" from "parent has not seen it", and `observedAt`
+   *  carries when the parent recorded that response (absent on legacy items). */
+  overdueMilestones: { id: string; title: string; ageGroup: string; status: "not_sure" | "not_yet"; observedAt?: string }[];
   /** Count of recent, intense, unresolved everyday moments in this domain. */
   patternMoments: number;
   /** Calm, non-diagnostic, parent-facing note. Always ends in a provider nudge. */
@@ -136,6 +139,14 @@ export function classifyBehaviorDomain(log: Pick<BehaviorLog, "behaviorType" | "
   return "attachment_regulation";
 }
 
+/**
+ * UND-1 (localization): these EN note strings feed the clinician printable
+ * (buildMonitoringReportDoc) and the notification bell. The parent-facing
+ * Development Check surface does NOT render `note` directly — it rebuilds the
+ * same templates through i18n keys ("screen.monitor.note.*" in lib/i18n.ts)
+ * from the signal's structured facts, so HE parity holds on-screen while this
+ * module stays pure and framework-free.
+ */
 function buildNote(
   childFirst: string,
   domain: MonitoredDomainId,
@@ -192,7 +203,13 @@ export function deriveMonitoring(input: MonitoringInput, childFirstName = ""): M
     if (due == null) continue;
     if (ageMonths >= due + OVERDUE_GRACE_MONTHS) {
       const list = overdueByDomain.get(m.domain as MonitoredDomainId) ?? [];
-      list.push({ id: m.id, title: m.title, ageGroup: m.ageGroup });
+      list.push({
+        id: m.id,
+        title: m.title,
+        ageGroup: m.ageGroup,
+        status: m.observationStatus === "not_sure" ? "not_sure" : "not_yet",
+        observedAt: m.observationUpdatedAt,
+      });
       overdueByDomain.set(m.domain as MonitoredDomainId, list);
     }
   }
@@ -245,6 +262,32 @@ export function deriveMonitoring(input: MonitoringInput, childFirstName = ""): M
     elevated: watchAreas.length > 0,
     headline,
   };
+}
+
+/**
+ * UND-3 — the "Gentle watch points" card content, derived from the SAME
+ * canonical monitoring derivation as every other watch surface. Real domain
+ * names + counts only: a domain appears IFF it has unobserved milestones past
+ * the child's (corrected) age band, with the count of those milestones.
+ * Behavior-pattern-only domains are excluded (the card is about the
+ * "not seen yet" milestone column, and a 0-skill count would be a false
+ * claim). Empty array = nothing is unobserved → the caller hides the card or
+ * shows a neutral line. Never severity/verdict language — the caller renders
+ * counts through i18n templates.
+ */
+export function watchPointsSummary(
+  result: MonitoringResult,
+  max = 2,
+): { domain: MonitoredDomainId; count: number }[] {
+  return result.watchAreas
+    .filter((d) => d.reasons.includes("milestone_overdue") && d.overdueMilestones.length > 0)
+    .sort(
+      (a, b) =>
+        b.overdueMilestones.length - a.overdueMilestones.length ||
+        a.domain.localeCompare(b.domain),
+    )
+    .slice(0, max)
+    .map((d) => ({ domain: d.domain, count: d.overdueMilestones.length }));
 }
 
 /**
@@ -323,8 +366,21 @@ export function buildMonitoringReportDoc(
     },
   ];
 
+  // UND-4: preserve the parent's actual response in the provider printable —
+  // "not sure" renders as its OWN group with the date the parent recorded it,
+  // never collapsed into "not yet". Factual lines only; no verdicts.
+  const overdueLine = (label: string, m: DomainSignal["overdueMilestones"][number], marked: string): string => {
+    const date = m.observedAt && Number.isFinite(new Date(m.observedAt).getTime()) ? m.observedAt.slice(0, 10) : null;
+    return `${label} — “${m.title}” (typically by ${m.ageGroup}${date ? `; parent marked "${marked}" on ${date}` : ""})`;
+  };
+  const notSure = result.watchAreas.flatMap((d) =>
+    d.overdueMilestones.filter((m) => m.status === "not_sure").map((m) => overdueLine(d.label, m, "not sure")),
+  );
+  if (notSure.length) {
+    sections.push({ heading: "Skills the parent is not sure about (past typical window)", body: notSure });
+  }
   const overdue = result.watchAreas.flatMap((d) =>
-    d.overdueMilestones.map((m) => `${d.label} — “${m.title}” (typically by ${m.ageGroup})`),
+    d.overdueMilestones.filter((m) => m.status !== "not_sure").map((m) => overdueLine(d.label, m, "not yet")),
   );
   if (overdue.length) {
     sections.push({ heading: "Skills not yet observed (past typical window)", body: overdue });

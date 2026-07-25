@@ -1,4 +1,5 @@
 import React from "react";
+import { MotionConfig } from "motion/react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProfileProvider, useProfile } from "./context/ProfileContext";
@@ -125,9 +126,17 @@ function BillingReturnWatcher() {
   return null;
 }
 
-/** Thin application shell: auth gate → profile gate → state provider → layout. */
+/** Thin application shell: auth gate → profile gate → state provider → layout.
+ *
+ * PLAT-5 — `MotionConfig reducedMotion="user"` makes every motion/react call
+ * site (91 `animate=` sites incl. Shell's tab slide) honor the OS
+ * prefers-reduced-motion setting: transform/layout animations are disabled,
+ * opacity transitions are retained. The CSS rule in index.css only tames CSS
+ * animations; motion/react drives WAAPI/JS animations that need this config.
+ * Per-component useReducedMotion logic keeps working unchanged. */
 export default function App() {
   return (
+    <MotionConfig reducedMotion="user">
     <LanguageProvider>
       <ToastProvider>
         <AuthProvider>
@@ -144,5 +153,6 @@ export default function App() {
         </AuthProvider>
       </ToastProvider>
     </LanguageProvider>
+    </MotionConfig>
   );
 }

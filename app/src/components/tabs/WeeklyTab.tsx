@@ -23,7 +23,10 @@ type WeeklyReport = {
   id: string; // = weekId
   weekLabel: string;
   generatedAt: string;
-  summary: { count: number; avg: number; topTrigger: string };
+  /** Counts only (clinical firewall): no derived intensity score is stored or
+   *  rendered — parent surfaces show counts, never scores. Legacy docs may
+   *  still carry an `avg` field in Firestore; it is never read. */
+  summary: { count: number; resolved?: number; topTrigger: string };
   milestoneWins: string[];
   planProgress: { done: number; total: number };
   spotlight: { name: string; concept: string; value: string };
@@ -53,7 +56,7 @@ export default function WeeklyTab() {
   const snapshot = useMemo(() => {
     const cutoff = Date.now() - 7 * DAY;
     const recent = behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= cutoff);
-    const avg = recent.length ? recent.reduce((s, l) => s + l.intensity, 0) / recent.length : 0;
+    const resolved = recent.filter((l) => l.resolved).length;
     const counts = new Map<string, number>();
     recent.forEach((l) => counts.set(l.trigger || l.behaviorType, (counts.get(l.trigger || l.behaviorType) || 0) + 1));
     let topTrigger = "—";
@@ -73,7 +76,7 @@ export default function WeeklyTab() {
     })));
     const spotlight = scholarsInfo[new Date().getDate() % scholarsInfo.length];
     return {
-      summary: { count: recent.length, avg, topTrigger },
+      summary: { count: recent.length, resolved, topTrigger },
       milestoneWins: wins,
       planProgress: { done, total },
       spotlight: { name: spotlight.name, concept: spotlight.concept, value: spotlight.value },
@@ -127,6 +130,10 @@ export default function WeeklyTab() {
   }, [reportsCol.loaded, reportsCol.items, snapshot.summary.count]);
 
   const selected = reports.find((r) => r.id === selectedId) || reports[0] || null;
+  // Counts only under the moments stat (clinical firewall — never a derived
+  // score). Legacy reports without a resolved count fall back to the digest's
+  // resolvedCount; when neither exists the line is simply omitted.
+  const selectedWins = selected ? selected.summary.resolved ?? selected.digest?.stats.resolvedCount : undefined;
   const first = childProfile.name.split(" ")[0];
 
   return (
@@ -173,7 +180,7 @@ export default function WeeklyTab() {
                 key={r.id}
                 onClick={() => setSelectedId(r.id)}
                 className="text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition flex-shrink-0"
-                style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {r.id}
               </button>
@@ -196,7 +203,9 @@ export default function WeeklyTab() {
             <div className={`${cardCls} p-5`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.behaviorEvents")}</span>
               <div className="text-3xl font-extrabold mt-1" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{selected.summary.count}</div>
-              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("wk.avgIntensity", { avg: selected.summary.avg.toFixed(1) })}</p>
+              {selectedWins !== undefined && (
+                <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("wk.momentsResolved", { n: selected.summary.count, wins: selectedWins })}</p>
+              )}
             </div>
             <div className={`${cardCls} p-5`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.topTrigger")}</span>
@@ -224,12 +233,12 @@ export default function WeeklyTab() {
                   </ul>
                 )}
                 {selected.digest.watchFor.length > 0 && (
-                  <p className="text-xs leading-relaxed" style={{ color: "#9a5a2a" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-peach-ink)" }}>
                     <strong>{t("wk.watchFor")}</strong> {selected.digest.watchFor.join(" ")}
                   </p>
                 )}
                 {selected.digest.tryThisWeek && (
-                  <div className="rounded-xl p-3 text-sm bg-white" style={{ color: "var(--arbor-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
+                  <div className="rounded-xl p-3 text-sm bg-white" style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}>
                     <strong style={{ color: "var(--arbor-green-ink)" }}>{t("wk.tryThisWeek")}</strong> {selected.digest.tryThisWeek}
                   </div>
                 )}

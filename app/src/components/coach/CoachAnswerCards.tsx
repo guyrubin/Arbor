@@ -17,6 +17,30 @@ export function sourcesLabel(n: number, lang: UiLang = "en"): string {
   return translate(lang, "cite.drawer.header", { n, plural: lang === "he" ? "ות" : "s" });
 }
 
+/** COACH-6: one resolved citation drawer row. `title`/`type` are null when the
+ *  server sent no metadata for the id (the row falls back to slug rendering). */
+export type CitationRow = { id: string; title: string | null; type: string | null };
+
+/**
+ * Pure helper (COACH-6): the citation drawer rows for a contract. Ids from
+ * sourceCardsUsed lead (compatibility); each is enriched with the real title +
+ * card type the server resolved into sourceCards. Ids without metadata keep a
+ * null title so the renderer can fall back to the legacy slug row. Exported so
+ * tests can cover it without a DOM harness.
+ */
+export function citationRows(contract: CoachContract): CitationRow[] {
+  const byId = new Map((contract.sourceCards ?? []).map((card) => [card.id, card]));
+  const ids = contract.sourceCardsUsed?.length
+    ? contract.sourceCardsUsed
+    : (contract.sourceCards ?? []).map((card) => card.id);
+  return ids.map((id) => {
+    const card = byId.get(id);
+    return card
+      ? { id, title: card.title, type: card.type || null }
+      : { id, title: null, type: null };
+  });
+}
+
 /**
  * Pure helper: presentation tier for the "Reach out for help if" footer.
  * Low (or absent) risk → "quiet": a calm, collapsed disclosure so routine
@@ -40,9 +64,11 @@ export function escalationTier(riskLevel?: string): "quiet" | "prominent" {
 // Risk-tone verdict palette removed: Arbor renders counts and observations, never a graded
 // child risk verdict on a parent-facing surface (clinical firewall). See council 2026-07-18.
 
-const FRAME_LABELS: Record<string, string> = {
-  aim: "Aim", twoAxes: "Warmth ↔ Structure", story: "Story",
-  shadow: "Hard feeling", marriage: "Co-parent", shepherd: "Who holds next",
+// Six-frame routing chip labels — i18n keys (COACH-1); raw frame ids fall back to
+// themselves so an unknown frame key never renders blank.
+const FRAME_LABEL_KEYS: Record<string, string> = {
+  aim: "coach.frame.aim", twoAxes: "coach.frame.twoAxes", story: "coach.frame.story",
+  shadow: "coach.frame.shadow", marriage: "coach.frame.marriage", shepherd: "coach.frame.shepherd",
 };
 
 function Panel({ icon, title, tint, children, action }: {
@@ -76,7 +102,8 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   const [escalateOpen, setEscalateOpen] = useState(false);
 
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
-  const sources = contract.sourceCardsUsed ?? [];
+  // COACH-6: real titles + type chips from the server registry, slug fallback.
+  const sources = citationRows(contract);
   const hasSources = sources.length > 0;
 
   const showLens = lens && lens !== "Integrated Balanced";
@@ -98,7 +125,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       {/* Meta header: attribution + age + domains + risk */}
       <div className="flex flex-wrap items-center gap-1.5">
         {showLens && (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>Aligned with {lens}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{t("coach.alignedWith", { lens: lens! })}</span>
         )}
         {contract.ageBand && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{contract.ageBand}</span>}
         {contract.domains?.slice(0, 3).map((d) => (
@@ -108,7 +135,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
 
       {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
       {council && council.length > 0 && (
-        <Panel icon={<Icon name="group" size={12} />} title={`The council weighed in · ${council.length} voices`} tint="var(--arbor-sky-ink)">
+        <Panel icon={<Icon name="group" size={12} />} title={t("coach.cards.council", { n: council.length })} tint="var(--arbor-sky-ink)">
           <ul className="space-y-2">
             {council.map((c) => (
               <li key={c.scholarId} className="text-[12.5px] leading-snug">
@@ -124,7 +151,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
 
       {/* What may be happening */}
       {contract.nonDiagnosticHypotheses?.length > 0 && (
-        <Panel icon={<Icon name="lightbulb" size={12} />} title="What may be happening" tint="var(--arbor-yellow-ink)">
+        <Panel icon={<Icon name="lightbulb" size={12} />} title={t("coach.cards.happening")} tint="var(--arbor-yellow-ink)">
           <ul className="space-y-1.5">
             {contract.nonDiagnosticHypotheses.map((h, i) => (
               <li key={i} className="text-[12.5px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
@@ -140,11 +167,11 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       {/* Today's plan — interactive checklist */}
       {contract.todayPlan?.length > 0 && (
         <Panel
-          icon={<Icon name="checklist" size={12} />} title="Try today" tint="var(--arbor-green-ink)"
+          icon={<Icon name="checklist" size={12} />} title={t("coach.cards.tryToday")} tint="var(--arbor-green-ink)"
           action={
             <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan[0])}
               className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
-              <Icon name="playlist_add" size={12} /> Save as plan
+              <Icon name="playlist_add" size={12} /> {t("coach.cards.saveAsPlan")}
             </button>
           }
         >
@@ -166,12 +193,12 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       {/* Parent script — say aloud */}
       {contract.parentScript && (
         <Panel
-          icon={<Icon name="format_quote" size={12} />} title="Say this" tint="var(--arbor-sky-ink)"
+          icon={<Icon name="format_quote" size={12} />} title={t("coach.cards.sayThis")} tint="var(--arbor-sky-ink)"
           action={
             <div className="flex items-center gap-2">
               <SpeakButton text={contract.parentScript} lang={lang} className="text-[10px]" />
               <button onClick={() => copy(contract.parentScript, "script")} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
-                {copied === "script" ? <><Icon name="check" size={12} /> Copied</> : <><Icon name="content_copy" size={12} /> Copy</>}
+                {copied === "script" ? <><Icon name="check" size={12} /> {t("coach.cards.copied")}</> : <><Icon name="content_copy" size={12} /> {t("coach.action.copy")}</>}
               </button>
             </div>
           }
@@ -183,14 +210,14 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       {/* Avoid / Observe */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {contract.avoid?.length > 0 && (
-          <Panel icon={<Icon name="block" size={12} />} title="Avoid" tint="var(--arbor-peach-ink)">
+          <Panel icon={<Icon name="block" size={12} />} title={t("coach.cards.avoid")} tint="var(--arbor-peach-ink)">
             <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.avoid.map((a, i) => <li key={i}>{a}</li>)}
             </ul>
           </Panel>
         )}
         {contract.observe?.length > 0 && (
-          <Panel icon={<Icon name="visibility" size={12} />} title="Watch for" tint="var(--arbor-lav-ink)">
+          <Panel icon={<Icon name="visibility" size={12} />} title={t("coach.cards.watchFor")} tint="var(--arbor-lav-ink)">
             <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.observe.map((o, i) => <li key={i}>{o}</li>)}
             </ul>
@@ -205,7 +232,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           is identical in both tiers and is never conditionally dropped — when
           collapsed it is hidden, not unmounted, so it stays in the DOM. */}
       {contract.escalateIf?.length > 0 && (escalationTier(contract.riskLevel) === "prominent" ? (
-        <Panel icon={<Icon name="warning" size={12} />} title="Reach out for help if" tint="var(--arbor-pink-ink)">
+        <Panel icon={<Icon name="warning" size={12} />} title={t("coach.escalate.headline")} tint="var(--arbor-pink-ink)">
           <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-pink-ink)" }}>
             {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
@@ -237,11 +264,11 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
 
       {/* Six-frame routing chips (SF-2) */}
       {frames.length > 0 && (
-        <Panel icon={<Icon name="explore" size={12} />} title="Developmental frame" tint="var(--arbor-yellow-ink)">
+        <Panel icon={<Icon name="explore" size={12} />} title={t("coach.cards.frame")} tint="var(--arbor-yellow-ink)">
           <div className="flex flex-wrap gap-1.5">
             {frames.map(([k, v]) => (
               <span key={k} className="text-[10.5px] leading-tight rounded-lg px-2 py-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                <span className="font-extrabold" style={{ color: "var(--arbor-yellow-ink)" }}>{FRAME_LABELS[k] || k}:</span>{" "}
+                <span className="font-extrabold" style={{ color: "var(--arbor-yellow-ink)" }}>{FRAME_LABEL_KEYS[k] ? t(FRAME_LABEL_KEYS[k]) : k}:</span>{" "}
                 <span style={{ color: "var(--arbor-muted)" }}>{String(v)}</span>
               </span>
             ))}
@@ -281,24 +308,40 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
             </span>
           </button>
 
-          {/* Disclosure drawer — list of source chips */}
-          {citationsOpen && (
-            <div
-              className="px-3.5 pb-3 pt-2 space-y-1.5"
-              style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}
-              dir={lang === "he" ? "rtl" : "ltr"}
-            >
-              {sources.map((src) => (
-                <div
-                  key={src}
-                  className="rounded-lg px-2.5 py-1.5 text-[11.5px] leading-snug"
-                  style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                >
-                  {t("cite.based", { source: src.replace(/-/g, " ") })}
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Disclosure drawer — real source titles + type chips (COACH-6).
+              Collapsed = hidden, not unmounted (same idiom as the escalation
+              disclosure) so the rows are testable and stay in the DOM. */}
+          <div
+            hidden={!citationsOpen}
+            className="px-3.5 pb-3 pt-2 space-y-1.5"
+            style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}
+            dir={lang === "he" ? "rtl" : "ltr"}
+          >
+            {sources.map((src) => (
+              <div
+                key={src.id}
+                className="rounded-lg px-2.5 py-1.5 text-[11.5px] leading-snug flex flex-wrap items-center gap-x-2 gap-y-1"
+                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+              >
+                {src.title ? (
+                  <>
+                    <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{src.title}</span>
+                    {src.type && (
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: "white", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                      >
+                        {src.type.replace(/_/g, " ")}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  // Slug fallback: no registry metadata for this id.
+                  <span>{t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -306,12 +349,12 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || "")}
           className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-          <Icon name="playlist_add" size={14} /> Save to plan
+          <Icon name="playlist_add" size={14} /> {t("coach.cards.saveToPlan")}
         </button>
         {contract.handoffNotes?.teacher && (
           <button onClick={() => { onAddToHandoff(contract.handoffNotes.teacher); copy(contract.handoffNotes.teacher, "handoff"); }}
             className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-            {copied === "handoff" ? <><Icon name="check" size={14} /> Copied note</> : <><Icon name="send" size={14} /> Teacher note</>}
+            {copied === "handoff" ? <><Icon name="check" size={14} /> {t("coach.cards.copiedNote")}</> : <><Icon name="send" size={14} /> {t("coach.cards.teacherNote")}</>}
           </button>
         )}
       </div>

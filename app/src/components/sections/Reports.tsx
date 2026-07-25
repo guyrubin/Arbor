@@ -6,7 +6,18 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType } from "../../lib/reportExport";
 import { buildPresetPacket, presetPacketToPrintSections } from "../../consult/packet";
+import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { useHeroAvatar } from "../ui/HeroAvatar";
+
+/** Plan ids are minted as `plan-<epoch-ms>` (ArborContext) — recover the
+ *  creation time for the CARE-7 delta counts. Unparseable → undefined (the
+ *  plan simply never counts as "new"; fail quiet, never guess). */
+const planCreatedAtMs = (id: string): number | undefined => {
+  const m = /^plan-(\d+)$/.exec(id);
+  if (!m) return undefined;
+  const ms = Number(m[1]);
+  return Number.isFinite(ms) ? ms : undefined;
+};
 
 /** The 8 clinical PDF report types. Exported so the single Consult export menu
  *  (b3) consumes the same list — there is exactly one report definition source. */
@@ -15,6 +26,8 @@ export const REPORTS: { title: string; desc: string; tone: PastelKey; type: Repo
   { title: "Teacher Handoff", desc: "Classroom-ready context, what helps and what escalates.", tone: "sky", type: "teacher" },
   { title: "Therapist Summary", desc: "Concern, timeline, patterns and tried interventions.", tone: "lav", type: "therapist" },
   { title: "Pediatrician Summary", desc: "Duration, frequency, milestones — no-diagnosis framing.", tone: "coral", type: "pediatrician" },
+  { title: "SLP Summary", desc: "Speech-language context: communication patterns and what's been tried.", tone: "lav", type: "slp" },
+  { title: "Behavioral Health Summary", desc: "Behavior patterns, supports and context — no-diagnosis framing.", tone: "sky", type: "behavioral_health" },
   { title: "Development Snapshot", desc: "A point-in-time picture of your child's development.", tone: "yellow", type: "snapshot" },
   { title: "Behavior Pattern Report", desc: "Triggers, intensity and recovery over time.", tone: "pink", type: "behavior" },
   { title: "Language Transition Note", desc: "Home/school languages, comfort and useful phrases.", tone: "sky", type: "language" },
@@ -48,10 +61,19 @@ export function useReportExport() {
           schoolContext: childProfile.schoolContext, strengths: childProfile.strengths, challenges: childProfile.challenges,
         },
         logs: behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, intensity: l.intensity, timestamp: l.timestamp, resolved: l.resolved })),
-        milestones: milestones.map((m) => ({ domain: m.domain, title: m.title, checked: m.checked })),
-        plans: actionPlans.map((p) => ({ title: p.title, issue: p.issue })),
+        // UND-4 (AR-CAP-08): carry the parent's actual response + date into the
+        // packet — observed / not sure / not yet, never collapsed to a binary.
+        milestones: milestones.map((m) => ({
+          domain: m.domain, title: m.title, checked: m.checked,
+          status: m.observationStatus ?? (m.checked ? "yes" : "not_yet"),
+          observedAt: m.observationUpdatedAt,
+        })),
+        plans: actionPlans.map((p) => ({ title: p.title, issue: p.issue, createdAt: planCreatedAtMs(p.id) })),
         memory: approvedMemoryItems.map((m) => ({ fact: m.fact, status: m.status })),
         nowMs: Date.now(),
+        // CARE-7: the delta section renders only when THIS audience has a
+        // prior export on record.
+        lastExportedAt: getLastExportedAt(childProfile.id, type) ?? undefined,
       });
       const doc: ReportDoc = {
         title: REPORTS.find((r) => r.type === type)!.title,
@@ -60,6 +82,9 @@ export function useReportExport() {
         heroImageUrl,
       };
       openPrintableReport(doc, childProfile.name);
+      // Only a build that survived the fail-closed guards reaches this line —
+      // a blocked packet throws above and records nothing.
+      recordExport(childProfile.id, type);
       return;
     }
     const doc = buildReport(type, {

@@ -6,15 +6,19 @@ import type { CaptureMode } from "../../context/ArborContext";
 
 /* Quick Capture — the ambient door into logging a moment, above the forms in
    the capture hierarchy. First in Today's DOM so keyboard users reach capture
-   first; on phones `order-last` gives it a real flow slot at the END of the
-   column so the sticky-bottom pin genuinely engages (a sticky-bottom FIRST
-   child never sticks), with a bottom offset that clears the fixed MobileNav
-   tab bar (< md) + the home indicator. Inline at the top of the spine on lg+.
+   first; on phones (< md) the OverviewTab wrapper pins it position:fixed with
+   a bottom offset (--mobile-nav-h + safe-area) clearing the MobileNav tab bar
+   + the home indicator, so it stays visible at any scroll position (sticky
+   cannot engage there: the shell's overflow-x-hidden ancestors are scroll
+   containers that grow with content). Inline at the top of the spine on md+.
    Three modality affordances, ZERO new capture paths: the primary CTA opens
    the existing QuickLogModal inline (text), and the mic / photo tiles hand the
    mode to the EXISTING requestCapture() seam — the same one JournalTab's
    compose tiles use (BehaviorsTab consumes it once and opens the real
-   voice/photo flow). Convenience, not a nag. */
+   voice/photo flow). TODAY-3: every handoff from here arms BehaviorsTab's
+   explicit-confirm gate, so nothing captured via this bar writes a behavior
+   log without passing the shared ConfirmCaptureReview (same contract as the
+   QuickLogModal text path). Convenience, not a nag. */
 
 const GREEN = "var(--arbor-green-ink)";
 const RULE = "var(--arbor-rule)";
@@ -44,8 +48,8 @@ export default function QuickCaptureBar({
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { duration: 0.16 }}
-      className="grid grid-cols-[1fr_auto_auto] lg:grid-cols-[1.1fr_1fr_1fr_1fr] items-stretch overflow-hidden rounded-[18px] bg-white"
-      style={{ border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
+      className="grid grid-cols-[1fr_auto_auto] lg:grid-cols-[1.1fr_1fr_1fr_1fr] items-stretch overflow-hidden rounded-[18px]"
+      style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
       <div className="hidden lg:flex flex-col justify-center px-5 py-3">
         <span className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.capture.cta")}</span>

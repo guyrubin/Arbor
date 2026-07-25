@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createTestConfig } from "../testConfig.js";
-import { modelForGeminiRequest, routeDecisionFor, toAnthropicVertexModelId, type ModelRoute } from "./modelRouter.js";
+import { AiProviderError } from "./capabilities/contracts.js";
+import { modelForGeminiRequest, modelForRoute, routeDecisionFor, toAnthropicVertexModelId, type ModelRoute } from "./modelRouter.js";
 
 describe("model route decisions", () => {
   it("routes high-stakes coach calls to Claude on Vertex and other routes to Gemini on Vertex", () => {
@@ -27,6 +28,31 @@ describe("model route decisions", () => {
 
   it("normalizes the Claude shorthand to the Vertex Anthropic model id", () => {
     expect(toAnthropicVertexModelId("claude-3-5-sonnet@anthropic")).toBe("claude-3-5-sonnet-v2@20241022");
+  });
+
+  // COACH-3: every route decision now executes selectProvider — provider
+  // eligibility (region / no-training / retention) is enforced fail-closed.
+  it("fails closed with policy_denied when the configured Vertex region violates the EU route policy", () => {
+    const config = createTestConfig({ vertexLocation: "us-central1" });
+    for (const route of ["coach_high_stakes", "analysis_structured"] as ModelRoute[]) {
+      expect(() => routeDecisionFor(config, route)).toThrow(AiProviderError);
+      try {
+        routeDecisionFor(config, route);
+      } catch (error) {
+        expect((error as AiProviderError).code).toBe("policy_denied");
+      }
+      expect(() => modelForRoute(config, route)).toThrow(/No eligible provider/i);
+    }
+  });
+
+  it("keeps the EU Vertex config and the local gemini_dev config eligible (behavior unchanged)", () => {
+    expect(modelForRoute(createTestConfig(), "coach_high_stakes")).toBe("claude-3-5-sonnet@anthropic");
+    expect(modelForRoute(createTestConfig({ modelProvider: "gemini_dev" }), "coach_high_stakes")).toBe("gemini-2.5-flash");
+  });
+
+  it("denies the region-less gemini_dev provider in prod (EU-only policy)", () => {
+    const config = createTestConfig({ modelProvider: "gemini_dev", arborEnv: "prod" });
+    expect(() => routeDecisionFor(config, "creative_low_risk")).toThrow(AiProviderError);
   });
 
   it("uses a Gemini model for image requests even when the route normally maps to Claude", () => {

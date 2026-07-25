@@ -11,6 +11,9 @@ import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
 import { HubHero } from "../ui/HubHero";
 import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
+import HardMomentsSection from "../behaviors/HardMomentsSection";
+import { Modal } from "../ui/Modal";
+import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCaptureReview";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { authHeaders } from "../../lib/api";
 import { fileToThumbnail } from "../../lib/image";
@@ -120,38 +123,40 @@ export default function BehaviorsTab() {
   } = useArbor();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { t, uiLang } = useLanguage();
+  const { t } = useLanguage();
   const behFirst = (childProfile.name || "").split(" ")[0];
-  const captureCopy = uiLang === "he"
-    ? {
-        intro: "תעדו את הרגע בשתי שורות. אפשר להוסיף פרטים רק אם הם יעזרו אחר כך.",
-        open: "תיעוד מהיר",
-        close: "סגירה",
-        details: "הוספת הקשר ופרטים",
-        hideDetails: "פחות פרטים",
-        happened: "מה קרה?",
-        tried: "מה ניסיתם?",
-        optional: "אופציונלי — עוזר לארבור לזהות הקשר לאורך זמן",
-      }
-    : {
-        intro: "Capture the moment in two lines. Add detail only when it will help later.",
-        open: "Quick capture",
-        close: "Close",
-        details: "Add context and details",
-        hideDetails: "Show fewer details",
-        happened: "What happened?",
-        tried: "What did you try?",
-        optional: "Optional — helps Arbor notice context over time",
-      };
+  // COACH-5: quick-capture copy lives in i18n.ts (beh.capture.*), never an
+  // inline per-language ternary table — keys stay visible to i18n tooling.
+  const captureCopy = {
+    intro: t("beh.capture.intro"),
+    open: t("beh.capture.open"),
+    close: t("beh.capture.close"),
+    details: t("beh.capture.details"),
+    hideDetails: t("beh.capture.hideDetails"),
+    happened: t("beh.capture.happened"),
+    tried: t("beh.capture.tried"),
+    optional: t("beh.capture.optional"),
+  };
 
   // Voice-to-log
   const [listening, setListening] = useState(false);
   const [parsing, setParsing] = useState(false);
   const stopRef = useRef<(() => void) | null>(null);
 
+  // TODAY-3: voice-originated and Today/Journal-handoff captures must pass the
+  // SHARED ConfirmCaptureReview contract (same component QuickLogModal renders
+  // — one contract, no forked capture path) before the behavior-log write.
+  // `needsReview` arms the gate; `captureSource` is the FACTUAL provenance
+  // ("written by you" / "voice transcription" / "photo") shown in the review —
+  // no confidence/verdict wording (CODEX-7 firewall condition).
+  const [needsReview, setNeedsReview] = useState(false);
+  const [captureSource, setCaptureSource] = useState<CaptureSource>("text");
+  const [reviewOpen, setReviewOpen] = useState(false);
+
   // Refs for the QuickLog tiles: scroll the form into view, focus the photo input.
   const formRef = useRef<HTMLFormElement | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const triggerInputRef = useRef<HTMLInputElement | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -162,6 +167,31 @@ export default function BehaviorsTab() {
       window.requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     });
   };
+
+  // COACH-8: the capture bar is a REAL single-line input (honest affordance —
+  // it used to be a button styled as a text field, so a parent's first
+  // keystrokes were lost). Typing opens the capture form with the typed text
+  // prefilled into newLogTrigger ("What happened?") and moves focus there;
+  // Enter opens the form rather than submitting. Prefill of EXISTING form
+  // state only — zero new capture paths (saving still goes through the one
+  // form → submitLog → handleAddLog seam).
+  const [barText, setBarText] = useState("");
+  const openFromBar = (text: string) => {
+    if (text.trim()) setNewLogTrigger(text);
+    setCaptureOpen(true);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        // block:"start" keeps the focused field above the mobile keyboard at 390px.
+        formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        const el = triggerInputRef.current;
+        if (el) {
+          el.focus();
+          el.setSelectionRange(el.value.length, el.value.length);
+        }
+        setBarText("");
+      });
+    });
+  };
   const openPhoto = () => {
     focusForm(true);
     window.setTimeout(() => photoInputRef.current?.click(), 120);
@@ -169,6 +199,11 @@ export default function BehaviorsTab() {
 
   const parseVoice = async (text: string) => {
     setParsing(true);
+    // TODAY-3: the draft now originates from a voice transcription (both the
+    // parsed and the raw-fallback branch fill the form from it) — record the
+    // factual provenance and arm the explicit-confirm gate.
+    setCaptureSource("voice");
+    setNeedsReview(true);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -329,9 +364,38 @@ export default function BehaviorsTab() {
       toast(t("beh.toast.fillBoth"), "error");
       return;
     }
+    // TODAY-3: while the gate is armed (voice-originated or a Today/Journal
+    // requestCapture handoff) NOTHING writes here — surface the shared review
+    // instead; the only path to handleAddLog is confirmReview below.
+    if (needsReview) {
+      setReviewOpen(true);
+      return;
+    }
     const wasEditing = !!editingLogId;
     handleAddLog(e);
     toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
+    setCaptureOpen(false);
+    setDetailsOpen(false);
+  };
+
+  // TODAY-3: explicit confirm — the ONLY behavior-log write for gated captures.
+  const confirmReview = (e: React.FormEvent) => {
+    const wasEditing = !!editingLogId;
+    handleAddLog(e);
+    toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
+    setReviewOpen(false);
+    setNeedsReview(false);
+    setCaptureSource("text");
+    setCaptureOpen(false);
+    setDetailsOpen(false);
+  };
+
+  // TODAY-3: discard — the draft never enters the child's record.
+  const discardReview = () => {
+    cancelEditLog(); // resetLogForm: clears trigger/response/notes/photo + edit state
+    setReviewOpen(false);
+    setNeedsReview(false);
+    setCaptureSource("text");
     setCaptureOpen(false);
     setDetailsOpen(false);
   };
@@ -344,10 +408,15 @@ export default function BehaviorsTab() {
     { key: "text", icon: "keyboard", label: t("beh.mode.text"), onClick: () => focusForm(), tone: "coral" },
   ];
 
-  // A capture entry tile elsewhere (Journal) named the modality it promised —
-  // open that mode here, then clear the request so it fires exactly once.
+  // A capture entry tile elsewhere (Today's QuickCaptureBar, Journal's compose
+  // tiles) named the modality it promised — open that mode here, then clear
+  // the request so it fires exactly once. TODAY-3: EVERY handoff arms the
+  // explicit-confirm gate, so no Today-originated capture can write a behavior
+  // log without passing ConfirmCaptureReview.
   useEffect(() => {
     if (!pendingCaptureMode) return;
+    setNeedsReview(true);
+    setCaptureSource(pendingCaptureMode === "photo" ? "photo" : pendingCaptureMode === "voice" ? "voice" : "text");
     quickModes.find((m) => m.key === pendingCaptureMode)?.onClick();
     consumeCaptureRequest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -389,8 +458,17 @@ export default function BehaviorsTab() {
       {/* Row 1 — QuickLog tiles (full width under the hero) */}
       <section className="min-w-0" aria-label={t("beh.captureTitle")}>
         {/* QuickLog mode tiles — Voice / Photo / Text */}
-        <div className="overflow-hidden rounded-[20px] bg-white" style={{ border: "1px solid var(--arbor-rule-strong)", boxShadow: "0 8px 28px rgba(32,47,42,0.05)" }}>
-          <button type="button" onClick={() => focusForm()} className="block min-h-[88px] w-full px-4 py-4 text-start text-sm sm:px-5" style={{ color: "var(--arbor-muted)" }}>{captureCopy.intro}</button>
+        <div className="overflow-hidden rounded-[20px] bg-white" style={{ border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
+          <input
+            type="text"
+            value={barText}
+            onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); openFromBar(barText); } }}
+            placeholder={captureCopy.intro}
+            aria-label={captureCopy.open}
+            className="block min-h-[88px] w-full bg-transparent px-4 py-4 text-start text-sm focus:outline-none sm:px-5"
+            style={{ color: "var(--arbor-ink)" }}
+          />
           <div className="flex flex-wrap items-center gap-1 border-t px-2 py-2 sm:px-3" style={{ borderColor: "var(--arbor-rule)" }}>
             {quickModes.map((m) => {
               const p = PASTEL[m.tone];
@@ -412,6 +490,11 @@ export default function BehaviorsTab() {
           </div>
         </div>
       </section>
+
+      {/* CONT-2 — Hard moments (AR-CONT-01). Fail-closed: reads ONLY
+          publishedHardMomentCards, so the section is invisible until named
+          clinical review stamps the pack (GD-10). */}
+      <HardMomentsSection />
 
       {/* Row 2 — events main column + right rail (patterns) */}
       <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
@@ -453,9 +536,7 @@ export default function BehaviorsTab() {
             </div>
 
             {behaviorAnalysis && (
-              // m3-hex-sweep: #eef6f1 insight-wash start has no m2 token yet; left
-              // as-is per spec (would become --gradient-insight if m2 adds it).
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
                 <h4 className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={15} fill={1} /> {t("beh.patternShows")}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("beh.responseEval")}</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.effectivenessRating}</p></div>
@@ -739,7 +820,7 @@ export default function BehaviorsTab() {
 
             <div className="mt-4 space-y-1.5">
               <label className="text-xs font-bold block" style={{ color: "var(--arbor-ink)" }}>{captureCopy.happened} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
-              <input type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder={t("beh.triggerPlaceholder")} className="min-h-11 w-full rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+              <input ref={triggerInputRef} type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder={t("beh.triggerPlaceholder")} className="min-h-11 w-full rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
 
             <div className="mt-4 space-y-1.5">
@@ -820,6 +901,26 @@ export default function BehaviorsTab() {
           </motion.form>
           )}
           </AnimatePresence>
+
+          {/* TODAY-3 — the shared confirmed-capture review (same ConfirmCaptureReview
+              contract QuickLogModal renders). Gated captures reach handleAddLog
+              ONLY through confirmReview; Edit returns to the form, Discard drops
+              the draft entirely. */}
+          <Modal open={reviewOpen} onClose={() => setReviewOpen(false)} title={t("ql.title")}>
+            <ConfirmCaptureReview
+              source={captureSource}
+              rows={[
+                { label: t("beh.typeLabel"), value: newLogType },
+                { label: t("ql.review.trigger"), value: newLogTrigger },
+                { label: t("ql.review.response"), value: newLogResponse },
+                { label: t("beh.notes"), value: newLogNotes },
+              ]}
+              photoSrc={newLogPhoto || undefined}
+              onEdit={() => setReviewOpen(false)}
+              onDiscard={discardReview}
+              onConfirm={confirmReview}
+            />
+          </Modal>
         </div>
 
         {/* Right rail — detected patterns + flat-count card */}

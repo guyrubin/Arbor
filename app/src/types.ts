@@ -127,6 +127,20 @@ export interface ShareGrant {
   revokedAt: string | null;
 }
 
+/** CARE-2: the read-only shared view a share RECIPIENT sees — grant metadata
+ *  plus the guard-checked, scope-exact packet sections assembled server-side
+ *  (client mirror of server/sharedPacket.ts SharedPacketView). Counts-only
+ *  derived lines; never raw subcollection documents. */
+export interface SharedPacketView {
+  childName: string | null;
+  ownerEmail: string | null;
+  role: ShareRole;
+  expiresAt: string | null;
+  scopes: string[];
+  generatedAt: string;
+  sections: { id: string; title: string; note?: string; items: { id: string; text: string }[] }[];
+}
+
 /** M9: proof-of-deletion receipt returned by a full child-data erase. */
 export interface DeletionReceipt {
   childId: string;
@@ -171,6 +185,11 @@ export interface CoachContract {
   handoffNotes: { teacher: string; professional: string };
   /** Knowledge-card IDs used to ground this answer (populated by the server). */
   sourceCardsUsed?: string[];
+  /** COACH-6: resolved source-card metadata (real title + card type from the
+   *  server knowledge registry) for the citation drawer. Parallel to
+   *  sourceCardsUsed, which stays for compatibility; ids missing here fall
+   *  back to slug rendering. */
+  sourceCards?: { id: string; title: string; type: string }[];
 }
 
 export interface BehaviorLog {
@@ -205,6 +224,35 @@ export interface PlayLog {
   timestamp: string; // ISO
 }
 
+export type { ActionLoopEntry, ActionCapacity, ActionOutcome } from "./actionLoop/model";
+
+/**
+ * UND-7 (AR-CAP-08 / AR-CONT-07) — governed media slot for an illustrated or
+ * video example of a milestone skill (the CDC Milestone Tracker reference).
+ * The seam SHIPS EMPTY: no milestone carries media until licensing/source
+ * approval lands (Guy-gated, GD-8). Rendering is fail-closed through
+ * `isRenderableMilestoneMedia` (content/governance.ts, mirroring the
+ * AR-CONT-01 publication gate): a record missing its named reviewer or its
+ * rights reference NEVER renders.
+ */
+export interface MilestoneExampleMedia {
+  kind: "illustration" | "video";
+  /** Asset location — bundled path or rights-approved storage URL. */
+  src: string;
+  /** Accessible description of what the example shows. */
+  alt: string;
+  /** Attribution line surfaced next to the media. */
+  credit: string;
+  /** Licensing/rights record reference — REQUIRED or nothing renders. */
+  rightsRef: string;
+  /** Named clinical/content reviewer — REQUIRED or nothing renders. */
+  reviewer: string;
+  /** ISO date of the review stamp. */
+  reviewedAt: string;
+  /** The locale this media was authored/reviewed for. */
+  locale: "en" | "he";
+}
+
 export interface Milestone {
   id: string;
   domain: DevelopmentalDomainId;
@@ -223,8 +271,16 @@ export interface Milestone {
    * the behavior a parent can actually watch for. Optional; falls back to `description`.
    */
   skillLooksLike?: string;
+  /** Parent observation state. `checked` remains the backward-compatible yes flag. */
+  observationStatus?: "yes" | "not_sure" | "not_yet";
+  observationUpdatedAt?: string;
   checked: boolean;
   references?: { label: string; url: string }[];
+  /**
+   * UND-7 — optional governed example media (ships with ZERO entries; renders
+   * only through the fail-closed `isRenderableMilestoneMedia` gate).
+   */
+  exampleMedia?: MilestoneExampleMedia;
   custom?: boolean;
 }
 

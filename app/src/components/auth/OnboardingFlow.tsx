@@ -87,8 +87,10 @@ class StepErrorBoundary extends React.Component<
 // ── Progress dots ──────────────────────────────────────────────────────────
 
 function ProgressDots({ step, total }: { step: Step; total: number }) {
+  // TODAY-5/PLAT-4: aria-label via i18n (was hardcoded English on the first-run journey).
+  const { t } = useLanguage();
   return (
-    <div className="flex items-center justify-center gap-2" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={total} aria-label={`Step ${step} of ${total}`}>
+    <div className="flex items-center justify-center gap-2" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={total} aria-label={t("ob.progress.step", { step, total })}>
       {Array.from({ length: total }, (_, i) => {
         const s = (i + 1) as Step;
         const active = s === step;

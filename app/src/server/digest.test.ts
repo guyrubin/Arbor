@@ -25,11 +25,21 @@ describe("weekly digest stats (RET-1)", () => {
     const stats = computeWeeklyDigestStats(logs, [{ title: "m", checked: true }, { title: "n", checked: false }], NOW);
     expect(stats.momentsLogged).toBe(2);
     expect(stats.previousWeekMoments).toBe(1);
-    expect(stats.avgIntensity).toBe(2);
-    expect(stats.intensityTrend).toBe("easing");
     expect(stats.resolvedCount).toBe(1);
     expect(stats.milestonesDone).toBe(1);
     expect(stats.milestonesTotal).toBe(2);
+  });
+
+  it("carries counts only — no derived intensity score or trend verdict (clinical firewall)", () => {
+    const logs = [
+      log({ timestamp: daysAgo(1), intensity: 2 }),
+      log({ timestamp: daysAgo(10), intensity: 5 }), // previous week, would have read "easing"
+    ];
+    const stats = computeWeeklyDigestStats(logs, [], NOW);
+    expect(stats).not.toHaveProperty("avgIntensity");
+    expect(stats).not.toHaveProperty("intensityTrend");
+    const narrative = fallbackDigestNarrative("Maya", stats);
+    expect(JSON.stringify(narrative)).not.toMatch(/easing|intensifying|\/\s*5\b/i);
   });
 
   it("reports the dominant context and behavior", () => {
@@ -46,8 +56,8 @@ describe("weekly digest stats (RET-1)", () => {
   it("handles an empty week without NaN", () => {
     const stats = computeWeeklyDigestStats([], [], NOW);
     expect(stats.momentsLogged).toBe(0);
-    expect(stats.avgIntensity).toBeNull();
-    expect(stats.intensityTrend).toBe("unknown");
+    expect(stats.daysCovered).toBe(0);
+    expect(stats.resolvedCount).toBe(0);
   });
 
   it("fallback narrative is truthful and channel-ready (subject/preheader present)", () => {

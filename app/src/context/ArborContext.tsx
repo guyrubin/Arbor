@@ -12,6 +12,9 @@ import {
   CoachContract,
   CouncilTake,
   PlayLog,
+  ActionLoopEntry,
+  ActionCapacity,
+  ActionOutcome,
 } from "../types";
 import type { ScoredActivity } from "../playbank/select";
 import { ROUTE_IDS, type ActiveTab } from "../lib/routes";
@@ -30,6 +33,8 @@ import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
+import { sortActionLoop, todayActionId } from "../actionLoop/model";
+import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 
 const readLS = (key: string): string | null => {
   try {
@@ -80,7 +85,16 @@ function tabFromHash(): ActiveTab | null {
   }
 }
 
-export type ChatMessage = { sender: "user" | "ai"; text: string; lens?: string; contract?: CoachContract; council?: CouncilTake[] };
+export type ChatMessage = {
+  sender: "user" | "ai";
+  text: string;
+  lens?: string;
+  contract?: CoachContract;
+  council?: CouncilTake[];
+  /** COACH-2: true while this AI bubble is the live voice caption still
+   *  accumulating streamed deltas; stripped when the voice turn settles. */
+  voiceLive?: boolean;
+};
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
 
@@ -131,6 +145,18 @@ function useArborState() {
   const consumeCaptureRequest = () => setPendingCaptureMode(null);
 
   /**
+   * Evidence deep-link hand-off (TODAY-6 / AR-CAP-03): a surface that cites a
+   * specific logged moment (ProgressNarrative's evidence rows) names the
+   * timeline signal id it cited, and the Journal scrolls to + highlights
+   * exactly that row, then clears the request. Mirrors the capture seam above.
+   * CLINICAL FIREWALL: the request carries ONLY the ledger signal id — never a
+   * derived score, verdict, or any other payload.
+   */
+  const [pendingJournalFocusId, setPendingJournalFocusId] = useState<string | null>(null);
+  const requestJournalFocus = (signalId: string) => setPendingJournalFocusId(signalId);
+  const consumeJournalFocus = () => setPendingJournalFocusId(null);
+
+  /**
    * The single seam for handing a prompt to Ask Arbor from anywhere in the app.
    * Historically 18+ surfaces hand-rolled the same `setChatInput(...) +
    * (setSelectedLens(...)) + setActiveTab("coach")` triple; that sprawl had no
@@ -169,6 +195,11 @@ function useArborState() {
     orderDir: "desc",
     max: 200,
   });
+  const actionLoopCol = useChildCollection<ActionLoopEntry>(childProfile.id, "actionLoops", {
+    orderByField: "acceptedAt",
+    orderDir: "desc",
+    max: 100,
+  });
 
   const behaviorLogs = useMemo(
     () => [...logsCol.items].sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1)),
@@ -194,6 +225,23 @@ function useArborState() {
     [playLogCol.items]
   );
   const donePlayIds = useMemo(() => playLogs.map((p) => p.activityId), [playLogs]);
+  const actionLoop = useMemo(() => sortActionLoop(actionLoopCol.items), [actionLoopCol.items]);
+  const activeTodayAction = useMemo(
+    () => actionLoop.find((entry) => entry.id === todayActionId(childProfile.id)) ?? null,
+    [actionLoop, childProfile.id]
+  );
+  const acceptTodayAction = (recommendation: string, capacity: ActionCapacity) => {
+    const item: ActionLoopEntry = { id: todayActionId(childProfile.id), recommendation: recommendation.trim(), source: "today-guidance", capacity, status: "accepted", acceptedAt: new Date().toISOString() };
+    void actionLoopCol.upsert(item);
+    try { track("today_action_accepted", { capacity }); } catch { /* noop */ }
+  };
+  const recordTodayOutcome = (id: string, outcome: ActionOutcome) => {
+    const item = actionLoop.find((entry) => entry.id === id);
+    if (!item) return;
+    void actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString() });
+    try { track("today_action_outcome", { outcome, capacity: item.capacity }); } catch { /* noop */ }
+  };
+  const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
   const logPlayCompletion = (a: ScoredActivity, source: PlayLog["source"]) => {
     const day = new Date().toISOString().slice(0, 10);
     const id = `${a.activity.id}.${day}`;
@@ -415,6 +463,23 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatMessages, activeConversationId]);
+
+  // COACH-2: the browser voice loop writes its transcript through the SAME
+  // conversation persistence as typed chat (the upsert effect above) — the
+  // dictated user turn and the streaming, SAFE-V1-screened AI reply land in
+  // chatMessages, so a voice session survives a conversation switch. No new
+  // capture path: this is the existing chat-message write seam.
+  const appendVoiceUserTurn = (text: string) => {
+    if (!text.trim()) return;
+    if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
+    setChatMessages((prev) => appendVoiceUser(prev, text, selectedLens));
+  };
+  const appendVoiceAiDelta = (delta: string) => {
+    setChatMessages((prev) => applyVoiceDelta(prev, delta, selectedLens));
+  };
+  const finalizeVoiceAiTurn = () => {
+    setChatMessages((prev) => settleVoiceTurn(prev));
+  };
 
   // Coach conversation thread controls.
   const newConversation = () => {
@@ -866,7 +931,18 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   // Toggle milestone checking
   const handleToggleMilestone = (id: string) => {
     const m = milestones.find((x) => x.id === id);
-    if (m) void milestonesCol.upsert({ ...m, checked: !m.checked });
+    if (m) void milestonesCol.upsert({ ...m, checked: !m.checked, observationStatus: !m.checked ? "yes" : "not_yet", observationUpdatedAt: new Date().toISOString() });
+  };
+
+  const setMilestoneObservation = (id: string, status: "yes" | "not_sure" | "not_yet") => {
+    const milestone = milestones.find((item) => item.id === id);
+    if (!milestone) return;
+    void milestonesCol.upsert({
+      ...milestone,
+      checked: status === "yes",
+      observationStatus: status,
+      observationUpdatedAt: new Date().toISOString(),
+    });
   };
 
   // Add a custom milestone to a chosen domain
@@ -923,6 +999,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     playLogs,
     donePlayIds,
     logPlayCompletion,
+    actionLoop,
+    activeTodayAction,
+    acceptTodayAction,
+    recordTodayOutcome,
+    removeTodayAction,
     currentStory,
     setCurrentStory,
     selectedLens,
@@ -933,6 +1014,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     pendingCaptureMode,
     requestCapture,
     consumeCaptureRequest,
+    pendingJournalFocusId,
+    requestJournalFocus,
+    consumeJournalFocus,
     chatMessages,
     conversations,
     activeConversationId,
@@ -1004,11 +1088,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     handleCancelChat,
     handleChatSend,
     handleCouncilSend,
+    appendVoiceUserTurn,
+    appendVoiceAiDelta,
+    finalizeVoiceAiTurn,
     handleAddLog,
     handleAnalyzeBehaviors,
     handleGenerateActionPlan,
     handleGenerateStory,
     handleToggleMilestone,
+    setMilestoneObservation,
     addCustomMilestone,
     handleTogglePlanStep,
     setPlanStepStatus,

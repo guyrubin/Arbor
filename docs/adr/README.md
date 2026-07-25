@@ -18,5 +18,6 @@ Each ADR should stay short and use this structure:
 | [0002](0002-firestore-app-data.md) | Firestore app data |
 | [0003](0003-ai-wiki-knowledge-base.md) | Git-backed AI Wiki |
 | [0004](0004-model-routing-claude-primary.md) | Claude-primary model routing |
+| [0005](0005-caregiver-identity-model.md) | Caregiver identity model (AR-CAP-04) — proposed, gated on GD-9 |
 
 These ADRs anchor issue #6 / F-07 and should be read before executing F-01, F-08, T010, and the M1 knowledge retrieval work.

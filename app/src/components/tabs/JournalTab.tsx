@@ -1,12 +1,17 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
+import { Skeleton } from "../ui/Skeleton";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { type SignalKind, type TimelineSignal } from "../../lib/signalTimeline";
+import {
+  groupByDay, isAutoSignal, signalDetail, signalTitle,
+  type SignalKind, type TimelineSignal,
+} from "../../lib/signalTimeline";
+import { classifyBehaviorDomain } from "../../lib/monitoring";
 import { useTimeline } from "../../hooks/useTimeline";
 import type { CaptureMode } from "../../context/ArborContext";
-import { PASTEL, IconBadge, Chip, cardCls, domainVisual } from "../ui/kit";
+import { PASTEL, IconBadge, Chip, cardCls, domainVisual, type PastelKey } from "../ui/kit";
 import type { DevelopmentalDomainId } from "../../types";
 import type { PlayDomain } from "../../playbank/content";
 
@@ -22,11 +27,12 @@ import type { PlayDomain } from "../../playbank/content";
  *     (Voice / Photo / Text) that open the EXISTING capture flow IN THE CHOSEN
  *     MODE via requestCapture(); the split is an entry affordance, not a new
  *     capture path.
- *  2. a flat single-column FEED (~840px) of moment rows. Each row carries a
- *     colored domain icon tile, an AUTO(Arbor)-vs-MANUAL(You) provenance badge, a
- *     per-entry 7-domain chip, and a right-aligned relative time. Auto entries
- *     mix in kid-side moments (auto-detected milestones, coach-derived facts,
- *     approved memory, play).
+ *  2. a flat single-column FEED (~840px) of moment rows, grouped by day with a
+ *     slim sticky localized day header (JRNL-8 — the flat column is a validated
+ *     call; do NOT restore the 2-col grid). Each row carries a colored domain
+ *     icon tile, an AUTO(Arbor)-vs-MANUAL(You) provenance badge, a per-entry
+ *     domain chip (omitted when the source can't be classified — never guessed,
+ *     JRNL-6), and a right-aligned time within its day group.
  *
  * Removed vs. the old dashboard-y Journal: the stat-trio hero, the spine ribbon,
  * the "story draft" CTA card, and the guiding-prompt strip — all duplicated
@@ -65,49 +71,26 @@ const PLAY_TO_DOMAIN: Record<PlayDomain, DevelopmentalDomainId> = {
   social: "social_development",
 };
 
-/** Fallback domain by signal kind for sources that carry no explicit domain. */
-const KIND_DOMAIN: Record<SignalKind, DevelopmentalDomainId> = {
-  moment: "attachment_regulation",
-  milestone: "cognition_executive_function",
+/** Fallback domain for derived kinds that carry no explicit domain. Moments are
+ *  NOT here (JRNL-6): they classify via classifyBehaviorDomain, and when that
+ *  returns null the chip is omitted rather than guessed. */
+const KIND_DOMAIN: Partial<Record<SignalKind, DevelopmentalDomainId>> = {
   plan: "independence_adaptive_skills",
   memory: "cognition_executive_function",
   coach: "ecosystem_stressors",
-  play: "cognition_executive_function",
 };
 
-/** Provenance is DERIVED read-only from the entry's actor: a parent-logged moment
- *  is hand-written (MANUAL); everything Arbor derives — auto-detected milestones,
- *  coach-session facts, approved memory, logged play — is AUTO. No new flag is
- *  written to the ledger; this maps the existing signal kind at render time. */
-const isAuto = (kind: SignalKind): boolean => kind !== "moment";
+/** Fallback glyph when a row has no domain (unclassifiable moment). */
+const KIND_MS: Record<SignalKind, string> = {
+  moment: "bolt",
+  milestone: "check_circle",
+  plan: "eco",
+  memory: "bookmark",
+  coach: "chat_bubble",
+  play: "toys",
+};
 
-/** A locale-aware, human relative-time label for the right-aligned timestamp:
- *  "Today 8:05 AM" / "Yesterday" / weekday. Undated signals fall back to a
- *  plain "Ongoing" label. */
-function relativeWhen(at: string | null, locale: string | undefined, ongoing: string): string {
-  if (!at) return ongoing;
-  const d = new Date(at);
-  const now = new Date();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const diffDays = Math.round((startOf(now) - startOf(d)) / dayMs);
-  const time = d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
-  if (diffDays === 0) return `${relDay(0, locale)} ${time}`;
-  if (diffDays === 1) return relDay(1, locale);
-  if (diffDays > 1 && diffDays < 7) return d.toLocaleDateString(locale, { weekday: "long" });
-  return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
-}
-
-/** "Today" / "Yesterday" via Intl.RelativeTimeFormat so He/En localize natively. */
-function relDay(daysAgo: 0 | 1, locale: string | undefined): string {
-  try {
-    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-    // -0 / -1 day → "today" / "yesterday" in the active locale.
-    return rtf.format(-daysAgo, "day");
-  } catch {
-    return daysAgo === 0 ? "Today" : "Yesterday";
-  }
-}
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function JournalRow({
   signal,
@@ -116,25 +99,37 @@ function JournalRow({
   when,
   provLabel,
   domainLabel,
+  title,
+  detail,
+  focused = false,
 }: {
   signal: TimelineSignal;
-  domain: DevelopmentalDomainId;
+  domain: DevelopmentalDomainId | null;
   auto: boolean;
   when: string;
   provLabel: string;
   domainLabel: string;
+  title: string;
+  detail: string;
+  /** TODAY-6: true while this row is the target of an evidence deep-link —
+   *  a brief calm highlight so the parent lands on the cited entry. */
+  focused?: boolean;
 }) {
-  const dv = domainVisual(domain);
-  const tone = dv.tone;
+  const tone: PastelKey = domain ? domainVisual(domain).tone : (signal.tone as PastelKey);
   const p = PASTEL[tone];
+  const glyph = domain ? DOMAIN_MS[domain] : KIND_MS[signal.kind];
   return (
-    <article className="flex gap-3.5 border-b py-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
-      {/* Colored domain icon tile — tone + glyph follow the entry's domain. */}
+    <article
+      id={`journal-signal-${signal.id}`}
+      className="flex gap-3.5 border-b py-4 last:border-b-0 rounded-xl transition-colors"
+      style={{ borderColor: "var(--arbor-rule)", background: focused ? "var(--arbor-green-soft)" : undefined }}
+    >
+      {/* Colored icon tile — tone + glyph follow the entry's domain (kind fallback). */}
       <span
         className="inline-flex items-center justify-center rounded-full flex-shrink-0"
         style={{ width: 40, height: 40, background: p.soft, color: p.ink }}
       >
-        <Icon name={DOMAIN_MS[domain]} size={22} fill={1} />
+        <Icon name={glyph} size={22} fill={1} />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
@@ -150,15 +145,20 @@ function JournalRow({
             {auto && <Icon name="auto_awesome" size={12} fill={1} />}
             {provLabel}
           </span>
-          <Chip tone={tone} icon={<Icon name={DOMAIN_MS[domain]} size={13} fill={1} />}>{domainLabel}</Chip>
-          <span className="text-[11px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
+          {/* Domain chip — omitted when the entry can't be classified (JRNL-6). */}
+          {domain && (
+            <Chip tone={tone} icon={<Icon name={DOMAIN_MS[domain]} size={13} fill={1} />}>{domainLabel}</Chip>
+          )}
+          {when && (
+            <span className="text-[11px] font-bold ms-auto" style={{ color: "var(--arbor-muted)" }}>{when}</span>
+          )}
         </div>
         <p className="text-[13.5px] font-semibold mt-2 leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
-          {signal.title}
+          {title}
         </p>
-        {signal.detail && (
+        {detail && (
           <p className="text-[12.5px] mt-1 leading-snug line-clamp-2" style={{ color: "var(--arbor-muted)" }} dir="auto">
-            {signal.detail}
+            {detail}
           </p>
         )}
       </div>
@@ -175,13 +175,34 @@ function JournalRow({
 }
 
 export default function JournalTab() {
-  const { setActiveTab, requestCapture, milestones, playLogs } = useArbor();
+  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
 
   // The ONE timeline read (hooks/useTimeline) — the same stream the Story
   // density renders. No second read, no new write path.
   const signals = useTimeline();
+
+  // TODAY-6 evidence deep-link: when a citing surface (ProgressNarrative)
+  // named a signal id, scroll to + briefly highlight exactly that row, then
+  // clear the request (same consume-once contract as the capture seam).
+  const [focusId, setFocusId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingJournalFocusId) return;
+    setFocusId(pendingJournalFocusId);
+    consumeJournalFocus();
+    // consumeJournalFocus is a stable context setter; depending on the id alone
+    // keeps the consume-once contract.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingJournalFocusId]);
+  useEffect(() => {
+    if (!focusId || !logsLoaded) return;
+    try {
+      document.getElementById(`journal-signal-${focusId}`)?.scrollIntoView({ block: "center" });
+    } catch { /* noop — jsdom/SSR safety */ }
+    const timer = setTimeout(() => setFocusId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [focusId, logsLoaded]);
 
   /** Open the real capture flow in the requested modality. Previously these
    *  tiles were decoys: all three ran a bare setActiveTab("behaviors"), so
@@ -192,8 +213,9 @@ export default function JournalTab() {
     setActiveTab("behaviors");
   };
 
-  // Per-signal domain: milestones + play carry an explicit domain; everything
-  // else falls back to a sensible per-kind domain (descriptive, never a verdict).
+  // Per-signal domain: milestones + play carry an explicit domain; moments
+  // classify from their own text via classifyBehaviorDomain (JRNL-6) — when
+  // that returns null the row simply carries no domain chip. Never guessed.
   const domainOf = useMemo(() => {
     const map = new Map<string, DevelopmentalDomainId>();
     for (const m of milestones || []) {
@@ -202,20 +224,40 @@ export default function JournalTab() {
     for (const pl of playLogs || []) {
       map.set(`play-${pl.id}`, PLAY_TO_DOMAIN[pl.domain] ?? "cognition_executive_function");
     }
+    for (const log of behaviorLogs || []) {
+      const d = classifyBehaviorDomain(log);
+      if (d) map.set(`moment-${log.id}`, d);
+    }
     return map;
-  }, [milestones, playLogs]);
+  }, [milestones, playLogs, behaviorLogs]);
 
-  const ongoingLabel = t("journal.ongoing");
+  // JRNL-8: the feed renders through the SAME groupByDay the Story density
+  // uses — slim sticky localized day headers, time-only inside a group,
+  // "Ongoing" last. The flat single column stays (validated call).
+  const groups = useMemo(
+    () => groupByDay(signals, Date.now(), { locale, ongoingLabel: t("timeline.ongoing") }),
+    [signals, locale, t],
+  );
+
+  // JRNL-7: the header stat is labeled "This week in the story", so count the
+  // dated signals inside the trailing 7-day window — not the all-time total.
+  const weekCount = useMemo(() => {
+    const now = Date.now();
+    return signals.filter((s) => {
+      if (!s.at) return false;
+      const at = new Date(s.at).getTime();
+      return at > now - 7 * DAY_MS && at <= now;
+    }).length;
+  }, [signals]);
+
   const autoLabel = t("journal.auto");
   const manualLabel = t("journal.manual");
   const recentSignals = signals.slice(0, 3);
-  const storyCopy = uiLang === "he"
-    ? recentSignals.length
-      ? `ארבור מחבר ${recentSignals.length} רגעים אחרונים לסיפור מתמשך — בלי שתצטרכו לכתוב הכול בעצמכם.`
-      : "רגע קטן אחד מספיק כדי להתחיל. ארבור יעזור להפוך אותו לסיפור שנבנה עם הזמן."
-    : recentSignals.length
-      ? `Arbor is connecting ${recentSignals.length} recent moments into a living story — without asking you to write it all yourself.`
-      : "One small moment is enough to begin. Arbor will help shape it into a story that grows over time.";
+  // JRNL-2: all header/compose copy lives in lib/i18n.ts (journal.* keys) so the
+  // EN/HE parity guard covers it — no inline he-ternary strings on this surface.
+  const storyCopy = recentSignals.length
+    ? t("journal.story.body", { count: recentSignals.length })
+    : t("journal.story.empty");
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5">
@@ -223,18 +265,18 @@ export default function JournalTab() {
         <div className="grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
           <div>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-lav-ink)" }}>
-              <Icon name="auto_stories" size={16} fill={1} /> {uiLang === "he" ? "היומן שכותב את עצמו" : "The journal that writes itself"}
+              <Icon name="auto_stories" size={16} fill={1} /> {t("journal.eyebrow")}
             </span>
             <h1 className="mt-2 text-[28px] sm:text-[34px] leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              {uiLang === "he" ? "כל הרגעים של המשפחה, לפי הסדר." : "Your family story, in order."}
+              {t("journal.title")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm sm:text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
           </div>
           <div className="border-t pt-4 md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
-            <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "השבוע בסיפור" : "This week in the story"}</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.title")}</p>
             <div className="mt-3 flex items-center gap-3">
-              <span className="text-3xl font-black" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-lav-ink)" }}>{signals.length}</span>
-              <span className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{uiLang === "he" ? "רגעים ותובנות שנשמרו במקום אחד" : "moments and insights kept in one calm place"}</span>
+              <span className="text-3xl font-black" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-lav-ink)" }}>{weekCount}</span>
+              <span className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("journal.week.sub")}</span>
             </div>
           </div>
         </div>
@@ -245,7 +287,7 @@ export default function JournalTab() {
       <section className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{uiLang === "he" ? "×¨×’×¢ ×—×“×©" : "New moment"}</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
           <h2 className="mt-1 text-[18px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("journal.compose.title")}
           </h2>
@@ -269,8 +311,15 @@ export default function JournalTab() {
         </div>
       </section>
 
-      {/* Flat single-column feed */}
-      {signals.length === 0 ? (
+      {/* Flat single-column feed — day-grouped, gated on the ledger load (JRNL-7)
+          so a returning parent never sees a false "No moments yet" flash. */}
+      {!logsLoaded ? (
+        <div className="flex flex-col gap-3" aria-hidden>
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+        </div>
+      ) : signals.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>
           <div className="inline-flex"><IconBadge tone="lav" size={48}><Icon name="edit_note" size={26} fill={1} /></IconBadge></div>
           <p
@@ -283,25 +332,47 @@ export default function JournalTab() {
       ) : (
         <section aria-labelledby="journal-timeline-title">
           <div className="mb-1 flex items-center justify-between gap-3">
-            <h2 id="journal-timeline-title" className="text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{uiLang === "he" ? "ציר הזמן" : "Timeline"}</h2>
-            <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{signals.length} {uiLang === "he" ? "רגעים" : "moments"}</span>
+            <h2 id="journal-timeline-title" className="text-[18px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("journal.timeline.title")}</h2>
+            <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{signals.length} {t("journal.timeline.count")}</span>
           </div>
-          {signals.map((s) => {
-            const kind = s.kind;
-            const domain = domainOf.get(s.id) ?? KIND_DOMAIN[kind];
-            const auto = isAuto(kind);
-            return (
-              <JournalRow
-                key={s.id}
-                signal={s}
-                domain={domain}
-                auto={auto}
-                when={relativeWhen(s.at, locale, ongoingLabel)}
-                provLabel={auto ? autoLabel : manualLabel}
-                domainLabel={t(`journal.domain.${domain}`)}
-              />
-            );
-          })}
+          {groups.map((group) => (
+            <div key={group.key}>
+              {/* Slim sticky day header — localized (Intl), start-aligned so it
+                  mirrors correctly under RTL. */}
+              <div
+                className="sticky top-0 z-[5] -mx-1 flex items-center gap-3 px-1 py-1.5"
+                style={{ background: "var(--arbor-paper)" }}
+              >
+                <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-start" style={{ color: "var(--arbor-muted)" }}>
+                  {group.label}
+                </h3>
+                <span className="h-px flex-1" style={{ background: "var(--arbor-rule)" }} aria-hidden />
+              </div>
+              {group.signals.map((s) => {
+                const domain = domainOf.get(s.id) ?? KIND_DOMAIN[s.kind] ?? null;
+                const auto = isAutoSignal(s.kind);
+                // Time-only inside a day group (the header carries the date);
+                // undated rows sit under "Ongoing" and show no time.
+                const when = s.at
+                  ? new Date(s.at).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })
+                  : "";
+                return (
+                  <JournalRow
+                    key={s.id}
+                    signal={s}
+                    domain={domain}
+                    auto={auto}
+                    when={when}
+                    provLabel={auto ? autoLabel : manualLabel}
+                    domainLabel={domain ? t(`journal.domain.${domain}`) : ""}
+                    title={signalTitle(s, t)}
+                    detail={signalDetail(s, t)}
+                    focused={s.id === focusId}
+                  />
+                );
+              })}
+            </div>
+          ))}
         </section>
       )}
     </motion.div>

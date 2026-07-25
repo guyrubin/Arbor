@@ -45,10 +45,39 @@ export const coachResponseZodSchema = z.object({
     teacher: z.string().min(1),
     professional: z.string().min(1)
   }),
-  sourceCardsUsed: z.array(z.string()).optional()
+  sourceCardsUsed: z.array(z.string()).optional(),
+  // COACH-6: resolved citation metadata. The model never emits this — the
+  // server backfills it from the knowledge registry after parsing (see
+  // buildSourceCards) so the citation drawer can show real titles.
+  sourceCards: z.array(z.object({
+    id: z.string().min(1),
+    title: z.string().min(1),
+    type: z.string()
+  })).optional()
 });
 
 export type CoachResponse = z.infer<typeof coachResponseZodSchema>;
+
+/** COACH-6: a resolved citation row — real title + card type for an id. */
+export type SourceCardRef = { id: string; title: string; type: string };
+
+/**
+ * Resolve the model's cited card ids against the knowledge cards that were
+ * actually offered in the prompt. Ids with no matching card are dropped here
+ * (the client falls back to slug rendering via sourceCardsUsed); order follows
+ * the cited ids.
+ */
+export const buildSourceCards = (
+  ids: readonly string[] | undefined,
+  cards: readonly { id: string; title: string; type: string }[]
+): SourceCardRef[] => {
+  if (!ids?.length) return [];
+  const byId = new Map(cards.map((card) => [card.id, card]));
+  return ids.flatMap((id) => {
+    const card = byId.get(id);
+    return card ? [{ id, title: card.title, type: card.type }] : [];
+  });
+};
 
 export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) => ({
   type: Type.OBJECT,

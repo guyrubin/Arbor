@@ -31,12 +31,14 @@ export type ReportContext = {
  *  serializer (`src/consult/packet.ts`) — audience data ceilings + the
  *  fail-closed clinical scan — and reuse only this module's print shell.
  *  This module itself builds the PARENT's own records. */
-export type ProfessionalReportType = "teacher" | "therapist" | "pediatrician";
+export type ProfessionalReportType = "teacher" | "therapist" | "pediatrician" | "slp" | "behavioral_health";
 export type ParentReportType = "weekly" | "snapshot" | "behavior" | "language" | "growth";
 export type ReportType = ParentReportType | ProfessionalReportType;
 
+const PROFESSIONAL_REPORT_TYPES: readonly ProfessionalReportType[] = ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"];
+
 export function isProfessionalReportType(type: ReportType): type is ProfessionalReportType {
-  return type === "teacher" || type === "therapist" || type === "pediatrician";
+  return (PROFESSIONAL_REPORT_TYPES as readonly string[]).includes(type);
 }
 
 const esc = (s: string) =>
@@ -46,8 +48,10 @@ function recentLogs(logs: BehaviorLog[], days: number) {
   const cutoff = Date.now() - days * 86_400_000;
   return logs.filter((l) => new Date(l.timestamp).getTime() >= cutoff);
 }
-function avgIntensity(logs: BehaviorLog[]) {
-  return logs.length ? (logs.reduce((s, l) => s + l.intensity, 0) / logs.length).toFixed(1) : "—";
+// Clinical firewall (JRNL-1): parent reports carry counts, never a derived
+// intensity score — the former avg-intensity helper is intentionally gone.
+function resolvedCount(logs: BehaviorLog[]) {
+  return logs.filter((l) => l.resolved).length;
 }
 function topTrigger(logs: BehaviorLog[]) {
   const c = new Map<string, number>();
@@ -70,7 +74,7 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
   switch (type) {
     case "weekly":
       return { title: "Weekly Insight", subtitle: common, sections: [
-        { heading: "This week", body: [`${wk.length} moments logged`, `Average intensity: ${avgIntensity(wk)} / 5`, `Most-logged: ${topTrigger(wk)}`] },
+        { heading: "This week", body: [`${wk.length} moments logged`, `${resolvedCount(wk)} marked resolved`, `Most-logged: ${topTrigger(wk)}`] },
         { heading: "Development", body: [`${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
         { heading: "Suggested focus", body: child.challenges.slice(0, 2) },
       ]};
@@ -83,8 +87,8 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
       ]};
     case "behavior":
       return { title: "Behavior Pattern Report", subtitle: common, sections: [
-        { heading: "Summary (28 days)", body: [`${mo.length} moments`, `Average intensity ${avgIntensity(mo)} / 5`, `Most-logged: ${topTrigger(mo)}`] },
-        { heading: "Recent events", body: mo.slice(0, 8).map((l) => `${new Date(l.timestamp).toLocaleDateString()} — ${l.behaviorType} (${l.intensity}/5)${l.trigger ? `, trigger: ${l.trigger}` : ""}`) },
+        { heading: "Summary (28 days)", body: [`${mo.length} moments`, `${resolvedCount(mo)} marked resolved`, `Most-logged: ${topTrigger(mo)}`] },
+        { heading: "Recent events", body: mo.slice(0, 8).map((l) => `${new Date(l.timestamp).toLocaleDateString()} — ${l.behaviorType}${l.trigger ? `, trigger: ${l.trigger}` : ""}`) },
         { heading: "What helped", body: mo.map((l) => l.response).filter(Boolean).slice(0, 5) },
       ]};
     case "language":

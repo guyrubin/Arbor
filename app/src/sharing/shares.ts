@@ -10,6 +10,7 @@ import { randomUUID } from "crypto";
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
+import { normalizeScopes, type ShareScopeId } from "../lib/shareScopes.js";
 
 export type ShareRole = "co_parent" | "viewer" | "professional";
 
@@ -21,7 +22,10 @@ export type ShareGrant = {
   childName: string | null;
   recipientEmail: string;
   role: ShareRole;
-  scopes: string[];           // e.g. ["timeline", "reports", "memory"]
+  /** Stable ShareScopeIds (CARE-3), e.g. ["story_timeline", "report_teacher"].
+   *  Pre-CARE-3 grants may still hold English display labels — always resolve
+   *  through `grantScopes`/`grantAllowsScope`, never read this field raw. */
+  scopes: string[];
   createdAt: string;
   expiresAt: string | null;   // ISO, or null = until revoked
   revokedAt: string | null;
@@ -33,6 +37,19 @@ export const isShareActive = (g: Pick<ShareGrant, "expiresAt" | "revokedAt">, no
   if (g.expiresAt && new Date(g.expiresAt).getTime() <= now) return false;
   return true;
 };
+
+/** SERVER-ENFORCED scope resolution (CARE-3): what a grant's stored scopes —
+ *  stable IDs or pre-migration English labels — actually grant. FAILS CLOSED:
+ *  an unrecognized legacy string resolves to nothing, never a broader default. */
+export const grantScopes = (g: Pick<ShareGrant, "scopes">): ShareScopeId[] => normalizeScopes(g.scopes);
+
+/** True only while the grant is live AND resolves the stable scope ID. This is
+ *  the ONE check any recipient-facing read must pass (CARE-2 consumes it). */
+export const grantAllowsScope = (
+  g: Pick<ShareGrant, "scopes" | "expiresAt" | "revokedAt">,
+  scope: ShareScopeId,
+  now: number = Date.now(),
+): boolean => isShareActive(g, now) && grantScopes(g).includes(scope);
 
 /** Map a friendly duration to a concrete expiry instant (the server's source of truth). */
 export const expiryFromDuration = (duration: string | undefined, now: number = Date.now()): string | null => {
@@ -66,15 +83,25 @@ export const buildGrant = (input: NewShare, now: number = Date.now()): ShareGran
   childName: input.childName ?? null,
   recipientEmail: input.recipientEmail.trim().toLowerCase(),
   role: input.role ?? "viewer",
-  scopes: input.scopes?.length ? input.scopes : ["timeline"],
+  // CARE-3: store stable scope IDs only. Requested scopes (stable IDs or legacy
+  // English labels from an old client) normalize through the fail-closed map —
+  // unrecognized strings are DROPPED, never widened. No scopes requested at all
+  // keeps the historical narrowest default (timeline → story_timeline).
+  scopes: input.scopes?.length ? normalizeScopes(input.scopes) : ["story_timeline" satisfies ShareScopeId],
   createdAt: new Date(now).toISOString(),
   expiresAt: expiryFromDuration(input.duration, now),
   revokedAt: null,
 });
 
+/** CARE-6: owner-side listing options. `includeInactive` returns revoked and
+ *  expired grants too — the owner's own grant records (createdAt/expiresAt/
+ *  revokedAt) ARE the sharing audit history; no separate event log needed.
+ *  Recipient reads are untouched: an inactive grant never resolves for them. */
+export type ListByOwnerOptions = { includeInactive?: boolean };
+
 export interface ShareStore {
   create(grant: ShareGrant): Promise<ShareGrant>;
-  listByOwner(ownerUid: string, childId?: string): Promise<ShareGrant[]>;
+  listByOwner(ownerUid: string, childId?: string, opts?: ListByOwnerOptions): Promise<ShareGrant[]>;
   listByRecipient(email: string): Promise<ShareGrant[]>;
   get(id: string): Promise<ShareGrant | null>;
   revoke(id: string, ownerUid: string): Promise<ShareGrant | null>;
@@ -88,9 +115,9 @@ export class LocalShareStore implements ShareStore {
 
   async create(grant: ShareGrant) { this.grants.set(grant.id, grant); return grant; }
 
-  async listByOwner(ownerUid: string, childId?: string) {
+  async listByOwner(ownerUid: string, childId?: string, opts?: ListByOwnerOptions) {
     return [...this.grants.values()]
-      .filter((g) => g.ownerUid === ownerUid && (!childId || g.childId === childId) && isShareActive(g))
+      .filter((g) => g.ownerUid === ownerUid && (!childId || g.childId === childId) && (opts?.includeInactive || isShareActive(g)))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
@@ -139,13 +166,13 @@ export class FirestoreShareStore implements ShareStore {
     return grant;
   }
 
-  async listByOwner(ownerUid: string, childId?: string) {
+  async listByOwner(ownerUid: string, childId?: string, opts?: ListByOwnerOptions) {
     let q = this.col().where("ownerUid", "==", ownerUid) as FirebaseFirestore.Query;
     if (childId) q = q.where("childId", "==", childId);
     const snap = await q.get();
     return snap.docs
       .map((d) => d.data() as ShareGrant)
-      .filter((g) => isShareActive(g))
+      .filter((g) => opts?.includeInactive || isShareActive(g))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 

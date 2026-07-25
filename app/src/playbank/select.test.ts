@@ -1,9 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   selectDailyPlay, rankDailyPlay, concernDomainsFromLogs, domainForBehaviorType, daySeedFor,
-  sanitizeInterestToken, SESSION_LENGTH_RANGES,
+  sanitizeInterestToken, SESSION_LENGTH_RANGES, SESSION_LENGTHS, MIN_SESSION_BUCKET,
+  availableSessionLengths,
 } from "./select";
-import { bandForAge } from "./content";
+import { bandForAge, PLAY_ACTIVITIES, PLAY_BANDS } from "./content";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const NOW = new Date("2026-06-15T12:00:00").getTime();
 const DAY = 86_400_000;
@@ -293,5 +297,109 @@ describe("selectDailyPlay", () => {
       expect(shortPick[0].activity.durationMin).toBeLessThanOrEqual(10);
       expect(stdPick[0].activity.durationMin).toBeGreaterThan(10);
     });
+  });
+});
+
+// ── KID-3: session-length honesty ─────────────────────────────────────────────
+// The UI may only OFFER a session-length chip when its bucket is honestly
+// stocked for the child's band; the duration badge always shows the picked
+// activity's real durationMin. These tests pin both halves.
+describe("KID-3 session-length honesty", () => {
+  // One representative age per band (midpoint of the PLAY_BANDS range).
+  const bandAges = PLAY_BANDS.map(({ band, minYears, maxYears }) => ({
+    band,
+    ageYears: (minYears + Math.min(maxYears, minYears + 2)) / 2,
+  }));
+
+  it("representative ages actually map to their band", () => {
+    for (const { band, ageYears } of bandAges) {
+      expect(bandForAge(ageYears)).toBe(band);
+    }
+  });
+
+  it(`every offered SessionLength has >= ${MIN_SESSION_BUCKET} in-band activities, per band`, () => {
+    for (const { band, ageYears } of bandAges) {
+      for (const s of availableSessionLengths(ageYears)) {
+        const [minDur, maxDur] = SESSION_LENGTH_RANGES[s];
+        const inBand = PLAY_ACTIVITIES.filter(
+          (a) => a.bands.includes(band) && a.durationMin >= minDur && a.durationMin <= maxDur
+        );
+        expect(
+          inBand.length,
+          `offered bucket "${s}" for band "${band}" must hold >= ${MIN_SESSION_BUCKET} in-band activities`
+        ).toBeGreaterThanOrEqual(MIN_SESSION_BUCKET);
+      }
+    }
+  });
+
+  it("never offers a session length whose bucket is empty for the band", () => {
+    for (const { band, ageYears } of bandAges) {
+      const offered = availableSessionLengths(ageYears);
+      for (const s of SESSION_LENGTHS) {
+        const [minDur, maxDur] = SESSION_LENGTH_RANGES[s];
+        const bucketEmpty = !PLAY_ACTIVITIES.some(
+          (a) => a.bands.includes(band) && a.durationMin >= minDur && a.durationMin <= maxDur
+        );
+        if (bucketEmpty) {
+          expect(offered, `empty bucket "${s}" must not be offered for band "${band}"`).not.toContain(s);
+        }
+      }
+    }
+  });
+
+  it("picks for every OFFERED length stay inside that length's range (fallback never fires)", () => {
+    for (const { ageYears } of bandAges) {
+      for (const s of availableSessionLengths(ageYears)) {
+        const [minDur, maxDur] = SESSION_LENGTH_RANGES[s];
+        const picks = selectDailyPlay({ ageYears, daySeed: 7, sessionLength: s });
+        expect(picks.length).toBeGreaterThan(0);
+        for (const p of picks) {
+          expect(p.activity.durationMin).toBeGreaterThanOrEqual(minDur);
+          expect(p.activity.durationMin).toBeLessThanOrEqual(maxDur);
+        }
+      }
+    }
+  });
+
+  // KID-3 content wave: the buckets the chips depend on are now honestly
+  // stocked — extended (21–30 min) for every band EXCEPT infant (a 25–30 min
+  // guided session is not an honest ask of that band), standard for infant.
+  it("the extended chip is now offered for toddler / preschool / early-school, and NOT for infant", () => {
+    for (const { band, ageYears } of bandAges) {
+      const offered = availableSessionLengths(ageYears);
+      if (band === "infant") {
+        expect(offered, "infant must not be offered the extended chip").not.toContain("extended");
+      } else {
+        expect(offered, `band "${band}" should now offer the extended chip`).toContain("extended");
+      }
+    }
+  });
+
+  it("every band is offered the standard chip (infant standard bucket stocked by the KID-3 wave)", () => {
+    for (const { band, ageYears } of bandAges) {
+      expect(availableSessionLengths(ageYears), `band "${band}" missing the standard chip`).toContain("standard");
+    }
+  });
+
+  // Static guard: the duration badge in both play cards is the activity's real
+  // durationMin — a chip's range label ("25-30 min") can never be displayed for
+  // an activity that doesn't satisfy it.
+  it("DailyPlayCard / DailyPlanCard badge the real durationMin, never the chip range", () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    for (const rel of [
+      "../components/overview/DailyPlayCard.tsx",
+      "../components/overview/DailyPlanCard.tsx",
+    ]) {
+      const src = readFileSync(path.join(here, rel), "utf8");
+      expect(src, `${rel} must badge the activity's own durationMin`).toContain(
+        't("play.min", { n: activity.durationMin })'
+      );
+      // Strip comments so prose mentioning the keys can't false-positive.
+      const noComments = src.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+      expect(
+        noComments,
+        `${rel} must not render a play.session.* range label as the badge`
+      ).not.toMatch(/play\.session\.(short|standard|extended)/);
+    }
   });
 });

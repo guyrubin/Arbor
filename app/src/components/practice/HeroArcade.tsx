@@ -78,12 +78,16 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-export default function HeroArcade() {
+export default function HeroArcade({ initialWorldId }: { initialWorldId?: string } = {}) {
   const { childProfile, setActiveTab } = useArbor();
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const hero = useHeroAvatar();
-  const [openId, setOpenId] = useState<string | null>(null);
+  // KID-4: a kid-dashboard game tile named after a world opens the arcade with
+  // that world pre-selected (only ids that resolve to a playable world count).
+  const [openId, setOpenId] = useState<string | null>(
+    () => (initialWorldId && WORLDS.some((w) => w.id === initialWorldId && !!w.Comp) ? initialWorldId : null),
+  );
 
   const stats: CosmeticStats = useMemo(() => ({
     totalSessions:
@@ -104,11 +108,18 @@ export default function HeroArcade() {
     const Comp = open.Comp;
     return (
       <div className="arbor-play space-y-4">
-        <button onClick={() => setOpenId(null)}
-          className="play-pressable inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-extrabold"
-          style={{ background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
-          <Icon name="arrow_back" size={16} /> All worlds
-        </button>
+        {/* KID-4 honest arrival: the opened world announces its own name, so a
+            tile named "Beat Keeper" lands on a surface that SAYS Beat Keeper. */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button onClick={() => setOpenId(null)}
+            className="play-pressable inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-extrabold"
+            style={{ background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
+            <Icon name="arrow_back" size={16} /> All worlds
+          </button>
+          <h1 className="font-black leading-none" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,4vw,28px)" }}>
+            {open.name}
+          </h1>
+        </div>
         <Suspense fallback={<TabSkeleton />}><Comp /></Suspense>
       </div>
     );
@@ -146,11 +157,14 @@ export default function HeroArcade() {
                 <div className="power-fill" style={{ width: `${powerPct}%` }} />
               </div>
             </div>
+            {/* KID-6: monotonic days-practiced counter — only ever grows, never
+                resets. Streaks are loss-framed and NEVER shown to the child
+                (practice/signals.ts doctrine). */}
             <div className="inline-flex items-center gap-1.5 rounded-2xl px-3 py-2"
               style={{ background: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
-              <Icon name="local_fire_department" size={20} fill={1} style={{ color: "var(--arbor-peach)" }} />
-              <b className="text-[18px]" style={{ fontFamily: "var(--font-display)" }}>{data.streak}</b>
-              <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink-soft)" }}>day streak</span>
+              <Icon name="event_available" size={20} fill={1} style={{ color: "var(--arbor-peach)" }} />
+              <b className="text-[18px]" style={{ fontFamily: "var(--font-display)" }}>{data.daysPracticed}</b>
+              <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink-soft)" }}>days practiced</span>
             </div>
           </div>
         </div>

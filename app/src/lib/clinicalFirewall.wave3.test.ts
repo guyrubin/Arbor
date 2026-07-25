@@ -159,6 +159,41 @@ describe("Wave-3 clinical firewall — prose paths emit no intensity-trend verdi
   });
 });
 
+// 2026-07-23 (JRNL-1): the weekly recap computed its OWN avg-intensity score
+// ("avg intensity {avg}/5") that the avgIntensityThisWeek token scan never saw,
+// the parent report export printed "Average intensity X / 5", and the weekly
+// digest shipped avgIntensity + an easing/steady/intensifying trend VERDICT in
+// its parent-visible stats payload and fallback narrative ("Hard moments are
+// easing"). All removed — parent surfaces show counts, never derived scores or
+// trend adjectives. This scan pins all three files shut.
+describe("JRNL-1 clinical firewall — weekly surfaces render no intensity score or trend verdict", () => {
+  const WEEKLY_SURFACES = [
+    "components/tabs/WeeklyTab.tsx",
+    "lib/reportExport.ts",
+    "server/digest.ts",
+  ];
+  for (const rel of WEEKLY_SURFACES) {
+    describe(rel, () => {
+      const code = stripComments(read(rel));
+
+      it("renders no avg-intensity score or '/5' denominator", () => {
+        expect(code, `${rel} reintroduces an avg-intensity score`).not.toMatch(/avg.?intensity/i);
+        expect(code, `${rel} renders an x/5 score denominator`).not.toMatch(/\/\s*5\b/);
+      });
+
+      it("emits no easing/intensifying trend verdict", () => {
+        expect(code, `${rel} reintroduces the easing/intensifying verdict class`).not.toMatch(/\b(easing|intensifying|intensityTrend)\b/i);
+      });
+    });
+  }
+
+  it("i18n drops the avg-intensity keys (wk.avgIntensity, beh.stats.avgIntensity)", () => {
+    const i18n = read("lib/i18n.ts");
+    expect(i18n).not.toContain('"wk.avgIntensity":');
+    expect(i18n).not.toContain('"beh.stats.avgIntensity":');
+  });
+});
+
 describe("Wave-3 clinical firewall — i18n keys are non-diagnostic", () => {
   const i18n = read("lib/i18n.ts");
 
@@ -195,13 +230,49 @@ describe("Wave-3 clinical firewall — i18n keys are non-diagnostic", () => {
     // Scan only the new/changed key values for the CI-28 / Blueprint #91 banned
     // tokens. (Matches the values of devscore.*, trends.recall*, beh.count*,
     // beh.countLabel keys in both EN and HE blocks.)
+    // UND-1 extension: the Development Check localization moved the whole
+    // screener (prompts, result framing, monitoring notes) into "screen.*" /
+    // "sec.screen.*" keys — every one of those lines is scanned too, so the
+    // rephrased calm result copy can never regress to the 'on-track' verdict
+    // class the wave-3 firewall banned.
+    // UND-3/UND-6 extension: the derived watch-points card ("ms.watch.*") and
+    // the weekly-focus framing ("growth.focus.*") are parent-facing
+    // developmental copy — scanned under the same ban.
+    // TODAY-6 extension: the progress-narrative copy ("today.narrative.*"),
+    // including the week-vs-week comparative template, is scanned too — the
+    // comparison must stay bare counts, never an effect verb or verdict.
     const banned = /\b(improves|boosts?|reduces?|on[\s-]?track|behind|clinically|therapeutically|autism|adhd|anxiety|spd|arfid|dyslexia)\b/i;
     const lines = i18n.split(/\r?\n/);
     const suspectLines = lines.filter((l) =>
-      /"(devscore\.|trends\.recall|beh\.count)/.test(l) && l.includes(":") && !l.trim().startsWith("//"),
+      /"(devscore\.|trends\.recall|beh\.count|sec\.screen\.|screen\.|ms\.watch\.|growth\.focus\.|today\.narrative\.)/.test(l) && l.includes(":") && !l.trim().startsWith("//"),
     );
     for (const l of suspectLines) {
       expect(l, `banned token in i18n line: ${l}`).not.toMatch(banned);
+    }
+  });
+
+  it("TODAY-6 — the narrative comparative template stays counts-only (no trend adjective, %, or x/5)", () => {
+    // The wave-3 demotions banned the easing/rising intensity-verdict class;
+    // the TODAY-6 firewall ruling extends that ban to the week-vs-week
+    // sentence ("N moments this week vs M last week") in BOTH locales.
+    const trendBanned = /\b(easing|rising|intensifying|improving|worsening|declining|trending|calmer|stormier)\b/i;
+    const heTrendBanned = /(מגמה|משתפר|מחמיר|נרגע|מסלים)/;
+    const lines = i18n.split(/\r?\n/);
+    const narrativeLines = lines.filter((l) => /"today\.narrative\./.test(l) && l.includes(":") && !l.trim().startsWith("//"));
+    expect(narrativeLines.length, "today.narrative.* keys missing from i18n").toBeGreaterThan(0);
+    for (const l of narrativeLines) {
+      expect(l, `trend adjective in narrative line: ${l}`).not.toMatch(trendBanned);
+      expect(l, `HE trend adjective in narrative line: ${l}`).not.toMatch(heTrendBanned);
+      expect(l, `percentage in narrative line: ${l}`).not.toMatch(/%/);
+      expect(l, `x/5 denominator in narrative line: ${l}`).not.toMatch(/\/\s*5\b/);
+    }
+    // The comparative template itself exists in both dictionaries and carries
+    // only the two count placeholders.
+    const compareLines = narrativeLines.filter((l) => l.includes('"today.narrative.weekCompare"'));
+    expect(compareLines.length, "weekCompare must exist in EN + HE").toBe(2);
+    for (const l of compareLines) {
+      expect(l).toContain("{thisWeek}");
+      expect(l).toContain("{lastWeek}");
     }
   });
 });

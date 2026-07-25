@@ -48,6 +48,14 @@ export const DOMAIN_LABEL: Record<ScreenDomainId, string> = {
  * Compact age-banded item bank. Deliberately modest for the MVP — the goal is to
  * prove the flow (check → framed result → care action), not to be exhaustive.
  * Each band carries a few observable prompts across domains.
+ *
+ * UND-1 (localization): the `prompt`/`label` strings here are the CANONICAL
+ * ENGLISH source. The UI never renders them directly — it resolves
+ * `screen.item.<item id>`, `screen.band.<band id>` and `screen.domain.<domain>`
+ * through lib/i18n.ts (EN mirrors this file; HE first-drafts are queued for the
+ * named clinical reviewer, GD-10). Adding/renaming an item id REQUIRES the
+ * matching i18n keys in both languages — src/lib/screeningI18n.test.ts enforces
+ * the coverage.
  */
 export const AGE_BANDS: AgeBand[] = [
   {
@@ -133,9 +141,19 @@ export const AGE_BANDS: AgeBand[] = [
 ];
 
 export function bandForAge(years: number): AgeBand {
-  const months = Math.round((Number.isFinite(years) ? years : 0) * 12);
+  return bandForAgeMonths(Math.round((Number.isFinite(years) ? years : 0) * 12));
+}
+
+/**
+ * UND-5 — months-precise band selection (mirrors lib/milestoneData's
+ * bandForAgeMonths). Callers that know the child's corrected/comparison age in
+ * months (ScreeningFlow via comparisonAgeMonths) use this so a preterm child is
+ * screened against the same corrected band the Milestones map already uses.
+ */
+export function bandForAgeMonths(months: number): AgeBand {
+  const m = Math.max(0, Number.isFinite(months) ? months : 0);
   return (
-    AGE_BANDS.find((b) => months >= b.minMonths && months <= b.maxMonths) ??
+    AGE_BANDS.find((b) => m >= b.minMonths && m <= b.maxMonths) ??
     AGE_BANDS[AGE_BANDS.length - 1]
   );
 }

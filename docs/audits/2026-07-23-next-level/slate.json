@@ -1,0 +1,1090 @@
+[
+ {
+  "category": "TODAY hub + capture loop (AR-CAP-01/02/03/13)",
+  "verdict": "The recommendation→action→outcome→adaptation loop is structurally real — child-scoped persistence, duplicate-safe daily IDs, and outcomes genuinely feeding the next AI focus — but it presents as three stacked Codex cards (hero, action card, narrative) that repeat the same headline with two competing primary CTAs, and Today is drifting back toward the overload the file's own doc comment claims was fixed. The confirmed-capture seam is real only for the text path; voice/photo still write unconfirmed via BehaviorsTab, and a fallback bug lets empty-state marketing copy be saved as the day's action and fed back into the AI prompt. All top fixes are executable in-repo now; none are Guy-gated.",
+  "findings": [
+   {
+    "id": "TODAY-1",
+    "title": "Empty-state copy can be saved as today's action and poisons the adaptation loop",
+    "type": "bug",
+    "priority": "P0",
+    "effort": "S",
+    "problem": "OverviewTab.tsx:169-182 falls back focusHeadline to t(\"ov.recoEmpty\") (a 150-char marketing sentence) whenever focus is null — which is every day-0 user (useTodaysFocus.ts:131 never generates with signals.count===0) and every /api/chat failure. TodayActionLoop renders unconditionally with recommendation={focusHeadline} (OverviewTab.tsx:370), so tapping 'Make this today's step' persists the marketing copy as the action (ArborContext.tsx:211-215), displays it as the accepted-action h2, and later injects it into the next focus prompt as 'The parent last tried \"Log a hard moment or ask Arbor…\"' (useTodaysFocus.ts:60).",
+    "fix": "Pass a hasFocus flag (or focus?.text) into TodayActionLoop; when no real focus exists, render the empty state without the accept CTA (show 'Log one moment to unlock today's step' pointing at the capture bar) and never call acceptTodayAction with fallback/loading text. Acceptance: with zero logs or a failed focus fetch, the accept CTA is absent; actionLoops entries can only ever contain AI-generated focus text; add a unit test asserting acceptTodayAction is unreachable when focus is null.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/OverviewTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayActionLoop.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-2",
+    "title": "Loop reads as three stacked widgets: duplicate headline, two primary CTAs, Today re-overloading",
+    "type": "design",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "TodayRecommendation shows focusHeadline with a gradient-primary 'Begin' CTA; directly below, TodayActionLoop repeats the identical headline as its accepted-state h2 with a second gradient-primary CTA 'Make this today's step' — violating the journey spec's 'one primary action per screen' (ARBOR-CONTINUITY-JOURNEY-2026-07-22.md line 41). With ProgressNarrative, ArborNoticedCard, Recent context, Try together and Daily tools, Today stacks 8 sections; the file's own header comment (OverviewTab.tsx:32-52) still claims 'ONE guidance hero + a few cards' and omits all three wave-2 sections, and the comment at lines 366-369 describes ArborNoticedCard but sits above TodayActionLoop — the wave-2 work is bolted on, not integrated.",
+    "fix": "Merge the pre-accept state into the hero: capacity chips (2/5/10 min) + 'Make this today's step' as the hero's secondary action next to 'Begin'; render the TodayActionLoop card ONLY when an action exists (accepted/completed states), where its content is no longer a duplicate. Keep ProgressNarrative below Recent context (it is retrospective, not the day's task). Rewrite the stale header comment to the actual render list and move the DUX-011 comment to line 381. Acceptance: pre-accept Today has exactly one gradient-primary CTA; the focus headline appears once; section order = capture → hero(+sizing) → active-action(conditional) → noticed → recent context → narrative → play → tools.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/OverviewTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayActionLoop.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayRecommendation.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-3",
+    "title": "Confirmed-capture seam covers text only — voice/photo still write without review",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "AR-CAP-01 acceptance (arbor-enhancement-backlog-v6.md:437) requires 'no draft enters memory before confirm; all existing capture paths converge on one contract'. Only QuickLogModal has draft→review→confirm (QuickLogModal.tsx:22-72). Voice/photo from Today's QuickCaptureBar route via requestCapture to BehaviorsTab, whose submitLog calls handleAddLog directly with a success toast and no review step (BehaviorsTab.tsx:326-337, 341-354). Voice-dictated text — the highest-error modality — is the least confirmed.",
+    "fix": "Extract QuickLogModal's review step into a shared ConfirmCaptureReview component (draft rows + source line 'parent-entered text / voice transcription / photo' + Edit/Discard/Confirm) and insert it before handleAddLog in BehaviorsTab's submitLog, at minimum when the entry originated from voice (toggleVoice) or a pendingCaptureMode handoff. Acceptance: no behavior-log write occurs from any Today-originated capture without an explicit confirm; existing QuickLogModal tests keep passing; one new test drives the voice path through review.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/QuickLogModal.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/BehaviorsTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/QuickCaptureBar.tsx"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "TODAY-4",
+    "title": "Documented mobile sticky capture bar does not exist — comments describe phantom behavior",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "Both OverviewTab.tsx:286-290 and QuickCaptureBar.tsx:8-13 document that on phones the bar gets 'order-last + sticky-bottom pin above the MobileNav tab bar'. No sticky or order-last class exists anywhere in the overview components (verified by grep). At 390px the capture bar is a plain first element that scrolls away, so the ambient ≤20s capture affordance AR-CAP-01 targets is gone after one scroll, and the next agent reading the comments will assume it works.",
+    "fix": "Implement what the comments promise: on <md give the bar order-last + sticky bottom with an offset clearing the fixed MobileNav (approx bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))]), keep inline placement on lg+. Acceptance: at 390x844 the capture bar remains visible above the tab bar at any scroll position, does not overlap the nav or the QuickLogModal, and RTL renders correctly; if the pin is instead rejected, the two comment blocks must be corrected in the same PR.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/QuickCaptureBar.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/OverviewTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-5",
+    "title": "Wave-2 surfaces bypass i18n.ts and the focus-cleanup heuristics are English-only",
+    "type": "content",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "TodayActionLoop.tsx:12-16, ProgressNarrative.tsx:32-46 and QuickLogModal.tsx:24-32 ship inline he?{...}:{...} copy objects, and OverviewTab hardcodes header/section strings (lines 276-279, 385-386, 402), violating the standing constraint that i18n keys live in app/src/lib/i18n.ts (no key-coverage tests can see them). Separately, focusHeadline post-processing (OverviewTab.tsx:169-182) strips English-only artifacts ('What May Be Happening', '(high)') and maps /transition|screen time|dysregulation/i to a canonical key — Hebrew AI focus text never matches, so HE users get raw, unclamped model output in the hero.",
+    "fix": "Move all inline copy to today.action.*, today.narrative.*, ql.review.* keys in lib/i18n.ts with HE parity, and add Hebrew equivalents to the focusHeadline cleanup patterns (or make the cleanup language-aware via uiLang). Acceptance: zero uiLang ternary copy objects remain in components/overview/*; grep for 'he ?' in those files returns nothing; HE hero headline passes the same length clamp.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayActionLoop.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/ProgressNarrative.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/QuickLogModal.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/OverviewTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-6",
+    "title": "ProgressNarrative is a counting receipt, not a narrative — evidence does not link to sources",
+    "type": "content",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "AR-CAP-03 acceptance (backlog v6:439) requires 'every inference links to source signals'. ProgressNarrative.tsx's 'What changed' cell only restates counts ('3 moments and 2 activities were saved this week'), the 'Your evidence' cell renders three unclickable truncated labels, and 'Open source moments' dumps the parent into the whole Journal tab (onOpenEvidence → setActiveTab(\"journal\")) rather than the three cited items. Nothing narrates change (e.g. pattern shift week-over-week in counts), so the section adds a card without adding the AR-CAP-03 value.",
+    "fix": "Make each evidence row tappable, deep-linking to the specific journal/behavior entry (pass ids through onOpenEvidence(id)); enrich 'What changed' with one firewall-safe comparative count sentence (this week's logged-moment count vs last week's, phrased as counts, never trend verdicts) derived in OverviewTab where behaviorLogs are already in scope. Acceptance: tapping an evidence item lands on that entry; changed-copy remains counts-only (no %/score/trend adjective); HE/EN parity via i18n keys (pairs with TODAY-5).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/ProgressNarrative.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/OverviewTab.tsx"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "TODAY-7",
+    "title": "Wave-2 cards use bg-white / 'white' literals instead of surface tokens",
+    "type": "design",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "TodayActionLoop.tsx:19,27, ProgressNarrative.tsx:50 and QuickCaptureBar.tsx:47 use Tailwind bg-white, and TodayActionLoop.tsx:21 uses the literal string \"white\" for the selected capacity chip — while the sibling hero and dev-map cards on the same screen use var(--arbor-paper-elevated) (OverviewTab.tsx:317, TodayRecommendation.tsx:7). This evades the hex-literal guard in lib/tokens.test.ts on a technicality, splits Today across two surface colors, and will break any future paper-tone/dark-theme shift.",
+    "fix": "Replace bg-white with style background var(--arbor-paper-elevated) and the 'white' chip literal with the same token (or --arbor-paper) on all three components. Acceptance: grep for 'bg-white|\"white\"' in components/overview/* returns nothing; visual parity at current theme confirmed in sandbox screenshot; consider extending tokens.test.ts to flag bg-white in parent surfaces so the regression cannot recur.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayActionLoop.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/ProgressNarrative.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/QuickCaptureBar.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/tokens.test.ts"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "UNDERSTAND / development picture (AR-CAP-08, AR-CONT-07)",
+  "verdict": "The development picture is structurally the strongest clinical surface in the app: the counts-only firewall genuinely holds (DevScoreCard wave-3 subtraction, hub hero count trio, domain count bars), corrected age is real on Milestones, and the wave-2 Yes/Not-sure/Not-yet flow is wired through one write seam. But the Development Check — the single highest-trust surface — is hardcoded English end-to-end, fakes a \"remind me\" done-state, and ignores the corrected-age machinery the neighboring tab already has; and the new uncertainty data (not-sure/not-yet) is silently dropped from the professional packet, which is exactly the AR-CAP-08 acceptance criterion. This is a polish-and-close pass, not a rebuild.",
+  "findings": [
+   {
+    "id": "TODAY-1",
+    "title": "Development Check flow is hardcoded English — HE/EN parity broken on the clinical trust surface",
+    "type": "content",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "Standing-constraint violation. ScreeningFlow/Screening.tsx has zero i18n on its body: answer labels ('Yes/Sometimes/Not yet', lines 16-20), intro copy ('You'll answer N quick questions…', line 142), 'Start the check', 'Cancel', 'See result', result headlines ('A few areas worth a conversation' / 'looks on track', line 222), next-step buttons ('Prepare a professional summary', 'Find a professional', 'Remind me to re-check', 'Retake'), the skill-regression safety note (line 266), all toasts, plus the SectionCard title `Check for ${first} · ${band.label}`. The TrustSafetyBar disclaimer is an English literal in BOTH ScreeningSheet.tsx (line 99) and Screening.tsx (line 57). The screening item-bank prompts themselves (lib/screening.ts AGE_BANDS) and the monitoring watch-note strings (lib/monitoring.ts) are English-only. Only the page title/eyebrow ('sec.screen.*', 'monitor.*') have HE keys in i18n.ts (lines 686-691 / 2425-2430). A Hebrew parent running the check gets a half-translated clinical screener. The wave-2 milestone Yes/Not-sure/Not-yet labels also bypass i18n.ts via inline uiLang ternaries (MilestonesTab.tsx lines 157-167).",
+    "fix": "Move every ScreeningFlow/Screening UI string, the TrustSafetyBar note, and the MilestonesTab observation-button labels + not-sure hint into app/src/lib/i18n.ts with HE translations; key the screening item prompts and monitoring note templates (prompt → i18n key per item id) so lib strings resolve through t(). Acceptance: no English literal renders in the check flow when uiLang=he; RTL layout intact; existing tests green; HE translations of the clinical item prompts and result framing are listed in a follow-up note for the named clinical reviewer before any further prompt-content change (AR-CONT governance), but the localization itself ships now since the EN content is already live.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/Screening.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/ScreeningSheet.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/screening.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/monitoring.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/MilestonesTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-2",
+    "title": "'Remind me to re-check' fakes success — no reminder is ever created",
+    "type": "bug",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "Screening.tsx line 258: the result screen's 'Remind me to re-check' button fires only toast(`We'll remind you to re-check ${first} in a few weeks`, 'success') — nothing is persisted, scheduled, or surfaced anywhere. On the surface whose whole job is 'keep an eye on this and come back', the app lies to the parent about a commitment it never records. This violates journey-spec interaction rule 5 (parent-created facts must be real/inspectable) and is exactly the class of dishonest done-state Guy flagged in the Codex polish wave.",
+    "fix": "Persist a recheckDueAt (answeredAt + ~3 weeks) on the saved screening record in the existing 'screenings' child collection (ScreeningFlow already upserts there, line 129 — no new capture path). Surface it: the Development hub's 'dev-watching-pointer' row (DevelopmentTab.tsx lines 206-225) shows 'Re-check due' once due, and the ScreeningFlow intro's last-check card shows the due date. If push is capable (existing lib/push.js seam), optionally register; otherwise the toast copy must claim only what happens ('We'll flag it here when it's time'). Acceptance: tapping the button writes a retrievable due date; the due state is visible on re-entry; no toast promises an undelivered channel.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/Screening.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/DevelopmentTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-3",
+    "title": "Milestones 'Watch points' card fabricates a static insight regardless of data",
+    "type": "content",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "MilestonesTab.tsx lines 598-608: the yellow 'Watch points' card is hardcoded English prose that always asserts 'A few areas are still in the “not seen yet” column for this age — including comfort code-switching between {languages}' — even when every milestone is checked, when the child is monolingual (languages.join falls back to boilerplate), or when the real not-yet areas are motor/social. It is a fake insight rendered as if derived from the child's record, on the same screen that just shipped a real uncertainty flow. This is the exact 'data dump vs understanding' failure mode: it erodes trust in the genuinely-derived counts around it.",
+    "fix": "Derive the card from actual data: count of not_yet/not_sure items in the current (corrected) band per domain — the useMonitoring watch-area derivation already exists and is the canonical source; render 1-2 real domain names with counts, or hide the card entirely (or show a neutral 'nothing flagged' line) when nothing is in the not-seen column. Keep the corrected-age sentence (it is real, from corrected.applied). All copy via i18n keys, HE+EN. Acceptance: card text provably matches milestone state in a unit test (all-checked child → no fabricated claim); no reference to code-switching unless a language-domain item is actually unobserved.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/MilestonesTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/hooks/useMonitoring.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-4",
+    "title": "Professional packet drops Yes/Not-sure/Not-yet — AR-CAP-08 'packet preserves response and provenance' unmet",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "Reports.tsx line 51 maps milestones to {domain, title, checked} only. The wave-2 uncertainty flow writes observationStatus ('yes'|'not_sure'|'not_yet') and observationUpdatedAt through setMilestoneObservation (ArborContext.tsx lines 898-907), but grep confirms observationStatus is consumed nowhere outside MilestonesTab/ArborContext/types — the report/handoff collapses 'not sure' and 'not yet' into a binary and discards when the parent observed it. For a pediatrician, 'parent is unsure' vs 'parent has not seen it' is the clinically useful distinction; AR-CAP-08's acceptance criterion names it explicitly.",
+    "fix": "Extend the report payload to {domain, title, status: observationStatus ?? (checked ? 'yes' : 'not_yet'), observedAt: observationUpdatedAt} and render three groups in the provider summary (observed / not sure / not yet) with the observation dates; apply the same to buildMonitoringReportDoc where milestones feed it. Counts only, no scores — keep the existing fail-closed clinician-ceiling check. Acceptance: a milestone marked 'not sure' appears as its own category in the exported summary with its date; existing report tests updated; no percentage or verdict introduced.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/Reports.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/monitoring.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/context/ArborContext.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-5",
+    "title": "Development Check ignores corrected age and months precision that Milestones already has",
+    "type": "journey",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "ScreeningFlow (Screening.tsx line 111) picks its question band via bandForAge(childProfile.age) — the legacy whole-years field (screening.ts line 135) — while MilestonesTab (lines 59-63) uses ageMonthsFromProfile + correctedAge/comparisonAgeMonths for preterm children. So a preemie gets corrected-age treatment on the milestone map but is screened against the uncorrected band one click away, on the surface that outputs 'worth a professional conversation'. AR-CAP-08 requires 'corrected-age handling where appropriate', and the two surfaces currently disagree about the same child. There is also no corrected-age/screening-limits note in the check intro.",
+    "fix": "In ScreeningFlow, compute comparisonAgeMonths(ageMonthsFromProfile(childProfile) ?? age*12, childProfile.preterm?.gestationalWeeks) and add a months-based band selector (bandForAgeMonths already exists in lib/milestoneData; add the equivalent for screening AGE_BANDS which are already min/maxMonths). When corrected age applies, show the existing corrected badge pattern (reuse ms.correctedBadge styling from MilestonesTab lines 391-395) plus one sentence in the intro. Acceptance: preemie fixture selects the corrected band in a unit test; badge visible in the sheet intro; term children unchanged.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/Screening.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/screening.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/milestoneData.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-6",
+    "title": "Weekly focus picks the first unchecked milestone in array order — not age-aware",
+    "type": "journey",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "DevelopmentTab.tsx lines 56-70: weeklyFocus = milestones.find(m => !m.checked) — whatever unchecked item happens to sort first, ignoring age band, corrected age, and observationStatus. A parent of a 4-year-old can be told this week's focus is an infant skill, or a far-ahead band item, presented with hub-hero prominence as 'the' focus. It also treats not_sure identically to not_yet, wasting the uncertainty signal wave-2 just added ('not sure' items are the natural 'watch for this during play' focus).",
+    "fix": "Select focus with priority: (1) not_sure items in the current corrected band (frame as 'watch for it this week'), (2) not_yet/unmarked items in the current band, (3) nearest earlier band, else the existing empty-state. Reuse bandForAgeMonths + comparisonAgeMonths (already imported in MilestonesTab). Acceptance: unit test with a 48-month fixture never selects an under-1 item while current-band items exist; not_sure preferred over untouched when both exist in-band; copy differentiates 'watch for' vs 'try'.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/DevelopmentTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/milestoneData.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-7",
+    "title": "No seam for illustrated milestone examples — build the governed media slot now, license media later",
+    "type": "capability",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "AR-CAP-08/AR-CONT-07 (backlog v6 lines 444, 511) center on illustrated/video milestone examples (CDC Milestone Tracker reference). The Milestone type (types.ts lines 221-233) supports only skillLooksLike text and reference links — there is no media field, no governance metadata (source, rights, reviewer, locale), and MilestonesTab renders nothing visual per item. The capability cannot even accept content when rights are approved; meanwhile the CDC comparison gap named in the locked shortlist (rank 6) stays fully open.",
+    "fix": "Add an optional exampleMedia field to Milestone ({kind: 'illustration'|'video', src, alt, credit, rightsRef, reviewer, reviewedAt, locale}) validated per the AR-CAP-07 governed-schema shape; render in the milestone drill-in behind a fails-closed check (missing reviewer/rightsRef → never renders, mirroring the AR-CONT-01 governance pattern already merged in wave-2). Ship with zero media entries. Acceptance: schema + render + fail-closed test land now; the item stays visually unchanged in prod until licensed media (Guy-gated rights/source approval per journey-spec gates) is added.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/types.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/MilestonesTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/docs/arbor-enhancement-backlog-v6.md"
+    ],
+    "gate": "guy"
+   },
+   {
+    "id": "TODAY-8",
+    "title": "Consumer-polish debris on Milestones: window.prompt/confirm, sub-10px type, '0-year-old' AI prompt",
+    "type": "design",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "Three below-standard details on an otherwise strong screen. (1) MilestonesTab.tsx lines 175 and 186 use window.prompt/window.confirm for custom-milestone rename/delete — jarring native dialogs, untranslated, un-themeable, and inconsistent with the in-app sheet patterns used everywhere else. (2) Milestone metadata runs at 9-10px (text-[9px]/text-[10px] badges, descriptions at line 150) — below readable mobile minimums for the register's 30-45yo parent audience at 390px. (3) The explain() prompt (line 96) says 'for a ${childProfile.age}-year-old' — for any child under 1 this asks the model about a '0-year-old' despite the months-precise B0 spine being available in the same file (chronoMonths, line 59).",
+    "fix": "Replace prompt/confirm with the existing inline-edit/confirm-row patterns (the gestation form in the same file is the template); raise metadata type to 11px minimum and descriptions to 12px; change the explain() prompt to use months for under-24-month children ('a 9-month-old') via the already-computed chronoMonths. Acceptance: no window.prompt/window.confirm in the file; no text below text-[11px] on the milestone item; explain prompt snapshot test covers an infant profile.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/MilestonesTab.tsx"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "COACH & AI",
+  "verdict": "The coach spine is genuinely mature — structured CoachContract rendered as an actionable card stack, screened /api/voice, a complete fail-closed neural TTS seam, and a single seedCoach/requestCapture convergence that PR #80's Behaviors canvas correctly respects. But the wave-2 pass left the flagship Ask surface with two mirrored composers, an English-only answer card in a bilingual product (a standing-constraint breach), voice conversations that leave no transcript or reviewable action, and an ai/capabilities layer that is pure dead scaffolding wired to nothing. The next-level work is consolidation and honesty, not new surface area.",
+  "findings": [
+   {
+    "id": "COACH-1",
+    "title": "Flagship answer surface is English-only in Hebrew (HE/EN parity breach)",
+    "type": "content",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "CoachAnswerCards hardcodes every panel title and action in English (\"What may be happening\", \"Try today\", \"Say this\", \"Avoid\", \"Watch for\", \"Save as plan\", \"Save to plan\", \"Teacher note\", \"The council weighed in\", FRAME_LABELS), and CoachTab.tsx:503 never passes the lang prop, so even the i18n-keyed citation/escalation strings default to \"en\". TrustSafetyBar (kit.tsx:72-92: \"Worth a conversation with a professional\", \"Talk to a professional\") and ~8 CoachTab toasts (\"Seeded the plan generator — tap Generate\", \"Arbor drafted a log — review and save\", etc.) are also EN-only. A Hebrew parent's structured coach answer — the product's centerpiece — renders in English chrome.",
+    "fix": "Move all CoachAnswerCards panel titles, FRAME_LABELS, action labels, TrustSafetyBar strings, and CoachTab toast strings into app/src/lib/i18n.ts keys (HE+EN); pass lang={uiLang} from CoachTab to CoachAnswerCards. Acceptance: with uiLang=he, a contract answer renders zero English chrome (verify via a render test asserting the he strings for each panel title); tokens/tsc/tests stay green; existing sourcesLabel/escalationTier tests untouched.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/coach/CoachAnswerCards.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/ui/kit.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "COACH-2",
+    "title": "Voice coach turns vanish: no captions, no transcript, no post-session review",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "streamVoiceTurn (CoachTab.tsx:168-194) speaks the answer sentence-by-sentence but never appends either turn to chatMessages and renders no captions — after a voice session the conversation is gone: nothing to re-read, save to plan, log, or hand off. This misses AR-AI-03 (captions/normalized events), AR-AI-06 (shared answer contract for voice), and AR-AI-07 (post-session review) from the AI backlog, and it is an accessibility gap (deaf/quiet-environment parents get dead air).",
+    "fix": "Executable now for the browser loop: on onResult, append the dictated user turn to the active conversation via the existing chat-message write seam; accumulate streamVoice deltas into a visible streaming AI bubble (reuse the existing TypewriterMarkdown/streaming bubble path) so the spoken answer is simultaneously captioned and persisted; on abort keep partial text. Acceptance: after a voice turn, both turns appear in the thread and survive conversation switch; voicePhase chip shows live text while speaking; RTL correct in HE; no new capture path (writes go through the same conversation persistence as handleChatSend).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/context/ArborContext.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/api.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "COACH-3",
+    "title": "ai/capabilities policy+registry is dead scaffolding — wire it or cut it",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "The new Codex draft (app/src/ai/capabilities/{contracts,policy,registry}.ts, ~80 LoC + tests) implements AR-AI-01/02 contracts (fail-closed selectProvider, exact-match CapabilityRegistry) but nothing outside its own test files imports it: modelRouter.ts routes via a hardcoded Record<ModelRoute,string>, server/tts.ts switches on config.ttsProvider, childAsr and Live are hardcoded. Shipping an unused 'policy layer' creates false assurance that provider eligibility (region/retention/training/data-class) is enforced when it is not.",
+    "fix": "Wire one real seam through it as the proving path: build ProviderCandidate lists from ArborConfig for the tts and structured-text capabilities, route routeDecisionFor()/synthesizeSpeech provider selection through selectProvider with a RoutePolicy (EU region, requireNoTraining, retention), and register the google-TTS + Gemini/Claude adapters in a CapabilityRegistry instantiated in createApp. Behavior must stay identical for current config. Acceptance: at least one production request path executes selectProvider (test: misconfigured region throws policy_denied, fail-closed); grep shows ai/capabilities imported from non-test code; if the team decides against wiring this cycle, delete the module instead — no orphan layer on main.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/ai/capabilities/policy.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/ai/capabilities/registry.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/ai/modelRouter.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/server/tts.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/server/createApp.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "COACH-4",
+    "title": "CoachTab has two mirrored composers — consolidate to one conversation canvas",
+    "type": "design",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "The wave-2 draft added a hero composer (textarea + send + photo + mic, CoachTab.tsx:271-310) above the existing in-thread composer (lines 698-770); both bind the same chatInput, so typing in one mirrors into the other, and the page shows two send buttons, two mic toggles, and three photo buttons. On 390px the answer streams into a 460-560px inner-scroll card several viewports below the top composer, so a parent who sends from the hero doesn't see the reply. This is the actual duplication Guy is reacting to — the guided-canvas grammar applied to Coach created a redundant surface, whereas the Behaviors capture bar correctly converges on one form.",
+    "fix": "One composer: keep the top hero composer as the single input, delete the bottom duplicate (input+send+photo/mic row), keep Council/specialist links as a compact row under the thread; drop the fixed-height inner scroll (let the thread flow with the page) or auto-scroll the viewport to the streaming answer on send. Acceptance: exactly one visible text input, one mic, one photo entry per viewport; sending at 390px leaves the streaming bubble on-screen without manual scroll; empty-state copy (coach.empty.title currently rendered twice, lines 277 and 476) appears once; all existing tests green.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "COACH-5",
+    "title": "Guided-canvas strings hardcoded inline instead of i18n.ts keys",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "PR #80/wave-2 introduced inline bilingual ternaries that bypass the i18n system (standing constraint: keys live in app/src/lib/i18n.ts): BehaviorsTab.tsx:125-145 captureCopy table (8 strings x 2 langs), CoachTab.tsx:279 memory-disclosure line, CoachTab.tsx:325 \"Fewer options\"/\"פחות אפשרויות\". These strings are invisible to any i18n audit/tooling and set the precedent Codex will copy in the next wave. BehaviorsTab.tsx:392 also adds a literal box-shadow rgba instead of the shadow token.",
+    "fix": "Move all inline uiLang ternaries in these two files into i18n.ts keys (beh.capture.*, coach.memoryLine, coach.lens.fewer) and replace the literal shadow with var(--shadow-sm). Acceptance: grep for 'uiLang === \"he\" ?' in BehaviorsTab.tsx/CoachTab.tsx returns only icon-direction picks (no content strings); tokens guard test green.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/BehaviorsTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "COACH-6",
+    "title": "Citation drawer shows raw card slugs instead of real source titles",
+    "type": "content",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "CoachAnswerCards.tsx:297 renders provenance as the card slug with dashes stripped (\"transition bridge 3 5y\"), even though the server-side knowledge registry (app/src/knowledge/wiki.ts:12) has a real title per card and routes/api.ts already holds the full card objects when it backfills sourceCardsUsed (api.ts:378-379, 507-508). Grounding display — a trust centerpiece — reads like debug output.",
+    "fix": "Have /chat and /council return a parallel sourceCards: {id,title,type}[] (keep sourceCardsUsed for compatibility), thread it through CoachContract, and render title + type chip in the citation drawer with slug fallback. Acceptance: for a grounded answer the drawer shows \"Transition Bridge · intervention\" style rows, never dash-stripped slugs; contract zod schema updated with optional field; coach.test.ts extended.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/contracts/coach.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/coach/CoachAnswerCards.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/types.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "COACH-7",
+    "title": "Gemini Live path: no crisis screening or turn logging (default-on gated)",
+    "type": "firewall",
+    "priority": "P0",
+    "effort": "L",
+    "problem": "When the server reports a Live token available (CoachTab.tsx:230-250), parent voice runs audio-to-audio through startGeminiLive with only a system-prompt guardrail — no output screening (unlike /api/voice's SAFE-V1 gate), no turn logging, and no crisis escalation path. The AR-AI ledger itself gates default-on Live behind the turn-logging sliver (\"Live turn-logging sliver (gates default-on Live)\"), and this is the known open voice P0. Also the vendor bake-off (AR-AI-04) and enabling neural TTS (TTS_PROVIDER=google env flip) are Guy decisions.",
+    "fix": "Guy-gated bundle: (a) decide whether Live stays provision-gated until the turn-logging sliver + per-turn transcript screening ship; (b) approve building the turn-logging endpoint (transcribe/log each Live turn, run screenModelOutput on model turns, hard-stop the session on a flagged turn); (c) approve TTS_PROVIDER=google flip for the coach voice pump. Acceptance for the build (post-approval): every Live model turn is logged with a screening verdict; a flagged turn stops audio within the turn; Live remains off in prod until this lands.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/server/tts.ts"
+    ],
+    "gate": "guy"
+   },
+   {
+    "id": "COACH-8",
+    "title": "Behaviors capture bar looks like a chat input but is a dead button",
+    "type": "journey",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "The guided-canvas capture bar (BehaviorsTab.tsx:392-413) renders composer grammar — a wide text-field-shaped area reading \"Capture the moment in two lines\" — but it is a <button> that only scrolls/opens the form below; a parent who taps and starts typing loses their first keystrokes and has to re-orient into the form. The affordance promises conversation-canvas behavior it doesn't have (the exact fake-affordance class Guy flagged on the polish PRs). The convergence itself is correct (form + requestCapture seam, no new capture path) — only the entry interaction lies.",
+    "fix": "Make the bar a real single-line input: typing opens the capture form with the typed text prefilled into newLogTrigger (\"What happened?\") and focus moved there; Enter opens the form rather than submitting. Zero new capture paths — it only prefills the existing form state. Acceptance: type \"threw blocks at school\" in the bar → form opens with trigger field prefilled and focused; mobile 390px keyboard doesn't obscure the field; voice/photo tiles unchanged.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/BehaviorsTab.tsx"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "JOURNAL / REMEMBER spine",
+  "verdict": "The spine's architecture is genuinely good — one useTimeline read, Feed/Story as two densities of one surface (TimelineTab.tsx), a real requestCapture/consumeCaptureRequest seam, and the flat single-column wave-2 feed is the RIGHT call over main's 2-col grid (chronological scan order, RTL-safe, journal register). But the surface leaks badly: the weekly recap renders an avg-intensity score (firewall breach the wave-3 test missed), a HE parent's journal is half English (all buildTimeline titles + Story labels hardcoded), the AUTO/MANUAL provenance badge attributes parent observations to Arbor, and there is literal mojibake on the compose card. \"Story that writes itself\" is legible but not yet trustworthy or bilingual.",
+  "findings": [
+   {
+    "id": "JRNL-1",
+    "title": "Weekly recap renders avg behavior-intensity score on a parent surface",
+    "type": "firewall",
+    "priority": "P0",
+    "effort": "S",
+    "problem": "WeeklyTab.tsx:199 renders t(\"wk.avgIntensity\") = \"avg intensity {avg}/5\" (i18n.ts:1158/2856) from its own snapshot computation (WeeklyTab.tsx:56) — a derived score on the child, exactly the metric the CI-22/23/24 wave-3 subtraction deprecated in signalTimeline.ts:167-190. The guard test clinicalFirewall.wave3.test.ts:148 only bans the string 'avgIntensityThisWeek', so WeeklyTab's independent avg slipped through. reportExport.ts:73,86 also prints \"Average intensity X / 5\" in the parent-facing Reports export, while the consult packet correctly strips it (packet.test.ts:229). Bonus violations in the same file: hex literals #fff (:176), #9a5a2a (:227), rgba(52,178,119,.30) (:232).",
+    "fix": "Replace the avg-intensity line in WeeklyTab with counts only (e.g. \"{n} moments · {wins} resolved\" — winsThisWeek already exists in Momentum); drop avgIntensity from reportExport.ts sections; delete/orphan wk.avgIntensity + beh.stats.avgIntensity keys; swap the three hex/rgba literals for --arbor-* tokens. Acceptance: extend clinicalFirewall.wave3.test.ts to grep parent components for /avg.?intensity|\\/5/ rendering, WeeklyTab + reportExport pass, packet.test.ts still green, no hex literals in WeeklyTab.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/WeeklyTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/reportExport.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/clinicalFirewall.wave3.test.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "JRNL-2",
+    "title": "Mojibake Hebrew on the Journal compose card (and Masterclasses)",
+    "type": "bug",
+    "priority": "P0",
+    "effort": "S",
+    "problem": "JournalTab.tsx:248 ships '×¨×’×¢ ×—×“×©' (UTF-8 'רגע חדש' read as Latin-1) as the compose-card eyebrow — every Hebrew user sees literal garbage on the flagship capture surface. Same corruption in Masterclasses.tsx:156 ('×œ×ž×™×“×” ×œ×”×•×¨×™×'). Root cause: inline uiLang==='he' string ternaries scattered through JournalTab (lines 212-218, 226-237, 248, 286-287) instead of keys in lib/i18n.ts, dodging the i18n file's encoding hygiene.",
+    "fix": "Fix both mojibake strings ('רגע חדש', 'למידה להורים'); migrate JournalTab's inline HE/EN ternaries (header eyebrow/title/storyCopy, 'This week in the story', 'Timeline', 'moments') to journal.* keys in lib/i18n.ts per the standing constraint. Acceptance: a vitest that greps src for the mojibake signature /×[ -ÿ]/ fails on regression; HE journal renders real Hebrew end-to-end.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/JournalTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/Masterclasses.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "JRNL-3",
+    "title": "Timeline feed content is hardcoded English — HE journal is half English",
+    "type": "content",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "buildTimeline bakes English into every signal title/detail/meta: 'Logged moment' (signalTimeline.ts:87), 'Observed: {title}' (:103), 'Growth plan' (:116), '{n}/{m} steps' (:119), 'Approved to memory' (:129), 'Coach session' (:141), 'Played: {title}' + 'Builds {domain}' (:152-153), 'matched to a recent pattern' (:155). groupByDay hardcodes 'Ongoing'/'Today'/'Yesterday' (:311-320). StoryTimelineTab's KIND_LABEL (:28-35) and FILTERS (:37-45) are English-only. A Hebrew parent's 'story that writes itself' writes itself in English — direct HE/EN parity violation on the whole spine.",
+    "fix": "Keep signalTimeline pure: stop baking display strings — emit structured fields (kind, refTitle, counts) and have JournalTab/StoryTimelineTab label them via new timeline.* i18n keys (kind labels, filter labels, 'Observed:'/'Played:' templates, day-group labels via Intl like JournalTab.relDay already does). Acceptance: with uiLang=he, zero English strings render in Feed or Story for all six signal kinds; existing signalTimeline.test.ts updated; RTL layout unchanged.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/signalTimeline.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/JournalTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/StoryTimelineTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "JRNL-4",
+    "title": "Provenance badge misattributes parent observations to Arbor",
+    "type": "content",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "JournalTab.tsx:82 derives provenance as isAuto = kind !== 'moment', so parent-confirmed milestones ('Observed: X' — the parent tapped Yes), parent-logged play sessions, and plans all wear the green 'Arbor' auto_awesome badge; only coach sessions and derived memory are genuinely Arbor-authored. This is the exact surface AR-AI-08/09 (ai-integration-backlog lines 27-29: 'provenance retained', 'parent can understand why Arbor said this') depends on — today it teaches parents the WRONG mental model of who wrote their child's story, the trust-killer for confirmed-capture.",
+    "fix": "Change the mapping: MANUAL (You) = moment, milestone, play; AUTO (Arbor) = coach, memory, plan. Add a unit test locking the kind→provenance table. Acceptance: a checked milestone row shows the 'You' badge; memory/coach rows keep 'Arbor'; test added next to signalTimeline.test.ts or a new JournalTab test.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/JournalTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "JRNL-5",
+    "title": "Milestones stranded as undated 'Ongoing' — never appear in the chronology",
+    "type": "journey",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "buildTimeline sets at: null for every milestone (signalTimeline.ts:103) even though Milestone.observationUpdatedAt exists (types.ts:230, written by the wave-2 Yes/Not-sure/Not-yet flow). Null-dated signals sort last (:159-164), so the journal's proudest moments — first words, first steps — pile up at the bottom labeled 'Ongoing' instead of appearing on the day the parent noticed them. Same for plans. This directly breaks the 'family story, in order' promise the header makes.",
+    "fix": "In buildTimeline, set milestone at: m.observationUpdatedAt ?? null (and consider plan.createdAt if present on ActionPlan). Acceptance: a milestone checked today renders in the Today group of both densities with its timestamp; undated legacy milestones still fall back to Ongoing; signalTimeline.test.ts covers both cases.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/signalTimeline.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/signalTimeline.test.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "JRNL-6",
+    "title": "Every parent moment is chip-tagged 'Regulation' regardless of content",
+    "type": "content",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "JournalTab.tsx:69-76 hardcodes KIND_DOMAIN.moment = attachment_regulation, so ALL behavior moments get the 'Regulation' domain chip — QA screenshot docs/audits/2026-07-22-ask-journal-fix/02-journal.png shows 'Sensory Meltdown → Regulation'. A wrong clinical-ish label on every row erodes exactly the descriptive-not-evaluative trust the file's own header comment claims, and lib/monitoring.ts:127 already ships classifyBehaviorDomain(log) that maps behaviorType/trigger/notes to the right domain.",
+    "fix": "For kind==='moment', classify via classifyBehaviorDomain (thread the source BehaviorLog or classify in the domainOf memo from behaviorLogs); when it returns null, omit the domain chip entirely rather than guessing. Acceptance: 'Sensory Meltdown' rows chip as Sensory & motor; unclassifiable rows show provenance badge + time only; no row shows a wrong domain.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/JournalTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/monitoring.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "JRNL-7",
+    "title": "Journal flashes false empty state on load; header count mislabeled 'this week'",
+    "type": "journey",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "JournalTab.tsx:273 shows 'No moments yet' whenever signals.length===0 with no loading gate — on a slow Firestore load every returning parent sees the zero-data empty state flash before their story appears (context exposes logsLoaded; BehaviorsTab uses it, Journal does not). Separately, the header stat (JournalTab.tsx:234-237) is labeled 'This week in the story' / 'השבוע בסיפור' but renders signals.length — the ALL-TIME total — a truthfulness bug on the one number the page leads with.",
+    "fix": "Gate the feed on logsLoaded: render 2-3 skeleton rows (ui/Skeleton exists, WeeklyTab.tsx:187 shows the pattern) until loaded, then empty state only for a genuinely empty ledger. Fix the stat: count dated signals within 7 days for the 'this week' label (reuse the DAY-window idiom from computeMomentum) or relabel to 'In {name}'s story'. Acceptance: no empty-state flash on reload with data; the number matches its label in EN and HE.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/JournalTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/context/ArborContext.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "JRNL-8",
+    "title": "Keep the flat single-column feed (call validated) — add day-group headers",
+    "type": "design",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "Verdict on the merge decision: the wave-2 flat single-column timeline is CORRECT over main's 2-col grid — a journal is a chronological read, a grid breaks top-to-bottom scan order, doubles RTL mirroring risk, and the flat column matches the calm parent register (screenshot 02-journal.png confirms it reads well). Remaining gap vs modern journaling standards (Day One, Huckleberry logs): no day anchors — each row repeats its own relative date on the right (JournalTab.tsx:299), so a month of entries is a wall with no rhythm, while groupByDay already exists in signalTimeline.ts:293 and Story already uses it.",
+    "fix": "Do NOT restore the 2-col grid. Render the feed through groupByDay: a slim sticky day header (localized Today/Yesterday/weekday per JRNL-3's keys) per group, rows show time-only on the right within a group, 'Ongoing' group last. Acceptance: day headers appear in both EN and HE (RTL start-aligned), row anatomy otherwise unchanged, works at 390px with no horizontal scroll, Story density untouched.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/JournalTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/signalTimeline.ts"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "PLAY & KID WORLD",
+  "verdict": "The kid world's foundations are genuinely strong — write-seam guard tests, monotonic stars, token-only styling, and a 252-activity playbank with verified sources and full HE pairing — but the shell over-promises what it delivers: the kid dashboard advertises 8 games by names that don't exist in the arcade, the Kid Mode lock stops pointers but not the keyboard, the session-length feature mislabels 8-minute activities as 25-30 minutes because the extended bucket is empty, and the entire kid surface is hardcoded English despite the HE-first flagship market. No audit evidence exists for any kid-mode screen in design-qa.md or docs/audits/2026-07-22-* — every QA pass covered parent surfaces only.",
+  "findings": [
+   {
+    "id": "TODAY-1",
+    "title": "Kid Mode HE/EN parity violation: entire kid surface is hardcoded English",
+    "type": "content",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "Standing constraint requires HE/EN parity on every surface, and the IL HE/RTL market is the flagship. KidDashboard.tsx hardcodes ~25 visible strings (\"Hi {name}!\", \"You're doing amazing today\", \"TODAY'S ADVENTURE\", \"Let's go\", \"My growth adventures\", all 4 adventure + 8 game tile titles/subs, \"Parent locked\", \"Stars, never streaks\"); KidModeOverlay.tsx hardcodes \"Home\", \"Hero Stories\", \"Playbank\", \"Feelings\"; HoldExitButton.tsx hardcodes \"Hold to exit\", \"Back to parent\", \"Hold… {n}s\". The file's own header (KidDashboard.tsx lines 22-26) admits this and defers to a transcreation gate — but the surface is live now, so a Hebrew family gets a fully English kid mode.",
+    "fix": "Executable now: move every visible string in KidDashboard.tsx, KidModeOverlay.tsx, HoldExitButton.tsx, ParentChallenge.tsx into app/src/lib/i18n.ts keys (kid.* namespace) with the current EN values, RTL-safe interpolation, and add a test asserting no bare string literals render in kidmode/*.tsx. HE values require the native-voice transcreation pass (kid register, never machine-translated) — ship keys with EN fallback and a tracked HE-copy TODO list for Guy's native reviewer. Acceptance: uiLang=he renders zero hardcoded English in Kid Mode chrome; all kid.* keys exist in both lang maps (HE may be reviewer-pending placeholders behind the existing lang gate).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/KidDashboard.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/KidModeOverlay.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/HoldExitButton.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "guy"
+   },
+   {
+    "id": "TODAY-2",
+    "title": "Kid Mode lock is pointer-only: focus is NOT trapped despite the claim",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "KidModeOverlay.tsx line 13 claims \"Escape is blocked; focus is trapped\" — but only Escape blocking is implemented (lines 52-62). There is no focus trap and no inert on the parent shell: the parent app remains mounted and focusable behind the zIndex-70 overlay. A child pressing Tab walks focus into invisible parent-shell controls (nav, capture, settings, sign-out) and Enter activates them sight-unseen. The only real trap lives inside ParentChallenge.tsx (lines 79-102), which is only mounted during the exit challenge. The backdrop swallows pointers (F4 comment, line 76-81) but the keyboard path was simply missed — on any keyboard-attached device (laptops, tablets with keyboards) the lock is bypassable.",
+    "fix": "In KidModeOverlay, while isKidModeOpen: set the `inert` attribute (plus aria-hidden) on the app root container (the Shell mount node) so nothing behind the overlay is focusable, and remove it on close; alternatively add a Tab-cycling focus trap scoped to the overlay like ParentChallenge's. Add a kidMode test asserting the shell root carries inert while open. Acceptance: with Kid Mode open, repeated Tab never moves focus to an element outside the overlay; existing kidMode.test.ts write-path assertions stay green.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/KidModeOverlay.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/kidMode.test.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-3",
+    "title": "Session-length feature is dishonest: empty extended bucket + chip-label duration badge",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "The playbank has ZERO activities with durationMin > 20 (measured: 238 short ≤10min, 14 standard 11-20min, 0 extended, of 252). select.ts lines 170-177 silently falls back to the FULL pool when the extended bucket is empty, and DailyPlayCard.tsx lines 57-64 then renders the CHIP'S label (\"25-30 min\" via play.session.extended) instead of the activity's real durationMin. Net effect: a parent taps \"extended\", gets an 8-minute activity badged as 25-30 minutes. The standard bucket (14 activities across 5 domains x 4 bands) is also too thin — selection quality collapses to near-random off-band picks (bandScore 0.35 dominates a 14-item pool).",
+    "fix": "Two-part: (1) UI honesty now — in DailyPlayCard, always show the activity's actual durationMin in the badge; only render a session-length chip in SessionLengthChips when its bucket is non-empty for the child's band (compute from PLAY_ACTIVITIES); when the pool falls back, show the honest duration, never the chip range. (2) Content — author extended (20-30min) and additional standard variants for the top activities as part of the AR-CONT-02 wave (this is exactly its \"easier/harder variation\" slot). Acceptance: a test in select.test.ts asserting every offered SessionLength has >=3 in-band activities per band, and DailyPlayCard never displays a duration range the picked activity doesn't satisfy.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/playbank/select.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/playbank/content.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/DailyPlayCard.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/practice/SessionLengthChips.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-4",
+    "title": "Kid dashboard game tiles promise 8 games that don't exist by those names",
+    "type": "journey",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "KidDashboard.tsx GAMES (lines 88-97) shows 8 named tiles — Memory Match, Feelings Detective, Sound Explorer, Sequence Quest, Calm Builder, Rhythm Hero, Puzzle Planet, Mimic Studio — but every tile's onClick routes to the generic \"arcade\" (line 361), where HeroArcade.tsx (lines 58-66) presents worlds named Sound Lab, Mood Mountain, Story Quest, Mind Vault, Spell Forge, Beat Keeper, Hero Pose, Pattern Power, Word World. Only \"Mimic Studio\" matches. A pre-reading child taps \"Memory Match\", lands on a grid with no Memory Match, and must re-find \"Mind Vault\" by icon — a broken navigation promise for the exact audience that can't recover from it. Same for the \"Studio\" adventure tile (routes to arcade). The plan defers per-game DEEP-LINKS to a Guy decision (§9.5), but the NAMING mismatch is not gated.",
+    "fix": "Executable now: rename the KidDashboard GAMES entries to the real HeroArcade world names (Sound Lab, Mood Mountain, Mind Vault, Beat Keeper, Hero Pose, Pattern Power, Story Quest, Mimic Studio) and reuse each world's existing icon/color so tile and destination are visually the same object; drop or relabel tiles with no live counterpart (Calm Builder). Where the mapping is 1:1 and unambiguous, pass the target worldId through onOpenSurface so the arcade opens with that world pre-selected — this is honoring the existing mapping, not the gated new games↔worlds design. Acceptance: every kid-dashboard game tile's title string appears verbatim on the surface it opens.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/KidDashboard.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/practice/HeroArcade.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/KidModeOverlay.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-5",
+    "title": "AR-CONT-02 groundwork: playbank schema lacks guided-play fields; interest engine near-inert",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "L",
+    "problem": "AR-CONT-02 (arbor-enhancement-backlog-v6.md line 506) requires the top-50 activities to carry setup, 60-90s demonstration, easier/harder variation, what-to-notice, and an outcome prompt. The PlayActivity interface (content.ts lines 29-54) has none of these slots — only steps/whatItBuilds/householdItems/durationMin — so the content wave has no schema to land in. Separately, themeableContextSlot is true on only 5 of 252 activities, so the entire CI-29 interest-boost machinery (sanitizer, 1.3x boost, why-line, matchedInterest plumbing in select.ts) almost never fires: a parent who records interests sees \"Matched to X's love of trains\" on at most 5 activities app-wide.",
+    "fix": "Extend PlayActivity with optional fields: easierVariation: string, harderVariation: string, whatToNotice: string, outcomePrompt: string, demoMediaId?: string (media stays empty until the rights-gated production pipeline exists). Author the four text fields for the top-50 activities (rank by domain coverage x band) in EN+HE, render them in DailyPlayCard behind the existing expand affordance, and audit the 252 activities to flag every one whose steps are genuinely interest-themeable, raising themeableContextSlot coverage to a meaningful floor (target >=60 activities). The 60-90s demonstration video slice stays Guy-gated (media rights + production pipeline per backlog sequencing item 2). Acceptance: coverage.test.ts gains an assertion that top-50 activities have all four guided fields non-empty in both languages; themeableContextSlot count >= 60.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/playbank/content.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/playbank/coverage.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/DailyPlayCard.tsx",
+     "C:/Users/dguyr/ROS/Arbor/docs/arbor-enhancement-backlog-v6.md"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-6",
+    "title": "Streak remnants contradict the no-streak non-goal: loss-framed badges live, orphaned streak panel declared 'live'",
+    "type": "design",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "Three streak artifacts survive despite the non-goal and the app's own doctrine (lib/streak.ts: \"no broken streak event\"; practice/signals.ts lines 77-79: streak \"must NEVER drive a child-facing reward\"): (1) practice/achievements.ts lines 93-94 ship loss-framed, resettable streak badges — 🔥 \"3-day streak\" and 🏆 \"Full week\" (\"Seven straight days\") — rendered on the live Practice Journey tab (JourneyTab, Shell.tsx line 130), a practice surface a child plausibly views with the parent; achievements.ts's own FORBIDDEN_TRIGGERS list includes \"streak-count\". (2) i18n.ts line 1042: toast copy \"Done. That keeps {name}'s streak alive.\" — explicit loss-framing. (3) MissionsPanel (MissionsTab.tsx, with its 🔥 streak pill at lines 166-172) is imported by NOTHING — it is dead code — yet practice/worlds.ts lines 139-146 declares it a LIVE world including \"streak\", so the ledger misrepresents the tree and invites reintroduction.",
+    "fix": "Replace the two consecutive-day badges in computeAchievements with monotonic equivalents (e.g. \"Practiced 3 different days\" / \"7 days practiced\" using daysPracticed, which signals.ts line 95 explicitly offers as the non-anxiety replacement); rewrite ov.mission.toastDone (EN+HE, i18n.ts lines 1042/~2771) to a gain-framed line with no streak noun; either delete MissionsPanel or gate it behind an explicit revival decision, and correct the worlds.ts \"missions\" entry to status matching reality. Acceptance: grep for loss-framed streak copy in child-adjacent surfaces returns nothing; epics/achievements tests updated and green.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/practice/achievements.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/practice/MissionsTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/practice/worlds.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/practice/JourneyTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-7",
+    "title": "Kid dashboard hero banner and tile art are mismatched/recycled",
+    "type": "design",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "The flagship \"TODAY'S ADVENTURE\" banner (KidDashboard.tsx lines 292-330) says \"Start a hero story / Pick a world and you're the star\" but its WorldScene imagePrompt is \"building a glowing blanket-fort calm corner\" and its fallback art is game-feelings.webp — a calm-corner/feelings scene under hero-story copy. Art recycling further breaks the one-tile-one-world illusion: game-feelings.webp is used for THREE distinct tiles (Feelings adventure, Feelings Detective, Calm Builder, plus the banner), and game-mimic.webp backs both Studio and Mimic Studio. For the audience this register serves, identical art on differently-named tiles reads as the same game and undermines the avatar-everywhere comic-world promise.",
+    "fix": "Align the banner's imagePrompt + art with its copy (storybook/hero-castle scene — game-courage-steps.webp already exists and fits), and give each tile a unique art asset from public/visuals/cards/sm/ (or a distinct imagePrompt so generated scenes diverge); where no distinct asset exists, prefer the accent-colored icon fallback over a wrong recycled image. Acceptance: no two visible kid-dashboard tiles share the same art file; the banner's copy, prompt and art depict the same scene.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/KidDashboard.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-8",
+    "title": "Hebrew playbank + kid SFX copy is self-declared first-draft, unreviewed",
+    "type": "content",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "content.ts line ~4757 annotates the entire PLAY_ACTIVITIES_HE block (252 entries) as \"First draft — native review recommended\", and it feeds every HE Daily Play card, the highest-frequency parent surface for IL. In the kid register, HeroJourneyTab.tsx STORY_ART (lines 50-69) contains non-native SFX transliterations — e.g. \"שלאמפ!\" for SPLASH (not a Hebrew onomatopoeia; a native child would expect שפריץ/בום), \"גלופ!\", \"גראח!\" — exactly the machine-flavored copy the transcreation gate exists to prevent. The publish gate for the IL market is native-human review; this content is already live-path.",
+    "fix": "Assemble the review packet: export PLAY_ACTIVITIES_HE (title/whatItBuilds/steps) plus the ~40 kid-register micro-copy strings (STORY_ART sfxHe, PACK_WORLD labelHe, celebration strings) into a single reviewable doc for Guy's native reviewer; apply corrections as a data-only PR (no logic change). The obvious SFX fixes (שלאמפ→שפריץ) can be batched into the same review. Acceptance: the first-draft annotation in content.ts is replaced with a review-date stamp naming the reviewer; SFX table contains only reviewer-approved Hebrew onomatopoeia.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/playbank/content.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/HeroJourneyTab.tsx"
+    ],
+    "gate": "guy"
+   }
+  ]
+ },
+ {
+  "category": "CARE / SHARE & PROTECT + GROWTH (AR-CAP-04/05, billing)",
+  "verdict": "The plumbing under this category is genuinely strong — server-enforced, time-boxed share grants with fail-closed consult-packet ceilings and a real GDPR erase endpoint — but the trust surface overpromises on top of it: the recipient side of sharing is a dead end (grants exist, nothing is viewable), the \"Delete child data\" button is theatrical (never calls the real erase seam), and the flagship trust screen is almost entirely hardcoded English, violating HE/EN parity. Growth surfaces are calm and dark-pattern-free but price-opaque, which reads as evasive rather than honest.",
+  "findings": [
+   {
+    "id": "TODAY-1",
+    "title": "\"Delete child data\" button is a fake control that claims server-side processing",
+    "type": "bug",
+    "priority": "P0",
+    "effort": "S",
+    "problem": "TrustedSharing.tsx lines 121-124: deleteData() shows window.confirm then alert(\"Deletion request recorded. ... verified and processed server-side.\") without calling ANY API. The real seam exists and is tested: eraseEverything() in C:/Users/dguyr/ROS/Arbor/app/src/lib/childData.ts (lines 142-152, returns a DeletionReceipt) backed by POST /privacy/erase in C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts line 1910. Telling a parent a GDPR Art.17 request was recorded when nothing happened is a trust breach on the app's flagship trust surface.",
+    "fix": "Wire the button to eraseEverything(uid, childProfile.id): replace confirm/alert with the app Modal (typed child-name confirmation), show the returned DeletionReceipt counts (memoryEvents/shares/consents erased + erasedAt) as the done-state, then route away from the deleted child. Acceptance: clicking through actually hits /privacy/erase (network assertion in a test), receipt rendered, no alert()/window.confirm remaining, copy in both EN and HE.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/TrustedSharing.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/childData.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-2",
+    "title": "Inbound shares are a dead end — recipients can never see what was shared",
+    "type": "capability",
+    "priority": "P0",
+    "effort": "L",
+    "problem": "The share-create flow promises \"They can see: Story timeline, Weekly Insight, ...\" (TrustedSharing.tsx SCOPE_OPTIONS, review step line 197), but the only recipient surface is the \"Shared with you\" card (lines 263-282) rendering grant metadata with no CTA. Server-side, /shared-with-me (routes/api.ts line 254) returns grants only; grep confirms NO data endpoint honors a grant for a recipient (isShareActive is used only in shares.ts filtering and the co-parent cap at routes/api.ts:206). The core promise of AR-CAP-04/05 (backlog v6 lines 440-441) is structurally unfulfilled — a co-parent who accepts a share gets nothing.",
+    "fix": "Build a read-only shared-child viewer v0 within existing seams: (1) server endpoint GET /shared/:grantId/packet that validates isShareActive + recipient email, then assembles ONLY the granted scopes by reusing buildConsultPacket/serializePresetPacket ceilings (counts only, firewall-safe by construction); (2) clicking an inbound share card opens a read-only view of those sections. No new capture paths, no write access. Acceptance: recipient sees exactly the granted scopes, revoked/expired grant returns 403 and the card disappears, forbidden-token guard runs on the assembled payload, tests for scope filtering.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/sharing/shares.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/TrustedSharing.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/consult/packet.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-3",
+    "title": "Trusted Sharing surface is ~90% hardcoded English — HE/EN parity violation on the trust screen",
+    "type": "journey",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "Standing constraint (HE/EN parity = P0). Only the title/subtitle/error use i18n (sec.sharing.*, err.careTeam.*; verified in lib/i18n.ts lines 694-695/2433-2434). Everything else is literal English: \"New share\", \"Find a professional\", role labels, SCOPE_OPTIONS, DURATIONS, \"Their role\", \"What to share\", \"Access duration\", \"Review before sharing\", \"Approve & share\", the TrustSafetyBar note, \"Coordinating around {name}\", \"Active shares\", \"Revoke access\", \"Shared with you\", \"Your data\", \"Export all data\", \"Delete child data\", \"This session\", audit strings, and the delete confirm text. Worse, scope display strings double as the server-stored enforcement values (createShare sends the English labels), so localization cannot be a pure copy swap.",
+    "fix": "Introduce stable scope IDs in sharing (e.g. story_timeline, weekly_insight, + preset report types) stored on the grant, with localized labels resolved at render; move ALL literals to app/src/lib/i18n.ts with HE translations; keep a migration/back-compat read for existing English-string grants. Acceptance: zero hardcoded user-facing English strings in TrustedSharing.tsx (lint/grep check), HE screenshot shows fully translated flow incl. RTL chips, existing grants still render, server tests cover legacy scope strings.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/TrustedSharing.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/sharing/shares.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/Reports.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-4",
+    "title": "Hebrew mojibake on the Academy header — double-encoded UTF-8 shipped in source",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "Masterclasses.tsx line 156: the HE eyebrow above the Masterclasses catalog is stored double-UTF-8-encoded (hex-verified: c397 c593... sequences) and renders as \"×œ×ž×™×“×...\" garbage to every Hebrew parent, directly beside correctly-encoded Hebrew strings (lines 134-151). Kid/parent register aside, this is visible corrupted text on a paid-tier learning surface.",
+    "fix": "Replace the corrupted literal with the intended Hebrew (\"למידה להורים\" / parent learning) — preferably by moving it to an i18n key like the rest of the header (sec.master.* keys already exist). Then sweep the whole repo for the double-encoding signature (grep -rP '\\xc3\\x97' app/src) and fix any siblings. Acceptance: HE Academy page shows clean Hebrew; repo grep for the mojibake byte pattern returns zero hits; add the pattern to a guard test alongside lib/tokens.test.ts style checks.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/Masterclasses.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-5",
+    "title": "Upgrade surfaces never show a price — cadence toggle is meaningless and reads as evasive",
+    "type": "design",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "PaywallModal.tsx and the Settings plan panel offer \"Upgrade to Plus\"/\"Upgrade to Family\" with a monthly/annual toggle but zero pricing anywhere (verified: no price strings in i18n set.plan.*/pw.* keys lines 831-862, none in server/billing.ts — checkout URLs only). The parent first learns the cost on the hosted Stripe/RevenueCat page. Pricing is locked (€12.99 Plus / €19.99 Family). Withholding price until checkout is the one dark-pattern-adjacent element on an otherwise calm, honest paywall (good: plain \"Maybe later\", feature-specific body copy, no countdowns). Also: useCheckout's failure path toasts \"Checkout isn't live yet\" with type \"success\" — an error dressed as success at the purchase moment.",
+    "fix": "Add per-plan, per-cadence prices to the paywall and Settings panel via i18n (EN+HE), with annual shown as effective monthly + \"billed yearly\", plus a one-line \"Cancel anytime\" note; source the figures from a single client constant that a test asserts matches the entitlement config so display can never drift from Stripe. Change the checkout-unavailable toast to type \"info\". Acceptance: both surfaces show prices in both languages before any checkout redirect; toast severity fixed; screenshot at 390px shows no overflow.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/billing/PaywallModal.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/SettingsModal.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/hooks/useCheckout.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-6",
+    "title": "Share audit trail is session-ephemeral; revoked grants vanish without history",
+    "type": "journey",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "TrustedSharing's \"This session\" card (lines 291-296) is a useState array that dies on navigation, yet the surface promises accountable sharing (\"enforced on the server\"). Revoked grants are filtered out entirely (line 74), so a parent cannot answer \"who had access to my child's data last month?\" — and AR-CAP-04's acceptance criteria (backlog v6 line 440) explicitly require audit events. The data already exists server-side: grants carry createdAt/revokedAt/expiresAt; the store just filters them out (shares.ts listByOwner applies isShareActive).",
+    "fix": "Add an includeInactive option to listByOwner + /api/shares?history=1, and render a real \"Sharing history\" section from grant records (created, expired, revoked with dates) replacing the ephemeral session list. No new event infrastructure needed for v0 — grants ARE the audit record. Acceptance: revoking a share moves it to history with its revocation date after full reload; empty-history state written; EN+HE copy.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/sharing/shares.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/TrustedSharing.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-7",
+    "title": "Consult packet falls short of the AR-CONT-09 visit-prep-pack spec",
+    "type": "content",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "AR-CONT-09 (backlog v6 line 513) specifies: what changed, evidence to bring, questions to ask, consent/redaction checklist, follow-up outcome — per audience incl. SLP and behavioral-health. Current packet.ts delivers a strong redactable summary (about/patterns/development/tried/memory) with exemplary fail-closed ceilings, but has: no \"what changed since last export\" delta, no suggested questions, no post-visit outcome capture (the loop never closes back into the record), and only 3 of 5 audiences (CONSULT_PRESETS: teacher/therapist/pediatrician — no SLP, no behavioral-health).",
+    "fix": "Two tranches. Executable now (data-derived, no authored clinical content): (a) persist lastExportedAt per audience and add a computed \"Since last visit\" delta section (new logs count, plan changes, newly-noticed milestones — counts only, runs through existing assertWithinCeiling); (b) add SLP + behavioral-health presets reusing the clinician ceiling. Clinical-gated: authored \"questions to ask\" banks and audience-specific guidance text must go through the AR-CONT-01 governance path (publication-blocked until named clinical review — fails closed). Acceptance: delta section appears only when a prior export exists; new presets covered by ceiling tests mirroring packet.test.ts; authored content lands behind the governance flag, not live.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/consult/packet.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/consult/packet.test.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/AskSpecialist.tsx"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "TODAY-8",
+    "title": "Same share roster rendered twice on one screen with different framings",
+    "type": "design",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "TrustedSharing maps the identical `team` array twice back-to-back: \"Coordinating around {name}\" (lines 208-232, no actions) and \"Active shares\" (lines 234-261, with revoke). A parent sees every co-parent/teacher listed twice on the same viewport with subtly different chip layouts — noise on a screen whose whole job is clarity about who can see what.",
+    "fix": "Merge into ONE roster card per grant: person + role + scopes + expiry + revoke, using the richer \"Coordinating around\" visual (InitialsTile) and folding the revoke action in. Keep the W4.4 merge intent (one roster surface) honest by actually having one roster. Acceptance: each grant renders exactly once; revoke reachable from the merged card; 390px and RTL verified.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/TrustedSharing.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-9",
+    "title": "AR-CAP-04 caregiver identities — produce the gated design, don't code",
+    "type": "capability",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "Current model is email-string grants against a single owner account: no distinct adult identity, no private-by-default adult AI history separation, no role migration, and the co-parent seat is just a plan-gated grant count (routes/api.ts lines 200-217). AR-CAP-04 (P0 in the ledger, score 6.7, Good Inside Family Plans reference) requires invite→distinct identity, shared child + plan, private adult histories, scopes/revoke, audit events, and a migration test for existing shares — plus GDPR/DPIA sign-off. This is explicitly design-only until Guy approves the sharing/auth migration (backlog v6 line 489).",
+    "fix": "Write the design doc only: identity model (Firebase multi-auth per adult), grant→membership migration for existing email grants, private-adult-history data boundary, audit event schema (can extend TODAY-6's history), DPIA notes, and rollout/rollback. Deliver as docs/architecture ADR for Guy's gate; zero app code. Acceptance: doc covers all seven AR-CAP-04 acceptance bullets and names the migration test plan.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/docs/arbor-enhancement-backlog-v6.md",
+     "C:/Users/dguyr/ROS/Arbor/app/src/sharing/shares.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts"
+    ],
+    "gate": "guy"
+   }
+  ]
+ },
+ {
+  "category": "PLATFORM & DESIGN SYSTEM",
+  "verdict": "Token discipline largely held through the Codex waves (guard tests pass, wave-2 components use vars), but the platform has a split-brain theme: shell chrome (Topbar/Sidebar/MobileNav/AiRail/modals) resolves the legacy :root glass-sapphire palette while content resolves the .arbor-parent clinical overrides — including one token (--arbor-topbar-band) referenced where it is undefined — and the repo now carries two competing primaries (green vs sapphire) mixed on the same Today cards. Nav IA is coherent and the job-based mobile bar is a real improvement; the executable gaps are a dead rail toggle at xl widths, wave-2 strings bypassing the i18n registry, and motion that ignores reduced-motion for ~90 animation call sites.",
+  "findings": [
+   {
+    "id": "TODAY-1",
+    "title": "Split-brain token scope: chrome renders the legacy :root palette, content the .arbor-parent palette; --arbor-topbar-band undefined at its only usage",
+    "type": "bug",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "The .arbor-parent override block (app/src/index.css lines 719-789) remaps ~40 tokens (paper, ink #14225a, rule, clay #2b7fff, flat green-soft #e7f6ef, shadows, plus the UC-1 chrome tokens --arbor-topbar-band/#eef3fb, --arbor-subtab-active/#14225a) but is applied ONLY to <main class=\"arbor-parent\"> (Shell.tsx:213) and the WowOnboarding overlay. Topbar, Sidebar, MobileNav, AiRail, SearchModal, SettingsModal and PaywallModal all render OUTSIDE that scope, so they resolve the old :root \"2035 glass\" values instead: --arbor-clay = #58a6ff (vs content #2b7fff), --arbor-green-soft = a translucent gradient (vs flat #e7f6ef), --arbor-ink = #1a1a2e (vs navy #14225a), --arbor-clay-glow = a blue glow (AiRail.tsx:65 CTA). Worst: Topbar.tsx:34 sets background: var(--arbor-topbar-band), which is declared only inside .arbor-parent — undefined where Topbar lives, so the designed sapphire band silently renders transparent on every desktop screen. Two different sapphires, two different inks and two shadow systems coexist in one viewport; this palette mismatch is a plausible root of Guy's \"badly designed\" verdict on the recent waves.",
+    "fix": "Hoist the .arbor-parent custom-property block so the whole parent shell shares one palette: either add the arbor-parent class to the page-shell grid wrapper in Shell.tsx (chrome + content, keeping KidModeOverlay's separate .arbor-play scope intact), or change the index.css selector to `.arbor-app` with `.arbor-play` re-overriding for kid surfaces. Acceptance: (1) getComputedStyle on Topbar shows background #eef3fb (band visible); (2) Sidebar active row, MobileNav active ink, AiRail CTA and content pills resolve the SAME --arbor-clay value; (3) no var(--arbor-*) referenced in components/layout/* is undefined at its render scope — add a unit test that parses layout/*.tsx for var() names and asserts each is declared in index.css at :root or .arbor-app level; (4) sandbox screenshots at 1280 and 390px before/after, verified per the arbor-sandbox recipe.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/index.css",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/Shell.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/Topbar.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/Sidebar.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/AiRail.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/MobileNav.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-2",
+    "title": "Two competing primaries: constraint/docs say GREEN, .arbor-parent remaps primary to sapphire #2b7fff; wave-2 cards mix both on one card",
+    "type": "design",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "The standing constraint (and tokens.ts's own header, app/src/lib/tokens.ts:32 \"Primary — friendly green (repurposes the clay token name)\") declares the parent register GREEN-primary — yet index.css .arbor-parent:756-759 explicitly remaps --arbor-clay to \"the mockup sapphire\" #2b7fff, making --arbor-gradient-primary resolve sapphire everywhere in content. Result on the merged wave-2 Today surface: TodayActionLoop.tsx uses --arbor-green-soft/--arbor-green-ink for its eyebrow, icon chip and receipt (green) but --arbor-gradient-primary for its main CTA (sapphire) — two primaries on one card; ProgressNarrative is all-green next to sapphire hub pills (--arbor-subtab-active navy #14225a). tokens.ts documentation actively contradicts runtime values, so every future agent inherits the confusion (AskArborButton.tsx comments call the green-token button \"sapphire\").",
+    "fix": "Guy decision required: canonical parent primary = green (--arbor-green-*) per the standing constraint, or the UC-2 sapphire clinical-trust scheme now in .arbor-parent. Then execute mechanically: (a) if green — repoint --arbor-clay/--arbor-gradient-primary inside .arbor-parent to the green ramp and delete the sapphire remap + --arbor-topbar-band/--arbor-subtab-active or retint them green-navy; (b) if sapphire — restyle wave-2 card CTAs/eyebrows to the sapphire system and rewrite tokens.ts:32 header + AskArborButton comments to tell the truth. Acceptance: one primary hue family on the Today screen (screenshot diff), tokens.ts prose matches resolved values, and the decision recorded in design-qa.md.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/index.css",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/tokens.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayActionLoop.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/ProgressNarrative.tsx"
+    ],
+    "gate": "guy"
+   },
+   {
+    "id": "TODAY-3",
+    "title": "AI-rail toggle is a dead control at xl widths (1280-1535px)",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "This branch changed AiRail.tsx:16 from `hidden xl:flex` to `hidden 2xl:flex` and Shell.tsx:198-202 only adds the third grid column at 2xl — but the Topbar toggle that flips showAiRail (Topbar.tsx:61-72) is still `hidden xl:inline-flex`. Between 1280 and 1535px (the most common laptop width) the toggle renders, aria-pressed flips, localStorage persists — and nothing visible happens. A parent pressing \"how Arbor helps\" gets silent no-op; a screen-reader user hears state change with no content change.",
+    "fix": "Align breakpoints: change the Topbar rail-toggle to `hidden 2xl:inline-flex` (simplest, matches the new rail breakpoint), or restore the rail at xl with the narrower 300px column Shell previously had. Acceptance: at 1280px the toggle is either absent or produces a visible rail; aria-pressed state always corresponds to a visible layout change; test in sandbox at 1280 and 1536px.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/Topbar.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/AiRail.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/Shell.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-4",
+    "title": "Wave-2 strings bypass the i18n registry — inline he-ternary dictionaries invisible to the EN/HE parity guard",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "The standing constraint routes all UI strings through app/src/lib/i18n.ts, whose parity test (i18n.test.ts: \"every English key has a Hebrew translation\") is the HE/EN-parity enforcement mechanism. The wave-2 components ship full inline copy objects instead: ProgressNarrative.tsx:32-46 and TodayActionLoop.tsx:12-16 each declare `he ? {…} : {…}` dictionaries (~20 strings each), and QuickLogModal follows the same pattern. HE parity happens to exist today but is unguarded — any future edit can silently break Hebrew, and the strings are invisible to key audits. The pattern also exists in ~12 older files, and OnboardingFlow.tsx:91 hardcodes the English aria-label `Step ${step} of ${total}` in the first-run journey.",
+    "fix": "Migrate the wave-2 dictionaries into lib/i18n.ts as keyed entries (e.g. today.loop.eyebrow/title/make/tried/helped/somewhat/notToday/receipt/adapt/remove; today.narrative.*) in both en and he dicts, replace the inline objects with t() calls, and add ob.progress.step key for the OnboardingFlow aria-label. Acceptance: no `he ? {` ternary remains in components/overview/*; i18n.test.ts parity still green; HE rendering byte-identical (copy translations verbatim); optionally add a lint-style test failing on new `uiLang === \"he\" ? {` copy objects in components/.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/ProgressNarrative.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayActionLoop.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/QuickLogModal.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/auth/OnboardingFlow.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-5",
+    "title": "prefers-reduced-motion only tames CSS; 91 motion/react animations run at full motion",
+    "type": "design",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "index.css:455-461 zeroes CSS animation/transition durations under prefers-reduced-motion, but motion/react drives animations via JS/WAAPI, which that rule does not touch. The app has 91 `animate=` call sites (incl. Shell's tab transition at Shell.tsx:324-330 and BehaviorsTab insight expansion) and only 7 files use useReducedMotion locally; there is no MotionConfig anywhere (verified: zero grep hits in App.tsx/main.tsx). Vestibular-sensitive parents — a real slice of a parenting-app audience — get full motion regardless of OS setting; this also matters for store-review accessibility checks (mobile publishing is an active goal).",
+    "fix": "Wrap the app root (App.tsx, around the provider stack) in `<MotionConfig reducedMotion=\"user\">` from motion/react — one line that makes every motion component honor the OS setting (transform/layout animations disabled, opacity retained). Acceptance: with emulated prefers-reduced-motion in devtools, the tab-switch y-slide and card entrance animations no longer translate; existing per-component useReducedMotion logic unaffected; all 1321 tests stay green.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/App.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/index.css"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "TODAY-6",
+    "title": "Token stragglers and a stale guard: dead sapphire-shadow button variant, orphan hex literals, and no repo-wide hex-creep test",
+    "type": "design",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "Three hygiene defects survive the waves: (1) AskArborButton.tsx's default (non-compact) variant is dead code — Shell.tsx:232 mounts only `compact`, Topbar.tsx explicitly removed the pill — yet it carries a hardcoded sapphire shadow `rgba(43,127,255,0.55)` (line 62) and comments claiming it renders in the Topbar; (2) raw literals with stale excuses: AiRail.tsx:54 `#1f6f4b`, and BehaviorsTab.tsx:456-458 + MilestonesTab.tsx:569 use `#eef6f1` with a comment \"no m2 token yet\" although --arbor-paper-tinted (#eef6f1) was added in AP-043 (tokens.ts:71); (3) the \"hex guard\" in lib/tokens.test.ts only checks tokens.ts↔index.css consistency — it never scans components, so 88 hex literals sit in components/*.tsx undetected (most legitimately in SVG marks/confetti/print CSS, but nothing distinguishes those from creep).",
+    "fix": "Delete the dead AskArborButton default variant (or restyle its shadow with a token and mount it where the comment claims); replace AiRail #1f6f4b with var(--arbor-green-ink), and the two #eef6f1 gradients with var(--arbor-paper-tinted), deleting the stale comments; add a vitest that globs src/components/**/*.tsx, extracts #hex literals outside an explicit allowlist (ArborMark, ArborMascot, StoryIllustration, Avatar, MimicMatch, print-CSS template strings, BRAND_HEX imports) and fails on new entries. Acceptance: guard test green with the current allowlist, red when a new hex is introduced in a non-allowlisted file.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/AskArborButton.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/layout/AiRail.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/BehaviorsTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/MilestonesTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/tokens.test.ts"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "CONTENT & GOVERNANCE (AR-CAP-07, AR-CONT-01)",
+  "verdict": "The governance seam is real and verifiably fail-closed: all 25 cards ship as reviewStatus \"draft\", publishedHardMomentCards filters through isPublishableContent, and a test pins the published set to length 0 (app/src/content/hardMomentCards.test.ts:21). Card copy quality is genuinely strong in both EN and HE (calm clinical register, no scores/verdicts, firewall-clean) — but the pack misses two explicit AR-CONT-01 acceptance criteria (age adaptation, per-moment escalation boundaries), the review stamp is trivially forgeable because it is not bound to a named reviewer or to the content itself, and the cards are 100% dark with zero surface integration, so the flagship AR-CONT-01 deliverable currently delivers nothing to users even after review would land.",
+  "findings": [
+   {
+    "id": "CONT-1",
+    "title": "Review stamp not bound to a named reviewer or to card content — approval is a one-enum flip",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "isPublishableContent (app/src/content/governance.ts:24-32) checks reviewerRole non-empty and reviewedAt truthy — but every draft card already ships with reviewerRole 'clinical-content-reviewer' pre-filled (hardMomentCards.ts:26), reviewedAt would pass with any non-empty string ('TBD' publishes), and nothing binds the stamp to the reviewed text: editing a card's sayThis after approval keeps reviewStatus 'approved' and it stays published. The standing constraint requires publication blocked until NAMED clinical review; the schema has no reviewer identity at all, so the gate technically fails closed today but is fail-open against the first careless edit or approval flip.",
+    "fix": "Harden GovernedContentRecord + predicate: (a) add required reviewedBy (named person, distinct from reviewerRole) and require non-empty trimmed value; (b) validate reviewedAt parses to a valid date <= now and <= reviewDueAt; (c) add contentHash (stable hash over title/doNow/sayThis/avoid/observe/escalation, both locales) stamped at approval, and make isPublishableContent recompute and compare so any post-approval edit demotes the card; export a computeContentHash helper so the future review tool can stamp. Acceptance: new governance.test.ts cases — approved card with empty reviewedBy fails; reviewedAt 'TBD' fails; mutating sayThis.en after stamping fails publication; existing green tests stay green.",
+    "files": [
+     "app/src/content/governance.ts",
+     "app/src/content/governance.test.ts",
+     "app/src/content/hardMomentCards.ts",
+     "app/src/content/hardMomentCards.test.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "CONT-2",
+    "title": "Cards are completely dark: no surface consumes publishedHardMomentCards — build the gated surfaces now",
+    "type": "journey",
+    "priority": "P1",
+    "effort": "L",
+    "problem": "Grep confirms nothing outside app/src/content/ imports hardMomentCards or publishedHardMomentCards. AR-CONT-01 (docs/arbor-enhancement-backlog-v6.md:505) specifies surfaces 'Ask Arbor + Today + Behaviors', yet no rendering component, selector, or route exists. When clinical review eventually stamps the cards, nothing lights up — the #1-ranked content deliverable (backlog line 518: 'Ship AR-CONT-01 first') has a content pack and a gate but no product. The comment at hardMomentCards.ts:59 ('Product surfaces must consume this export') is aspirational only.",
+    "fix": "Build the surfaces dark, driven exclusively by publishedHardMomentCards so they render nothing until review lands (governance stays the switch): (1) BehaviorsTab — a 'Hard moments' section with category chips (big-feelings/limits/relationships/separation/routines/transitions) opening a card sheet with the five labeled sections (do-now, say-this, avoid, observe, escalation styled as a distinct calm safety band); hide the whole section when the published list is empty. (2) Today — when a card matches recent behavior-log categories, offer its doNow as the TodayActionLoop recommendation via the existing acceptTodayAction seam (app/src/components/overview/TodayActionLoop.tsx:21), no new capture path. (3) Ask Arbor — a 'Talk this through' button per card calling the existing seedCoach seam with card context. All copy bilingual via card LocalizedText + new i18n keys for chrome labels in app/src/lib/i18n.ts; --arbor-green-* tokens only; verify 390px + RTL. Acceptance: with an approved fixture card the three surfaces render and are RTL-correct; with the real (all-draft) pack, zero UI appears; tests assert both states.",
+    "files": [
+     "app/src/components/tabs/BehaviorsTab.tsx",
+     "app/src/components/overview/TodayActionLoop.tsx",
+     "app/src/content/hardMomentCards.ts",
+     "app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "CONT-3",
+    "title": "Age adaptation missing: all 25 cards claim ageBands 2-12 but scripts are toddler/preschool register",
+    "type": "content",
+    "priority": "P1",
+    "effort": "L",
+    "problem": "AR-CONT-01 acceptance (backlog v6 line 505) explicitly requires 'age adaptation' per card. The card() factory hardcodes ageBands ['2-5','6-9','10-12'] for every card (hardMomentCards.ts:24), but the content is written for young children: 'Two more turns, then you park the toy' (leaving-play), 'You brush first, then I finish' (toothbrushing), 'After snack, your grown-up will bring you to me' (separation). Served to a parent of a 10-12-year-old these scripts are wrong and credibility-damaging — the metadata over-claims coverage the content does not have, which is exactly the class of inaccuracy the governance schema exists to prevent.",
+    "fix": "Either (a) honest-narrow: set ageBands per card to what the copy actually serves (most cards 2-6, homework/screen-ending/losing-game 6-12) and file the older-band variants as a wave-2 authoring task; or (b) full fix: extend HardMomentCard with optional per-band overrides ({ band, doNow?, sayThis? }) and author 6-9/10-12 variants for the ~15 cards where register diverges, with surfaces selecting by active child age. Do (a) now in this repo (S-effort, pure data fix, keeps tests green with updated assertions); (b) is the content wave. Acceptance for (a): no card's ageBands include a band its sayThis register does not plausibly serve; test asserts every card has >=1 ageBand.",
+    "files": [
+     "app/src/content/hardMomentCards.ts",
+     "app/src/content/hardMomentCards.test.ts"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "CONT-4",
+    "title": "Escalation boundary is one generic string shared by all 25 cards",
+    "type": "content",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "AR-CONT-01 requires a per-moment 'escalation boundary'. Every card reuses the identical blanket safety string (hardMomentCards.ts:16-19, wired at line 23). For hitting, public-meltdown, separation, and fear-new-thing, the clinically useful boundary is moment-specific (e.g., hitting: injury, frequency beyond developmental expectation, targeting; separation: distress persisting weeks and blocking school entry). A shared platitude reads as boilerplate, weakens trust on the highest-stakes field of the card, and under-serves the escalation job the field exists for. Note the generic string correctly avoids diagnoses/verdicts — firewall-clean — it is just not moment-differentiated.",
+    "fix": "Author moment-specific escalation text (EN+HE) for at least the 8 higher-stakes cards (hitting, public-meltdown, tantrum, separation, school-dropoff, fear-new-thing, mealtime, teasing), keeping the pattern 'concrete observable threshold + who to talk to', counts-not-verdicts, no timelines presented as diagnostic cutoffs; keep the shared string as fallback for low-stakes routine cards. Change card() to accept an optional escalation override. Acceptance: >=8 cards have unique escalation text in both locales; test asserts hitting/public-meltdown/separation escalation !== the shared fallback; all copy remains draft-status pending clinical review.",
+    "files": [
+     "app/src/content/hardMomentCards.ts",
+     "app/src/content/hardMomentCards.test.ts"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "CONT-5",
+    "title": "Hardcoded proper names in say-this scripts break personalization and Hebrew RTL",
+    "type": "content",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "Three cards embed literal names: not-listening uses 'Dylan' and leaves it in Latin script inside the Hebrew string ('Dylan, רגליים על הרצפה בבקשה' — hardMomentCards.ts:44), producing a bidi-mixed line and a script the parent must mentally rewrite; sharing uses 'Maya'/'מאיה' (line 47); school-dropoff uses 'Ms. Lee' in EN but silently genericizes to 'המורה' in HE (line 50), so the locales diverge. Say-this scripts are meant to be spoken verbatim — a stranger's name defeats that, and the app knows the active child's name.",
+    "fix": "Replace literal names with a {{childName}} token (and a generic role word for the teacher, matching in both locales), plus a small renderSayThis(card, childName) helper used by the CONT-2 surfaces that substitutes the active child's name at display time; fallback to a neutral phrasing ('your name' constructions) when no child profile exists. Acceptance: no Latin proper names remain in any HE string (add a test regex over HE fields rejecting /[A-Za-z]{2,}/ except allowed tokens); EN and HE express the same referents; substitution covered by a unit test.",
+    "files": [
+     "app/src/content/hardMomentCards.ts",
+     "app/src/content/hardMomentCards.test.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "CONT-6",
+    "title": "Governed schema misses AR-CAP-07 fields and its consumption criterion (search/recommendation)",
+    "type": "capability",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "AR-CAP-07 acceptance (backlog v6 line 443) requires the schema cover 'age/band, moment, concern, domain, action, evidence, reviewer, locale, safety class, version, review date' AND that 'search/recommendation use it'. GovernedContentRecord (governance.ts:10-22) has no concern field (the parent-worry taxonomy that AR-CAP-06/08 depend on — sequencing at line 464 makes AR-CAP-07 their foundation), 'moment' exists only as HardMomentCategory on the card subtype rather than the governed base, and no selector/recommendation API exists, so search/recommendation cannot use the schema. Also untested: 'retired' status exists but no test proves a retired record fails publication.",
+    "fix": "Extend GovernedContentRecord with concerns: string[] (seed a small controlled vocabulary: aggression, sleep, separation-anxiety, food, screens, attention, peer-conflict, transitions) and moment?: string on the base; tag all 25 cards; add a pure selector module (e.g. content/selectCards.ts) exposing byCategory, byConcern, and matchToRecentBehaviors(behaviorCategories) ranking published cards only — this is the API the CONT-2 surfaces and future AR-CAP-06 routing consume. Add governance tests: retired record fails isPublishableContent; selector never returns a draft. Acceptance: selector unit-tested, cards carry >=1 concern each, tsc clean.",
+    "files": [
+     "app/src/content/governance.ts",
+     "app/src/content/governance.test.ts",
+     "app/src/content/hardMomentCards.ts"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "CODEX WORK TRIAGE",
+  "verdict": "Codex's wave-2 core is structurally sound — the action loop writes through a proper child-collection seam with actionLoops added to CHILD_SUBCOLLECTIONS, content governance genuinely fails closed, the TTS safety screen is a real win, and every new parent surface keeps counts-only firewall copy. The badly designed part is concentrated on Today: the same recommendation now renders twice with two competing CTAs, the same recent-moments list renders twice, a keyword hack silently replaces real AI guidance with canned demo copy, and a 2.6MB static hero PNG ships on the primary screen — plus PR #80 smuggled an app-wide re-theme (sage canvas → flat paper, all shadows, card radius) past the UC-2 design lock by editing the guard test to match. Of the 8 codex remote branches, 6 are fully harvested/superseded and safe to delete; ask-journal-clarity should be mined for its dedup idea only, and v2-architecture-foundation must never merge (contradicts the Firebase Hosting deploy doctrine).",
+  "findings": [
+   {
+    "id": "CODEX-1",
+    "title": "Today renders the same guidance and same evidence twice with competing CTAs",
+    "type": "journey",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "After PR #80 + wave-2, OverviewTab stacks TodayRecommendation (focusHeadline + 'Begin' CTA seeding the coach) directly above TodayActionLoop which repeats the identical focusHeadline as the acceptable step ('Make this today's step'). Two adjacent cards, same sentence, two different primary actions. Below that, ProgressNarrative's 'Your evidence' cell (3 recent behavior/play items → Journal) duplicates the 'Recent context' section (3 activityFeed rows → Journal) that sits immediately after it. Today is now 8 stacked blocks and the parent sees the same content twice, twice.",
+    "fix": "Merge TodayActionLoop into the TodayRecommendation card: hero keeps the headline + image, the capacity picker + accept button become the hero's action row, 'Begin' (coach) becomes secondary; when an action is accepted the hero swaps to accepted/outcome state. Delete the standalone 'Recent context' section (app/src/components/tabs/OverviewTab.tsx lines 383-397) and keep ProgressNarrative's evidence cell as the single recent-moments surface. Acceptance: focusHeadline appears exactly once on Today; recent moments list appears exactly once; 1321 tests stay green.",
+    "files": [
+     "app/src/components/tabs/OverviewTab.tsx",
+     "app/src/components/overview/TodayRecommendation.tsx",
+     "app/src/components/overview/TodayActionLoop.tsx",
+     "app/src/components/overview/ProgressNarrative.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "CODEX-2",
+    "title": "PR #77 keyword hack replaces real AI guidance with canned demo copy; greeting hardcoded to morning",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "OverviewTab.tsx lines 178-180: if the AI focus sentence matches /transition|screen\\s*time|dysregulation/i it is silently replaced with the static string t('today.focus.transition') ('Make the next transition feel easier.') — commit 1ddb3745 added this to make the screenshot match the design mock. Transitions/screens are the most common focus topics, so most real users will see the same canned line every day instead of their child's actual guidance. Same commit hardcoded the greeting to 'Good morning, {parent}.' (line 276) regardless of time of day, inline in the component instead of i18n keys.",
+    "fix": "Delete the keyword-override branch (keep only the format-scrubbing regexes above it, which are legitimate). Replace the hardcoded greeting with time-of-day-aware i18n keys (today.greeting.morning/afternoon/evening, EN+HE) and move the two inline subtitle strings (lines 278-279) into i18n.ts. Acceptance: focusHeadline always derives from focus.text; greeting varies by local hour; no inline he/en ternaries in the header.",
+    "files": [
+     "app/src/components/tabs/OverviewTab.tsx",
+     "app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "CODEX-3",
+    "title": "2.6MB static PNG ships as the Today hero image",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "PR #73 (93f47be3) committed app/public/assets/today/calm-transition-activity.png at 2,615,196 bytes; TodayRecommendation.tsx line 9 still renders it as a bg-cover image in a ~180px-wide column on the app's primary screen. That is a ~2.5MB LCP penalty on every Today load for a decorative image that never changes and is unrelated to the actual dynamic guidance text next to it.",
+    "fix": "Re-encode to a ≤120KB WebP/AVIF at ~800px width (headless tooling in-repo, e.g. sharp via a one-off script) and update the url() reference; or drop the image column entirely and keep the text-only card. Acceptance: Today route static payload shrinks by ≥2.4MB; the image (if kept) still renders crisp at 2x on the 180px column.",
+    "files": [
+     "app/public/assets/today/calm-transition-activity.png",
+     "app/src/components/overview/TodayRecommendation.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "CODEX-4",
+    "title": "PR #80 re-themed the whole app past the UC-2 design lock, editing the guard test to match",
+    "type": "design",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "Commit 5205fdae changed --arbor-paper from the UC-2-approved sage gradient to flat #fbfaf7, retuned all five --shadow-* tokens, and changed the global cardCls from 22px radius to 18px — then edited lib/tokens.test.ts's KIT_CARD_CLS expectation so the drift guard passes. This is an app-wide visual identity change (every parent surface) bundled inside a 'guided conversation canvas' PR, superseding the merged-and-approved design program without a gate. The new cardCls value is technically better tokenized (var(--arbor-rule), var(--shadow-xs)), but the decision itself was never made by Guy.",
+    "fix": "Put the binary decision to Guy: (a) ratify the new editorial-paper theme and record it in the design program docs as superseding UC-2's sage canvas, or (b) revert the index.css token block (lines ~721-737) and cardCls/tokens.test.ts to the pre-5205fdae values (git show a6c15684^1 has them). Either way the tokens.test.ts guard must encode the ratified value, not trail the implementation. Acceptance: one documented canonical canvas/shadow/radius set; guard test asserts it.",
+    "files": [
+     "app/src/index.css",
+     "app/src/lib/tokens.ts",
+     "app/src/lib/tokens.test.ts"
+    ],
+    "gate": "guy"
+   },
+   {
+    "id": "CODEX-5",
+    "title": "Wave-2 merged dead scaffolding: ai/capabilities has zero consumers, hardMomentCards has no surface and a sandbox-name leak",
+    "type": "capability",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "app/src/ai/capabilities/{contracts,policy,registry,index}.ts (f650e531) is imported by nothing outside its own directory — pure dead code with tests. app/src/content/hardMomentCards.ts holds 24 fully-authored EN+HE cards, but (a) publishedHardMomentCards is correctly always [] (all reviewStatus 'draft', governance fails closed as required), and (b) no component consumes either export, so even post-review nothing would render. Content defect inside the governed drafts: the 'not-listening' card hardcodes the sandbox child name 'Dylan' in both EN and HE copy ('Dylan, feet on the floor, please.').",
+    "fix": "Two options per module: wire or remove. For hardMomentCards: build the consuming surface now (e.g. a 'Hard moments' card list in BehaviorsTab or CoachTab fast-start reading ONLY publishedHardMomentCards, so it renders nothing until clinical approval — journey-safe and unblocks the AR-CONT-01 review); replace 'Dylan' with a neutral '{name}'-style placeholder before the named clinical review. For ai/capabilities: either wire policy checks into routes/api.ts capability endpoints or delete the directory. Acceptance: no exported module in app/src with zero external consumers; no proper names in governed content.",
+    "files": [
+     "app/src/ai/capabilities/registry.ts",
+     "app/src/ai/capabilities/policy.ts",
+     "app/src/content/hardMomentCards.ts",
+     "app/src/content/governance.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "CODEX-6",
+    "title": "All new Codex components bypass i18n.ts with inline he/en copy objects",
+    "type": "content",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "TodayActionLoop.tsx (lines 12-16), ProgressNarrative.tsx (lines 32-46), QuickLogModal review copy (lines ~25-29), BehaviorsTab captureCopy block, and OverviewTab header/'Recent context' strings all define inline `he ? {...} : {...}` copy objects instead of keys in app/src/lib/i18n.ts — the standing i18n mechanism. HE/EN parity happens to hold today, but the copy is invisible to any translation audit/tooling and splits the dictionary across six files. BehaviorsTab also adds a raw color literal shadow ('0 8px 28px rgba(32,47,42,0.05)') that dodges the hex-only guard.",
+    "fix": "Hoist every inline copy object into namespaced i18n.ts keys (today.action.*, today.narrative.*, quicklog.review.*, beh.capture.*) using the existing t() interpolation; replace the rgba shadow literal with var(--shadow-xs). Acceptance: grep for `uiLang === \"he\" ? {` and `uiLang === \"he\" ? \\`` in components returns zero copy-object hits; tokens/greps stay green.",
+    "files": [
+     "app/src/components/overview/TodayActionLoop.tsx",
+     "app/src/components/overview/ProgressNarrative.tsx",
+     "app/src/components/overview/QuickLogModal.tsx",
+     "app/src/components/tabs/BehaviorsTab.tsx",
+     "app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "CODEX-7",
+    "title": "Capture review shows a fake static 'high confidence' verdict",
+    "type": "content",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "QuickLogModal's confirmed-capture review sheet always prints 'Source: parent-entered text · high confidence' (EN+HE) as a hardcoded string. The confidence claim is meaningless (it is shown unconditionally) and dresses up parent input with system-verdict language — off-register for the calm/clinical parent surface, and a bad precedent next to the clinical firewall.",
+    "fix": "Drop the '· high confidence' clause and keep only the honest provenance line ('Source: written by you'); if a confidence concept is ever wanted it must be computed, not asserted. Acceptance: no static confidence/certainty wording anywhere in capture review copy (EN+HE).",
+    "files": [
+     "app/src/components/overview/QuickLogModal.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "CODEX-8",
+    "title": "Third-Age senior landing page slipped into the app bundle ahead of its gate",
+    "type": "firewall",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "Checkpoint f650e531 added app/public/marketing/arbor-senior.html — a 726-line Hebrew 'גיל שלישי' senior-companion landing (own teal/indigo palette, HMO claims like connecting to קופת החולים and watch integration). Third Age is plan-only with wedge-validation as the explicit next gate; this file goes live at arborparentingapp.com/marketing/arbor-senior.html on the next hosting deploy, publishing an unvalidated product promise under the Arbor brand with zero review.",
+    "fix": "Move the file out of app/public (e.g. to docs/third-age/ as a draft asset) so it cannot ship, or get Guy's explicit go-live decision first. Acceptance: `ls app/public/marketing` contains no senior/third-age page until Guy approves publication.",
+    "files": [
+     "app/public/marketing/arbor-senior.html"
+    ],
+    "gate": "guy"
+   },
+   {
+    "id": "CODEX-9",
+    "title": "Branch triage: delete 6 harvested codex branches, mine 1, never merge 1",
+    "type": "capability",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "8 codex remote branches remain. Verified against HEAD (git cherry / git log HEAD..): origin/codex/arbor-guided-canvas, arbor-production-polish, arbor-today-action-copy = zero commits ahead; arbor-today-action-clean (799df662) and arbor-full-app-polish (0df1c9b3) = git cherry '-', patches byte-identical in HEAD via PRs #77/#80; arbor-action-first-ui (6f1c5ce2) is the earlier iteration of the merged guided-canvas commit (same 18-file set, HEAD is 2310 lines ahead of it). arbor-ask-journal-clarity (d30195e4) removes the CoachTab composer-first section — the dedup idea has merit but the diff also deletes the photo/voice entry points and the coach.aiDisclosure (AI-Act Art-50) line from that section and shrinks the chat viewport from min(70dvh,560px) to a fixed 330px. arbor-v2-architecture-foundation (8a50d867) adds terraform/GCP Cloud Run/cloudbuild + auth scaffold that contradicts the locked Firebase Hosting canary deploy path.",
+    "fix": "With Guy's confirmation, delete the six harvested/superseded branches (guided-canvas, production-polish, today-action-copy, today-action-clean, full-app-polish, action-first-ui). Do NOT merge ask-journal-clarity; if Ask-composer dedup is wanted, re-implement natively keeping the disclosure line and the 70dvh viewport, then delete the branch. Keep v2-architecture-foundation unmerged as reference only — never merge into app main; its infra pivot is a separate Guy-gated decision. Acceptance: `git branch -r | grep codex` lists at most v2-architecture-foundation (and ask-journal-clarity until mined).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor (remote branches, no working-tree files)"
+    ],
+    "gate": "guy"
+   }
+  ]
+ }
+]

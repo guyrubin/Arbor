@@ -3,70 +3,30 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 
 /**
- * The persistent entry to Ask Arbor (the `coach` tab) — the one surface the
- * navigation.ts contract calls "a top-bar action + the Today coach card, not a
- * sidebar row." Until now that "top-bar action" was only an assertion in code:
- * the coach was reachable SOLELY from in-context CTAs inside other tabs
- * (Overview, Strengths, ChildProfile, Scholar, Daily Play…). There was no
- * persistent, always-available way to just ask Arbor. This makes the contract
- * true on BOTH surfaces:
- *   - desktop: the labelled sapphire primary pill in the Topbar;
- *   - mobile: the compact icon in the in-content accessories row.
+ * The persistent entry to Ask Arbor (the `coach` tab) — a compact icon button
+ * mounted in the in-content accessories row (Shell.tsx), matching the
+ * Settings / Search / KidMode accessory buttons.
  *
- * `compact` renders the mobile/tablet icon-button (`lg:hidden`, matches Settings /
- * Search / KidMode accessory buttons). The default is the labelled desktop pill.
- *
- * Sapphire fill + white = the primary action; it sits one step above the soft
- * KidMode pill, so the flagship AI surface reads as the most prominent thing in
- * the header. Localized via `nav.ask` (EN "Ask Arbor" / HE "שאל את ארבור").
+ * PLAT-6 hygiene: the old labelled "desktop pill" default variant was dead
+ * code — Shell mounted only `compact` and the Topbar pill was removed — and it
+ * carried a hardcoded sapphire shadow. Deleted; this component now renders the
+ * one variant that actually ships. Localized via `nav.ask`
+ * (EN "Ask Arbor" / HE "שאל את ארבור").
  */
-export default function AskArborButton({ compact = false }: { compact?: boolean }) {
+export default function AskArborButton() {
   const { setActiveTab } = useArbor();
   const { t } = useLanguage();
   const go = () => setActiveTab("coach");
-
-  if (compact) {
-    return (
-      <button
-        onClick={go}
-        aria-label={t("nav.ask")}
-        title={t("nav.ask")}
-        className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
-        style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
-      >
-        <Icon name="forum" size={18} />
-      </button>
-    );
-  }
 
   return (
     <button
       onClick={go}
       aria-label={t("nav.ask")}
       title={t("nav.ask")}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        paddingInline: "14px",
-        paddingBlock: "0",
-        height: "40px",
-        minHeight: "44px",
-        minWidth: "44px",
-        borderRadius: "var(--r)",
-        fontWeight: 800,
-        fontSize: "var(--t-sm)",
-        background: "var(--arbor-clay)",
-        color: "#fff",
-        border: "1px solid transparent",
-        boxShadow: "0 6px 14px -6px rgba(43,127,255,0.55)",
-        cursor: "pointer",
-        whiteSpace: "nowrap",
-        transition: "background 120ms, transform 120ms",
-      }}
+      className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
+      style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
     >
-      <Icon name="forum" size={16} />
-      <span>{t("nav.ask")}</span>
+      <Icon name="forum" size={18} />
     </button>
   );
 }

@@ -153,7 +153,7 @@ export default function Masterclasses() {
       </section>
 
       <header className="border-b px-1 pb-4" style={{ borderColor: "var(--arbor-rule)" }}>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>{he ? "×œ×ž×™×“×” ×œ×”×•×¨×™×" : "Parent learning"}</p>
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>{t("sec.master.eyebrow")}</p>
         <h1 className="mt-1 text-2xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("sec.master.title")}</h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.master.sub")}</p>
       </header>
