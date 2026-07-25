@@ -21,6 +21,7 @@ import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
 import { api, streamVoice, getAiLanguage } from "../../lib/api";
+import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
@@ -193,7 +194,24 @@ export default function CoachTab() {
           while (parts.length > 1) enqueueSpeak(parts.shift() as string);
           voiceBufRef.current = parts[0] || "";
         },
-        controller.signal,
+        {
+          signal: controller.signal,
+          // VC-4: the done payload is safety-load-bearing. On escalation:
+          // stop the loop (voiceOnRef=false means the TTS drain in pumpTts
+          // settles to "off" and NEVER calls startListening again) and put
+          // the full crisis resources block ON SCREEN as part of the
+          // persisted AI turn. On outputBlocked: render the visible blocked
+          // state (parity with /chat's renderBlockedOutputMarkdown). The
+          // appended markdown goes through appendVoiceAiDelta directly —
+          // persisted + visible but never enqueued for speech.
+          onEvent: (event, data) => {
+            if (event !== "done") return;
+            handleVoiceDone(data, {
+              stopLoop: () => { voiceOnRef.current = false; },
+              appendMarkdown: (md) => appendVoiceAiDelta(`\n\n${md}`),
+            });
+          },
+        },
       );
       if (voiceBufRef.current.trim()) enqueueSpeak(voiceBufRef.current);
       voiceBufRef.current = "";

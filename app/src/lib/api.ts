@@ -130,12 +130,21 @@ const del = <T>(url: string) => request<T>(url, "DELETE");
  * Realtime streaming voice coach (RT-2). POSTs to /api/voice and invokes onDelta
  * with each plain-text token as it streams, so the caller can speak sentences the
  * moment they arrive. Resolves when the stream completes.
+ *
+ * VC-4: `opts.onEvent` receives EVERY parsed SSE event (delta / done / error)
+ * with its payload. The server's `done` event is safety-load-bearing — it
+ * carries the escalation category + crisis `resourcesMarkdown` and the
+ * `outputBlocked` + `blockedMarkdown` state. Discarding it (the pre-VC-4
+ * behavior) silently dropped crisis resources for voice parents; callers on
+ * the voice loop MUST wire `onEvent` and route `done` through
+ * `handleVoiceDone` (lib/voiceSafetyEvents.ts).
  */
 export async function streamVoice(
   payload: { message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" },
   onDelta: (text: string) => void,
-  signal?: AbortSignal,
+  opts: { signal?: AbortSignal; onEvent?: (event: string, data: Record<string, unknown>) => void } = {},
 ): Promise<void> {
+  const { signal, onEvent } = opts;
   const res = await fetch("/api/voice", {
     method: "POST",
     headers: await authHeaders({ Accept: "text/event-stream" }),
@@ -162,6 +171,7 @@ export async function streamVoice(
       }
       if (!dataLines.length) continue;
       const data = JSON.parse(dataLines.join("\n"));
+      onEvent?.(event, data);
       if (event === "delta" && data.text) onDelta(data.text);
       else if (event === "error") throw new Error(data.details || data.error || "Voice stream error");
     }

@@ -525,6 +525,10 @@ export const en: Dict = {
   "beh.toast.updated": "Log updated.",
   "beh.toast.logged": "Moment logged — it's in your history below.",
   "beh.toast.imageError": "Couldn't process that image",
+  // AI-CAP-1 — voice-capture escalation surface chrome (the crisis-resources
+  // markdown itself is the approved EN copy verbatim; HE copy gated on GG-4)
+  "beh.escalation.title": "Professional support recommended",
+  "beh.escalation.dismiss": "Close",
   // beh speak-to-log button aria
   "beh.speakToLog": "Speak to log",
   // beh placeholders
@@ -2699,6 +2703,9 @@ export const he: Dict = {
   "beh.toast.updated": "התיעוד עודכן.",
   "beh.toast.logged": "הרגע תועד — הוא מופיע בהיסטוריה למטה.",
   "beh.toast.imageError": "לא הצלחנו לעבד את התמונה",
+  // AI-CAP-1 — voice-capture escalation surface chrome
+  "beh.escalation.title": "מומלץ לפנות לתמיכה מקצועית",
+  "beh.escalation.dismiss": "סגירה",
   // beh speak-to-log button aria
   "beh.speakToLog": "דברו לתיעוד",
   // beh placeholders

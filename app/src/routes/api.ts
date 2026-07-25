@@ -85,6 +85,35 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
+/**
+ * VC-6: the two /voice safety fallbacks are SPOKEN ALOUD mid-crisis, so they
+ * must match the session language — a Hebrew-speaking parent in a Hebrew voice
+ * session must never hear an English sentence at the worst possible moment.
+ * Server-side he/en map keyed on the request `language` (mirrors the /voice
+ * languageDirective pattern). The strings deliberately restate NO helpline
+ * numbers — the numbers travel in `resourcesMarkdown`
+ * (renderEscalationMarkdown verbatim), which the CRITICAL_HELPLINE_LITERALS
+ * tripwire already covers. HE crisis copy is queued for clinical sign-off
+ * (GG-4); the fail-closed behavior ships now.
+ */
+const VOICE_SAFETY_FALLBACKS = {
+  en: {
+    escalation:
+      "I want to make sure you get the right help. This may need a real person right now — please reach out to a professional or local support line. ",
+    blocked:
+      "I want to be careful here. That's something best looked at with a professional who can see your child in person — like your pediatrician or family health centre. I can help you write down what you're noticing so that conversation is easier.",
+  },
+  he: {
+    escalation:
+      "חשוב לי שתקבלו עכשיו את העזרה הנכונה. ייתכן שזה מצריך אדם אמיתי ממש עכשיו — אנא פנו לאיש מקצוע או לקו תמיכה מקומי. ",
+    blocked:
+      "אני רוצה להיזהר כאן. את זה הכי טוב לבדוק עם איש מקצוע שיכול לראות את ילדכם מקרוב — למשל רופא הילדים או טיפת חלב. אני יכול לעזור לכם לרשום את מה שאתם שמים לב אליו, כדי שהשיחה הזו תהיה קלה יותר.",
+  },
+} as const;
+
+const voiceSafetyFallback = (language: unknown) =>
+  VOICE_SAFETY_FALLBACKS[language === "he" ? "he" : "en"];
+
 export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource }: ApiDeps) => {
   const router = express.Router();
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
@@ -587,14 +616,30 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
     const escalationMatch = screenForImmediateEscalation({ message });
     beginSse(res);
     if (escalationMatch) {
-      writeSse(res, "delta", { text: "I want to make sure you get the right help. This may need a real person right now — please reach out to a professional or local support line. " });
-      writeSse(res, "done", { escalation: escalationMatch.category });
+      // VC-4: voice parents must get the SAME crisis help as typists. Speak a
+      // short localized redirect (VC-6) and carry the FULL resources block in
+      // the done payload — renderEscalationMarkdown(match) VERBATIM, so the
+      // escalationLiteralsIntact tripwire covers every helpline number on this
+      // path too. The client stops the voice loop and renders the resources
+      // on screen (never resumes listening after a crisis turn).
+      writeSse(res, "delta", { text: voiceSafetyFallback(language).escalation });
+      writeSse(res, "done", {
+        escalation: escalationMatch.category,
+        resourcesMarkdown: renderEscalationMarkdown(escalationMatch)
+      });
       res.end();
       return;
     }
 
     const abortController = new AbortController();
-    req.on("close", () => abortController.abort());
+    // Abort generation when the CLIENT goes away. NOTE: `req.on("close")` is
+    // the wrong signal here — in modern Node the request's 'close' fires as
+    // soon as the request MESSAGE completes (right after the JSON body is
+    // consumed, long before the SSE response ends), so depending on
+    // middleware timing it can abort a perfectly healthy stream. The real
+    // disconnect signal is the RESPONSE 'close' while the response is not
+    // yet ended (writableEnded === false).
+    res.on("close", () => { if (!res.writableEnded) abortController.abort(); });
     try {
       const scholar = resolveScholar(scholarLens);
       const languageDirective = language === "he" ? " Reply in warm, natural spoken Hebrew." : "";
@@ -633,11 +678,15 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
           });
           // Never speak the flagged draft. Speak a calm, non-diagnostic spoken
           // fallback that mirrors the /chat blocked behavior (handoff to a real
-          // professional) instead.
-          writeSse(res, "delta", {
-            text: "I want to be careful here. That's something best looked at with a professional who can see your child in person — like your pediatrician or family health centre. I can help you write down what you're noticing so that conversation is easier.",
+          // professional) instead — localized per VC-6. blockedMarkdown gives
+          // the client a VISIBLE blocked state with byte parity to /chat's
+          // renderBlockedOutputMarkdown surface (VC-4 condition 3).
+          writeSse(res, "delta", { text: voiceSafetyFallback(language).blocked });
+          writeSse(res, "done", {
+            outputBlocked: true,
+            blockedCategory: outputVerdict.category,
+            blockedMarkdown: renderBlockedOutputMarkdown()
           });
-          writeSse(res, "done", { outputBlocked: true, blockedCategory: outputVerdict.category });
           res.end();
           return;
         }

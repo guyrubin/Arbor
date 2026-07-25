@@ -15,7 +15,8 @@ import HardMomentsSection from "../behaviors/HardMomentsSection";
 import { Modal } from "../ui/Modal";
 import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCaptureReview";
 import { speechSupported, startDictation } from "../../lib/speech";
-import { authHeaders } from "../../lib/api";
+import { api, EscalationRequiredError } from "../../lib/api";
+import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import { useAuth } from "../../context/AuthContext";
@@ -142,6 +143,10 @@ export default function BehaviorsTab() {
   const [listening, setListening] = useState(false);
   const [parsing, setParsing] = useState(false);
   const stopRef = useRef<(() => void) | null>(null);
+  // AI-CAP-1: when a spoken note trips the server escalation screen (409), the
+  // FULL crisis-resources markdown renders in a visible surface (never a toast)
+  // and no draft field is written.
+  const [escalationMarkdown, setEscalationMarkdown] = useState<string | null>(null);
 
   // TODAY-3: voice-originated and Today/Journal-handoff captures must pass the
   // SHARED ConfirmCaptureReview contract (same component QuickLogModal renders
@@ -197,45 +202,60 @@ export default function BehaviorsTab() {
     window.setTimeout(() => photoInputRef.current?.click(), 120);
   };
 
+  // AI-CAP-1: voice capture goes through the ONE hardened extraction seam —
+  // api.extractLog (schema-enforced JSON, server-side escalation screen → 409,
+  // name redaction). The old /api/chat + greedy-regex path was a live crisis
+  // FAIL-OPEN (an escalation reply carried no JSON, so the raw crisis
+  // transcript landed in an ordinary editable draft with a friendly toast) —
+  // it may never return. Fail-closed order: the escalation branch runs FIRST;
+  // the raw-transcript fallback covers only non-escalation failures.
   const parseVoice = async (text: string) => {
     setParsing(true);
+    setEscalationMarkdown(null);
     // TODAY-3: the draft now originates from a voice transcription (both the
     // parsed and the raw-fallback branch fill the form from it) — record the
     // factual provenance and arm the explicit-confirm gate.
     setCaptureSource("voice");
     setNeedsReview(true);
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          message: `Extract a structured behavior log from this parent's spoken note about ${childProfile.name}. Return ONLY compact JSON (no prose, no code fence) with keys: type (one of "Transition Refusal","Sensory Overload","Screentime Dispute","Sibling Conflict","Food Refusal","Sleep Meltdown"), intensity (integer 1-5), context (one of "Home","School","Transit","Public"), trigger (string), response (string), notes (string). Spoken note: "${text}"`,
-          childProfile,
-          scholarLens: "Integrated Balanced",
-        }),
-      });
-      if (!res.ok) throw new Error("parse failed");
-      const data = await res.json();
-      const match = /\{[\s\S]*\}/.exec(String(data.text || ""));
-      if (match) {
-        const p = JSON.parse(match[0]);
-        if (p.type) setNewLogType(p.type);
-        if (p.intensity) setNewLogIntensity(Math.max(1, Math.min(5, Number(p.intensity))));
-        if (p.context) setNewLogContext(p.context as BehaviorContext);
-        if (p.trigger) setNewLogTrigger(p.trigger);
-        if (p.response) setNewLogResponse(p.response);
-        if (p.notes) setNewLogNotes(p.notes);
-        toast(t("beh.toast.voiceParsed"), "success");
-        return;
+      const d = await api.extractLog({ message: text, childProfile });
+      // Clamp/validate every extracted field before it touches the draft.
+      if (d.behaviorType) setNewLogType(String(d.behaviorType));
+      setNewLogIntensity(Math.min(5, Math.max(1, Math.round(Number(d.intensity) || 3))));
+      setNewLogDuration(Math.max(1, Math.round(Number(d.durationMinutes) || 10)));
+      setNewLogContext((CONTEXTS.includes(d.context as BehaviorContext) ? d.context : "Home") as BehaviorContext);
+      if (d.trigger) setNewLogTrigger(String(d.trigger));
+      if (d.response) setNewLogResponse(String(d.response));
+      if (d.notes) setNewLogNotes(String(d.notes));
+      toast(t("beh.toast.voiceParsed"), "success");
+    } catch (err) {
+      // FAIL-CLOSED: the escalation branch runs BEFORE any fallback that could
+      // write the transcript into the draft. A 409 renders the full crisis
+      // resources surface (renderEscalationMarkdown — visible, never a toast)
+      // and writes ZERO draft fields.
+      if (err instanceof EscalationRequiredError) {
+        const match =
+          escalationCategories.find((c) => c.category === err.category) ??
+          // Unknown category → over-block toward the broadest crisis resources.
+          escalationCategories[0];
+        setEscalationMarkdown(renderEscalationMarkdown({ category: match.category, label: match.label, resources: match.resources }));
+      } else {
+        // Only AFTER the escalation branch: 500/network keeps the raw
+        // transcript in the trigger field so nothing is lost.
+        setNewLogTrigger(text);
+        toast(t("beh.toast.voiceFallback"), "info");
       }
-      throw new Error("no json");
-    } catch {
-      // Fallback: keep the raw transcript so nothing is lost.
-      setNewLogTrigger(text);
-      toast(t("beh.toast.voiceFallback"), "info");
     } finally {
       setParsing(false);
     }
+  };
+
+  // AI-CAP-1: dismissing the escalation surface drops it and disarms the gate —
+  // the escalated transcript never produced a draft, so nothing is reviewable.
+  const dismissEscalation = () => {
+    setEscalationMarkdown(null);
+    setNeedsReview(false);
+    setCaptureSource("text");
   };
 
   const toggleVoice = () => {
@@ -490,6 +510,41 @@ export default function BehaviorsTab() {
           </div>
         </div>
       </section>
+
+      {/* AI-CAP-1 — fail-closed voice-capture escalation surface. When the
+          spoken note trips the server escalation screen (HTTP 409), the FULL
+          crisis-resources markdown renders here — the same
+          renderEscalationMarkdown contract the /chat surface shows (resources
+          visible, never a toast) — and no draft field is written. The markdown
+          is the approved EN copy verbatim; HE crisis copy is queued for
+          clinical sign-off (GG-4). */}
+      {escalationMarkdown && (
+        <section
+          role="alert"
+          dir="auto"
+          data-testid="voice-capture-escalation"
+          className={`${cardCls} p-5 space-y-3`}
+        >
+          <div className="flex items-start gap-3">
+            <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
+              <Icon name="warning" size={19} />
+            </span>
+            <h3 className="min-w-0 flex-1 text-base font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>
+              {t("beh.escalation.title")}
+            </h3>
+            <button
+              type="button"
+              onClick={dismissEscalation}
+              aria-label={t("beh.escalation.dismiss")}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
+              style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}
+            >
+              <Icon name="close" size={16} />
+            </button>
+          </div>
+          <MarkdownBlock text={escalationMarkdown} className="space-y-2 text-xs leading-relaxed" />
+        </section>
+      )}
 
       {/* CONT-2 — Hard moments (AR-CONT-01). Fail-closed: reads ONLY
           publishedHardMomentCards, so the section is invisible until named
