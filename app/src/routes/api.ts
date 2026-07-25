@@ -234,7 +234,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     const { uid } = actorOf(req);
     try {
       const childId = req.query.childId ? String(req.query.childId) : undefined;
-      res.json({ shares: await shareStore.listByOwner(uid, childId) });
+      // CARE-6: ?history=1 includes revoked/expired grants — the owner's own
+      // grant records ARE the sharing audit trail (created/expired/revoked
+      // dates). Owner-only; recipient reads never resolve inactive grants.
+      const includeInactive = req.query.history === "1";
+      res.json({ shares: await shareStore.listByOwner(uid, childId, { includeInactive }) });
     } catch (error: any) {
       logger.error("Arbor Share List Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to list shares", details: error.message });

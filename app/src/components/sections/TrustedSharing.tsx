@@ -4,6 +4,7 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useProfile } from "../../context/ProfileContext";
+import { useToast } from "../../context/ToastContext";
 import { downloadJson } from "../../lib/childData";
 import { api, ApiError, PaywallError } from "../../lib/api";
 import type { DeletionReceipt, ShareGrant, ShareRole, SharedPacketView } from "../../types";
@@ -33,6 +34,7 @@ const ROLE_TONE: Record<ShareRole, PastelKey> = { co_parent: "mint", professiona
 export default function TrustedSharing() {
   const { childProfile, behaviorLogs, actionPlans, openPaywall, setActiveTab } = useArbor();
   const { deleteChild } = useProfile();
+  const { toast } = useToast();
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
@@ -47,7 +49,6 @@ export default function TrustedSharing() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [audit, setAudit] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [draft, setDraft] = useState({ recipientEmail: "", role: "co_parent" as ShareRole, scopes: [] as ShareScopeId[], duration: DURATIONS[0] as string });
@@ -61,7 +62,9 @@ export default function TrustedSharing() {
     let bFailed = false;
     try {
       const [mine, toMe] = await Promise.all([
-        api.listShares(childProfile.id).catch(() => { aFailed = true; return { shares: [] }; }),
+        // CARE-6: one owner fetch returns the FULL grant record set (history=1);
+        // live grants form the roster, ended ones the sharing history below.
+        api.listShares(childProfile.id, { history: true }).catch(() => { aFailed = true; return { shares: [] }; }),
         api.sharedWithMe().catch(() => { bFailed = true; return { shares: [] }; }),
       ]);
       setShares(mine.shares || []);
@@ -76,8 +79,13 @@ export default function TrustedSharing() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // The roster (former My Care Team) shows only live grants; revoked ones drop out.
-  const team = shares.filter((g) => !g.revokedAt);
+  // CARE-6 + CARE-8: the roster shows only live grants; revoked/expired grants
+  // move to the persistent "Sharing history" card — the grant records
+  // (createdAt/expiresAt/revokedAt) ARE the audit trail, surviving reloads.
+  const isLiveGrant = (g: ShareGrant) => !g.revokedAt && (!g.expiresAt || Date.parse(g.expiresAt) > Date.now());
+  const team = shares.filter(isLiveGrant);
+  const history = shares.filter((g) => !isLiveGrant(g));
+  const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : "");
 
   const setScope = (f: ShareScopeId) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
 
@@ -87,14 +95,14 @@ export default function TrustedSharing() {
     setBusy("create");
     try {
       await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: draft.role, scopes: draft.scopes, duration: draft.duration });
-      setAudit((a) => [t("sec.sharing.audit.shared", { scopes: scopesLabel(draft.scopes), email, role: roleLabel(draft.role) }), ...a]);
+      toast(t("sec.sharing.audit.shared", { scopes: scopesLabel(draft.scopes), email, role: roleLabel(draft.role) }), "success");
       setDraft({ recipientEmail: "", role: "co_parent", scopes: [], duration: DURATIONS[0] });
       setReviewing(false);
       setAdding(false);
       await load();
     } catch (e: any) {
       if (e instanceof PaywallError) openPaywall(e.feature, e.plan);
-      else setAudit((a) => [t("sec.sharing.audit.createError", { message: e.message }), ...a]);
+      else toast(t("sec.sharing.audit.createError", { message: e.message }), "error");
     } finally {
       setBusy(null);
     }
@@ -104,10 +112,12 @@ export default function TrustedSharing() {
     setBusy(g.id);
     try {
       await api.revokeShare(g.id);
-      setAudit((a) => [t("sec.sharing.audit.revoked", { email: g.recipientEmail }), ...a]);
+      // CARE-6: no ephemeral log needed — the reload moves the revoked grant
+      // (with its revocation date) into the persistent Sharing history card.
+      toast(t("sec.sharing.audit.revoked", { email: g.recipientEmail }), "success");
       await load();
     } catch (e: any) {
-      setAudit((a) => [t("sec.sharing.audit.revokeError", { message: e.message }), ...a]);
+      toast(t("sec.sharing.audit.revokeError", { message: e.message }), "error");
     } finally {
       setBusy(null);
     }
@@ -160,7 +170,7 @@ export default function TrustedSharing() {
       actionPlans,
       note: t("sec.sharing.data.exportNote"),
     });
-    setAudit((a) => [t("sec.sharing.audit.exported", { name: first }), ...a]);
+    toast(t("sec.sharing.audit.exported", { name: first }), "success");
   };
 
   // CARE-1: REAL GDPR Art. 17 erasure — the old confirm/alert theater claimed a
@@ -289,61 +299,42 @@ export default function TrustedSharing() {
         </div>
       )}
 
-      {/* W4.4: the former My Care Team roster — the people coordinating around
-          the child, rendered from the same non-revoked share grants. */}
-      {!error && !loading && team.length > 0 && (
-        <SectionCard title={t("sec.sharing.team.title", { name: first })} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
-          <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-            {team.map((g) => {
-              const tone = ROLE_TONE[g.role] || ROLE_TONE.viewer;
-              return (
-                <div key={g.id} className="min-w-0 border-b p-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
-                  <div className="flex items-center gap-3">
-                    <InitialsTile name={g.recipientEmail} tone={tone} />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{g.recipientEmail}</h3>
-                      <p className="text-xs" style={{ color: PASTEL[tone].ink }}>{roleLabel(g.role)}</p>
-                    </div>
-                    <Chip tone={tone}>{roleLabel(g.role)}</Chip>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-4">
-                    <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{scopesLabel(g.scopes) || t("sec.sharing.noScopes")}</Chip>
-                    <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(g)}</Chip>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </SectionCard>
-      )}
-
+      {/* CARE-8: ONE roster — the people coordinating around the child, exactly
+          one card per live grant (the richer InitialsTile visual, W4.4 intent)
+          with the revoke action folded in. The former duplicate "Active shares"
+          list is gone. */}
       {!error && (
-      <SectionCard title={t("sec.sharing.active.title")} icon={<Icon name="share" size={20} />} tone="mint">
-        <div className="space-y-3">
+        <SectionCard title={t("sec.sharing.team.title", { name: first })} icon={<Icon name="diversity_3" size={20} fill={1} />} tone="mint">
           {loading ? (
             <p className="text-sm flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}><Icon name="progress_activity" size={16} className="animate-spin" /> {t("sec.sharing.active.loading")}</p>
           ) : team.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.active.empty")}</p>
-          ) : team.map((s) => (
-            <div key={s.id} className={`${cardCls} p-4`}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{s.recipientEmail}</h3>
-                  <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{roleLabel(s.role)}</p>
-                </div>
-                <button onClick={() => revoke(s)} disabled={busy === s.id} className="inline-flex items-center gap-1 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>
-                  {busy === s.id ? <Icon name="progress_activity" size={14} className="animate-spin" /> : <Icon name="close" size={15} />} {t("sec.sharing.revoke")}
-                </button>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 mt-3">
-                {s.role === "co_parent" && <Chip tone="mint" icon={<Icon name="group" size={15} />}>{t("share.role.co_parent")}</Chip>}
-                <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{scopesLabel(s.scopes) || t("sec.sharing.noScopes")}</Chip>
-                <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(s)}</Chip>
-              </div>
+          ) : (
+            <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+              {team.map((g) => {
+                const tone = ROLE_TONE[g.role] || ROLE_TONE.viewer;
+                return (
+                  <div key={g.id} className="min-w-0 border-b p-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
+                    <div className="flex items-center gap-3">
+                      <InitialsTile name={g.recipientEmail} tone={tone} />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{g.recipientEmail}</h3>
+                        <p className="text-xs" style={{ color: PASTEL[tone].ink }}>{roleLabel(g.role)}</p>
+                      </div>
+                      <button onClick={() => revoke(g)} disabled={busy === g.id} className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>
+                        {busy === g.id ? <Icon name="progress_activity" size={14} className="animate-spin" /> : <Icon name="close" size={15} />} {t("sec.sharing.revoke")}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-4">
+                      <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{scopesLabel(g.scopes) || t("sec.sharing.noScopes")}</Chip>
+                      <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(g)}</Chip>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      </SectionCard>
+          )}
+        </SectionCard>
       )}
 
       {!error && inbound.length > 0 && (
@@ -384,11 +375,29 @@ export default function TrustedSharing() {
             <button onClick={() => setDeleteOpen(true)} data-testid="delete-child-btn" className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 py-3" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}><Icon name="delete" size={18} /> {t("sec.sharing.delete.btn")}</button>
           </div>
         </SectionCard>
-        <SectionCard title={t("sec.sharing.audit.title")} icon={<Icon name="history" size={20} />} tone="sky">
-          <ul className="space-y-2.5 text-xs max-h-44 overflow-y-auto" style={{ color: "var(--arbor-muted)" }}>
-            {audit.length === 0 && <li>{t("sec.sharing.audit.empty")}</li>}
-            {audit.map((a, i) => <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "var(--arbor-muted)" }} />{a}</li>)}
-          </ul>
+        {/* CARE-6: REAL sharing history — rendered from the persistent grant
+            records (created/expired/revoked with dates), not a session-ephemeral
+            list. Grants ARE the audit record; it survives any reload. */}
+        <SectionCard title={t("sec.sharing.history.title")} icon={<Icon name="history" size={20} />} tone="sky">
+          {history.length === 0 ? (
+            <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.history.empty")}</p>
+          ) : (
+            <ul className="space-y-2.5 text-xs max-h-44 overflow-y-auto" data-testid="sharing-history">
+              {history.map((g) => (
+                <li key={g.id} className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-bold truncate" dir="auto" style={{ color: "var(--arbor-ink)" }}>{g.recipientEmail}</p>
+                    <p style={{ color: "var(--arbor-muted)" }}>{roleLabel(g.role)} · {t("sec.sharing.history.createdOn", { date: fmtDate(g.createdAt) })}</p>
+                  </div>
+                  <span className="flex-shrink-0 font-bold" style={{ color: "var(--arbor-pink-ink)" }}>
+                    {g.revokedAt
+                      ? t("sec.sharing.history.revokedOn", { date: fmtDate(g.revokedAt) })
+                      : t("sec.sharing.history.expiredOn", { date: fmtDate(g.expiresAt) })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </SectionCard>
       </div>
 

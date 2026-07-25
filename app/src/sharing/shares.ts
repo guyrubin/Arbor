@@ -93,9 +93,15 @@ export const buildGrant = (input: NewShare, now: number = Date.now()): ShareGran
   revokedAt: null,
 });
 
+/** CARE-6: owner-side listing options. `includeInactive` returns revoked and
+ *  expired grants too — the owner's own grant records (createdAt/expiresAt/
+ *  revokedAt) ARE the sharing audit history; no separate event log needed.
+ *  Recipient reads are untouched: an inactive grant never resolves for them. */
+export type ListByOwnerOptions = { includeInactive?: boolean };
+
 export interface ShareStore {
   create(grant: ShareGrant): Promise<ShareGrant>;
-  listByOwner(ownerUid: string, childId?: string): Promise<ShareGrant[]>;
+  listByOwner(ownerUid: string, childId?: string, opts?: ListByOwnerOptions): Promise<ShareGrant[]>;
   listByRecipient(email: string): Promise<ShareGrant[]>;
   get(id: string): Promise<ShareGrant | null>;
   revoke(id: string, ownerUid: string): Promise<ShareGrant | null>;
@@ -109,9 +115,9 @@ export class LocalShareStore implements ShareStore {
 
   async create(grant: ShareGrant) { this.grants.set(grant.id, grant); return grant; }
 
-  async listByOwner(ownerUid: string, childId?: string) {
+  async listByOwner(ownerUid: string, childId?: string, opts?: ListByOwnerOptions) {
     return [...this.grants.values()]
-      .filter((g) => g.ownerUid === ownerUid && (!childId || g.childId === childId) && isShareActive(g))
+      .filter((g) => g.ownerUid === ownerUid && (!childId || g.childId === childId) && (opts?.includeInactive || isShareActive(g)))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
@@ -160,13 +166,13 @@ export class FirestoreShareStore implements ShareStore {
     return grant;
   }
 
-  async listByOwner(ownerUid: string, childId?: string) {
+  async listByOwner(ownerUid: string, childId?: string, opts?: ListByOwnerOptions) {
     let q = this.col().where("ownerUid", "==", ownerUid) as FirebaseFirestore.Query;
     if (childId) q = q.where("childId", "==", childId);
     const snap = await q.get();
     return snap.docs
       .map((d) => d.data() as ShareGrant)
-      .filter((g) => isShareActive(g))
+      .filter((g) => opts?.includeInactive || isShareActive(g))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 

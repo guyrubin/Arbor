@@ -65,6 +65,21 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 };
 
 /**
+ * CARE-5 (pricing honesty): the entitlement-side source of truth for what the
+ * plans cost. Locked launch pricing — Plus €12.99/mo, Family €19.99/mo; annual
+ * is 10× monthly (two months free). The client display constant
+ * (src/lib/pricing.ts) is test-pinned to this record so the price a parent sees
+ * on the paywall can never drift from what the checkout charges. Display-side
+ * only — the hosted RevenueCat/Stripe page (WEB_PACKAGE_IDS in billing.ts)
+ * remains the binding price; update BOTH together with the dashboard.
+ */
+export type PlanPricing = { monthlyEur: number; annualEur: number };
+export const PLAN_PRICING: Record<Exclude<Plan, "free">, PlanPricing> = {
+  plus: { monthlyEur: 12.99, annualEur: 129.9 },
+  family: { monthlyEur: 19.99, annualEur: 199.9 },
+};
+
+/**
  * The shape persisted at `entitlements/{uid}` — written by the billing webhook
  * (see server/billing.ts), read by the resolver and the Account screen.
  */

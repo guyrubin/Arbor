@@ -107,6 +107,38 @@ describe("LocalShareStore enforces expiry on read", () => {
     expect((await store.listByOwner("u1")).length).toBe(0);
   });
 
+  // CARE-6: the owner's grant records ARE the sharing audit history.
+  it("includeInactive returns revoked and expired grants with their dates (owner audit history)", async () => {
+    const store = new LocalShareStore();
+    const live = await store.create(buildGrant({ ownerUid: "u1", ownerEmail: null, childId: "c1", recipientEmail: "live@x.com", duration: "30d" }, NOW));
+    const expired = await store.create({ ...buildGrant({ ownerUid: "u1", ownerEmail: null, childId: "c1", recipientEmail: "old@x.com" }, NOW), expiresAt: new Date(NOW - 1000).toISOString() });
+    const revoked = await store.create(buildGrant({ ownerUid: "u1", ownerEmail: null, childId: "c1", recipientEmail: "gone@x.com" }, NOW));
+    await store.revoke(revoked.id, "u1");
+
+    // Default read (the roster) still hides ended grants.
+    expect((await store.listByOwner("u1", "c1")).map((g) => g.id)).toEqual([live.id]);
+
+    // History read returns everything, dates intact.
+    const all = await store.listByOwner("u1", "c1", { includeInactive: true });
+    expect(all.map((g) => g.id).sort()).toEqual([live.id, expired.id, revoked.id].sort());
+    const revokedRow = all.find((g) => g.id === revoked.id)!;
+    expect(revokedRow.revokedAt).toBeTruthy();
+    expect(Number.isFinite(Date.parse(revokedRow.revokedAt!))).toBe(true);
+    const expiredRow = all.find((g) => g.id === expired.id)!;
+    expect(expiredRow.revokedAt).toBeNull();
+    expect(Date.parse(expiredRow.expiresAt!)).toBeLessThan(NOW);
+    // Every history row keeps its creation date.
+    for (const g of all) expect(Number.isFinite(Date.parse(g.createdAt))).toBe(true);
+  });
+
+  it("includeInactive never leaks another owner's grants and stays scoped to the child", async () => {
+    const store = new LocalShareStore();
+    await store.create(buildGrant({ ownerUid: "u2", ownerEmail: null, childId: "c1", recipientEmail: "other@x.com" }, NOW));
+    const mine = await store.create(buildGrant({ ownerUid: "u1", ownerEmail: null, childId: "c2", recipientEmail: "mine@x.com" }, NOW));
+    expect((await store.listByOwner("u1", undefined, { includeInactive: true })).map((g) => g.id)).toEqual([mine.id]);
+    expect(await store.listByOwner("u1", "c1", { includeInactive: true })).toEqual([]);
+  });
+
   it("won't revoke another owner's grant", async () => {
     const store = new LocalShareStore();
     const g = await store.create(buildGrant({ ownerUid: "u1", ownerEmail: null, childId: "c1", recipientEmail: "co@x.com" }, NOW));

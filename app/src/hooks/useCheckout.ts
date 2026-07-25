@@ -21,7 +21,8 @@ export function useCheckout() {
       const { url } = await api.billingCheckout(plan, cadence);
       window.location.href = url;
     } catch {
-      toast(t("set.plan.checkoutSoon"), "success");
+      // CARE-5: checkout being unavailable is information, not a success.
+      toast(t("set.plan.checkoutSoon"), "info");
     } finally {
       setBusy(false);
     }

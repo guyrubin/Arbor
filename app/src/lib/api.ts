@@ -229,8 +229,15 @@ export const api = {
   // Co-parent / trusted sharing (server-enforced expiry).
   createShare: (payload: { childId: string; childName?: string; recipientEmail: string; role?: ShareRole; scopes?: string[]; duration?: string }) =>
     post<ShareGrant>("/api/shares", payload),
-  listShares: (childId?: string) =>
-    get<{ shares: ShareGrant[] }>(`/api/shares${childId ? `?childId=${encodeURIComponent(childId)}` : ""}`),
+  // CARE-6: `history: true` also returns revoked/expired grants — the owner's
+  // grant records are the sharing audit trail rendered as "Sharing history".
+  listShares: (childId?: string, opts?: { history?: boolean }) => {
+    const params = new URLSearchParams();
+    if (childId) params.set("childId", childId);
+    if (opts?.history) params.set("history", "1");
+    const qs = params.toString();
+    return get<{ shares: ShareGrant[] }>(`/api/shares${qs ? `?${qs}` : ""}`);
+  },
   revokeShare: (id: string) => del<ShareGrant>(`/api/shares/${encodeURIComponent(id)}`),
   sharedWithMe: () => get<{ shares: ShareGrant[] }>("/api/shared-with-me"),
   // CARE-2: the recipient's read-only view of a live grant — exactly the granted
