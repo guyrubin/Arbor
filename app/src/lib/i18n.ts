@@ -1966,6 +1966,10 @@ export const en: Dict = {
   "today.narrative.open": "Open source moments",
   "today.narrative.noChange": "There are not enough confirmed moments to describe change yet. One real moment is enough to begin.",
   "today.narrative.changedBody": "{moments} moments and {plays} activities were saved this week. {milestones} milestones have been noticed so far.",
+  // TODAY-6 — the ONE comparative sentence: bare counts, week vs week. No trend
+  // adjective, %, or score may ever join this template (banned-token scan).
+  "today.narrative.weekCompare": "{thisWeek} moments this week vs {lastWeek} last week.",
+  "today.narrative.openItem": "Open this moment in the journal: {label}",
   "today.narrative.nextNotToday": "The last step did not fit today. Arbor will offer a smaller or different version next time.",
   "today.narrative.nextOutcome": "Your latest outcome will help Arbor shape the next step.",
   "today.narrative.nextNone": "Choose one small step and report what happened so the next recommendation can become more precise.",
@@ -4049,6 +4053,9 @@ export const he: Dict = {
   "today.narrative.open": "פתיחת המקורות",
   "today.narrative.noChange": "עוד אין מספיק רגעים מאושרים כדי לתאר שינוי. רגע אחד אמיתי מספיק כדי להתחיל.",
   "today.narrative.changedBody": "{moments} רגעים ו-{plays} פעילויות נשמרו השבוע. {milestones} אבני דרך סומנו עד כה.",
+  // TODAY-6 — משפט השוואה אחד: ספירות בלבד, שבוע מול שבוע.
+  "today.narrative.weekCompare": "{thisWeek} רגעים השבוע לעומת {lastWeek} בשבוע שעבר.",
+  "today.narrative.openItem": "פתיחת הרגע הזה ביומן: {label}",
   "today.narrative.nextNotToday": "הצעד האחרון לא התאים היום. Arbor תציע בפעם הבאה גרסה קלה או אחרת.",
   "today.narrative.nextOutcome": "התוצאה האחרונה תעזור ל-Arbor לדייק את הצעד הבא.",
   "today.narrative.nextNone": "בחרו צעד אחד קטן ודווחו מה קרה כדי שההמלצה הבאה תהיה מדויקת יותר.",

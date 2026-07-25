@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { Skeleton } from "../ui/Skeleton";
@@ -101,6 +101,7 @@ function JournalRow({
   domainLabel,
   title,
   detail,
+  focused = false,
 }: {
   signal: TimelineSignal;
   domain: DevelopmentalDomainId | null;
@@ -110,12 +111,19 @@ function JournalRow({
   domainLabel: string;
   title: string;
   detail: string;
+  /** TODAY-6: true while this row is the target of an evidence deep-link —
+   *  a brief calm highlight so the parent lands on the cited entry. */
+  focused?: boolean;
 }) {
   const tone: PastelKey = domain ? domainVisual(domain).tone : (signal.tone as PastelKey);
   const p = PASTEL[tone];
   const glyph = domain ? DOMAIN_MS[domain] : KIND_MS[signal.kind];
   return (
-    <article className="flex gap-3.5 border-b py-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
+    <article
+      id={`journal-signal-${signal.id}`}
+      className="flex gap-3.5 border-b py-4 last:border-b-0 rounded-xl transition-colors"
+      style={{ borderColor: "var(--arbor-rule)", background: focused ? "var(--arbor-green-soft)" : undefined }}
+    >
       {/* Colored icon tile — tone + glyph follow the entry's domain (kind fallback). */}
       <span
         className="inline-flex items-center justify-center rounded-full flex-shrink-0"
@@ -167,13 +175,34 @@ function JournalRow({
 }
 
 export default function JournalTab() {
-  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded } = useArbor();
+  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
 
   // The ONE timeline read (hooks/useTimeline) — the same stream the Story
   // density renders. No second read, no new write path.
   const signals = useTimeline();
+
+  // TODAY-6 evidence deep-link: when a citing surface (ProgressNarrative)
+  // named a signal id, scroll to + briefly highlight exactly that row, then
+  // clear the request (same consume-once contract as the capture seam).
+  const [focusId, setFocusId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingJournalFocusId) return;
+    setFocusId(pendingJournalFocusId);
+    consumeJournalFocus();
+    // consumeJournalFocus is a stable context setter; depending on the id alone
+    // keeps the consume-once contract.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingJournalFocusId]);
+  useEffect(() => {
+    if (!focusId || !logsLoaded) return;
+    try {
+      document.getElementById(`journal-signal-${focusId}`)?.scrollIntoView({ block: "center" });
+    } catch { /* noop — jsdom/SSR safety */ }
+    const timer = setTimeout(() => setFocusId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [focusId, logsLoaded]);
 
   /** Open the real capture flow in the requested modality. Previously these
    *  tiles were decoys: all three ran a bare setActiveTab("behaviors"), so
@@ -338,6 +367,7 @@ export default function JournalTab() {
                     domainLabel={domain ? t(`journal.domain.${domain}`) : ""}
                     title={signalTitle(s, t)}
                     detail={signalDetail(s, t)}
+                    focused={s.id === focusId}
                   />
                 );
               })}

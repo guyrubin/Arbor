@@ -135,6 +135,18 @@ function useArborState() {
   const consumeCaptureRequest = () => setPendingCaptureMode(null);
 
   /**
+   * Evidence deep-link hand-off (TODAY-6 / AR-CAP-03): a surface that cites a
+   * specific logged moment (ProgressNarrative's evidence rows) names the
+   * timeline signal id it cited, and the Journal scrolls to + highlights
+   * exactly that row, then clears the request. Mirrors the capture seam above.
+   * CLINICAL FIREWALL: the request carries ONLY the ledger signal id — never a
+   * derived score, verdict, or any other payload.
+   */
+  const [pendingJournalFocusId, setPendingJournalFocusId] = useState<string | null>(null);
+  const requestJournalFocus = (signalId: string) => setPendingJournalFocusId(signalId);
+  const consumeJournalFocus = () => setPendingJournalFocusId(null);
+
+  /**
    * The single seam for handing a prompt to Ask Arbor from anywhere in the app.
    * Historically 18+ surfaces hand-rolled the same `setChatInput(...) +
    * (setSelectedLens(...)) + setActiveTab("coach")` triple; that sprawl had no
@@ -975,6 +987,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     pendingCaptureMode,
     requestCapture,
     consumeCaptureRequest,
+    pendingJournalFocusId,
+    requestJournalFocus,
+    consumeJournalFocus,
     chatMessages,
     conversations,
     activeConversationId,

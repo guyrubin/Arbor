@@ -58,7 +58,7 @@ export default function OverviewTab() {
     setActiveTab, milestones, milestonesPercent, checkedMilestones, totalMilestones,
     behaviorLogs, childProfile, seedCoach,
     donePlayIds, logPlayCompletion, playLogs, requestCapture, setShowAiRail, actionLoop,
-    activeTodayAction, acceptTodayAction,
+    activeTodayAction, acceptTodayAction, requestJournalFocus,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -140,6 +140,17 @@ export default function OverviewTab() {
     () => behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= Date.now() - 7 * DAY).length,
     [behaviorLogs]
   );
+
+  // TODAY-6: the PREVIOUS 7-day window's logged-moment count (days 8–14),
+  // derived here where behaviorLogs are in scope, for the narrative's ONE
+  // comparative sentence. Counts only — never a trend adjective or score.
+  const momentsLastWeek = useMemo(() => {
+    const now = Date.now();
+    return behaviorLogs.filter((l) => {
+      const at = new Date(l.timestamp).getTime();
+      return at >= now - 14 * DAY && at < now - 7 * DAY;
+    }).length;
+  }, [behaviorLogs]);
 
   const { weekAvg } = useMemo(() => {
     const now = Date.now();
@@ -410,13 +421,21 @@ export default function OverviewTab() {
       {/* ── Progress narrative — retrospective picture. Its "Your evidence" cell
              is the ONE recent-moments surface on Today (the duplicate "Recent
              context" section was deleted — CODEX-1). ── */}
+      {/* TODAY-6: evidence ids are the JOURNAL TIMELINE SIGNAL ids (the same
+             `moment-`/`play-` prefixes buildTimeline assigns), so a tapped row
+             deep-links to exactly that entry via the requestJournalFocus seam.
+             The deep-link carries only the id — never a derived score. */}
       <ProgressNarrative
         childName={firstName}
-        behaviorLogs={behaviorLogs.map((item) => ({ id: item.id, timestamp: item.timestamp, label: item.context || item.notes || t("today.feed.logged") }))}
-        playLogs={playLogs.map((item) => ({ id: item.id, timestamp: item.timestamp, label: item.title }))}
+        behaviorLogs={behaviorLogs.map((item) => ({ id: `moment-${item.id}`, timestamp: item.timestamp, label: item.context || item.notes || t("today.feed.logged") }))}
+        playLogs={playLogs.map((item) => ({ id: `play-${item.id}`, timestamp: item.timestamp, label: item.title }))}
         noticedMilestones={checkedMilestones}
+        momentsLastWeek={momentsLastWeek}
         actions={actionLoop}
-        onOpenEvidence={() => setActiveTab("journal")}
+        onOpenEvidence={(evidenceId) => {
+          if (evidenceId) requestJournalFocus(evidenceId);
+          setActiveTab("journal");
+        }}
       />
 
       <section className="border-y py-5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("today.feed.title", { name: firstName })}>
