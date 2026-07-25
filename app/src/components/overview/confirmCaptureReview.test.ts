@@ -56,10 +56,14 @@ describe("TODAY-3 — one shared confirmed-capture contract (no forked path)", (
     }
   });
 
-  it("the provenance line is source-keyed and factual: text / voice transcription / photo", () => {
+  it("the provenance line is source-keyed and factual: text / voice transcription / photo / ai-draft", () => {
     expect(review).toMatch(/text:\s*["']ql\.review\.source["']/);
     expect(review).toMatch(/voice:\s*["']ql\.review\.source\.voice["']/);
     expect(review).toMatch(/photo:\s*["']ql\.review\.source\.photo["']/);
+    // AI-CAP-3/4 (CODEX-7 extension): extraction-filled drafts carry the
+    // factual ai-draft source — the review must never claim the parent wrote
+    // what the model drafted.
+    expect(review).toMatch(/["']ai-draft["']:\s*["']ql\.review\.source\.aiDraft["']/);
   });
 });
 
@@ -111,6 +115,7 @@ describe("TODAY-3/CODEX-7 — review copy: EN+HE parity, factual, zero confidenc
       "ql.review.source",
       "ql.review.source.voice",
       "ql.review.source.photo",
+      "ql.review.source.aiDraft",
       "ql.review.photoAlt",
     ]) {
       expect(en[key], `en missing ${key}`).toBeTruthy();

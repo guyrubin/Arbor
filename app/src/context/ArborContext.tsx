@@ -72,8 +72,11 @@ export type { ActiveTab };
 const VALID_TABS = new Set<string>(ROUTE_IDS);
 
 /** The modality a "log a moment" entry tile promises; the capture surface opens
- *  in this mode when a request is pending. */
-export type CaptureMode = "voice" | "photo" | "text";
+ *  in this mode when a request is pending. "ai-draft" (AI-CAP-4) is the coach
+ *  handoff: the extraction seam already filled the draft, so Behaviors opens
+ *  the form VISIBLE, scrolled into view, with the review gate armed and the
+ *  factual ai-draft provenance — the only write path stays confirmReview. */
+export type CaptureMode = "voice" | "photo" | "text" | "ai-draft";
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this
  *  array is derived from VALID_TABS and is never read by any render path. */

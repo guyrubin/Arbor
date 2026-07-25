@@ -552,6 +552,7 @@ export const en: Dict = {
   // beh toasts
   "beh.toast.voiceParsed": "Your words are in the form — review and save",
   "beh.toast.voiceFallback": "Captured your note into the trigger field",
+  "beh.extract.noResponse": "Not mentioned yet",
   "beh.toast.voiceUnsupported": "Voice capture isn't supported in this browser",
   "beh.toast.voiceError": "Couldn't hear that — try again",
   "beh.toast.fillBoth": "Fill in both \"What triggered this?\" and \"What was your response?\" to save.",
@@ -1264,6 +1265,7 @@ export const en: Dict = {
   "ql.review.source": "Source: written by you",
   "ql.review.source.voice": "Source: voice transcription",
   "ql.review.source.photo": "Source: photo added by you",
+  "ql.review.source.aiDraft": "Source: drafted by Arbor from your words — check every field",
   "ql.review.photoAlt": "Photo attached to this draft",
   "ql.review.edit": "Edit",
   "ql.review.discard": "Discard",
@@ -2760,6 +2762,7 @@ export const he: Dict = {
   // beh toasts
   "beh.toast.voiceParsed": "המילים שלכם כבר בטופס — בדקו ושמרו",
   "beh.toast.voiceFallback": "הפתק הועבר לשדה הטריגר",
+  "beh.extract.noResponse": "עדיין לא צוין",
   "beh.toast.voiceUnsupported": "לכידת קול אינה נתמכת בדפדפן זה",
   "beh.toast.voiceError": "לא הצלחנו להאזין — נסו שוב",
   "beh.toast.fillBoth": "מלאו גם \"מה עורר את זה?\" וגם \"מה הייתה התגובה שלכם?\" לפני השמירה.",
@@ -3457,6 +3460,7 @@ export const he: Dict = {
   "ql.review.source": "מקור: נכתב על ידכם",
   "ql.review.source.voice": "מקור: תמלול קולי",
   "ql.review.source.photo": "מקור: תמונה שהוספתם",
+  "ql.review.source.aiDraft": "מקור: נוסח על ידי ארבור מתוך המילים שלכם — בדקו כל שדה",
   "ql.review.photoAlt": "תמונה שצורפה לטיוטה",
   "ql.review.edit": "עריכה",
   "ql.review.discard": "מחיקה",

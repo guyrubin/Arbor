@@ -15,8 +15,9 @@ import HardMomentsSection from "../behaviors/HardMomentsSection";
 import { Modal } from "../ui/Modal";
 import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCaptureReview";
 import { speechSupported, startDictation } from "../../lib/speech";
-import { api, EscalationRequiredError } from "../../lib/api";
+import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
+import { BEHAVIOR_TYPES, behaviorTypeLabel, normalizeExtractedLog } from "../../content/behaviorTaxonomy";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import { useAuth } from "../../context/AuthContext";
@@ -124,7 +125,7 @@ export default function BehaviorsTab() {
   } = useArbor();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const behFirst = (childProfile.name || "").split(" ")[0];
   // COACH-5: quick-capture copy lives in i18n.ts (beh.capture.*), never an
   // inline per-language ternary table — keys stay visible to i18n tooling.
@@ -202,6 +203,23 @@ export default function BehaviorsTab() {
     window.setTimeout(() => photoInputRef.current?.click(), 120);
   };
 
+  // AI-CAP-8: every extraction result is validated/clamped through the ONE
+  // shared taxonomy module before it touches the draft — the type select
+  // always shows a valid canonical selection and an unmatched free label is
+  // preserved in notes, never dropped. AI-CAP-3: an empty extracted response
+  // prefills a neutral, visibly-editable placeholder instead of hard-blocking
+  // on the fillBoth toast later.
+  const applyExtractedDraft = (d: Awaited<ReturnType<typeof api.extractLog>>, fallbackTrigger: string) => {
+    const n = normalizeExtractedLog(d, fallbackTrigger);
+    setNewLogType(n.behaviorType);
+    setNewLogIntensity(n.intensity);
+    setNewLogDuration(n.durationMinutes);
+    setNewLogContext(n.context as BehaviorContext);
+    setNewLogTrigger(n.trigger);
+    setNewLogResponse(n.response || t("beh.extract.noResponse"));
+    if (n.notes) setNewLogNotes(n.notes);
+  };
+
   // AI-CAP-1: voice capture goes through the ONE hardened extraction seam —
   // api.extractLog (schema-enforced JSON, server-side escalation screen → 409,
   // name redaction). The old /api/chat + greedy-regex path was a live crisis
@@ -218,15 +236,8 @@ export default function BehaviorsTab() {
     setCaptureSource("voice");
     setNeedsReview(true);
     try {
-      const d = await api.extractLog({ message: text, childProfile });
-      // Clamp/validate every extracted field before it touches the draft.
-      if (d.behaviorType) setNewLogType(String(d.behaviorType));
-      setNewLogIntensity(Math.min(5, Math.max(1, Math.round(Number(d.intensity) || 3))));
-      setNewLogDuration(Math.max(1, Math.round(Number(d.durationMinutes) || 10)));
-      setNewLogContext((CONTEXTS.includes(d.context as BehaviorContext) ? d.context : "Home") as BehaviorContext);
-      if (d.trigger) setNewLogTrigger(String(d.trigger));
-      if (d.response) setNewLogResponse(String(d.response));
-      if (d.notes) setNewLogNotes(String(d.notes));
+      const d = await api.extractLog({ message: text, childProfile, language: getAiLanguage() });
+      applyExtractedDraft(d, text);
       toast(t("beh.toast.voiceParsed"), "success");
     } catch (err) {
       // FAIL-CLOSED: the escalation branch runs BEFORE any fallback that could
@@ -258,6 +269,56 @@ export default function BehaviorsTab() {
     setCaptureSource("text");
   };
 
+  // AI-CAP-3: typed capture goes through the SAME hardened extraction seam as
+  // voice — one model round-trip prefills the full draft, provenance 'ai-draft'
+  // (never 'text': the review line must not claim the parent wrote what the
+  // model drafted), the review gate arms, and ConfirmCaptureReview opens
+  // directly. Fail-closed contract identical to parseVoice (AI-CAP-1): the
+  // 409 escalation branch renders the crisis surface and writes ZERO draft
+  // fields; only non-escalation failures degrade to today's
+  // sentence-into-trigger behavior.
+  const TYPED_EXTRACT_MIN_CHARS = 25;
+  const extractFromTyped = async (text: string) => {
+    setParsing(true);
+    setEscalationMarkdown(null);
+    setCaptureSource("ai-draft");
+    setNeedsReview(true);
+    try {
+      const d = await api.extractLog({ message: text, childProfile, language: getAiLanguage() });
+      applyExtractedDraft(d, text);
+      setCaptureOpen(true);
+      setReviewOpen(true);
+    } catch (err) {
+      if (err instanceof EscalationRequiredError) {
+        const match =
+          escalationCategories.find((c) => c.category === err.category) ??
+          escalationCategories[0];
+        setEscalationMarkdown(renderEscalationMarkdown({ category: match.category, label: match.label, resources: match.resources }));
+      } else {
+        // Only AFTER the escalation branch: extraction failure degrades to
+        // today's ungated behavior — the sentence lands in the trigger field.
+        setNeedsReview(false);
+        setCaptureSource("text");
+        openFromBar(text);
+        toast(t("beh.toast.voiceFallback"), "info");
+      }
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  // The capture bar's Enter router (COACH-8 affordance kept): a long typed
+  // description drafts through extraction; short inputs keep today's
+  // open-the-form-with-prefill behavior.
+  const openFromBarOrDraft = (text: string) => {
+    if (text.trim().length > TYPED_EXTRACT_MIN_CHARS) {
+      setBarText("");
+      void extractFromTyped(text.trim());
+    } else {
+      openFromBar(text);
+    }
+  };
+
   const toggleVoice = () => {
     if (listening) {
       stopRef.current?.();
@@ -268,14 +329,19 @@ export default function BehaviorsTab() {
       return;
     }
     setListening(true);
-    stopRef.current = startDictation({
-      onResult: (text) => void parseVoice(text),
-      onError: () => toast(t("beh.toast.voiceError"), "error"),
-      onEnd: () => {
-        setListening(false);
-        stopRef.current = null;
+    stopRef.current = startDictation(
+      {
+        onResult: (text) => void parseVoice(text),
+        onError: () => toast(t("beh.toast.voiceError"), "error"),
+        onEnd: () => {
+          setListening(false);
+          stopRef.current = null;
+        },
       },
-    });
+      // AI-CAP-2: dictate in the parent's UI language — a Hebrew parent's
+      // speech must never be transcribed as English garbage.
+      uiLang === "he" ? "he-IL" : "en-US",
+    );
   };
 
   // Filters
@@ -436,8 +502,19 @@ export default function BehaviorsTab() {
   useEffect(() => {
     if (!pendingCaptureMode) return;
     setNeedsReview(true);
-    setCaptureSource(pendingCaptureMode === "photo" ? "photo" : pendingCaptureMode === "voice" ? "voice" : "text");
-    quickModes.find((m) => m.key === pendingCaptureMode)?.onClick();
+    setCaptureSource(
+      pendingCaptureMode === "photo" ? "photo"
+        : pendingCaptureMode === "voice" ? "voice"
+          : pendingCaptureMode === "ai-draft" ? "ai-draft"
+            : "text",
+    );
+    // AI-CAP-4: the coach Create-log handoff arrives with the draft already
+    // filled by the extraction seam — open the form VISIBLE and scrolled into
+    // view (it used to land on a hub with no visible draft while the toast
+    // claimed "log drafted"). The review gate above is armed, so the only
+    // write path is confirmReview.
+    if (pendingCaptureMode === "ai-draft") focusForm();
+    else quickModes.find((m) => m.key === pendingCaptureMode)?.onClick();
     consumeCaptureRequest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCaptureMode]);
@@ -483,7 +560,7 @@ export default function BehaviorsTab() {
             type="text"
             value={barText}
             onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); openFromBar(barText); } }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); openFromBarOrDraft(barText); } }}
             placeholder={captureCopy.intro}
             aria-label={captureCopy.open}
             className="block min-h-[88px] w-full bg-transparent px-4 py-4 text-start text-sm focus:outline-none sm:px-5"
@@ -576,7 +653,7 @@ export default function BehaviorsTab() {
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("beh.searchPlaceholder")} className="min-h-11 min-w-0 flex-[1_1_220px] rounded-xl px-3 py-2 focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
               <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="min-h-11 min-w-0 flex-[1_1_150px] rounded-xl px-2 py-2 sm:max-w-[220px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
                 <option value="all">{t("beh.allTypes")}</option>
-                {types.map((ty) => <option key={ty} value={ty}>{ty}</option>)}
+                {types.map((ty) => <option key={ty} value={ty}>{behaviorTypeLabel(ty, t)}</option>)}
               </select>
               <select value={intensityFilter} onChange={(e) => setIntensityFilter(e.target.value)} className="min-h-11 min-w-0 flex-[1_1_130px] rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
                 <option value="all">{t("beh.anyIntensity")}</option>
@@ -669,7 +746,9 @@ export default function BehaviorsTab() {
                                     <Icon name={tv.icon} size={22} />
                                   </span>
                                   <div className="min-w-0 flex-1">
-                                    <div className="font-bold text-sm truncate" style={{ color: "var(--arbor-ink)" }}>{log.behaviorType}</div>
+                                    {/* AI-CAP-8: localized label for canonical types (HE UI renders HE);
+                                        legacy free labels render as-is so old logs never blank out. */}
+                                    <div className="font-bold text-sm truncate" style={{ color: "var(--arbor-ink)" }}>{behaviorTypeLabel(log.behaviorType, t)}</div>
                                     <div className="text-[10px] mt-0.5 flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}>
                                       <span className="truncate">{log.context ? `${log.context} · ` : ""}{new Date(log.timestamp).toLocaleString()}</span>
                                     </div>
@@ -816,13 +895,13 @@ export default function BehaviorsTab() {
 
             <div className="mt-4 space-y-1">
               <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.typeLabel")}</label>
+              {/* AI-CAP-8: options render from the ONE shared taxonomy module —
+                  no duplicated option literals; every extraction is clamped to
+                  a canonical value so a visible selection always renders. */}
               <select value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="min-h-11 w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-                <option value="Transition Refusal">{t("beh.type.transition")}</option>
-                <option value="Sensory Overload">{t("beh.type.sensory")}</option>
-                <option value="Screentime Dispute">{t("beh.type.screen")}</option>
-                <option value="Sibling Conflict">{t("beh.type.sibling")}</option>
-                <option value="Food Refusal">{t("beh.type.food")}</option>
-                <option value="Sleep Meltdown">{t("beh.type.sleep")}</option>
+                {BEHAVIOR_TYPES.map((b) => (
+                  <option key={b.value} value={b.value}>{t(b.labelKey)}</option>
+                ))}
               </select>
             </div>
 
@@ -875,7 +954,28 @@ export default function BehaviorsTab() {
 
             <div className="mt-4 space-y-1.5">
               <label className="text-xs font-bold block" style={{ color: "var(--arbor-ink)" }}>{captureCopy.happened} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
-              <input ref={triggerInputRef} type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder={t("beh.triggerPlaceholder")} className="min-h-11 w-full rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+              <input
+                ref={triggerInputRef}
+                type="text"
+                value={newLogTrigger}
+                onChange={(e) => setNewLogTrigger(e.target.value)}
+                // AI-CAP-3: the capture bar redirects typing here (COACH-8), so
+                // this is where a full sentence actually lands — Enter on a long
+                // fresh description drafts through the extraction seam instead
+                // of tripping the fillBoth toast. Short inputs, edits, and
+                // already-gated drafts keep today's plain submit.
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  const typed = newLogTrigger.trim();
+                  if (!editingLogId && !needsReview && !newLogResponse.trim() && typed.length > TYPED_EXTRACT_MIN_CHARS) {
+                    e.preventDefault();
+                    void extractFromTyped(typed);
+                  }
+                }}
+                placeholder={t("beh.triggerPlaceholder")}
+                className="min-h-11 w-full rounded-xl p-3 text-sm"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              />
             </div>
 
             <div className="mt-4 space-y-1.5">
@@ -965,7 +1065,7 @@ export default function BehaviorsTab() {
             <ConfirmCaptureReview
               source={captureSource}
               rows={[
-                { label: t("beh.typeLabel"), value: newLogType },
+                { label: t("beh.typeLabel"), value: behaviorTypeLabel(newLogType, t) },
                 { label: t("ql.review.trigger"), value: newLogTrigger },
                 { label: t("ql.review.response"), value: newLogResponse },
                 { label: t("beh.notes"), value: newLogNotes },
@@ -992,7 +1092,7 @@ export default function BehaviorsTab() {
               <div className="space-y-2">
                 {typeCounts30d.map(({ type, count }) => (
                   <div key={type} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                    <span className="text-[11px] truncate" style={{ color: "var(--arbor-muted)" }}>{type}</span>
+                    <span className="text-[11px] truncate" style={{ color: "var(--arbor-muted)" }}>{behaviorTypeLabel(type, t)}</span>
                     <span className="text-[11px] font-bold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>
                       {t("beh.countEntry", { count })}
                     </span>

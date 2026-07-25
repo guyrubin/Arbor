@@ -38,10 +38,10 @@ describe("AI-CAP-1 — voice capture goes through the ONE hardened extraction se
     expect(behaviors).not.toMatch(/fetch\(/);
   });
 
-  it("parseVoice calls api.extractLog (schema-enforced, server-screened, redacted)", () => {
+  it("parseVoice calls api.extractLog (schema-enforced, server-screened, redacted) with the parent's AI language (AI-CAP-2)", () => {
     const parse = /const parseVoice = async[\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
     expect(parse).toBeTruthy();
-    expect(parse).toMatch(/api\.extractLog\(\{ message: text, childProfile \}\)/);
+    expect(parse).toMatch(/api\.extractLog\(\{ message: text, childProfile, language: getAiLanguage\(\) \}\)/);
   });
 
   it("the greedy JSON-regex extraction path is deleted", () => {
@@ -51,14 +51,19 @@ describe("AI-CAP-1 — voice capture goes through the ONE hardened extraction se
     expect(behaviors).not.toMatch(/JSON\.parse\(match/);
   });
 
-  it("every extracted field is clamped/validated before touching the draft", () => {
+  it("every extracted field is clamped/validated through the shared taxonomy module before touching the draft (AI-CAP-8)", () => {
+    // The clamp seam moved into normalizeExtractedLog (one shared module for
+    // voice, typed, and coach-handoff extraction) — its clamps (intensity
+    // 1..5, duration >= 1, context enum w/ safe default, free-label
+    // preservation) are unit-tested in content/behaviorTaxonomy.test.ts.
+    expect(behaviors).toMatch(/import \{[^}]*normalizeExtractedLog[^}]*\} from ["']\.\.\/\.\.\/content\/behaviorTaxonomy["']/);
+    const apply = /const applyExtractedDraft = [\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
+    expect(apply).toBeTruthy();
+    expect(apply).toMatch(/normalizeExtractedLog\(d, fallbackTrigger\)/);
     const parse = /const parseVoice = async[\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    // intensity clamped to 1..5
-    expect(parse).toMatch(/Math\.min\(5, Math\.max\(1,/);
-    // duration >= 1
-    expect(parse).toMatch(/setNewLogDuration\(Math\.max\(1,/);
-    // context restricted to the enum, safe default
-    expect(parse).toMatch(/CONTEXTS\.includes\(d\.context as BehaviorContext\) \? d\.context : "Home"/);
+    expect(parse).toMatch(/applyExtractedDraft\(d, text\)/);
+    // No extraction field reaches a draft setter without normalization.
+    expect(parse).not.toMatch(/setNewLogType\(String\(/);
   });
 
   it("FAIL-CLOSED order: the escalation branch runs BEFORE the raw-transcript fallback", () => {

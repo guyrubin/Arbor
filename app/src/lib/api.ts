@@ -205,7 +205,10 @@ export const api = {
     post<HeroJourneyRender>("/api/generate-hero-journey", payload),
   generateBrief: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; audience: string }) =>
     post<SchoolBrief>("/api/generate-handoff", payload),
-  extractLog: (payload: { message: string; childProfile: ChildProfile }) =>
+  // AI-CAP-2: `language` threads the parent's AI language into the extraction
+  // prompt (mirroring /chat's languageDirective) so an HE description yields
+  // HE trigger/response/notes — behaviorType/context stay schema-valued.
+  extractLog: (payload: { message: string; childProfile: ChildProfile; language?: "en" | "he" }) =>
     post<{ behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string }>("/api/extract-log", payload),
   // childId is REQUIRED by the server's COPPA gate (requireConsent reads it from
   // the body); without it /api/vision fails closed with 451. The caller passes the

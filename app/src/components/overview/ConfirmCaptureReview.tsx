@@ -11,16 +11,22 @@ import { useLanguage } from "../../context/LanguageContext";
  *
  *  CODEX-7 (firewall, may never return): the provenance line states only the
  *  FACTUAL source of the draft — "written by you" / "voice transcription" /
- *  "photo". No static confidence/certainty wording is allowed here; an
- *  unconditional "high confidence" is an asserted-not-computed system verdict
- *  (guarded by todayConsolidation.test.ts + confirmCaptureReview.test.ts). */
+ *  "photo" / "drafted by Arbor" (AI-CAP-4). No static confidence/certainty
+ *  wording is allowed here; an unconditional "high confidence" is an
+ *  asserted-not-computed system verdict (guarded by todayConsolidation.test.ts
+ *  + confirmCaptureReview.test.ts).
+ *
+ *  AI-CAP-3/4: "ai-draft" is the provenance for EVERY extraction-filled draft
+ *  (typed-sentence extraction and the coach Create-log handoff) — the review
+ *  line must never claim the parent wrote what the model drafted. */
 
-export type CaptureSource = "text" | "voice" | "photo";
+export type CaptureSource = "text" | "voice" | "photo" | "ai-draft";
 
 const SOURCE_KEY: Record<CaptureSource, string> = {
   text: "ql.review.source",
   voice: "ql.review.source.voice",
   photo: "ql.review.source.photo",
+  "ai-draft": "ql.review.source.aiDraft",
 };
 
 export default function ConfirmCaptureReview({

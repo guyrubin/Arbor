@@ -22,6 +22,7 @@ import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.j
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { requireConsent } from "../server/requireConsent.js";
+import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
 import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
@@ -1061,7 +1062,7 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
   // form. Non-diagnostic; safety-screened; the client falls back gracefully if
   // extraction is unavailable.
   router.post("/extract-log", async (req, res) => {
-    const { message, childProfile } = req.body;
+    const { message, childProfile, language } = req.body;
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "A description (message) is required" });
       return;
@@ -1078,6 +1079,13 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
     }
 
     try {
+      // AI-CAP-2: mirror /chat's languageDirective — a Hebrew-speaking parent's
+      // draft must come back in Hebrew. behaviorType/context stay per schema
+      // (English/enum) so the AI-CAP-8 taxonomy mapping and clamps keep working.
+      const languageDirective =
+        language === "he"
+          ? '\nIMPORTANT: The parent speaks Hebrew. Write "trigger", "response" and "notes" in natural, warm Hebrew (עברית). Keep "behaviorType" as a short English label and "context" exactly one of the schema values.'
+          : "";
       const prompt = `
 ${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor's logging assistant. Read the parent's description of a moment with their child and extract ONE structured behavior log. Observations only — never a diagnosis.
@@ -1086,14 +1094,14 @@ Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
 Parent description: "${message}"
 
 Rules:
-- behaviorType: a short 2-4 word label for the moment (e.g. "Morning refusal", "Screen shutoff meltdown", "Sibling conflict").
+- behaviorType: prefer one of exactly ${CANONICAL_BEHAVIOR_TYPES.join(" | ")} when one fits; otherwise a short 2-4 word English label for the moment (e.g. "Morning refusal", "Screen shutoff meltdown").
 - intensity: integer 1 (mild) to 5 (severe), inferred from the description.
 - durationMinutes: best-guess integer (use 10 if unclear).
 - context: one of exactly Home, School, Transit, Public.
 - trigger: the immediate antecedent in a few words ("" if unknown).
 - response: what the parent did, if mentioned ("" if unknown).
 - notes: one short neutral sentence capturing anything else useful ("" if none).
-Return only JSON matching the schema.`;
+Return only JSON matching the schema.${languageDirective}`;
 
       const privacy = createRedaction(childProfile?.name);
       const draft = await modelProvider.generateJson({

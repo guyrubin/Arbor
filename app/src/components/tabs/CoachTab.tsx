@@ -19,7 +19,8 @@ import CoachAnswerCards from "../coach/CoachAnswerCards";
 import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
-import { api, streamVoice, getAiLanguage } from "../../lib/api";
+import { api, streamVoice, getAiLanguage, EscalationRequiredError } from "../../lib/api";
+import { normalizeExtractedLog } from "../../content/behaviorTaxonomy";
 import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
@@ -122,6 +123,7 @@ export default function CoachTab() {
     deleteConversation,
     apiError,
     seedCoach,
+    requestCapture,
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
@@ -811,19 +813,36 @@ export default function CoachTab() {
                         const source = prior?.sender === "user" ? prior.text : msg.text;
                         toast(t("coach.toast.draftingLog"), "info");
                         try {
-                          const d = await api.extractLog({ message: source, childProfile });
-                          if (d.behaviorType) setNewLogType(d.behaviorType);
-                          if (d.intensity) setNewLogIntensity(Math.min(5, Math.max(1, Math.round(d.intensity))));
-                          if (d.durationMinutes) setNewLogDuration(Math.max(0, Math.round(d.durationMinutes)));
-                          const ctx = (["Home", "School", "Transit", "Public"].includes(d.context) ? d.context : "Home") as BehaviorContext;
-                          setNewLogContext(ctx);
-                          if (d.trigger) setNewLogTrigger(d.trigger);
-                          if (d.response) setNewLogResponse(d.response);
-                          setNewLogNotes(d.notes || "");
+                          const d = await api.extractLog({ message: source, childProfile, language: getAiLanguage() });
+                          // AI-CAP-8: clamp/validate through the ONE shared
+                          // taxonomy module — the Behaviors select always gets
+                          // a canonical type, free labels survive in notes.
+                          const n = normalizeExtractedLog(d, source.slice(0, 140));
+                          setNewLogType(n.behaviorType);
+                          setNewLogIntensity(n.intensity);
+                          setNewLogDuration(n.durationMinutes);
+                          setNewLogContext(n.context as BehaviorContext);
+                          setNewLogTrigger(n.trigger);
+                          setNewLogResponse(n.response || t("beh.extract.noResponse"));
+                          setNewLogNotes(n.notes);
+                          // AI-CAP-4: route the handoff through the existing
+                          // requestCapture seam — Behaviors opens the form
+                          // VISIBLE, review gate armed, factual 'ai-draft'
+                          // provenance; the only write path is confirmReview.
+                          requestCapture("ai-draft");
                           setActiveTab("behaviors");
                           toast(t("coach.toast.logDrafted"), "success");
-                        } catch {
+                        } catch (err) {
+                          // FAIL-CLOSED (same contract as AI-CAP-1): a 409 from
+                          // the extraction screen renders the full crisis
+                          // resources in the thread and writes ZERO draft fields.
+                          if (err instanceof EscalationRequiredError) {
+                            appendVoiceAiDelta(renderEscalationMarkdown(escalationMatchForCategory(err.category)));
+                            finalizeVoiceAiTurn();
+                            return;
+                          }
                           setNewLogNotes(msg.contract!.nonDiagnosticHypotheses?.[0]?.rationale?.slice(0, 300) || source.slice(0, 300));
+                          requestCapture("ai-draft");
                           setActiveTab("behaviors");
                           toast(t("coach.toast.notePrefilled"), "info");
                         }
