@@ -70,4 +70,4 @@
 > the arcade — transcreate them together with the arcade surface, or keep them
 > EN as brand names (reviewer's call). Subs are kid-register copy to transcreate.
 
-Related (separate finding, same reviewer session): the self-declared first-draft Hebrew playbank + kid SFX copy (KID-8 / group finding "Hebrew playbank + kid SFX copy is self-declared first-draft, unreviewed") should be bundled into the same native review.
+Related (separate finding, same reviewer session): the self-declared first-draft Hebrew playbank + kid SFX copy (KID-8 / group finding "Hebrew playbank + kid SFX copy is self-declared first-draft, unreviewed") should be bundled into the same native review — packet assembled at `docs/HE-NATIVE-REVIEW-PACKET-KID-8-GD-7.md`.
