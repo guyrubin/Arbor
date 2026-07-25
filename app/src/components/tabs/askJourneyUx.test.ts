@@ -98,8 +98,10 @@ describe("ASK-8 — calm single error affordance", () => {
   });
 
   it("both send paths route the user turn through the dedupe reducer", () => {
-    expect(chatSend).toContain("appendChatUser(prev, promptValue, selectedLens)");
-    expect(councilSend).toContain("appendChatUser(prev, promptValue, selectedLens)");
+    // ASK-5 added the optional displayText 4th arg on the chat path — the
+    // dedupe reducer is still the single append seam on both paths.
+    expect(chatSend).toContain("appendChatUser(prev, promptValue, selectedLens");
+    expect(councilSend).toContain("appendChatUser(prev, promptValue, selectedLens");
   });
 
   it("the retry card is the single role=alert affordance and resends the last question", () => {

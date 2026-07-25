@@ -64,7 +64,17 @@ export const isMemoryExpired = (item: { retention?: string; createdAt: string },
   return now - new Date(item.createdAt).getTime() > ms;
 };
 
-export const getApprovedMemoryContext = async (store: MemoryStore, childId: string, maxFacts = 40) => {
+/**
+ * ASK-6: the approved-memory prompt context PLUS the integer count of facts
+ * actually injected. The count (and ONLY the count — never fact content) is
+ * surfaced to the parent as `approvedMemoryFactsUsed` so "uses the memory you
+ * approved" becomes visible per-answer instead of a static claim.
+ */
+export const getApprovedMemoryContextDetail = async (
+  store: MemoryStore,
+  childId: string,
+  maxFacts = 40
+): Promise<{ context: string; factsUsed: number }> => {
   const events = await store.listEvents(childId);
   // foldMemoryEvents returns newest-first, so the slice keeps the most recent facts —
   // bounding prompt token growth as a child's memory ledger accumulates over time.
@@ -76,8 +86,11 @@ export const getApprovedMemoryContext = async (store: MemoryStore, childId: stri
   if (approved.length > windowed.length) {
     lines.push(`- (+${approved.length - windowed.length} older facts retained but omitted from this prompt for brevity)`);
   }
-  return lines.join("\n");
+  return { context: lines.join("\n"), factsUsed: windowed.length };
 };
+
+export const getApprovedMemoryContext = async (store: MemoryStore, childId: string, maxFacts = 40) =>
+  (await getApprovedMemoryContextDetail(store, childId, maxFacts)).context;
 
 export const appendMemoryProposals = async (
   store: MemoryStore,

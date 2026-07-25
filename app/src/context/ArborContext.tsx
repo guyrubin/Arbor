@@ -90,6 +90,10 @@ function tabFromHash(): ActiveTab | null {
 export type ChatMessage = {
   sender: "user" | "ai";
   text: string;
+  /** ASK-5: what the parent actually SAW and tapped (localized chip label /
+   *  scenario summary). Rendered as the user bubble when present; `text`
+   *  stays the canonical prompt that went to the model. */
+  displayText?: string;
   lens?: string;
   contract?: CoachContract;
   council?: CouncilTake[];
@@ -461,7 +465,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   useEffect(() => {
     if (!activeConversationId || !hasUserTurn(chatMessages)) return;
     const firstUser = chatMessages.find((m) => m.sender === "user");
-    const title = (firstUser ? firstUser.text : "Conversation").replace(/[#*]/g, "").trim().slice(0, 48) || "Conversation";
+    // ASK-5: the title derives from what the parent SAW (displayText for a
+    // tapped localized chip) — canonical text otherwise, same derivation.
+    const title = (firstUser ? firstUser.displayText || firstUser.text : "Conversation").replace(/[#*]/g, "").trim().slice(0, 48) || "Conversation";
     void conversationsCol.upsert({
       id: activeConversationId,
       title,
@@ -682,8 +688,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     chatAbortRef.current?.abort();
   };
 
-  // Handle Parent Coach Chat
-  const handleChatSend = async (customPrompt?: string) => {
+  // Handle Parent Coach Chat. ASK-5: `opts.displayText` carries the localized
+  // label the parent actually tapped (scenario / follow-up chip) — the bubble
+  // shows their words while the canonical prompt goes to the model (the
+  // approved hardMomentSurface pattern).
+  const handleChatSend = async (customPrompt?: string, opts?: { displayText?: string }) => {
     const promptValue = customPrompt || chatInput;
     if (!promptValue.trim() || isChatLoading) return;
 
@@ -700,7 +709,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     // ASK-8: appendChatUser dedupes the retry path — after a failed turn the
     // thread already ends with this exact question, so Retry never re-appends.
     setChatMessages((prev) =>
-      appendChatAck(appendChatUser(prev, promptValue, selectedLens), t("coach.ack"), selectedLens),
+      appendChatAck(appendChatUser(prev, promptValue, selectedLens, opts?.displayText), t("coach.ack"), selectedLens),
     );
     setIsChatLoading(true);
 
@@ -726,13 +735,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         // inline instead of an error.
         if (res.status === 402) {
           openPaywall(errData?.upgrade?.feature || "coach_unlimited", errData?.upgrade?.plan === "family" ? "family" : "plus");
+          // ASK-5: the meter bubble is localized like every other injected
+          // message — never the server's English `details` string.
           setChatMessages((prev) => [
             ...abortChatStream(prev),
-            {
-              sender: "ai",
-              text:
-                `### You've used today's free coaching\n${errData.details || "The free plan includes a daily number of coach messages."}\n\nUpgrade to keep going — your question will still be here.`,
-            },
+            { sender: "ai", text: `### ${t("coach.paywall.title")}\n${t("coach.paywall.body")}` },
           ]);
           return;
         }
@@ -772,8 +779,14 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   };
 
   // SAGE-2: convene the multi-agent scholar council (non-streaming orchestration).
+  // ASK-4: with an empty composer the council RE-ASKS the parent's last
+  // question — its most natural moment is right after an answer, when
+  // handleChatSend has already cleared chatInput; the old silent early-return
+  // made the button a no-op exactly then. CoachTab disables the button (with
+  // a hint) only when no prior user turn exists either.
   const handleCouncilSend = async (customPrompt?: string) => {
-    const promptValue = customPrompt || chatInput;
+    const lastUserTurn = [...chatMessages].reverse().find((m) => m.sender === "user");
+    const promptValue = customPrompt || chatInput.trim() || lastUserTurn?.text || "";
     if (!promptValue.trim() || isChatLoading) return;
 
     if (!customPrompt) setChatInput("");

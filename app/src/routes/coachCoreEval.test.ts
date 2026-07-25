@@ -281,6 +281,41 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
     expect(streamed).not.toMatch(/\bModerate\b/);
   });
 
+  it("coach-followups (ASK-4): zod-capped <=3, appended to the screened rendered text, overflow dropped", async () => {
+    const sc = scenario("coach-followups");
+    contractOverrides = { text: sc.input.stubbedContractText, followUps: sc.input.stubbedFollowUps };
+    const { events, raw } = await postChatStreamed({
+      message: sc.input.parentMessage,
+      childProfile: { id: "c1", name: "Mia" },
+    });
+    const done = doneOf(events);
+    const parsed = coachResponseZodSchema.parse(done?.contract);
+    // Zod cap: <=3 items survive the parse seam; the overflow 4th is gone.
+    expect(parsed.followUps).toEqual(sc.input.stubbedFollowUps.slice(0, 3));
+    expect(parsed.followUps).toHaveLength(3);
+    // FIREWALL CONDITION (ASK-4): every chip string is INSIDE the rendered
+    // done text — the exact text screenModelOutput ran on. A followUp that
+    // skipped renderCoachResponse would be the first output-screen bypass.
+    for (const q of parsed.followUps ?? []) expect(String(done?.text)).toContain(q);
+    // The dropped overflow item reaches neither the contract nor any frame.
+    expect(raw).not.toContain("OVERFLOW-FOURTH-QUESTION");
+  });
+
+  it("ASK-6: the done contract carries approvedMemoryFactsUsed as an integer count only", async () => {
+    contractOverrides = { text: "A calm plain answer for the memory-count check." };
+    const { events, raw } = await postChatStreamed({
+      message: "How do I handle the bedtime standoff?",
+      childProfile: { id: "c1", name: "Mia" },
+    });
+    const done = doneOf(events);
+    // Fresh LocalMemoryStore → zero approved facts injected; the field is a
+    // server-backfilled integer, never model text and never fact content.
+    expect(done?.contract?.approvedMemoryFactsUsed).toBe(0);
+    expect(Number.isInteger(done?.contract?.approvedMemoryFactsUsed)).toBe(true);
+    // Firewall shape: no percentage/confidence framing anywhere in the payload.
+    expect(raw).not.toMatch(/\d+\s*%/);
+  });
+
   it("every deterministic scenario in the suite is exercised above", () => {
     const deterministic = suite.scenarios.filter((s: any) => s.tier === "deterministic").map((s: any) => s.id);
     expect(deterministic.sort()).toEqual(
@@ -291,6 +326,7 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
         "coach-escalation-input",
         "coach-source-grounding",
         "coach-no-verdict-strings",
+        "coach-followups",
       ].sort(),
     );
   });

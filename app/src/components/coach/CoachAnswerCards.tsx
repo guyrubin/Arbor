@@ -42,6 +42,19 @@ export function citationRows(contract: CoachContract): CitationRow[] {
 }
 
 /**
+ * Pure helper (ASK-6): the calm memory-visibility footer label. COUNT ONLY —
+ * the clinical firewall shape: never fact content, never a percentage or
+ * confidence figure. Empty string when nothing grounded the answer, so no
+ * false "uses your memory" claim renders on ungrounded answers.
+ * Exported so tests can cover it without mounting the full component.
+ */
+export function memoryFooterLabel(n: number | undefined, lang: UiLang = "en"): string {
+  if (typeof n !== "number" || n <= 0) return "";
+  if (n === 1) return translate(lang, "coach.memory.grounded.one");
+  return translate(lang, "coach.memory.grounded", { n });
+}
+
+/**
  * Pure helper: presentation tier for the "Reach out for help if" footer.
  * Low (or absent) risk → "quiet": a calm, collapsed disclosure so routine
  * questions don't read as alarms. Anything else — including unrecognized
@@ -86,7 +99,7 @@ function Panel({ icon, title, tint, children, action }: {
   );
 }
 
-export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff }: {
+export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff, onManageMemory }: {
   contract: CoachContract;
   lens?: string;
   council?: CouncilTake[];
@@ -94,6 +107,8 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   onSaveToPlan: (topic: string) => void;
   onCreateLog: () => void;
   onAddToHandoff: (note: string) => void;
+  /** ASK-6: deep link to Profile › Child Memory (route "memory"). */
+  onManageMemory?: () => void;
 }) {
   const [done, setDone] = useState<Record<number, boolean>>({});
   const [copied, setCopied] = useState<string | null>(null);
@@ -353,6 +368,41 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ASK-6: felt memory — a calm counts-only footer. CLINICAL FIREWALL:
+          the grounded row renders an integer COUNT only (no fact content, no
+          percentage/confidence wording) and the review chip names THAT
+          something is pending, never WHAT — zero memory content in-thread.
+          Queue mechanics live untouched in Profile › Child Memory. */}
+      {(memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" || (contract.memoryProposals?.length ?? 0) > 0) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
+          {memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+              <Icon name="psychology" size={13} aria-hidden />
+              {memoryFooterLabel(contract.approvedMemoryFactsUsed, lang)}
+              <span aria-hidden>·</span>
+              <button
+                type="button"
+                onClick={onManageMemory}
+                className="font-extrabold underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded"
+                style={{ color: "var(--arbor-green-ink)" }}
+              >
+                {t("coach.memory.manage")}
+              </button>
+            </span>
+          )}
+          {(contract.memoryProposals?.length ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={onManageMemory}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 min-h-[32px] rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+              style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+            >
+              <Icon name="lightbulb" size={13} aria-hidden /> {t("coach.memory.reviewChip")}
+            </button>
+          )}
         </div>
       )}
 

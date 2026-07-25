@@ -51,6 +51,25 @@ export const coachResponseZodSchema = z.object({
     teacher: z.string().min(1),
     professional: z.string().min(1)
   }),
+  // ASK-4: anticipated next questions, localized by the languageDirective.
+  // The zod cap is a TRANSFORM (never a hard .max) so a chatty model can't
+  // fail the whole answer: items are trimmed, blanks dropped, the list is
+  // clamped to 3 and each string to 140 chars at the parse seam. Rendered
+  // chips fall back to the client's static trio when absent. FIREWALL
+  // CONDITION: these strings are APPENDED to renderCoachResponse below so
+  // screenModelOutput covers them — a rendered-but-unscreened field would be
+  // the first bypass of the AI-2 output screen.
+  followUps: z
+    .array(z.string())
+    .optional()
+    .transform((items) => {
+      const capped = (items ?? [])
+        .map((q) => q.trim())
+        .filter((q) => q.length > 0)
+        .slice(0, 3)
+        .map((q) => (q.length > 140 ? q.slice(0, 140) : q));
+      return capped.length > 0 ? capped : undefined;
+    }),
   sourceCardsUsed: z.array(z.string()).optional(),
   // COACH-6: resolved citation metadata. The model never emits this — the
   // server backfills it from the knowledge registry after parsing (see
@@ -59,7 +78,12 @@ export const coachResponseZodSchema = z.object({
     id: z.string().min(1),
     title: z.string().min(1),
     type: z.string()
-  })).optional()
+  })).optional(),
+  // ASK-6: how many parent-approved memory facts grounded this answer. The
+  // model never emits this — the server backfills the integer COUNT after
+  // parsing (firewall shape: a count only — never fact content, never a
+  // percentage or confidence figure).
+  approvedMemoryFactsUsed: z.number().int().nonnegative().optional()
 });
 
 export type CoachResponse = z.infer<typeof coachResponseZodSchema>;
@@ -101,7 +125,8 @@ export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) 
     "frameRouting",
     "memoryProposals",
     "handoffNotes",
-    "sourceCardsUsed"
+    "sourceCardsUsed",
+    "followUps"
   ],
   properties: {
     // ASK-1/AIR-1: keep `text` FIRST — the ask-cadence stream tails this field.
@@ -161,7 +186,10 @@ export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) 
         professional: { type: Type.STRING }
       }
     },
-    sourceCardsUsed: { type: Type.ARRAY, items: { type: Type.STRING } }
+    sourceCardsUsed: { type: Type.ARRAY, items: { type: Type.STRING } },
+    // ASK-4: 2-3 short follow-up questions the parent is likely to ask next,
+    // in the same language as the other human-readable values.
+    followUps: { type: Type.ARRAY, items: { type: Type.STRING } }
   }
 });
 
@@ -213,5 +241,14 @@ ${response.sourceCardsUsed?.map((card) => `- ${card}`).join("\n") || "- No Arbor
 ### Handoff Note
 Teacher: ${response.handoffNotes.teacher}
 
-Professional: ${response.handoffNotes.professional}`;
+Professional: ${response.handoffNotes.professional}${
+    // ASK-4 FIREWALL CONDITION: followUps MUST flow through this rendered
+    // text so screenModelOutput covers every string the chips display — a
+    // rendered-but-unscreened field would be the first bypass of the AI-2
+    // output screen. Keep this the LAST section so the streamed prose lead
+    // and section ordering above stay byte-identical for existing tests.
+    response.followUps?.length
+      ? `\n\n### Suggested Follow-ups\n${response.followUps.map((q) => `- ${q}`).join("\n")}`
+      : ""
+  }`;
 };

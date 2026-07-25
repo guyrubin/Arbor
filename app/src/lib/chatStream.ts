@@ -39,10 +39,17 @@ export const hasAiTurn = (msgs: ChatMessage[]): boolean => msgs.some((m) => m.se
  * A deliberate repeat after a successful answer still appends (the last
  * message is then an AI turn).
  */
-export const appendChatUser = (prev: ChatMessage[], text: string, lens?: string): ChatMessage[] => {
+export const appendChatUser = (prev: ChatMessage[], text: string, lens?: string, displayText?: string): ChatMessage[] => {
   const last = prev[prev.length - 1];
+  // Retry resends the canonical text with no display label — the dedupe keeps
+  // the original bubble, so a localized displayText survives a retry.
   if (last && last.sender === "user" && last.text === text) return prev;
-  return [...prev, { sender: "user", text, lens }];
+  // ASK-5: `displayText` is what the parent actually SAW and tapped (a
+  // localized chip label); `text` stays the canonical prompt sent to the
+  // model. Only stored when it differs, so plain typed turns stay lean.
+  return [...prev, displayText && displayText !== text
+    ? { sender: "user", text, lens, displayText }
+    : { sender: "user", text, lens }];
 };
 
 /** Append the immediate local acknowledgment bubble for a fresh ask turn. */

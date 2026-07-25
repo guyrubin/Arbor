@@ -67,8 +67,11 @@ function parseRisk(text: string): Risk {
   return riskFromLevel(m?.[1]);
 }
 
-// Follow-ups: the visible label is translated (labelKey); the `prompt` sent to
-// the model stays English on purpose (the model replies in aiLang).
+// Follow-ups: the STATIC FALLBACK trio, used only when the answer's contract
+// carries no model-anticipated followUps (ASK-4). The visible label is
+// translated (labelKey); the `prompt` sent to the model stays English on
+// purpose (the model replies in aiLang) — the bubble shows the tapped label
+// via displayText (ASK-5).
 const FOLLOW_UPS: { labelKey: string; prompt: string }[] = [
   { labelKey: "coach.followup.avoid", prompt: "What should I avoid saying in that moment?" },
   { labelKey: "coach.followup.repair", prompt: "How do I repair the connection afterwards?" },
@@ -577,7 +580,9 @@ export default function CoachTab() {
             {SCENARIOS.map((s) => (
               <button
                 key={s.labelKey}
-                onClick={() => handleChatSend(s.prompt)}
+                // ASK-5: the parent's bubble shows the localized label they
+                // actually tapped; the canonical EN prompt goes to the model.
+                onClick={() => handleChatSend(s.prompt, { displayText: t(s.labelKey) })}
                 disabled={isChatLoading}
                 className="inline-flex items-center gap-2 rounded-2xl px-4 py-3 min-h-[48px] text-start text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                 style={{ color: T.ink, border: "1px solid var(--arbor-rule)" }}
@@ -794,6 +799,8 @@ export default function CoachTab() {
                       lens={msg.lens}
                       council={msg.council}
                       lang={uiLang}
+                      // ASK-6: memory footer deep link — Profile › Child Memory.
+                      onManageMemory={() => setActiveTab("memory")}
                       onSaveToPlan={(topic) => {
                         setPlanChallengeTopic((topic || msg.text).replace(/[#*]/g, "").slice(0, 140));
                         setActiveTab("plans");
@@ -834,7 +841,10 @@ export default function CoachTab() {
                     <MarkdownBlock text={msg.text} />
                   )
                 ) : (
-                  <MarkdownBlock text={msg.text} />
+                  // ASK-5: user bubbles show what the parent SAW (the tapped
+                  // localized chip label) — msg.text stays the canonical
+                  // prompt that went to the model.
+                  <MarkdownBlock text={msg.displayText || msg.text} />
                 )}
 
                 {msg.sender === "ai" && !msg.contract && !msg.voiceLive && !msg.chatLive && (
@@ -918,23 +928,35 @@ export default function CoachTab() {
             </div>
           ))}
 
-          {showFollowUps && (
+          {showFollowUps && (() => {
+            // ASK-4: the answer's own anticipated followUps lead (localized by
+            // the model via the languageDirective, zod-capped to 3, and
+            // screened — they are appended to renderCoachResponse so
+            // screenModelOutput covered every string shown here). The static
+            // trio is only the fallback when the contract carries none.
+            const anticipated = lastMessage?.contract?.followUps?.filter((q) => q.trim()) ?? [];
+            const chips = anticipated.length > 0
+              ? anticipated.map((q) => ({ key: q, label: q, prompt: q }))
+              : FOLLOW_UPS.map((q) => ({ key: q.labelKey, label: t(q.labelKey), prompt: q.prompt }));
+            return (
             <div className="flex flex-wrap gap-[9px] me-auto max-w-[85%] ps-11">
-              {FOLLOW_UPS.map((q) => (
+              {chips.map((q) => (
                 <button
-                  key={q.labelKey}
-                  onClick={() => handleChatSend(q.prompt)}
+                  key={q.key}
+                  dir="auto"
+                  onClick={() => handleChatSend(q.prompt, { displayText: q.label })}
                   className="text-[13px] px-4 py-1.5 min-h-[44px] rounded-full transition flex items-center gap-1.5 font-extrabold bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-green-ink)" }}
                 >
-                  {t(q.labelKey)}
+                  {q.label}
                   {uiLang === "he"
                     ? <Icon name="arrow_back" size={12} />
                     : <Icon name="arrow_forward" size={12} />}
                 </button>
               ))}
             </div>
-          )}
+            );
+          })()}
 
           {isChatLoading && (
             <div className="flex gap-3 max-w-[85%] me-auto">
@@ -993,10 +1015,13 @@ export default function CoachTab() {
         <div className="flex flex-wrap items-center gap-2 px-4 py-2" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
           <button
             type="button"
+            // ASK-4: with an empty composer the council re-asks the parent's
+            // last question (handleCouncilSend falls back to it) — disabled,
+            // with an honest hint, ONLY when no prior turn exists to convene on.
             onClick={() => handleCouncilSend()}
-            disabled={isChatLoading}
-            title={t("coach.councilHint")}
-            aria-label={t("coach.councilHint")}
+            disabled={isChatLoading || (!chatInput.trim() && !lastUserText)}
+            title={chatInput.trim() || lastUserText ? t("coach.councilHint") : t("coach.councilHint.empty")}
+            aria-label={chatInput.trim() || lastUserText ? t("coach.councilHint") : t("coach.councilHint.empty")}
             className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
             style={{ color: "var(--arbor-muted)" }}
           >

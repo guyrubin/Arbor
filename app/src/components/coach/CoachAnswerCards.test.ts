@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows } from "./CoachAnswerCards";
+import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows, memoryFooterLabel } from "./CoachAnswerCards";
 import type { CoachContract } from "../../types";
 
 /**
@@ -323,6 +323,96 @@ describe("COACH-1 — uiLang=he renders zero English chrome", () => {
     for (const s of ["Why this might be happening", "Try today", "Say this", "Watch for", "Save to plan", "Teacher note"]) {
       expect(html, `missing EN chrome "${s}"`).toContain(s);
     }
+  });
+});
+
+/**
+ * ASK-6 — felt memory, counts only. The footer row renders an integer COUNT
+ * of approved facts ("Grounded in {n} facts you approved · Manage") and the
+ * review chip names THAT something is pending — never fact content, never a
+ * percentage or confidence figure (clinical firewall shape).
+ */
+describe("ASK-6 — memoryFooterLabel (counts-only helper)", () => {
+  it("is empty for 0/undefined — no false memory claim on ungrounded answers", () => {
+    expect(memoryFooterLabel(0, "en")).toBe("");
+    expect(memoryFooterLabel(undefined, "en")).toBe("");
+    expect(memoryFooterLabel(0, "he")).toBe("");
+  });
+
+  it("singular and plural forms in both languages", () => {
+    expect(memoryFooterLabel(1, "en")).toBe("Grounded in 1 fact you approved");
+    expect(memoryFooterLabel(3, "en")).toBe("Grounded in 3 facts you approved");
+    expect(memoryFooterLabel(1, "he")).toBe("מבוסס על עובדה אחת שאישרתם");
+    expect(memoryFooterLabel(3, "he")).toContain("3");
+  });
+
+  it("firewall: no percentage or confidence wording in either language", () => {
+    for (const lang of ["en", "he"] as const) {
+      for (const n of [1, 4]) {
+        const label = memoryFooterLabel(n, lang);
+        expect(label).not.toContain("%");
+        expect(label.toLowerCase()).not.toContain("confidence");
+        expect(label).not.toContain("ביטחון");
+      }
+    }
+  });
+});
+
+describe("ASK-6 — memory footer rendering", () => {
+  const SECRET_FACT = "NEVER-IN-THREAD: naps collapse after 15:00";
+
+  function renderMemory(overrides: Partial<CoachContract>, lang: "en" | "he" = "en"): string {
+    return renderToStaticMarkup(
+      React.createElement(CoachAnswerCards, {
+        contract: { ...makeContract("low"), ...overrides },
+        lang,
+        onSaveToPlan: noop,
+        onCreateLog: noop,
+        onAddToHandoff: noop,
+        onManageMemory: noop,
+      })
+    );
+  }
+
+  it("grounded answers show the count row with the manage deep-link affordance", () => {
+    const html = renderMemory({ approvedMemoryFactsUsed: 3 });
+    expect(html).toContain("Grounded in 3 facts you approved");
+    expect(html).toContain("Manage");
+  });
+
+  it("an ungrounded answer (count 0 or absent) renders no memory-claim row", () => {
+    for (const html of [renderMemory({ approvedMemoryFactsUsed: 0 }), renderMemory({})]) {
+      expect(html).not.toContain("facts you approved");
+      expect(html).not.toContain("fact you approved");
+    }
+  });
+
+  it("a proposal turn renders the review chip exactly once — with ZERO memory content in-thread", () => {
+    const html = renderMemory({
+      memoryProposals: [
+        { fact: SECRET_FACT, source: "chat", retention: "3 months" },
+        { fact: `${SECRET_FACT}-2`, source: "chat", retention: "3 months" },
+      ],
+    });
+    expect(html.match(/Arbor suggests remembering something/g)?.length).toBe(1);
+    // The binding firewall line: zero memory CONTENT rendered in-thread.
+    expect(html).not.toContain(SECRET_FACT);
+  });
+
+  it("no proposals → no review chip", () => {
+    expect(renderMemory({ approvedMemoryFactsUsed: 2 })).not.toContain("Arbor suggests remembering");
+  });
+
+  it("HE: count row and review chip render in Hebrew", () => {
+    const html = renderMemory(
+      { approvedMemoryFactsUsed: 2, memoryProposals: [{ fact: SECRET_FACT, source: "chat", retention: "3 months" }] },
+      "he"
+    );
+    expect(html).toContain("מבוסס על 2 עובדות שאישרתם");
+    expect(html).toContain("ניהול");
+    expect(html).toContain("ארבור מציעה לזכור משהו");
+    expect(html).not.toContain(SECRET_FACT);
+    expect(html).not.toContain("Grounded in");
   });
 });
 

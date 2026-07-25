@@ -398,6 +398,17 @@ export const en: Dict = {
   "coach.voice.interrupt": "Tap to interrupt",
   "coach.voice.end": "End voice conversation",
   "coach.councilHint": "Convene 3 scholars — each weighs in, then Arbor brings it together for you",
+  // ASK-4 — honest disabled hint: the council convenes on the latest question.
+  "coach.councilHint.empty": "Ask a question first — the council convenes on your latest question",
+  // ASK-5 — the coach-meter bubble is localized like every injected message.
+  "coach.paywall.title": "You've used today's free coaching",
+  "coach.paywall.body": "The free plan includes a daily number of coach messages. Upgrade to keep going — your question will still be here.",
+  // ASK-6 — counts-only memory visibility (clinical firewall: never content,
+  // never a percentage or confidence figure).
+  "coach.memory.grounded": "Grounded in {n} facts you approved",
+  "coach.memory.grounded.one": "Grounded in 1 fact you approved",
+  "coach.memory.manage": "Manage",
+  "coach.memory.reviewChip": "Arbor suggests remembering something — review",
   "coach.mem.source": "Source",
   "coach.mem.retention": "Retention",
   "coach.mem.frame": "Frame",
@@ -2594,6 +2605,17 @@ export const he: Dict = {
   "coach.voice.interrupt": "הקישו כדי לקטוע",
   "coach.voice.end": "סיום השיחה הקולית",
   "coach.councilHint": "כינוס 3 מומחים — כל אחד מחווה דעה, וארבור מחברת הכול לתשובה אחת בשבילכם",
+  // ASK-4 — רמז כן כשאין עדיין שאלה שהמועצה יכולה להתכנס סביבה.
+  "coach.councilHint.empty": "שאלו שאלה קודם — המועצה מתכנסת סביב השאלה האחרונה שלכם",
+  // ASK-5 — הודעת המכסה מתורגמת כמו כל הודעה אחרת בשיחה.
+  "coach.paywall.title": "סיימתם את מכסת הליווי החינמית להיום",
+  "coach.paywall.body": "התוכנית החינמית כוללת מספר הודעות יומי למאמנת. שדרגו כדי להמשיך — השאלה שלכם תישאר כאן.",
+  // ASK-6 — שקיפות זיכרון בספירה בלבד (חומת האש הקלינית: לעולם לא תוכן,
+  // לעולם לא אחוזים או ניסוח ביטחון).
+  "coach.memory.grounded": "מבוסס על {n} עובדות שאישרתם",
+  "coach.memory.grounded.one": "מבוסס על עובדה אחת שאישרתם",
+  "coach.memory.manage": "ניהול",
+  "coach.memory.reviewChip": "ארבור מציעה לזכור משהו — לבדיקה",
   "coach.mem.source": "מקור",
   "coach.mem.retention": "שמירה",
   "coach.mem.frame": "מסגרת",

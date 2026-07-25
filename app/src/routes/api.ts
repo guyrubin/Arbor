@@ -5,7 +5,7 @@ import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
-import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
+import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 import { resolveScholar } from "../services/scholars.js";
 import { selectCouncil, runScholarTakes, renderCouncilForSynthesis } from "../services/council.js";
@@ -399,7 +399,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
 
       const childId = toChildId(childProfile);
       const familyId = toFamilyId(childProfile);
-      const approvedMemory = await getApprovedMemoryContext(memoryStore, childId, config.memoryPromptMaxFacts);
+      // ASK-6: keep the fact COUNT alongside the prompt context — the count
+      // (an integer only, never content) is backfilled onto the contract so
+      // the parent can SEE the answer was grounded in facts they approved.
+      const { context: approvedMemory, factsUsed: approvedMemoryFactsUsed } =
+        await getApprovedMemoryContextDetail(memoryStore, childId, config.memoryPromptMaxFacts);
       if (streamResponse) writeSse(res, "status", { stage: "sources" });
       // SCH-3: the selected lens is now load-bearing — its scholar's card(s) are
       // guaranteed into the context and lead, alongside age/domain matches.
@@ -436,7 +440,7 @@ Ground "What To Do Today" and the parent script in this lens, and prefer Six Fra
 Parent question:
 ${message}
 
-Return only JSON that matches the response schema. Open with the "text" field FIRST: 2-4 warm, plain sentences that briefly acknowledge the parent and give the heart of your answer — no headings, no lists, no labels. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used.${languageDirective}
+Return only JSON that matches the response schema. Open with the "text" field FIRST: 2-4 warm, plain sentences that briefly acknowledge the parent and give the heart of your answer — no headings, no lists, no labels. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used. Include followUps: 2-3 short, natural next questions THIS parent is likely to ask after THIS answer (specific to their situation, never generic), each under 100 characters, in the same language as your other text values.${languageDirective}
 `;
 
       // SEC/CMP P0: child PII never reaches the model — redact at the call seam,
@@ -539,6 +543,9 @@ Return only JSON that matches the response schema. Open with the "text" field FI
       // COACH-6: resolve the cited ids to real titles + types from the server
       // knowledge registry so the citation drawer never shows raw slugs.
       structured.sourceCards = buildSourceCards(structured.sourceCardsUsed, knowledgeCards);
+      // ASK-6: integer count only (clinical firewall) — the model never emits
+      // this; it is the number of approved facts injected into the prompt.
+      structured.approvedMemoryFactsUsed = approvedMemoryFactsUsed;
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       const renderedText = renderCoachResponse(structured);
@@ -604,7 +611,9 @@ Return only JSON that matches the response schema. Open with the "text" field FI
     try {
       const childId = toChildId(childProfile);
       const familyId = toFamilyId(childProfile);
-      const approvedMemory = await getApprovedMemoryContext(memoryStore, childId, config.memoryPromptMaxFacts);
+      // ASK-6: same count-only memory visibility as /chat.
+      const { context: approvedMemory, factsUsed: approvedMemoryFactsUsed } =
+        await getApprovedMemoryContextDetail(memoryStore, childId, config.memoryPromptMaxFacts);
       const lead = resolveScholar(scholarLens);
       const childDomains = Array.isArray(childProfile?.domains) ? childProfile.domains : [];
       const council = selectCouncil(lead, childDomains, 3);
@@ -652,7 +661,7 @@ Integrate the council's distinct lenses into one coherent, non-diagnostic answer
 Parent question:
 ${message}
 
-Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed.${languageDirective}
+Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed. Include followUps: 2-3 short, natural next questions this parent is likely to ask after this answer, each under 100 characters, in the same language as your other text values.${languageDirective}
 `;
 
       const raw = await modelProvider.generateJson({
@@ -668,6 +677,8 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
       }
       // COACH-6: same citation-title resolution as /chat.
       structured.sourceCards = buildSourceCards(structured.sourceCardsUsed, knowledgeCards);
+      // ASK-6: integer count only (clinical firewall).
+      structured.approvedMemoryFactsUsed = approvedMemoryFactsUsed;
 
       // AI-2: output-side safety screen.
       const renderedText = renderCoachResponse(structured);
