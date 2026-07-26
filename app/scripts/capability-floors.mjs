@@ -366,7 +366,10 @@ function readSrc(relPath) {
   const text = readSrc("safety/outputScreen.ts");
   if (!text) {
     skip("F12b", "safety-outputScreen", "safety/outputScreen.ts not found");
-  } else if (/export type OutputScreenVerdict/.test(text)) {
+  } else if (/export type OutputScreenVerdict/.test(text) || /export \{[^}]*\btype OutputScreenVerdict\b[^}]*\}/.test(text)) {
+    // Direct export OR re-export (`export { type OutputScreenVerdict } from ...`) —
+    // the AI-excellence wave moved the type to outputScreenLexical.ts and re-exports
+    // it here; both forms satisfy the module contract the floor guards.
     pass("F12b", "safety-outputScreen", "OutputScreenVerdict exported");
   } else {
     fail("F12b", "safety-outputScreen", "OutputScreenVerdict not exported");
