@@ -58,6 +58,8 @@ const Appointments = lazy(() => import("../sections/Appointments"));
 const TrustedSharing = lazy(() => import("../sections/TrustedSharing"));
 const Reports = lazy(() => import("../sections/Reports"));
 const Masterclasses = lazy(() => import("../sections/Masterclasses"));
+// Learn Library — Academy's browsable developmental-education shelf.
+const LearnLibrary = lazy(() => import("../sections/LearnLibrary"));
 const FamilyFormation = lazy(() => import("../sections/FamilyFormation"));
 // W5.3: the comics route mounts the bookshelf host (multi-page ComicReader
 // books); it replaces the single-panel hero-comics grid (retired in W5.5).
@@ -126,6 +128,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   sharing: TrustedSharing,
   reports: Reports,
   masterclasses: Masterclasses,
+  learn: LearnLibrary,
   family: FamilyFormation,
   comics: ComicsTab,
   speech: SpeechCoachTab,
