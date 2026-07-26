@@ -4,8 +4,10 @@
  * so the firewall condition "coach-core-v1 green before merge" is satisfiable.
  * Every deterministic-tier scenario runs here against the REAL /api/chat
  * handler with a scripted model stream; the eval JSON is the source of truth
- * and this file asserts full deterministic coverage. EVAL-5 (Wave 3)
- * completes the judge tier (lens fidelity, memory grounding, judge dims).
+ * and this file asserts full deterministic coverage. EVAL-5 (Wave 3) COMPLETED
+ * the suite: lens-fidelity + memory-grounding + day-0 deterministic floors
+ * below, the sharpened riskLevel firewall assertion, and the live judge tier
+ * via `npm run eval:judge -- coach-core-v1` (scripts/eval-judge.mts).
  *
  * Deterministic contract (from the execution brief):
  *  - done.contract zod-parses against coachResponseZodSchema;
@@ -24,7 +26,7 @@ import type { Server } from "node:http";
 import { createApiRouter } from "./api.js";
 import { createTestConfig } from "../testConfig.js";
 import { loadFramework } from "../services/framework.js";
-import { LocalMemoryStore } from "../memory/localMemoryStore.js";
+import type { MemoryLedgerEvent, MemoryStore } from "../memory/types.js";
 import { LocalShareStore } from "../sharing/shares.js";
 import { LocalConsentStore } from "../sharing/consent.js";
 import { createCounterStore } from "../server/quotaStore.js";
@@ -34,8 +36,9 @@ import { createConsultStore } from "../server/consultRequests.js";
 import { createAdminMetricsStore } from "../server/adminMetrics.js";
 import { createWaitlistStore } from "../server/waitlist.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
-import { renderBlockedOutputMarkdown } from "../safety/outputScreen.js";
+import { renderBlockedOutputMarkdown, screenModelOutputLexical } from "../safety/outputScreen.js";
 import { coachResponseZodSchema } from "../contracts/coach.js";
+import { getScholarById } from "../services/scholars.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 
 const HEBREW = /[֐-׿]/;
@@ -51,6 +54,28 @@ const scenario = (id: string) => {
 // ── Stub provider scripted per scenario ─────────────────────────────────────
 let contractOverrides: Record<string, unknown> = {};
 let modelInvocations = 0;
+// EVAL-5: the redacted prompt the model actually saw — the deterministic
+// floor for lens fidelity and memory grounding asserts against it.
+let lastChatPrompt = "";
+
+// EVAL-5: an ISOLATED in-memory ledger (the LocalMemoryStore writes a shared
+// .data file on disk — cross-test pollution) so memory-grounding can seed an
+// APPROVED fact and day-0 can rely on a genuinely empty child.
+const memoryEvents: MemoryLedgerEvent[] = [];
+const inMemoryStore: MemoryStore = {
+  listEvents: async (childId?: string) =>
+    childId ? memoryEvents.filter((event) => event.childId === childId) : [...memoryEvents],
+  appendEvent: async (event: MemoryLedgerEvent) => {
+    memoryEvents.push(event);
+  },
+  eraseChild: async (childId: string) => {
+    const before = memoryEvents.length;
+    for (let i = memoryEvents.length - 1; i >= 0; i -= 1) {
+      if (memoryEvents[i].childId === childId) memoryEvents.splice(i, 1);
+    }
+    return before - memoryEvents.length;
+  },
+};
 
 const contractDocument = () =>
   JSON.stringify({
@@ -74,8 +99,9 @@ const contractDocument = () =>
   });
 
 const stubModelProvider = {
-  async *generateJsonStream() {
+  async *generateJsonStream({ prompt }: { prompt: string }) {
     modelInvocations += 1;
+    lastChatPrompt = prompt;
     const doc = contractDocument();
     for (let i = 0; i < doc.length; i += 16) yield doc.slice(i, i + 16);
   },
@@ -98,7 +124,7 @@ beforeAll(async () => {
     createApiRouter({
       config,
       modelProvider: stubModelProvider,
-      memoryStore: new LocalMemoryStore(),
+      memoryStore: inMemoryStore,
       shareStore: new LocalShareStore(),
       consentStore: new LocalConsentStore(),
       framework: loadFramework(),
@@ -123,6 +149,7 @@ afterAll(async () => {
 beforeEach(() => {
   contractOverrides = {};
   modelInvocations = 0;
+  lastChatPrompt = "";
 });
 
 type SseEvent = { event: string; data: Record<string, any> };
@@ -264,7 +291,7 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
     expect(done?.contract?.sourceCardsUsed).toEqual(sc.input.citedCardIds);
   });
 
-  it("coach-no-verdict-strings: the contract-internal riskLevel value never renders in parent-facing text", async () => {
+  it("coach-no-verdict-strings: riskLevel is contract-internal ONLY — never text in any parent-facing field", async () => {
     const sc = scenario("coach-no-verdict-strings");
     contractOverrides = { text: sc.input.stubbedContractText, riskLevel: sc.input.stubbedRiskLevel };
     const { events } = await postChatStreamed({
@@ -272,13 +299,93 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
       childProfile: { id: "c1", name: "Mia" },
     });
     const done = doneOf(events);
-    // The value lives on the contract (it tiers escalation prominence)…
+    // The value lives on the contract (it may tier escalation prominence)…
     expect(done?.contract?.riskLevel).toBe("Moderate");
-    // …but NEVER as text a parent reads.
+    // …but NEVER as text a parent reads — not in the rendered answer, not in
+    // any streamed delta (the two parent-facing surfaces of this route).
+    // Exports stay guarded separately (clinicalFirewall wave3/wave4 tests).
     expect(String(done?.text)).not.toMatch(/\bModerate\b/);
     expect(String(done?.text)).not.toMatch(/riskLevel/i);
+    expect(String(done?.text)).not.toMatch(/\brisk level\b/i);
     const streamed = deltas(events).map((e) => String(e.data.text)).join("");
     expect(streamed).not.toMatch(/\bModerate\b/);
+    expect(streamed).not.toMatch(/riskLevel/i);
+    // EVAL-5: screenModelOutputLexical is the checker — the rendered answer
+    // carries no verdict/diagnosis/percentage strings the lexical floor flags.
+    expect(screenModelOutputLexical(String(done?.text)).flagged).toBe(false);
+    expect(String(done?.text)).not.toMatch(/\d+\s*%/);
+  });
+
+  it("coach-lens-fidelity: the resolved scholar method is load-bearing in the prompt (apply, not name)", async () => {
+    const sc = scenario("coach-lens-fidelity");
+    contractOverrides = { text: sc.input.stubbedContractText };
+    const { events } = await postChatStreamed({
+      message: sc.input.parentMessage,
+      childProfile: { id: "c1", name: "Mia" },
+      scholarLens: sc.input.scholarLens,
+    });
+    // Deterministic floor: selecting the lens changes what the model is ASKED
+    // to do — the prompt embeds the resolved scholar's name and method
+    // verbatim under the apply-directive. A prompt edit that reduces the lens
+    // to a name-drop fails here; the judge tier grades the applied answer.
+    const vygotsky = getScholarById("vygotsky")!;
+    expect(lastChatPrompt).toContain("apply this method, do not just name it");
+    expect(lastChatPrompt).toContain(vygotsky.name);
+    expect(lastChatPrompt).toContain(vygotsky.method);
+    expect(lastChatPrompt).toContain(`Six Frame "${vygotsky.defaultFrame}"`);
+    // The contract still zod-parses on a lensed call.
+    const done = doneOf(events);
+    expect(() => coachResponseZodSchema.parse(done?.contract)).not.toThrow();
+  });
+
+  it("coach-memory-grounding: the approved fact is injected verbatim; the contract carries the COUNT only", async () => {
+    const sc = scenario("coach-memory-grounding");
+    const fact = sc.input.approvedMemoryFacts[0] as string;
+    // Seed ONE parent-approved fact for an isolated child (the ASK-6 approval
+    // seam's end state — nothing pending, nothing auto-approved here).
+    await inMemoryStore.appendEvent({
+      eventId: "eval-e1",
+      memoryId: "eval-m1",
+      familyId: "default-family",
+      childId: "c-mem",
+      eventType: "approved",
+      status: "approved",
+      fact,
+      source: "chat",
+      retention: "3 months",
+      createdAt: new Date().toISOString(),
+      actor: "parent",
+    });
+    contractOverrides = { text: sc.input.stubbedContractText };
+    const { events } = await postChatStreamed({
+      message: sc.input.parentMessage,
+      childProfile: { id: "c-mem", name: "Mia" },
+    });
+    // Deterministic floor: the approved fact reached the prompt's approved-
+    // memory block VERBATIM — grounding is provable, not aspirational.
+    expect(lastChatPrompt).toContain("ARBOR APPROVED CHILD MEMORY:");
+    expect(lastChatPrompt).toContain(fact);
+    // ASK-6 firewall shape: the parent-facing signal is the integer COUNT
+    // only — never fact content, never a percentage.
+    const done = doneOf(events);
+    expect(done?.contract?.approvedMemoryFactsUsed).toBe(1);
+  });
+
+  it("coach-day0-no-memory: zero approved memory → honest empty-memory prompt, count 0, contract still parses", async () => {
+    const sc = scenario("coach-day0-no-memory");
+    contractOverrides = { text: sc.input.stubbedContractText };
+    const { events } = await postChatStreamed({
+      message: sc.input.parentMessage,
+      childProfile: { id: "c-day0", name: "Mia" },
+    });
+    // Deterministic floor: a day-0 child gets the EXPLICIT no-memory line —
+    // the prompt never fabricates context the parent hasn't approved.
+    expect(lastChatPrompt).toContain("No parent-approved child memory available.");
+    const done = doneOf(events);
+    expect(done?.contract?.approvedMemoryFactsUsed).toBe(0);
+    const parsed = coachResponseZodSchema.parse(done?.contract);
+    expect(parsed.todayPlan.length).toBeGreaterThanOrEqual(1);
+    expect(parsed.todayPlan.length).toBeLessThanOrEqual(3);
   });
 
   it("coach-followups (ASK-4): zod-capped <=3, appended to the screened rendered text, overflow dropped", async () => {
@@ -327,6 +434,9 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
         "coach-source-grounding",
         "coach-no-verdict-strings",
         "coach-followups",
+        "coach-lens-fidelity",
+        "coach-memory-grounding",
+        "coach-day0-no-memory",
       ].sort(),
     );
   });

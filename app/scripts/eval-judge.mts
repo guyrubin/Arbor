@@ -72,6 +72,32 @@ const routeOf = (scenario: EvalScenario): string => scenario.route ?? "/api/chat
 const modelRouteFor = (route: string): ModelRoute =>
   route === "/api/chat" ? "coach_high_stakes" : "analysis_structured";
 
+/**
+ * EVAL-5: seed parent-approved memory facts for a scenario through the SAME
+ * parent seams the product uses — POST /memory/:childId/propose (pending) then
+ * PATCH /memory/:memoryId {status:"approved"} (the parent approval act).
+ * Nothing is written outside the existing ledger; synthetic child only.
+ */
+const seedApprovedMemory = async (baseUrl: string, childId: string, facts: readonly string[]): Promise<void> => {
+  for (const fact of facts) {
+    const proposeRes = await fetch(`${baseUrl}/api/memory/${childId}/propose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fact, source: "eval-fixture", retention: "3 months", prompt: "eval:approved-memory" }),
+    });
+    if (!proposeRes.ok) throw new Error(`memory propose failed (${proposeRes.status}) for eval fact`);
+    const { items } = (await proposeRes.json()) as { items: { memoryId: string; fact: string }[] };
+    const item = items.find((entry) => entry.fact === fact);
+    if (!item) throw new Error("proposed eval fact not found in the review ledger");
+    const approveRes = await fetch(`${baseUrl}/api/memory/${item.memoryId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "approved" }),
+    });
+    if (!approveRes.ok) throw new Error(`memory approve failed (${approveRes.status}) for eval fact`);
+  }
+};
+
 // ── The real in-process server ───────────────────────────────────────────────
 const startServer = async () => {
   const config = loadConfig();
@@ -136,6 +162,25 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
     return `HTTP ${res.status}\n${await res.text()}`;
   }
 
+  // EVAL-3 (capture-extract-v1): the capture-extraction route. The message is
+  // taken as-is (deliberately including empty-ish inputs — the 400 path is a
+  // scenario); the transcript is the raw status + JSON body so the judge sees
+  // exactly the draft (or the 409/400 contract) a parent's client would.
+  if (route === "/api/extract-log") {
+    const res = await fetch(`${baseUrl}/api/extract-log`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: String(input.message ?? ""), childProfile: SYNTHETIC_PROFILE, language: locale }),
+    });
+    return `HTTP ${res.status}\n${await res.text()}`;
+  }
+
+  // EVAL-5: scenarios that declare parent-approved memory get it seeded via
+  // the real propose→approve seam before the coach call.
+  if (Array.isArray(input.approvedMemoryFacts) && input.approvedMemoryFacts.length > 0) {
+    await seedApprovedMemory(baseUrl, SYNTHETIC_PROFILE.id, input.approvedMemoryFacts.map(String));
+  }
+
   // Coach-seed suites: the message is the governed seed + the parent follow-up.
   let message = String(input.parentMessage ?? "");
   if (scenario.cardId) {
@@ -158,7 +203,14 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
   const res = await fetch(`${baseUrl}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, childProfile: SYNTHETIC_PROFILE, language: locale }),
+    body: JSON.stringify({
+      message,
+      childProfile: SYNTHETIC_PROFILE,
+      language: locale,
+      // EVAL-5 (lens fidelity): the selected lens is load-bearing — pass it
+      // through so the live answer is judged on APPLYING the method.
+      ...(input.scholarLens ? { scholarLens: String(input.scholarLens) } : {}),
+    }),
   });
   const payload: any = await res.json();
   const contract = payload.contract ? `\n\nCONTRACT:\n${JSON.stringify(payload.contract, null, 2)}` : "";

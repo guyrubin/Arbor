@@ -36,7 +36,10 @@ export const escalationCategories: {
       FIND_LOCAL,
     ].join("\n"),
     patterns: [
-      /suicid|self[-\s]?harm|kill (himself|herself|myself)|want(s)? to die/i,
+      // EVAL-3 (capture-extract-v1 escalation-bait): "he wants to hurt himself"
+      // is self-harm language a parent reports verbatim — the reflexive-pronoun
+      // frame must trip the screen even without the words "die"/"suicide".
+      /suicid|self[-\s]?harm|kill (himself|herself|myself)|want(s|ed)? to (die|hurt (himself|herself|myself|themselves))/i,
       /להתאבד|אובדני|אובדנית|לפגוע בעצמי|לפגוע בעצמו|לפגוע בעצמה|רוצה למות/i,
       /zelfmoord|zelf[-\s]?doden|sui[cï]cid|mezelf (pijn|iets aandoen)|wil (niet meer leven|dood)/i
     ]

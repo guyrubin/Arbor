@@ -1145,7 +1145,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // extraction is unavailable.
   router.post("/extract-log", async (req, res) => {
     const { message, childProfile, language } = req.body;
-    if (!message || typeof message !== "string") {
+    // EVAL-3 (capture-extract-v1 empty-input scenario): empty-ISH input —
+    // missing, non-string, or whitespace-only — answers 400 before any model
+    // call; a blank description must never burn a model round-trip.
+    if (!message || typeof message !== "string" || !message.trim()) {
       res.status(400).json({ error: "A description (message) is required" });
       return;
     }
