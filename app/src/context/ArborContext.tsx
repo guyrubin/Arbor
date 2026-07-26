@@ -33,7 +33,10 @@ import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
-import type { SavedLearnItem } from "../learn/learnLibrary";
+import { matchLearnCards, type SavedLearnItem } from "../learn/learnLibrary";
+import { LEARN_CARDS } from "../learn/learnCards";
+import { concernsForBehaviors } from "../content/selectCards";
+import { ageYearsFromProfile } from "../lib/childAge";
 import { sortActionLoop, todayActionId } from "../actionLoop/model";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
@@ -179,6 +182,23 @@ function useArborState() {
   const [pendingConsultNote, setPendingConsultNote] = useState<string | null>(null);
   const requestConsultPrefill = (note: string) => setPendingConsultNote(note);
   const consumeConsultPrefill = () => setPendingConsultNote(null);
+
+  /**
+   * LL — Learn Library deep-link seam (mirrors the capture seam above). Any
+   * surface can hand the parent to one specific read (cardId) or one shelf
+   * (category); the Library consumes and clears the request on mount. Carries
+   * ONLY a catalogue reference — never child data, never a derived verdict.
+   * `source` tags provenance for telemetry.
+   */
+  const [pendingLearnRequest, setPendingLearnRequest] = useState<
+    { cardId?: string; category?: string } | null
+  >(null);
+  const requestLearnRead = (req: { cardId?: string; category?: string; source?: string }) => {
+    setPendingLearnRequest({ cardId: req.cardId, category: req.category });
+    setActiveTab("learn");
+    try { track("learn_deep_link", { source: req.source ?? "unknown" }); } catch { /* noop */ }
+  };
+  const consumeLearnRequest = () => setPendingLearnRequest(null);
 
   /**
    * The single seam for handing a prompt to Ask Arbor from anywhere in the app.
@@ -781,6 +801,18 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
           childProfile: childProfile,
           scholarLens: selectedLens || "Integrated Balanced",
           language: getAiLanguage(),
+          // LL-A9 — Learn Library grounding: attach the catalogue read that
+          // matches this question (EN fields; the model localizes per the
+          // language directive). Server sanitizes + caps; absent when no match.
+          libraryContext: (() => {
+            const match = matchLearnCards(LEARN_CARDS, {
+              concerns: concernsForBehaviors([promptValue]),
+              ageYears: ageYearsFromProfile(childProfile),
+            }, 1)[0];
+            return match
+              ? { id: match.id, title: match.title.en, keyPoints: match.keyPoints.map((k) => k.en) }
+              : undefined;
+          })(),
         }),
       });
 
@@ -1109,6 +1141,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     seedCoach,
     savedLearnIds,
     toggleSavedLearn,
+    pendingLearnRequest,
+    requestLearnRead,
+    consumeLearnRequest,
     postCaptureCoachPrompt,
     offerPostCaptureCoach,
     dismissPostCaptureCoach,

@@ -15,7 +15,7 @@
  *    the Development Map focus domain (framed as an opportunity, never a
  *    deficit) float matching cards up. Nothing else is inferred.
  */
-import type { LocalizedText } from "../content/governance";
+import type { ContentConcern, LocalizedText } from "../content/governance";
 
 export type LearnCategoryId =
   | "minds"
@@ -61,7 +61,31 @@ export interface LearnCard {
   tryToday: LocalizedText;
   /** Coach composer seed — a question, in the parent's voice. */
   ask: LocalizedText;
+  /**
+   * Optional ContentConcern tags (governance vocabulary) bridging this card to
+   * behavior-log and hard-moment surfaces. Defaults to the category's tags via
+   * cardConcerns() — set only when a card is narrower than its shelf.
+   */
+  concerns?: ContentConcern[];
 }
+
+/** Shelf-level concern defaults (governance vocabulary; observational tags). */
+const CATEGORY_CONCERNS: Record<LearnCategoryId, ContentConcern[]> = {
+  minds: ["attention"],
+  language: [],
+  feelings: ["regulation", "separation", "fears"],
+  behavior: ["aggression", "transitions", "regulation"],
+  sleep: ["sleep", "routines"],
+  play: ["attention", "peer-conflict"],
+  screens: ["screens"],
+  eating: ["food", "routines"],
+  motion: [],
+  parent: ["regulation"],
+};
+
+/** A card's effective concern tags: explicit tags, else its shelf's defaults. */
+export const cardConcerns = (card: LearnCard): ContentConcern[] =>
+  card.concerns ?? CATEGORY_CONCERNS[card.category];
 
 /** Bookmark record — the card id only; no child data beyond the reference. */
 export interface SavedLearnItem {
@@ -146,25 +170,80 @@ export const learnCategoryById = (id: LearnCategoryId): LearnCategory =>
   LEARN_CATEGORIES.find((c) => c.id === id) ?? LEARN_CATEGORIES[0];
 
 /**
- * Explainable ranking — nothing beyond what the why-line states:
- *  +2 the child's age falls inside the card's window (+1 within a year of it),
- *  +3 the card nurtures the Development Map focus domain (opportunity framing).
+ * Explainable ranking signals — nothing beyond what the why-line can state:
+ *  - ageYears: +2 inside the card's window, +1 within a year of it
+ *  - focusDomain: +3 when the card nurtures it (opportunity framing, never deficit)
+ *  - recentConcerns: +2 per overlapping observed concern tag, capped at +4
+ *    (derived from behavior logs via concernsForBehaviors — counts, not verdicts)
+ *  - helpfulness: parent's own per-card pulse, +1 helpful / -2 not helpful
  * Ties keep catalogue order (stable sort) so results never shuffle.
  */
-export function rankLearnCards(
+export interface LearnRankSignals {
+  ageYears: number | null;
+  focusDomain: string | null;
+  recentConcerns?: ContentConcern[];
+  helpfulness?: Record<string, 1 | -1>;
+}
+
+export function learnCardScore(c: LearnCard, s: LearnRankSignals): number {
+  let score = 0;
+  if (s.ageYears != null) {
+    if (s.ageYears >= c.ageMin && s.ageYears <= c.ageMax) score += 2;
+    else if (s.ageYears >= c.ageMin - 1 && s.ageYears <= c.ageMax + 1) score += 1;
+  }
+  if (s.focusDomain && c.domains.includes(s.focusDomain)) score += 3;
+  if (s.recentConcerns && s.recentConcerns.length > 0) {
+    const overlap = cardConcerns(c).filter((t) => s.recentConcerns!.includes(t)).length;
+    score += Math.min(overlap * 2, 4);
+  }
+  const pulse = s.helpfulness?.[c.id];
+  if (pulse === 1) score += 1;
+  else if (pulse === -1) score -= 2;
+  return score;
+}
+
+export function rankLearnCards(cards: LearnCard[], s: LearnRankSignals): LearnCard[] {
+  return [...cards].sort((a, b) => learnCardScore(b, s) - learnCardScore(a, s));
+}
+
+/** True when recent observed concerns actually contributed to a card's rank —
+ *  the why-line may only claim the logging signal when this holds. */
+export function concernsContributed(card: LearnCard, recentConcerns: ContentConcern[]): boolean {
+  return recentConcerns.length > 0 && cardConcerns(card).some((t) => recentConcerns.includes(t));
+}
+
+/** Best single read for a framework domain (milestone / weekly / scholar doors). */
+export function bestCardForDomain(
   cards: LearnCard[],
-  opts: { ageYears: number | null; focusDomain: string | null }
+  domain: string,
+  ageYears: number | null
+): LearnCard | undefined {
+  const inDomain = cards.filter((c) => c.domains.includes(domain));
+  return rankLearnCards(inDomain, { ageYears, focusDomain: null })[0];
+}
+
+/**
+ * Match cards to an arbitrary context (coach answer, hard-moment card):
+ * domain overlap ×3 + concern overlap ×2; only positive matches return.
+ */
+export function matchLearnCards(
+  cards: LearnCard[],
+  ctx: { domains?: string[]; concerns?: ContentConcern[]; ageYears?: number | null },
+  max = 2
 ): LearnCard[] {
-  const score = (c: LearnCard): number => {
-    let s = 0;
-    if (opts.ageYears != null) {
-      if (opts.ageYears >= c.ageMin && opts.ageYears <= c.ageMax) s += 2;
-      else if (opts.ageYears >= c.ageMin - 1 && opts.ageYears <= c.ageMax + 1) s += 1;
-    }
-    if (opts.focusDomain && c.domains.includes(opts.focusDomain)) s += 3;
-    return s;
-  };
-  return [...cards].sort((a, b) => score(b) - score(a));
+  const scored = cards
+    .map((card, index) => {
+      let score = 0;
+      if (ctx.domains) score += card.domains.filter((d) => ctx.domains!.includes(d)).length * 3;
+      if (ctx.concerns) score += cardConcerns(card).filter((t) => ctx.concerns!.includes(t)).length * 2;
+      if (score > 0 && ctx.ageYears != null && ctx.ageYears >= card.ageMin && ctx.ageYears <= card.ageMax) {
+        score += 1;
+      }
+      return { card, index, score };
+    })
+    .filter((e) => e.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  return scored.slice(0, max).map((e) => e.card);
 }
 
 /** Locale-aware search over title, hook and key points. */

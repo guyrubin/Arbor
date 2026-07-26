@@ -418,8 +418,29 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     }
   });
 
+  // LL-A9 — Learn Library grounding: the client may attach the read it matched
+  // to the parent's question ({id, title, keyPoints}). Sanitized hard (shape,
+  // string type, length caps) because it is client-supplied prompt input; it
+  // rides the existing knowledgeContext channel so the pinned prompt template
+  // is untouched and requests without it stay byte-identical (EVAL-6).
+  const renderLibraryGrounding = (raw: unknown): string => {
+    if (!raw || typeof raw !== "object") return "";
+    const lc = raw as { id?: unknown; title?: unknown; keyPoints?: unknown };
+    if (typeof lc.title !== "string" || !Array.isArray(lc.keyPoints)) return "";
+    const title = lc.title.slice(0, 200);
+    const points = lc.keyPoints
+      .filter((p): p is string => typeof p === "string")
+      .slice(0, 5)
+      .map((p, i) => `${i + 1}) ${p.slice(0, 300)}`);
+    if (!title || points.length === 0) return "";
+    return (
+      `\n\nARBOR LEARN LIBRARY (curated parent-facing read matched to this question — align your guidance with its stance; if it fits, mention that the "${title}" read is available in Arbor's Library):\n` +
+      `"${title}" — key points: ${points.join(" ")}`
+    );
+  };
+
   router.post("/chat", async (req, res) => {
-    const { message, childProfile, scholarLens, language } = req.body;
+    const { message, childProfile, scholarLens, language, libraryContext } = req.body;
     const languageDirective =
       language === "he"
         ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
@@ -486,7 +507,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const prompt = buildChatPrompt({
         developmentalFramework,
         approvedMemory,
-        knowledgeContext: renderKnowledgeContext(knowledgeCards),
+        knowledgeContext: renderKnowledgeContext(knowledgeCards) + renderLibraryGrounding(libraryContext),
         childProfile,
         scholar,
         message,

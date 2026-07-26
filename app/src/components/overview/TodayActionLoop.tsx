@@ -24,8 +24,9 @@ export default function TodayActionLoop() {
 
   if (!activeTodayAction) return null;
 
-  // AIX-S6: honest provenance — a step accepted from the weekly digest says so.
-  const eyebrow = activeTodayAction.source === "digest" ? t("today.action.eyebrow.digest") : copy.eyebrow;
+  // AIX-S6: honest provenance — a step accepted from the weekly digest says so;
+  // LL-A6: same rule for steps accepted from a Learn Library read.
+  const eyebrow = activeTodayAction.source === "digest" ? t("today.action.eyebrow.digest") : activeTodayAction.source === "learn-read" ? t("today.action.eyebrow.learn") : copy.eyebrow;
 
   const outcomes: { value: ActionOutcome; label: string }[] = [{ value: "helped", label: copy.helped }, { value: "somewhat", label: copy.somewhat }, { value: "not_today", label: copy.notToday }];
   return (

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 // Directional glyphs are RTL-aware: the caller already picks the start/end
 // variant by uiLang (he ⇒ left, otherwise right), so the Material Symbols
@@ -40,6 +40,13 @@ import { splitCompleteSentences } from "../../lib/sentenceStream";
 // real user/AI turns, never message-count checks (the welcome bubble is gone).
 import { hasUserTurn, hasAiTurn } from "../../lib/chatStream";
 import { publishedHardMomentCards } from "../../content/hardMomentCards";
+// LL-A1: "Go deeper" — after a settled answer, up to 2 Learn Library reads
+// matched on the contract's framework domains + concerns keyword-derived from
+// the answer text, deep-linked via the requestLearnRead seam.
+import { matchLearnCards } from "../../learn/learnLibrary";
+import { LEARN_CARDS } from "../../learn/learnCards";
+import { concernsForBehaviors } from "../../content/selectCards";
+import { ageYearsFromProfile } from "../../lib/childAge";
 import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { voiceState } from "../../lib/voice";
@@ -125,6 +132,7 @@ export default function CoachTab() {
     seedCoach,
     requestCapture,
     requestConsultPrefill,
+    requestLearnRead,
     proposeMemory,
   } = useArbor();
   const { toast } = useToast();
@@ -148,6 +156,23 @@ export default function CoachTab() {
   const lastMessage = chatMessages[chatMessages.length - 1];
   const showFollowUps =
     !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && !lastMessage.chatLive && userTurnExists;
+
+  // LL-A1: up to 2 "Go deeper" Learn Library reads for the settled answer —
+  // ranked on the contract's framework domains + concerns keyword-derived from
+  // the answer text, age-tiebroken. Same gate as the follow-up lane, so the
+  // chips never render beside a still-streaming bubble.
+  const goDeeperReads = useMemo(() => {
+    if (!showFollowUps || !lastMessage?.text) return [];
+    return matchLearnCards(
+      LEARN_CARDS,
+      {
+        domains: lastMessage.contract?.domains,
+        concerns: concernsForBehaviors([lastMessage.text]),
+        ageYears: ageYearsFromProfile(childProfile),
+      },
+      2
+    );
+  }, [showFollowUps, lastMessage, childProfile]);
 
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
@@ -975,6 +1000,29 @@ export default function CoachTab() {
                     : <Icon name="arrow_forward" size={12} />}
                 </button>
               ))}
+              {/* LL-A1: "Go deeper" reads — lavender (the Learn accent, per the
+                  milestone chip) so a read is visually distinct from a follow-up
+                  question; tap deep-links into the Learn Library reader. */}
+              {goDeeperReads.length > 0 && (
+                <>
+                  <span className="text-[11px] font-bold self-center" style={{ color: "var(--arbor-muted)" }}>{t("learn.goDeeper")}</span>
+                  {goDeeperReads.map((card) => {
+                    const title = aiLang === "he" ? card.title.he : card.title.en;
+                    return (
+                      <button
+                        key={card.id}
+                        dir="auto"
+                        aria-label={title}
+                        onClick={() => requestLearnRead({ cardId: card.id, source: "coach-answer" })}
+                        className="text-[12px] px-4 py-1.5 min-h-[38px] rounded-full transition active:scale-[0.98] flex items-center gap-1.5 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                        style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
+                      >
+                        <Icon name="local_library" size={14} /> {title}
+                      </button>
+                    );
+                  })}
+                </>
+              )}
             </div>
             );
           })()}
