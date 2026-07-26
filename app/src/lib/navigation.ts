@@ -7,7 +7,7 @@ import {
   Target, Map, Gauge, School, Moon,
   MessageCircle, NotebookPen, UserCircle,
   Clock, ListChecks, BarChart3, Bell, BadgeCheck,
-  Sparkles, Heart,
+  Sparkles, Heart, Library,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -170,6 +170,7 @@ export const SECTIONS: NavSection[] = [
       // Academy surfaces (not category items, not drawer entries) — they resolve
       // to Academy via TAB_SECTION_FALLBACK so the sidebar still highlights.
       { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
+      { tab: "learn", label: "Learn Library", icon: Library },
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
       { tab: "bedtime-stories", label: "Bedtime Story", icon: Moon },
     ],
@@ -177,6 +178,7 @@ export const SECTIONS: NavSection[] = [
     // contextual tool (folded out of the drawer).
     primaryTabs: [
       { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
+      { tab: "learn", label: "Learn Library", icon: Library },
       { tab: "stories", label: "Story Journeys", icon: BookOpen },
     ],
     tools: [

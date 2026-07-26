@@ -29,6 +29,9 @@ export const CHILD_SUBCOLLECTIONS = [
   "playLogs",
   // AR-CAP-02: parent-accepted Today actions and parent-reported outcomes.
   "actionLoops",
+  // Learn Library bookmarks (card id + savedAt only) — still per-child data,
+  // so it rides the same export/erasure sweep.
+  "savedLearn",
   "screenings",
   "devScoreSnapshots",
   "routines",

@@ -28,7 +28,7 @@ export const ROUTE_IDS = [
   // Care Network
   "find-pro", "care-team", "appointments", "sharing", "reports",
   // Academy
-  "masterclasses", "family", "comics",
+  "masterclasses", "family", "comics", "learn",
   // Practice Studio (kid-facing suite)
   "speech", "mimic", "feelings", "journey", "adventures", "copilot",
   // IA consolidation hubs

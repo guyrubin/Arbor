@@ -33,6 +33,7 @@ import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
+import type { SavedLearnItem } from "../learn/learnLibrary";
 import { sortActionLoop, todayActionId } from "../actionLoop/model";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
@@ -242,6 +243,23 @@ function useArborState() {
     orderDir: "desc",
     max: 100,
   });
+  // Learn Library bookmarks — stores the card id only (curated-content
+  // reference, not a child fact; Child Memory is NOT the store for these).
+  const savedLearnCol = useChildCollection<SavedLearnItem>(childProfile.id, "savedLearn", {
+    orderByField: "savedAt",
+    orderDir: "desc",
+    max: 200,
+  });
+
+  const savedLearnIds = useMemo(() => savedLearnCol.items.map((s) => s.id), [savedLearnCol.items]);
+  const toggleSavedLearn = (cardId: string) => {
+    if (savedLearnCol.items.some((s) => s.id === cardId)) {
+      void savedLearnCol.remove(cardId);
+    } else {
+      void savedLearnCol.upsert({ id: cardId, savedAt: new Date().toISOString() });
+    }
+    try { track("learn_save_toggle", { card: cardId }); } catch { /* noop */ }
+  };
 
   const behaviorLogs = useMemo(
     () => [...logsCol.items].sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1)),
@@ -1089,6 +1107,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     chatInput,
     setChatInput,
     seedCoach,
+    savedLearnIds,
+    toggleSavedLearn,
     postCaptureCoachPrompt,
     offerPostCaptureCoach,
     dismissPostCaptureCoach,
