@@ -16,6 +16,10 @@ import {
   escalationText,
   locText,
 } from "../../content/hardMomentSurface";
+// LL-A5 — hard-moment script → its "understand why" Learn read
+import { matchLearnCards } from "../../learn/learnLibrary";
+import { LEARN_CARDS } from "../../learn/learnCards";
+import { ageYearsFromProfile } from "../../lib/childAge";
 
 /**
  * CONT-2 (AR-CONT-01) — the Behaviors "Hard moments" surface, built dark.
@@ -27,7 +31,7 @@ import {
  * Parent register: calm/clinical, --arbor-green-* primary, tokens only.
  */
 export default function HardMomentsSection() {
-  const { childProfile, seedCoach } = useArbor();
+  const { childProfile, seedCoach, requestLearnRead } = useArbor();
   const { t, uiLang, aiLang } = useLanguage();
   const [category, setCategory] = useState<HardMomentCategory | "all">("all");
   const [openCard, setOpenCard] = useState<HardMomentCard | null>(null);
@@ -143,6 +147,29 @@ export default function HardMomentsSection() {
             >
               <Icon name="forum" size={16} /> {t("hm.talkThrough")}
             </button>
+
+            {/* LL-A5 — in-the-moment script → after-the-moment understanding:
+                the concern-matched Learn read, when the catalogue has one. */}
+            {(() => {
+              const read = matchLearnCards(LEARN_CARDS, {
+                concerns: openCard.concerns,
+                ageYears: ageYearsFromProfile(childProfile),
+              }, 1)[0];
+              if (!read) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    requestLearnRead({ cardId: read.id, source: "hard-moment-card" });
+                    setOpenCard(null);
+                  }}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition active:scale-[0.98]"
+                  style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)", background: "var(--arbor-lav-soft)" }}
+                >
+                  <Icon name="local_library" size={16} /> {t("learn.understandWhy")}
+                </button>
+              );
+            })()}
           </div>
         )}
       </Modal>

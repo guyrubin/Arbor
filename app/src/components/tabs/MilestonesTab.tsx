@@ -13,7 +13,10 @@ import { bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePr
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
 // B0 — months-precise age spine
-import { ageMonthsFromProfile } from "../../lib/childAge";
+import { ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+// LL-A3 — milestone → Learn Library "why this matters" door
+import { bestCardForDomain } from "../../learn/learnLibrary";
+import { LEARN_CARDS } from "../../learn/learnCards";
 // UND-3 — the ONE canonical watch derivation feeds the "Gentle watch points" card.
 import { useMonitoring } from "../../hooks/useMonitoring";
 import { watchPointsSummary } from "../../lib/monitoring";
@@ -48,6 +51,7 @@ export default function MilestonesTab() {
     updateChild,
     deleteMilestone,
     updateMilestoneTitle,
+    requestLearnRead,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -257,6 +261,22 @@ export default function MilestonesTab() {
               {explaining[item.id] ? <Icon name="progress_activity" size={11} className="animate-spin" /> : <Icon name="menu_book" size={11} />}
               {explanations[item.id] ? t("ms.hide") : t("ms.explain")}
             </button>
+            {/* LL-A3 — one tap from a milestone to its "why this matters" read */}
+            {(() => {
+              const read = bestCardForDomain(LEARN_CARDS, item.domain, ageYearsFromProfile(childProfile));
+              if (!read) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); requestLearnRead({ cardId: read.id, source: "milestone" }); }}
+                  className="text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+                  style={{ color: "var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}
+                >
+                  <Icon name="local_library" size={11} />
+                  {t("learn.whyMatters")}
+                </button>
+              );
+            })()}
           </div>
           {/* UND-8 — inline rename form (the gestation form is the pattern):
               in-app, translated, themed — no native window.prompt. */}

@@ -18,6 +18,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDevScore } from "../../hooks/useDevScore";
 import { selectWeeklyArticle } from "../../growth/scholarHub";
+import { LEARN_CATEGORIES } from "../../learn/learnLibrary";
 import framework from "../../framework.json";
 import { cardCls } from "../ui/kit";
 
@@ -28,7 +29,7 @@ const DOMAIN_LABEL: Record<string, string> = Object.fromEntries(
 const labelFor = (id: string) => DOMAIN_LABEL[id] ?? id;
 
 export default function ScholarHubCard() {
-  const { childProfile } = useArbor();
+  const { childProfile, requestLearnRead } = useArbor();
   const { t, uiLang, aiLang } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const he = aiLang === "he";
@@ -227,14 +228,31 @@ export default function ScholarHubCard() {
         </p>
       </div>
 
-      {/* CTA */}
-      <button
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-        style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-dim)" }}
-      >
-        {t("hub.scholar.read")}
-      </button>
+      {/* CTA + Library door (LL-A4) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-dim)" }}
+        >
+          {t("hub.scholar.read")}
+        </button>
+        {/* Quieter secondary door into the Learn Library — pre-filtered to the
+            shelf that nurtures the current focus domain when one matches;
+            otherwise the library simply opens unfiltered. */}
+        <button
+          onClick={() => {
+            const fd = score.focusDomain;
+            const shelf = fd ? LEARN_CATEGORIES.find((c) => c.domains.includes(fd)) : undefined;
+            requestLearnRead(shelf ? { category: shelf.id, source: "scholar-hub" } : { source: "scholar-hub" });
+          }}
+          className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+        >
+          <Icon name="local_library" size={15} />
+          {t("learn.moreLibrary")}
+        </button>
+      </div>
 
       {/* Provenance (compact) */}
       <p className="text-[11px] mt-3" style={{ color: "var(--arbor-faint)" }}>

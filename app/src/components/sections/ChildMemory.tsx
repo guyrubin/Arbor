@@ -5,14 +5,24 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import type { MemoryReviewItem } from "../../types";
 import { PageHeader, SectionCard, Chip, cardCls, TrustSafetyBar } from "../ui/kit";
+import { learnCardById } from "../../learn/learnCards";
+import { learnCategoryById, type LearnCard } from "../../learn/learnLibrary";
+import { PASTEL } from "../../lib/tokens";
+
+const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
 /** Child Intelligence › Child Memory — parent-approved facts, wired to the real
  *  append-only memory service (/api/memory). A core moat: source-linked,
  *  time-stamped, editable via approve/forget, time-boxed when sensitive. */
 export default function ChildMemory() {
-  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating } = useArbor();
-  const { t } = useLanguage();
+  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, savedLearnIds, requestLearnRead } = useArbor();
+  const { t, aiLang } = useLanguage();
+  const he = aiLang === "he";
   const first = childProfile.name.split(" ")[0];
+  // Saved Learn Library reads, newest first; stale bookmarks (removed cards) are dropped.
+  const savedLearnCards = savedLearnIds
+    .map((id) => learnCardById(id))
+    .filter((c): c is LearnCard => c !== undefined);
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[920px]">
@@ -61,6 +71,67 @@ export default function ChildMemory() {
           </div>
         )}
       </SectionCard>
+
+      {/* Learning trail — the parent's saved Learn Library reads, part of the
+          child's longitudinal picture. Renders only when something is saved;
+          the Library's own Saved tab teaches the empty state. */}
+      {savedLearnCards.length > 0 && (
+        <div className={`${cardCls} p-5`}>
+          <div className="flex items-center gap-3">
+            <span
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
+            >
+              <Icon name="local_library" size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("learn.trailTitle")}</h2>
+                <Chip tone="lav">{savedLearnCards.length}</Chip>
+              </div>
+              <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("learn.trailSub")}</p>
+            </div>
+          </div>
+          <div className="mt-3 space-y-1">
+            {savedLearnCards.slice(0, 6).map((card) => {
+              const cat = learnCategoryById(card.category);
+              const tone = PASTEL[cat.tone];
+              return (
+                <button
+                  key={card.id}
+                  onClick={() => requestLearnRead({ cardId: card.id, source: "child-memory" })}
+                  className="w-full flex items-center gap-3 min-h-[48px] px-2.5 py-2 rounded-xl transition hover:bg-[var(--arbor-paper-deep)] text-start"
+                >
+                  <span
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: tone.soft, color: tone.ink }}
+                  >
+                    <Icon name={cat.msIcon} size={16} />
+                  </span>
+                  <span className="flex-1 min-w-0 truncate text-[13.5px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                    {pick(he, card.title)}
+                  </span>
+                  <span className="text-[11px] font-bold shrink-0" style={{ color: "var(--arbor-muted)" }}>
+                    {t("learn.minutes", { n: card.minutes })}
+                  </span>
+                  <span className="shrink-0" style={{ color: "var(--arbor-muted)" }}>
+                    <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {savedLearnCards.length > 6 && (
+            <button
+              onClick={() => requestLearnRead({ source: "child-memory" })}
+              className="w-full mt-1 min-h-[40px] rounded-xl text-xs font-bold transition hover:bg-[var(--arbor-paper-deep)]"
+              style={{ color: "var(--arbor-lav-ink)" }}
+            >
+              {t("learn.trailAll")}
+            </button>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }

@@ -10,6 +10,10 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { api, getAiLanguage, type WeeklyDigest } from "../../lib/api";
 import { PageHeader, SectionCard, cardCls, IconBadge } from "../ui/kit";
 import { HeroAvatar } from "../ui/HeroAvatar";
+import { useDevScore } from "../../hooks/useDevScore";
+import { rankLearnCards } from "../../learn/learnLibrary";
+import { LEARN_CARDS } from "../../learn/learnCards";
+import { ageYearsFromProfile } from "../../lib/childAge";
 
 const DAY = 86_400_000;
 
@@ -36,9 +40,18 @@ type WeeklyReport = {
 };
 
 export default function WeeklyTab() {
-  const { behaviorLogs, milestones, actionPlans, childProfile, setActiveTab, acceptTodayAction, activeTodayAction } = useArbor();
-  const { t } = useLanguage();
+  const { behaviorLogs, milestones, actionPlans, childProfile, setActiveTab, acceptTodayAction, activeTodayAction, requestLearnRead } = useArbor();
+  const { t, aiLang } = useLanguage();
+  const he = aiLang === "he";
   const reportsCol = useChildCollection<WeeklyReport>(childProfile.id, "weeklyReports");
+
+  // LL-A4: "This week's read" — the same explainable ranking the Library uses
+  // (age window + focus-domain nurture), surfaced as one pick in the report.
+  const devScore = useDevScore();
+  const weeklyRead = useMemo(
+    () => rankLearnCards(LEARN_CARDS, { ageYears: ageYearsFromProfile(childProfile), focusDomain: devScore.focusDomain })[0],
+    [childProfile, devScore.focusDomain]
+  );
 
   const [generating, setGenerating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -295,6 +308,29 @@ export default function WeeklyTab() {
               <p className="text-xs leading-relaxed mt-2" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.value}</p>
               <button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3" style={{ color: "var(--arbor-lav-ink)" }}>{t("wk.scholarExplore")}</button>
             </SectionCard>
+
+            {/* LL-A4: this week's read — one Library pick ranked by age window +
+                focus domain (opportunity framing; the Library door explains why). */}
+            {weeklyRead && (
+              <SectionCard title={t("learn.weeklyRead")} icon={<Icon name="local_library" size={20} />} tone="sky">
+                <h4 className="text-sm font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                  {he ? weeklyRead.title.he : weeklyRead.title.en}
+                </h4>
+                <p className="text-xs leading-relaxed line-clamp-2 mt-1.5" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+                  {he ? weeklyRead.hook.he : weeklyRead.hook.en}
+                </p>
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold mt-2" style={{ color: "var(--arbor-muted)" }}>
+                  <Icon name="schedule" size={13} /> {t("learn.minutes", { n: weeklyRead.minutes })}
+                </span>
+                <button
+                  onClick={() => requestLearnRead({ cardId: weeklyRead.id, source: "weekly-report" })}
+                  className="text-[11px] font-bold flex items-center gap-1 mt-3"
+                  style={{ color: "var(--arbor-sky-ink)" }}
+                >
+                  <Icon name="menu_book" size={12} /> {t("learn.readCard")}
+                </button>
+              </SectionCard>
+            )}
           </div>
 
           <div className={`${cardCls} p-6 flex flex-col sm:flex-row items-center justify-between gap-4`}>

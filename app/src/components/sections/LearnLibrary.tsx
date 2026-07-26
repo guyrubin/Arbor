@@ -13,7 +13,7 @@
  * Static catalogue, no AI call at browse time, no child-data write beyond
  * the bookmark (card id only). TOKEN-DRIVEN styling; HE/RTL via logical CSS.
  */
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { cardCls } from "../ui/kit";
@@ -21,15 +21,21 @@ import { PASTEL } from "../../lib/tokens";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDevScore } from "../../hooks/useDevScore";
+import { useArborVoice } from "../../hooks/useArborVoice";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
+import { concernsForBehaviors } from "../../content/selectCards";
+import { recentBehaviorTypes } from "../../content/hardMomentSurface";
+import { readLearnFeedback, setLearnFeedback, type LearnFeedback } from "../../learn/learnFeedback";
 import {
   LEARN_CATEGORIES,
+  concernsContributed,
   learnCategoryById,
   rankLearnCards,
   searchLearnCards,
   type LearnCard,
   type LearnCategoryId,
+  type LearnRankSignals,
 } from "../../learn/learnLibrary";
 import { LEARN_CARDS, learnCardById } from "../../learn/learnCards";
 
@@ -38,7 +44,17 @@ type Filter = "all" | "saved" | LearnCategoryId;
 const pick = (he: boolean, t: { en: string; he: string }) => (he ? t.he : t.en);
 
 export default function LearnLibrary() {
-  const { childProfile, seedCoach, savedLearnIds, toggleSavedLearn } = useArbor();
+  const {
+    childProfile,
+    seedCoach,
+    savedLearnIds,
+    toggleSavedLearn,
+    behaviorLogs,
+    pendingLearnRequest,
+    consumeLearnRequest,
+    acceptTodayAction,
+    actionLoop,
+  } = useArbor();
   const { t, uiLang, aiLang } = useLanguage();
   const he = aiLang === "he";
   const isRtl = uiLang === "he";
@@ -49,11 +65,34 @@ export default function LearnLibrary() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<LearnFeedback>(() => readLearnFeedback());
 
-  const ranked = useMemo(
-    () => rankLearnCards(LEARN_CARDS, { ageYears, focusDomain: score.focusDomain }),
-    [ageYears, score.focusDomain]
+  // LL — deep-link seam: another surface asked for one read or one shelf.
+  useEffect(() => {
+    if (!pendingLearnRequest) return;
+    if (pendingLearnRequest.cardId && learnCardById(pendingLearnRequest.cardId)) {
+      setOpenId(pendingLearnRequest.cardId);
+    } else if (pendingLearnRequest.category) {
+      setFilter(pendingLearnRequest.category as Filter);
+      setOpenId(null);
+    }
+    consumeLearnRequest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingLearnRequest]);
+
+  // LL-A2 — observed-signal ranking input: recent logged behavior types mapped
+  // through the controlled concern vocabulary. Counts, never verdicts.
+  const recentConcerns = useMemo(
+    () => concernsForBehaviors(recentBehaviorTypes(behaviorLogs, new Date())),
+    [behaviorLogs]
   );
+
+  const signals: LearnRankSignals = useMemo(
+    () => ({ ageYears, focusDomain: score.focusDomain, recentConcerns, helpfulness: feedback }),
+    [ageYears, score.focusDomain, recentConcerns, feedback]
+  );
+
+  const ranked = useMemo(() => rankLearnCards(LEARN_CARDS, signals), [signals]);
 
   const visible = useMemo(() => {
     let list = ranked;
@@ -74,6 +113,12 @@ export default function LearnLibrary() {
 
   const open = openId ? learnCardById(openId) : undefined;
   if (open) {
+    // LL-A8 — context-rich ask: mention recent related logging only when true.
+    const related = concernsContributed(open, recentConcerns);
+    const askPrompt = pick(he, open.ask) + (related ? ` ${t("learn.askContext")}` : "");
+    const todayTaken = actionLoop.some(
+      (a) => a.source === "learn-read" && a.recommendation === pick(he, open.tryToday).trim()
+    );
     return (
       <LearnReader
         card={open}
@@ -82,7 +127,18 @@ export default function LearnLibrary() {
         saved={savedLearnIds.includes(open.id)}
         onBack={() => setOpenId(null)}
         onToggleSave={() => toggleSavedLearn(open.id)}
-        onAsk={() => seedCoach({ prompt: pick(he, open.ask), source: "learn-library" })}
+        onAsk={() => seedCoach({ prompt: askPrompt, source: "learn-library" })}
+        pulse={feedback[open.id]}
+        onPulse={(v) => {
+          const next = setLearnFeedback(open.id, feedback[open.id] === v ? null : v);
+          setFeedback({ ...next });
+          try { track("learn_pulse", { card: open.id, value: String(v) }); } catch { /* noop */ }
+        }}
+        todayTaken={todayTaken}
+        onAddToday={() => {
+          acceptTodayAction(pick(he, open.tryToday).trim(), "tiny", "learn-read");
+          try { track("learn_add_today", { card: open.id }); } catch { /* noop */ }
+        }}
         t={t}
       />
     );
@@ -148,9 +204,15 @@ export default function LearnLibrary() {
               {t("learn.pickedTitle", { name: firstName || t("learn.yourChild") })}
             </h2>
             <span className="text-[11.5px]" style={{ color: "var(--arbor-muted)" }}>
-              {score.focusDomain
-                ? t("learn.whyFull", { name: firstName || t("learn.yourChild") })
-                : t("learn.whyAge", { name: firstName || t("learn.yourChild") })}
+              {(() => {
+                // Honest why-line: claim only the signals that actually contributed.
+                const name = firstName || t("learn.yourChild");
+                const logsContributed = featured.some((c) => concernsContributed(c, recentConcerns));
+                if (score.focusDomain && logsContributed) return t("learn.whyFullLogs", { name });
+                if (score.focusDomain) return t("learn.whyFull", { name });
+                if (logsContributed) return t("learn.whyAgeLogs", { name });
+                return t("learn.whyAge", { name });
+              })()}
             </span>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
@@ -369,6 +431,10 @@ function LearnReader({
   onBack,
   onToggleSave,
   onAsk,
+  pulse,
+  onPulse,
+  todayTaken,
+  onAddToday,
   t,
 }: {
   card: LearnCard;
@@ -378,11 +444,25 @@ function LearnReader({
   onBack: () => void;
   onToggleSave: () => void;
   onAsk: () => void;
+  pulse: 1 | -1 | undefined;
+  onPulse: (v: 1 | -1) => void;
+  todayTaken: boolean;
+  onAddToday: () => void;
   t: (k: string, vars?: Record<string, string | number>) => string;
 }) {
   const cat = learnCategoryById(card.category);
   const tone = PASTEL[cat.tone];
   const [copied, setCopied] = useState(false);
+  // LL-A7 — listen mode: the whole read, spoken via the shared voice stack.
+  const voice = useArborVoice();
+  const listenText = useMemo(
+    () =>
+      [pick(he, card.title), ...card.keyPoints.map((k) => pick(he, k)), pick(he, card.body)].join(
+        "\n\n"
+      ),
+    [card, he]
+  );
+  useEffect(() => () => voice.stop(), [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const share = async () => {
     const points = card.keyPoints.map((k, i) => `${i + 1}. ${pick(he, k)}`).join("\n");
@@ -457,8 +537,8 @@ function LearnReader({
         </p>
       </div>
 
-      {/* Action bar — save · share · ask */}
-      <div className={`${cardCls} grid grid-cols-3 overflow-hidden`}>
+      {/* Action bar — save · listen · share · ask */}
+      <div className={`${cardCls} grid ${voice.supported ? "grid-cols-4" : "grid-cols-3"} overflow-hidden`}>
         <ReaderAction
           icon={saved ? "bookmark_added" : "bookmark"}
           fill={saved ? 1 : 0}
@@ -466,6 +546,18 @@ function LearnReader({
           active={saved}
           onClick={onToggleSave}
         />
+        {voice.supported && (
+          <ReaderAction
+            icon={voice.speaking ? "stop_circle" : "graphic_eq"}
+            label={voice.speaking ? t("learn.listening") : t("learn.listen")}
+            active={voice.speaking}
+            onClick={() => {
+              voice.toggle(listenText);
+              try { track("learn_listen", { card: card.id }); } catch { /* noop */ }
+            }}
+            divided
+          />
+        )}
         <ReaderAction
           icon={copied ? "check" : "ios_share"}
           label={copied ? t("learn.copied") : t("learn.share")}
@@ -529,7 +621,54 @@ function LearnReader({
         <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
           {pick(he, card.tryToday)}
         </p>
+        {/* LL-A6 — one tap into the Today action loop, honest provenance */}
+        <button
+          onClick={onAddToday}
+          disabled={todayTaken}
+          className="mt-3 inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 disabled:opacity-70"
+          style={{
+            background: "var(--arbor-paper-elevated)",
+            color: tone.ink,
+            border: "1px solid var(--arbor-rule)",
+          }}
+        >
+          <Icon name={todayTaken ? "check_circle" : "add_task"} size={16} fill={todayTaken ? 1 : 0} />
+          {todayTaken ? t("learn.addedToday") : t("learn.addToday")}
+        </button>
       </section>
+
+      {/* LL-A11 — helpful pulse: counts only, tunes this device's ranking */}
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <span className="text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+          {t("learn.pulseAsk")}
+        </span>
+        <button
+          onClick={() => onPulse(1)}
+          aria-pressed={pulse === 1}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-[38px] text-[12px] font-bold transition active:scale-[0.96] focus:outline-none focus-visible:ring-2"
+          style={
+            pulse === 1
+              ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid transparent" }
+              : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+          }
+        >
+          <Icon name="thumb_up" size={15} fill={pulse === 1 ? 1 : 0} />
+          {t("learn.pulseYes")}
+        </button>
+        <button
+          onClick={() => onPulse(-1)}
+          aria-pressed={pulse === -1}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-[38px] text-[12px] font-bold transition active:scale-[0.96] focus:outline-none focus-visible:ring-2"
+          style={
+            pulse === -1
+              ? { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid transparent" }
+              : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+          }
+        >
+          <Icon name="thumb_down" size={15} fill={pulse === -1 ? 1 : 0} />
+          {t("learn.pulseNo")}
+        </button>
+      </div>
 
       <p className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>
         {t("learn.provenance")}
