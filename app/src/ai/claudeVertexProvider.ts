@@ -123,7 +123,9 @@ export class ClaudeVertexProvider {
     } finally {
       try { reader.releaseLock(); } catch { /* stream already closed */ }
     }
-    recordUsage({ route: options.route, provider: "vertex_claude", model }, Object.keys(usage).length ? usage : undefined, timer.finish());
+    // EVAL-8: `model` here is already the RESOLVED Anthropic-on-Vertex id
+    // (toAnthropicVertexModelId) — record it explicitly as resolvedModel.
+    recordUsage({ route: options.route, provider: "vertex_claude", model, resolvedModel: model, promptVersion: options.promptVersion }, Object.keys(usage).length ? usage : undefined, timer.finish());
   }
 
   private async buildRequest(options: GenerateJsonOptions, stream: boolean) {
@@ -171,7 +173,8 @@ export class ClaudeVertexProvider {
       return response.json();
     }, 3, options.budget);
 
-    recordUsage({ route: options.route, provider: "vertex_claude", model }, payload?.usage, timer.finish());
+    // EVAL-8: resolved id recorded explicitly (see stream path note above).
+    recordUsage({ route: options.route, provider: "vertex_claude", model, resolvedModel: model, promptVersion: options.promptVersion }, payload?.usage, timer.finish());
     const parsed = extractToolInput(payload);
     if (options.route === "coach_high_stakes") return coachResponseZodSchema.parse(parsed);
     return parsed;

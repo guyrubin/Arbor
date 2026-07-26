@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { createTestConfig } from "../testConfig.js";
 import { AiProviderError } from "./capabilities/contracts.js";
 import { modelForGeminiRequest, modelForRoute, routeDecisionFor, thinkingConfigForRoute, toAnthropicVertexModelId, type ModelRoute } from "./modelRouter.js";
@@ -35,6 +37,21 @@ describe("model route decisions", () => {
   // pinned in evals/pinned-models.json must match what the provider calls.
   it("resolves the current Claude Sonnet alias to the bare Vertex publisher id", () => {
     expect(toAnthropicVertexModelId("claude-sonnet-5@anthropic")).toBe("claude-sonnet-5");
+  });
+
+  // EVAL-8: the pin file IS the eval-to-prod identity contract — assert the
+  // alias→snapshot resolution recorded there matches the live resolver, so a
+  // resolver change can never silently diverge from what the evals validated.
+  it("evals/pinned-models.json alias→resolved pairs match toAnthropicVertexModelId", () => {
+    const pinned = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", "pinned-models.json"), "utf8"),
+    ) as { routes: Record<string, { alias: string; resolved: string }>; legacy?: Record<string, string> };
+    for (const [route, pin] of Object.entries(pinned.routes)) {
+      expect(toAnthropicVertexModelId(pin.alias), `route ${route}`).toBe(pin.resolved);
+    }
+    for (const [alias, resolved] of Object.entries(pinned.legacy ?? {})) {
+      expect(toAnthropicVertexModelId(alias)).toBe(resolved);
+    }
   });
 
   // COACH-3: every route decision now executes selectProvider — provider

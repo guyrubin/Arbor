@@ -65,9 +65,25 @@ export const normalizeUsage = (raw: any): TokenUsage | null => {
   return null;
 };
 
+/** Provider-seam call metadata for one `ai.usage` event.
+ *  EVAL-6/EVAL-8: `promptVersion` ties the event to the PROMPT_VERSIONS entry
+ *  that produced the call ("unversioned" when the call site has no registered
+ *  prompt yet), and `resolvedModel` is the POST-alias-resolution model id
+ *  (e.g. claude-sonnet-5, never the @anthropic alias) so eval results and
+ *  telemetry can attribute regressions to model vs prompt changes. */
+export type UsageMeta = {
+  route: ModelRoute;
+  provider: ProviderId;
+  model: string;
+  /** Resolved provider model id; defaults to `model` when alias === resolved. */
+  resolvedModel?: string;
+  /** PROMPT_VERSIONS version of the prompt behind this call. */
+  promptVersion?: string;
+};
+
 /** The structured `ai.usage` event body. Pure so tests can pin the shape. */
 export const buildUsageEvent = (
-  meta: { route: ModelRoute; provider: ProviderId; model: string },
+  meta: UsageMeta,
   usage: TokenUsage | null,
   timing?: CallTiming,
 ): Record<string, unknown> | null => {
@@ -78,6 +94,10 @@ export const buildUsageEvent = (
     route: meta.route,
     provider: meta.provider,
     model: meta.model,
+    // EVAL-8: every event carries the resolved model id (alias-mapped).
+    resolvedModel: meta.resolvedModel ?? meta.model,
+    // EVAL-6: every event carries the prompt version that produced the call.
+    promptVersion: meta.promptVersion ?? "unversioned",
     promptTokens: usage?.promptTokens ?? 0,
     outputTokens: usage?.outputTokens ?? 0,
     totalTokens: usage?.totalTokens ?? 0,
@@ -88,7 +108,7 @@ export const buildUsageEvent = (
 
 /** Emit one `ai.usage` line, enriched with the active request's id + uid. Never throws. */
 export const recordUsage = (
-  meta: { route: ModelRoute; provider: ProviderId; model: string },
+  meta: UsageMeta,
   raw: any,
   timing?: CallTiming,
 ): void => {

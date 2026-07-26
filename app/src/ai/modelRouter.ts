@@ -26,6 +26,9 @@ export type GenerateJsonOptions = {
   images?: ImagePart[];
   /** AIR-9: route deadline budget — aborts/frees the upstream call. */
   budget?: ModelCallBudget;
+  /** EVAL-6: PROMPT_VERSIONS version of the prompt behind this call — stamped
+   *  into the ai.usage telemetry event so eval results tie to the prompt. */
+  promptVersion?: string;
 };
 
 /** Options for image GENERATION (Gemini 2.5 Flash Image). No JSON schema; optional
@@ -127,6 +130,8 @@ export type StreamTextOptions = {
   temperature?: number;
   /** AIR-9: route deadline budget — aborts/frees the upstream call. */
   budget?: ModelCallBudget;
+  /** EVAL-6: prompt version stamped into the ai.usage event (see prompts.ts). */
+  promptVersion?: string;
 };
 
 export type ModelProvider = {
@@ -274,7 +279,7 @@ export class GeminiDevProvider implements ModelProvider {
         }
       }), 3, options.budget
     );
-    recordUsage({ route: options.route, provider: "gemini_dev", model }, (response as any)?.usageMetadata, timer.finish());
+    recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, (response as any)?.usageMetadata, timer.finish());
     const finishReason = (response as any)?.candidates?.[0]?.finishReason;
     return parseModelJson(response.text, finishReason);
   }
@@ -304,7 +309,7 @@ export class GeminiDevProvider implements ModelProvider {
       if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
       if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
     }
-    recordUsage({ route: options.route, provider: "gemini_dev", model }, usage, timer.finish());
+    recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, usage, timer.finish());
   }
 
   async *streamText(options: StreamTextOptions) {
@@ -329,7 +334,7 @@ export class GeminiDevProvider implements ModelProvider {
       if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
       if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
     }
-    recordUsage({ route: options.route, provider: "gemini_dev", model }, usage, timer.finish());
+    recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, usage, timer.finish());
   }
 
   async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
@@ -381,7 +386,7 @@ export class VertexGeminiProvider {
         } as any
       }), options.budget?.signal), 3, options.budget
     );
-    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId }, result.response?.usageMetadata, timer.finish());
+    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, result.response?.usageMetadata, timer.finish());
     const candidate = result.response?.candidates?.[0];
     const text = candidate?.content?.parts?.map((part: any) => part.text || "").join("") || "";
     return parseModelJson(text, candidate?.finishReason);
@@ -411,7 +416,7 @@ export class VertexGeminiProvider {
       const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
       if (text) { timer.markFirstChunk(); yield text; }
     }
-    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId }, usage ?? (await result.response)?.usageMetadata, timer.finish());
+    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, usage ?? (await result.response)?.usageMetadata, timer.finish());
   }
 
   async *streamText(options: StreamTextOptions) {
@@ -435,7 +440,7 @@ export class VertexGeminiProvider {
       const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
       if (text) { timer.markFirstChunk(); yield text; }
     }
-    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId }, usage ?? (await result.response)?.usageMetadata, timer.finish());
+    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, usage ?? (await result.response)?.usageMetadata, timer.finish());
   }
 
   async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {

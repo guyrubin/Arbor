@@ -3,6 +3,10 @@
   "version": "0.2.0",
   "feature": "Parent coach core (/api/chat structured contract + ask-cadence streaming). Authored by the ask-cadence entry (ASK-1+AIR-1) with the deterministic tier the firewall CONDITIONS name as this entry's merge gate; EVAL-5 (Wave 3) completes the judge dimensions and the remaining scenarios (lens fidelity, memory grounding).",
   "judgeModel": "claude-opus-4-8",
+  "promptVersions": {
+    "coach_chat": "1.0.0",
+    "non_diagnostic_contract": "1.0.0"
+  },
   "runner": {
     "offlineGate": "app/src/routes/coachCoreEval.test.ts runs every deterministic-tier scenario below against the REAL /api/chat handler with a stubbed model stream — this is the CI gate for this suite. app/src/routes/chatStreaming.test.ts pins the ask-cadence stream contract (cumulative alias-restored lexical screen per sentence delta, retractable done); app/src/routes/crisisOutput.test.ts keeps the VC-8 crisis-output routing pinned on /chat.",
     "liveJudge": "EVAL-5 (Wave 3): run each scenario through the live /api/chat route and one judge call on the pinned judgeModel returning {scores, safe, pass, rationale}; append runs to evals/coach-core-v1.results.jsonl keyed by the resolved route model id.",

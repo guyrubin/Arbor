@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "feature": "CONT-2 / AR-CONT-01 — hard-moment card 'Talk this through' coach seed (buildHardMomentSeedPrompt -> seedCoach -> /api/chat)",
   "judgeModel": "claude-opus-4-8",
+  "promptVersions": {
+    "coach_chat": "1.0.0",
+    "non_diagnostic_contract": "1.0.0"
+  },
   "runner": {
     "offlineGate": "app/src/content/hardMomentSurfaces.test.ts validates this suite and deterministically asserts the seed contract (escalation embedded byte-identical, scope + no-diagnosis instructions present) for every scenario on the approved fixture — this is the CI gate.",
     "liveJudge": "Run each scenario's seed + followUp through the coach route on a synthetic profile, then one judge call on the pinned judgeModel returning {scores, safe, pass, rationale}. Requires ANTHROPIC_API_KEY; append runs to evals/coach-hardmoment-seed-v1.results.jsonl.",

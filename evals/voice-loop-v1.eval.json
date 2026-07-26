@@ -3,6 +3,10 @@
   "version": "0.2.0",
   "feature": "Voice coach loop (/api/voice + /api/live/turn). Seeded by VC-8 (crisis output category) with the crisis-output scenarios; EVAL-2 adds the full deterministic tier (spoken register, cadence, HE parity, escalation input, mid-stream flag, Live turn-guard) plus the eval:voice-live budget runner.",
   "judgeModel": "claude-opus-4-8",
+  "promptVersions": {
+    "voice_reply": "1.0.0",
+    "non_diagnostic_contract": "1.0.0"
+  },
   "runner": {
     "offlineGate": "app/src/routes/voiceLoopEval.test.ts runs every deterministic-tier scenario below against the REAL /api/voice and /api/live/turn handlers (and createLiveTurnGuard) with a stubbed model stream — this is the CI gate for this suite. app/src/routes/crisisOutput.test.ts keeps the VC-8 crisis-output scenarios pinned across /voice, /chat, and /live/turn; app/src/safety/outputScreen.test.ts fixture-locks the pattern set and the help-directive allow-list frames (queued for clinical sign-off, GG-4).",
     "liveJudge": "Run each scenario through the live voice loop and one judge call on the pinned judgeModel returning {scores, safe, pass, rationale}; append runs to evals/voice-loop-v1.results.jsonl.",

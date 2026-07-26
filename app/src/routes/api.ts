@@ -4,6 +4,7 @@ import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider }
 import { abortableIterate, raceWithAbort } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
+import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildVoiceReplyPrompt } from "../ai/prompts.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -480,28 +481,17 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         .filter((card) => (seenCardIds.has(card.id) ? false : (seenCardIds.add(card.id), true)))
         .slice(0, 5);
 
-      const prompt = `
-${NON_DIAGNOSTIC_CONTRACT}
-${developmentalFramework}
-
-ARBOR APPROVED CHILD MEMORY:
-${approvedMemory || "No parent-approved child memory available."}
-
-ARBOR AI WIKI SOURCE CARDS:
-${renderKnowledgeContext(knowledgeCards) || "No matching Arbor AI Wiki cards found. Use the framework contract and keep uncertainty explicit."}
-
-You are the Arbor Parent Coach, a developmental parenting support assistant.
-Current Child Profile Context:
-${childProfile ? JSON.stringify(childProfile, null, 2) : "None provided"}
-
-ACTIVE SCHOLAR LENS — apply this method, do not just name it:
-${scholar.name} — ${scholar.concept}. ${scholar.method}
-Ground "What To Do Today" and the parent script in this lens, and prefer Six Frame "${scholar.defaultFrame}" unless safety dictates otherwise.
-Parent question:
-${message}
-
-Return only JSON that matches the response schema. Open with the "text" field FIRST: 2-4 warm, plain sentences that briefly acknowledge the parent and give the heart of your answer — no headings, no lists, no labels. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used. Include followUps: 2-3 short, natural next questions THIS parent is likely to ask after THIS answer (specific to their situation, never generic), each under 100 characters, in the same language as your other text values.${languageDirective}
-`;
+      // EVAL-6: version-pinned named builder (ai/prompts.ts) — byte-identical
+      // to the old inline template; promptVersion is stamped into telemetry.
+      const prompt = buildChatPrompt({
+        developmentalFramework,
+        approvedMemory,
+        knowledgeContext: renderKnowledgeContext(knowledgeCards),
+        childProfile,
+        scholar,
+        message,
+        languageDirective
+      });
 
       // SEC/CMP P0: child PII never reaches the model — redact at the call seam,
       // restore in the parsed output so the product stays personalized.
@@ -572,7 +562,8 @@ Return only JSON that matches the response schema. Open with the "text" field FI
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: coachResponseSchema,
         temperature: 0.45,
-        budget: budget.budget
+        budget: budget.budget,
+        promptVersion: PROMPT_VERSIONS.coach_chat.version
       }), budget.signal)) {
         if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
         rawResponse += chunk;
@@ -723,35 +714,25 @@ Return only JSON that matches the response schema. Open with the "text" field FI
         .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)))
         .slice(0, 6);
 
-      const prompt = `
-${NON_DIAGNOSTIC_CONTRACT}
-${developmentalFramework}
-
-ARBOR APPROVED CHILD MEMORY:
-${approvedMemory || "No parent-approved child memory available."}
-
-ARBOR AI WIKI SOURCE CARDS:
-${renderKnowledgeContext(knowledgeCards) || "No matching cards; keep uncertainty explicit."}
-
-You are the Arbor Parent Coach synthesizing a SCHOLAR COUNCIL into one answer.
-Child Profile:
-${childProfile ? JSON.stringify(childProfile, null, 2) : "None provided"}
-
-${renderCouncilForSynthesis(takes)}
-
-Integrate the council's distinct lenses into one coherent, non-diagnostic answer — lead with connection, then capability, then context. Do not contradict the lenses.
-Parent question:
-${message}
-
-Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed. Include followUps: 2-3 short, natural next questions this parent is likely to ask after this answer, each under 100 characters, in the same language as your other text values.${languageDirective}
-`;
+      // EVAL-6: version-pinned named builder (ai/prompts.ts) — byte-identical
+      // to the old inline template; promptVersion is stamped into telemetry.
+      const prompt = buildCouncilSynthesisPrompt({
+        developmentalFramework,
+        approvedMemory,
+        knowledgeContext: renderKnowledgeContext(knowledgeCards),
+        childProfile,
+        councilTakes: renderCouncilForSynthesis(takes),
+        message,
+        languageDirective
+      });
 
       const raw = await raceWithAbort(modelProvider.generateJson({
         route: "coach_high_stakes",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: coachResponseSchema,
         temperature: 0.4,
-        budget: budget.budget
+        budget: budget.budget,
+        promptVersion: PROMPT_VERSIONS.council_synthesis.version
       }), budget.signal);
       const structured = privacy.restoreDeep(coachResponseZodSchema.parse(raw));
       const restoredTakes = privacy.restoreDeep(takes);
@@ -856,11 +837,16 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
       // persona module (lib/livePersona.ts) — byte-shared with the Live path.
       const languageDirective = spokenLanguageDirective(language);
       const privacy = createRedaction(childProfile?.name);
-      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
-${SPOKEN_COACH_PERSONA} Apply this lens: ${scholar.name} — ${scholar.method}
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
-The parent just said: "${message}"
-Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
+      // EVAL-6: version-pinned named builder (ai/prompts.ts). The persona is
+      // passed in so lib/livePersona.ts stays the only module stating
+      // SPOKEN_COACH_PERSONA; spokenLanguageDirective(language) stays here too.
+      const prompt = buildVoiceReplyPrompt({
+        persona: SPOKEN_COACH_PERSONA,
+        scholar,
+        childProfile,
+        message,
+        languageDirective
+      });
 
       // SAFE-V1 + AI-V1/AIR-2: the output-safety screen (AI-2) MUST gate /voice
       // the same way it gates /chat and /council — nothing unscreened ever
@@ -877,7 +863,7 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
       // /api/tts can skip ONLY the model re-screen for text that /voice
       // already screened (its lexical floor still runs unconditionally).
       const ttsLang = language === "he" ? "he" : "en";
-      const streamRequest = { route: "analysis_structured" as const, prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6, budget: budget.budget };
+      const streamRequest = { route: "analysis_structured" as const, prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6, budget: budget.budget, promptVersion: PROMPT_VERSIONS.voice_reply.version };
 
       // Flagged-output SSE tail, shared by both delivery paths — payloads are
       // byte-identical to the pre-cadence SAFE-V1 behavior.
@@ -1185,22 +1171,15 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
         language === "he"
           ? '\nIMPORTANT: The parent speaks Hebrew. Write "trigger", "response" and "notes" in natural, warm Hebrew (עברית). Keep "behaviorType" as a short English label and "context" exactly one of the schema values.'
           : "";
-      const prompt = `
-${NON_DIAGNOSTIC_CONTRACT}
-You are Arbor's logging assistant. Read the parent's description of a moment with their child and extract ONE structured behavior log. Observations only — never a diagnosis.
-
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
-Parent description: "${message}"
-
-Rules:
-- behaviorType: prefer one of exactly ${CANONICAL_BEHAVIOR_TYPES.join(" | ")} when one fits; otherwise a short 2-4 word English label for the moment (e.g. "Morning refusal", "Screen shutoff meltdown").
-- intensity: integer 1 (mild) to 5 (severe), inferred from the description.
-- durationMinutes: best-guess integer (use 10 if unclear).
-- context: one of exactly Home, School, Transit, Public.
-- trigger: the immediate antecedent in a few words ("" if unknown).
-- response: what the parent did, if mentioned ("" if unknown).
-- notes: one short neutral sentence capturing anything else useful ("" if none).
-Return only JSON matching the schema.${languageDirective}`;
+      // EVAL-6: version-pinned named builder (ai/prompts.ts) — the canonical
+      // six stay joined HERE so the taxonomy grep guard keeps pinning this
+      // route to CANONICAL_BEHAVIOR_TYPES.join(...) from the shared module.
+      const prompt = buildExtractLogPrompt({
+        childProfile,
+        message,
+        behaviorTypes: CANONICAL_BEHAVIOR_TYPES.join(" | "),
+        languageDirective
+      });
 
       const privacy = createRedaction(childProfile?.name);
       const draft = await raceWithAbort(modelProvider.generateJson({
@@ -1208,6 +1187,7 @@ Return only JSON matching the schema.${languageDirective}`;
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.2,
         budget: budget.budget,
+        promptVersion: PROMPT_VERSIONS.extract_log.version,
         schema: {
           type: Type.OBJECT,
           required: ["behaviorType", "intensity", "durationMinutes", "context", "trigger", "response", "notes"],

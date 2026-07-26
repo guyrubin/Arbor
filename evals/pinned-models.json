@@ -31,5 +31,11 @@
   },
   "legacy": {
     "claude-3-5-sonnet@anthropic": "claude-3-5-sonnet-v2@20241022"
-  }
+  },
+  "judgeModels": ["claude-opus-4-8"],
+  "$auxiliaryComment": "EVAL-8: non-routed model ids that legitimately appear in source (Live voice model default + its documented native-audio upgrade path). safety-eval's stale-model scan reads THIS file — a model id literal in the scanned sources that is in neither routes/legacy nor this list fails eval:safety.",
+  "auxiliary": [
+    "gemini-2.0-flash-live-001",
+    "gemini-2.5-flash-preview-native-audio-dialog"
+  ]
 }

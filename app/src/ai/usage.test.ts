@@ -90,6 +90,43 @@ describe("usage events carry latency (EVAL-7)", () => {
   });
 });
 
+// EVAL-6/EVAL-8: every usage event carries the prompt version and the RESOLVED
+// model id, so telemetry (and the eval results rows that read it) can always
+// attribute a regression to a prompt change vs a model change.
+describe("usage events carry promptVersion + resolvedModel (EVAL-6/EVAL-8)", () => {
+  it("stamps the prompt version and echoes model as resolvedModel by default", () => {
+    const event = buildUsageEvent(
+      { route: "coach_high_stakes", provider: "vertex_claude", model: "claude-sonnet-5", promptVersion: "1.0.0" },
+      { promptTokens: 1, outputTokens: 1, totalTokens: 2 },
+    );
+    expect(event).toMatchObject({ promptVersion: "1.0.0", resolvedModel: "claude-sonnet-5" });
+  });
+
+  it("an explicit resolvedModel (alias-mapped) wins over the raw model field", () => {
+    const event = buildUsageEvent(
+      {
+        route: "coach_high_stakes",
+        provider: "vertex_claude",
+        model: "claude-3-5-sonnet@anthropic",
+        resolvedModel: "claude-3-5-sonnet-v2@20241022",
+      },
+      { promptTokens: 1, outputTokens: 1, totalTokens: 2 },
+    );
+    expect(event).toMatchObject({
+      model: "claude-3-5-sonnet@anthropic",
+      resolvedModel: "claude-3-5-sonnet-v2@20241022",
+    });
+  });
+
+  it('a call site with no registered prompt reads "unversioned" — never a missing field', () => {
+    const event = buildUsageEvent(
+      { route: "analysis_structured", provider: "vertex_gemini", model: "gemini-2.5-flash" },
+      { promptTokens: 1, outputTokens: 1, totalTokens: 2 },
+    );
+    expect(event).toMatchObject({ promptVersion: "unversioned", resolvedModel: "gemini-2.5-flash" });
+  });
+});
+
 // EVAL-7: p50/p95 per route are derived from the rollup's histogram buckets.
 describe("usageRollup latency buckets → p50/p95", () => {
   it("buckets a duration at its upper bound", () => {
