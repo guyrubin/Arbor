@@ -37,6 +37,8 @@ import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { billingCheckoutUrl } from "../server/billing.js";
 import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { isAdmin } from "../server/admin.js";
+import { isClinicalReviewer } from "../server/clinicalReviewer.js";
+import { voiceSafetyFallback } from "../safety/voiceSafetyFallbacks.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
@@ -154,34 +156,9 @@ const createRouteBudget = (res: express.Response, kind: RouteBudgetKind): RouteB
   };
 };
 
-/**
- * VC-6: the two /voice safety fallbacks are SPOKEN ALOUD mid-crisis, so they
- * must match the session language — a Hebrew-speaking parent in a Hebrew voice
- * session must never hear an English sentence at the worst possible moment.
- * Server-side he/en map keyed on the request `language` (mirrors the /voice
- * languageDirective pattern). The strings deliberately restate NO helpline
- * numbers — the numbers travel in `resourcesMarkdown`
- * (renderEscalationMarkdown verbatim), which the CRITICAL_HELPLINE_LITERALS
- * tripwire already covers. HE crisis copy is queued for clinical sign-off
- * (GG-4); the fail-closed behavior ships now.
- */
-const VOICE_SAFETY_FALLBACKS = {
-  en: {
-    escalation:
-      "I want to make sure you get the right help. This may need a real person right now — please reach out to a professional or local support line. ",
-    blocked:
-      "I want to be careful here. That's something best looked at with a professional who can see your child in person — like your pediatrician or family health centre. I can help you write down what you're noticing so that conversation is easier.",
-  },
-  he: {
-    escalation:
-      "חשוב לי שתקבלו עכשיו את העזרה הנכונה. ייתכן שזה מצריך אדם אמיתי ממש עכשיו — אנא פנו לאיש מקצוע או לקו תמיכה מקומי. ",
-    blocked:
-      "אני רוצה להיזהר כאן. את זה הכי טוב לבדוק עם איש מקצוע שיכול לראות את ילדכם מקרוב — למשל רופא הילדים או טיפת חלב. אני יכול לעזור לכם לרשום את מה שאתם שמים לב אליו, כדי שהשיחה הזו תהיה קלה יותר.",
-  },
-} as const;
-
-const voiceSafetyFallback = (language: unknown) =>
-  VOICE_SAFETY_FALLBACKS[language === "he" ? "he" : "en"];
+// VC-6 voice safety fallbacks: moved verbatim to safety/voiceSafetyFallbacks.ts
+// (GD-1 reviewer-preview lists the HE strings read-only in the review queue).
+// Same strings, same fail-closed behavior — see that module's header.
 
 /** Spoken when the model produced an empty reply on /voice (pre-cadence literal, unchanged). */
 const VOICE_EMPTY_REPLY_FALLBACK = "Let's take this one step at a time — tell me a little more about what's happening.";
@@ -2422,6 +2399,12 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         currentPeriodEnd: entitlement.currentPeriodEnd ?? null,
         willRenew: entitlement.willRenew ?? null,
         isAdmin: isAdmin(actor),
+        // GD-1 reviewer-preview: true ONLY for the appointed clinical reviewer
+        // (CLINICAL_REVIEWER_EMAILS allow-list; empty = nobody, fail-closed).
+        // The client renders draft hard-moment content for review when — and
+        // only when — this flag is true. Publication stays governed solely by
+        // isPublishableContent; this flag can never publish anything.
+        clinicalReviewer: isClinicalReviewer(config, actor),
       });
     } catch (error: any) {
       logger.error("Arbor Entitlement Error", error, { requestId: requestIdOf(req) });

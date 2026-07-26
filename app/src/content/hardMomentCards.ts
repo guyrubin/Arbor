@@ -159,3 +159,19 @@ export const hardMomentCards: HardMomentCard[] = [
 
 /** Product surfaces must consume this export, never the authoring list above. */
 export const publishedHardMomentCards = hardMomentCards.filter((item) => isPublishableContent(item));
+
+/**
+ * GD-1 reviewer-preview — the DRAFT-REVIEW selector, deliberately parallel to
+ * (and never a replacement for) publishedHardMomentCards above. Returns the
+ * full authored pack (drafts included, EN+HE) ONLY when the caller is the
+ * server-verified appointed clinical reviewer; everyone else gets [].
+ *
+ * This does NOT weaken the fail-closed publication predicate: parent-facing
+ * rendering still keys off publishedHardMomentCards / isPublishableContent.
+ * The preview path is consumed exclusively by the reviewer-preview seam
+ * (content/reviewPreview.ts), which additionally forces a persistent DRAFT
+ * banner on every card and surface it touches.
+ */
+export function previewHardMomentCards(isReviewer: boolean): HardMomentCard[] {
+  return isReviewer === true ? [...hardMomentCards] : [];
+}

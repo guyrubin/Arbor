@@ -38,5 +38,8 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   ttsDisabled: false,
   referralSecret: "test-referral-salt",
   referralMaxGrants: 5,
+  // GD-1 reviewer-preview: default EMPTY = nobody (fail-closed). Tests that
+  // exercise the reviewer seam pass clinicalReviewerEmails explicitly.
+  clinicalReviewerEmails: [],
   ...overrides
 });

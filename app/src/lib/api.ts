@@ -340,6 +340,9 @@ export type EntitlementInfo = {
   currentPeriodEnd?: string | null;
   willRenew?: boolean | null;
   isAdmin?: boolean;
+  /** GD-1 reviewer-preview: true ONLY for the appointed clinical reviewer
+   *  (server CLINICAL_REVIEWER_EMAILS allow-list; absent/false = no preview). */
+  clinicalReviewer?: boolean;
 };
 
 export type AdminOverview = {

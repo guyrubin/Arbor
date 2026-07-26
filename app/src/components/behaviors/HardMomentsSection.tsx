@@ -16,6 +16,10 @@ import {
   escalationText,
   locText,
 } from "../../content/hardMomentSurface";
+import { surfaceHardMomentCards } from "../../content/reviewPreview";
+import { useEntitlement } from "../../hooks/useEntitlement";
+import DraftReviewBanner from "../review/DraftReviewBanner";
+import ReviewQueuePanel from "../review/ReviewQueuePanel";
 
 /**
  * CONT-2 (AR-CONT-01) — the Behaviors "Hard moments" surface, built dark.
@@ -29,23 +33,35 @@ import {
 export default function HardMomentsSection() {
   const { childProfile, seedCoach } = useArbor();
   const { t, uiLang, aiLang } = useLanguage();
+  const { entitlement } = useEntitlement();
   const [category, setCategory] = useState<HardMomentCategory | "all">("all");
   const [openCard, setOpenCard] = useState<HardMomentCard | null>(null);
 
   const locale = uiLang === "he" ? "he" : "en";
   const childFirst = (childProfile.name || "").split(" ")[0];
 
-  const categories = useMemo(
-    () => HARD_MOMENT_CATEGORIES.filter((c) => publishedHardMomentCards.some((card) => card.category === c)),
-    [],
-  );
-  const visible = useMemo(
-    () => (category === "all" ? publishedHardMomentCards : publishedHardMomentCards.filter((card) => card.category === category)),
-    [category],
+  // GD-1 reviewer-preview: ONLY the server-verified appointed clinical
+  // reviewer gets draft cards, and only via this seam — which then forces the
+  // persistent DRAFT banner on the surface and on every card below.
+  const { cards, draftPreview } = useMemo(
+    () => surfaceHardMomentCards(entitlement.clinicalReviewer === true),
+    [entitlement.clinicalReviewer],
   );
 
-  // Fail-closed: the whole section is hidden until clinical review publishes cards.
-  if (publishedHardMomentCards.length === 0) return null;
+  const categories = useMemo(
+    () => HARD_MOMENT_CATEGORIES.filter((c) => cards.some((card) => card.category === c)),
+    [cards],
+  );
+  const visible = useMemo(
+    () => (category === "all" ? cards : cards.filter((card) => card.category === category)),
+    [cards, category],
+  );
+
+  if (!draftPreview) {
+    // Fail-closed: the whole section is hidden until clinical review publishes cards.
+    if (publishedHardMomentCards.length === 0) return null;
+  }
+  if (cards.length === 0) return null;
 
   const sections: { key: string; icon: string; text: (card: HardMomentCard) => string }[] = [
     { key: "hm.section.doNow", icon: "task_alt", text: (card) => locText(card.doNow, locale) },
@@ -62,6 +78,14 @@ export default function HardMomentsSection() {
         </h3>
         <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("hm.sub")}</p>
       </div>
+
+      {/* GD-1 — reviewer-only: persistent surface banner + review queue entry. */}
+      {draftPreview && (
+        <div className="flex flex-wrap items-center gap-2">
+          <DraftReviewBanner />
+          <ReviewQueuePanel />
+        </div>
+      )}
 
       {/* Category chips */}
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("hm.categoriesAria")}>
@@ -97,6 +121,7 @@ export default function HardMomentsSection() {
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{locText(card.title, locale)}</span>
               <span className="block text-[10px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-green-ink)" }}>{t(`hm.cat.${card.category}`)}</span>
+              {draftPreview && <span className="mt-1 block"><DraftReviewBanner compact /></span>}
             </span>
             <Icon name="arrow_forward" size={16} className="flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-green-ink)" }} />
           </button>
@@ -107,6 +132,7 @@ export default function HardMomentsSection() {
       <Modal open={openCard !== null} onClose={() => setOpenCard(null)} title={openCard ? locText(openCard.title, locale) : undefined}>
         {openCard && (
           <div className="space-y-3">
+            {draftPreview && <DraftReviewBanner />}
             {sections.map(({ key, icon, text }) => (
               <div key={key} className="flex items-start gap-3 rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>

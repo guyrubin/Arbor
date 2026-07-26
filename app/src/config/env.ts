@@ -78,6 +78,12 @@ export type ArborConfig = {
    *  the max number of referral months a single referrer can ever earn. */
   referralSecret: string;
   referralMaxGrants: number;
+  /** GD-1 reviewer-preview: comma-separated login emails (lowercased) allowed to
+   *  SEE draft hard-moment content in-app for clinical review. Default EMPTY =
+   *  nobody (fail-closed). This list gates the reviewer-preview RENDER seam
+   *  only — it never publishes content and never touches the AR-CONT-01
+   *  isPublishableContent predicate. */
+  clinicalReviewerEmails: string[];
 };
 
 const boolFromEnv = (value: string | undefined, fallback: boolean) => {
@@ -177,6 +183,10 @@ export const loadConfig = (): ArborConfig => {
     // No PII goes into the code; the salt only makes the code non-enumerable.
     referralSecret: process.env.REFERRAL_SECRET || "arbor-referral-dev-salt",
     referralMaxGrants: Number(process.env.REFERRAL_MAX_GRANTS || 5),
+    clinicalReviewerEmails: (process.env.CLINICAL_REVIEWER_EMAILS || "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
   };
 
   if (config.arborEnv === "prod") {

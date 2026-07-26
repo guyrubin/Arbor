@@ -41,6 +41,10 @@ import { splitCompleteSentences } from "../../lib/sentenceStream";
 import { hasUserTurn, hasAiTurn } from "../../lib/chatStream";
 import { publishedHardMomentCards } from "../../content/hardMomentCards";
 import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
+import { surfaceHardMomentCards } from "../../content/reviewPreview";
+import { useEntitlement } from "../../hooks/useEntitlement";
+import DraftReviewBanner from "../review/DraftReviewBanner";
+import ReviewQueuePanel from "../review/ReviewQueuePanel";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
 import { voiceState } from "../../lib/voice";
 // AI-V5: screened-sentence tokens + next-sentence audio prefetch keep the
@@ -130,6 +134,10 @@ export default function CoachTab() {
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
   const { user } = useAuth();
+  // GD-1 reviewer-preview: draft chips render ONLY for the server-verified
+  // appointed clinical reviewer, always under the persistent DRAFT banner.
+  const { entitlement } = useEntitlement();
+  const { cards: reviewPreviewCards, draftPreview: hmDraftPreview } = surfaceHardMomentCards(entitlement.clinicalReviewer === true);
   const childFirst = (childProfile.name || "").split(" ")[0];
   const reducedMotion = usePrefersReducedMotion();
 
@@ -619,6 +627,38 @@ export default function CoachTab() {
               >
                 <Icon name="forum" size={15} style={{ color: "var(--arbor-green-ink)" }} />
                 <span className="min-w-0 truncate">{t("hm.talkThrough")} · {locText(card.title, uiLang === "he" ? "he" : "en")}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* GD-1 — reviewer-only draft preview of the hard-moment chips. Gated on
+          the server allow-list flag (clinicalReviewer), never on content
+          state; every chip carries the compact DRAFT banner and the group
+          leads with the full banner + review-queue entry. The published block
+          above stays untouched — this block reviews, it never publishes. */}
+      {!userTurnExists && hmDraftPreview && (
+        <div className="space-y-2" data-testid="coach-hard-moments-preview">
+          <div className="flex flex-wrap items-center gap-2">
+            <DraftReviewBanner />
+            <ReviewQueuePanel />
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {reviewPreviewCards.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => seedCoach({ prompt: buildHardMomentSeedPrompt(card, aiLang === "he" ? "he" : "en", childFirst), source: "hard-moment-card" })}
+                disabled={isChatLoading}
+                className="inline-flex min-h-[48px] flex-col items-start gap-1 rounded-2xl px-4 py-3 text-start text-sm font-bold transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={{ color: T.ink, border: "1px solid var(--arbor-peach-ink)", background: "var(--arbor-paper-elevated)" }}
+              >
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <Icon name="forum" size={15} style={{ color: "var(--arbor-peach-ink)" }} />
+                  <span className="min-w-0 truncate">{t("hm.talkThrough")} · {locText(card.title, uiLang === "he" ? "he" : "en")}</span>
+                </span>
+                <DraftReviewBanner compact />
               </button>
             ))}
           </div>
