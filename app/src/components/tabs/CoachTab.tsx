@@ -13,20 +13,43 @@ import { Avatar } from "../ui/Avatar";
 import { ArborMascot } from "../ui/ArborMascot";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
-import { TypewriterMarkdown } from "../ui/TypewriterMarkdown";
 import { TrustSafetyBar, cardCls } from "../ui/kit";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
-import { api, streamVoice, getAiLanguage } from "../../lib/api";
+import { api, streamVoice, getAiLanguage, EscalationRequiredError } from "../../lib/api";
+import { normalizeExtractedLog } from "../../content/behaviorTaxonomy";
+import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { BehaviorContext } from "../../types";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
+// AI-V2(a): the chip/orb tap contract (start / interrupt / stop) is a pure
+// tested decision function — while Arbor speaks on the fallback loop a tap
+// INTERRUPTS (voice stays on); a second tap during listening turns voice off.
+import { voiceChipAction } from "../../lib/voiceChipAction";
+// AI-V7: the calm bottom-sheet voice surface (orb + live captions), owned by
+// voicePhase !== "off". The chip below stays the ONLY entry point.
+import VoiceOverlay from "../coach/VoiceOverlay";
+// AI-V3: recognition restart with backoff + circuit breaker lives in the pure
+// dictation loop, so the phase label is always truthful (see lib/dictationLoop).
+import { createDictationLoop, type DictationLoop } from "../../lib/dictationLoop";
+import { splitCompleteSentences } from "../../lib/sentenceStream";
+// ASK-7: thread-shape predicates — orientation/follow-up/trust guards key off
+// real user/AI turns, never message-count checks (the welcome bubble is gone).
+import { hasUserTurn, hasAiTurn } from "../../lib/chatStream";
 import { publishedHardMomentCards } from "../../content/hardMomentCards";
 import { buildHardMomentSeedPrompt, locText } from "../../content/hardMomentSurface";
 import { speak, stopSpeaking, ttsSupported } from "../../lib/tts";
+import { voiceState } from "../../lib/voice";
+// AI-V5: screened-sentence tokens + next-sentence audio prefetch keep the
+// neural pipeline gapless without weakening the /api/tts trust boundary.
+import { prefetchNaturalAudio, registerTtsToken } from "../../lib/naturalVoice";
+// VC-8: pure shared module — lets a client-side (lexical) crisis stop render
+// the SAME escalation resources the server paths carry, so a crisis stop is
+// never resource-less on screen.
+import { escalationMatchForCategory, renderEscalationMarkdown } from "../../safety/escalation";
 import { usePrefersReducedMotion } from "../ui/playkit";
 
 type Risk = "Low" | "Moderate" | "High";
@@ -45,8 +68,11 @@ function parseRisk(text: string): Risk {
   return riskFromLevel(m?.[1]);
 }
 
-// Follow-ups: the visible label is translated (labelKey); the `prompt` sent to
-// the model stays English on purpose (the model replies in aiLang).
+// Follow-ups: the STATIC FALLBACK trio, used only when the answer's contract
+// carries no model-anticipated followUps (ASK-4). The visible label is
+// translated (labelKey); the `prompt` sent to the model stays English on
+// purpose (the model replies in aiLang) — the bubble shows the tapped label
+// via displayText (ASK-5).
 const FOLLOW_UPS: { labelKey: string; prompt: string }[] = [
   { labelKey: "coach.followup.avoid", prompt: "What should I avoid saying in that moment?" },
   { labelKey: "coach.followup.repair", prompt: "How do I repair the connection afterwards?" },
@@ -97,6 +123,9 @@ export default function CoachTab() {
     deleteConversation,
     apiError,
     seedCoach,
+    requestCapture,
+    requestConsultPrefill,
+    proposeMemory,
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
@@ -107,16 +136,18 @@ export default function CoachTab() {
   // Last thing the parent asked — used to power the error-state Retry button.
   const lastUserText = [...chatMessages].reverse().find((m) => m.sender === "user")?.text;
 
-  // Animate (typewriter) only AI messages that arrive after mount, not restored history.
-  const revealedRef = useRef<number | null>(null);
-  if (revealedRef.current === null) revealedRef.current = chatMessages.length - 1;
+  // ASK-7: fresh-thread orientation and follow-up gating derive from real
+  // turns. A legacy saved conversation that still opens with the old welcome
+  // bubble counts as an AI turn only — orientation never doubles up.
+  const userTurnExists = hasUserTurn(chatMessages);
+  const aiTurnExists = hasAiTurn(chatMessages);
 
+  // ASK-1: the post-hoc typewriter is GONE — /chat streams real screened
+  // sentence deltas into the live bubble (chatLive), and settled answers
+  // render instantly. Follow-up chips wait until no bubble is still live.
   const lastMessage = chatMessages[chatMessages.length - 1];
-  // COACH-2: a live voice caption bubble streams its own text delta-by-delta —
-  // mark it revealed so the typewriter never re-animates it after it settles,
-  // and hold the follow-up chips until the spoken answer is done.
-  if (lastMessage?.sender === "ai" && lastMessage.voiceLive) revealedRef.current = chatMessages.length - 1;
-  const showFollowUps = !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && chatMessages.length > 1;
+  const showFollowUps =
+    !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && !lastMessage.chatLive && userTurnExists;
 
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
@@ -124,16 +155,27 @@ export default function CoachTab() {
   // Which answer's overflow ("…") menu is open. Only Copy stays inline; Log /
   // Plan / Share fold into this menu so a settled answer reads as calm text.
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
-  const [showAllLenses, setShowAllLenses] = useState(false);
+  // ASK-9: the lens machinery is DEMOTED — collapsed to a single "Perspective:
+  // {lens} · change" affordance below the fast-start scenarios; one tap opens
+  // the full radiogroup (all lenses, arrow-key nav). Selection persistence and
+  // seedCoach lens steering are untouched.
+  const [lensOpen, setLensOpen] = useState(false);
 
   // Realtime voice coach: prefers Gemini Live (true bidirectional audio) when the
   // server reports it's available, and falls back to a hands-free browser loop —
   // listen (STT) → ask → speak (TTS) → listen again.
   const [voicePhase, setVoicePhase] = useState<"off" | "listening" | "thinking" | "speaking">("off");
   const [liveAvail, setLiveAvail] = useState(false);
+  // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
+  // browser-STT partials / Live input transcription — never model output).
+  const [voiceInterim, setVoiceInterim] = useState("");
+  // Render-tracked mirror of liveCtlRef: true while a Gemini Live session is
+  // active (the overlay orb only offers tap-to-interrupt on the fallback loop;
+  // Live barge-in is voice-driven via the server VAD).
+  const [liveSession, setLiveSession] = useState(false);
   const liveCtlRef = useRef<null | { stop: () => void }>(null);
   const voiceOnRef = useRef(false);
-  const stopDictationRef = useRef<null | (() => void)>(null);
+  const dictationLoopRef = useRef<DictationLoop | null>(null);
   // Streaming-voice TTS queue (speak each sentence as it streams in).
   const ttsQueueRef = useRef<string[]>([]);
   const ttsSpeakingRef = useRef(false);
@@ -141,12 +183,22 @@ export default function CoachTab() {
   const streamDoneRef = useRef(false);
   const voiceAbortRef = useRef<AbortController | null>(null);
 
-  // Probe Gemini Live availability once.
+  // AI-V8: probe Gemini Live availability once, from the config-only GET —
+  // zero ephemeral tokens are minted on mount; a fresh single-use token is
+  // minted only inside toggleVoice when the parent actually starts talking.
   useEffect(() => {
     let cancelled = false;
-    api.liveToken().then((r) => { if (!cancelled && r.available) setLiveAvail(true); }).catch(() => {});
+    api.liveAvailability().then((r) => { if (!cancelled && r.available) setLiveAvail(true); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // AI-V5: while sentence N plays, start fetching sentence N+1's audio so the
+  // inter-sentence gap is playback-bound, not network-bound. Neural engine
+  // only — the browser floor needs no network. Idempotent per sentence.
+  const prefetchUpNext = () => {
+    const upNext = ttsQueueRef.current[0];
+    if (upNext && voiceState().engine === "natural") prefetchNaturalAudio(upNext);
+  };
 
   // Speak queued sentences one at a time; when drained after a turn, resume listening.
   const pumpTts = () => {
@@ -165,13 +217,20 @@ export default function CoachTab() {
     ttsSpeakingRef.current = true;
     setVoicePhase("speaking");
     if (ttsSupported()) {
+      prefetchUpNext();
       speak(next, () => { ttsSpeakingRef.current = false; pumpTts(); });
     } else {
       ttsSpeakingRef.current = false;
       pumpTts();
     }
   };
-  const enqueueSpeak = (s: string) => { if (s.trim()) { ttsQueueRef.current.push(s.trim()); pumpTts(); } };
+  const enqueueSpeak = (s: string) => {
+    if (!s.trim()) return;
+    ttsQueueRef.current.push(s.trim());
+    // Queued behind a playing sentence → it is the (new) up-next: prefetch.
+    if (ttsSpeakingRef.current) prefetchUpNext();
+    pumpTts();
+  };
 
   // A streaming voice turn: stream the answer token-by-token and speak each
   // sentence the moment it completes (real-time, not wait-then-speak).
@@ -189,11 +248,41 @@ export default function CoachTab() {
           // the delta accumulates into a live AI bubble in the thread.
           appendVoiceAiDelta(delta);
           voiceBufRef.current += delta;
-          const parts = voiceBufRef.current.split(/(?<=[.!?])\s+/);
-          while (parts.length > 1) enqueueSpeak(parts.shift() as string);
-          voiceBufRef.current = parts[0] || "";
+          // EVAL-2: the splitter is the shared pure lib function so the
+          // cadence contract is pinned by evals/voice-loop-v1 (see
+          // routes/voiceLoopEval.test.ts) — same semantics as before.
+          const { complete, rest } = splitCompleteSentences(voiceBufRef.current);
+          for (const sentence of complete) enqueueSpeak(sentence);
+          voiceBufRef.current = rest;
         },
-        controller.signal,
+        {
+          signal: controller.signal,
+          // VC-4: the done payload is safety-load-bearing. On escalation:
+          // stop the loop (voiceOnRef=false means the TTS drain in pumpTts
+          // settles to "off" and NEVER calls startListening again) and put
+          // the full crisis resources block ON SCREEN as part of the
+          // persisted AI turn. On outputBlocked: render the visible blocked
+          // state (parity with /chat's renderBlockedOutputMarkdown). The
+          // appended markdown goes through appendVoiceAiDelta directly —
+          // persisted + visible but never enqueued for speech.
+          onEvent: (event, data) => {
+            if (event === "delta") {
+              // AI-V5: deltas carry a short-TTL screened-sentence token —
+              // register it so /api/tts can skip the model re-screen for
+              // exactly this text (its lexical floor still always runs).
+              const tts = (data as { tts?: { text?: unknown; token?: unknown } }).tts;
+              if (tts && typeof tts.text === "string" && typeof tts.token === "string") {
+                registerTtsToken(tts.text, tts.token);
+              }
+              return;
+            }
+            if (event !== "done") return;
+            handleVoiceDone(data, {
+              stopLoop: () => { voiceOnRef.current = false; },
+              appendMarkdown: (md) => appendVoiceAiDelta(`\n\n${md}`),
+            });
+          },
+        },
       );
       if (voiceBufRef.current.trim()) enqueueSpeak(voiceBufRef.current);
       voiceBufRef.current = "";
@@ -202,8 +291,13 @@ export default function CoachTab() {
     } catch {
       // COACH-2: keep the partial caption on abort/error — the parent keeps
       // whatever was already said instead of the turn vanishing.
-      finalizeVoiceAiTurn();
-      if (voiceOnRef.current) startListening(); else setVoicePhase("off");
+      // AI-V2(a): an ABORT is always driven by bargeInVoice/stopVoice, which
+      // already settled the caption + phase (barge-in is synchronously back
+      // in "listening") — only a genuine stream failure recovers here.
+      if (!controller.signal.aborted) {
+        finalizeVoiceAiTurn();
+        if (voiceOnRef.current) startListening(); else setVoicePhase("off");
+      }
     } finally {
       voiceAbortRef.current = null;
     }
@@ -212,19 +306,42 @@ export default function CoachTab() {
   const startListening = () => {
     if (!speechSupported()) { toast(t("coach.toast.voiceUnsupported"), "info"); voiceOnRef.current = false; setVoicePhase("off"); return; }
     setVoicePhase("listening");
-    stopDictationRef.current = startDictation(
-      {
-        onResult: (text) => {
-          if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
-          // COACH-2: persist the dictated turn through the existing
-          // chat-message write seam before asking.
-          appendVoiceUserTurn(text);
-          void streamVoiceTurn(text);
-        },
-        onError: () => { if (voiceOnRef.current) setVoicePhase("listening"); },
+    // AI-V3: the dictation loop owns recognition restarts — recoverable errors
+    // ('no-speech', transient network) restart with backoff behind a max-retry
+    // circuit breaker, silent ends auto-cycle the mic, and fatal errors stop
+    // voice with a truthful phase + toast. The "listening" label is only ever
+    // shown while the loop is actually cycling.
+    dictationLoopRef.current?.stop();
+    const loop = createDictationLoop({
+      start: startDictation,
+      lang: aiLang === "he" ? "he-IL" : "en-US",
+      isActive: () => voiceOnRef.current,
+      // AI-V7: surface interim partials as the overlay's live caption of the
+      // parent's own words (<500ms after speech starts — straight from the
+      // recognizer, no model round-trip).
+      onInterim: (text) => setVoiceInterim(text),
+      onTranscript: (text) => {
+        setVoiceInterim("");
+        if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
+        // COACH-2: persist the dictated turn through the existing
+        // chat-message write seam before asking.
+        appendVoiceUserTurn(text);
+        void streamVoiceTurn(text);
       },
-      aiLang === "he" ? "he-IL" : "en-US",
-    );
+      onFatal: (reason) => {
+        stopVoice();
+        toast(
+          reason === "permission"
+            ? t("coach.toast.micPermission")
+            : reason === "retry-exhausted"
+              ? t("coach.toast.micRetryStopped")
+              : t("coach.toast.voiceUnsupported"),
+          "info",
+        );
+      },
+    });
+    dictationLoopRef.current = loop;
+    loop.start();
   };
 
   const stopVoice = () => {
@@ -233,47 +350,128 @@ export default function CoachTab() {
     ttsQueueRef.current = [];
     ttsSpeakingRef.current = false;
     voiceAbortRef.current?.abort();
-    stopDictationRef.current?.();
+    dictationLoopRef.current?.stop();
+    dictationLoopRef.current = null;
     stopSpeaking();
     liveCtlRef.current?.stop();
     liveCtlRef.current = null;
+    setLiveSession(false);
+    setVoiceInterim("");
     // COACH-2: settle (and keep) any partial caption when the parent stops.
     finalizeVoiceAiTurn();
     setVoicePhase("off");
   };
 
+  // AI-V2(a): barge-in on the browser fallback loop — interrupt, don't kill.
+  // Flush every queued sentence, cut the current utterance, abort a still-open
+  // /voice stream, settle the partial caption (the parent keeps what was
+  // already said), and go straight back to listening. Voice STAYS on; a
+  // second tap during "listening" stops (voiceChipAction pins the contract).
+  const bargeInVoice = () => {
+    ttsQueueRef.current = [];
+    ttsSpeakingRef.current = false;
+    streamDoneRef.current = false;
+    voiceAbortRef.current?.abort();
+    stopSpeaking();
+    finalizeVoiceAiTurn();
+    setVoiceInterim("");
+    // VC-4 invariant: every automatic re-listen is guarded by the hands-free
+    // flag — a crisis-stopped loop (stopLoop set voiceOnRef=false) can never
+    // be re-armed by a barge-in tap; that tap falls through to stopVoice.
+    if (voiceOnRef.current) startListening();
+  };
+
   const startBrowserVoice = () => { voiceOnRef.current = true; startListening(); };
 
   const toggleVoice = async () => {
-    if (voiceOnRef.current || voicePhase !== "off" || liveCtlRef.current) { stopVoice(); return; }
+    const action = voiceChipAction(voicePhase, Boolean(liveCtlRef.current));
+    if (action === "interrupt" && voiceOnRef.current) { bargeInVoice(); return; }
+    if (action !== "start" || voiceOnRef.current || liveCtlRef.current) { stopVoice(); return; }
 
     // Prefer true Gemini Live when the server says it's provisioned.
     if (liveAvail) {
       try {
-        const fresh = await api.liveToken();
+        // AI-V9: the session language picks the server-pinned persona + voice;
+        // childId scopes the per-turn screen (requireChildOwnership).
+        const fresh = await api.liveToken({ language: getAiLanguage(), childId: childProfile.id });
         if (fresh.available && fresh.token && fresh.model) {
           const { startGeminiLive } = await import("../../lib/geminiLiveClient");
           setVoicePhase("thinking");
+          // VC-1/2/3/5: every Live turn routes through the liveTurnGuard —
+          // audio buffers per turn and releases only after the shared lexical
+          // floor AND the server verdict from /api/live/turn both pass. The
+          // guard closes the session BEFORE any crisis/blocked/degrade render.
           liveCtlRef.current = await startGeminiLive(
-            fresh.token,
-            fresh.model,
-            "You are Arbor, a warm, calm, non-diagnostic parenting coach. Keep spoken replies short, kind, and practical. Never diagnose; suggest professional help for safety concerns.",
+            {
+              token: fresh.token,
+              model: fresh.model,
+              // FW-NEW-P0: the persona/voice are server-pinned into the token's
+              // liveConnectConstraints at mint time — echoing them back keeps
+              // the client connect config byte-identical to the pin.
+              systemInstruction: fresh.systemInstruction || "",
+              speechConfig: fresh.speechConfig,
+            },
             {
               onPhase: (p) => setVoicePhase(p === "closed" ? "off" : p === "connecting" ? "thinking" : p),
-              onError: () => { liveCtlRef.current = null; toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
+              onError: () => { liveCtlRef.current = null; setLiveSession(false); toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
+              screenTurn: (role, text) =>
+                api.liveTurn({ role, text, language: getAiLanguage(), childId: childProfile.id }),
+              // COACH-2 / VC-3: Live turns persist through the SAME reducers the
+              // browser loop uses (appendVoiceUser / applyVoiceDelta /
+              // settleVoiceTurn → the existing conversationsCol upsert) — no
+              // new capture path, conversations stays in CHILD_SUBCOLLECTIONS.
+              onUserTurn: (text) => { setVoiceInterim(""); appendVoiceUserTurn(text); },
+              // AI-V7: Live input transcription = the parent's own words —
+              // accumulate into the overlay caption while they speak.
+              onUserInterim: (delta) => setVoiceInterim((prev) => (prev + delta).trimStart()),
+              onModelTurn: (text) => { appendVoiceAiDelta(text); finalizeVoiceAiTurn(); },
+              onCrisis: (v) => {
+                // Session is ALREADY stopped (guard halts before rendering).
+                liveCtlRef.current = null;
+                setLiveSession(false);
+                voiceOnRef.current = false;
+                // VC-8: the guard's client-side lexical crisis stop carries no
+                // server resourcesMarkdown — render the matching escalation
+                // resources locally so crisis help ALWAYS lands on screen.
+                appendVoiceAiDelta(
+                  v.resourcesMarkdown ?? renderEscalationMarkdown(escalationMatchForCategory(v.category)),
+                );
+                finalizeVoiceAiTurn();
+                if (v.spokenText) speak(v.spokenText);
+                setVoicePhase("off");
+              },
+              onBlocked: (v) => {
+                liveCtlRef.current = null;
+                setLiveSession(false);
+                voiceOnRef.current = false;
+                if (v.blockedMarkdown) appendVoiceAiDelta(v.blockedMarkdown);
+                finalizeVoiceAiTurn();
+                if (v.spokenText) speak(v.spokenText);
+                setVoicePhase("off");
+              },
+              // VC-5: screening unavailability degrades VISIBLY to the screened
+              // browser voice loop (/voice screens every turn server-side).
+              onFailClosed: () => {
+                liveCtlRef.current = null;
+                setLiveSession(false);
+                toast(t("coach.toast.voiceStandardMode"), "info");
+                startBrowserVoice();
+              },
             },
           );
+          setLiveSession(true);
           return;
         }
       } catch {
         liveCtlRef.current = null; // fall through to the browser loop
+        setLiveSession(false);
       }
     }
     startBrowserVoice();
   };
 
   // Stop any audio/recognition on unmount.
-  useEffect(() => () => { stopDictationRef.current?.(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
+  useEffect(() => () => { dictationLoopRef.current?.stop(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
 
   const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
   // COACH-2: live caption text on the voicePhase chip while the answer streams
@@ -283,23 +481,20 @@ export default function CoachTab() {
       ? lastMessage.text
       : "";
 
-  return (
-    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
-      {/* One coaching workspace: orientation, optional lens, conversation, composer. */}
-      <div className="space-y-4">
-        <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
-            <h1 className="mt-1.5 text-[28px] font-extrabold leading-[1.08] sm:text-[34px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.hero.ask.title")}</h1>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
-          </div>
-        </header>
-
-        {/* Composer-first: the parent's question is the primary job on this page.
-            COACH-4: this hero composer is the ONE input on the surface — the
-            mirrored in-thread composer was removed; follow-up turns also send
-            from here (the thread auto-scrolls to the streaming answer). */}
-        <section className="border-y py-5 sm:py-6" aria-label={t("elev.hero.ask.cta")} style={{ borderColor: "var(--arbor-rule)" }}>
+  // ASK-2: the docked state — the SAME single composer element renders in the
+  // hero position on a fresh thread and docks sticky at the viewport bottom
+  // once the thread has a user turn, so a follow-up never needs scroll-hunting.
+  // COACH-4 single-input invariant holds: this JSX renders in exactly ONE of
+  // the two positions, so there is always exactly one textarea in the DOM,
+  // and the voice/photo capture chips travel with it.
+  const composerDocked = userTurnExists;
+  const composerSection = (
+        <section
+          className={composerDocked ? "py-2.5" : "border-y py-5 sm:py-6"}
+          aria-label={t("elev.hero.ask.cta")}
+          style={composerDocked ? undefined : { borderColor: "var(--arbor-rule)" }}
+        >
+          {!composerDocked && (
           <div className="flex items-center gap-3 mb-3">
             <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={21} fill={1} /></span>
             <div className="min-w-0">
@@ -309,6 +504,7 @@ export default function CoachTab() {
               </p>
             </div>
           </div>
+          )}
           <div className="flex items-end gap-2 rounded-[20px] p-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
             <textarea
               value={chatInput}
@@ -347,12 +543,10 @@ export default function CoachTab() {
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
                 : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
             >
+              {/* AI-V7: the truncated 180px chip caption moved into the
+                  VoiceOverlay bottom sheet (full-width, dir="auto", aria-live)
+                  — the chip stays the sole ENTRY point. */}
               {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
-              {liveVoiceText && (
-                <span dir="auto" aria-live="polite" className="max-w-[180px] truncate text-[10px] font-medium" style={{ color: "var(--arbor-muted)" }}>
-                  {liveVoiceText}
-                </span>
-              )}
               {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
             </button>
             {/* EU AI Act Art. 50 — persistent AI-interaction transparency line.
@@ -360,102 +554,39 @@ export default function CoachTab() {
             <span className="ms-auto inline-flex items-center gap-1 text-[10px]" style={{ color: "var(--arbor-muted)" }}><Icon name="shield" size={13} /> {t("coach.aiDisclosure")}</span>
           </div>
         </section>
+  );
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest block" style={{ color: "var(--arbor-green-ink)" }}>{t("coach.lens")}</span>
-            {/* E8: the research-anchored trust chip lives beside the lens row. */}
-            <EvidenceChip />
-            {/* IA: the inline picker selects between lenses; the library browses/learns them. */}
-            <button
-              type="button"
-              onClick={() => setShowAllLenses((v) => !v)}
-              aria-expanded={showAllLenses}
-              className="ms-auto inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
-              style={{ color: "var(--arbor-muted)" }}
-            >
-              <span>{showAllLenses ? t("coach.lens.fewer") : t("coach.lens.browseAll")}</span>
-              <Icon name={showAllLenses ? "expand_less" : "expand_more"} size={14} />
-            </button>
+  return (
+    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
+      {/* One coaching workspace: orientation, conversation, composer. */}
+      <div className="space-y-4">
+        <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
+            <h1 className="mt-1.5 text-[28px] font-extrabold leading-[1.08] sm:text-[34px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.hero.ask.title")}</h1>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
           </div>
-          {(() => {
-            // Single-select lens control with proper radiogroup a11y + arrow-key nav.
-            const lensNames = ["Integrated Balanced", ...scholarsInfo.map((s) => s.name)];
-            const moveLens = (dir: 1 | -1) => {
-              const cur = lensNames.indexOf(selectedLens);
-              const next = ((cur < 0 ? 0 : cur) + dir + lensNames.length) % lensNames.length;
-              setSelectedLens(lensNames[next]);
-            };
-            const onKeyDown = (e: React.KeyboardEvent) => {
-              if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); moveLens(1); }
-              else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); moveLens(-1); }
-            };
-            return (
-              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("coach.lens")} onKeyDown={onKeyDown}>
-                {(() => {
-                  const on = selectedLens === "Integrated Balanced";
-                  return (
-                    <button
-                      role="radio"
-                      aria-checked={on}
-                      tabIndex={on ? 0 : -1}
-                      onClick={() => setSelectedLens("Integrated Balanced")}
-                      className="px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                      style={on
-                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                        : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                    >
-                      {t("coach.lens.integrated")}
-                    </button>
-                  );
-                })()}
-                {showAllLenses && scholarsInfo.map((s, idx) => {
-                  const on = selectedLens === s.name;
-                  return (
-                    <button
-                      key={idx}
-                      role="radio"
-                      aria-checked={on}
-                      tabIndex={on ? 0 : -1}
-                      onClick={() => setSelectedLens(s.name)}
-                      className="px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                      style={on
-                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
-                        : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                    >
-                      <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? T.paperElevated : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }} aria-hidden>
-                        {s.initial}
-                      </span>
-                      {s.name} ({s.concept})
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })()}
-          {/* "Use this lens when…" — makes the lens choice practical, not academic */}
-          {showAllLenses && (() => {
-            const active = scholarsInfo.find((s) => s.name === selectedLens);
-            const hint = active?.useWhen
-              || (selectedLens === "Integrated Balanced" ? t("coach.lens.integratedHint") : null);
-            return hint ? (
-              <p className="text-[11px] leading-relaxed rounded-lg p-2.5 mt-1" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                {hint}
-              </p>
-            ) : null;
-          })()}
-        </div>
+        </header>
+
+        {/* Composer-first: the parent's question is the primary job on this page.
+            COACH-4: this hero composer is the ONE input on the surface — the
+            mirrored in-thread composer was removed; follow-up turns also send
+            from here. ASK-2: once the thread has a user turn the SAME element
+            docks sticky at the bottom of the page instead (see below). */}
+        {!composerDocked && composerSection}
       </div>
 
       {/* Fast-start scenarios (IA-2) — calm bordered chips on a fresh conversation */}
-      {chatMessages.length <= 1 && (
+      {!userTurnExists && (
         <div className="space-y-2">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {SCENARIOS.map((s) => (
               <button
                 key={s.labelKey}
-                onClick={() => handleChatSend(s.prompt)}
+                // ASK-5: the parent's bubble shows the localized label they
+                // actually tapped; the canonical EN prompt goes to the model.
+                onClick={() => handleChatSend(s.prompt, { displayText: t(s.labelKey) })}
                 disabled={isChatLoading}
                 className="inline-flex items-center gap-2 rounded-2xl px-4 py-3 min-h-[48px] text-start text-sm font-bold bg-white transition motion-safe:hover:-translate-y-0.5 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                 style={{ color: T.ink, border: "1px solid var(--arbor-rule)" }}
@@ -473,7 +604,7 @@ export default function CoachTab() {
           chip calls the EXISTING seedCoach seam with the card context; the
           seed embeds the governed escalation VERBATIM (never paraphrased) and
           is covered by evals/coach-hardmoment-seed-v1. */}
-      {chatMessages.length <= 1 && publishedHardMomentCards.length > 0 && (
+      {!userTurnExists && publishedHardMomentCards.length > 0 && (
         <div className="space-y-2" data-testid="coach-hard-moments">
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("hm.coach.heading")}</span>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -493,6 +624,82 @@ export default function CoachTab() {
           </div>
         </div>
       )}
+
+      {/* ASK-9: the lens machinery, DEMOTED below the fast-start scenarios —
+          prime mobile real estate belongs to the composer + scenarios. Default
+          is one calm affordance ("Perspective: Integrated · change"); one tap
+          opens the FULL radiogroup (arrow-key nav, RTL-safe logical props).
+          Selection persistence (arbor.lens) + seedCoach lens steering intact. */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* E8: the research-anchored trust chip lives beside the lens affordance. */}
+          <EvidenceChip />
+          <button
+            type="button"
+            onClick={() => setLensOpen((v) => !v)}
+            aria-expanded={lensOpen}
+            className="inline-flex items-center gap-1 min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <span>
+              {t("coach.perspective")}: <span style={{ color: "var(--arbor-green-ink)" }}>{selectedLens === "Integrated Balanced" ? t("coach.lens.integrated") : selectedLens}</span> · {t("coach.perspective.change")}
+            </span>
+            <Icon name={lensOpen ? "expand_less" : "expand_more"} size={14} />
+          </button>
+        </div>
+        {lensOpen && (() => {
+          // Single-select lens control with proper radiogroup a11y + arrow-key nav.
+          const lensNames = ["Integrated Balanced", ...scholarsInfo.map((s) => s.name)];
+          const moveLens = (dir: 1 | -1) => {
+            const cur = lensNames.indexOf(selectedLens);
+            const next = ((cur < 0 ? 0 : cur) + dir + lensNames.length) % lensNames.length;
+            setSelectedLens(lensNames[next]);
+          };
+          const onKeyDown = (e: React.KeyboardEvent) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); moveLens(1); }
+            else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); moveLens(-1); }
+          };
+          const active = scholarsInfo.find((s) => s.name === selectedLens);
+          const hint = active?.useWhen
+            || (selectedLens === "Integrated Balanced" ? t("coach.lens.integratedHint") : null);
+          return (
+            <>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("coach.lens")} onKeyDown={onKeyDown}>
+                {lensNames.map((name) => {
+                  const on = selectedLens === name;
+                  const scholar = scholarsInfo.find((s) => s.name === name);
+                  return (
+                    <button
+                      key={name}
+                      role="radio"
+                      aria-checked={on}
+                      tabIndex={on ? 0 : -1}
+                      onClick={() => setSelectedLens(name)}
+                      className="px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                      style={on
+                        ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }
+                        : { background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                    >
+                      {scholar && (
+                        <span className="w-4 h-4 text-[9px] font-black rounded flex items-center justify-center" style={{ background: on ? T.paperElevated : "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }} aria-hidden>
+                          {scholar.initial}
+                        </span>
+                      )}
+                      {scholar ? `${scholar.name} (${scholar.concept})` : t("coach.lens.integrated")}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* "Use this lens when…" — makes the lens choice practical, not academic */}
+              {hint && (
+                <p className="text-[11px] leading-relaxed rounded-lg p-2.5 mt-1" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+                  {hint}
+                </p>
+              )}
+            </>
+          );
+        })()}
+      </div>
 
       {/* Conversation threads */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -551,8 +758,11 @@ export default function CoachTab() {
          <div className="max-w-[760px] mx-auto space-y-3.5">
           {/* Empty state — orient a first-run parent on what Ask Arbor does.
               COACH-4: the title line lives ONCE, on the hero composer above;
-              the thread empty state keeps only the mascot + body copy. */}
-          {chatMessages.length <= 1 && !isChatLoading && (
+              the thread empty state keeps only the mascot + body copy.
+              ASK-7: this is THE single orientation block (with the scenarios)
+              — it hides the moment any real turn exists, including a legacy
+              conversation that still opens with the old welcome bubble. */}
+          {!userTurnExists && !aiTurnExists && !isChatLoading && (
             <div className="flex flex-col items-center justify-center text-center gap-3 py-10 px-4">
               <div className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden" style={{ background: "var(--arbor-green-soft)" }} aria-hidden>
                 <ArborMascot size={52} />
@@ -583,11 +793,18 @@ export default function CoachTab() {
                 )}
                 {msg.sender === "ai" ? (
                   msg.contract ? (
+                    <>
+                    {/* ASK-1: the streamed prose lead stays visible after the
+                        cards settle — the words the parent watched arrive
+                        never vanish at done. */}
+                    {msg.contract.text?.trim() && <MarkdownBlock text={msg.contract.text} className="mb-3" />}
                     <CoachAnswerCards
                       contract={msg.contract}
                       lens={msg.lens}
                       council={msg.council}
                       lang={uiLang}
+                      // ASK-6: memory footer deep link — Profile › Child Memory.
+                      onManageMemory={() => setActiveTab("memory")}
                       onSaveToPlan={(topic) => {
                         setPlanChallengeTopic((topic || msg.text).replace(/[#*]/g, "").slice(0, 140));
                         setActiveTab("plans");
@@ -598,19 +815,36 @@ export default function CoachTab() {
                         const source = prior?.sender === "user" ? prior.text : msg.text;
                         toast(t("coach.toast.draftingLog"), "info");
                         try {
-                          const d = await api.extractLog({ message: source, childProfile });
-                          if (d.behaviorType) setNewLogType(d.behaviorType);
-                          if (d.intensity) setNewLogIntensity(Math.min(5, Math.max(1, Math.round(d.intensity))));
-                          if (d.durationMinutes) setNewLogDuration(Math.max(0, Math.round(d.durationMinutes)));
-                          const ctx = (["Home", "School", "Transit", "Public"].includes(d.context) ? d.context : "Home") as BehaviorContext;
-                          setNewLogContext(ctx);
-                          if (d.trigger) setNewLogTrigger(d.trigger);
-                          if (d.response) setNewLogResponse(d.response);
-                          setNewLogNotes(d.notes || "");
+                          const d = await api.extractLog({ message: source, childProfile, language: getAiLanguage() });
+                          // AI-CAP-8: clamp/validate through the ONE shared
+                          // taxonomy module — the Behaviors select always gets
+                          // a canonical type, free labels survive in notes.
+                          const n = normalizeExtractedLog(d, source.slice(0, 140));
+                          setNewLogType(n.behaviorType);
+                          setNewLogIntensity(n.intensity);
+                          setNewLogDuration(n.durationMinutes);
+                          setNewLogContext(n.context as BehaviorContext);
+                          setNewLogTrigger(n.trigger);
+                          setNewLogResponse(n.response || t("beh.extract.noResponse"));
+                          setNewLogNotes(n.notes);
+                          // AI-CAP-4: route the handoff through the existing
+                          // requestCapture seam — Behaviors opens the form
+                          // VISIBLE, review gate armed, factual 'ai-draft'
+                          // provenance; the only write path is confirmReview.
+                          requestCapture("ai-draft");
                           setActiveTab("behaviors");
                           toast(t("coach.toast.logDrafted"), "success");
-                        } catch {
+                        } catch (err) {
+                          // FAIL-CLOSED (same contract as AI-CAP-1): a 409 from
+                          // the extraction screen renders the full crisis
+                          // resources in the thread and writes ZERO draft fields.
+                          if (err instanceof EscalationRequiredError) {
+                            appendVoiceAiDelta(renderEscalationMarkdown(escalationMatchForCategory(err.category)));
+                            finalizeVoiceAiTurn();
+                            return;
+                          }
                           setNewLogNotes(msg.contract!.nonDiagnosticHypotheses?.[0]?.rationale?.slice(0, 300) || source.slice(0, 300));
+                          requestCapture("ai-draft");
                           setActiveTab("behaviors");
                           toast(t("coach.toast.notePrefilled"), "info");
                         }
@@ -620,22 +854,21 @@ export default function CoachTab() {
                         toast(t("coach.toast.teacherNoteCopied"), "info");
                       }}
                     />
+                    </>
                   ) : (
-                    <TypewriterMarkdown
-                      text={msg.text}
-                      // COACH-2: a live voice caption streams its own deltas —
-                      // render instantly (the stream IS the typewriter).
-                      enabled={!reducedMotion && !msg.voiceLive && idx === chatMessages.length - 1 && idx > (revealedRef.current ?? -1)}
-                      onDone={() => {
-                        revealedRef.current = idx;
-                      }}
-                    />
+                    // ASK-1: no fake typewriter — a live bubble (voice caption
+                    // or ask stream) grows with its real deltas; settled text
+                    // renders complete immediately.
+                    <MarkdownBlock text={msg.text} />
                   )
                 ) : (
-                  <MarkdownBlock text={msg.text} />
+                  // ASK-5: user bubbles show what the parent SAW (the tapped
+                  // localized chip label) — msg.text stays the canonical
+                  // prompt that went to the model.
+                  <MarkdownBlock text={msg.displayText || msg.text} />
                 )}
 
-                {msg.sender === "ai" && !msg.contract && !msg.voiceLive && (
+                {msg.sender === "ai" && !msg.contract && !msg.voiceLive && !msg.chatLive && (
                   // Calm: answers read as text. Copy stays inline; everything else
                   // folds into a single "…" overflow so it's not a toolbar.
                   // Touch: always visible. Desktop: calm hover reveal. Keyboard: focus reveals.
@@ -685,9 +918,10 @@ export default function CoachTab() {
                           >
                             <Icon name="playlist_add" size={14} style={{ color: "var(--arbor-muted)" }} /> {t("coach.action.plan")}
                           </button>
-                          {/* mk-p0-3: 1-tap branded share of a settled answer (not while streaming). */}
-                          {idx > (revealedRef.current ?? -1) ? null : (
-                            <div className="px-1 py-0.5" onClick={() => setOpenMenuIdx(null)}>
+                          {/* mk-p0-3: 1-tap branded share of a settled answer — this
+                              menu only exists on settled bubbles (live ones hide the
+                              whole actions row). */}
+                          <div className="px-1 py-0.5" onClick={() => setOpenMenuIdx(null)}>
                               <ShareButton
                                 artifact="answer_card"
                                 surface="ask"
@@ -706,7 +940,6 @@ export default function CoachTab() {
                                 variant="ghost"
                               />
                             </div>
-                          )}
                         </div>
                       </>
                     )}
@@ -716,23 +949,35 @@ export default function CoachTab() {
             </div>
           ))}
 
-          {showFollowUps && (
+          {showFollowUps && (() => {
+            // ASK-4: the answer's own anticipated followUps lead (localized by
+            // the model via the languageDirective, zod-capped to 3, and
+            // screened — they are appended to renderCoachResponse so
+            // screenModelOutput covered every string shown here). The static
+            // trio is only the fallback when the contract carries none.
+            const anticipated = lastMessage?.contract?.followUps?.filter((q) => q.trim()) ?? [];
+            const chips = anticipated.length > 0
+              ? anticipated.map((q) => ({ key: q, label: q, prompt: q }))
+              : FOLLOW_UPS.map((q) => ({ key: q.labelKey, label: t(q.labelKey), prompt: q.prompt }));
+            return (
             <div className="flex flex-wrap gap-[9px] me-auto max-w-[85%] ps-11">
-              {FOLLOW_UPS.map((q) => (
+              {chips.map((q) => (
                 <button
-                  key={q.labelKey}
-                  onClick={() => handleChatSend(q.prompt)}
+                  key={q.key}
+                  dir="auto"
+                  onClick={() => handleChatSend(q.prompt, { displayText: q.label })}
                   className="text-[13px] px-4 py-1.5 min-h-[44px] rounded-full transition flex items-center gap-1.5 font-extrabold bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-green-ink)" }}
                 >
-                  {t(q.labelKey)}
+                  {q.label}
                   {uiLang === "he"
                     ? <Icon name="arrow_back" size={12} />
                     : <Icon name="arrow_forward" size={12} />}
                 </button>
               ))}
             </div>
-          )}
+            );
+          })()}
 
           {isChatLoading && (
             <div className="flex gap-3 max-w-[85%] me-auto">
@@ -777,7 +1022,9 @@ export default function CoachTab() {
             </div>
           )}
 
-          <div ref={chatBottomRef} />
+          {/* ASK-2: scroll-margin keeps the auto-scrolled thread end clear of
+              the docked sticky composer below. */}
+          <div ref={chatBottomRef} style={{ scrollMarginBottom: 132 }} />
          </div>
         </div>
 
@@ -789,10 +1036,13 @@ export default function CoachTab() {
         <div className="flex flex-wrap items-center gap-2 px-4 py-2" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
           <button
             type="button"
+            // ASK-4: with an empty composer the council re-asks the parent's
+            // last question (handleCouncilSend falls back to it) — disabled,
+            // with an honest hint, ONLY when no prior turn exists to convene on.
             onClick={() => handleCouncilSend()}
-            disabled={isChatLoading}
-            title={t("coach.councilHint")}
-            aria-label={t("coach.councilHint")}
+            disabled={isChatLoading || (!chatInput.trim() && !lastUserText)}
+            title={chatInput.trim() || lastUserText ? t("coach.councilHint") : t("coach.councilHint.empty")}
+            aria-label={chatInput.trim() || lastUserText ? t("coach.councilHint") : t("coach.councilHint.empty")}
             className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 min-h-[44px] rounded-lg transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
             style={{ color: "var(--arbor-muted)" }}
           >
@@ -816,7 +1066,7 @@ export default function CoachTab() {
       </div>
 
       {/* Trust & Safety — surfaces the model's real risk + escalation (TS-1/TS-3) */}
-      {lastMessage?.sender === "ai" && chatMessages.length > 1 && (
+      {lastMessage?.sender === "ai" && userTurnExists && (
         <TrustSafetyBar
           risk={lastMessage.contract ? riskFromLevel(lastMessage.contract.riskLevel) : parseRisk(lastMessage.text)}
           note={t("coach.trust.note")}
@@ -825,11 +1075,43 @@ export default function CoachTab() {
         />
       )}
 
+      {/* ASK-2: the docked composer — the SAME single element from the hero
+          position, now sticky at the viewport bottom so the follow-up loop
+          never requires scrolling back up. bottom-16 clears the fixed
+          MobileNav bar; from lg the sidebar layout has no bottom bar. */}
+      {composerDocked && (
+        <div
+          data-testid="coach-docked-composer"
+          className="sticky bottom-16 lg:bottom-0 z-30"
+          style={{ background: "var(--arbor-paper)", borderTop: "1px solid var(--arbor-rule)", boxShadow: "0 -6px 16px rgba(41,51,63,0.05)" }}
+        >
+          {composerSection}
+        </div>
+      )}
+
       {/* The parent-approved memory moderation queue was removed from Ask Arbor to
           keep the chat calm. Its full capability (pending review + approve/reject/
           forget of approved facts) lives in its real home: Profile › Child Memory
           (route "memory" → src/components/sections/ChildMemory.tsx), which renders
           the same pending/approved lists via the same handleMemoryDecision. */}
+
+      {/* AI-V7: the voice surface — orb + live captions in a calm bottom
+          sheet, owned entirely by voicePhase (unmounts when voice is off).
+          Captions carry only the parent's own words (voiceInterim) and the
+          already-screened spoken answer (liveVoiceText). Tap-orb = barge-in
+          on the fallback loop (AI-V2(a)); X = end voice. */}
+      {voicePhase !== "off" && (
+        <VoiceOverlay
+          phase={voicePhase}
+          lang={uiLang}
+          interimText={voiceInterim}
+          answerText={liveVoiceText}
+          canInterrupt={voicePhase === "speaking" && !liveSession}
+          reducedMotion={reducedMotion}
+          onOrbTap={() => { if (voicePhase === "speaking" && !liveCtlRef.current && voiceOnRef.current) bargeInVoice(); }}
+          onClose={stopVoice}
+        />
+      )}
 
       <ArborVision
         open={!!visionMode}
@@ -837,7 +1119,14 @@ export default function CoachTab() {
         onClose={() => setVisionMode(null)}
         childProfile={childProfile}
         onSeedCoach={(prompt) => { setChatInput(prompt); }}
-        onGoHandoff={() => { setActiveTab("consult"); toast(t("coach.toast.noteCopied"), "info"); }}
+        // AIX-S3(a): the handoff note is CONSUMED, not dropped — it prefills
+        // the Consult composer (parent-editable) via the context seam. Prefill
+        // is not consent: sharing still requires the explicit consult act.
+        onGoHandoff={(note) => { requestConsultPrefill(note); setActiveTab("consult"); toast(t("coach.toast.handoffPrefilled"), "info"); }}
+        // AIX-S3(b): suggestedMemory items route through the EXISTING parent-
+        // approved propose seam — they land ONLY in the pending-approval queue
+        // (Profile › Child Memory); nothing auto-approves.
+        onProposeMemory={(fact) => proposeMemory(fact, { source: "vision", prompt: "vision:document" })}
         onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); setActiveTab("behaviors"); toast(t("coach.toast.photoCaptured"), "info"); }}
       />
     </motion.div>

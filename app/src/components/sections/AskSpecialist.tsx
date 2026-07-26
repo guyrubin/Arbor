@@ -4,7 +4,7 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { buildConsultPacket, serializePacket, countIncluded } from "../../consult/packet";
+import { appendParentNote, buildConsultPacket, serializePacket, countIncluded } from "../../consult/packet";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { Modal } from "../ui/Modal";
 import { InitialsTile, InsetRow, PASTEL } from "../ui/kit";
@@ -34,7 +34,7 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function AskSpecialist() {
-  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab } = useArbor();
+  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultNote, consumeConsultPrefill } = useArbor();
   const { toast } = useToast();
   const { t } = useLanguage();
   const reduceMotion = useReducedMotion();
@@ -42,6 +42,19 @@ export default function AskSpecialist() {
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [reviewed, setReviewed] = useState(false);
+
+  // AIX-S3(a): the Vision handoff note lands HERE — as a parent-editable note in
+  // the composer, never as an auto-share. Consume the one-shot seam into local
+  // editable state; the note rides into copy/download/export/send ONLY through
+  // the parent's existing explicit acts (all behind the reviewed-checkbox gate).
+  const [visionNote, setVisionNote] = useState("");
+  useEffect(() => {
+    if (pendingConsultNote != null) {
+      setVisionNote(pendingConsultNote);
+      consumeConsultPrefill();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingConsultNote]);
 
   // Export-as-PDF popover state + a11y refs.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -103,9 +116,12 @@ export default function AskSpecialist() {
   const toggle = (id: string) =>
     setExcluded((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const markdown = useCallback(() => serializePacket(packet, excluded), [packet, excluded]);
+  const markdown = useCallback(
+    () => appendParentNote(serializePacket(packet, excluded), visionNote, t("consult.visionNote.heading")),
+    [packet, excluded, visionNote, t]
+  );
 
-  useEffect(() => { setReviewed(false); }, [excluded, childProfile.id]);
+  useEffect(() => { setReviewed(false); }, [excluded, visionNote, childProfile.id]);
 
   const copy = async () => {
     // Growth loop (P0-4): the consult packet is a `story` artifact shared to a
@@ -241,6 +257,37 @@ export default function AskSpecialist() {
           </div>
         ))}
       </section>
+
+      {/* AIX-S3(a): the Vision handoff note — parent-editable BEFORE anything is
+          shared. Rendered whenever a note arrived (independent of packet data)
+          so the prefill is never silently dropped; the parent can edit or
+          remove it, and it joins the packet only via the explicit export acts. */}
+      {visionNote.trim() !== "" && (
+        <section className="rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+          <div className="flex items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
+              <Icon name="description" size={16} /> {t("consult.visionNote.title")}
+            </span>
+            <button
+              onClick={() => setVisionNote("")}
+              className="text-[11px] font-bold min-h-[44px] px-2"
+              style={{ color: MUTED }}
+            >
+              {t("consult.visionNote.remove")}
+            </button>
+          </div>
+          <p className="text-[11.5px] leading-relaxed mt-1" style={{ color: MUTED }}>{t("consult.visionNote.hint")}</p>
+          <textarea
+            value={visionNote}
+            onChange={(e) => setVisionNote(e.target.value)}
+            aria-label={t("consult.visionNote.title")}
+            rows={4}
+            dir="auto"
+            className="w-full rounded-xl px-3 py-2 text-sm mt-2 focus:outline-none resize-y"
+            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: INK }}
+          />
+        </section>
+      )}
 
       {isEmpty ? (
         /* Empty state — new profile with nothing to summarise yet. */

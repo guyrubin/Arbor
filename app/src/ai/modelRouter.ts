@@ -1,12 +1,12 @@
 import { GoogleGenAI, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
 import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
-import { withModelRetry } from "./modelRetry.js";
-import { recordUsage } from "./usage.js";
+import { abortableIterate, raceWithAbort, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
+import { recordUsage, startCallTimer } from "./usage.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "./capabilities/policy.js";
 import type { CapabilityRequest } from "./capabilities/contracts.js";
 
-export { withModelRetry } from "./modelRetry.js";
+export { withModelRetry, isAbortError, newAbortError, type ModelCallBudget } from "./modelRetry.js";
 
 export type ModelRoute =
   | "coach_high_stakes"
@@ -24,6 +24,11 @@ export type GenerateJsonOptions = {
   temperature?: number;
   /** Optional images for multimodal (vision / document) requests. */
   images?: ImagePart[];
+  /** AIR-9: route deadline budget — aborts/frees the upstream call. */
+  budget?: ModelCallBudget;
+  /** EVAL-6: PROMPT_VERSIONS version of the prompt behind this call — stamped
+   *  into the ai.usage telemetry event so eval results tie to the prompt. */
+  promptVersion?: string;
 };
 
 /** Options for image GENERATION (Gemini 2.5 Flash Image). No JSON schema; optional
@@ -31,7 +36,28 @@ export type GenerateJsonOptions = {
 export type GenerateImageOptions = {
   prompt: string;
   images?: ImagePart[];
+  /** AIR-9: route deadline budget — aborts/frees the upstream call. */
+  budget?: ModelCallBudget;
 };
+
+/**
+ * AIR-3: per-route Gemini thinking budget. Gemini 2.5 Flash ships with dynamic
+ * thinking ON, so trivial latency-critical calls (capture extraction, the voice
+ * reply, digest, Today's Focus) were paying seconds of invisible thinking
+ * tokens for no quality gain. `analysis_structured` (which also carries the
+ * /voice streamText replies) turns thinking OFF; coach/creative routes keep the
+ * model default (dynamic). Only applied to models that accept a zero budget
+ * (2.5 Flash family — 2.5 Pro rejects 0, and non-2.5 models reject the field).
+ * Note: this also covers the optional semantic classifier call — acceptable by
+ * design (default-OFF, fails open); the lexical floor is untouched.
+ */
+export const thinkingConfigForRoute = (
+  route: ModelRoute,
+  model: string,
+): { thinkingBudget: number } | undefined =>
+  route === "analysis_structured" && /gemini-2\.5-flash/i.test(model) && !/image/i.test(model)
+    ? { thinkingBudget: 0 }
+    : undefined;
 
 /** A generated image returned as raw base64 (no `data:` prefix). */
 export type GeneratedImage = { data: string; mimeType: string };
@@ -98,7 +124,15 @@ export type RouteDecision = {
   model: string;
 };
 
-export type StreamTextOptions = { route: ModelRoute; prompt: string; temperature?: number };
+export type StreamTextOptions = {
+  route: ModelRoute;
+  prompt: string;
+  temperature?: number;
+  /** AIR-9: route deadline budget — aborts/frees the upstream call. */
+  budget?: ModelCallBudget;
+  /** EVAL-6: prompt version stamped into the ai.usage event (see prompts.ts). */
+  promptVersion?: string;
+};
 
 export type ModelProvider = {
   generateJson(options: GenerateJsonOptions): Promise<unknown>;
@@ -202,6 +236,9 @@ export const routeDecisionFor = (config: ArborConfig, route: ModelRoute): RouteD
 };
 
 export const toAnthropicVertexModelId = (model: string) => {
+  // Legacy pin: the 2024 shorthand keeps resolving to the dated v2 snapshot.
+  // Current-generation Claude models on Vertex use the bare first-party id
+  // (e.g. claude-sonnet-5@anthropic -> claude-sonnet-5).
   if (model === "claude-3-5-sonnet@anthropic") return "claude-3-5-sonnet-v2@20241022";
   return model.replace(/@anthropic$/, "");
 };
@@ -226,6 +263,8 @@ export class GeminiDevProvider implements ModelProvider {
   async generateJson(options: GenerateJsonOptions) {
     this.assertApiKey();
     const model = modelForGeminiRequest(this.config, options.route, options.images);
+    const timer = startCallTimer();
+    const thinking = thinkingConfigForRoute(options.route, model);
     const response = await withModelRetry(() =>
       this.ai.models.generateContent({
         model,
@@ -234,11 +273,13 @@ export class GeminiDevProvider implements ModelProvider {
           responseMimeType: "application/json",
           responseSchema: options.schema as Schema,
           temperature: options.temperature ?? 0.4,
-          maxOutputTokens: this.config.maxOutputTokens
+          maxOutputTokens: this.config.maxOutputTokens,
+          ...(thinking ? { thinkingConfig: thinking } : {}),
+          ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
         }
-      })
+      }), 3, options.budget
     );
-    recordUsage({ route: options.route, provider: "gemini_dev", model }, (response as any)?.usageMetadata);
+    recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, (response as any)?.usageMetadata, timer.finish());
     const finishReason = (response as any)?.candidates?.[0]?.finishReason;
     return parseModelJson(response.text, finishReason);
   }
@@ -246,6 +287,8 @@ export class GeminiDevProvider implements ModelProvider {
   async *generateJsonStream(options: GenerateJsonOptions) {
     this.assertApiKey();
     const model = modelForGeminiRequest(this.config, options.route, options.images);
+    const timer = startCallTimer();
+    const thinking = thinkingConfigForRoute(options.route, model);
     const responseStream = await withModelRetry(() =>
       this.ai.models.generateContentStream({
         model,
@@ -254,47 +297,60 @@ export class GeminiDevProvider implements ModelProvider {
           responseMimeType: "application/json",
           responseSchema: options.schema as Schema,
           temperature: options.temperature ?? 0.4,
-          maxOutputTokens: this.config.maxOutputTokens
+          maxOutputTokens: this.config.maxOutputTokens,
+          ...(thinking ? { thinkingConfig: thinking } : {}),
+          ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
         }
-      })
+      }), 3, options.budget
     );
 
     let usage: any;
-    for await (const chunk of responseStream) {
+    for await (const chunk of abortableIterate(responseStream, options.budget?.signal)) {
       if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
-      if (chunk.text) yield chunk.text;
+      if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
     }
-    recordUsage({ route: options.route, provider: "gemini_dev", model }, usage);
+    recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, usage, timer.finish());
   }
 
   async *streamText(options: StreamTextOptions) {
     this.assertApiKey();
     const model = modelForRoute(this.config, options.route);
+    const timer = startCallTimer();
+    const thinking = thinkingConfigForRoute(options.route, model);
     const responseStream = await withModelRetry(() =>
       this.ai.models.generateContentStream({
         model,
         contents: options.prompt,
-        config: { temperature: options.temperature ?? 0.5, maxOutputTokens: this.config.maxOutputTokens }
-      })
+        config: {
+          temperature: options.temperature ?? 0.5,
+          maxOutputTokens: this.config.maxOutputTokens,
+          ...(thinking ? { thinkingConfig: thinking } : {}),
+          ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
+        }
+      }), 3, options.budget
     );
     let usage: any;
-    for await (const chunk of responseStream) {
+    for await (const chunk of abortableIterate(responseStream, options.budget?.signal)) {
       if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
-      if (chunk.text) yield chunk.text;
+      if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
     }
-    recordUsage({ route: options.route, provider: "gemini_dev", model }, usage);
+    recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, usage, timer.finish());
   }
 
   async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
     this.assertApiKey();
+    const timer = startCallTimer();
     const response = await withModelRetry(() =>
       this.ai.models.generateContent({
         model: this.config.geminiImageModel,
         contents: buildGenAiContents(options.prompt, options.images) as any,
-        config: { responseModalities: ["IMAGE"] } as any
-      })
+        config: {
+          responseModalities: ["IMAGE"],
+          ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
+        } as any
+      }), 3, options.budget
     );
-    recordUsage({ route: "creative_low_risk", provider: "gemini_dev", model: this.config.geminiImageModel }, (response as any)?.usageMetadata);
+    recordUsage({ route: "creative_low_risk", provider: "gemini_dev", model: this.config.geminiImageModel }, (response as any)?.usageMetadata, timer.finish());
     return extractInlineImage((response as any)?.candidates);
   }
 
@@ -313,18 +369,24 @@ export class VertexGeminiProvider {
   async generateJson(options: GenerateJsonOptions) {
     const modelId = modelForGeminiRequest(this.config, options.route, options.images);
     const model = await this.getModel(options.route, options.images);
+    const timer = startCallTimer();
+    const thinking = thinkingConfigForRoute(options.route, modelId);
+    // The @google-cloud/vertexai SDK exposes no per-call abort hook, so the
+    // call is RACED against the budget signal (frees the request; billing for
+    // an already-issued generation is bounded by maxOutputTokens).
     const result: any = await withModelRetry(() =>
-      model.generateContent({
+      raceWithAbort(model.generateContent({
         contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: options.schema,
           temperature: options.temperature ?? 0.35,
-          maxOutputTokens: this.config.maxOutputTokens
-        }
-      })
+          maxOutputTokens: this.config.maxOutputTokens,
+          ...(thinking ? { thinkingConfig: thinking } : {})
+        } as any
+      }), options.budget?.signal), 3, options.budget
     );
-    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId }, result.response?.usageMetadata);
+    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, result.response?.usageMetadata, timer.finish());
     const candidate = result.response?.candidates?.[0];
     const text = candidate?.content?.parts?.map((part: any) => part.text || "").join("") || "";
     return parseModelJson(text, candidate?.finishReason);
@@ -333,54 +395,64 @@ export class VertexGeminiProvider {
   async *generateJsonStream(options: GenerateJsonOptions) {
     const modelId = modelForGeminiRequest(this.config, options.route, options.images);
     const model = await this.getModel(options.route, options.images);
+    const timer = startCallTimer();
+    const thinking = thinkingConfigForRoute(options.route, modelId);
     const result: any = await withModelRetry(() =>
-      model.generateContentStream({
+      raceWithAbort(model.generateContentStream({
         contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: options.schema,
           temperature: options.temperature ?? 0.35,
-          maxOutputTokens: this.config.maxOutputTokens
-        }
-      })
+          maxOutputTokens: this.config.maxOutputTokens,
+          ...(thinking ? { thinkingConfig: thinking } : {})
+        } as any
+      }), options.budget?.signal), 3, options.budget
     );
 
     let usage: any;
-    for await (const item of result.stream) {
+    for await (const item of abortableIterate<any>(result.stream, options.budget?.signal)) {
       if (item.usageMetadata) usage = item.usageMetadata;
       const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
-      if (text) yield text;
+      if (text) { timer.markFirstChunk(); yield text; }
     }
-    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId }, usage ?? (await result.response)?.usageMetadata);
+    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, usage ?? (await result.response)?.usageMetadata, timer.finish());
   }
 
   async *streamText(options: StreamTextOptions) {
     const modelId = modelForRoute(this.config, options.route);
     const model = await this.getModel(options.route);
+    const timer = startCallTimer();
+    const thinking = thinkingConfigForRoute(options.route, modelId);
     const result: any = await withModelRetry(() =>
-      model.generateContentStream({
+      raceWithAbort(model.generateContentStream({
         contents: [{ role: "user", parts: [{ text: options.prompt }] }],
-        generationConfig: { temperature: options.temperature ?? 0.5, maxOutputTokens: this.config.maxOutputTokens }
-      })
+        generationConfig: {
+          temperature: options.temperature ?? 0.5,
+          maxOutputTokens: this.config.maxOutputTokens,
+          ...(thinking ? { thinkingConfig: thinking } : {})
+        } as any
+      }), options.budget?.signal), 3, options.budget
     );
     let usage: any;
-    for await (const item of result.stream) {
+    for await (const item of abortableIterate<any>(result.stream, options.budget?.signal)) {
       if (item.usageMetadata) usage = item.usageMetadata;
       const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
-      if (text) yield text;
+      if (text) { timer.markFirstChunk(); yield text; }
     }
-    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId }, usage ?? (await result.response)?.usageMetadata);
+    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, usage ?? (await result.response)?.usageMetadata, timer.finish());
   }
 
   async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
     const model = await this.getImageModel();
+    const timer = startCallTimer();
     const result: any = await withModelRetry(() =>
-      model.generateContent({
+      raceWithAbort(model.generateContent({
         contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
         generationConfig: { responseModalities: ["IMAGE"] }
-      })
+      }), options.budget?.signal), 3, options.budget
     );
-    recordUsage({ route: "creative_low_risk", provider: "vertex_gemini", model: this.config.vertexModelImage }, result.response?.usageMetadata);
+    recordUsage({ route: "creative_low_risk", provider: "vertex_gemini", model: this.config.vertexModelImage }, result.response?.usageMetadata, timer.finish());
     return extractInlineImage(result.response?.candidates);
   }
 

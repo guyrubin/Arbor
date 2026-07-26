@@ -1,0 +1,214 @@
+/**
+ * AI-2 lexical floor, extracted PURE (VC-1 condition 4, 2026-07-25 AI-excellence).
+ *
+ * `screenModelOutputLexical` is the synchronous, always-on output screen shared
+ * by the server routes (via `./outputScreen.js`, whose import path stays
+ * byte-identical) AND the browser Live turn-guard (`lib/liveTurnGuard.ts`),
+ * which must run the SAME patterns client-side without dragging the
+ * `@google/genai` `Type` dependency (or the model-router types) into the main
+ * bundle. This module therefore imports ONLY `./escalation.ts` — itself a pure,
+ * zero-import data module (VC-8 reuses its compiled crisis pattern lists) —
+ * so the bundle stays free of heavy deps. The semantic layer, the combined
+ * `screenModelOutput`, and the blocked-output markdown remain in
+ * `./outputScreen.ts` (server-side).
+ */
+import { escalationCategories } from "./escalation.js";
+
+/** VC-8: the escalation resource sets a crisis OUTPUT verdict can route to. */
+export type CrisisEscalationCategory = "self_harm" | "abuse_or_unsafe_home" | "caregiver_distress";
+
+export type OutputScreenVerdict = {
+  flagged: boolean;
+  category: "diagnosis" | "medication" | "treatment_directive" | "crisis" | "semantic_unsafe" | null;
+  reason: string | null;
+  /** Set ONLY when category === "crisis": which escalation resource set applies
+   *  (routes to the crisis fallback + resources, never the generic blocked state). */
+  escalationCategory?: CrisisEscalationCategory;
+};
+
+const CONDITION_TOKENS = [
+  "autism", "autistic", "adhd", "add\\b", "asperger", "ocd", "odd\\b", "bipolar",
+  "depress(?:ion|ive)", "anxiety disorder", "dyslexia", "dyspraxia", "apraxia",
+  "intellectual disability", "developmental delay", "sensory processing disorder",
+  "attachment disorder", "conduct disorder", "ptsd", "tourette",
+];
+const CONDITIONS = CONDITION_TOKENS.join("|");
+
+/**
+ * Expand a regex source so its ASCII letters match case-insensitively (ADHD/adhd)
+ * WITHOUT a global `/i` flag — escapes like `\b` are left intact. Used to embed the
+ * condition vocabulary inside the case-SENSITIVE proper-name floor below, where the
+ * leading name token must stay capitalization-sensitive (the `/i` flag would make
+ * `\p{Lu}`/`[A-Z]` match lowercase too, defeating the "capitalized name" guard).
+ */
+const ciSource = (src: string): string =>
+  src.replace(/\\?[A-Za-z]/g, (m) => (m[0] === "\\" ? m : `[${m.toLowerCase()}${m.toUpperCase()}]`));
+
+// Proper-name subject: screenModelOutput runs on the ALIAS-RESTORED, child-facing
+// text (routes/api.ts restoreDeep → screen), so a diagnostic claim's subject is
+// usually the child's real FIRST NAME — not a pronoun or the [Child] alias — and the
+// story / bedtime / hero-journey routes lean on the name heavily. "Mia has autism" /
+// "Noah is autistic" must trip the floor (the semantic classifier is OFF by default
+// and fails open). Case-SENSITIVE (no `/i`): the subject must be Capitalized (\p{Lu}),
+// which keeps mid-sentence common nouns ("behavior is odd") out. The short homographs
+// add/odd are dropped from this pattern so sentence-initial words ("Something is odd")
+// don't false-positive — the pronoun/your-child patterns above still catch those acronyms.
+const NAME_SUBJECT = "\\p{Lu}[\\p{L}\\u2019'\\-]*";
+// Includes past tense (had/was/were/suffered) — the story/bedtime/hero-journey
+// routes narrate in the past ("Olivia had developmental delay …").
+const NAME_VERB = "(?:has|have|had|is|are|was|were|suffers? from|suffered from|shows? signs of having)";
+const CONDITIONS_NAME = ciSource(
+  CONDITION_TOKENS.filter((c) => c !== "add\\b" && c !== "odd\\b").join("|"),
+);
+
+// Hebrew/RTL diagnosis floor: Hebrew has no capitalization, so the name-subject trick
+// does not apply — instead match the explicit Hebrew diagnostic frames around a
+// clinical condition. Latin acronyms (ADHD/OCD/…) inside Hebrew text are case-folded.
+const HE_CONDITIONS = ciSource(
+  [
+    "אוטיזם", "אוטיסט(?:ית|ים)?", "אספרגר", "היפראקטיביות", "הפרעת קשב",
+    "דיכאון", "דיסלקציה", "דיספרקסיה", "אפרקסיה", "פיגור שכלי", "עיכוב התפתחותי",
+    "תסמונת טורט", "OCD", "ADHD", "ADD", "PTSD",
+  ].join("|"),
+);
+
+const DIAGNOSIS_PATTERNS = [
+  // "your child has ADHD", "she is autistic", "this is autism", "he suffers from OCD"
+  new RegExp(`(?:\\b(?:your (?:child|son|daughter)|he|she|they)|\\[\\s*child\\s*\\])\\s+(?:has|have|is|are|suffers? from|shows? signs of having)\\s+(?:\\w+\\s){0,2}(?:${CONDITIONS})`, "i"),
+  new RegExp(`\\bdiagnos(?:is|e|ed) (?:of|with|as)\\s+(?:\\w+\\s){0,2}(?:${CONDITIONS})`, "i"),
+  new RegExp(`\\bthis (?:is|confirms|indicates)\\s+(?:\\w+\\s){0,1}(?:${CONDITIONS})`, "i"),
+  // Hedged / soft-inference phrasing the literal patterns above miss, e.g.
+  // "this looks like ADHD", "seems like autism", "sounds like she has OCD",
+  // "appears to be on the autism spectrum", "is likely ADHD", "points to anxiety disorder".
+  // A bare "appears to be" alone is fine — a CONDITION token within two words is required,
+  // so non-clinical phrasing ("the strategy appears to be working") never matches.
+  new RegExp(`(?:\\blooks? like|\\bseems? like|\\bsounds? like|\\bappears? to be|(?:\\bis|'s) (?:likely|probably)|\\bpoints? to|\\bsuggests?)\\s+(?:\\w+\\s){0,3}(?:${CONDITIONS})`, "i"),
+  // Proper-name subject (alias-restored, child-facing): "Mia has autism", "Noah is
+  // autistic", "Liam suffers from OCD", "Ava shows signs of having ADHD". Case-sensitive.
+  new RegExp(`\\b${NAME_SUBJECT}\\s+${NAME_VERB}\\s+(?:\\w+\\s){0,2}(?:${CONDITIONS_NAME})`, "u"),
+  // Hebrew/RTL diagnostic frames:
+  new RegExp(`יש\\s+ל\\p{L}+\\s+(?:${HE_CONDITIONS})`, "u"), // "יש למיה אוטיזם" — X has …
+  new RegExp(`סובל(?:ת|ים|ות)?\\s+מ?(?:${HE_CONDITIONS})`, "u"), // "מיה סובלת מאוטיזם" — X suffers from …
+  new RegExp(`אובח(?:ן|נה|נו)\\s+(?:עם\\s+|ב)?(?:${HE_CONDITIONS})`, "u"), // "אובחן עם …" — diagnosed with …
+  new RegExp(`(?<!\\p{L})(?:הוא|היא)\\s+(?:${HE_CONDITIONS})`, "u"), // "מיה היא אוטיסטית" — X is …
+];
+
+const MEDICATION_PATTERNS = [
+  /\b\d+(?:\.\d+)?\s?(?:mg|milligrams?|ml|millilit(?:re|er)s?|mcg|micrograms?)\b/i,
+  /\b(?:give|administer|dose|dosage of)\b.{0,40}\b(?:melatonin|ritalin|methylphenidate|adderall|antihistamine|benadryl|ibuprofen|paracetamol|acetaminophen)\b/i,
+];
+
+const TREATMENT_PATTERNS = [
+  /\b(?:stop|discontinue|skip|double|increase|decrease)\b.{0,30}\b(?:medication|meds|prescription|dose|dosage)\b/i,
+];
+
+/* ── VC-8: crisis output category ────────────────────────────────────────────
+ * Crisis patterns existed only on the INPUT side (escalation.ts), so a
+ * pathological model output that echoes or normalizes self-harm / abuse /
+ * caregiver-harm language ("sounds like you want to hurt him — that's
+ * understandable") passed the voice floor and was spoken aloud. This screen
+ * reuses the COMPILED escalationCategories pattern lists (self_harm,
+ * abuse_or_unsafe_home, caregiver_distress) against MODEL output, plus a small
+ * set of output-side harm-NORMALIZING frames the first-person input patterns
+ * structurally miss. A crisis verdict routes to the crisis fallback +
+ * resources (never the generic blocked markdown) — see routes/api.ts.
+ *
+ * Pattern set + exemption frames are queued for clinical sign-off (GG-4);
+ * the fail-closed behavior ships now. Bias per the firewall ruling: when
+ * uncertain, FLAG — over-block routes to crisis resources (a safe failure),
+ * under-block speaks harm aloud.
+ */
+const CRISIS_INPUT_CATEGORIES: readonly CrisisEscalationCategory[] = [
+  "self_harm",
+  "abuse_or_unsafe_home",
+  "caregiver_distress",
+];
+
+const CRISIS_PATTERN_GROUPS: { escalationCategory: CrisisEscalationCategory; patterns: readonly RegExp[] }[] =
+  CRISIS_INPUT_CATEGORIES.map((category) => ({
+    escalationCategory: category,
+    // Reuse — never re-declare — the compiled input-side pattern lists.
+    patterns: escalationCategories.find((c) => c.category === category)!.patterns,
+  }));
+
+// Output-side harm-normalization frames: the input lists are written for
+// FIRST-person parent speech ("I hit him", "afraid I will hurt"), so a model
+// reply that echoes/normalizes the same harm in SECOND person slips past them.
+const HARM_NORMALIZING_GROUPS: { escalationCategory: CrisisEscalationCategory; patterns: readonly RegExp[] }[] = [
+  {
+    escalationCategory: "self_harm",
+    patterns: [
+      /\byou (?:clearly |really |just |sometimes |secretly )?(?:want|wanted|deserve) to (?:hurt|harm|kill) yourself\b/i,
+      /\b(?:it'?s|that'?s|it is|that is) (?:understandable|okay|ok|normal|natural)\b[^.!?\n]{0,60}\b(?:hurt|harm|kill)(?:ing)? yourself\b/i,
+    ],
+  },
+  {
+    escalationCategory: "caregiver_distress",
+    patterns: [
+      // Optional adverbs are a closed whitelist — "you never/don't want to
+      // hurt him" (legitimate reassurance) must NOT match.
+      /\byou (?:clearly |really |just |sometimes |secretly )?(?:want|wanted) to (?:hurt|hit|harm|shake|slap) (?:him|her|them|your (?:child|son|daughter|baby|kid))\b/i,
+      /\b(?:it'?s|that'?s|it is|that is) (?:understandable|okay|ok|normal|natural)\b[^.!?\n]{0,60}\bto (?:hurt|hit|harm|shake|slap) (?:him|her|them|your (?:child|son|daughter|baby|kid))\b/i,
+      /\b(?:hurting|hitting|shaking|slapping) (?:him|her|them|your (?:child|son|daughter|baby|kid)) (?:is|would be|can be) (?:understandable|okay|ok|normal|natural)\b/i,
+    ],
+  },
+];
+
+/**
+ * VC-8 help-directive allow-list — NARROW, fixture-locked frames (see
+ * outputScreen.test.ts) exempting legitimate coach referral language that
+ * necessarily contains the trigger phrases ("if you're having thoughts of
+ * suicide, call 988"). A sentence is exempt ONLY when it pairs a contact verb
+ * with a recognized crisis-help target IN THE SAME SENTENCE. Anything less
+ * specific stays flagged (over-block = safe failure). Queued for clinical
+ * sign-off with the pattern set (GG-4).
+ */
+const HELP_DIRECTIVE_FRAMES: readonly RegExp[] = [
+  // EN: "call/text/contact/reach out to … 988 / 112 / a helpline / a professional"
+  /\b(?:call|text|dial|phone|contact|reach out(?: to)?)\b[^.!?\n]{0,80}(?:112|911|988|101|100|1201|113\b|1813|0800[-\s]?0113|0800[-\s]?2000|1[-\s]?800[-\s]?422[-\s]?4453|emergency services|crisis (?:line|team|lifeline)|helpline|hotline|lifeline|suicide prevention|veilig thuis|findahelpline|a (?:professional|doctor|therapist|pediatrician)|your (?:doctor|pediatrician|huisarts)|local support line)/i,
+  // HE: "התקשרו ל… 1201 / ער"ן / קו סיוע / איש מקצוע"
+  /(?:התקשר|התקשרי|התקשרו|חייג|חייגי|חייגו|פנה|פני|פנו)[^.!?\n]{0,80}(?:112|911|988|1201|101|100|ער"ן|ערן|קו סיוע|קו חירום|מוקד|שירותי חירום|איש מקצוע)/,
+  // NL: "bel … 113 / 0800-0113 / Veilig Thuis / een professional"
+  /\b(?:bel|neem contact op(?: met)?)\b[^.!?\n]{0,80}(?:112|113\b|0800[-\s]?0113|0800[-\s]?2000|1813|veilig thuis|hulplijn|zelfmoordpreventie|een (?:professional|arts|huisarts))/i,
+];
+
+// The exemption is strictly SENTENCE-scoped: a help directive in one sentence
+// never launders crisis language in another.
+const SENTENCE_SPLIT = /(?<=[.!?…])\s+|\n+/u;
+
+const screenCrisisOutput = (text: string): OutputScreenVerdict | null => {
+  for (const sentence of text.split(SENTENCE_SPLIT)) {
+    if (!sentence.trim()) continue;
+    const hit = [...CRISIS_PATTERN_GROUPS, ...HARM_NORMALIZING_GROUPS].find((group) =>
+      group.patterns.some((pattern) => pattern.test(sentence)),
+    );
+    if (!hit) continue;
+    if (HELP_DIRECTIVE_FRAMES.some((frame) => frame.test(sentence))) continue;
+    return {
+      flagged: true,
+      category: "crisis",
+      reason: `Crisis-adjacent language (${hit.escalationCategory}) in model output.`,
+      escalationCategory: hit.escalationCategory,
+    };
+  }
+  return null;
+};
+
+/** Fast lexical screen — always on; pure, synchronous, testable. */
+export const screenModelOutputLexical = (text: string): OutputScreenVerdict => {
+  const t = text || "";
+  // VC-8: crisis runs FIRST — it is the most severe category and has its own
+  // routing (crisis fallback + resources, never the generic blocked state).
+  const crisis = screenCrisisOutput(t);
+  if (crisis) return crisis;
+  for (const p of DIAGNOSIS_PATTERNS) {
+    if (p.test(t)) return { flagged: true, category: "diagnosis", reason: "Definitive diagnostic claim in model output." };
+  }
+  for (const p of MEDICATION_PATTERNS) {
+    if (p.test(t)) return { flagged: true, category: "medication", reason: "Medication dosing guidance in model output." };
+  }
+  for (const p of TREATMENT_PATTERNS) {
+    if (p.test(t)) return { flagged: true, category: "treatment_directive", reason: "Start/stop-treatment directive in model output." };
+  }
+  return { flagged: false, category: null, reason: null };
+};

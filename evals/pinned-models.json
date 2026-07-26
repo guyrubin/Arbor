@@ -1,0 +1,41 @@
+{
+  "$comment": "AIR-4 / EVAL-8: the eval-to-prod model identity pin. Every route's alias (as configured in app/src/config/env.ts defaults) and its RESOLVED provider model id. Any bump to a VERTEX_MODEL_* default must refresh this file in the SAME PR, and the affected eval suites (coach-core-v1, eval:safety, coach-hardmoment-seed-v1 for coach_high_stakes) must re-run GREEN against the new resolved id before any prod flip (Guy gate GG-3).",
+  "updated": "2026-07-25",
+  "routes": {
+    "coach_high_stakes": {
+      "provider": "vertex_claude",
+      "alias": "claude-sonnet-5@anthropic",
+      "resolved": "claude-sonnet-5",
+      "gate": "GG-3: prod VERTEX_MODEL_CHAT flip + quality sign-off are Guy's, only after coach-core-v1 + eval:safety + hard-moment suites re-run green against this resolved id"
+    },
+    "creative_low_risk": {
+      "provider": "vertex_gemini",
+      "alias": "gemini-2.5-flash",
+      "resolved": "gemini-2.5-flash"
+    },
+    "analysis_structured": {
+      "provider": "vertex_gemini",
+      "alias": "gemini-2.5-flash",
+      "resolved": "gemini-2.5-flash"
+    },
+    "handoff_structured": {
+      "provider": "vertex_gemini",
+      "alias": "gemini-2.5-flash",
+      "resolved": "gemini-2.5-flash"
+    },
+    "image_generation": {
+      "provider": "vertex_gemini",
+      "alias": "gemini-2.5-flash-image",
+      "resolved": "gemini-2.5-flash-image"
+    }
+  },
+  "legacy": {
+    "claude-3-5-sonnet@anthropic": "claude-3-5-sonnet-v2@20241022"
+  },
+  "judgeModels": ["claude-opus-4-8"],
+  "$auxiliaryComment": "EVAL-8: non-routed model ids that legitimately appear in source (Live voice model default + its documented native-audio upgrade path). safety-eval's stale-model scan reads THIS file — a model id literal in the scanned sources that is in neither routes/legacy nor this list fails eval:safety.",
+  "auxiliary": [
+    "gemini-2.0-flash-live-001",
+    "gemini-2.5-flash-preview-native-audio-dialog"
+  ]
+}

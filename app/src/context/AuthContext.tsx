@@ -12,6 +12,7 @@ import { auth, firebaseEnabled } from "../lib/firebase";
 import { setAuthTokenProvider } from "../lib/api";
 import { initNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
+import { purgeAllComicPages } from "../lib/comicPageStore";
 
 export type AuthUser = {
   uid: string;
@@ -117,6 +118,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // AIX-S5 firewall condition: sign-out purges the device-local IndexedDB
+    // comic-page store (all children) — child-derivative art never outlives
+    // the session owner on a shared device. Best effort, before auth teardown,
+    // and independent of firebaseEnabled (the store is device-local).
+    try {
+      await purgeAllComicPages();
+    } catch {
+      /* best effort */
+    }
     if (!firebaseEnabled || !auth) return;
     await firebaseSignOut(auth);
   };
@@ -130,8 +140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setAuthTokenProvider(getIdToken);
     setAnalyticsUser(() => user?.uid);
-    // Epic A: activate the neural-voice engine when built with VITE_TTS_PROVIDER
-    // and the server reports /api/tts configured. No-op otherwise (browser floor).
+    // Epic A / AI-V4: activate the neural-voice engine when the server reports
+    // /api/tts configured (TTS_PROVIDER — single server env flip, no client
+    // build flag). No-op otherwise (browser floor).
     void initNaturalVoice();
   }, [user?.uid]);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSourceCards, coachResponseZodSchema } from "./coach.js";
+import { buildSourceCards, coachResponseZodSchema, renderCoachResponse } from "./coach.js";
 
 const validCoach = {
   riskLevel: "routine",
@@ -41,6 +41,50 @@ describe("coach Zod schema", () => {
   it("rejects a sourceCards entry with an empty title", () => {
     const malformed = { ...validCoach, sourceCards: [{ id: "x", title: "", type: "intervention" }] };
     expect(() => coachResponseZodSchema.parse(malformed)).toThrow();
+  });
+
+  // ASK-4: the followUps cap is a zod TRANSFORM — a chatty model that emits
+  // 4+ items can never fail the whole answer; the seam clamps to 3 trimmed,
+  // non-empty strings of <=140 chars.
+  it("caps followUps at 3 short strings via the zod transform (never a parse failure)", () => {
+    const parsed = coachResponseZodSchema.parse({
+      ...validCoach,
+      followUps: ["  What if she stalls again?  ", "", "How long should it take?", "What do I say at the door?", "A fourth overflow question"],
+    });
+    expect(parsed.followUps).toEqual([
+      "What if she stalls again?",
+      "How long should it take?",
+      "What do I say at the door?",
+    ]);
+    const long = coachResponseZodSchema.parse({ ...validCoach, followUps: ["x".repeat(400)] });
+    expect(long.followUps?.[0]).toHaveLength(140);
+    // Absent / all-blank collapses to undefined — the client falls back to
+    // the static trio.
+    expect(coachResponseZodSchema.parse(validCoach).followUps).toBeUndefined();
+    expect(coachResponseZodSchema.parse({ ...validCoach, followUps: ["  ", ""] }).followUps).toBeUndefined();
+  });
+
+  // ASK-4 FIREWALL CONDITION: followUps flow through renderCoachResponse so
+  // screenModelOutput covers every chip string — a rendered-but-unscreened
+  // field would be the first bypass of the AI-2 output screen.
+  it("renderCoachResponse appends the capped followUps (screen coverage) and omits the section when absent", () => {
+    const parsed = coachResponseZodSchema.parse({
+      ...validCoach,
+      followUps: ["What if she stalls again?", "How long should it take?"],
+    });
+    const rendered = renderCoachResponse(parsed);
+    expect(rendered).toContain("### Suggested Follow-ups");
+    for (const q of parsed.followUps ?? []) expect(rendered).toContain(q);
+    const bare = renderCoachResponse(coachResponseZodSchema.parse(validCoach));
+    expect(bare).not.toContain("Suggested Follow-ups");
+  });
+
+  // ASK-6: approvedMemoryFactsUsed is a server-backfilled integer COUNT.
+  it("accepts the optional approvedMemoryFactsUsed count and rejects non-integers", () => {
+    expect(coachResponseZodSchema.parse({ ...validCoach, approvedMemoryFactsUsed: 4 }).approvedMemoryFactsUsed).toBe(4);
+    expect(coachResponseZodSchema.parse(validCoach).approvedMemoryFactsUsed).toBeUndefined();
+    expect(() => coachResponseZodSchema.parse({ ...validCoach, approvedMemoryFactsUsed: 2.5 })).toThrow();
+    expect(() => coachResponseZodSchema.parse({ ...validCoach, approvedMemoryFactsUsed: -1 })).toThrow();
   });
 });
 

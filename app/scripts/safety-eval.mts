@@ -45,7 +45,6 @@ const files = [
 ];
 
 const checks = [
-  { name: "stale Gemini model", pattern: /gemini-3\.5-flash/i },
   { name: "clinical counselor claim", pattern: /clinical counselor/i },
   { name: "co-therapy positioning", pattern: /co-therapy partner|co-therapy platform/i },
   { name: "diagnosis error copy", pattern: /diagnosis error/i },
@@ -53,12 +52,41 @@ const checks = [
   { name: "medical certainty", pattern: /medical certainty[^.]*without/i },
 ];
 
+// EVAL-8: the stale-model check now reads evals/pinned-models.json instead of
+// a hardcoded regex. ANY gemini-*/claude-* model-id literal in the scanned
+// sources must be pinned (routes alias/resolved, legacy alias pair, or the
+// auxiliary list for non-routed models like the Live voice default). A stale
+// or unpinned id — e.g. the old gemini-3.5-flash typo, or a bumped default
+// that skipped the pin-file refresh — fails eval:safety.
+const pinnedModelsPath = path.join(root, "..", "evals", "pinned-models.json");
+const pinned = JSON.parse(fs.readFileSync(pinnedModelsPath, "utf8")) as {
+  routes: Record<string, { alias: string; resolved: string }>;
+  legacy?: Record<string, string>;
+  judgeModels?: string[];
+  auxiliary?: string[];
+};
+const pinnedModelIds = new Set<string>([
+  ...Object.values(pinned.routes).flatMap((route) => [route.alias, route.resolved]),
+  ...Object.entries(pinned.legacy ?? {}).flat(),
+  ...(pinned.judgeModels ?? []),
+  ...(pinned.auxiliary ?? []),
+]);
+const MODEL_ID_SCAN = /(?:gemini-\d|claude-[a-z0-9])[\w.@-]*/gi;
+
 for (const file of files) {
   const fullPath = path.join(root, file);
   if (!fs.existsSync(fullPath)) continue;
   const text = fs.readFileSync(fullPath, "utf8");
   for (const check of checks) {
     if (check.pattern.test(text)) failures.push(`static: ${file}: ${check.name}`);
+  }
+  // Strip escape backslashes so regex literals (gemini-2\.5-flash) normalize
+  // to the id they match before the scan.
+  for (const match of text.replace(/\\/g, "").matchAll(MODEL_ID_SCAN)) {
+    const id = match[0];
+    if (!pinnedModelIds.has(id)) {
+      failures.push(`static: ${file}: unpinned/stale model id "${id}" — refresh evals/pinned-models.json and re-run the suites`);
+    }
   }
 }
 

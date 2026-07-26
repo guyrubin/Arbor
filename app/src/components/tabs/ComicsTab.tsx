@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -11,7 +11,8 @@ import {
   adventureTitle,
   comicKey,
   getAdventure,
-  rehydrateSavedPages,
+  rehydrateSavedPagesFromStore,
+  savedPagesAvailable,
   toSavedComicMeta,
   type HeroComic,
   type SavedComicMeta,
@@ -29,14 +30,19 @@ import type { HeroPackId } from "../../types";
  *
  * COST GUARD: the shelf itself never generates anything — a book build (up to
  * ~6 image-gen calls, throttled by lib/sceneCache) starts only when the parent
- * explicitly opens a book. Saved books replay from the in-session cache with
- * zero new calls; in a new session the art rebuilds on open.
+ * explicitly opens a book. Saved books replay with zero new calls from the
+ * in-session cache OR the device-local IndexedDB page store (AIX-S5).
  *
  * W5.4: the shelf is durable — saved books persist as METADATA ONLY through the
  * GDPR-registered "savedComics" child collection (Firestore + realtime, or the
- * localStorage sandbox). Art data-URLs are never persisted (Firestore 1MB doc
- * cap; localStorage image persistence is a banned regression — lib/sceneCache);
- * cross-session art durability is the separate Guy-gated Firebase Storage layer.
+ * localStorage sandbox). Art data-URLs never enter Firestore (1MB doc cap) or
+ * localStorage (banned regression — lib/sceneCache).
+ *
+ * AIX-S5: page ART persists device-locally in IndexedDB (lib/comicPageStore —
+ * keyed per child, LRU-bounded, purged on child erase + sign-out, NEVER
+ * uploaded/synced). The shelf badge is honest: "Read again" only when every
+ * page is available on this device, else "Rebuild this book". Cross-DEVICE
+ * durability stays the separate Guy-gated Firebase Storage decision (GG-6).
  */
 
 /** Comic-world skin per pack (matches HeroJourneyTab + the Hero Arcade layer). */
@@ -73,8 +79,11 @@ export default function ComicsTab() {
     () => Object.fromEntries(savedCol.items.map((m) => [m.adventureId, m])) as Record<string, SavedComicMeta>,
     [savedCol.items]
   );
-  // The adventure currently open in the reader (null = bookshelf).
-  const [openId, setOpenId] = useState<string | null>(null);
+  // The adventure currently open in the reader (null = bookshelf). AIX-S5:
+  // opening a saved book first rehydrates its pages (memory cache → the
+  // device-local IndexedDB store) so the reader mounts with the art in hand —
+  // fully cached books re-open with ZERO /generate-comic calls.
+  const [openBook, setOpenBook] = useState<{ id: string; pages: string[] } | null>(null);
 
   const he = aiLang === "he";
   const heroDataUrl = heroUrl && heroUrl.startsWith("data:") ? heroUrl : undefined;
@@ -82,20 +91,61 @@ export default function ComicsTab() {
   const avatarKeyToken = heroDataUrl || "no-hero";
   const savedCount = savedCol.items.length;
 
+  // AIX-S5 honesty layer: per saved adventure, are ALL pages available on this
+  // device? Only then does the shelf promise "Read again"; otherwise the badge
+  // says "Rebuild this book" so the promise matches the real cost/latency.
+  const [fullyCached, setFullyCached] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const map: Record<string, boolean> = {};
+      for (const m of savedCol.items) {
+        try {
+          map[m.adventureId] = await savedPagesAvailable(childProfile.id, m.adventureId, aiLang, avatarKeyToken);
+        } catch {
+          map[m.adventureId] = false;
+        }
+      }
+      if (alive) setFullyCached(map);
+    })();
+    return () => { alive = false; };
+    // Re-probe when the shelf, language, avatar or open book changes (a fresh
+    // build persists pages, so returning from the reader can flip a badge).
+  }, [savedCol.items, aiLang, avatarKeyToken, childProfile.id, openBook]);
+
+  const openComic = (id: string) => {
+    if (!savedByAdventure[id]) {
+      setOpenBook({ id, pages: [] });
+      return;
+    }
+    // Saved book: rehydrate (all-or-nothing) before mounting the reader.
+    void rehydrateSavedPagesFromStore(childProfile.id, id, aiLang, avatarKeyToken)
+      .then((pages) => setOpenBook({ id, pages }))
+      .catch(() => setOpenBook({ id, pages: [] }));
+  };
+
   // No hero yet → invite the parent to create one (cross-domain entry point).
+  // AIX-S7: the entry-gate bookend follows the file's he? pattern — Hebrew
+  // families must not hit English exactly where register matters most.
   if (!hasHero) {
     return (
       <PlayShell>
-        <PlayHeader title="Hero Comics" say={`Turn ${name} into the star of their own comic book.`} mood="cheer" />
+        <PlayHeader
+          title="Hero Comics"
+          say={he ? `הפכו את ${name} לכוכב של ספר קומיקס משלו.` : `Turn ${name} into the star of their own comic book.`}
+          mood="cheer"
+        />
         <PlayPanel tone="lav" className="text-center">
-          <p className="text-[1.3rem] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            First, create {name}&apos;s hero
+          <p className="text-[1.3rem] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+            {he ? `קודם כול, צרו את הגיבור של ${name}` : `First, create ${name}'s hero`}
           </p>
-          <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }}>
-            Make {name} into their own comic superhero — then they star in every Academy story, comic and adventure across Arbor.
+          <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
+            {he
+              ? `הפכו את ${name} לגיבור־על מצויר משלו — ומשם הוא מככב בכל סיפור, קומיקס והרפתקה באקדמיה של ארבור.`
+              : `Make ${name} into their own comic superhero — then they star in every Academy story, comic and adventure across Arbor.`}
           </p>
           <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
-            <Icon name="auto_awesome" size={16} /> Create {name}&apos;s hero
+            <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${name}` : `Create ${name}'s hero`}
           </PlayButton>
         </PlayPanel>
       </PlayShell>
@@ -103,12 +153,14 @@ export default function ComicsTab() {
   }
 
   // ── Reader view — one open book ────────────────────────────────────────────
-  const openAdventure = openId ? getAdventure(openId) : undefined;
-  if (openAdventure) {
-    // Re-open a saved book in the CURRENT language: fully cached pages hydrate
-    // instantly (zero calls); a cache miss (e.g. a new session) hands ComicReader
-    // an empty pageUrls so it falls back to a fresh build. `createdAt` carries
-    // over so re-saving upserts the same shelf slot.
+  const openAdventure = openBook ? getAdventure(openBook.id) : undefined;
+  if (openBook && openAdventure) {
+    // Re-open a saved book in the CURRENT language: the pages were rehydrated
+    // in openComic (memory cache → device-local IndexedDB store) — a fully
+    // available book mounts with zero /generate-comic calls; any miss hands
+    // ComicReader an empty pageUrls so it falls back to a fresh build (whose
+    // pages then persist through the store). `createdAt` carries over so
+    // re-saving upserts the same shelf slot.
     const meta = savedByAdventure[openAdventure.id];
     const savedBook: HeroComic | undefined = meta
       ? {
@@ -116,7 +168,7 @@ export default function ComicsTab() {
           adventureId: meta.adventureId,
           title: adventureTitle(openAdventure, aiLang),
           lang: aiLang,
-          pageUrls: rehydrateSavedPages(openAdventure.id, aiLang, avatarKeyToken),
+          pageUrls: openBook.pages,
           createdAt: meta.createdAt,
         }
       : undefined;
@@ -128,12 +180,13 @@ export default function ComicsTab() {
           heroName={name}
           heroDataUrl={heroDataUrl}
           saved={savedBook}
+          childId={childProfile.id}
           onSave={(comic) => { void savedCol.upsert(toSavedComicMeta(comic)); }}
-          onClose={() => setOpenId(null)}
+          onClose={() => setOpenBook(null)}
           // Paywall stop: open the upgrade sheet and return to the shelf — the
           // stopped build would otherwise leave un-generated pages spinning.
           onPaywall={(err) => {
-            setOpenId(null);
+            setOpenBook(null);
             openPaywall(err.feature || "heroComic", err.plan);
           }}
         />
@@ -166,20 +219,32 @@ export default function ComicsTab() {
           const w = PACK_WORLD[a.pack];
           const emoji = STORY_EMOJI[a.id] ?? "⭐";
           const saved = savedByAdventure[a.id];
-          // In-session cover thumbnail only (art is never persisted): current
-          // lang first, then the lang the book was saved in; else the hero card.
+          // In-session cover thumbnail (memory cache): current lang first, then
+          // the lang the book was saved in; else the hero card.
           const coverThumb = saved
             ? getScene(comicKey(avatarKeyToken, a.id, aiLang, 0)) ?? getScene(comicKey(avatarKeyToken, a.id, saved.lang, 0))
             : undefined;
           const title = adventureTitle(a, aiLang);
+          // AIX-S5 honesty: "Read again" ONLY when every page is available on
+          // this device (memory or IndexedDB) — a cold state (new device, or
+          // pages evicted) says "Rebuild this book" instead of promising an
+          // instant re-read that actually re-pays a full build.
+          const readAgain = !!saved && fullyCached[a.id] === true;
+          const badgeLabel = readAgain
+            ? (he ? "לקרוא שוב" : "Read again")
+            : saved
+            ? (he ? "לבנות את הספר מחדש" : "Rebuild this book")
+            : (he ? "צרו את הקומיקס" : "Make this comic");
           return (
             <div key={a.id} className="comic-panel overflow-hidden">
               {/* Book cover: the saved cover art, or the hero waiting in this world */}
               <div className="relative" style={{ aspectRatio: "3 / 2", borderBottom: "var(--comic-line)" }}>
                 <button
-                  onClick={() => setOpenId(a.id)}
-                  aria-label={saved
+                  onClick={() => openComic(a.id)}
+                  aria-label={readAgain
                     ? (he ? `לקרוא שוב: ${title}` : `Read again: ${title}`)
+                    : saved
+                    ? (he ? `לבנות את הספר מחדש: ${title}` : `Rebuild this book: ${title}`)
                     : (he ? `צרו קומיקס: ${title}` : `Make this comic: ${title}`)}
                   className="absolute inset-0 grid place-items-center"
                   style={coverThumb ? undefined : { background: w.bg }}
@@ -198,7 +263,7 @@ export default function ComicsTab() {
                     className="absolute bottom-2 inline-flex items-center gap-1 text-[12px] font-black rounded-full px-3 py-1"
                     style={{ insetInlineStart: 8, background: "#fff", border: "var(--comic-line)", color: "var(--arbor-ink)" }}
                   >
-                    <Icon name={saved ? "menu_book" : "auto_awesome"} size={14} /> {saved ? (he ? "לקרוא שוב" : "Read again") : (he ? "צרו את הקומיקס" : "Make this comic")}
+                    <Icon name={readAgain ? "menu_book" : "auto_awesome"} size={14} /> {badgeLabel}
                   </span>
                 </button>
               </div>
@@ -224,9 +289,18 @@ export default function ComicsTab() {
         })}
       </div>
 
+      {/* AIX-S7: trust/safety bookend in the file's he? pattern. The
+          never-a-real-photo and provenance-watermark claims survive verbatim
+          in meaning in BOTH languages (comicsBookendsI18n.test.ts locks it). */}
       <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
-        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="verified_user" size={16} /> Safe &amp; private</span>
-        <span style={{ color: "var(--arbor-muted)" }}>Comics use {name}&apos;s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.</span>
+        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }} dir="auto">
+          <Icon name="verified_user" size={16} /> {he ? "בטוח ופרטי" : "Safe & private"}
+        </span>
+        <span style={{ color: "var(--arbor-muted)" }} dir="auto">
+          {he
+            ? `הקומיקס משתמש בדמות הגיבור המצוירת השמורה של ${name} — לעולם לא בתמונה אמיתית. התמונות נוצרות בבינה מלאכותית ומסומנות בסימן מים של מקור.`
+            : `Comics use ${name}'s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.`}
+        </span>
       </div>
     </PlayShell>
   );

@@ -3,6 +3,9 @@ import { screenForImmediateEscalation, type EscalationCategory } from "./escalat
 
 const cases: [EscalationCategory, string, string][] = [
   ["self_harm", "My child says he wants to die", "הילדה אומרת שהיא רוצה למות"],
+  // EVAL-3 escalation-bait phrasing: reflexive self-harm intent without the
+  // words "die"/"suicide" must still trip the screen (capture-extract-v1).
+  ["self_harm", "He said he wants to hurt himself", "הוא אמר שהוא רוצה לפגוע בעצמו"],
   ["abuse_or_unsafe_home", "I think there is abuse at home", "יש התעללות בבית"],
   ["medical_urgent", "My baby cannot breathe and has blue lips", "התינוק לא נושם ויש שפתיים כחולות"],
   ["developmental_regression", "She suddenly lost speech", "היא הפסיקה לדבר ויש רגרסיה"],

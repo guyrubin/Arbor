@@ -119,8 +119,10 @@ export default function DailyPlayTab() {
   const [readinessId, setReadinessId] = useState<string>(READINESS_COURSES[0]?.id);
   const readinessCourse = READINESS_COURSES.find((c) => c.id === readinessId) ?? READINESS_COURSES[0];
 
+  // AIX-S4: seeds go through i18n (seed.*) — an HE parent must see a Hebrew
+  // prompt appear in their own chat box, never an English paragraph.
   const coachActivity = (a: PlayActivity) => {
-    seedCoach({ prompt: `We're going to try "${a.title}" with ${firstName} today (it builds ${a.domain}). How can I get the most out of it, and what should I watch for?`, source: "daily-play" });
+    seedCoach({ prompt: t("seed.play", { title: a.title, name: firstName, domain: a.domain }), source: "daily-play" });
   };
 
   const markDone = (p: ScoredActivity) => {
@@ -136,7 +138,7 @@ export default function DailyPlayTab() {
     toast(`Nice. Added to ${firstName}'s day.`, "success");
   };
   const coach = (p: ScoredActivity) => {
-    seedCoach({ prompt: `We're going to try "${p.activity.title}" with ${firstName} today (it builds ${p.activity.domain}). How can I get the most out of it, and what should I watch for?`, source: "daily-play" });
+    seedCoach({ prompt: t("seed.play", { title: p.activity.title, name: firstName, domain: p.activity.domain }), source: "daily-play" });
   };
 
   // ── CI-30: Daily Plan Generator ───────────────────────────────────────────
@@ -195,9 +197,11 @@ export default function DailyPlayTab() {
   };
 
   const handlePlanCoach = (plan: DailyPlan) => {
-    const goal = plan.goal ? ` working on ${plan.goal.label}` : "";
+    const a = plan.scoredActivity.activity;
     seedCoach({
-      prompt: `We're going to try "${plan.scoredActivity.activity.title}" with ${firstName} today${goal}. How can I get the most out of it, and what should I watch for?`,
+      prompt: plan.goal
+        ? t("seed.play.withGoal", { title: a.title, name: firstName, goal: plan.goal.label })
+        : t("seed.play", { title: a.title, name: firstName, domain: a.domain }),
       source: "daily-plan",
     });
   };

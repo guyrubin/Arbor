@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  appendParentNote,
   buildConsultPacket,
   serializePacket,
   countIncluded,
@@ -93,6 +94,31 @@ describe("serializePacket (redaction)", () => {
     const total = countIncluded(p, new Set());
     const less = countIncluded(p, new Set(["mem-0", "about-basics"]));
     expect(less).toBe(total - 2);
+  });
+});
+
+/* AIX-S3(a) — the Vision handoff note joins the packet as a parent-reviewed
+ * note under its own heading; an empty note changes nothing. */
+describe("AIX-S3 — appendParentNote (Vision handoff → consult composer)", () => {
+  const packetMd = serializePacket(buildConsultPacket(base));
+
+  it("appends a trimmed note under the given heading", () => {
+    const md = appendParentNote(packetMd, "  School report notes better focus after breaks.  ", "Parent note");
+    expect(md).toContain("## Parent note");
+    expect(md).toContain("School report notes better focus after breaks.");
+    expect(md.startsWith(packetMd.trimEnd())).toBe(true);
+    expect(md.endsWith("\n")).toBe(true);
+  });
+
+  it("returns the packet unchanged for an empty or whitespace note", () => {
+    expect(appendParentNote(packetMd, "", "Parent note")).toBe(packetMd);
+    expect(appendParentNote(packetMd, "   \n ", "Parent note")).toBe(packetMd);
+  });
+
+  it("keeps the packet's own content intact (note is additive only)", () => {
+    const md = appendParentNote(packetMd, "A note.", "Parent note");
+    expect(md).toMatch(/# Dylan — context for our conversation/);
+    expect(md).toMatch(/Calms fastest with a countdown/);
   });
 });
 

@@ -1,11 +1,13 @@
 import express from "express";
 import type { ArborConfig } from "../config/env.js";
-import type { ModelProvider } from "../ai/modelRouter.js";
+import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
+import { abortableIterate, raceWithAbort } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
+import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildVoiceReplyPrompt } from "../ai/prompts.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
-import { screenForImmediateEscalation, renderEscalationMarkdown } from "../safety/escalation.js";
-import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
+import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
+import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 import { resolveScholar } from "../services/scholars.js";
 import { selectCouncil, runScholarTakes, renderCouncilForSynthesis } from "../services/council.js";
@@ -14,19 +16,26 @@ import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type } from "@google/genai";
 import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../server/redaction.js";
-import { screenModelOutput, renderBlockedOutputMarkdown } from "../safety/outputScreen.js";
+import { screenModelOutput, screenModelOutputLexical, renderBlockedOutputMarkdown, outputClassifierEnabled, type OutputScreenVerdict } from "../safety/outputScreen.js";
+import { SENTENCE_BOUNDARY_SCAN } from "../lib/sentenceStream.js";
+import { createJsonTextFieldExtractor } from "../server/jsonTextStream.js";
+import { mintTtsToken, verifyTtsToken } from "../server/ttsToken.js";
 import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.js";
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { requireConsent } from "../server/requireConsent.js";
+import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
 import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
-import { screenAndSynthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
+import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
+import { AiProviderError } from "../ai/capabilities/contracts.js";
+import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { billingCheckoutUrl } from "../server/billing.js";
+import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
@@ -52,6 +61,10 @@ type ApiDeps = {
   /** CARE-2: read seam for the recipient shared view (injectable for tests);
    *  defaults to the Firestore/local source derived from config. */
   sharedChildSource?: SharedChildRecordSource;
+  /** AIR-8: the boot-time CapabilityRegistry. When present (production wiring
+   *  via createApp), /api/tts resolves synthesis through
+   *  registry.get("speech_synthesis", ...) — the live dispatch seam. */
+  aiCapabilityRegistry?: CapabilityRegistry;
 };
 
 /** Redact PII from a profile object by round-tripping its JSON through the redactor. */
@@ -85,7 +98,95 @@ const parseJson = <T>(value: unknown) => {
   return parsed as T;
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource }: ApiDeps) => {
+/**
+ * AIR-9: per-route deadline budgets. No provider call may run unbounded — a
+ * wedged upstream used to mean an indefinite parent-facing spinner (the /chat
+ * req-close abort only stopped the SSE relay; the upstream call kept running
+ * and billing). Each AI route now threads an AbortSignal budget into the
+ * provider, tied BOTH to a deadline and to the client going away, and maps
+ * deadline expiry to a calm parent-register error in the existing payload
+ * shape. Budgets are env-tunable (ARBOR_BUDGET_<KIND>_MS) so tests and ops can
+ * adjust without code changes.
+ */
+const ROUTE_BUDGET_DEFAULTS_MS = { coach: 45_000, analysis: 15_000, voice: 20_000, image: 60_000 } as const;
+type RouteBudgetKind = keyof typeof ROUTE_BUDGET_DEFAULTS_MS;
+const routeBudgetMs = (kind: RouteBudgetKind): number => {
+  const fromEnv = Number(process.env[`ARBOR_BUDGET_${kind.toUpperCase()}_MS`]);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : ROUTE_BUDGET_DEFAULTS_MS[kind];
+};
+
+/** Calm parent-register copy for a deadline expiry — never technical, never alarming. */
+const DEADLINE_ERROR = {
+  error: "Arbor is taking longer than usual",
+  details: "Nothing is wrong with your question — the answer just took too long to prepare. Please try again in a moment.",
+} as const;
+
+type RouteBudget = {
+  budget: ModelCallBudget;
+  signal: AbortSignal;
+  /** True when the abort came from the DEADLINE (→ calm error), not the client leaving. */
+  readonly timedOut: boolean;
+  /** True when the abort came from the client going away (→ end silently). */
+  clientGone(): boolean;
+  /** Stop the deadline timer once the response has been produced. */
+  settle(): void;
+};
+
+const createRouteBudget = (res: express.Response, kind: RouteBudgetKind): RouteBudget => {
+  const totalMs = routeBudgetMs(kind);
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, totalMs);
+  (timer as { unref?: () => void }).unref?.();
+  // The real client-disconnect signal is the RESPONSE 'close' while the
+  // response is not yet ended (the request's own 'close' fires as soon as the
+  // JSON body is consumed — long before an SSE response ends).
+  res.on("close", () => {
+    if (!res.writableEnded) controller.abort();
+    clearTimeout(timer);
+  });
+  return {
+    budget: { signal: controller.signal, deadlineAt: Date.now() + totalMs, totalMs },
+    signal: controller.signal,
+    get timedOut() { return timedOut; },
+    clientGone: () => controller.signal.aborted && !timedOut,
+    settle: () => clearTimeout(timer),
+  };
+};
+
+/**
+ * VC-6: the two /voice safety fallbacks are SPOKEN ALOUD mid-crisis, so they
+ * must match the session language — a Hebrew-speaking parent in a Hebrew voice
+ * session must never hear an English sentence at the worst possible moment.
+ * Server-side he/en map keyed on the request `language` (mirrors the /voice
+ * languageDirective pattern). The strings deliberately restate NO helpline
+ * numbers — the numbers travel in `resourcesMarkdown`
+ * (renderEscalationMarkdown verbatim), which the CRITICAL_HELPLINE_LITERALS
+ * tripwire already covers. HE crisis copy is queued for clinical sign-off
+ * (GG-4); the fail-closed behavior ships now.
+ */
+const VOICE_SAFETY_FALLBACKS = {
+  en: {
+    escalation:
+      "I want to make sure you get the right help. This may need a real person right now — please reach out to a professional or local support line. ",
+    blocked:
+      "I want to be careful here. That's something best looked at with a professional who can see your child in person — like your pediatrician or family health centre. I can help you write down what you're noticing so that conversation is easier.",
+  },
+  he: {
+    escalation:
+      "חשוב לי שתקבלו עכשיו את העזרה הנכונה. ייתכן שזה מצריך אדם אמיתי ממש עכשיו — אנא פנו לאיש מקצוע או לקו תמיכה מקומי. ",
+    blocked:
+      "אני רוצה להיזהר כאן. את זה הכי טוב לבדוק עם איש מקצוע שיכול לראות את ילדכם מקרוב — למשל רופא הילדים או טיפת חלב. אני יכול לעזור לכם לרשום את מה שאתם שמים לב אליו, כדי שהשיחה הזו תהיה קלה יותר.",
+  },
+} as const;
+
+const voiceSafetyFallback = (language: unknown) =>
+  VOICE_SAFETY_FALLBACKS[language === "he" ? "he" : "en"];
+
+/** Spoken when the model produced an empty reply on /voice (pre-cadence literal, unchanged). */
+const VOICE_EMPTY_REPLY_FALLBACK = "Let's take this one step at a time — tell me a little more about what's happening.";
+
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, aiCapabilityRegistry }: ApiDeps) => {
   const router = express.Router();
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
@@ -342,13 +443,29 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       return;
     }
 
-    const abortController = new AbortController();
-    req.on("close", () => abortController.abort());
+    // AIR-9: 45s coach budget — aborts the upstream call on deadline OR when
+    // the client goes away (the old res-close abort only stopped the SSE relay).
+    const budget = createRouteBudget(res, "coach");
 
     try {
+      // ASK-1 Phase 1: SSE opens immediately and `status` events carry honest,
+      // MILESTONE-driven stage keys (memory → sources → plan) instead of the
+      // old fixed English sentence + character counters. The client owns the
+      // localized copy (i18n `coach.status.*`), so a Hebrew session never sees
+      // an English status string.
+      if (streamResponse) {
+        beginSse(res);
+        writeSse(res, "status", { stage: "memory" });
+      }
+
       const childId = toChildId(childProfile);
       const familyId = toFamilyId(childProfile);
-      const approvedMemory = await getApprovedMemoryContext(memoryStore, childId, config.memoryPromptMaxFacts);
+      // ASK-6: keep the fact COUNT alongside the prompt context — the count
+      // (an integer only, never content) is backfilled onto the contract so
+      // the parent can SEE the answer was grounded in facts they approved.
+      const { context: approvedMemory, factsUsed: approvedMemoryFactsUsed } =
+        await getApprovedMemoryContextDetail(memoryStore, childId, config.memoryPromptMaxFacts);
+      if (streamResponse) writeSse(res, "status", { stage: "sources" });
       // SCH-3: the selected lens is now load-bearing — its scholar's card(s) are
       // guaranteed into the context and lead, alongside age/domain matches.
       const scholar = resolveScholar(scholarLens);
@@ -364,51 +481,114 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         .filter((card) => (seenCardIds.has(card.id) ? false : (seenCardIds.add(card.id), true)))
         .slice(0, 5);
 
-      const prompt = `
-${NON_DIAGNOSTIC_CONTRACT}
-${developmentalFramework}
-
-ARBOR APPROVED CHILD MEMORY:
-${approvedMemory || "No parent-approved child memory available."}
-
-ARBOR AI WIKI SOURCE CARDS:
-${renderKnowledgeContext(knowledgeCards) || "No matching Arbor AI Wiki cards found. Use the framework contract and keep uncertainty explicit."}
-
-You are the Arbor Parent Coach, a developmental parenting support assistant.
-Current Child Profile Context:
-${childProfile ? JSON.stringify(childProfile, null, 2) : "None provided"}
-
-ACTIVE SCHOLAR LENS — apply this method, do not just name it:
-${scholar.name} — ${scholar.concept}. ${scholar.method}
-Ground "What To Do Today" and the parent script in this lens, and prefer Six Frame "${scholar.defaultFrame}" unless safety dictates otherwise.
-Parent question:
-${message}
-
-Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used.${languageDirective}
-`;
+      // EVAL-6: version-pinned named builder (ai/prompts.ts) — byte-identical
+      // to the old inline template; promptVersion is stamped into telemetry.
+      const prompt = buildChatPrompt({
+        developmentalFramework,
+        approvedMemory,
+        knowledgeContext: renderKnowledgeContext(knowledgeCards),
+        childProfile,
+        scholar,
+        message,
+        languageDirective
+      });
 
       // SEC/CMP P0: child PII never reaches the model — redact at the call seam,
       // restore in the parsed output so the product stays personalized.
       const privacy = createRedaction(childProfile?.name);
 
-      let rawResponse = "";
-      if (streamResponse) {
-        beginSse(res);
-        writeSse(res, "status", {
-          text: "Arbor is routing the question through child memory, AI Wiki cards, safety, and Six Frames."
+      // VC-8 parity, shared by the mid-stream flag and the done-time flag so
+      // the blocked-fallback payload shapes stay byte-identical (AIR-1 cond 5).
+      const buildBlockedPayload = (outputVerdict: OutputScreenVerdict) => {
+        logger.warn("Coach output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
         });
-      }
+        // VC-8: crisis-category output routes to the SAME crisis surface as a
+        // crisis INPUT (renderEscalationMarkdown resources + urgent risk) —
+        // harm-normalizing model language must end in crisis help, never the
+        // generic renderBlockedOutputMarkdown.
+        if (outputVerdict.category === "crisis") {
+          const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
+          return {
+            text: renderEscalationMarkdown(crisisMatch),
+            riskLevel: "urgent",
+            escalationCategory: crisisMatch.category,
+            outputBlocked: true,
+            blockedCategory: "crisis" as const,
+          };
+        }
+        return { text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category };
+      };
 
-      for await (const chunk of modelProvider.generateJsonStream({
+      // ASK-1 Phase 2 + AIR-1: real streaming. The contract's leading `text`
+      // prose field is tailed out of the raw JSON stream (jsonTextStream), fed
+      // through the alias RESTORER FIRST (the NAME_SUBJECT lexical floor
+      // assumes restored names — same ordering as /voice), and released as
+      // sentence deltas — each only after screenModelOutputLexical passes on
+      // the CUMULATIVE restored prose. On any flag the stream stops and `done`
+      // carries the standard blocked payload; the flagged span reaches NO SSE
+      // frame. Structured panels stay gated at `done`, where the full
+      // pre-cadence screen (lexical + optional semantic classifier) still runs
+      // on the complete rendered answer — a done-time flag makes the client
+      // RETRACT the streamed bubble and replace it (firewall CONDITIONS 1-3).
+      const restorer = privacy.createStreamRestorer();
+      const proseExtractor = createJsonTextFieldExtractor("text");
+      let released = "";
+      let pending = "";
+      const releaseCompleteSentences = (): OutputScreenVerdict | null => {
+        for (;;) {
+          const boundary = SENTENCE_BOUNDARY_SCAN.exec(pending);
+          if (!boundary) return null;
+          const sliceEnd = boundary.index + boundary[0].length;
+          const bytes = pending.slice(0, sliceEnd);
+          // Cumulative alias-restored screen — never a sentence in isolation.
+          const verdict = screenModelOutputLexical((released + bytes).trim());
+          if (verdict.flagged) return verdict;
+          writeSse(res, "delta", { text: bytes });
+          released += bytes;
+          pending = pending.slice(sliceEnd);
+        }
+      };
+
+      let rawResponse = "";
+      if (streamResponse) writeSse(res, "status", { stage: "plan" });
+
+      // The stream is ALSO raced at the route seam (abortableIterate) so even a
+      // provider that ignores the signal cannot outlive the budget.
+      for await (const chunk of abortableIterate(modelProvider.generateJsonStream({
         route: "coach_high_stakes",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: coachResponseSchema,
-        temperature: 0.45
-      })) {
-        if (abortController.signal.aborted) return;
+        temperature: 0.45,
+        budget: budget.budget,
+        promptVersion: PROMPT_VERSIONS.coach_chat.version
+      }), budget.signal)) {
+        if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
         rawResponse += chunk;
-        if (streamResponse) writeSse(res, "chunk", { characters: rawResponse.length });
+        if (!streamResponse) continue;
+        pending += restorer.push(proseExtractor.push(chunk));
+        const verdict = releaseCompleteSentences();
+        if (verdict) {
+          writeSse(res, "done", buildBlockedPayload(verdict));
+          res.end();
+          return;
+        }
       }
+      if (streamResponse) {
+        pending += restorer.flush();
+        const verdict = releaseCompleteSentences();
+        if (verdict) {
+          writeSse(res, "done", buildBlockedPayload(verdict));
+          res.end();
+          return;
+        }
+        // The trailing prose fragment (no sentence boundary yet) is NOT
+        // emitted as a delta — the full, screened text arrives in `done` and
+        // the client swaps it in.
+      }
+      if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
 
       const structured = privacy.restoreDeep(coachResponseZodSchema.parse(parseJson(rawResponse.trim())));
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
@@ -417,17 +597,18 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       // COACH-6: resolve the cited ids to real titles + types from the server
       // knowledge registry so the citation drawer never shows raw slugs.
       structured.sourceCards = buildSourceCards(structured.sourceCardsUsed, knowledgeCards);
+      // ASK-6: integer count only (clinical firewall) — the model never emits
+      // this; it is the number of approved facts injected into the prompt.
+      structured.approvedMemoryFactsUsed = approvedMemoryFactsUsed;
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       const renderedText = renderCoachResponse(structured);
       const outputVerdict = await screenModelOutput(modelProvider, renderedText);
       if (outputVerdict.flagged) {
-        logger.warn("Coach output blocked by output safety screen", {
-          requestId: requestIdOf(req),
-          category: outputVerdict.category,
-          reason: outputVerdict.reason,
-        });
-        const blockedPayload = { text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category };
+        // Done-time flag (lexical floor on the FULL rendered answer + the
+        // semantic classifier when enabled): same payload as the mid-stream
+        // flag — the client retracts any streamed bubble and replaces it.
+        const blockedPayload = buildBlockedPayload(outputVerdict);
         if (streamResponse) {
           writeSse(res, "done", blockedPayload);
           res.end();
@@ -442,6 +623,7 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
         prompt: message,
         frameRouting: structured.frameRouting
       });
+      budget.settle();
       const payload = { text: renderedText, contract: structured, memoryReviewItems };
       if (streamResponse) {
         writeSse(res, "done", payload);
@@ -450,7 +632,21 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
         res.json(payload);
       }
     } catch (error: any) {
-      if (abortController.signal.aborted) return;
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        // AIR-9: deadline expiry → calm parent-register error, same payload
+        // shape as the existing error event (client copy stays localized).
+        logger.warn("Arbor Chat deadline exceeded", { requestId: requestIdOf(req) });
+        if (streamResponse) {
+          if (!res.headersSent) beginSse(res);
+          writeSse(res, "error", DEADLINE_ERROR);
+          res.end();
+        } else {
+          res.status(504).json(DEADLINE_ERROR);
+        }
+        return;
+      }
       logger.error("Arbor Chat Error", error, { requestId: requestIdOf(req) });
       const payload = { error: "Failed to query Arbor parent coach", details: error.message };
       if (streamResponse) {
@@ -481,10 +677,14 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       language === "he"
         ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
         : "";
+    // AIR-9: one 45s budget covers the whole council (parallel takes + synthesis).
+    const budget = createRouteBudget(res, "coach");
     try {
       const childId = toChildId(childProfile);
       const familyId = toFamilyId(childProfile);
-      const approvedMemory = await getApprovedMemoryContext(memoryStore, childId, config.memoryPromptMaxFacts);
+      // ASK-6: same count-only memory visibility as /chat.
+      const { context: approvedMemory, factsUsed: approvedMemoryFactsUsed } =
+        await getApprovedMemoryContextDetail(memoryStore, childId, config.memoryPromptMaxFacts);
       const lead = resolveScholar(scholarLens);
       const childDomains = Array.isArray(childProfile?.domains) ? childProfile.domains : [];
       const council = selectCouncil(lead, childDomains, 3);
@@ -492,12 +692,14 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
       // SEC/CMP P0: scholar agents and the synthesizer only ever see redacted input.
       const privacy = createRedaction(childProfile?.name);
 
-      // 1) Each scholar agent deliberates in parallel.
-      const takes = await runScholarTakes(modelProvider, council, {
+      // 1) Each scholar agent deliberates in parallel (raced at the route seam
+      // too, so a signal-ignoring provider cannot outlive the budget).
+      const takes = await raceWithAbort(runScholarTakes(modelProvider, council, {
         message: privacy.redact(message),
         childProfile: redactProfile(privacy, childProfile),
-        language
-      });
+        language,
+        budget: budget.budget
+      }), budget.signal);
 
       // 2) Ground the synthesis in the council's cards + approved memory.
       const scholarCards = await loadCardsByIds(council.flatMap((s) => s.cardIds));
@@ -512,35 +714,26 @@ Return only JSON that matches the response schema. Keep todayPlan to 1-3 steps. 
         .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)))
         .slice(0, 6);
 
-      const prompt = `
-${NON_DIAGNOSTIC_CONTRACT}
-${developmentalFramework}
+      // EVAL-6: version-pinned named builder (ai/prompts.ts) — byte-identical
+      // to the old inline template; promptVersion is stamped into telemetry.
+      const prompt = buildCouncilSynthesisPrompt({
+        developmentalFramework,
+        approvedMemory,
+        knowledgeContext: renderKnowledgeContext(knowledgeCards),
+        childProfile,
+        councilTakes: renderCouncilForSynthesis(takes),
+        message,
+        languageDirective
+      });
 
-ARBOR APPROVED CHILD MEMORY:
-${approvedMemory || "No parent-approved child memory available."}
-
-ARBOR AI WIKI SOURCE CARDS:
-${renderKnowledgeContext(knowledgeCards) || "No matching cards; keep uncertainty explicit."}
-
-You are the Arbor Parent Coach synthesizing a SCHOLAR COUNCIL into one answer.
-Child Profile:
-${childProfile ? JSON.stringify(childProfile, null, 2) : "None provided"}
-
-${renderCouncilForSynthesis(takes)}
-
-Integrate the council's distinct lenses into one coherent, non-diagnostic answer — lead with connection, then capability, then context. Do not contradict the lenses.
-Parent question:
-${message}
-
-Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed.${languageDirective}
-`;
-
-      const raw = await modelProvider.generateJson({
+      const raw = await raceWithAbort(modelProvider.generateJson({
         route: "coach_high_stakes",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: coachResponseSchema,
-        temperature: 0.4
-      });
+        temperature: 0.4,
+        budget: budget.budget,
+        promptVersion: PROMPT_VERSIONS.council_synthesis.version
+      }), budget.signal);
       const structured = privacy.restoreDeep(coachResponseZodSchema.parse(raw));
       const restoredTakes = privacy.restoreDeep(takes);
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
@@ -548,6 +741,8 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
       }
       // COACH-6: same citation-title resolution as /chat.
       structured.sourceCards = buildSourceCards(structured.sourceCardsUsed, knowledgeCards);
+      // ASK-6: integer count only (clinical firewall).
+      structured.approvedMemoryFactsUsed = approvedMemoryFactsUsed;
 
       // AI-2: output-side safety screen.
       const renderedText = renderCoachResponse(structured);
@@ -558,6 +753,19 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
           category: outputVerdict.category,
           reason: outputVerdict.reason,
         });
+        // VC-8: crisis output → crisis resources, never the generic blocked state.
+        if (outputVerdict.category === "crisis") {
+          const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
+          res.json({
+            text: renderEscalationMarkdown(crisisMatch),
+            riskLevel: "urgent",
+            escalationCategory: crisisMatch.category,
+            outputBlocked: true,
+            blockedCategory: "crisis",
+            council: [],
+          });
+          return;
+        }
         res.json({ text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category, council: [] });
         return;
       }
@@ -567,17 +775,34 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
         prompt: message,
         frameRouting: structured.frameRouting
       });
+      budget.settle();
       res.json({ text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems });
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Council deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Council Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to convene the scholar council", details: error.message });
     }
   });
 
-  // RT-2 (v6): realtime STREAMING voice coach. Streams plain spoken-friendly text
-  // token-by-token over SSE so the client can speak each sentence the moment it
-  // arrives (sentence-streamed TTS) — a true low-latency voice loop on Gemini
-  // streaming (which is entitled here), independent of the Live bidi API.
+  // RT-2 (v6): STREAMING voice coach over SSE, independent of the Live bidi API.
+  // AI-V1+AIR-2 (voice-cadence, 2026-07-25): sentence-boundary screened
+  // streaming. The reply is split at lib/sentenceStream boundaries, the output
+  // screen runs on the CUMULATIVE alias-restored text at every boundary (never
+  // a sentence in isolation), and each sentence is emitted as its own delta
+  // ONLY after its screen passes — the client speaks sentence 1 while 2..N
+  // generate, and nothing unscreened ever leaves the server. On any flag the
+  // stream stops and the calm localized fallback is emitted instead; the
+  // flagged span appears in NO SSE frame. When the semantic classifier is ON
+  // (ENABLE_OUTPUT_SAFETY_CLASSIFIER=true) the pre-cadence full-buffer
+  // behavior is kept, config-gated, because the classifier needs the whole
+  // reply. Cadence contract pinned by evals/voice-loop-v1
+  // (routes/voiceLoopEval.test.ts) + routes/voiceCadence.test.ts.
   router.post("/voice", async (req, res) => {
     const { message, childProfile, scholarLens, language } = req.body;
     if (!message || typeof message !== "string") {
@@ -587,68 +812,186 @@ Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Incl
     const escalationMatch = screenForImmediateEscalation({ message });
     beginSse(res);
     if (escalationMatch) {
-      writeSse(res, "delta", { text: "I want to make sure you get the right help. This may need a real person right now — please reach out to a professional or local support line. " });
-      writeSse(res, "done", { escalation: escalationMatch.category });
+      // VC-4: voice parents must get the SAME crisis help as typists. Speak a
+      // short localized redirect (VC-6) and carry the FULL resources block in
+      // the done payload — renderEscalationMarkdown(match) VERBATIM, so the
+      // escalationLiteralsIntact tripwire covers every helpline number on this
+      // path too. The client stops the voice loop and renders the resources
+      // on screen (never resumes listening after a crisis turn).
+      writeSse(res, "delta", { text: voiceSafetyFallback(language).escalation });
+      writeSse(res, "done", {
+        escalation: escalationMatch.category,
+        resourcesMarkdown: renderEscalationMarkdown(escalationMatch)
+      });
       res.end();
       return;
     }
 
-    const abortController = new AbortController();
-    req.on("close", () => abortController.abort());
+    // AIR-9: 20s voice budget. Combines the deadline with the client-gone
+    // abort (the RESPONSE 'close' while not ended — see createRouteBudget) and
+    // threads the signal into the provider so the upstream call actually stops.
+    const budget = createRouteBudget(res, "voice");
     try {
       const scholar = resolveScholar(scholarLens);
-      const languageDirective = language === "he" ? " Reply in warm, natural spoken Hebrew." : "";
+      // AI-V9: persona + language directive come from the ONE shared spoken
+      // persona module (lib/livePersona.ts) — byte-shared with the Live path.
+      const languageDirective = spokenLanguageDirective(language);
       const privacy = createRedaction(childProfile?.name);
-      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
-You are Arbor, a warm, calm parenting coach speaking OUT LOUD to a parent. Apply this lens: ${scholar.name} — ${scholar.method}
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
-The parent just said: "${message}"
-Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
+      // EVAL-6: version-pinned named builder (ai/prompts.ts). The persona is
+      // passed in so lib/livePersona.ts stays the only module stating
+      // SPOKEN_COACH_PERSONA; spokenLanguageDirective(language) stays here too.
+      const prompt = buildVoiceReplyPrompt({
+        persona: SPOKEN_COACH_PERSONA,
+        scholar,
+        childProfile,
+        message,
+        languageDirective
+      });
 
-      // SAFE-V1: the output-safety screen (AI-2) MUST gate /voice the same way it
-      // gates /chat and /council. /voice feeds TTS, so a token-by-token relay would
-      // speak a diagnosis or a medication dose aloud before any screen could run.
-      // We therefore BUFFER the full assembled (alias-restored) reply, run the SAME
-      // screenModelOutput function, and only THEN speak it. Safety beats the few
-      // hundred ms of streaming latency for a non-diagnostic children's product.
+      // SAFE-V1 + AI-V1/AIR-2: the output-safety screen (AI-2) MUST gate /voice
+      // the same way it gates /chat and /council — nothing unscreened ever
+      // leaves the server. Delivery is config-gated:
+      //   - classifier OFF (default): sentence-boundary streaming. Each
+      //     complete sentence is screened via the lexical floor on the
+      //     CUMULATIVE alias-restored text (cross-sentence diagnosis spans
+      //     stay caught) and released as its own delta only after it passes.
+      //   - classifier ON: the pre-cadence full-buffer path — assemble, run
+      //     screenModelOutput once (lexical + semantic), then emit ONE delta.
       // SEC/CMP P0: redacted prompt in; aliases restored on the way out.
       const restorer = privacy.createStreamRestorer();
-      let assembled = "";
-      for await (const chunk of modelProvider.streamText({ route: "analysis_structured", prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6 })) {
-        if (abortController.signal.aborted) { res.end(); return; }
-        assembled += restorer.push(chunk || "");
-      }
-      assembled += restorer.flush();
-      assembled = assembled.trim();
-      if (abortController.signal.aborted) { res.end(); return; }
+      // AI-V5: each screened sentence carries a short-TTL HMAC token so
+      // /api/tts can skip ONLY the model re-screen for text that /voice
+      // already screened (its lexical floor still runs unconditionally).
+      const ttsLang = language === "he" ? "he" : "en";
+      const streamRequest = { route: "analysis_structured" as const, prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE, temperature: 0.6, budget: budget.budget, promptVersion: PROMPT_VERSIONS.voice_reply.version };
 
-      // Screen the assembled text BEFORE it is sent to TTS / streamed to the client.
-      if (assembled) {
-        const outputVerdict = await screenModelOutput(modelProvider, assembled);
-        if (outputVerdict.flagged) {
-          logger.warn("Voice output blocked by output safety screen", {
-            requestId: requestIdOf(req),
-            category: outputVerdict.category,
-            reason: outputVerdict.reason,
+      // Flagged-output SSE tail, shared by both delivery paths — payloads are
+      // byte-identical to the pre-cadence SAFE-V1 behavior.
+      const emitBlocked = (outputVerdict: OutputScreenVerdict) => {
+        logger.warn("Voice output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        // VC-8: crisis-category output speaks the CRISIS redirect and puts
+        // the full resources block on screen — never the generic blocked
+        // state. The `escalation` key makes handleVoiceDone stop the loop,
+        // so the mic never resumes after a crisis turn (input-path parity).
+        if (outputVerdict.category === "crisis") {
+          const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
+          writeSse(res, "delta", { text: voiceSafetyFallback(language).escalation });
+          writeSse(res, "done", {
+            escalation: crisisMatch.category,
+            resourcesMarkdown: renderEscalationMarkdown(crisisMatch),
+            outputBlocked: true,
+            blockedCategory: "crisis",
           });
-          // Never speak the flagged draft. Speak a calm, non-diagnostic spoken
-          // fallback that mirrors the /chat blocked behavior (handoff to a real
-          // professional) instead.
-          writeSse(res, "delta", {
-            text: "I want to be careful here. That's something best looked at with a professional who can see your child in person — like your pediatrician or family health centre. I can help you write down what you're noticing so that conversation is easier.",
-          });
-          writeSse(res, "done", { outputBlocked: true, blockedCategory: outputVerdict.category });
           res.end();
           return;
         }
+        // Never speak the flagged draft. Speak a calm, non-diagnostic spoken
+        // fallback that mirrors the /chat blocked behavior (handoff to a real
+        // professional) instead — localized per VC-6. blockedMarkdown gives
+        // the client a VISIBLE blocked state with byte parity to /chat's
+        // renderBlockedOutputMarkdown surface (VC-4 condition 3).
+        writeSse(res, "delta", { text: voiceSafetyFallback(language).blocked });
+        writeSse(res, "done", {
+          outputBlocked: true,
+          blockedCategory: outputVerdict.category,
+          blockedMarkdown: renderBlockedOutputMarkdown()
+        });
+        res.end();
+      };
+
+      if (outputClassifierEnabled()) {
+        // Full-buffer path (config-gated): the semantic classifier judges the
+        // WHOLE reply, so buffer, screen once, then emit everything at once.
+        let assembled = "";
+        for await (const chunk of abortableIterate(modelProvider.streamText(streamRequest), budget.signal)) {
+          if (budget.signal.aborted) { if (!budget.timedOut) { res.end(); return; } throw newAbortError(); }
+          assembled += restorer.push(chunk || "");
+        }
+        assembled += restorer.flush();
+        assembled = assembled.trim();
+        if (budget.signal.aborted) { if (!budget.timedOut) { res.end(); return; } throw newAbortError(); }
+
+        // Screen the assembled text BEFORE it is sent to TTS / streamed to the client.
+        if (assembled) {
+          const outputVerdict = await screenModelOutput(modelProvider, assembled);
+          if (outputVerdict.flagged) { emitBlocked(outputVerdict); return; }
+        }
+        const spoken = assembled || VOICE_EMPTY_REPLY_FALLBACK;
+        writeSse(res, "delta", { text: spoken, tts: { text: spoken, token: mintTtsToken(spoken, ttsLang) } });
+        writeSse(res, "done", {});
+        res.end();
+        return;
       }
 
-      const spoken = assembled || "Let's take this one step at a time — tell me a little more about what's happening.";
-      writeSse(res, "delta", { text: spoken });
+      // Streaming path (default): release each sentence the moment its
+      // cumulative screen passes. `released` = alias-restored bytes already
+      // emitted (all screened); `pending` = bytes still waiting for a
+      // sentence boundary. Byte-exact slicing keeps the concatenated deltas
+      // identical to the full restored reply, so the client splitter
+      // (lib/sentenceStream, same module) reconstructs the same sentences.
+      let released = "";
+      let pending = "";
+      const releaseCompleteSentences = (): OutputScreenVerdict | null => {
+        for (;;) {
+          const boundary = SENTENCE_BOUNDARY_SCAN.exec(pending);
+          if (!boundary) return null;
+          const sliceEnd = boundary.index + boundary[0].length;
+          const bytes = pending.slice(0, sliceEnd);
+          // Cumulative alias-restored screen — never a sentence in isolation.
+          const verdict = screenModelOutputLexical((released + bytes).trim());
+          if (verdict.flagged) return verdict;
+          const sentence = bytes.trim();
+          writeSse(res, "delta", { text: bytes, tts: { text: sentence, token: mintTtsToken(sentence, ttsLang) } });
+          released += bytes;
+          pending = pending.slice(sliceEnd);
+        }
+      };
+
+      for await (const chunk of abortableIterate(modelProvider.streamText(streamRequest), budget.signal)) {
+        if (budget.signal.aborted) { if (!budget.timedOut) { res.end(); return; } throw newAbortError(); }
+        pending += restorer.push(chunk || "");
+        const verdict = releaseCompleteSentences();
+        if (verdict) { emitBlocked(verdict); return; }
+      }
+      pending += restorer.flush();
+      if (budget.signal.aborted) { if (!budget.timedOut) { res.end(); return; } throw newAbortError(); }
+      const verdict = releaseCompleteSentences();
+      if (verdict) { emitBlocked(verdict); return; }
+
+      // End of stream: run the SAME combined screen seam as SAFE-V1 over the
+      // FULL cumulative text before releasing the trailing fragment. (The
+      // semantic layer is a no-op in this branch — classifier is off — so
+      // this stays synchronous-fast while keeping the seam identical.)
+      const finalText = (released + pending).trim();
+      if (finalText) {
+        const outputVerdict = await screenModelOutput(modelProvider, finalText);
+        if (outputVerdict.flagged) { emitBlocked(outputVerdict); return; }
+      }
+      if (!finalText) {
+        writeSse(res, "delta", { text: VOICE_EMPTY_REPLY_FALLBACK, tts: { text: VOICE_EMPTY_REPLY_FALLBACK, token: mintTtsToken(VOICE_EMPTY_REPLY_FALLBACK, ttsLang) } });
+      } else if (pending.trim()) {
+        const sentence = pending.trim();
+        writeSse(res, "delta", { text: pending, tts: { text: sentence, token: mintTtsToken(sentence, ttsLang) } });
+      }
+      budget.settle();
       writeSse(res, "done", {});
       res.end();
     } catch (error: any) {
-      if (abortController.signal.aborted) return;
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        // AIR-9: deadline expiry → calm parent-register error (the client
+        // stops the loop and shows the retry state, never a hung orb).
+        logger.warn("Arbor Voice deadline exceeded", { requestId: requestIdOf(req) });
+        if (!res.headersSent) beginSse(res);
+        writeSse(res, "error", DEADLINE_ERROR);
+        res.end();
+        return;
+      }
       logger.error("Arbor Voice Stream Error", error, { requestId: requestIdOf(req) });
       if (!res.headersSent) beginSse(res);
       writeSse(res, "error", { error: "Voice stream failed", details: error.message });
@@ -656,33 +999,143 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
     }
   });
 
+  // VC-7 (live-enablement-gate): Live is available ONLY when the explicit
+  // LIVE_ENABLED flag AND the key are both set. Keying on the key alone made
+  // the GD-3 hazard an accidental env change — setting GEMINI_API_KEY for any
+  // other reason would have silently routed all voice around the screened
+  // /voice path. Flipping the flag to true IS the GD-3 unlock (Guy decision).
+  const liveConfigured = () => Boolean(config.liveEnabled && config.geminiApiKey);
+
+  // AI-V8: availability computed from config alone — no SDK call, no token
+  // mint, no network. CoachTab probes THIS on mount; a real ephemeral token is
+  // minted only when the parent actually toggles voice. (An availability
+  // endpoint keyed on the key alone would recreate the VC-7 hazard.)
+  router.get("/live/availability", (_req, res) => {
+    res.json({ available: liveConfigured() });
+  });
+
   // RT-1 (v6): Gemini Live streaming. Mint a short-lived ephemeral token so the
   // browser can open a Live (bidiGenerateContent) audio session DIRECTLY without
   // ever seeing the server key. Reports availability so the client can fall back
   // to the browser voice loop when Live isn't configured/provisioned.
+  // Metered by createAiQuota in createApp.ts (same list as the other paid mints).
   router.post("/live/token", async (req, res) => {
-    const apiKey = config.geminiApiKey;
-    if (!apiKey) {
-      res.json({ available: false, reason: "Gemini Live is not configured on this server." });
+    if (!liveConfigured()) {
+      res.json({ available: false, reason: "Gemini Live is not enabled on this server." });
       return;
     }
+    const apiKey = config.geminiApiKey as string;
     try {
       const { GoogleGenAI } = await import("@google/genai");
       const ai = new GoogleGenAI({ apiKey });
-      const model = process.env.LIVE_MODEL || "gemini-2.0-flash-live-001";
+      const model = config.liveModel;
       const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+      // AI-V9: the instruction + voice are built per session language from the
+      // ONE shared spoken-persona module and pinned server-side.
+      const systemInstruction = buildLiveSystemInstruction(req.body?.language);
+      const speechConfig = liveSpeechConfig(req.body?.language);
       const token = await ai.authTokens.create({
         config: {
           uses: 1,
           expireTime,
-          liveConnectConstraints: { model },
+          // FW-NEW-P0: pin the persona, voice, and transcription-on INTO the
+          // token's constraints at mint time. The Live API rejects a connect
+          // config that conflicts with these, so a modified client cannot
+          // substitute an arbitrary systemInstruction, swap the voice, or
+          // disable the transcription the turn-guard screens against.
+          liveConnectConstraints: {
+            model,
+            config: {
+              systemInstruction,
+              speechConfig,
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+            },
+          },
           httpOptions: { apiVersion: "v1alpha" }
         }
       });
-      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime });
+      // The pinned instruction/speechConfig are echoed back so the client's
+      // connect config stays byte-identical to the pin (cosmetic — the token
+      // constraints are authoritative).
+      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig });
     } catch (error: any) {
       logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req) });
       res.json({ available: false, reason: error.message });
+    }
+  });
+
+  // VC-2 + VC-3 (live-turn-guard): the authoritative per-turn screen + audit
+  // log for Gemini Live. The client liveTurnGuard posts every finalized turn
+  // here and releases NOTHING until this verdict says "continue" (a failure to
+  // answer is treated as FLAGGED client-side — VC-5 fail-closed). Sits inside
+  // createApiRouter (inherits /api auth) + requireChildOwnership on childId,
+  // and on the createAiQuota allow-list (createApp.ts).
+  router.post("/live/turn", requireOwnership, async (req, res) => {
+    const { role, text, language } = req.body ?? {};
+    if ((role !== "user" && role !== "model") || typeof text !== "string" || !text.trim()) {
+      res.status(400).json({ error: "role ('user' or 'model') and a non-empty text are required" });
+      return;
+    }
+    // VC-3 condition 2: every turn is auditable even when clean — chars +
+    // verdict category ONLY, NEVER the transcript text (child-data minimalism).
+    const audit = (verdictCategory: string | null) =>
+      logger.info("live.turn", {
+        requestId: requestIdOf(req),
+        uid: actorOf(req).uid,
+        role,
+        chars: text.length,
+        verdictCategory,
+      });
+    try {
+      if (role === "user") {
+        const match = screenForImmediateEscalation({ text });
+        audit(match?.category ?? null);
+        if (match) {
+          // VC-2 condition 3: resources are renderEscalationMarkdown VERBATIM
+          // (the CRITICAL_HELPLINE_LITERALS tripwire covers this path); the
+          // spoken redirect is the localized VC-6 fallback line.
+          res.json({
+            action: "stop_crisis",
+            category: match.category,
+            resourcesMarkdown: renderEscalationMarkdown(match),
+            spokenText: voiceSafetyFallback(language).escalation,
+          });
+          return;
+        }
+        res.json({ action: "continue" });
+        return;
+      }
+      const verdict = await screenModelOutput(modelProvider, text);
+      audit(verdict.category);
+      if (verdict.flagged) {
+        // VC-8: crisis-category MODEL output stops the session with the SAME
+        // crisis surface as a user-role crisis (resources verbatim + spoken
+        // redirect) — never the generic blocked state.
+        if (verdict.category === "crisis") {
+          const crisisMatch = escalationMatchForCategory(verdict.escalationCategory);
+          res.json({
+            action: "stop_crisis",
+            category: crisisMatch.category,
+            resourcesMarkdown: renderEscalationMarkdown(crisisMatch),
+            spokenText: voiceSafetyFallback(language).escalation,
+          });
+          return;
+        }
+        res.json({
+          action: "stop_blocked",
+          category: verdict.category,
+          blockedMarkdown: renderBlockedOutputMarkdown(),
+          spokenText: voiceSafetyFallback(language).blocked,
+        });
+        return;
+      }
+      res.json({ action: "continue" });
+    } catch (error: any) {
+      // Fail CLOSED: a screening error must never read as a clean verdict —
+      // the non-200 makes the client guard drop the turn and halt the session.
+      logger.error("Arbor Live Turn Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Live turn screening failed" });
     }
   });
 
@@ -691,8 +1144,11 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
   // form. Non-diagnostic; safety-screened; the client falls back gracefully if
   // extraction is unavailable.
   router.post("/extract-log", async (req, res) => {
-    const { message, childProfile } = req.body;
-    if (!message || typeof message !== "string") {
+    const { message, childProfile, language } = req.body;
+    // EVAL-3 (capture-extract-v1 empty-input scenario): empty-ISH input —
+    // missing, non-string, or whitespace-only — answers 400 before any model
+    // call; a blank description must never burn a model round-trip.
+    if (!message || typeof message !== "string" || !message.trim()) {
       res.status(400).json({ error: "A description (message) is required" });
       return;
     }
@@ -707,29 +1163,34 @@ Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give
       return;
     }
 
+    // AIR-9: 15s analysis budget — "logging a moment" must fail calm and fast,
+    // never spin on a wedged upstream.
+    const budget = createRouteBudget(res, "analysis");
     try {
-      const prompt = `
-${NON_DIAGNOSTIC_CONTRACT}
-You are Arbor's logging assistant. Read the parent's description of a moment with their child and extract ONE structured behavior log. Observations only — never a diagnosis.
-
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
-Parent description: "${message}"
-
-Rules:
-- behaviorType: a short 2-4 word label for the moment (e.g. "Morning refusal", "Screen shutoff meltdown", "Sibling conflict").
-- intensity: integer 1 (mild) to 5 (severe), inferred from the description.
-- durationMinutes: best-guess integer (use 10 if unclear).
-- context: one of exactly Home, School, Transit, Public.
-- trigger: the immediate antecedent in a few words ("" if unknown).
-- response: what the parent did, if mentioned ("" if unknown).
-- notes: one short neutral sentence capturing anything else useful ("" if none).
-Return only JSON matching the schema.`;
+      // AI-CAP-2: mirror /chat's languageDirective — a Hebrew-speaking parent's
+      // draft must come back in Hebrew. behaviorType/context stay per schema
+      // (English/enum) so the AI-CAP-8 taxonomy mapping and clamps keep working.
+      const languageDirective =
+        language === "he"
+          ? '\nIMPORTANT: The parent speaks Hebrew. Write "trigger", "response" and "notes" in natural, warm Hebrew (עברית). Keep "behaviorType" as a short English label and "context" exactly one of the schema values.'
+          : "";
+      // EVAL-6: version-pinned named builder (ai/prompts.ts) — the canonical
+      // six stay joined HERE so the taxonomy grep guard keeps pinning this
+      // route to CANONICAL_BEHAVIOR_TYPES.join(...) from the shared module.
+      const prompt = buildExtractLogPrompt({
+        childProfile,
+        message,
+        behaviorTypes: CANONICAL_BEHAVIOR_TYPES.join(" | "),
+        languageDirective
+      });
 
       const privacy = createRedaction(childProfile?.name);
-      const draft = await modelProvider.generateJson({
+      const draft = await raceWithAbort(modelProvider.generateJson({
         route: "analysis_structured",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.2,
+        budget: budget.budget,
+        promptVersion: PROMPT_VERSIONS.extract_log.version,
         schema: {
           type: Type.OBJECT,
           required: ["behaviorType", "intensity", "durationMinutes", "context", "trigger", "response", "notes"],
@@ -743,11 +1204,135 @@ Return only JSON matching the schema.`;
             notes: { type: Type.STRING }
           }
         }
-      });
+      }), budget.signal);
+      budget.settle();
       res.json(privacy.restoreDeep(draft));
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Log Extraction deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Log Extraction Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to draft a log", details: error.message });
+    }
+  });
+
+  // ── AIR-5: Today's Focus — a dedicated LIGHTWEIGHT generation path. The
+  // Overview card used to POST /api/chat (the heaviest route in the app:
+  // Claude, memory fetch, wiki retrieval, full coach schema) and throw away
+  // everything but three sentences — while silently burning the free plan's
+  // daily coach meter on an ambient card the parent never asked for. This
+  // endpoint runs analysis_structured (flash, thinking off per AIR-3) with a
+  // 2-field schema, sits INSIDE the hourly AI quota but OUTSIDE the coach
+  // meter (createApp.ts), and caches per user+child per calendar day.
+  //
+  // Firewall CONDITIONS (AIR-5): (1) output passes screenModelOutput before
+  // return — this must never become the first unscreened parent-facing
+  // generative surface; (2) prompt embeds NON_DIAGNOSTIC_CONTRACT; (3) focus
+  // text is observation/next-step only (the 2-field schema enforces shape,
+  // the prompt bans assessments/scores/percentages/trends); (4) the cache
+  // stores only payloads that already passed the screen (it is written
+  // strictly AFTER the verdict).
+  const focusDateKey = () => new Date().toISOString().slice(0, 10);
+  const focusCache = new Map<string, Record<string, unknown>>();
+  const FOCUS_CACHE_MAX = 1000;
+
+  router.post("/todays-focus", async (req, res) => {
+    const { childProfile, signals, language } = req.body ?? {};
+    const count = Math.max(0, Math.min(500, Number(signals?.count ?? 0) || 0));
+    const topTrigger = String(signals?.topTrigger ?? "").slice(0, 80);
+    const lastActionRecommendation = String(signals?.lastActionRecommendation ?? "").slice(0, 300);
+    const lastActionOutcome = ["helped", "somewhat", "not_today"].includes(signals?.lastActionOutcome)
+      ? (signals.lastActionOutcome as string)
+      : "";
+    const lang = language === "he" ? "he" : "en";
+    const dateKey = focusDateKey();
+
+    const cacheKey = `${actorOf(req).uid}:${childProfile?.id ?? "none"}:${dateKey}:${lang}`;
+    const cached = focusCache.get(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
+    // AIR-9: focus is ambient — it gets the tight analysis budget.
+    const budget = createRouteBudget(res, "analysis");
+    try {
+      const languageDirective =
+        lang === "he"
+          ? "\nIMPORTANT: The parent speaks Hebrew. Write both fields in natural, warm Hebrew (עברית)."
+          : "";
+      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
+You are Arbor's Today's Focus writer for a calm parenting app.
+Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+What the parent has logged this week: ${count} moment${count === 1 ? "" : "s"}, most often around "${topTrigger || "transitions"}".${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
+Write today's single most useful parenting focus:
+- "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
+- "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
+Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
+Return only JSON matching the schema.`;
+
+      const privacy = createRedaction(childProfile?.name);
+      const draft = (await raceWithAbort(modelProvider.generateJson({
+        route: "analysis_structured",
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        temperature: 0.5,
+        budget: budget.budget,
+        schema: {
+          type: Type.OBJECT,
+          required: ["focus", "tryToday"],
+          properties: {
+            focus: { type: Type.STRING },
+            tryToday: { type: Type.STRING }
+          }
+        }
+      }), budget.signal)) as { focus?: unknown; tryToday?: unknown };
+
+      const restored = privacy.restoreDeep(draft) as { focus?: unknown; tryToday?: unknown };
+      const focus = String(restored.focus ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 400);
+      const tryToday = String(restored.tryToday ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 300);
+      const text = [focus, tryToday].filter(Boolean).join(" ");
+      if (!text) {
+        budget.settle();
+        res.status(502).json({ error: "Focus generation returned no usable text" });
+        return;
+      }
+
+      // Firewall condition 1: the FULL output screen gates the return. Flagged
+      // output never reaches the parent (and never reaches the cache).
+      const outputVerdict = await screenModelOutput(modelProvider, text);
+      budget.settle();
+      if (outputVerdict.flagged) {
+        logger.warn("Todays Focus output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later." });
+        return;
+      }
+
+      const payload = { text, focus, tryToday, generatedAt: new Date().toISOString(), dateKey };
+      // Firewall condition 4: only screened payloads are cached.
+      if (focusCache.size >= FOCUS_CACHE_MAX) {
+        const oldest = focusCache.keys().next().value;
+        if (oldest !== undefined) focusCache.delete(oldest);
+      }
+      focusCache.set(cacheKey, payload);
+      res.json(payload);
+    } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Todays Focus deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
+      logger.error("Arbor Todays Focus Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to draft today's focus", details: error.message });
     }
   });
 
@@ -768,7 +1353,7 @@ Return only JSON matching the schema.`;
   // and fails CLOSED (451) without an active grant — and, because requireConsent
   // reads `childId` from the body, the client MUST send childId or every call 451s.
   router.post("/vision", requireConsent(consentStore, "face_processing", (req) => !!req.body?.image), async (req, res) => {
-    const { image, mode = "observe", note, childProfile } = req.body;
+    const { image, mode = "observe", note, childProfile, language } = req.body;
     const parsed = parseDataUrl(image?.dataUrl ?? image);
     if (!parsed) {
       res.status(400).json({ error: "A base64 image data URL is required" });
@@ -797,6 +1382,9 @@ Return only JSON matching the schema.`;
 
     const isDoc = mode === "document";
     const guard = `IMAGE SAFETY GATE: Only analyze images relevant to a young child's development, wellbeing, environment, learning, artwork, or a child-related document. If the image is unrelated, a person other than in an ordinary family context, explicit, graphic, or otherwise outside parenting support, set "offTopic" to true and leave the other fields brief and empty. Never identify or judge people. Observations only — never a diagnosis.`;
+    // AIX-S1: mirror /digest's languageDirective — a Hebrew parent must get
+    // Hebrew observations/tryToday/summary back on the flagship vision surface.
+    const languageDirective = language === "he" ? "\nWrite every human-readable value in warm, natural Hebrew (עברית)." : "";
 
     const prompt = isDoc
       ? `${NON_DIAGNOSTIC_CONTRACT}
@@ -804,14 +1392,14 @@ ${guard}
 You can SEE the attached document photo. Read it (OCR) and extract what matters for this child's care.
 Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
 Parent note: "${typeof note === "string" ? note : ""}"
-Return JSON: offTopic, documentType, summary, keyPoints[], suggestedMemory[] (durable facts the parent could approve), questionsForProfessional[], handoffNote.`
+Return JSON: offTopic, documentType, summary, keyPoints[], suggestedMemory[] (durable facts the parent could approve), questionsForProfessional[], handoffNote.${languageDirective}`
       : `${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
 ${guard}
 You can SEE the attached photo. Describe only what is observable and relevant, then give gentle, non-diagnostic next steps.
 Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
 Parent note: "${typeof note === "string" ? note : ""}"
-Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avoid[], nonDiagnosticNote.`;
+Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avoid[], nonDiagnosticNote.${languageDirective}`;
 
     const schema = isDoc
       ? {
@@ -877,13 +1465,34 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
       res.status(503).json({ configured: false, error: "Neural TTS is not configured" });
       return;
     }
-    const { text, language } = req.body ?? {};
+    const { text, language, screenedToken } = req.body ?? {};
     if (!text || typeof text !== "string" || !text.trim()) {
       res.status(400).json({ error: "text is required" });
       return;
     }
+    const clipped = text.slice(0, 4000);
+    const lang: "en" | "he" = language === "he" ? "he" : "en";
     try {
-      const result = await screenAndSynthesizeSpeech(config, modelProvider, { text: text.slice(0, 4000), lang: language === "he" ? "he" : "en" });
+      // AI-V5 firewall condition 3: the synchronous lexical floor runs
+      // UNCONDITIONALLY on every /api/tts call — even with a valid screened
+      // token (belt for HMAC bugs).
+      const lexical = screenModelOutputLexical(clipped);
+      if (lexical.flagged) throw new UnsafeTtsOutputError(lexical);
+      // A valid short-TTL HMAC token (minted by /voice ONLY for sentences that
+      // passed its own cumulative screen, over these exact bytes + lang) skips
+      // ONLY the model re-screen. Absent / invalid / expired / text-altered →
+      // the FULL screen runs (fail closed) — 'already-screened' provenance is
+      // proven cryptographically, never client-asserted.
+      // AIR-8: with the boot registry present (production wiring), synthesis
+      // resolves through registry.get("speech_synthesis", ...).execute — the
+      // registry is the dispatch seam, and its adapter re-runs the lexical
+      // floor, so no branch reaches unscreened synthesis.
+      const ttsInput = { text: clipped, lang } as const;
+      const result = verifyTtsToken(screenedToken, clipped, lang)
+        ? await (aiCapabilityRegistry
+            ? dispatchSpeechSynthesis(aiCapabilityRegistry, config, ttsInput)
+            : synthesizeSpeech(config, ttsInput))
+        : await screenAndSynthesizeSpeech(config, modelProvider, ttsInput, aiCapabilityRegistry);
       res.json(result);
     } catch (error: any) {
       if (error instanceof UnsafeTtsOutputError) {
@@ -892,6 +1501,14 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
         return;
       }
       if (error instanceof TtsNotConfigured) {
+        res.status(503).json({ configured: false });
+        return;
+      }
+      // AIR-8: a registry missing the speech_synthesis adapter fails CLOSED —
+      // visible degrade to the browser SpeechSynthesis floor, never a silent
+      // fallback to a direct provider call.
+      if (error instanceof AiProviderError && error.code === "not_configured") {
+        logger.warn("Arbor TTS registry not_configured (fail closed)", { requestId: requestIdOf(req) });
         res.status(503).json({ configured: false });
         return;
       }
@@ -989,11 +1606,15 @@ ${cues ? `Loose appearance cues (stylize, do not copy literally): ${cues}.` : "U
 ${referenceImage ? "A reference photo is attached ONLY to capture general vibe (approximate hair colour, age). Produce a cartoon character inspired by it — never a realistic reproduction of the person." : ""}
 Framing: head-and-shoulders portrait, centered, simple soft background, warm and calm. Single character only. No text, no logos, no words drawn into the image.`;
 
+    // AIR-9: 60s image budget.
+    const budget = createRouteBudget(res, "image");
     try {
-      const image = await modelProvider.generateImage({
+      const image = await raceWithAbort(modelProvider.generateImage({
         prompt,
-        images: referenceImage ? [referenceImage] : undefined
-      });
+        images: referenceImage ? [referenceImage] : undefined,
+        budget: budget.budget
+      }), budget.signal);
+      budget.settle();
       // The reference photo (referenceImage) is intentionally discarded here — it is
       // never written to storage, logs, or the response.
       res.json({
@@ -1002,6 +1623,13 @@ Framing: head-and-shoulders portrait, centered, simple soft background, warm and
         source: referenceImage ? "photo" : "descriptor"
       });
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Avatar deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Avatar Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Couldn't create that avatar — please try again", details: error.message });
     }
@@ -1044,13 +1672,24 @@ ${referenceImage
   : "Feature a single friendly child character as the hero."}
 Gentle, non-scary, age-appropriate for ages 4-8. Calm, soft palette. No text, words, letters, or logos drawn in the image.`;
 
+    // AIR-9: 60s image budget.
+    const budget = createRouteBudget(res, "image");
     try {
-      const image = await modelProvider.generateImage({
+      const image = await raceWithAbort(modelProvider.generateImage({
         prompt,
-        images: referenceImage ? [referenceImage] : undefined
-      });
+        images: referenceImage ? [referenceImage] : undefined,
+        budget: budget.budget
+      }), budget.signal);
+      budget.settle();
       res.json({ dataUrl: `data:${image.mimeType};base64,${image.data}` });
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Scene deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Scene Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Couldn't illustrate this scene", details: error.message });
     }
@@ -1109,13 +1748,24 @@ Include 2-3 BIG, bold, stylized comic sound-effect words bursting in the scene w
 ${dialogueLine ? `Include ONE clean white speech bubble with a bold tail, containing the short, legible, friendly line: "${dialogueLine}".` : "Do not draw any speech bubbles or sentences — only the short sound-effect words."}
 Wholesome and age-appropriate for young children: confident, joyful and exciting, but NO real violence, weapons, blood, fear, or scary imagery. Keep all text short, correctly spelled, and clearly legible.`;
 
+    // AIR-9: 60s image budget.
+    const budget = createRouteBudget(res, "image");
     try {
-      const image = await modelProvider.generateImage({
+      const image = await raceWithAbort(modelProvider.generateImage({
         prompt,
-        images: referenceImage ? [referenceImage] : undefined
-      });
+        images: referenceImage ? [referenceImage] : undefined,
+        budget: budget.budget
+      }), budget.signal);
+      budget.settle();
       res.json({ dataUrl: `data:${image.mimeType};base64,${image.data}` });
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Comic deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Comic Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Couldn't create this comic", details: error.message });
     }

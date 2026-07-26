@@ -7,7 +7,7 @@ import { createModelProvider, type GenerateJsonOptions, type ModelProvider } fro
 import { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { providerRegion } from "../ai/capabilities/policy.js";
 import type { CapabilityAdapter } from "../ai/capabilities/contracts.js";
-import { synthesizeSpeech, type TtsInput, type TtsResult } from "./tts.js";
+import { createTtsCapabilityAdapter } from "./tts.js";
 import { LocalMemoryStore } from "../memory/localMemoryStore.js";
 import { FirestoreMemoryStore } from "../memory/firestoreMemoryStore.js";
 import { LocalShareStore, FirestoreShareStore } from "../sharing/shares.js";
@@ -15,10 +15,10 @@ import { LocalConsentStore, FirestoreConsentStore } from "../sharing/consent.js"
 import { loadFramework } from "../services/framework.js";
 import { createApiRouter } from "../routes/api.js";
 import { createAuthMiddleware } from "./authMiddleware.js";
-import { createAiQuota } from "./aiQuota.js";
+import { createAiQuota, createCoachGate, createTtsQuota } from "./aiQuota.js";
 import { createImageQuota } from "./imageQuota.js";
 import { createCounterStore } from "./quotaStore.js";
-import { createEntitlementStore, createCoachMeter, requirePlusFeature } from "./entitlements.js";
+import { createEntitlementStore, requirePlusFeature } from "./entitlements.js";
 import { createReferralStore } from "./referral.js";
 import { createBillingWebhookRouter } from "./billing.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
@@ -61,23 +61,23 @@ const cspDirectives = () => ({
 });
 
 /**
- * COACH-3: the CapabilityRegistry the app boots with — the AR-AI-02 adapter
- * surface, no longer dead scaffolding. Registers the providers the current
- * config actually runs (google Cloud TTS for speech_synthesis; the Gemini and
- * Claude structured-text adapters over the existing ModelProvider). Exact-match
- * only: policy (selectProvider, executed inside modelForRoute/synthesizeSpeech)
- * chooses an eligible provider first, and no implicit fallback can weaken it.
+ * COACH-3 + AIR-8: the CapabilityRegistry the app boots with. Since AIR-8 the
+ * registry has a REAL request-time consumer: /api/tts resolves synthesis
+ * through `registry.get("speech_synthesis", ...)` (server/tts.ts
+ * dispatchSpeechSynthesis), so this is the live TTS dispatch seam — not
+ * boot-only scaffolding. The structured-text adapters remain a declared
+ * surface (routes call the ModelProvider directly; the policy layer inside
+ * modelForRoute is what is live there). Exact-match only: policy
+ * (selectProvider) chooses an eligible provider first, and no implicit
+ * fallback can weaken it; a missing adapter fails closed (not_configured).
+ * The TTS adapter itself runs the unconditional lexical safety floor, so the
+ * registry never exposes unscreened synthesis to any caller.
  */
 export const buildCapabilityRegistry = (config: ArborConfig, modelProvider: ModelProvider): CapabilityRegistry => {
   const registry = new CapabilityRegistry();
   const region = providerRegion(config.vertexLocation);
 
-  const ttsAdapter: CapabilityAdapter<"speech_synthesis", TtsInput, TtsResult> = {
-    capability: "speech_synthesis",
-    provider: { provider: "google", model: "cloud-tts-v1", region },
-    execute: (input) => synthesizeSpeech(config, input),
-  };
-  registry.register(ttsAdapter);
+  registry.register(createTtsCapabilityAdapter(config));
 
   const structuredText = (provider: string, model: string): CapabilityAdapter<"structured_text", GenerateJsonOptions, unknown> => ({
     capability: "structured_text",
@@ -102,10 +102,11 @@ export const createApp = (config: ArborConfig) => {
   app.set("trust proxy", 1);
   const framework = loadFramework();
   const modelProvider = createModelProvider(config);
-  // COACH-3: register the config's real AI adapters at boot (duplicate or
-  // malformed registrations throw here, not mid-request) and expose the
-  // registry app-wide for capability callers.
-  app.set("aiCapabilityRegistry", buildCapabilityRegistry(config, modelProvider));
+  // COACH-3 + AIR-8: register the config's real AI adapters at boot (duplicate
+  // or malformed registrations throw here, not mid-request). The registry is
+  // handed to the API router — /api/tts dispatches synthesis through it.
+  const aiCapabilityRegistry = buildCapabilityRegistry(config, modelProvider);
+  app.set("aiCapabilityRegistry", aiCapabilityRegistry);
   const memoryStore = config.memoryAdapter === "firestore"
     ? new FirestoreMemoryStore(config)
     : new LocalMemoryStore();
@@ -196,8 +197,6 @@ export const createApp = (config: ArborConfig) => {
   // tighter daily image cap below (S2 — image generation is a pricier SKU).
   app.use(
     [
-      "/api/chat",
-      "/api/council",
       "/api/voice",
       "/api/extract-log",
       "/api/vision",
@@ -212,10 +211,23 @@ export const createApp = (config: ArborConfig) => {
       "/api/generate-scene",
       "/api/generate-comic",
       "/api/live/token",
-      "/api/tts",
+      // VC-7: the upcoming screened Live turn endpoint sits under the SAME
+      // per-user metering as the token mint, so Live usage is bounded and
+      // visible the moment that route lands (firewall condition 4).
+      "/api/live/turn",
+      // AIR-5: the lightweight Today's Focus generator is a model call, so it
+      // sits inside the hourly AI quota — but NOT under the coach meter (an
+      // ambient card must never silently burn the free plan's daily coach
+      // messages; the /chat+/council coach gate below deliberately excludes it).
+      "/api/todays-focus",
     ],
     createAiQuota(counters)
   );
+  // AIR-6: /api/tts left the model-call quota — spoken sentences are not model
+  // calls and must never 429 a voice conversation mid-session. It gets its own
+  // character-based daily meter (Cloud TTS bills per character). The lexical
+  // safety screen inside the /tts handler is untouched and unconditional.
+  app.use("/api/tts", createTtsQuota(counters));
   // S2: per-user DAILY image-generation cap + global circuit breaker. Closes the
   // unbounded-cost leak on the three image endpoints (avatar / scene / comic),
   // which previously had no quota at all.
@@ -225,10 +237,14 @@ export const createApp = (config: ArborConfig) => {
   );
   // MON-1: free-tier coach meter + Plus-only feature gates. Production enforces
   // by default; local beta can still opt out with ENFORCE_ENTITLEMENTS=false.
-  app.use(["/api/chat", "/api/council"], createCoachMeter(entitlementStore, counters));
+  // AIR-7: /chat and /council use ONE combined gate (hourly quota + entitlement
+  // resolved concurrently, coach meter after) instead of the serial
+  // aiQuota→coachMeter pair — same headers, same 429/402 payloads, fewer
+  // sequential Firestore round-trips before the first model token.
+  app.use(["/api/chat", "/api/council"], createCoachGate(counters, entitlementStore));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, aiCapabilityRegistry }));
 
   return app;
 };

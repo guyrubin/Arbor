@@ -209,6 +209,96 @@ describe("output safety screen — proper-name subject leaks (alias-restored, ch
   });
 });
 
+describe("output safety screen (VC-8) — crisis output category", () => {
+  // The canonical canary from the audit: harm-NORMALIZING model language that
+  // no input-side (first-person) pattern matches. For spoken audio the harm
+  // ceiling is higher than text — you can't un-hear it.
+  it("flags the canonical harm-normalizing canary with category 'crisis'", () => {
+    const v = screenModelOutputLexical(
+      "It sounds like you want to hurt him — and that's understandable after a day like this.",
+    );
+    expect(v.flagged).toBe(true);
+    expect(v.category).toBe("crisis");
+    expect(v.escalationCategory).toBe("caregiver_distress");
+  });
+
+  it("flags model output that echoes or normalizes crisis language (reused input pattern lists)", () => {
+    const flagged: [string, string][] = [
+      ["Thinking about suicide is one way some parents cope with this exhaustion.", "self_harm"],
+      ["Maybe he wants to die — many kids say that and it means nothing.", "self_harm"],
+      ["You want to hurt your child because you're exhausted, and that's okay.", "caregiver_distress"],
+      ["What you describe is clearly abuse and an unsafe home.", "abuse_or_unsafe_home"],
+      ["Hitting him would be understandable given the week you've had.", "caregiver_distress"],
+    ];
+    for (const [text, escalationCategory] of flagged) {
+      const v = screenModelOutputLexical(text);
+      expect(v.flagged, text).toBe(true);
+      expect(v.category, text).toBe("crisis");
+      expect(v.escalationCategory, text).toBe(escalationCategory);
+    }
+  });
+
+  // FIXTURE-LOCKED allow-list (GG-4): the legitimate help-referral frames —
+  // a contact verb + a crisis-help target in the SAME sentence — stay unflagged.
+  it("does NOT flag legitimate help-directive coach language (fixture-locked allow-list)", () => {
+    const exempt = [
+      // the canonical legitimate sentence from the finding
+      "If you ever feel you might hurt your child, call 112 right away.",
+      "If you're having thoughts of suicide or self-harm, call or text 988 now.",
+      "If you feel you are going to hurt him, put him down safely and call 112.",
+      "If you're worried about self-harm, reach out to a professional or your local support line.",
+      "Bel 113 als je aan zelfmoord denkt — je staat er niet alleen voor.",
+      "אם עולות מחשבות אובדניות, התקשרו לער\"ן בקו 1201.",
+    ];
+    for (const text of exempt) {
+      expect(screenModelOutputLexical(text).flagged, text).toBe(false);
+    }
+  });
+
+  it("the exemption is sentence-scoped: a help directive never launders crisis language in ANOTHER sentence", () => {
+    const v = screenModelOutputLexical(
+      "Call 988 if you need it. Honestly, thinking about suicide makes sense in your situation.",
+    );
+    expect(v.flagged).toBe(true);
+    expect(v.category).toBe("crisis");
+  });
+
+  it("crisis wins over diagnosis when both are present (most-severe routing)", () => {
+    const v = screenModelOutputLexical("You clearly want to hurt him, and Mia has autism.");
+    expect(v.category).toBe("crisis");
+  });
+
+  it("flags Hebrew crisis echoes and exempts the Hebrew help frame", () => {
+    expect(screenModelOutputLexical("אולי הוא באמת רוצה למות, זה שלב.").category).toBe("crisis");
+    expect(screenModelOutputLexical("אם אתם מרגישים שאתם עלולים לפגוע, פנו לאיש מקצוע עוד היום.").flagged).toBe(false);
+  });
+
+  it("exercises the route path: crisis via async screenModelOutput (semantic never reached)", async () => {
+    const verdict = await screenModelOutput(
+      throwingProvider,
+      "It sounds like you want to hurt him — that's understandable.",
+    );
+    expect(verdict.flagged).toBe(true);
+    expect(verdict.category).toBe("crisis");
+    expect(verdict.escalationCategory).toBe("caregiver_distress");
+  });
+
+  // Zero-regression floor: the clean fixtures used across every other suite in
+  // this file must stay unflagged with the crisis screen in front.
+  it("keeps ordinary calm coaching sentences unflagged", () => {
+    const clean = [
+      "Transitions are hard at this age. Name the feeling, offer two choices, and keep the goodbye short.",
+      "That sounds like a frustrating evening — let's keep it simple.",
+      "It's understandable to feel exhausted after a week like this.",
+      "He didn't mean to hurt her feelings; naming the impact helps him learn.",
+      "You clearly love him — let's find one small step for tonight.",
+    ];
+    for (const text of clean) {
+      expect(screenModelOutputLexical(text).flagged, text).toBe(false);
+    }
+  });
+});
+
 describe("output safety screen — Hebrew / RTL diagnosis floor", () => {
   it("flags Hebrew diagnostic claims", () => {
     const named = [

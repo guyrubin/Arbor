@@ -117,9 +117,8 @@ export default function LanguageLabTab() {
             action={
               <button
                 onClick={() =>
-                  askCoach(
-                    `Give me a gentle one-week plan to build ${name}'s (age ${childProfile.age}) confidence in ${target}, with ${home || "the home language"} as the home language. Keep it low-pressure, play-based, and non-diagnostic — a few minutes a day.`
-                  )
+                  // AIX-S4: seed via i18n — HE parents see a Hebrew prompt in the chat box.
+                  askCoach(t("seed.langWeekPlan", { name, age: childProfile.age, target, home: home || t("lang.theHomeLang") }))
                 }
                 className="inline-flex items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
@@ -144,9 +143,7 @@ export default function LanguageLabTab() {
                     <span className="break-words text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{item.lens}</span>
                     <button
                       onClick={() =>
-                        askCoach(
-                          `Help me run the "${item.title}" ${target} activity with ${name} (age ${childProfile.age}) today. Give me a 3-step script and one way to make it easier if they resist.`
-                        )
+                        askCoach(t("seed.langActivity", { title: item.title, target, name, age: childProfile.age }))
                       }
                       className="inline-flex items-center gap-1 text-[10px] font-bold transition"
                       style={{ color: "var(--arbor-muted)" }}

@@ -1,0 +1,335 @@
+/**
+ * liveTurnGuard (VC-1/VC-2/VC-3/VC-5) — the fail-closed Live safety spine.
+ *
+ * Pins, per the firewall CONDITIONS:
+ *  - buffered audio releases ONLY after lexical pass AND a server "continue"
+ *    (never optimistically), in order;
+ *  - the existing outputScreen fixtures ("Noah is autistic and needs
+ *    therapy.", "3 mg of melatonin") emit ZERO audio as a turn transcript;
+ *  - a self_harm user transcript verdict halts the session BEFORE onCrisis
+ *    renders;
+ *  - screen unavailability (rejection, non-200 → rejection, timeout) drops the
+ *    turn and fails closed — and there is structurally NO catch-and-continue;
+ *  - transcription absence (turn end with audio but no transcript, or the
+ *    mid-turn watchdog) closes the session;
+ *  - released turns land in chatMessages via the COACH-2 reducers and survive
+ *    settle (no new capture path).
+ */
+import { describe, it, expect, vi } from "vitest";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { createLiveTurnGuard, type LiveTurnGuardDeps, type LiveTurnVerdict } from "./liveTurnGuard";
+import { screenModelOutputLexical } from "../safety/outputScreenLexical";
+import { screenModelOutputLexical as serverPathLexical } from "../safety/outputScreen";
+import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "./voiceTranscript";
+import type { ChatMessage } from "../context/ArborContext";
+
+const CONTINUE: LiveTurnVerdict = { action: "continue" };
+
+type Harness = {
+  guard: ReturnType<typeof createLiveTurnGuard>;
+  calls: string[];
+  played: string[];
+  deps: LiveTurnGuardDeps;
+};
+
+function makeHarness(overrides: Partial<LiveTurnGuardDeps> = {}): Harness {
+  const calls: string[] = [];
+  const played: string[] = [];
+  const deps: LiveTurnGuardDeps = {
+    screenTurn: vi.fn(async () => CONTINUE),
+    screenLexical: screenModelOutputLexical,
+    sink: (b64) => { calls.push(`sink:${b64}`); played.push(b64); },
+    halt: () => calls.push("halt"),
+    onUserTurn: (text) => calls.push(`user:${text}`),
+    onModelTurn: (text) => calls.push(`model:${text}`),
+    onCrisis: (v) => calls.push(`crisis:${v.category}`),
+    onBlocked: (v) => calls.push(`blocked:${v.category}`),
+    onFailClosed: (reason) => calls.push(`failClosed:${reason}`),
+    timeoutMs: 200,
+    transcriptionSilenceMs: 10_000,
+    ...overrides,
+  };
+  return { guard: createLiveTurnGuard(deps), calls, played, deps };
+}
+
+describe("liveTurnGuard — clean turns release in order (VC-1)", () => {
+  it("buffers audio and releases it in order only after lexical + server pass", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("a1");
+    h.guard.pushAudio("a2");
+    h.guard.pushOutputTranscription("Try naming the feeling ");
+    h.guard.pushAudio("a3");
+    h.guard.pushOutputTranscription("and keeping the goodbye short.");
+    expect(h.played).toEqual([]); // nothing plays before the turn settles
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual(["a1", "a2", "a3"]);
+    expect(h.deps.screenTurn).toHaveBeenCalledWith(
+      "model",
+      "Try naming the feeling and keeping the goodbye short.",
+    );
+    expect(h.calls).toContain("model:Try naming the feeling and keeping the goodbye short.");
+    expect(h.guard.halted).toBe(false);
+  });
+
+  it("a released turn lands in chatMessages via the COACH-2 reducers and survives settle", async () => {
+    let messages: ChatMessage[] = [];
+    const h = makeHarness({
+      onUserTurn: (text) => { messages = appendVoiceUser(messages, text); },
+      onModelTurn: (text) => { messages = settleVoiceTurn(applyVoiceDelta(messages, text)); },
+    });
+    h.guard.pushInputTranscription("Bedtime takes an hour with lots of resistance");
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription("Try a shorter wind-down tonight.");
+    await h.guard.endModelTurn();
+    expect(messages).toEqual([
+      { sender: "user", text: "Bedtime takes an hour with lots of resistance" },
+      { sender: "ai", text: "Try a shorter wind-down tonight." },
+    ]);
+    // Settled: no voiceLive flag survives → the normal conversationsCol upsert
+    // persists these exactly like typed chat (no new capture path).
+    expect((messages[1] as { voiceLive?: boolean }).voiceLive).toBeUndefined();
+  });
+});
+
+describe("liveTurnGuard — lexical floor blocks before a single sample (VC-1)", () => {
+  it.each([
+    ["Noah is autistic and needs therapy.", "diagnosis"],
+    ["3 mg of melatonin", "medication"],
+  ])("fixture %s emits ZERO audio and yields the blocked fallback", async (fixture, category) => {
+    const h = makeHarness();
+    h.guard.pushAudio("a1");
+    h.guard.pushAudio("a2");
+    h.guard.pushOutputTranscription(fixture);
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    expect(h.calls).toContain(`blocked:${category}`);
+    // halt (session close) strictly precedes the blocked render.
+    expect(h.calls.indexOf("halt")).toBeLessThan(h.calls.indexOf(`blocked:${category}`));
+    expect(h.guard.halted).toBe(true);
+    // The flagged turn is still sent for the server-side audit log (VC-3).
+    expect(h.deps.screenTurn).toHaveBeenCalledWith("model", fixture);
+  });
+
+  it("the guard's lexical import is the same function the server path re-exports", () => {
+    expect(serverPathLexical).toBe(screenModelOutputLexical);
+  });
+
+  it("a server stop_blocked verdict also drops the audio (server is authoritative)", async () => {
+    const h = makeHarness({
+      screenTurn: async () => ({ action: "stop_blocked", category: "semantic_unsafe", blockedMarkdown: "### Let's pause here" }),
+    });
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription("A perfectly lexically-clean sentence.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    expect(h.calls).toContain("blocked:semantic_unsafe");
+    expect(h.guard.halted).toBe(true);
+  });
+});
+
+describe("liveTurnGuard — crisis-category MODEL output (VC-8)", () => {
+  it("a harm-normalizing model transcript takes the CRISIS stop path (never blocked), zero audio", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription(
+      "It sounds like you want to hurt him — and that's understandable after a day like this.",
+    );
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    // The lexical crisis verdict routes to onCrisis with the ESCALATION
+    // category (resources rendering path), not to onBlocked.
+    expect(h.calls).toContain("crisis:caregiver_distress");
+    expect(h.calls.filter((c) => c.startsWith("blocked:"))).toEqual([]);
+    // halt (session close) strictly precedes the crisis render.
+    expect(h.calls.indexOf("halt")).toBeLessThan(h.calls.indexOf("crisis:caregiver_distress"));
+    expect(h.guard.halted).toBe(true);
+    // The flagged turn is still sent for the server-side audit log (VC-3).
+    expect(h.deps.screenTurn).toHaveBeenCalledWith(
+      "model",
+      "It sounds like you want to hurt him — and that's understandable after a day like this.",
+    );
+  });
+
+  it("a server stop_crisis verdict on a lexically-clean model turn also takes the crisis path", async () => {
+    const h = makeHarness({
+      screenTurn: async (role) =>
+        role === "model"
+          ? { action: "stop_crisis", category: "self_harm", resourcesMarkdown: "### Get help now\n**988**", spokenText: "redirect" }
+          : CONTINUE,
+    });
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription("A perfectly lexically-clean sentence.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    expect(h.calls).toContain("crisis:self_harm");
+    expect(h.guard.halted).toBe(true);
+  });
+
+  it("the legitimate help-referral model sentence releases audio (allow-list)", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription("If you ever feel you might hurt your child, call 112 right away.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual(["a1"]);
+    expect(h.guard.halted).toBe(false);
+  });
+});
+
+describe("liveTurnGuard — user crisis turns (VC-2)", () => {
+  it("a self_harm verdict halts the session BEFORE onCrisis renders, zero audio", async () => {
+    const h = makeHarness({
+      screenTurn: async (role) =>
+        role === "user"
+          ? { action: "stop_crisis", category: "self_harm", resourcesMarkdown: "### Get help now\n**988**", spokenText: "redirect" }
+          : CONTINUE,
+    });
+    h.guard.pushInputTranscription("I want to die");
+    h.guard.pushAudio("a1"); // model starts answering — flushes the user turn
+    h.guard.pushOutputTranscription("clean words");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]); // the model's answer to a crisis never plays
+    expect(h.calls).toContain("crisis:self_harm");
+    expect(h.calls.indexOf("halt")).toBeLessThan(h.calls.indexOf("crisis:self_harm"));
+    // The parent's words were persisted (same ordering as the browser loop).
+    expect(h.calls).toContain("user:I want to die");
+    expect(h.guard.halted).toBe(true);
+  });
+});
+
+describe("liveTurnGuard — fail-closed contract (VC-5)", () => {
+  it("a rejected /live/turn (500) drops the turn, halts, degrades — zero further audio", async () => {
+    const h = makeHarness({ screenTurn: vi.fn(async () => { throw new Error("500"); }) });
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription("Some clean sentence.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    expect(h.calls).toContain("failClosed:screen-unavailable");
+    expect(h.calls.indexOf("halt")).toBeLessThan(h.calls.indexOf("failClosed:screen-unavailable"));
+    // No code path resumes: subsequent chunks are dropped silently.
+    h.guard.pushAudio("a2");
+    h.guard.pushOutputTranscription("More text.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    expect(h.guard.halted).toBe(true);
+  });
+
+  it("a hung /live/turn times out (~3s contract; test-scaled) and fails closed", async () => {
+    const h = makeHarness({
+      screenTurn: () => new Promise(() => { /* never resolves */ }),
+      timeoutMs: 20,
+    });
+    h.guard.pushAudio("a1");
+    h.guard.pushOutputTranscription("Some clean sentence.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    expect(h.calls).toContain("failClosed:screen-unavailable");
+  });
+
+  it("turn completes with audio but NO transcription → flagged by construction (VC-1 cond 1)", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("a1");
+    h.guard.pushAudio("a2");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual([]);
+    expect(h.calls).toContain("failClosed:transcription-missing");
+    expect(h.deps.screenTurn).not.toHaveBeenCalled(); // nothing to screen — never release
+  });
+
+  it("transcription ceasing to arrive MID-session trips the watchdog and closes", async () => {
+    const h = makeHarness({ transcriptionSilenceMs: 20 });
+    h.guard.pushAudio("a1"); // audio flowing, transcription never arrives
+    await new Promise((r) => setTimeout(r, 60));
+    expect(h.played).toEqual([]);
+    expect(h.calls).toContain("failClosed:transcription-missing");
+    expect(h.guard.halted).toBe(true);
+  });
+
+  it("structural: no catch-and-continue — the single sink site sits behind the release gate", () => {
+    const src = fs.readFileSync(path.join(__dirname, "liveTurnGuard.ts"), "utf8");
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\s*\/\/[^\n"']*$/gm, "");
+    // Exactly ONE deps.sink call site in the whole module (the release loop).
+    expect(code.match(/deps\.sink\(/g)?.length).toBe(1);
+    // The release loop is unreachable without a server "continue": the guard
+    // returns out of endModelTurn on every non-continue action before it.
+    const releaseIdx = code.indexOf("deps.sink(");
+    const gateIdx = code.indexOf('verdict.action !== "continue"');
+    expect(gateIdx).toBeGreaterThan(-1);
+    expect(gateIdx).toBeLessThan(releaseIdx);
+    // Every catch around the server verdict fails closed — no catch block
+    // anywhere in the module releases audio or continues the session.
+    const catchBodies = [...code.matchAll(/catch\s*(?:\([^)]*\))?\s*\{([^}]*)\}/g)].map((m) => m[1]);
+    expect(catchBodies.length).toBeGreaterThan(0);
+    for (const body of catchBodies) {
+      expect(body).not.toContain("sink");
+      expect(body).not.toContain("continue");
+    }
+    // The verdict-catch specifically routes to failClosed.
+    expect(code).toMatch(/catch\s*\{\s*failClosed\("screen-unavailable"\);\s*return;\s*\}/);
+  });
+});
+
+describe("liveTurnGuard.interrupt — AI-V2(b) server-VAD barge-in", () => {
+  it("drops the in-flight turn's unreleased buffer and drives onInterrupt, session stays OPEN", async () => {
+    const h = makeHarness({ onInterrupt: undefined });
+    const interrupts: number[] = [];
+    const h2 = makeHarness({ onInterrupt: () => interrupts.push(1) });
+    // Buffered (unscreened) audio + partial transcript, then the parent talks over.
+    h2.guard.pushAudio("a1");
+    h2.guard.pushOutputTranscription("Try naming ");
+    h2.guard.pushAudio("a2");
+    h2.guard.interrupt();
+    expect(interrupts).toEqual([1]); // retained-source stop routed via the guard
+    expect(h2.played).toEqual([]); // the cut-off turn NEVER plays
+    expect(h2.guard.halted).toBe(false); // barge-in is not a stop — the parent is talking
+    expect(h2.calls).not.toContain("halt");
+    // The interrupted turn is fully discarded — a late turnComplete releases nothing.
+    await h2.guard.endModelTurn();
+    expect(h2.played).toEqual([]);
+    expect(h2.calls.filter((c) => c.startsWith("model:"))).toEqual([]);
+    // ...and a guard without onInterrupt tolerates interrupt() (optional dep).
+    h.guard.interrupt();
+    expect(h.guard.halted).toBe(false);
+  });
+
+  it("the NEXT turn after an interrupt screens and releases normally", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("cut");
+    h.guard.pushOutputTranscription("half a sen");
+    h.guard.interrupt();
+    h.guard.pushAudio("b1");
+    h.guard.pushOutputTranscription("Short goodbyes help.");
+    await h.guard.endModelTurn();
+    expect(h.played).toEqual(["b1"]);
+    expect(h.deps.screenTurn).toHaveBeenCalledWith("model", "Short goodbyes help.");
+  });
+
+  it("keeps the parent's input transcription across an interrupt (their words persist)", async () => {
+    const h = makeHarness();
+    h.guard.pushAudio("cut"); // model mid-answer
+    h.guard.pushInputTranscription("what about "); // parent starts talking over
+    h.guard.interrupt(); // server VAD barge-in
+    h.guard.pushInputTranscription("mornings?");
+    h.guard.pushAudio("b1"); // next model turn begins → flushes the user turn
+    h.guard.pushOutputTranscription("Mornings: keep the routine visual.");
+    await h.guard.endModelTurn();
+    expect(h.calls).toContain("user:what about mornings?");
+  });
+
+  it("interrupt after halt is a no-op (no onInterrupt on a dead session)", () => {
+    const interrupts: number[] = [];
+    const h = makeHarness({ onInterrupt: () => interrupts.push(1) });
+    h.guard.dispose();
+    h.guard.interrupt();
+    expect(interrupts).toEqual([]);
+  });
+
+  it("clears the transcription watchdog with the dropped buffer (no late failClosed)", async () => {
+    const h = makeHarness({ transcriptionSilenceMs: 20 });
+    h.guard.pushAudio("a1"); // arms the watchdog (audio, no transcription yet)
+    h.guard.interrupt();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(h.calls).not.toContain("failClosed:transcription-missing");
+    expect(h.guard.halted).toBe(false);
+  });
+});

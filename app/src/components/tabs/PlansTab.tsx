@@ -194,7 +194,7 @@ export default function PlansTab() {
                   <button
                     type="button"
                     onClick={() => {
-                      seedCoach({ prompt: `Regarding the Action Plan: "${plan.title}". Let's formulate two additional specific co-regulation dialogue scripts dealing with the child's preoperational language-switching triggers.`, lens: "Bowlby's Attachment Model", source: "plans-coreg" });
+                      seedCoach({ prompt: t("seed.planCoreg", { title: plan.title }), lens: "Bowlby's Attachment Model", source: "plans-coreg" });
                     }}
                     className="text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
                     style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}

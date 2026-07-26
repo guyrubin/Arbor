@@ -171,6 +171,9 @@ export interface CouncilTake {
 }
 
 export interface CoachContract {
+  /** ASK-1/AIR-1: leading parent-facing prose (empathic opening + heart of the
+   *  answer) — streamed as screened sentence deltas before the cards settle. */
+  text?: string;
   riskLevel: string;
   ageBand: string;
   domains: DevelopmentalDomainId[];
@@ -183,6 +186,10 @@ export interface CoachContract {
   frameRouting: FrameRouting;
   memoryProposals: { fact: string; source: string; retention: string }[];
   handoffNotes: { teacher: string; professional: string };
+  /** ASK-4: anticipated next questions (2-3 short strings, localized via the
+   *  languageDirective; zod-capped server-side and screened via
+   *  renderCoachResponse). Client falls back to the static trio when absent. */
+  followUps?: string[];
   /** Knowledge-card IDs used to ground this answer (populated by the server). */
   sourceCardsUsed?: string[];
   /** COACH-6: resolved source-card metadata (real title + card type from the
@@ -190,6 +197,10 @@ export interface CoachContract {
    *  sourceCardsUsed, which stays for compatibility; ids missing here fall
    *  back to slug rendering. */
   sourceCards?: { id: string; title: string; type: string }[];
+  /** ASK-6: server-backfilled integer COUNT of parent-approved memory facts
+   *  that grounded this answer — a count only (clinical firewall: never fact
+   *  content, never a percentage/confidence figure). */
+  approvedMemoryFactsUsed?: number;
 }
 
 export interface BehaviorLog {

@@ -18,13 +18,21 @@
  * layer adds no new un-screened surface.
  */
 
+import { getAiLanguage } from "./api";
+
 export type VoiceEngine = "basic" | "natural";
 export type VoiceState = { speaking: boolean; engine: VoiceEngine };
 export type SpeakHandlers = { onStart?: () => void; onEnd?: () => void; onError?: () => void };
 
+/** Handle returned by a neural synth. `prefetched` = the audio was already
+ *  fetched before this utterance started (AI-V5 sentence prefetch), so the
+ *  TTFB watchdog — which budgets from FETCH start — has already been paid and
+ *  must not be re-armed against playback start. */
+export type NaturalSynthHandle = { stop: () => void; prefetched?: boolean };
+
 /** A registered neural synth: plays `text`, drives the handlers, returns a stop handle
  *  (or null to decline, e.g. when the backend is unavailable → caller uses the floor). */
-export type NaturalSynth = (text: string, handlers: SpeakHandlers) => { stop: () => void } | null;
+export type NaturalSynth = (text: string, handlers: SpeakHandlers) => NaturalSynthHandle | null;
 
 type Listener = (state: VoiceState) => void;
 
@@ -109,8 +117,64 @@ function stopActivePlayback(): void {
   }
 }
 
+/* ── AI-V4: language + voice selection for the browser floor ────────────────
+ * The floor used to ship rate 0.92 with no utterance.lang and no voice pick —
+ * robotic in EN and, worse, Hebrew replies spoken by the browser's DEFAULT
+ * (usually English) voice. Now every utterance carries the session language
+ * and the best matching voice from getVoices(), preferring local
+ * natural/neural-named voices. The pick is cached per language and
+ * invalidated on the async `voiceschanged` event (many engines populate the
+ * voice list late). */
+const VOICE_LANG_CODES: Record<"en" | "he", string> = { en: "en-US", he: "he-IL" };
+
+const voicePickCache = new Map<string, SpeechSynthesisVoice | null>();
+let voicesListenerArmed = false;
+
+/** Test seam: clear the per-language voice pick cache. */
+export function resetVoicePickCacheForTest(): void {
+  voicePickCache.clear();
+}
+
+function pickVoiceFor(langCode: string): SpeechSynthesisVoice | null {
+  if (!voiceSupported()) return null;
+  const synth = window.speechSynthesis as SpeechSynthesis & {
+    addEventListener?: (type: string, fn: () => void) => void;
+  };
+  if (!voicesListenerArmed) {
+    voicesListenerArmed = true;
+    try {
+      synth.addEventListener?.("voiceschanged", () => voicePickCache.clear());
+    } catch {
+      /* optional — some engines lack the event */
+    }
+  }
+  const cached = voicePickCache.get(langCode);
+  if (cached !== undefined) return cached;
+  let voices: SpeechSynthesisVoice[] = [];
+  try {
+    voices = synth.getVoices?.() ?? [];
+  } catch {
+    /* treat as no voices yet */
+  }
+  const wanted = langCode.toLowerCase();
+  const prefix = wanted.slice(0, 2);
+  const norm = (v: SpeechSynthesisVoice) => (v.lang || "").toLowerCase().replace("_", "-");
+  const score = (v: SpeechSynthesisVoice) =>
+    (/(natural|neural|premium|enhanced)/i.test(v.name || "") ? 4 : 0) +
+    (v.localService ? 2 : 0) +
+    (norm(v) === wanted ? 1 : 0);
+  const best =
+    voices
+      .filter((v) => norm(v).startsWith(prefix))
+      .sort((a, b) => score(b) - score(a))[0] ?? null;
+  // Never cache a miss against an EMPTY list — the async voiceschanged event
+  // may still deliver the real voices.
+  if (voices.length) voicePickCache.set(langCode, best);
+  return best;
+}
+
 /** Browser `SpeechSynthesis` floor. Returns `id` on success, 0 if it could not start. */
-function startBrowser(id: number, text: string, handlers: SpeakHandlers): number {
+function startBrowser(id: number, text: string, handlers: SpeakHandlers, lang: "en" | "he"): number {
   if (!voiceSupported()) {
     if (isActive(id)) {
       activeId = 0;
@@ -123,7 +187,12 @@ function startBrowser(id: number, text: string, handlers: SpeakHandlers): number
     return 0;
   }
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.92;
+  // AI-V4: session language + best matching voice, natural rate.
+  const langCode = VOICE_LANG_CODES[lang] ?? VOICE_LANG_CODES.en;
+  utterance.lang = langCode;
+  const voice = pickVoiceFor(langCode);
+  if (voice) utterance.voice = voice;
+  utterance.rate = 1.0;
   utterance.pitch = 1;
   utterance.onstart = () => {
     if (isActive(id)) {
@@ -166,7 +235,7 @@ function startBrowser(id: number, text: string, handlers: SpeakHandlers): number
 }
 
 /** Neural engine with a TTFB watchdog. Returns true if it took ownership of `id`. */
-function startNatural(id: number, text: string, handlers: SpeakHandlers): boolean {
+function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "en" | "he"): boolean {
   let started = false;
   let fellBack = false;
   const fallback = () => {
@@ -182,7 +251,7 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers): boolea
       activeNaturalStop = null;
     }
     setVoiceEngine("basic"); // degrade the session to the floor
-    startBrowser(id, text, handlers); // re-dispatch THIS utterance
+    startBrowser(id, text, handlers, lang); // re-dispatch THIS utterance
   };
 
   const handle = naturalSynth!(text, {
@@ -222,9 +291,16 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers): boolea
   activeNaturalStop = handle.stop;
   speaking = true;
   emit();
-  ttfbTimer = setTimeout(() => {
-    if (!started) fallback();
-  }, NATURAL_TTFB_MS);
+  // AI-V5: the watchdog budgets time-to-first-byte from FETCH start. For a
+  // prefetched sentence the fetch started (and finished) while the previous
+  // sentence was playing, so re-arming the timer against playback start would
+  // spuriously degrade a healthy neural session mid-answer. Errors on a
+  // prefetched buffer still fall back via onError (started=false → fallback).
+  if (!handle.prefetched) {
+    ttfbTimer = setTimeout(() => {
+      if (!started) fallback();
+    }, NATURAL_TTFB_MS);
+  }
   return true;
 }
 
@@ -233,8 +309,12 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers): boolea
  * start). Starting a new utterance interrupts any prior one. `onEnd` fires only on
  * natural completion — never when superseded or stopped — so a sentence pump can
  * chain safely without double-firing on interruption.
+ *
+ * AI-V4: `lang` defaults to the session AI language (getAiLanguage), and is
+ * threaded to the browser floor so utterance.lang + the voice pick always
+ * match the text — a Hebrew reply is never rendered by an English voice.
  */
-export function speakText(text: string, handlers: SpeakHandlers = {}): number {
+export function speakText(text: string, handlers: SpeakHandlers = {}, lang: "en" | "he" = getAiLanguage()): number {
   const trimmed = text.trim();
   const canNatural = engine === "natural" && !!naturalSynth;
   if (!trimmed || (!canNatural && !voiceSupported())) {
@@ -245,8 +325,8 @@ export function speakText(text: string, handlers: SpeakHandlers = {}): number {
   activeId = id; // own BEFORE interrupting, so a prior callback can't claim completion
   stopActivePlayback();
 
-  if (canNatural && startNatural(id, trimmed, handlers)) return id;
-  return startBrowser(id, trimmed, handlers);
+  if (canNatural && startNatural(id, trimmed, handlers, lang)) return id;
+  return startBrowser(id, trimmed, handlers, lang);
 }
 
 /** Stop all spoken output immediately (barge-in / navigation / unmount). */

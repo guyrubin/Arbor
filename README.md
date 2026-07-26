@@ -46,7 +46,7 @@ The production-direction Arbor app now lives in `app/`. It keeps the AI Studio i
 
 - `server.ts` is a thin bootstrapper; API, model, memory, safety, contracts, config, and server wiring live under `app/src/`.
 - `MODEL_PROVIDER=gemini_dev` is allowed for local development; `ARBOR_ENV=prod` requires `MODEL_PROVIDER=vertex`.
-- `VERTEX_MODEL_CHAT` defaults to `claude-3-5-sonnet@anthropic`, normalized to the Anthropic publisher model id for Vertex API calls.
+- `VERTEX_MODEL_CHAT` defaults to `claude-sonnet-5@anthropic`, normalized to the Anthropic publisher model id for Vertex API calls.
 - `MEMORY_ADAPTER=local` is allowed for local development; `ARBOR_ENV=prod` requires `MEMORY_ADAPTER=firestore`.
 - `/api/chat` retrieves approved child memory plus Arbor AI Wiki source cards, then returns structured coach data with Six Frames routing and `sourceCardsUsed`.
 - `/api/architecture/knowledge` reports how many Arbor AI Wiki cards were loaded in the deployed runtime.

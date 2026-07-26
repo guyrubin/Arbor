@@ -42,6 +42,19 @@ export function citationRows(contract: CoachContract): CitationRow[] {
 }
 
 /**
+ * Pure helper (ASK-6): the calm memory-visibility footer label. COUNT ONLY —
+ * the clinical firewall shape: never fact content, never a percentage or
+ * confidence figure. Empty string when nothing grounded the answer, so no
+ * false "uses your memory" claim renders on ungrounded answers.
+ * Exported so tests can cover it without mounting the full component.
+ */
+export function memoryFooterLabel(n: number | undefined, lang: UiLang = "en"): string {
+  if (typeof n !== "number" || n <= 0) return "";
+  if (n === 1) return translate(lang, "coach.memory.grounded.one");
+  return translate(lang, "coach.memory.grounded", { n });
+}
+
+/**
  * Pure helper: presentation tier for the "Reach out for help if" footer.
  * Low (or absent) risk → "quiet": a calm, collapsed disclosure so routine
  * questions don't read as alarms. Anything else — including unrecognized
@@ -64,12 +77,11 @@ export function escalationTier(riskLevel?: string): "quiet" | "prominent" {
 // Risk-tone verdict palette removed: Arbor renders counts and observations, never a graded
 // child risk verdict on a parent-facing surface (clinical firewall). See council 2026-07-18.
 
-// Six-frame routing chip labels — i18n keys (COACH-1); raw frame ids fall back to
-// themselves so an unknown frame key never renders blank.
-const FRAME_LABEL_KEYS: Record<string, string> = {
-  aim: "coach.frame.aim", twoAxes: "coach.frame.twoAxes", story: "coach.frame.story",
-  shadow: "coach.frame.shadow", marriage: "coach.frame.marriage", shepherd: "coach.frame.shepherd",
-};
+// ASK-3: the six-frame routing panel is GONE from the parent render — frame
+// ids ("shadow", "marriage", "shepherd") are internal orchestration vocabulary,
+// pure noise on a parent surface. frameRouting stays in the contract for
+// telemetry/evals (and inside the screened renderCoachResponse text) — it is
+// simply never rendered here.
 
 function Panel({ icon, title, tint, children, action }: {
   icon: React.ReactNode; title: string; tint: string; children: React.ReactNode; action?: React.ReactNode;
@@ -87,7 +99,7 @@ function Panel({ icon, title, tint, children, action }: {
   );
 }
 
-export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff }: {
+export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff, onManageMemory }: {
   contract: CoachContract;
   lens?: string;
   council?: CouncilTake[];
@@ -95,11 +107,17 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   onSaveToPlan: (topic: string) => void;
   onCreateLog: () => void;
   onAddToHandoff: (note: string) => void;
+  /** ASK-6: deep link to Profile › Child Memory (route "memory"). */
+  onManageMemory?: () => void;
 }) {
   const [done, setDone] = useState<Record<number, boolean>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [citationsOpen, setCitationsOpen] = useState(false);
   const [escalateOpen, setEscalateOpen] = useState(false);
+  // ASK-3: hypotheses are analysis, not action — collapsed by default behind
+  // a "Why this might be happening" disclosure (same idiom as the citation
+  // drawer). Hidden, never unmounted, so the content stays in the DOM.
+  const [whyOpen, setWhyOpen] = useState(false);
 
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   // COACH-6: real titles + type chips from the server registry, slug fallback.
@@ -118,11 +136,10 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
     setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
   };
 
-  const frames = Object.entries(contract.frameRouting || {}).filter(([, v]) => v && String(v).trim());
-
   return (
     <div className="space-y-2.5">
-      {/* Meta header: attribution + age + domains + risk */}
+      {/* Meta header: attribution + age + domains (counts/observations only —
+          never a graded risk verdict; clinical firewall) */}
       <div className="flex flex-wrap items-center gap-1.5">
         {showLens && (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{t("coach.alignedWith", { lens: lens! })}</span>
@@ -133,34 +150,24 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
         ))}
       </div>
 
-      {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
-      {council && council.length > 0 && (
-        <Panel icon={<Icon name="group" size={12} />} title={t("coach.cards.council", { n: council.length })} tint="var(--arbor-sky-ink)">
-          <ul className="space-y-2">
-            {council.map((c) => (
-              <li key={c.scholarId} className="text-[12.5px] leading-snug">
-                <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{c.name}</span>
-                <span className="text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}> · {c.concept}</span>
-                {c.takeaway && <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{c.takeaway}</span>}
-                {c.suggestion && <span className="block mt-0.5" style={{ color: "var(--arbor-ink)" }}>→ {c.suggestion}</span>}
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      )}
+      {/* ASK-3: a stressed parent wants the exact words and the 1-3 steps
+          FIRST — parentScript ("Say this") and todayPlan lead the stack;
+          analysis (hypotheses) collapses into a disclosure further down. */}
 
-      {/* What may be happening */}
-      {contract.nonDiagnosticHypotheses?.length > 0 && (
-        <Panel icon={<Icon name="lightbulb" size={12} />} title={t("coach.cards.happening")} tint="var(--arbor-yellow-ink)">
-          <ul className="space-y-1.5">
-            {contract.nonDiagnosticHypotheses.map((h, i) => (
-              <li key={i} className="text-[12.5px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
-                <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{h.label}</span>
-                {h.confidence && <span className="ms-1.5 text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}>({h.confidence})</span>}
-                {h.rationale && <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{h.rationale}</span>}
-              </li>
-            ))}
-          </ul>
+      {/* Parent script — say aloud */}
+      {contract.parentScript && (
+        <Panel
+          icon={<Icon name="format_quote" size={12} />} title={t("coach.cards.sayThis")} tint="var(--arbor-sky-ink)"
+          action={
+            <div className="flex items-center gap-2">
+              <SpeakButton text={contract.parentScript} lang={lang} className="text-[10px]" />
+              <button onClick={() => copy(contract.parentScript, "script")} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
+                {copied === "script" ? <><Icon name="check" size={12} /> {t("coach.cards.copied")}</> : <><Icon name="content_copy" size={12} /> {t("coach.action.copy")}</>}
+              </button>
+            </div>
+          }
+        >
+          <p className="text-[13px] leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>&ldquo;{contract.parentScript}&rdquo;</p>
         </Panel>
       )}
 
@@ -190,21 +197,54 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
         </Panel>
       )}
 
-      {/* Parent script — say aloud */}
-      {contract.parentScript && (
-        <Panel
-          icon={<Icon name="format_quote" size={12} />} title={t("coach.cards.sayThis")} tint="var(--arbor-sky-ink)"
-          action={
-            <div className="flex items-center gap-2">
-              <SpeakButton text={contract.parentScript} lang={lang} className="text-[10px]" />
-              <button onClick={() => copy(contract.parentScript, "script")} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
-                {copied === "script" ? <><Icon name="check" size={12} /> {t("coach.cards.copied")}</> : <><Icon name="content_copy" size={12} /> {t("coach.action.copy")}</>}
-              </button>
-            </div>
-          }
-        >
-          <p className="text-[13px] leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>&ldquo;{contract.parentScript}&rdquo;</p>
+      {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
+      {council && council.length > 0 && (
+        <Panel icon={<Icon name="group" size={12} />} title={t("coach.cards.council", { n: council.length })} tint="var(--arbor-sky-ink)">
+          <ul className="space-y-2">
+            {council.map((c) => (
+              <li key={c.scholarId} className="text-[12.5px] leading-snug">
+                <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{c.name}</span>
+                <span className="text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}> · {c.concept}</span>
+                {c.takeaway && <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{c.takeaway}</span>}
+                {c.suggestion && <span className="block mt-0.5" style={{ color: "var(--arbor-ink)" }}>→ {c.suggestion}</span>}
+              </li>
+            ))}
+          </ul>
         </Panel>
+      )}
+
+      {/* ASK-3: "Why this might be happening" — the hypotheses collapse into a
+          calm disclosure (citation-drawer idiom). Content identical, hidden
+          rather than unmounted when collapsed. */}
+      {contract.nonDiagnosticHypotheses?.length > 0 && (
+        <div className="rounded-xl" style={{ border: "1px solid var(--arbor-rule)", overflow: "hidden" }}>
+          <button
+            onClick={() => setWhyOpen((o) => !o)}
+            aria-expanded={whyOpen}
+            className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 min-h-[44px] transition"
+            style={{ background: "var(--arbor-paper-deep)" }}
+          >
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
+              <Icon name="lightbulb" size={12} /> {t("coach.cards.why")}
+            </span>
+            <span className="text-[10px] font-bold inline-flex items-center gap-0.5" style={{ color: "var(--arbor-muted)" }}>
+              {whyOpen
+                ? <><Icon name="expand_less" size={14} />{t("coach.escalate.toggle.close")}</>
+                : <><Icon name="expand_more" size={14} />{t("coach.escalate.toggle.open")}</>}
+            </span>
+          </button>
+          <div hidden={!whyOpen} className="px-3.5 pb-3 pt-2" style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}>
+            <ul className="space-y-1.5">
+              {contract.nonDiagnosticHypotheses.map((h, i) => (
+                <li key={i} className="text-[12.5px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
+                  <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{h.label}</span>
+                  {h.confidence && <span className="ms-1.5 text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}>({h.confidence})</span>}
+                  {h.rationale && <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{h.rationale}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       )}
 
       {/* Avoid / Observe */}
@@ -261,20 +301,6 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           </div>
         </div>
       ))}
-
-      {/* Six-frame routing chips (SF-2) */}
-      {frames.length > 0 && (
-        <Panel icon={<Icon name="explore" size={12} />} title={t("coach.cards.frame")} tint="var(--arbor-yellow-ink)">
-          <div className="flex flex-wrap gap-1.5">
-            {frames.map(([k, v]) => (
-              <span key={k} className="text-[10.5px] leading-tight rounded-lg px-2 py-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                <span className="font-extrabold" style={{ color: "var(--arbor-yellow-ink)" }}>{FRAME_LABEL_KEYS[k] ? t(FRAME_LABEL_KEYS[k]) : k}:</span>{" "}
-                <span style={{ color: "var(--arbor-muted)" }}>{String(v)}</span>
-              </span>
-            ))}
-          </div>
-        </Panel>
-      )}
 
       {/* Citation panel (R1) — visible grounding; badge + disclosure drawer.
           G2 gate: copy states mechanism/source only — never an outcome claim.
@@ -342,6 +368,41 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ASK-6: felt memory — a calm counts-only footer. CLINICAL FIREWALL:
+          the grounded row renders an integer COUNT only (no fact content, no
+          percentage/confidence wording) and the review chip names THAT
+          something is pending, never WHAT — zero memory content in-thread.
+          Queue mechanics live untouched in Profile › Child Memory. */}
+      {(memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" || (contract.memoryProposals?.length ?? 0) > 0) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
+          {memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+              <Icon name="psychology" size={13} aria-hidden />
+              {memoryFooterLabel(contract.approvedMemoryFactsUsed, lang)}
+              <span aria-hidden>·</span>
+              <button
+                type="button"
+                onClick={onManageMemory}
+                className="font-extrabold underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded"
+                style={{ color: "var(--arbor-green-ink)" }}
+              >
+                {t("coach.memory.manage")}
+              </button>
+            </span>
+          )}
+          {(contract.memoryProposals?.length ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={onManageMemory}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 min-h-[32px] rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+              style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+            >
+              <Icon name="lightbulb" size={13} aria-hidden /> {t("coach.memory.reviewChip")}
+            </button>
+          )}
         </div>
       )}
 

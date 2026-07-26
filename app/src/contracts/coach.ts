@@ -22,6 +22,12 @@ export const frameRoutingSchema = z.object({
 });
 
 export const coachResponseZodSchema = z.object({
+  // ASK-1/AIR-1 (ask-cadence): the leading parent-facing prose — a warm
+  // empathic opening + the heart of the answer in a few plain sentences.
+  // Declared FIRST so providers emit it first and /chat can stream it as
+  // screened sentence deltas while the structured fields still generate.
+  // Optional for back-compat with pre-cadence contracts and stubs.
+  text: z.string().optional(),
   riskLevel: z.string().min(1),
   ageBand: z.string().min(1),
   domains: z.array(z.string().min(1)).min(1),
@@ -45,6 +51,25 @@ export const coachResponseZodSchema = z.object({
     teacher: z.string().min(1),
     professional: z.string().min(1)
   }),
+  // ASK-4: anticipated next questions, localized by the languageDirective.
+  // The zod cap is a TRANSFORM (never a hard .max) so a chatty model can't
+  // fail the whole answer: items are trimmed, blanks dropped, the list is
+  // clamped to 3 and each string to 140 chars at the parse seam. Rendered
+  // chips fall back to the client's static trio when absent. FIREWALL
+  // CONDITION: these strings are APPENDED to renderCoachResponse below so
+  // screenModelOutput covers them — a rendered-but-unscreened field would be
+  // the first bypass of the AI-2 output screen.
+  followUps: z
+    .array(z.string())
+    .optional()
+    .transform((items) => {
+      const capped = (items ?? [])
+        .map((q) => q.trim())
+        .filter((q) => q.length > 0)
+        .slice(0, 3)
+        .map((q) => (q.length > 140 ? q.slice(0, 140) : q));
+      return capped.length > 0 ? capped : undefined;
+    }),
   sourceCardsUsed: z.array(z.string()).optional(),
   // COACH-6: resolved citation metadata. The model never emits this — the
   // server backfills it from the knowledge registry after parsing (see
@@ -53,7 +78,12 @@ export const coachResponseZodSchema = z.object({
     id: z.string().min(1),
     title: z.string().min(1),
     type: z.string()
-  })).optional()
+  })).optional(),
+  // ASK-6: how many parent-approved memory facts grounded this answer. The
+  // model never emits this — the server backfills the integer COUNT after
+  // parsing (firewall shape: a count only — never fact content, never a
+  // percentage or confidence figure).
+  approvedMemoryFactsUsed: z.number().int().nonnegative().optional()
 });
 
 export type CoachResponse = z.infer<typeof coachResponseZodSchema>;
@@ -82,6 +112,7 @@ export const buildSourceCards = (
 export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) => ({
   type: Type.OBJECT,
   required: [
+    "text",
     "riskLevel",
     "ageBand",
     "domains",
@@ -94,9 +125,12 @@ export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) 
     "frameRouting",
     "memoryProposals",
     "handoffNotes",
-    "sourceCardsUsed"
+    "sourceCardsUsed",
+    "followUps"
   ],
   properties: {
+    // ASK-1/AIR-1: keep `text` FIRST — the ask-cadence stream tails this field.
+    text: { type: Type.STRING },
     riskLevel: { type: Type.STRING },
     ageBand: { type: Type.STRING },
     domains: {
@@ -152,7 +186,10 @@ export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) 
         professional: { type: Type.STRING }
       }
     },
-    sourceCardsUsed: { type: Type.ARRAY, items: { type: Type.STRING } }
+    sourceCardsUsed: { type: Type.ARRAY, items: { type: Type.STRING } },
+    // ASK-4: 2-3 short follow-up questions the parent is likely to ask next,
+    // in the same language as the other human-readable values.
+    followUps: { type: Type.ARRAY, items: { type: Type.STRING } }
   }
 });
 
@@ -161,7 +198,12 @@ export const renderCoachResponse = (response: CoachResponse) => {
     .map((item) => `- **${item.label}** (${item.confidence}): ${item.rationale}`)
     .join("\n");
 
-  return `### 1. What May Be Happening
+  // ASK-1/AIR-1: the streamed prose leads the rendered answer, so the
+  // done-time output screen (lexical + optional semantic) always covers the
+  // exact text that was previewed as deltas — one screened rendering, no fork.
+  const lead = response.text?.trim() ? `${response.text.trim()}\n\n` : "";
+
+  return `${lead}### 1. What May Be Happening
 ${hypotheses || "One possibility is a temporary mismatch between the child's developmental capacity, the environment, and the demand being placed on them."}
 
 ### 2. Why It May Be Happening
@@ -199,5 +241,14 @@ ${response.sourceCardsUsed?.map((card) => `- ${card}`).join("\n") || "- No Arbor
 ### Handoff Note
 Teacher: ${response.handoffNotes.teacher}
 
-Professional: ${response.handoffNotes.professional}`;
+Professional: ${response.handoffNotes.professional}${
+    // ASK-4 FIREWALL CONDITION: followUps MUST flow through this rendered
+    // text so screenModelOutput covers every string the chips display — a
+    // rendered-but-unscreened field would be the first bypass of the AI-2
+    // output screen. Keep this the LAST section so the streamed prose lead
+    // and section ordering above stay byte-identical for existing tests.
+    response.followUps?.length
+      ? `\n\n### Suggested Follow-ups\n${response.followUps.map((q) => `- ${q}`).join("\n")}`
+      : ""
+  }`;
 };

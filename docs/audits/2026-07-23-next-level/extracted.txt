@@ -1,0 +1,174 @@
+================================================================================
+{
+ "id": "TODAY-2",
+ "title": "Loop reads as three stacked widgets: duplicate headline, two primary CTAs, Today re-overloading",
+ "type": "design",
+ "priority": "P1",
+ "effort": "M",
+ "problem": "TodayRecommendation shows focusHeadline with a gradient-primary 'Begin' CTA; directly below, TodayActionLoop repeats the identical headline as its accepted-state h2 with a second gradient-primary CTA 'Make this today's step' — violating the journey spec's 'one primary action per screen' (ARBOR-CONTINUITY-JOURNEY-2026-07-22.md line 41). With ProgressNarrative, ArborNoticedCard, Recent context, Try together and Daily tools, Today stacks 8 sections; the file's own header comment (OverviewTab.tsx:32-52) still claims 'ONE guidance hero + a few cards' and omits all three wave-2 sections, and the comment at lines 366-369 describes ArborNoticedCard but sits above TodayActionLoop — the wave-2 work is bolted on, not integrated.",
+ "fix": "Merge the pre-accept state into the hero: capacity chips (2/5/10 min) + 'Make this today's step' as the hero's secondary action next to 'Begin'; render the TodayActionLoop card ONLY when an action exists (accepted/completed states), where its content is no longer a duplicate. Keep ProgressNarrative below Recent context (it is retrospective, not the day's task). Rewrite the stale header comment to the actual render list and move the DUX-011 comment to line 381. Acceptance: pre-accept Today has exactly one gradient-primary CTA; the focus headline appears once; section order = capture → hero(+sizing) → active-action(conditional) → noticed → recent context → narrative → play → tools.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/OverviewTab.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayActionLoop.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayRecommendation.tsx"
+ ],
+ "gate": "none"
+}
+================================================================================
+{
+ "id": "TODAY-7",
+ "title": "Wave-2 cards use bg-white / 'white' literals instead of surface tokens",
+ "type": "design",
+ "priority": "P2",
+ "effort": "S",
+ "problem": "TodayActionLoop.tsx:19,27, ProgressNarrative.tsx:50 and QuickCaptureBar.tsx:47 use Tailwind bg-white, and TodayActionLoop.tsx:21 uses the literal string \"white\" for the selected capacity chip — while the sibling hero and dev-map cards on the same screen use var(--arbor-paper-elevated) (OverviewTab.tsx:317, TodayRecommendation.tsx:7). This evades the hex-literal guard in lib/tokens.test.ts on a technicality, splits Today across two surface colors, and will break any future paper-tone/dark-theme shift.",
+ "fix": "Replace bg-white with style background var(--arbor-paper-elevated) and the 'white' chip literal with the same token (or --arbor-paper) on all three components. Acceptance: grep for 'bg-white|\"white\"' in components/overview/* returns nothing; visual parity at current theme confirmed in sandbox screenshot; consider extending tokens.test.ts to flag bg-white in parent surfaces so the regression cannot recur.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayActionLoop.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/ProgressNarrative.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/QuickCaptureBar.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/lib/tokens.test.ts"
+ ],
+ "gate": "none"
+}
+================================================================================
+{
+ "id": "TODAY-2",
+ "title": "'Remind me to re-check' fakes success — no reminder is ever created",
+ "type": "bug",
+ "priority": "P0",
+ "effort": "M",
+ "problem": "Screening.tsx line 258: the result screen's 'Remind me to re-check' button fires only toast(`We'll remind you to re-check ${first} in a few weeks`, 'success') — nothing is persisted, scheduled, or surfaced anywhere. On the surface whose whole job is 'keep an eye on this and come back', the app lies to the parent about a commitment it never records. This violates journey-spec interaction rule 5 (parent-created facts must be real/inspectable) and is exactly the class of dishonest done-state Guy flagged in the Codex polish wave.",
+ "fix": "Persist a recheckDueAt (answeredAt + ~3 weeks) on the saved screening record in the existing 'screenings' child collection (ScreeningFlow already upserts there, line 129 — no new capture path). Surface it: the Development hub's 'dev-watching-pointer' row (DevelopmentTab.tsx lines 206-225) shows 'Re-check due' once due, and the ScreeningFlow intro's last-check card shows the due date. If push is capable (existing lib/push.js seam), optionally register; otherwise the toast copy must claim only what happens ('We'll flag it here when it's time'). Acceptance: tapping the button writes a retrievable due date; the due state is visible on re-entry; no toast promises an undelivered channel.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/Screening.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/DevelopmentTab.tsx"
+ ],
+ "gate": "none"
+}
+================================================================================
+{
+ "id": "TODAY-7",
+ "title": "No seam for illustrated milestone examples — build the governed media slot now, license media later",
+ "type": "capability",
+ "priority": "P2",
+ "effort": "M",
+ "problem": "AR-CAP-08/AR-CONT-07 (backlog v6 lines 444, 511) center on illustrated/video milestone examples (CDC Milestone Tracker reference). The Milestone type (types.ts lines 221-233) supports only skillLooksLike text and reference links — there is no media field, no governance metadata (source, rights, reviewer, locale), and MilestonesTab renders nothing visual per item. The capability cannot even accept content when rights are approved; meanwhile the CDC comparison gap named in the locked shortlist (rank 6) stays fully open.",
+ "fix": "Add an optional exampleMedia field to Milestone ({kind: 'illustration'|'video', src, alt, credit, rightsRef, reviewer, reviewedAt, locale}) validated per the AR-CAP-07 governed-schema shape; render in the milestone drill-in behind a fails-closed check (missing reviewer/rightsRef → never renders, mirroring the AR-CONT-01 governance pattern already merged in wave-2). Ship with zero media entries. Acceptance: schema + render + fail-closed test land now; the item stays visually unchanged in prod until licensed media (Guy-gated rights/source approval per journey-spec gates) is added.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/types.ts",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/MilestonesTab.tsx",
+  "C:/Users/dguyr/ROS/Arbor/docs/arbor-enhancement-backlog-v6.md"
+ ],
+ "gate": "guy"
+}
+================================================================================
+{
+ "id": "TODAY-2",
+ "title": "Kid Mode lock is pointer-only: focus is NOT trapped despite the claim",
+ "type": "bug",
+ "priority": "P1",
+ "effort": "S",
+ "problem": "KidModeOverlay.tsx line 13 claims \"Escape is blocked; focus is trapped\" — but only Escape blocking is implemented (lines 52-62). There is no focus trap and no inert on the parent shell: the parent app remains mounted and focusable behind the zIndex-70 overlay. A child pressing Tab walks focus into invisible parent-shell controls (nav, capture, settings, sign-out) and Enter activates them sight-unseen. The only real trap lives inside ParentChallenge.tsx (lines 79-102), which is only mounted during the exit challenge. The backdrop swallows pointers (F4 comment, line 76-81) but the keyboard path was simply missed — on any keyboard-attached device (laptops, tablets with keyboards) the lock is bypassable.",
+ "fix": "In KidModeOverlay, while isKidModeOpen: set the `inert` attribute (plus aria-hidden) on the app root container (the Shell mount node) so nothing behind the overlay is focusable, and remove it on close; alternatively add a Tab-cycling focus trap scoped to the overlay like ParentChallenge's. Add a kidMode test asserting the shell root carries inert while open. Acceptance: with Kid Mode open, repeated Tab never moves focus to an element outside the overlay; existing kidMode.test.ts write-path assertions stay green.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/KidModeOverlay.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/kidMode.test.ts"
+ ],
+ "gate": "none"
+}
+================================================================================
+{
+ "id": "TODAY-7",
+ "title": "Kid dashboard hero banner and tile art are mismatched/recycled",
+ "type": "design",
+ "priority": "P2",
+ "effort": "S",
+ "problem": "The flagship \"TODAY'S ADVENTURE\" banner (KidDashboard.tsx lines 292-330) says \"Start a hero story / Pick a world and you're the star\" but its WorldScene imagePrompt is \"building a glowing blanket-fort calm corner\" and its fallback art is game-feelings.webp — a calm-corner/feelings scene under hero-story copy. Art recycling further breaks the one-tile-one-world illusion: game-feelings.webp is used for THREE distinct tiles (Feelings adventure, Feelings Detective, Calm Builder, plus the banner), and game-mimic.webp backs both Studio and Mimic Studio. For the audience this register serves, identical art on differently-named tiles reads as the same game and undermines the avatar-everywhere comic-world promise.",
+ "fix": "Align the banner's imagePrompt + art with its copy (storybook/hero-castle scene — game-courage-steps.webp already exists and fits), and give each tile a unique art asset from public/visuals/cards/sm/ (or a distinct imagePrompt so generated scenes diverge); where no distinct asset exists, prefer the accent-colored icon fallback over a wrong recycled image. Acceptance: no two visible kid-dashboard tiles share the same art file; the banner's copy, prompt and art depict the same scene.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/kidmode/KidDashboard.tsx"
+ ],
+ "gate": "none"
+}
+================================================================================
+{
+ "id": "TODAY-2",
+ "title": "Inbound shares are a dead end — recipients can never see what was shared",
+ "type": "capability",
+ "priority": "P0",
+ "effort": "L",
+ "problem": "The share-create flow promises \"They can see: Story timeline, Weekly Insight, ...\" (TrustedSharing.tsx SCOPE_OPTIONS, review step line 197), but the only recipient surface is the \"Shared with you\" card (lines 263-282) rendering grant metadata with no CTA. Server-side, /shared-with-me (routes/api.ts line 254) returns grants only; grep confirms NO data endpoint honors a grant for a recipient (isShareActive is used only in shares.ts filtering and the co-parent cap at routes/api.ts:206). The core promise of AR-CAP-04/05 (backlog v6 lines 440-441) is structurally unfulfilled — a co-parent who accepts a share gets nothing.",
+ "fix": "Build a read-only shared-child viewer v0 within existing seams: (1) server endpoint GET /shared/:grantId/packet that validates isShareActive + recipient email, then assembles ONLY the granted scopes by reusing buildConsultPacket/serializePresetPacket ceilings (counts only, firewall-safe by construction); (2) clicking an inbound share card opens a read-only view of those sections. No new capture paths, no write access. Acceptance: recipient sees exactly the granted scopes, revoked/expired grant returns 403 and the card disappears, forbidden-token guard runs on the assembled payload, tests for scope filtering.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+  "C:/Users/dguyr/ROS/Arbor/app/src/sharing/shares.ts",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/TrustedSharing.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/consult/packet.ts"
+ ],
+ "gate": "none"
+}
+================================================================================
+{
+ "id": "TODAY-7",
+ "title": "Consult packet falls short of the AR-CONT-09 visit-prep-pack spec",
+ "type": "content",
+ "priority": "P1",
+ "effort": "M",
+ "problem": "AR-CONT-09 (backlog v6 line 513) specifies: what changed, evidence to bring, questions to ask, consent/redaction checklist, follow-up outcome — per audience incl. SLP and behavioral-health. Current packet.ts delivers a strong redactable summary (about/patterns/development/tried/memory) with exemplary fail-closed ceilings, but has: no \"what changed since last export\" delta, no suggested questions, no post-visit outcome capture (the loop never closes back into the record), and only 3 of 5 audiences (CONSULT_PRESETS: teacher/therapist/pediatrician — no SLP, no behavioral-health).",
+ "fix": "Two tranches. Executable now (data-derived, no authored clinical content): (a) persist lastExportedAt per audience and add a computed \"Since last visit\" delta section (new logs count, plan changes, newly-noticed milestones — counts only, runs through existing assertWithinCeiling); (b) add SLP + behavioral-health presets reusing the clinician ceiling. Clinical-gated: authored \"questions to ask\" banks and audience-specific guidance text must go through the AR-CONT-01 governance path (publication-blocked until named clinical review — fails closed). Acceptance: delta section appears only when a prior export exists; new presets covered by ceiling tests mirroring packet.test.ts; authored content lands behind the governance flag, not live.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/consult/packet.ts",
+  "C:/Users/dguyr/ROS/Arbor/app/src/consult/packet.test.ts",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/AskSpecialist.tsx"
+ ],
+ "gate": "clinical"
+}
+================================================================================
+{
+ "id": "TODAY-2",
+ "title": "Two competing primaries: constraint/docs say GREEN, .arbor-parent remaps primary to sapphire #2b7fff; wave-2 cards mix both on one card",
+ "type": "design",
+ "priority": "P0",
+ "effort": "M",
+ "problem": "The standing constraint (and tokens.ts's own header, app/src/lib/tokens.ts:32 \"Primary — friendly green (repurposes the clay token name)\") declares the parent register GREEN-primary — yet index.css .arbor-parent:756-759 explicitly remaps --arbor-clay to \"the mockup sapphire\" #2b7fff, making --arbor-gradient-primary resolve sapphire everywhere in content. Result on the merged wave-2 Today surface: TodayActionLoop.tsx uses --arbor-green-soft/--arbor-green-ink for its eyebrow, icon chip and receipt (green) but --arbor-gradient-primary for its main CTA (sapphire) — two primaries on one card; ProgressNarrative is all-green next to sapphire hub pills (--arbor-subtab-active navy #14225a). tokens.ts documentation actively contradicts runtime values, so every future agent inherits the confusion (AskArborButton.tsx comments call the green-token button \"sapphire\").",
+ "fix": "Guy decision required: canonical parent primary = green (--arbor-green-*) per the standing constraint, or the UC-2 sapphire clinical-trust scheme now in .arbor-parent. Then execute mechanically: (a) if green — repoint --arbor-clay/--arbor-gradient-primary inside .arbor-parent to the green ramp and delete the sapphire remap + --arbor-topbar-band/--arbor-subtab-active or retint them green-navy; (b) if sapphire — restyle wave-2 card CTAs/eyebrows to the sapphire system and rewrite tokens.ts:32 header + AskArborButton comments to tell the truth. Acceptance: one primary hue family on the Today screen (screenshot diff), tokens.ts prose matches resolved values, and the decision recorded in design-qa.md.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/index.css",
+  "C:/Users/dguyr/ROS/Arbor/app/src/lib/tokens.ts",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/TodayActionLoop.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/overview/ProgressNarrative.tsx"
+ ],
+ "gate": "guy"
+}
+================================================================================
+{
+ "id": "CODEX-1",
+ "title": "Today renders the same guidance and same evidence twice with competing CTAs",
+ "type": "journey",
+ "priority": "P1",
+ "effort": "M",
+ "problem": "After PR #80 + wave-2, OverviewTab stacks TodayRecommendation (focusHeadline + 'Begin' CTA seeding the coach) directly above TodayActionLoop which repeats the identical focusHeadline as the acceptable step ('Make this today's step'). Two adjacent cards, same sentence, two different primary actions. Below that, ProgressNarrative's 'Your evidence' cell (3 recent behavior/play items → Journal) duplicates the 'Recent context' section (3 activityFeed rows → Journal) that sits immediately after it. Today is now 8 stacked blocks and the parent sees the same content twice, twice.",
+ "fix": "Merge TodayActionLoop into the TodayRecommendation card: hero keeps the headline + image, the capacity picker + accept button become the hero's action row, 'Begin' (coach) becomes secondary; when an action is accepted the hero swaps to accepted/outcome state. Delete the standalone 'Recent context' section (app/src/components/tabs/OverviewTab.tsx lines 383-397) and keep ProgressNarrative's evidence cell as the single recent-moments surface. Acceptance: focusHeadline appears exactly once on Today; recent moments list appears exactly once; 1321 tests stay green.",
+ "files": [
+  "app/src/components/tabs/OverviewTab.tsx",
+  "app/src/components/overview/TodayRecommendation.tsx",
+  "app/src/components/overview/TodayActionLoop.tsx",
+  "app/src/components/overview/ProgressNarrative.tsx"
+ ],
+ "gate": "none"
+}
+================================================================================
+{
+ "id": "CODEX-7",
+ "title": "Capture review shows a fake static 'high confidence' verdict",
+ "type": "content",
+ "priority": "P2",
+ "effort": "S",
+ "problem": "QuickLogModal's confirmed-capture review sheet always prints 'Source: parent-entered text · high confidence' (EN+HE) as a hardcoded string. The confidence claim is meaningless (it is shown unconditionally) and dresses up parent input with system-verdict language — off-register for the calm/clinical parent surface, and a bad precedent next to the clinical firewall.",
+ "fix": "Drop the '· high confidence' clause and keep only the honest provenance line ('Source: written by you'); if a confidence concept is ever wanted it must be computed, not asserted. Acceptance: no static confidence/certainty wording anywhere in capture review copy (EN+HE).",
+ "files": [
+  "app/src/components/overview/QuickLogModal.tsx"
+ ],
+ "gate": "none"
+}

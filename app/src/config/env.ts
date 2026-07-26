@@ -20,6 +20,18 @@ export type ArborConfig = {
   modelProvider: ModelProviderKind;
   geminiApiKey?: string;
   geminiModel: string;
+  /** VC-7: hard enablement gate for Gemini Live (parent realtime voice).
+   *  Default FALSE — setting GEMINI_API_KEY for any other reason (e.g. a
+   *  dev-API fallback) must NEVER silently route voice around the screened
+   *  /voice path. Flipping LIVE_ENABLED=true IS the GD-3 unlock and stays an
+   *  explicit Guy decision once the Live turn-guard slate (VC-1..VC-5) is
+   *  green — never an env side-effect. */
+  liveEnabled: boolean;
+  /** AI-V8: Gemini Live model for parent realtime voice. Default is the older
+   *  half-cascade flash-live model; the native-audio Live models (e.g.
+   *  gemini-2.5-flash-preview-native-audio-dialog) are the AVM-grade
+   *  prosody/emotion upgrade path. Model/provision choice is gate:guy (GD-3). */
+  liveModel: string;
   /** Local-dev image model (Gemini Developer API). */
   geminiImageModel: string;
   firebaseProjectId?: string;
@@ -116,7 +128,12 @@ export const loadConfig = (): ArborConfig => {
     gcpProjectId: process.env.GCP_PROJECT_ID,
     gcpRegion: process.env.GCP_REGION || "europe-west4",
     vertexLocation: process.env.VERTEX_LOCATION || process.env.GCP_REGION || "europe-west4",
-    vertexModelChat: process.env.VERTEX_MODEL_CHAT || "claude-3-5-sonnet@anthropic",
+    // AIR-4: default coach model is the current Claude Sonnet generation on
+    // Vertex (resolved to the bare publisher id `claude-sonnet-5`). The PROD
+    // env-var flip + quality sign-off remain Guy's gate (GG-3): coach-core-v1 +
+    // eval:safety + the hard-moment suite must re-run green against the new
+    // resolved id, and evals/pinned-models.json is refreshed in the same PR.
+    vertexModelChat: process.env.VERTEX_MODEL_CHAT || "claude-sonnet-5@anthropic",
     vertexModelStory: process.env.VERTEX_MODEL_STORY || "gemini-2.5-flash",
     vertexModelAnalysis: process.env.VERTEX_MODEL_ANALYSIS || "gemini-2.5-flash",
     vertexModelHandoff: process.env.VERTEX_MODEL_HANDOFF || "gemini-2.5-flash",
@@ -124,6 +141,8 @@ export const loadConfig = (): ArborConfig => {
     modelProvider,
     geminiApiKey: process.env.GEMINI_API_KEY,
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    liveEnabled: boolFromEnv(process.env.LIVE_ENABLED, false),
+    liveModel: process.env.LIVE_MODEL || "gemini-2.0-flash-live-001",
     geminiImageModel: process.env.GEMINI_IMAGE_MODEL || process.env.VERTEX_MODEL_IMAGE || "gemini-2.5-flash-image",
     firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT_ID,
     firestoreDatabaseId: process.env.FIRESTORE_DATABASE_ID || "(default)",

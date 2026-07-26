@@ -127,15 +127,31 @@ const get = <T>(url: string) => request<T>(url, "GET");
 const del = <T>(url: string) => request<T>(url, "DELETE");
 
 /**
- * Realtime streaming voice coach (RT-2). POSTs to /api/voice and invokes onDelta
- * with each plain-text token as it streams, so the caller can speak sentences the
- * moment they arrive. Resolves when the stream completes.
+ * Realtime streaming voice coach (RT-2 / AI-V1). POSTs to /api/voice and invokes
+ * onDelta once per SCREENED SENTENCE: the server splits the model stream at
+ * sentence boundaries, screens the cumulative alias-restored text at each
+ * boundary, and emits each sentence as its own delta only after its screen
+ * passes — so the caller speaks sentence 1 while the rest is still generating.
+ * (When the semantic output classifier is enabled server-side, the whole reply
+ * arrives as one delta instead.) Delta events may carry a `tts` payload — a
+ * short-TTL screened-sentence token for /api/tts (AI-V5); callers on the voice
+ * loop register it via registerTtsToken (lib/naturalVoice.ts). Resolves when
+ * the stream completes.
+ *
+ * VC-4: `opts.onEvent` receives EVERY parsed SSE event (delta / done / error)
+ * with its payload. The server's `done` event is safety-load-bearing — it
+ * carries the escalation category + crisis `resourcesMarkdown` and the
+ * `outputBlocked` + `blockedMarkdown` state. Discarding it (the pre-VC-4
+ * behavior) silently dropped crisis resources for voice parents; callers on
+ * the voice loop MUST wire `onEvent` and route `done` through
+ * `handleVoiceDone` (lib/voiceSafetyEvents.ts).
  */
 export async function streamVoice(
   payload: { message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" },
   onDelta: (text: string) => void,
-  signal?: AbortSignal,
+  opts: { signal?: AbortSignal; onEvent?: (event: string, data: Record<string, unknown>) => void } = {},
 ): Promise<void> {
+  const { signal, onEvent } = opts;
   const res = await fetch("/api/voice", {
     method: "POST",
     headers: await authHeaders({ Accept: "text/event-stream" }),
@@ -162,6 +178,7 @@ export async function streamVoice(
       }
       if (!dataLines.length) continue;
       const data = JSON.parse(dataLines.join("\n"));
+      onEvent?.(event, data);
       if (event === "delta" && data.text) onDelta(data.text);
       else if (event === "error") throw new Error(data.details || data.error || "Voice stream error");
     }
@@ -188,12 +205,16 @@ export const api = {
     post<HeroJourneyRender>("/api/generate-hero-journey", payload),
   generateBrief: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; audience: string }) =>
     post<SchoolBrief>("/api/generate-handoff", payload),
-  extractLog: (payload: { message: string; childProfile: ChildProfile }) =>
+  // AI-CAP-2: `language` threads the parent's AI language into the extraction
+  // prompt (mirroring /chat's languageDirective) so an HE description yields
+  // HE trigger/response/notes — behaviorType/context stay schema-valued.
+  extractLog: (payload: { message: string; childProfile: ChildProfile; language?: "en" | "he" }) =>
     post<{ behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string }>("/api/extract-log", payload),
   // childId is REQUIRED by the server's COPPA gate (requireConsent reads it from
   // the body); without it /api/vision fails closed with 451. The caller passes the
-  // active child's id.
-  vision: (payload: { childId: string; image: { dataUrl: string }; mode: "observe" | "document"; note?: string; childProfile: ChildProfile }) =>
+  // active child's id. AIX-S1: `language` (getAiLanguage()) drives the server-side
+  // languageDirective so a Hebrew parent gets Hebrew observations back.
+  vision: (payload: { childId: string; image: { dataUrl: string }; mode: "observe" | "document"; note?: string; childProfile: ChildProfile; language?: "en" | "he" }) =>
     post<VisionResult>("/api/vision", payload),
   // AVA-1: generate a stylized character avatar from descriptors (default) or an
   // optional reference photo. The photo is never stored server-side.
@@ -251,7 +272,17 @@ export const api = {
     get<{ grants: ConsentGrant[] }>(`/api/consent/${encodeURIComponent(childId)}`),
   revokeConsent: (id: string) => del<{ grant: ConsentGrant }>(`/api/consent/${encodeURIComponent(id)}`),
   // Gemini Live: mint an ephemeral token for a direct browser Live session.
-  liveToken: () => post<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string }>("/api/live/token", {}),
+  // AI-V8: config-only availability probe (no SDK call, no token mint server-side).
+  // Probe THIS on mount; call liveToken only when the parent toggles voice on.
+  liveAvailability: () => get<{ available: boolean }>("/api/live/availability"),
+  // AI-V9: the session language selects the server-pinned persona + voice; the
+  // pinned systemInstruction/speechConfig are echoed back for the connect call.
+  liveToken: (payload: { language?: "en" | "he"; childId?: string } = {}) =>
+    post<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown }>("/api/live/token", payload),
+  // VC-2/VC-3: the authoritative per-turn Live screen. The liveTurnGuard treats
+  // ANY failure of this call (network / non-200 / timeout) as FLAGGED (VC-5).
+  liveTurn: (payload: { role: "user" | "model"; text: string; language?: "en" | "he"; childId?: string }) =>
+    post<import("./liveTurnGuard").LiveTurnVerdict>("/api/live/turn", payload),
   // MON-1: plan + limits + usage for the signed-in parent.
   entitlement: () => get<EntitlementInfo>("/api/entitlement"),
   // MON-2: start a hosted checkout for a plan + cadence; returns the URL to open.

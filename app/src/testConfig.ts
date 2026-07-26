@@ -9,7 +9,7 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   gcpProjectId: "arbor-test",
   gcpRegion: "europe-west4",
   vertexLocation: "europe-west4",
-  vertexModelChat: "claude-3-5-sonnet@anthropic",
+  vertexModelChat: "claude-sonnet-5@anthropic",
   vertexModelStory: "gemini-2.5-flash",
   vertexModelAnalysis: "gemini-2.5-pro",
   vertexModelHandoff: "gemini-2.5-flash",
@@ -17,6 +17,10 @@ export const createTestConfig = (overrides: Partial<ArborConfig> = {}): ArborCon
   modelProvider: "vertex",
   geminiApiKey: "test-key",
   geminiModel: "gemini-2.5-flash",
+  // VC-7: Live stays OFF by default even with a key present — tests that need
+  // it flip liveEnabled explicitly, mirroring the deliberate GD-3 prod unlock.
+  liveEnabled: false,
+  liveModel: "gemini-2.0-flash-live-001",
   geminiImageModel: "gemini-2.5-flash-image",
   firebaseProjectId: "arbor-test",
   firestoreDatabaseId: "(default)",

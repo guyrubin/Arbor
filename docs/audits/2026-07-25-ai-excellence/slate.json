@@ -1,0 +1,930 @@
+[
+ {
+  "category": "REALTIME VOICE CADENCE",
+  "verdict": "Measured against the ChatGPT-AVM bar, Arbor's \"press talk\" misses on every axis, and each miss is traceable to a specific line. First-audio: the fallback path (the ONLY path in prod, since Live is provision-gated off) takes ~4-8s, not <800ms — routes/api.ts:611-648 deliberately BUFFERS the entire model reply, runs a second full model call (screenModelOutput) on it, then emits it as ONE giant SSE delta, so the client's whole sentence-streaming pump (CoachTab.tsx:176-210) never actually streams; the comment at api.ts:130-133 claiming token-by-token delivery is false today. Barge-in: nonexistent in both paths — the fallback mic is off while speaking and tapping the chip kills the session (stopVoice, CoachTab.tsx:230-243); the Live client never handles serverContent.interrupted and its scheduled AudioBufferSourceNodes can't be stopped (geminiLiveClient.ts:58-70). Prosody: the shipped voice is browser speechSynthesis at rate 0.92 with no utterance.lang and no voice selection (voice.ts:125-127) — robotic in EN and the WRONG LANGUAGE voice for HE; the neural Cloud TTS seam exists (server/tts.ts) but is double-gated OFF (TTS_PROVIDER + VITE_TTS_PROVIDER), and even when on it fetches sentences serially with a per-sentence re-screen model call = 1-3s dead air between sentences. Continuous mic: the loop does auto-relisten, but a recognition error leaves the UI saying \"listening\" with a dead mic (CoachTab.tsx:224) — the literal \"I'm pressing talk and it's not working\" bug. UI: the entire experience is a 36px chip with a 180px truncated caption (CoachTab.tsx:340-357) — no orb, no phase animation, no live captions (interimResults=false, speech.ts:28). The Live path is architecturally closest to AVM but is unshippable as written: no transcription config, no crisis screening (standing P0), English-only hardcoded instruction. Roughly 80% of the AVM gap closes in-repo now (streaming release of screened sentences, barge-in, voice/lang selection, prefetch pipeline, orb UI, Live safety wiring shipped inert); the remaining 20% (Live provisioning GD-3, TTS_PROVIDER flip on GCP) is gate:guy.",
+  "findings": [
+   {
+    "id": "AI-V1",
+    "title": "/voice buffers the whole reply into one SSE delta — sentence streaming is dead code, first-audio ~4-8s",
+    "type": "capability",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "routes/api.ts:611-648 (SAFE-V1 comment) assembles the FULL model reply, then runs screenModelOutput (a second full model round-trip), then emits everything as a single `delta`. The client sentence-splitter (CoachTab.tsx:192-194) therefore receives the entire answer at once: the user waits through full generation + full screen + TTS start in silence ('thinking'). lib/api.ts:130-133 still documents token-by-token streaming that no longer happens. This is the single largest contributor to the non-AVM cadence: AVM bar is <800ms first-audio; Arbor is 4-8s.",
+    "fix": "Incremental screened-sentence release, still fail-closed: split the model stream on sentence boundaries server-side; screen sentence N while sentence N+1 generates; emit each sentence as its own `delta` ONLY after its screen passes (screen the sentence with accumulated context so cross-sentence risk is caught; on any flag, stop the stream and emit the existing calm fallback + `outputBlocked`). Nothing unscreened ever leaves the server, but the parent hears sentence 1 while the rest is still generating. Acceptance: (1) SSE for a 3-sentence reply contains >=3 delta events; (2) first delta arrives < 1.5s after sentence 1 completes generation; (3) a reply whose 2nd sentence is flagged emits sentence 1 + the fallback, never the flagged text (add a route test); (4) lib/api.ts comment corrected; (5) escalation/abort behavior unchanged.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-V2",
+    "title": "No barge-in on either path: tap kills the session; Live audio can't be interrupted",
+    "type": "capability",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "Fallback: while voicePhase==='speaking' the mic is off and the only control is the chip, whose tap runs stopVoice() (CoachTab.tsx:247-248, 230-243) — aborting the stream, flushing the queue, and turning voice OFF entirely; interrupting Arbor requires stop + re-press talk. Live: geminiLiveClient.ts never handles msg.serverContent.interrupted, and playChunk (lines 58-70) schedules AudioBufferSourceNodes it never retains — when Gemini's server VAD detects the user speaking over the model, already-scheduled audio keeps playing on top of the new turn (garbled overlap). AVM's defining interaction — just start talking to cut the model off — is impossible.",
+    "fix": "(a) Fallback: while speaking, chip tap = INTERRUPT not off — flush ttsQueueRef, stopSpeaking(), abort the voice stream if still open, finalizeVoiceAiTurn(), and immediately startListening() (voice stays on; a second tap during 'listening' turns it off). (b) Live: retain scheduled sources in an array; on serverContent.interrupted, stop() them all, reset playHead to currentTime, and set phase 'listening'. Acceptance: (1) speaking→tap reaches 'listening' with mic active in <300ms; (2) unit test on a Live message sequence {data..., interrupted} asserts all sources stopped and playHead reset; (3) double-tap fully stops (parity with today).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-V3",
+    "title": "Recognition error leaves UI stuck on 'listening' with a dead mic",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "startDictation's onError fires on common events ('no-speech', 'aborted', transient network) and recognition then ENDS — but CoachTab.tsx:224 handles it with `if (voiceOnRef.current) setVoicePhase(\"listening\")`, which only sets the LABEL; no new recognition is started (startListening is not called, and CoachTab passes no onEnd). Result: the chip says 'Listening' while nothing is listening — the literal 'I'm pressing talk and it's not working' experience. lib/speech.ts:38-42 also swallows the distinction between fatal ('not-allowed') and recoverable errors.",
+    "fix": "In onError: for recoverable errors, call startListening() again (with a short backoff and a max-retry circuit breaker); for 'not-allowed'/'service-not-allowed', stop voice and toast the mic-permission message. Pass onEnd and restart there too if voiceOnRef is still true and no result arrived, so recognition auto-cycles like a continuous mic. Acceptance: (1) simulated 'no-speech' error → a new startDictation call is made (spy test) and the phase stays truthful; (2) 'not-allowed' → voice off + toast; (3) no infinite restart loop (breaker test).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/speech.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-V4",
+    "title": "Shipped voice is robotic SpeechSynthesis at 0.92 rate with no lang/voice selection — HE replies spoken by the wrong-language voice",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "voice.ts startBrowser (lines 125-127) creates SpeechSynthesisUtterance with rate 0.92, pitch 1, and never sets utterance.lang nor picks a voice from speechSynthesis.getVoices(). Consequences: (1) EN sounds slow and robotic — nothing like AVM prosody; (2) Hebrew answers are rendered by the browser's DEFAULT (usually English) voice — mangled speech, an HE/RTL parity failure. Meanwhile the neural Cloud TTS path that would fix prosody (server/tts.ts, naturalVoice.ts) is DOUBLE-gated off: server TTS_PROVIDER defaults 'none' (config/env.ts:154) AND the client requires build flag VITE_TTS_PROVIDER (naturalVoice.ts:17-23) — two flags must agree before anyone hears the good voice.",
+    "fix": "In-repo now: thread a lang parameter through speakText→startBrowser; set utterance.lang ('he-IL'/'en-US') from getAiLanguage(); select the best matching voice from getVoices() (prefer localService 'natural/neural'-named voices, cache the pick, handle the async voiceschanged event); rate 1.0. Collapse the double gate: drop the VITE flag and let the existing /api/tts configured probe (naturalVoice.ts:103-106) alone flip the engine, so enabling neural voice becomes a single server env change. Acceptance: (1) HE utterance has lang='he-IL' and an he voice when available (unit test with mocked getVoices); (2) engine flips to 'natural' with only TTS_PROVIDER=google set server-side. Separately gate:guy — enable the Cloud TTS API on the GCP project and set TTS_PROVIDER=google in prod (same project ADC, no new vendor/DPA per server/tts.ts:15-18).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/voice.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/naturalVoice.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/config/env.ts"
+    ],
+    "gate": "guy"
+   },
+   {
+    "id": "AI-V5",
+    "title": "Neural sentence pipeline is serial with a full model-call re-screen per sentence — 1-3s dead air between sentences",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "pumpTts (CoachTab.tsx:152-174) only dequeues the next sentence AFTER the previous finishes, and each sentence then does: POST /api/tts → screenModelOutput (a FULL model round-trip, routes/api.ts:886 → server/tts.ts:136-140) → Cloud TTS synth → download full base64 MP3 → play (naturalVoice.ts:45-78). Every inter-sentence boundary costs a screen call + synth + network, even though /voice ALREADY screened the assembled text (routes/api.ts:627). Worse, the 1500ms TTFB watchdog (voice.ts:43) will routinely trip on that per-sentence latency and permanently degrade the session back to the robo floor mid-answer — jarring voice switches.",
+    "fix": "(1) Prefetch: while sentence N plays, start fetching sentence N+1's audio (queue of {text, audioPromise} in the pump; keep the single-owner interruption semantics of voice.ts). (2) Kill the double screen without opening the trust boundary: have /voice emit an HMAC (server secret, short TTL) per screened sentence and let /api/tts skip re-screening when a valid screened-token accompanies the text — arbitrary client text still gets fully screened (fail-closed unchanged). (3) Scale the TTFB watchdog: apply it to fetch-start rather than audio-start when a prefetched buffer exists. Acceptance: (1) inter-sentence gap <250ms with a mocked 800ms synth (timer test); (2) /api/tts with no/invalid token still screens (existing tts tests keep passing); (3) no engine downgrade during a normal multi-sentence answer.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/naturalVoice.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/server/tts.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-V6",
+    "title": "Live path has zero transcription, zero crisis screening, zero turn persistence — the standing voice P0, fixable in-repo now (ships inert)",
+    "type": "safety",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "geminiLiveClient.ts:74 configures only `responseModalities: [Modality.AUDIO]` — no inputAudioTranscription/outputAudioTranscription — so when Live turns on: (a) no text ever reaches screenForImmediateEscalation or any crisis path (the standing ZERO-crisis-screening P0); (b) no captions and no persisted turns, breaking COACH-2 parity (CoachTab passes no onText handler at lines 257-265, and appendVoiceUserTurn/finalizeVoiceAiTurn are never called on this path); (c) nothing in the transcript for the clinical firewall to audit. The audio also plays raw model output with no output screen — fail-closed is violated by design on this path.",
+    "fix": "Wire it now so it ships inert until GD-3 provisioning: enable input+output audio transcription in live.connect config; stream input transcripts through the same escalation trigger seam used by /voice (client-side match on the shared trigger lexicon, or relay transcripts to a lightweight server screen endpoint); on trigger, stop() the session immediately and render the existing calm crisis-resources module (counts-never-verdicts register, EN+HE). Persist turns via the existing appendVoiceUserTurn/appendVoiceAiDelta/finalizeVoiceAiTurn seams so Live conversations land in the thread like fallback ones. Acceptance: (1) unit test: a transcript containing a crisis trigger closes the session and shows resources in <1 turn; (2) Live turns appear in chat history identically to fallback turns; (3) no Live session can start when the screen seam is unavailable (fail closed). Crisis copy and trigger thresholds need clinical sign-off.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "AI-V7",
+    "title": "No voice surface: the whole AVM experience is a 36px chip with a truncated 180px caption",
+    "type": "design",
+    "priority": "P1",
+    "effort": "L",
+    "problem": "The entire voice UI is the composer pill at CoachTab.tsx:340-357 — label text swaps ('Listening/Thinking/Speaking'), one 1.5px pulsing dot, and a caption capped at max-w-[180px] truncate. There is no orb, no amplitude feedback, no visible distinction between 'mic is hearing you' and 'mic is dead' (see AI-V3), and no live caption of the USER'S words (speech.ts:28 sets interimResults=false, so the parent sees nothing while speaking). AVM's perceived magic is substantially this feedback loop; without it the identical backend feels broken.",
+    "fix": "A calm voice overlay (bottom sheet over the coach thread) owned by voicePhase !== 'off': phase-animated orb (listening = soft green pulse driven by real mic level via an AnalyserNode on a shared getUserMedia stream; thinking = slow shimmer; speaking = waveform), live captions dir=\"auto\" for both the interim user transcript (flip interimResults=true and surface partials via a new onInterim handler in lib/speech.ts) and the streaming answer, tap-anywhere-on-orb = barge-in (AI-V2), X = end. Tokens only (--arbor-green-soft/-green-ink/-paper-deep etc.), green primary calm register, full HE/RTL mirroring, prefers-reduced-motion = static phase states. Acceptance: (1) all four phases visually distinct without reading text; (2) interim user words render <500ms after speech starts; (3) axe clean, aria-live on captions, reduced-motion snapshot test; (4) chip remains as the entry point (no new capture path).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/speech.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-V8",
+    "title": "Availability probe mints and discards a single-use Live token on every CoachTab mount",
+    "type": "bug",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "CoachTab.tsx:145-149 probes availability by POSTing /api/live/token, and routes/api.ts:663-687 responds by creating a real ephemeral auth token (uses:1, 20-min expiry) that the probe throws away; toggling talk then mints a second one. Every coach-tab visit burns a token-create call against the Gemini API for a boolean. The model is also env-defaulted to gemini-2.0-flash-live-001 (api.ts:672), the older half-cascade voice — when Live is provisioned, the native-audio Live models are the ones that actually deliver AVM-grade prosody/emotion.",
+    "fix": "Add GET /api/live/availability returning {available} from config alone (no SDK call, no token); CoachTab probes that on mount and only POSTs /live/token inside toggleVoice. Surface LIVE_MODEL in config/env.ts like the other model knobs with a comment pointing at the native-audio upgrade path (actual model/provision choice = gate:guy, GD-3). Acceptance: (1) mounting CoachTab makes zero authTokens.create calls (route spy test); (2) toggle still gets a fresh token per session; (3) availability endpoint responds <50ms without network.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/config/env.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-V9",
+    "title": "Live system instruction is hardcoded English with no voice/language config — HE parity break on the HD path",
+    "type": "bug",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "CoachTab.tsx:260 passes a fixed English systemInstruction to startGeminiLive, and geminiLiveClient.ts:74 requests no speechConfig/voice and no language hint — a Hebrew-mode parent who taps the 'HD' talk button gets an English-speaking coach, violating the HE/EN parity constraint on the flagship path. The instruction also duplicates persona text that /voice builds server-side from NON_DIAGNOSTIC_CONTRACT + lens (routes/api.ts:602-606), so the two paths will drift.",
+    "fix": "Build the Live instruction from the same shared persona constants used by /voice (extract the spoken-coach persona + non-diagnostic contract into a shared module), append the aiLang-driven directive ('Speak natural, warm Hebrew' when he), and pass a speechConfig voice appropriate per language in live.connect config. Acceptance: (1) unit test asserts the instruction contains the HE directive when getAiLanguage()==='he'; (2) one source of truth for the spoken persona (grep shows no duplicated contract string); (3) EN behavior unchanged.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "VOICE CRISIS SCREENING + TURN LOGGING (GD-3 unlock)",
+  "verdict": "The text path has a real two-sided safety spine — screenForImmediateEscalation on every input (app/src/routes/api.ts:328, :587) and screenModelOutput on every output (:423 /chat, :554 /council, :627 /voice buffered per the SAFE-V1 comment at :608-613; server TTS trust boundary at app/src/server/tts.ts:136-139). The Gemini Live path has NONE of it: mic PCM goes straight to the model (geminiLiveClient.ts:92-95), model audio plays on arrival (playChunk, :78), no transcription is even requested in the live.connect config (:72-74), CoachTab wires no onText handler (CoachTab.tsx:257-265), and no /live/turn or /live/log endpoint exists — so a Live crisis conversation is unscreened, unlogged, and unrecoverable. Even the screened browser-voice fallback drops the crisis payload on the floor: the client SSE parser discards the done event carrying the escalation category (lib/api.ts:163-166), so voice-mode parents get a vague one-line English brush-off while text-mode parents get the full helpline card. The GD-3 unlock is a well-defined sliver: request input+output transcriptions, gate all Live playback behind a turn guard that reuses the exact same screening functions, log every turn through a new /api/live/turn endpoint, fail closed to the already-screened browser loop, and put /live/token behind an explicit default-off flag so the unlock is a deliberate flip, not an env-var accident.",
+  "findings": [
+   {
+    "id": "VC-1",
+    "title": "Live model audio plays 100% unscreened — no transcription, no guard, no kill-switch",
+    "type": "safety",
+    "priority": "P0",
+    "effort": "L",
+    "problem": "geminiLiveClient.ts config is `{ responseModalities: [Modality.AUDIO], systemInstruction }` only (line 74) — neither outputAudioTranscription nor inputAudioTranscription is requested — and every audio chunk is played the instant it arrives (`if (msg?.data) { ... playChunk(msg.data); }`, line 78). CoachTab.tsx:257-265 passes no onText handler. Contrast the text spine: /chat screens output at routes/api.ts:423, /council at :554, and /voice deliberately BUFFERS the whole reply and screens it before a single token is spoken (SAFE-V1 comment, :608-613, screen at :627); server TTS throws UnsafeTtsOutputError pre-synthesis (server/tts.ts:136-139). Live is the only surface in the app that can speak a diagnosis, a dose, or worse, with zero interposition — the standing P0 blocking GD-3.",
+    "fix": "(1) Add `outputAudioTranscription: {}` and `inputAudioTranscription: {}` to the live.connect config. (2) Introduce a pure `liveTurnGuard` module: playback chunks are buffered per model turn/sentence and released ONLY after the accumulated output transcription for that span passes screenModelOutputLexical (pure + synchronous — extract it to a shared module so the client imports it without the @google/genai Type dependency) AND the async server verdict from /api/live/turn (VC-3). On flag: drop all buffered + queued audio (reset playHead), close the session, append the blocked-fallback message, and speak the same calm fallback line /voice uses (routes/api.ts:638). Route ALL calls to playChunk through the guard — playChunk itself becomes module-private. Acceptance: a guard unit test proving playChunk is unreachable except via the guard; feeding the existing outputScreen fixtures ('Noah is autistic and needs therapy.', '3 mg of melatonin') as a turn transcript emits ZERO audio samples and yields the fallback; a clean transcript releases audio in order.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/safety/outputScreen.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "VC-2",
+    "title": "Live user speech bypasses the escalation screen entirely",
+    "type": "safety",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "Mic PCM is streamed raw to Gemini (geminiLiveClient.ts:92-95, sendRealtimeInput) with nothing between the parent's words and the model. Every other input path runs screenForImmediateEscalation (safety/escalation.ts:118) first: /chat at routes/api.ts:328, /voice at :587, /extract-log at :700, and 6 more. A parent saying 'I'm afraid I will hurt him' (caregiver_distress pattern, escalation.ts:105) into Live gets whatever a prompt-level 'suggest professional help' instruction (CoachTab.tsx:260) produces — prompt guidance is not fail-closed and the crisis resource card (1201/113/1813/988, escalation.ts:30-43) never appears.",
+    "fix": "With inputAudioTranscription enabled (VC-1), POST each final user-turn transcript to /api/live/turn (VC-3). Server runs screenForImmediateEscalation on it; on match returns {action:'stop_crisis', category, resourcesMarkdown: renderEscalationMarkdown(match)}. Client: immediately stop the Live session, append the resources markdown as an AI ChatMessage (same shape /chat returns at routes/api.ts:330-334), and speak one short localized redirect sentence via the existing speak() seam. Acceptance: integration test — a self_harm-pattern transcript posted as a user turn returns stop_crisis with resources containing '988'; client-side test that the session controller's stop() is called and the escalation message is appended before any subsequent model audio would play.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/safety/escalation.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "VC-3",
+    "title": "No /api/live/turn endpoint: Live turns are never logged server-side and never persisted client-side",
+    "type": "safety",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "After minting the token (routes/api.ts:663-687) the server never sees the conversation again — grep confirms no /live/turn, /live/log, or transcription handling anywhere in the repo. Client-side is equally blind: the COACH-2 transcript reducers (lib/voiceTranscript.ts:20-46) are wired only into the browser-STT loop (CoachTab.tsx:190, :221); the Live path persists nothing because it has no text at all. A crisis conversation over Live leaves zero record for the parent, for audit, or for the safety review that GD-3 requires.",
+    "fix": "Add POST /api/live/turn {role:'user'|'model', text, language, childId} inside createApiRouter (inherits the /api auth middleware, createApp.ts:186). Server: role 'user' → screenForImmediateEscalation; role 'model' → screenModelOutput (same function as :423/:627); ALWAYS logger.info('live.turn', {requestId, uid, role, chars, verdictCategory}) so every turn is auditable even when clean; respond {action:'continue'|'stop_crisis'|'stop_blocked', resourcesMarkdown?}. Client: append user transcripts via appendVoiceUser and model transcripts via applyVoiceDelta/settleVoiceTurn — the SAME reducers the browser loop uses, so Live turns persist through the existing conversationsCol upsert with no new capture path (voiceTranscript.ts:9-12 documents exactly this seam). Acceptance: route test — both roles logged with verdicts; reducer test — a Live session's turns land in chatMessages and survive settle; flagged model turn returns stop_blocked.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/voiceTranscript.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "VC-4",
+    "title": "Voice fallback loop swallows the crisis payload — resources surface neither in-voice nor on-screen",
+    "type": "safety",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "On escalation, /voice speaks ONE generic sentence ('…please reach out to a professional or local support line') and buries the category in the SSE done event (routes/api.ts:589-593) — the full resources block with real numbers is never sent. Worse, the client's streamVoice parser handles ONLY 'delta' and 'error' events (lib/api.ts:165-166); the done payload (escalation category AND outputBlocked flag) is silently discarded, so CoachTab cannot react at all. The identical utterance typed into /chat returns the full renderEscalationMarkdown card with 112/988/1201/0800-0113 (routes/api.ts:328-334, escalation.ts:135-157). Voice-mode parents — plausibly the ones in the most acute distress — get strictly less crisis help than typists, and the loop then resumes listening as if nothing happened.",
+    "fix": "(1) Server: include resourcesMarkdown (renderEscalationMarkdown(match)) in the done payload at :591. (2) Client: extend streamVoice with an onEvent(name, data) callback; wire done handling. (3) CoachTab: on escalation done — stop the voice loop (do NOT resume listening), append the resources markdown as a persisted AI ChatMessage so the numbers are on screen, and speak a short redirect; on outputBlocked done — surface the blocked notice visibly instead of dropping it. Acceptance: test that an escalation done event produces an on-screen message containing '988' and that startListening is not re-invoked; outputBlocked done renders a visible blocked state.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "VC-5",
+    "title": "Fail-closed contract: screening unavailability must visibly degrade Live to the screened browser loop",
+    "type": "safety",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "There is no defined behavior for 'screening endpoint down while Live is speaking'. Today's only Live error handling is onError → toast + silent fallback (CoachTab.tsx:263), and a naïve VC-1/VC-3 implementation that treats a failed /api/live/turn call as 'no verdict yet' would keep releasing audio — i.e., voice would continue unscreened exactly when the safety rail is broken. The repo's own precedent is strict: server TTS throws UnsafeTtsOutputError rather than synthesize unscreened text (server/tts.ts:136-139), and /voice buffers rather than relay (routes/api.ts:608-613). Live must inherit that posture.",
+    "fix": "Contract in liveTurnGuard: a /live/turn network error, non-200, or timeout (~3s) is treated as FLAGGED — drop buffered audio, stop the Live session, then visibly degrade: toast/banner ('Voice switched to standard mode') + startBrowserVoice(), whose every turn is server-screened via /voice (:587 input, :627 output). No code path may resume Live without a passing verdict; the lexical client-side screen (VC-1) still runs even in this window so nothing lexically flagged ever played. Acceptance: guard test — mock /live/turn returning 500 → stop() called within one turn, zero further audio released, browser loop started, visible notice shown; a test asserting there is no branch that continues Live playback on a screening error (fail-closed by construction, not by catch-and-continue).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
+     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/server/tts.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "VC-6",
+    "title": "Crisis speech in voice mode is English-only — HE/RTL parity break at the worst possible moment",
+    "type": "safety",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "/voice reads `language` (routes/api.ts:582) and localizes the MODEL prompt ('Reply in warm, natural spoken Hebrew', :600) — but the escalation fallback (:590) and the blocked-output fallback (:638) are hardcoded English strings. A Hebrew-speaking parent mid-crisis, in a Hebrew voice session, hears an English sentence spoken by an he-IL-configured loop (CoachTab.tsx:226 sets he-IL dictation). The Live system instruction (CoachTab.tsx:260) is likewise English-only with no language directive at all, so Hebrew Live sessions start off-register entirely. Escalation patterns themselves already cover Hebrew input (escalation.ts:40, :57, :73) — detection works, the response doesn't.",
+    "fix": "Server-side he/en map for the two safety fallback strings, keyed on the request language (mirror the :600 pattern); pass the same language directive into the Live systemInstruction string in CoachTab (and into /api/live/turn responses' spoken redirect from VC-2/VC-4). Acceptance: unit test — /voice with language:'he' + a self_harm message returns a Hebrew delta; language:'he' + a flagged output returns the Hebrew blocked fallback; Live systemInstruction contains the Hebrew directive when aiLang==='he'.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "VC-7",
+    "title": "/live/token is un-metered and one env var away from enabling unscreened Live in prod",
+    "type": "safety",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "Live availability is solely `if (!config.geminiApiKey)` (routes/api.ts:664-668) — there is no LIVE_ENABLED flag, no entitlement check, and no metering (createApp.ts:228 meters only /api/chat and /api/council). Setting GEMINI_API_KEY in prod for ANY other reason (e.g., a dev-API fallback) would instantly flip every client's probe (CoachTab.tsx:147) to Live and route all voice around the screened /voice path — the GD-3 hazard is an accidental env change, not a decision. Tokens are also minted without quota (20-min, uses:1, :673-681) so Live usage is unbounded and invisible to the coach meter.",
+    "fix": "Add `liveEnabled` to ArborConfig (env LIVE_ENABLED, default false) and gate /live/token on `config.liveEnabled && config.geminiApiKey`; put /api/live/token (and /api/live/turn) under the coach meter or a dedicated per-user daily token quota via the existing UsageCounterStore. The eventual flag flip to true IS the GD-3 unlock and stays a deliberate Guy decision once VC-1..VC-5 are green. Acceptance: token endpoint returns available:false with key present but flag off; metered 402/429 path covered by test; flag-on + key-on returns a token.",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/config/env.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/server/createApp.ts"
+    ],
+    "gate": "guy"
+   },
+   {
+    "id": "VC-8",
+    "title": "Output screen has no crisis category — model-emitted self-harm/distress language passes the voice floor",
+    "type": "safety",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "The lexical output screen covers exactly three categories: diagnosis, medication, treatment_directive (outputScreen.ts:70-113). The semantic layer that could catch broader harm is default-OFF and fails OPEN (:115-116, :153-155). Crisis patterns exist only on the INPUT side (escalation.ts:38-108). So a pathological model output that echoes or normalizes self-harm/caregiver-harm language ('sounds like you want to hurt him — that's understandable') is spoken aloud by /voice, /chat, and (post-VC-1) Live, because no output-side pattern matches it. For spoken audio the harm ceiling is higher than text — you can't un-hear it.",
+    "fix": "Add a fourth lexical output category 'crisis' that reuses the compiled pattern lists from escalationCategories (self_harm, abuse_or_unsafe_home, caregiver_distress) against MODEL output, returning flagged verdicts that route to the crisis fallback + resources (not the generic renderBlockedOutputMarkdown), in /voice (:627), /chat (:423), and the VC-3 live/turn model-role screen. Tune with a small allow-list so legitimate coach language ('if you ever feel you might hurt your child, call…') — which itself contains the trigger phrases — is exempted (e.g., skip matches inside help-directive frames). Acceptance: outputScreen tests — harm-normalizing output flagged with category 'crisis' and the voice path speaks the crisis fallback + shows resources; the legitimate help-referral sentence and all existing clean fixtures remain unflagged (zero regressions in outputScreen.test.ts).",
+    "files": [
+     "C:/Users/dguyr/ROS/Arbor/app/src/safety/outputScreen.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/safety/escalation.ts",
+     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts"
+    ],
+    "gate": "clinical"
+   }
+  ]
+ },
+ {
+  "category": "ASK ARBOR JOURNEY intuitiveness",
+  "verdict": "The Ask Arbor surface has strong bones (contract cards, citations, seedCoach seam) but fails the 22:30 stressed-parent test on cadence and flow: the \"stream\" delivers zero words until the full JSON contract is generated (parent stares at \"Receiving structured guidance (1234 chars)\" for 10-25s, then a fake typewriter replays), the only composer scrolls off-screen after every answer, the answer stack buries \"say this now\" under hypotheses and internal frame jargon, follow-ups never anticipate, and memory use is claimed but never shown. Hebrew parents additionally get hardcoded English in the welcome bubble, stream statuses, and their own chat bubbles. Roughly 6 of 9 fixes are S/M client-side changes executable this wave.",
+  "findings": [
+   {
+    "id": "ASK-1",
+    "title": "No first-token cadence: answer withheld until full contract generates, behind debug-jargon status",
+    "type": "journey",
+    "priority": "P0",
+    "effort": "L",
+    "problem": "app/src/routes/api.ts:395-411 streams only `status` (one fixed English sentence) and `chunk` ({characters:N}) events while the ENTIRE JSON contract generates; text lands only at `done` (ArborContext.tsx:625-650). The parent waits the full generation (10-25s on prod) watching 'Receiving structured guidance (1234 chars)' — engineer-speak — then TypewriterMarkdown.tsx:31-45 replays a fake 2s typewriter on already-complete text. ChatGPT/Claude mobile show first meaningful words in ~1s; this is the single biggest driver of Guy's 'not the ChatGPT cadence' complaint on the typed path.",
+    "fix": "Phase 1 (no gate): replace character-count statuses with 3 localized, honest stages driven by real server milestones (reading {name}'s memory → checking sources → shaping today's plan) + an immediate locally-rendered acknowledgment bubble; delete the post-hoc typewriter for contract answers. Phase 2 (clinical gate): stream the contract's prose `text` field as sentence-level `delta` events, each passing the lexical safety floor before emission (the sentence-split pattern already exists client-side in CoachTab.tsx:192-194 and the delta seam in appendVoiceAiDelta), with the full semantic screen still gating the structured panels at `done` — fail-closed preserved. Acceptance: p50 time-to-first-visible-words < 2.5s; no English status strings in HE; escalation screening and output screen behavior unchanged (existing safety tests green).",
+    "files": [
+     "Arbor/app/src/routes/api.ts",
+     "Arbor/app/src/context/ArborContext.tsx",
+     "Arbor/app/src/components/ui/TypewriterMarkdown.tsx",
+     "Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "ASK-2",
+    "title": "Composer scrolls off-screen after every answer; follow-up requires scrolling back up",
+    "type": "journey",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "COACH-4 made the top hero composer the ONE input (CoachTab.tsx:298-333) while ArborContext.tsx:440-442 auto-scrolls the viewport to chatBottomRef on every message. After the first answer on a phone the input is far above the fold, behind the lens row and scenario chips; typing a follow-up — the core conversational loop — means scroll-hunting. ChatGPT/Claude pin the composer at the bottom; this inversion is why the surface feels non-conversational.",
+    "fix": "Keep the single-input invariant but make the composer sticky: on a fresh thread it renders in the hero position; once the thread has >=1 user turn it docks as position:sticky bottom-0 within the thread card (same element, moved — not a second input, so the COACH-4 firewall condition holds). Auto-scroll then keeps both the streaming answer and the input visible. Acceptance: on a 375x812 viewport, after an answer settles, the input + send button are visible with zero scrolling; only one textarea exists in the DOM; RTL and voice/photo chips travel with it.",
+    "files": [
+     "Arbor/app/src/components/tabs/CoachTab.tsx",
+     "Arbor/app/src/context/ArborContext.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "ASK-3",
+    "title": "Answer card stack buries 'say this / do this now' under hypotheses and leaks six-frame jargon",
+    "type": "design",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "CoachAnswerCards.tsx renders, in order: meta chips (126) → council (137) → 'What may be happening' hypotheses with confidence labels (153) → today plan (168) → parent script (194) → avoid/observe (211) → escalate (234) → six-frame routing chips exposing internal frame ids like 'shadow', 'marriage', 'shepherd' (266-277) → citations → actions. A stressed parent wants the exact words and the 1-3 steps FIRST; instead the first screenful is analysis. The frame chips are internal orchestration vocabulary on a parent surface — pure noise.",
+    "fix": "Reorder: parentScript ('Say this') and todayPlan lead; nonDiagnosticHypotheses collapse into a 'Why this might be happening' disclosure (same idiom as the citation drawer); remove the frameRouting panel from the parent render entirely (keep in contract for telemetry/evals). Acceptance: first screenful of any contract answer on mobile = script + plan; frames never visible; CoachAnswerCards.test.ts updated and green; clinical firewall untouched (no verdicts added).",
+    "files": [
+     "Arbor/app/src/components/coach/CoachAnswerCards.tsx",
+     "Arbor/app/src/components/coach/CoachAnswerCards.test.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "ASK-4",
+    "title": "Follow-up chips are static (never anticipate) and the Council button is a silent no-op after any send",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "CoachTab.tsx:50-54 hardcodes the same 3 follow-ups (avoid/repair/calm) for every answer — after a sleep question they still offer 'repair the connection', so they read as decoration, not anticipation. Worse: handleCouncilSend (ArborContext.tsx:747-750) reads chatInput, which handleChatSend just cleared, and returns silently when empty — so tapping 'Council' right after an answer (its most natural moment) does nothing, with zero feedback.",
+    "fix": "Add `followUps: string[]` (2-3 short questions, localized via the languageDirective) to coachResponseSchema + CoachContract; render them as the chips with the current static trio as fallback when absent. Council: when chatInput is empty, re-ask the last user question (lastUserText already computed at CoachTab.tsx:108); disable the button with a hint only when no prior turn exists. Acceptance: chips differ across two different questions and arrive in uiLang; Council tapped after an answer visibly convenes on that question; eval case added to the coach contract suite.",
+    "files": [
+     "Arbor/app/src/routes/api.ts",
+     "Arbor/app/src/types.ts",
+     "Arbor/app/src/components/tabs/CoachTab.tsx",
+     "Arbor/app/src/context/ArborContext.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "ASK-5",
+    "title": "Hardcoded English breaks HE/RTL parity inside the conversation itself",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "Four English leaks in the HE journey: (1) WELCOME_MESSAGE (ArborContext.tsx:101-112) is an English markdown bubble in every fresh thread; (2) stream statuses 'Connecting to Arbor...' (672), 'Convening the scholar council…' (753), 'Receiving structured guidance (N chars)' (626) and the server status at api.ts:398 render untranslated in the loading bubble (CoachTab.tsx:743); (3) tapping a Hebrew-labeled scenario chip (CoachTab.tsx:59-65) inserts a long English paragraph as the parent's OWN bubble — words they never saw or wrote; (4) the 402/cancel/error injected ai messages (ArborContext.tsx:703-737) are English markdown. UI chrome i18n is otherwise complete, which makes these stick out more.",
+    "fix": "Move all injected message/status strings to i18n keys (t() via a language accessor in ArborContext, which already imports getAiLanguage); for scenario and follow-up chips add `displayText` to ChatMessage so the user bubble shows the localized label/summary while the canonical EN prompt goes to the model (pattern: hard-moment cards already localize via buildHardMomentSeedPrompt). Acceptance: a full HE journey (fresh thread → scenario tap → answer → follow-up → cancel → error) shows zero English; user bubbles match what the parent tapped, in their language.",
+    "files": [
+     "Arbor/app/src/context/ArborContext.tsx",
+     "Arbor/app/src/components/tabs/CoachTab.tsx",
+     "Arbor/app/src/lib/i18n.ts",
+     "Arbor/app/src/routes/api.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "ASK-6",
+    "title": "Memory is claimed ('uses the memory you approved') but never shown per-answer; proposals vanish silently",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "The hero line (i18n.ts:431) statically asserts memory use, but the server injects approvedMemory invisibly (api.ts:351-372) and appends memoryProposals to a queue the parent only discovers in Profile › Child Memory (api.ts:440-444; CoachTab.tsx:828-832 removed the queue from Ask). The parent never sees Arbor remember or learn — exactly the 'does it remember context visibly' gap. ChatGPT's 'memory updated' chip is the benchmark for felt continuity.",
+    "fix": "Server adds `approvedMemoryFactsUsed: number` to the chat payload (a count — firewall-safe); CoachAnswerCards renders a calm footer row 'Grounded in {n} facts you approved · manage' deep-linking to route \"memory\" (setActiveTab seam exists). When the response's memoryReviewItems contains new pending items, render an inline one-line chip 'Arbor suggests remembering something — review' with the same deep link; nothing auto-saves, queue mechanics unchanged. Acceptance: answers grounded in approved memory show the count row; a turn that generates a proposal shows the review chip once; zero memory CONTENT rendered in-thread; HE strings included.",
+    "files": [
+     "Arbor/app/src/routes/api.ts",
+     "Arbor/app/src/components/coach/CoachAnswerCards.tsx",
+     "Arbor/app/src/components/tabs/CoachTab.tsx",
+     "Arbor/app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "ASK-7",
+    "title": "Triple-redundant first-run orientation: English welcome bubble + mascot empty state + scenario chips",
+    "type": "design",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "At chatMessages.length <= 1 the thread renders BOTH the mascot empty state (CoachTab.tsx:555-562) AND the WELCOME_MESSAGE ai bubble (rendered by the messages map at 563), whose 'suggested starting points' duplicate the scenario chips above and whose closing line tells the parent to 'Select a Scholar Lens above (Vygotsky, Bowlby, Piaget, Winnicott)' — a control that is collapsed by default (showAllLenses=false). Four competing orientation blocks lengthen the first screen and delay the first question.",
+    "fix": "Delete WELCOME_MESSAGE from the thread: initialize chatMessages to [] and convert every `length <= 1` / `length > 1` guard (CoachTab.tsx:119, 451, 476, 555, 819; ArborContext.tsx:455) to a hasUserTurn/hasAiTurn predicate; keep the mascot empty state + scenarios as the single orientation. Acceptance: fresh thread shows exactly one orientation block; conversation persistence, title derivation (first user turn), TrustSafetyBar, and follow-up gating behave identically; tests green.",
+    "files": [
+     "Arbor/app/src/context/ArborContext.tsx",
+     "Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "ASK-8",
+    "title": "Errors double-render with infra internals, persist into the conversation, and Retry duplicates the question",
+    "type": "design",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "On failure handleChatSend both sets apiError (calm retry card, CoachTab.tsx:757-778) AND appends an ai bubble from renderApiConnectionError (ArborContext.tsx:54-62, 731-738) containing the raw err.message plus hints about Firestore indexes and 'model provider configuration' — clinical-calm register violation shown to a stressed parent, and the upsert effect (454-465) persists that bubble into the saved conversation forever. Retry calls handleChatSend(lastUserText), which appends the user's question a second time (677).",
+    "fix": "Single error affordance: keep only the role=alert retry card; stop appending error/cancel markdown bubbles (or append one localized one-liner with no internals). Retry resends without re-appending the user turn (skip the push when the last user message text matches, or pop the failed turn before resend). Exclude error-only turns from the conversation upsert. Acceptance: kill the network mid-question → thread shows the question once + one calm retry card; after successful retry the saved conversation contains no error text; connection-error copy contains no stack/infra vocabulary in either language.",
+    "files": [
+     "Arbor/app/src/context/ArborContext.tsx",
+     "Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "ASK-9",
+    "title": "Lens machinery taxes the primary journey before it delivers value",
+    "type": "design",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "The lens block (CoachTab.tsx:364-447) sits between the composer and the fast-start scenarios — prime mobile real estate — yet collapsed it shows only an 'Integrated Balanced' radio plus a 'browse all' toggle, and expanded it lists academic chips like 'Winnicott (Holding Environment)'. The identity strip repeats 'Lens: {selectedLens}' (546). A 22:30 parent must scroll past scholar taxonomy to reach the scenario chips; lens choice is expert value presented as beginner chrome.",
+    "fix": "Demote: move the lens row below the fast-start scenarios (or fold it into a single 'Perspective: Integrated · change' affordance beside the EvidenceChip), keeping the full radiogroup one tap away and the persisted selection + seedCoach lens steering intact. Acceptance: fresh mobile load above-the-fold = title, composer, capture chips, scenarios; lens change reachable in <=2 taps; arrow-key a11y and RTL preserved; answers still show the 'aligned with' chip when a non-default lens is active.",
+    "files": [
+     "Arbor/app/src/components/tabs/CoachTab.tsx"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "AI-ASSISTED CAPTURE — \"logging a moment\" feel",
+  "verdict": "The one-breath capture Guy wants is 80% built server-side and almost entirely unwired client-side. A purpose-built, schema-enforced, crisis-screened extraction endpoint (/api/extract-log, routes/api.ts:693-752) exists — but the actual voice capture path in BehaviorsTab ignores it and hand-rolls a prompt+regex against /api/chat, which silently converts crisis-flagged transcripts into ordinary drafts (fail-open) and returns unvalidated fields. The text path (\"telling Arbor\" by typing) has zero AI anywhere: QuickCaptureBar/QuickLogModal are plain forms, and the Behaviors capture bar dumps the typed sentence verbatim into one field. Hebrew capture is broken end-to-end (dictation hardcoded en-US, extraction has no language directive). The shared ConfirmCaptureReview is a genuinely good one-tap contract, but it hides exactly the fields the AI guesses (intensity/context/duration), offers no inline correction, and dead-ends after confirm with no coach handoff. Today capture feels like filling a form because, on every path except Coach→Create-log (which itself lands in an invisible, ungated form), it literally is one. All fixes below are executable in-repo by rewiring existing seams — no external grants needed.",
+  "findings": [
+   {
+    "id": "AI-CAP-1",
+    "title": "Voice capture bypasses /api/extract-log and fails OPEN on crisis transcripts",
+    "type": "safety",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "BehaviorsTab.parseVoice (app/src/components/tabs/BehaviorsTab.tsx:200-239) sends the transcript to /api/chat with a hand-rolled prompt and greedy regex (/\\{[\\s\\S]*\\}/) instead of the purpose-built /api/extract-log (app/src/routes/api.ts:693-752) which already has schema-enforced generateJson, escalation screening (409 + escalationCategory), and name redaction. Worse: when /chat's screenForImmediateEscalation fires it returns 200 with escalation MARKDOWN as data.text (api.ts:328-343); the regex finds no JSON, the catch branch stuffs the raw crisis transcript into newLogTrigger with a friendly 'voiceFallback' info toast (line 234-235), and the escalation card never surfaces. A crisis-flagged spoken note becomes an ordinary editable draft — fail-open on the exact path the fail-closed constraint targets. Fields are also unvalidated (p.type written as-is at line 222).",
+    "fix": "Replace the /api/chat call in parseVoice with the existing api.extractLog client (app/src/lib/api.ts:191-192). On HTTP 409 with escalationCategory, render the existing escalation surface (renderEscalationMarkdown content path already approved for /chat) and do NOT populate any draft field. Clamp/validate all returned fields client-side (intensity 1-5, context in enum, duration >=1). Delete the regex JSON parsing. Acceptance: (1) a crisis fixture transcript produces the escalation UI and zero draft-field writes — add a test next to confirmCaptureReview.test.ts; (2) a normal transcript prefills type/intensity/duration/context/trigger/response/notes; (3) no fetch('/api/chat') remains in BehaviorsTab; (4) fail path (500/network) keeps today's raw-transcript-into-trigger fallback but only after the escalation branch.",
+    "files": [
+     "app/src/components/tabs/BehaviorsTab.tsx",
+     "app/src/routes/api.ts",
+     "app/src/lib/api.ts"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "AI-CAP-2",
+    "title": "Hebrew voice capture broken end-to-end: en-US dictation + English-only extraction",
+    "type": "bug",
+    "priority": "P0",
+    "effort": "S",
+    "problem": "startDictation defaults lang='en-US' (app/src/lib/speech.ts:20) and BOTH callers omit the param (BehaviorsTab.tsx:251, CoachTab.tsx:215), so a Hebrew-speaking parent's dictation is transcribed as English garbage before any AI sees it. Even with a correct transcript, parseVoice sends no language and /api/extract-log (api.ts:693-752) has no language directive at all — unlike /chat's languageDirective (api.ts:322-325) — so draft fields come back in English. HE/RTL parity is a standing constraint and this is the flagship 'speak a moment' path; LanguageContext already exposes the signal (AiLang 'en'|'he', LanguageContext.tsx:5).",
+    "fix": "Thread uiLang: callers pass startDictation(handlers, uiLang==='he' ? 'he-IL' : 'en-US'); add language to the extractLog payload and to the /extract-log prompt ('write trigger/response/notes in natural Hebrew; keep behaviorType/context values per schema') mirroring /chat's directive. Acceptance: (1) unit test asserts rec.lang='he-IL' when lang passed (extend a speech.ts test with a stub Ctor); (2) /extract-log prompt snapshot contains the Hebrew directive when language==='he'; (3) manual HE run: spoken Hebrew note yields Hebrew trigger/response/notes in the review card, RTL-correct via existing dir handling.",
+    "files": [
+     "app/src/lib/speech.ts",
+     "app/src/components/tabs/BehaviorsTab.tsx",
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/routes/api.ts",
+     "app/src/lib/api.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-CAP-3",
+    "title": "Typed capture has zero AI — 'telling Arbor' exists only for voice",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "Every text entry point is a bare form: Today's QuickCaptureBar onText just opens QuickLogModal (OverviewTab.tsx:318), a 4-field form with no extraction (QuickLogModal.tsx:67-98); the Behaviors capture bar takes the typed sentence and dumps it verbatim into newLogTrigger only (openFromBar, BehaviorsTab.tsx:179-194). api.extractLog is called from exactly one place in the app — CoachTab:601. So a parent who types 'she screamed the whole bath and I ended up holding her till she calmed down' gets a trigger field containing that sentence and must still hand-pick type/intensity/context/response. Additionally handleAddLog hard-requires a non-empty response (ArborContext.tsx:799), so a one-breath description with no explicit parent-response can never be saved.",
+    "fix": "Wire the SAME api.extractLog seam behind typed input: on Enter (or a 'Draft it' button) in the Behaviors capture bar and in QuickLogModal when the parent has typed a sentence (>~25 chars), call extractLog, prefill the full draft, arm needsReview with source 'text', and open ConfirmCaptureReview directly — reusing the existing gate (setNeedsReview/setReviewOpen, BehaviorsTab.tsx:152-154,370-372). When extraction returns response:'', prefill a neutral editable placeholder in review instead of hard-blocking on the fillBoth toast. Zero new capture paths — same form state, same handleAddLog write. Acceptance: (1) typing a messy sentence + Enter yields a review card with all fields prefilled in ≤1 model round-trip; (2) confirm writes exactly one log through handleAddLog; (3) short inputs (<25 chars) keep today's prefill-the-form behavior; (4) extraction failure degrades to today's behavior (sentence into trigger, form open); (5) HE input produces HE draft (depends on AI-CAP-2).",
+    "files": [
+     "app/src/components/tabs/BehaviorsTab.tsx",
+     "app/src/components/overview/QuickLogModal.tsx",
+     "app/src/lib/api.ts",
+     "app/src/context/ArborContext.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-CAP-4",
+    "title": "Coach 'Create log' drafts into an invisible form and bypasses ConfirmCaptureReview",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "CoachTab.onCreateLog (CoachTab.tsx:596-617) — the ONLY consumer of the real extraction endpoint — prefills form state and setActiveTab('behaviors'), but BehaviorsTab renders the form only when (captureOpen || editingLogId) (BehaviorsTab.tsx:723) and the handoff sets neither pendingCaptureMode nor needsReview. Result: the parent lands on the Behaviors hub with NO visible draft while the toast claims 'log drafted'; if they later open the form and hit save, this AI-originated draft writes immediately via submitLog (line 374-375) WITHOUT the shared ConfirmCaptureReview — violating the TODAY-3 contract that gated/machine-originated captures pass review, and if reviewed it would mis-state provenance as 'written by you' (CaptureSource defaults 'text').",
+    "fix": "Route the handoff through the existing seam: extend CaptureSource with 'ai-draft' (ConfirmCaptureReview.tsx:18-24 + a new ql.review.source.aiDraft i18n key, factual wording e.g. 'Drafted by Arbor from your chat — check every field'), have onCreateLog call requestCapture-style state (or a new pendingCaptureMode value consumed at BehaviorsTab.tsx:416-423) that sets captureOpen, arms needsReview, sets source 'ai-draft', and scrolls the form into view. Acceptance: (1) coach→Create log lands with the form visible, populated, and the review gate armed; (2) the only write path is confirmReview; (3) the review provenance line states the factual AI-draft source (no confidence wording — CODEX-7 test extended); (4) EN+HE keys added.",
+    "files": [
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/components/tabs/BehaviorsTab.tsx",
+     "app/src/components/overview/ConfirmCaptureReview.tsx",
+     "app/src/context/ArborContext.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-CAP-5",
+    "title": "Review card hides exactly the fields the AI guessed (intensity/context/duration) and has no inline correction",
+    "type": "design",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "ConfirmCaptureReview rows in BehaviorsTab (912-917) show type/trigger/response/notes but NOT intensity, context, or duration — precisely the fields extraction infers most aggressively ('intensity inferred from the description', 'durationMinutes: use 10 if unclear', api.ts:720-721). A parent one-tap-confirms an AI-guessed intensity 4/5 they never saw, which then feeds heroStats and typeCounts30d. QuickLogModal's review (60-63) likewise omits the intensity the form just set. And the only correction path is Edit → close review → full form round-trip (onEdit, BehaviorsTab:919) — the opposite of 'inline correction'.",
+    "fix": "Extend the ONE shared ConfirmCaptureReview (no fork): add rows for intensity, context, duration; make the high-risk rows inline-editable in place — context as the existing 4-chip row pattern (BehaviorsTab:791-803), intensity as a 1-5 stepper, text rows tap-to-edit. Optionally tag AI-populated fields with a factual 'from your note' label (provenance fact, not confidence — CODEX-7-safe, but keep wording out of certainty territory). Acceptance: (1) a voice/ai-draft review shows all 7 fields; (2) changing intensity/context inside review updates the confirmed write without leaving the review; (3) both consumers (QuickLogModal + BehaviorsTab) render the same component — confirmCaptureReview.test.ts extended to assert intensity/context presence and no confidence wording; (4) RTL layout verified for the chip/stepper rows.",
+    "files": [
+     "app/src/components/overview/ConfirmCaptureReview.tsx",
+     "app/src/components/tabs/BehaviorsTab.tsx",
+     "app/src/components/overview/QuickLogModal.tsx",
+     "app/src/components/overview/confirmCaptureReview.test.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-CAP-6",
+    "title": "Dictation is speak-blind and dies on the first pause (no interim transcript, single-shot)",
+    "type": "design",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "startDictation sets interimResults=false, continuous=false (speech.ts:28-30) and only delivers text onend (39-42). While speaking, the parent sees nothing but a pulsing mic button (BehaviorsTab:746, 481) — no words appearing, no evidence Arbor is hearing them — and the first natural mid-story pause ends recognition, truncating the moment. This is the core of 'pressing talk … not intuitive': the modern voice-capture grammar (live caption + generous endpointing) is absent, even though CoachTab already renders live voice captions for its loop (msg.voiceLive, CoachTab.tsx:626-628).",
+    "fix": "In speech.ts add an opts overload: interimResults=true, continuous=true, onInterim(text) callback, and a client-side silence-finalize timer (~4-5s) plus the existing manual stop. BehaviorsTab renders the interim transcript live inside the capture bar/form area while listening (reuse the caption pattern, calm register, --arbor-muted). Acceptance: (1) spoken words appear within ~500ms of being said; (2) a 1.5s pause does NOT end capture; (3) manual stop or silence timeout finalizes and hands the full transcript to extraction; (4) reduced-motion and RTL safe; (5) CoachTab behavior unchanged (its loop opts out or adopts intentionally).",
+    "files": [
+     "app/src/lib/speech.ts",
+     "app/src/components/tabs/BehaviorsTab.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-CAP-7",
+    "title": "No post-confirm coach handoff — the captured moment dead-ends in a toast",
+    "type": "journey",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "confirmReview (BehaviorsTab.tsx:382-391) and QuickLogModal.confirm (41-46) end with toast('logged') and close everything. The 'want a next step?' handoff Guy expects after telling Arbor about a hard moment doesn't exist, even though the exact pattern is already built 30 lines away: the behavior-analysis card seeds the coach via seedCoach({prompt, source}) (BehaviorsTab:563-571; ArborContext.tsx:168-172). Capture feels transactional — form submitted, nothing came back.",
+    "fix": "After a gated confirm, surface ONE dismissible, non-blocking strip (or toast action) — 'Want a next step for this moment? Ask Arbor' — that calls seedCoach with a prompt built from the just-confirmed log (type/trigger/response) and source 'post-capture'. Never auto-send; never nag (show once per confirm). Calm register, green primary CTA. Acceptance: (1) confirming a capture shows exactly one optional CTA; (2) tap lands in Coach with the prompt prefilled (not sent) and coach_seed telemetry source='post-capture'; (3) dismiss leaves no residue; (4) EN+HE copy; (5) no change to the write path.",
+    "files": [
+     "app/src/components/tabs/BehaviorsTab.tsx",
+     "app/src/components/overview/QuickLogModal.tsx",
+     "app/src/context/ArborContext.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AI-CAP-8",
+    "title": "Behavior-type taxonomy split: free-label extraction vs fixed 6-option selects",
+    "type": "bug",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "/api/extract-log intentionally emits a free 2-4 word behaviorType label (api.ts:719: 'Morning refusal', 'Screen shutoff meltdown'), but both capture forms hard-code six English option values (BehaviorsTab.tsx:764-771, QuickLogModal.tsx:70-77). CoachTab's handoff (602) sets a free label that matches no <option>, so the select renders with no visible selection while state holds the label; parseVoice's unvalidated p.type (BehaviorsTab:222) writes whatever the model returned. Free labels then fragment typeCounts30d and the type filter (271, 318-326) into singleton buckets, and the raw stored English value is displayed unlocalized in the log list (617).",
+    "fix": "One shared taxonomy module (e.g. src/content or src/contracts): the canonical six types with i18n keys + a mapLabelToType(label) that maps extraction output onto the canonical set and preserves the free label in notes when it doesn't fit (or adopt free labels everywhere with grouping normalization — pick ONE, document it). Validate/clamp after every extraction (extractLog + parseVoice replacement from AI-CAP-1). Acceptance: (1) any extraction result renders a valid, visible selection in both forms; (2) type filter and 30-day counts group correctly for AI-drafted logs; (3) both selects import options from the shared module (no duplicated literals); (4) HE labels render in HE UI.",
+    "files": [
+     "app/src/components/tabs/BehaviorsTab.tsx",
+     "app/src/components/overview/QuickLogModal.tsx",
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/routes/api.ts"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "AI ROUTING, LATENCY + RESILIENCE",
+  "verdict": "The router/policy layer is genuinely wired and fail-closed, but every flagship surface ships fake or starved streaming: /chat streams character-counters over SSE while prod Claude buffers the whole response via non-streaming rawPredict, /voice buffers the entire reply before its one giant delta, and no route sets a thinking budget, deadline, or latency metric. Perceived latency = full-generation time everywhere, which is precisely Guy's \"no ChatGPT cadence\" complaint; the fixes below are ranked by how many perceived seconds they remove per tap.",
+  "findings": [
+   {
+    "id": "AIR-1",
+    "title": "/chat streaming is fake end-to-end: TTFT equals full generation time",
+    "type": "capability",
+    "priority": "P0",
+    "effort": "L",
+    "problem": "Server SSE emits only progress counters — writeSse(res,\"chunk\",{characters: rawResponse.length}) at app/src/routes/api.ts:410 — and the client renders nothing until the done event (app/src/context/ArborContext.tsx:625-628 shows 'Receiving structured guidance (N chars)' as a status line). Worse, in prod (MODEL_PROVIDER=vertex, coach_high_stakes → Claude) ClaudeVertexProvider.generateJsonStream is `yield JSON.stringify(await this.callClaude(options))` over a non-streaming rawPredict call (app/src/ai/claudeVertexProvider.ts:55-57,67), so even the counter arrives as one chunk at the very end. A parent asking the coach stares at a spinner for the entire 8-20s generation of an 8192-token-budget structured response. /council is worse still: two serial model phases with no SSE at all.",
+    "fix": "Make first words visible within ~2s: (1) restructure the coach contract so the empathic opening + main answer stream as real text deltas — either switch the Claude call to streamRawPredict SSE and incrementally extract the leading text field, or split into a fast streamed prose pass followed by the structured card fields; (2) emit `delta` events the client appends into the live bubble; (3) preserve the clinical firewall fail-closed by running the synchronous lexical screen (screenModelOutputLexical) cumulatively on every emitted delta and aborting the stream to the blocked fallback on any flag, with the semantic classifier (when enabled) still gating the final `done` payload swap. Acceptance: p50 time-to-first-visible-word < 2.5s on /chat; a response containing 'Mia has autism' mid-stream never renders the flagged sentence (new SSE-level test); existing 1760 tests stay green; HE/RTL deltas render correctly.",
+    "files": [
+     "app/src/routes/api.ts",
+     "app/src/ai/claudeVertexProvider.ts",
+     "app/src/context/ArborContext.tsx",
+     "app/src/safety/outputScreen.ts"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "AIR-2",
+    "title": "/voice buffers the whole reply server-side, starving the client sentence-TTS pipeline",
+    "type": "capability",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "The client has a real sentence-streaming voice pipeline (app/src/components/tabs/CoachTab.tsx:186-201 splits deltas on sentence boundaries and speaks each as it completes), but the server defeats it: app/src/routes/api.ts:615-648 accumulates the ENTIRE streamText output, runs screenModelOutput on the assembled text, then emits ONE giant delta. Time-to-first-spoken-word = full LLM generation + screen + first TTS synth, serialized. This is the single biggest contributor to 'pressing talk doesn't feel like ChatGPT voice' on the browser-fallback path prod actually runs (Live is provision-gated OFF).",
+    "fix": "Emit sentence-by-sentence deltas from /voice: buffer per sentence, run the synchronous lexical screen on the CUMULATIVE assembled text at each sentence boundary (cross-sentence diagnosis spans stay caught), emit the sentence only if the cumulative screen passes, and on any flag stop the stream and emit the existing calm fallback delta — strictly fail-closed, the flagged span is never spoken. When ENABLE_OUTPUT_SAFETY_CLASSIFIER=true keep today's full-buffer behavior (config-gated). Acceptance: p50 time-to-first-spoken-sentence < 2.5s with gemini-2.5-flash; new test proving a dose-instruction in sentence 3 yields sentences 1-2 + fallback, never sentence 3; abort on req close still works; HE sentence splitting verified.",
+    "files": [
+     "app/src/routes/api.ts",
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/safety/outputScreen.ts"
+    ],
+    "gate": "clinical"
+   },
+   {
+    "id": "AIR-3",
+    "title": "Gemini 2.5 Flash thinking budget never configured — every fast-path call pays default dynamic-thinking latency",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "S",
+    "problem": "grep for thinkingConfig/thinkingBudget across app/src returns nothing. All non-coach routes default to gemini-2.5-flash (app/src/config/env.ts:120-126), which ships with dynamic thinking ON — so trivial, latency-critical calls like /extract-log capture extraction (temperature 0.2, 7-field schema, app/src/routes/api.ts:729), /voice streamText, /digest, and the scholar-council takes each burn seconds of invisible thinking tokens. 'Logging a moment' feels slow for no quality gain on a 4-word-label extraction.",
+    "fix": "Add a per-route thinking budget to the generation config in both Gemini providers (GeminiDevProvider + VertexGeminiProvider in app/src/ai/modelRouter.ts): thinkingBudget 0 for analysis_structured and voice streamText, small/dynamic budget retained for creative_low_risk and coach routes. Simultaneously add durationMs + ttftMs to the ai.usage log line (app/src/ai/usage.ts:43-66) so per-route latency budgets become measurable facts. Acceptance: /extract-log p50 server time drops measurably (log-verified before/after); ai.usage lines carry durationMs; no output-quality regression in existing extract-log tests.",
+    "files": [
+     "app/src/ai/modelRouter.ts",
+     "app/src/ai/usage.ts",
+     "app/src/config/env.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIR-4",
+    "title": "Prod coach runs 2024-era claude-3-5-sonnet-v2 on a non-streaming rawPredict endpoint",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "app/src/config/env.ts:119 defaults VERTEX_MODEL_CHAT to claude-3-5-sonnet@anthropic, remapped to claude-3-5-sonnet-v2@20241022 at app/src/ai/claudeVertexProvider.ts:19 — a model two generations old for the product's highest-stakes surface — and the provider only implements buffered rawPredict (no streamRawPredict), which is what makes AIR-1's streaming impossible in prod. Answer quality and cadence are both capped by this one seam.",
+    "fix": "Upgrade the provider: (1) implement streamRawPredict SSE in ClaudeVertexProvider so coach responses can stream (prerequisite for AIR-1 in prod); (2) bump the default model id to the current Claude Sonnet available on Vertex EU regions, keeping the EU-residency policy gate green (policy.ts requires region eu in prod); (3) update createApp.test.ts route-decision expectations. Acceptance: routeDecision test asserts the new model; an integration test sees >1 chunk from generateJsonStream; policy_denied still thrown for non-EU config. Prod env-var flip and model-quality sign-off are Guy's.",
+    "files": [
+     "app/src/ai/claudeVertexProvider.ts",
+     "app/src/config/env.ts",
+     "app/src/server/createApp.test.ts"
+    ],
+    "gate": "guy"
+   },
+   {
+    "id": "AIR-5",
+    "title": "Today's Focus card runs the full Claude coach pipeline and silently burns the free-tier coach meter",
+    "type": "bug",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "app/src/hooks/useTodaysFocus.ts:51-72 POSTs /api/chat — the heaviest route in the app (coach_high_stakes → Claude, approved-memory fetch, wiki retrieval, full coach schema, output screen) — then throws away everything but the first 3 sentences client-side. Because /api/chat is behind createCoachMeter (app/src/server/createApp.ts:228), this ambient card also decrements the free plan's daily coach-message allowance without the parent ever asking a question, and adds the slowest possible cold load to the Today surface.",
+    "fix": "Add a dedicated lightweight focus generation path: analysis_structured route (flash, thinking off per AIR-3), a 2-field schema (focus text + one action), excluded from the coach meter but kept inside the hourly AI quota, cached per child per calendar day (the hook already has localStorage caching — move the daily-key logic server-side or keep client cache and just swap the endpoint). Acceptance: Today card load does not change X-Coach-Remaining; p50 generation < 3s; card copy unchanged in EN + HE; no new capture path introduced.",
+    "files": [
+     "app/src/hooks/useTodaysFocus.ts",
+     "app/src/routes/api.ts",
+     "app/src/server/createApp.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIR-6",
+    "title": "Neural-TTS sentence calls each burn a unit of the 80/hr AI quota and re-screen text, so voice conversations stall and 429 mid-session",
+    "type": "bug",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "/api/tts is in the hourly AI-quota list (app/src/server/createApp.ts:216) and each call runs screenModelOutput again plus a full non-streaming Cloud TTS round-trip (app/src/routes/api.ts:886, app/src/server/tts.ts:136-140). With the client's per-sentence pipeline, one voice answer = ~5-10 quota units + 2 Firestore RTs each (quotaStore increment = set+get), producing audible inter-sentence gaps and exhausting AI_USER_HOURLY_LIMIT=80 within ~7-10 voice turns — after which the parent's voice degrades or dies mid-conversation.",
+    "fix": "Give TTS its own meter: remove /api/tts from the model-call quota list and add a character-based daily TTS cap (Cloud TTS bills per char; tts.ts already logs chars), keep the lexical screen (synchronous, cheap) but skip the semantic classifier for TTS input that arrived from an already-screened server response. Acceptance: a 10-minute continuous voice session never 429s on /tts; X-AI-Quota-Remaining unaffected by spoken sentences; UnsafeTtsOutputError test still passes (lexical floor intact).",
+    "files": [
+     "app/src/server/createApp.ts",
+     "app/src/server/tts.ts",
+     "app/src/server/aiQuota.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIR-7",
+    "title": "4-6 sequential Firestore round-trips run before any model token on /chat",
+    "type": "bug",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "Every /chat request serially executes: aiQuota increment = Firestore set THEN get (app/src/server/quotaStore.ts:69-81, two RTs), then coach meter = entitlement read + another set+get increment (app/src/server/entitlements.ts:266-288), then the handler's approved-memory read — all before the model call starts. That is ~150-400ms of dead pre-model latency added to every coach message, invisible and fixable.",
+    "fix": "(1) Collapse each increment to one round-trip using a Firestore transaction or by trusting FieldValue.increment and reconstructing the count from a single get-after-set only when near the limit; (2) run the aiQuota and coach-meter lookups concurrently in a combined middleware (both fail open already); (3) log middleware duration into the request observability line. Acceptance: pre-handler middleware p50 < 70ms measured in logs; quota and meter enforcement tests (aiQuota.test.ts, entitlements.test.ts) unchanged and green.",
+    "files": [
+     "app/src/server/quotaStore.ts",
+     "app/src/server/aiQuota.ts",
+     "app/src/server/entitlements.ts",
+     "app/src/server/createApp.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIR-8",
+    "title": "CapabilityRegistry is dead scaffolding at request time — built at boot, read by nothing",
+    "type": "infra",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "buildCapabilityRegistry constructs and registers TTS + structured-text adapters and app.set(\"aiCapabilityRegistry\", ...) stores it (app/src/server/createApp.ts:71-94,108), with a comment claiming it is 'no longer dead scaffolding' — but grep shows zero readers: no route, service, or middleware ever calls app.get(\"aiCapabilityRegistry\") or registry.get() outside tests. All request paths call modelProvider/synthesizeSpeech directly. The policy layer (selectProvider inside modelForRoute/synthesizeSpeech) IS live; the registry adapter surface is not, and its existence misleads audits and future contributors into extending the wrong seam.",
+    "fix": "Decide once: either wire it (route the /tts handler and any future capability caller through registry.get(capability, provider).execute, making it the single dispatch seam) or delete buildCapabilityRegistry + the app.set and keep only policy.ts/contracts.ts. Recommend wiring TTS through it as the first real consumer since the adapter already exists. Acceptance: either zero references to CapabilityRegistry outside capabilities/, or at least one production request path resolves through registry.get with tests proving not_configured fails closed; the misleading comment is corrected either way.",
+    "files": [
+     "app/src/server/createApp.ts",
+     "app/src/ai/capabilities/registry.ts",
+     "app/src/server/tts.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIR-9",
+    "title": "No deadline on any model call — a hung upstream means an indefinite parent-facing spinner",
+    "type": "bug",
+    "priority": "P2",
+    "effort": "M",
+    "problem": "No provider call carries a timeout or AbortSignal: ClaudeVertexProvider's fetch (app/src/ai/claudeVertexProvider.ts:70) and every genai/vertex call in app/src/ai/modelRouter.ts run unbounded, and withModelRetry (app/src/ai/modelRetry.ts:10-23) can add ~2.6s of blind backoff on interactive paths. The /chat req-close abort only stops the SSE relay loop (api.ts:408) — the upstream model call keeps running and billing. A wedged upstream produces an infinite 'Connecting to Arbor...' spinner instead of a calm, fast failure.",
+    "fix": "Introduce per-route deadline budgets threaded as AbortSignal into all providers (coach/council 45s, analysis/extract 15s, voice 20s, image 60s), tie them to req.on(\"close\") so an abandoned request cancels the upstream call, and map deadline expiry to a calm parent-register error payload (existing error event shape). Skip retry backoff entirely once <40% of the budget remains. Acceptance: a stubbed never-resolving provider test returns a structured error within the route budget; aborting the client fetch cancels the upstream call (spy asserts signal.aborted); no --arbor-* or copy-register changes needed beyond the existing error strings.",
+    "files": [
+     "app/src/ai/modelRouter.ts",
+     "app/src/ai/claudeVertexProvider.ts",
+     "app/src/ai/modelRetry.ts",
+     "app/src/routes/api.ts"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "other-ai-surfaces",
+  "verdict": "The sweep splits cleanly into a top and a bottom tier. Reference-quality surfaces: ArborNoticed (app/src/components/sections/ArborNoticedCard.tsx — honest derivation from the child's own logs, fully i18n, firewall-clean, dismissible, feeds Daily Play) and the weekly digest (src/server/digest.ts + routes/api.ts /digest — truthful deterministic stats core, AI narrative with language directive, fail-closed fallback, counts-only firewall). TodayRecommendation focus is also solid (real-AI-only headline, bilingual scrub, daily cache). The two weakest AI surfaces are ArborVision (English-only end-to-end — zero i18n in the component AND no language directive in the /vision server prompt — plus its three result CTAs are loop dead-ends: the handoff note argument is literally dropped at the CoachTab call site and 'Worth remembering' items never reach the existing memory-propose seam) and the speech scorer (recog.lang hardcoded to \"en-US\" while CoachTab's identical seam correctly picks he-IL — a Hebrew child's recording is transcribed as English garbage and scored 'different'). A third systemic gap: ~10 'coach me on this' seedCoach call sites (playbank/DailyPlay, LanguageLab, Overview, Milestones, Plans, Vision) inject hardcoded-English prompts, while the shipped standard (hardMomentSurface, SpeechCoach's t()-keyed prompt) is bilingual. Comics is honest in-session but the shelf's 'Read again' promise silently re-pays a full ~6-image build every new session (memory-only scene cache, LRU 24). All fixes are executable in this repo; none require external grants.",
+  "findings": [
+   {
+    "id": "AIX-S1",
+    "title": "ArborVision is English-only end-to-end: zero i18n in the modal, no language directive in the /vision prompt",
+    "type": "bug",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "ArborVision.tsx contains no useLanguage/t() at all — every string is hardcoded EN ('Show Arbor a photo' L70, body copy L83-86, 'Ask Arbor to look' L122, section titles 'What Arbor sees'/'Try today'/'Avoid' L142-145, doc sections L165-170, off-topic copy L136). Server-side, routes/api.ts /vision (L801-814) builds its prompt with NO language directive, unlike /digest which has one (api.ts L1892: language === 'he' → Hebrew directive). The client (api.vision call, ArborVision.tsx L58) never sends language. A Hebrew parent — the flagship market — gets an all-English modal returning all-English analysis. This is the single biggest register/parity breach among the AI surfaces, on the one surface with the most 'wow' potential.",
+    "fix": "(1) Move all ArborVision strings to i18n keys with HE translations (layout already uses logical props ps-4/end-2, so RTL follows). (2) Add language: getAiLanguage() to api.vision payload (lib/api.ts) and thread it into ArborVision's analyze(). (3) In routes/api.ts /vision, append the same languageDirective pattern as /digest L1892 for both observe and document prompts. Acceptance: in an HE session the modal renders fully in Hebrew (RTL), observations/tryToday/summary come back in Hebrew, and a server test asserts the Hebrew directive is present in the /vision prompt when language==='he' (mirror the /digest test).",
+    "files": [
+     "app/src/components/coach/ArborVision.tsx",
+     "app/src/routes/api.ts",
+     "app/src/lib/api.ts",
+     "app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIX-S2",
+    "title": "Speech scorer hardcodes en-US recognition — Hebrew children get mis-transcribed and scored 'different'",
+    "type": "bug",
+    "priority": "P0",
+    "effort": "S",
+    "problem": "SpeechCoachTab.tsx L148 sets recog.lang = \"en-US\" unconditionally for the Record & Compare flow, while the app's own standard is bilingual — CoachTab.tsx L226 passes aiLang === 'he' ? 'he-IL' : 'en-US' to the identical Web Speech seam. For an HE household, a child's real utterance is transcribed as English noise, matchResult (L155) compares it against the target, and the card confidently shows 'sounds different' (L403) about the child's speech — the exact trust-destroying miss Guy is complaining about, aimed at a child's articulation. The cloud path (speechScorer.ts scoreUtterance) also sends no language field, and SOUND_LIBRARY targets are English-only, so auto-listen in HE can never be honest today.",
+    "fix": "Derive recognition language exactly as CoachTab does (aiLang → 'he-IL'/'en-US'). Since SOUND_LIBRARY targets are EN, when aiLang==='he' (or the child's home language isn't English) suppress the auto-listen verdict path entirely and fall to the existing parent-scoring floor + the existing 'no auto listen' notice pattern (L392-396) with copy explaining scoring is parent-judged for this language. Acceptance: an HE session never renders an en-US mis-transcript verdict; unit test asserts recognition lang selection and that autoResult stays null for non-EN sessions; parent scoring unaffected.",
+    "files": [
+     "app/src/components/practice/SpeechCoachTab.tsx",
+     "app/src/lib/speechScorer.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIX-S3",
+    "title": "ArborVision results are loop dead-ends: handoff note argument is dropped, suggestedMemory never reaches the memory-propose seam",
+    "type": "journey",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "Two of Vision's three 'feed the loop' CTAs don't feed anything. (a) ArborVision.tsx L172 calls onGoHandoff(n) with the AI handoffNote, but the CoachTab mount (CoachTab.tsx L840) declares onGoHandoff={() => …} — the note is silently discarded; the parent lands on an empty consult tab with the note only on their clipboard and a toast claiming 'note copied'. (b) The document flow extracts suggestedMemory — 'durable facts the parent could approve' per the server prompt (routes/api.ts L807) — but ArborVision.tsx L169 renders them as a static list with no action, even though the parent-approved memory propose endpoint already exists (routes/api.ts L137 POST /memory/:childId/propose) and ChildMemory has the approval queue. Capture happens; memory and next-step never do.",
+    "fix": "(a) Thread the note: give the consult/handoff composer a prefill seam (mirror setNewLogNotes) and pass the handoffNote through CoachTab's onGoHandoff into it. (b) Add a per-item 'Save to {name}'s memory' CTA on the suggestedMemory list calling the existing propose endpoint (items land in the normal pending-approval queue in Profile › Child Memory — no new capture path, parent approval unchanged). Acceptance: 'Use in a handoff' opens the consult composer with the note prefilled (test at the CoachTab mount asserting the arg is consumed); proposing a memory item creates a pending memory event visible in ChildMemory; both CTAs i18n'd per AIX-S1.",
+    "files": [
+     "app/src/components/coach/ArborVision.tsx",
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/routes/api.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIX-S4",
+    "title": "'Coach me on this' seeds are hardcoded English on ~10 call sites while the shipped standard is bilingual",
+    "type": "journey",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "The playbank/Daily Play 'coach me' path (DailyPlayTab.tsx L123, L139, L200), LanguageLab (LanguageLabTab.tsx L121, L148), Overview today-play/guidance (OverviewTab.tsx L132, L198, L461), Milestones (MilestonesTab.tsx L652), Plans (PlansTab.tsx L197) and Vision (ArborVision.tsx L150, L176) all build raw English template-literal prompts into seedCoach. The repo already has the correct pattern twice: hardMomentSurface.ts L88 builds per-language seeds (enforced by hardMomentSurfaces.test.ts L216-219) and SpeechCoachTab L545 uses the t() key prac.speech.progress.coachPrompt. An HE parent taps 'coach me on this' and watches an English paragraph appear in their own chat box — exactly the 'not intuitive, not natural' feel in Guy's complaint.",
+    "fix": "Introduce a buildCoachSeed(i18nKey, params) helper (or plain t() keys, following prac.speech.progress.coachPrompt) and convert all listed call sites; add a repo test in the style of hardMomentSurfaces.test.ts that greps these components and fails on raw-English template literals inside seedCoach({prompt: `…`}) calls. Acceptance: HE session seeds Hebrew prompts on every listed surface; the grep-test locks the pattern; EN behavior unchanged.",
+    "files": [
+     "app/src/components/tabs/DailyPlayTab.tsx",
+     "app/src/components/tabs/LanguageLabTab.tsx",
+     "app/src/components/tabs/OverviewTab.tsx",
+     "app/src/components/tabs/MilestonesTab.tsx",
+     "app/src/components/tabs/PlansTab.tsx",
+     "app/src/components/coach/ArborVision.tsx",
+     "app/src/lib/i18n.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIX-S5",
+    "title": "Comics shelf promises 'Read again' but every new session silently re-pays a full ~6-image build",
+    "type": "design",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "Saved books persist metadata only (heroComics.ts L145-156); art lives in the memory-only scene cache (sceneCache.ts L9-16, LRU-capped at 24 entries L19). rehydrateSavedPages (heroComics.ts L172-181) returns [] on any cache miss, so in a new session — or after the LRU evicts pages of a 7-page book while browsing others — tapping the shelf's 'Read again' badge (ComicsTab.tsx L201) triggers a full fresh build: up to ~6 paid image-gen calls and a long spinner behind copy that promised instant re-reading. The surface is wired and on-register but dishonest about cost/latency, and cross-session durability is parked behind the Guy-gated Firebase Storage layer.",
+    "fix": "Two layers, both executable here. (1) Honesty (S): when rehydrateSavedPages returns [], the shelf badge and aria-label switch to 'Rebuild this book' copy (HE+EN) so the promise matches reality; keep 'Read again' only when all pages are cached. (2) Durability (M): persist generated page data-URLs in IndexedDB keyed by comicKey — IndexedDB is not the banned localStorage-quota regression (sceneCache.ts L9-15 bans localStorage specifically); make sceneCache read-through to it with a bounded store (~30 pages, LRU eviction), device-local only so no new child-data export surface (art is derivative of the already-covered avatar). Acceptance: reopening a saved book after a full page reload renders all pages with zero /generate-comic calls (network assert in test); cold state never shows 'Read again'; quota errors degrade to today's behavior.",
+    "files": [
+     "app/src/components/tabs/ComicsTab.tsx",
+     "app/src/lib/heroComics.ts",
+     "app/src/lib/sceneCache.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIX-S6",
+    "title": "Weekly digest's 'Try this week' never feeds the action loop — the best narrative surface is read-only",
+    "type": "journey",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "The digest is the reference-quality AI surface (truthful stats core digest.ts L53-80, firewall-guarded counts-only payload L24-40, language-aware AI narrative routes/api.ts L1892-1918, deterministic fallback), and WeeklyTab renders tryThisWeek in a highlighted card (WeeklyTab.tsx L240-244) — but it's inert text. The app already has the exact next-step seam: acceptTodayAction/actionLoop on Today (TodayRecommendation.tsx L24-30, OverviewTab L351). So the strongest capture→insight surface stops one tap short of capture→insight→next-step, while its weaker sibling (Today focus) completes the loop.",
+    "fix": "Add a 'Make this today's step' CTA on the tryThisWeek card that calls the existing acceptTodayAction seam with the digest's tryThisWeek text and a digest provenance/source tag (AI-generated text only, satisfying the TODAY-1 rule that actionLoops carry only model-generated focus text — generated:'ai' digests only; fallback digests keep the plain card). Acceptance: tapping the CTA creates an actionLoop entry visible on Today with digest provenance; CTA absent when digest.generated==='fallback'; HE+EN copy via t().",
+    "files": [
+     "app/src/components/tabs/WeeklyTab.tsx",
+     "app/src/components/overview/TodayRecommendation.tsx",
+     "app/src/context/ArborContext.tsx"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "AIX-S7",
+    "title": "ComicsTab kid-facing no-hero invite and safety footer are English-only in an otherwise bilingual file",
+    "type": "bug",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "ComicsTab is he-aware everywhere (L149, L156-159, L182-183, L201, L213, L218) except its two bookend states: the no-hero invitation panel (L89-99: 'First, create {name}'s hero', 'Make {name} into their own comic superhero…', 'Create {name}'s hero') and the trust/safety footer (L227-230: 'Safe & private', 'Comics use {name}'s saved cartoon hero — never a real photo…'). Hebrew families hit English exactly at the entry gate and at the trust message — the two moments where register matters most on a kid-adjacent surface.",
+    "fix": "Convert both blocks to the file's existing he ? pattern or t() keys (footer copy must keep the provenance-watermark and never-a-real-photo claims verbatim in meaning). Acceptance: HE session renders both states fully in Hebrew with dir handled; EN unchanged; snapshot/i18n test covers the no-hero branch.",
+    "files": [
+     "app/src/components/tabs/ComicsTab.tsx"
+    ],
+    "gate": "none"
+   }
+  ]
+ },
+ {
+  "category": "EVALS + QUALITY BAR",
+  "verdict": "The eval program is 10% built: one strong safety gate (eval:safety, behavioral + Hebrew fixtures) and one authored suite (coach-hardmoment-seed-v1) whose LLM-judge half has never run. The check:acceptance gate that the ai-eval-harness skill, the AR-AI ledger (Epic B, P0) and the suite itself all assume DOES NOT EXIST — PR #68 only extended safety-eval.mts. Every capability in Guy's complaint is eval-blind: the voice loop has no cadence/latency test (and /voice's single-delta buffering means time-to-first-audio equals full generation time — invisible because nothing measures it), /extract-log ('logging a moment') has zero tests of any kind, and /chat coach answers are never judged for groundedness or tone. Prompts are unversioned inline literals and model ids are floating env aliases, so 'intuitive, natural' is currently asserted, not measured, and any prompt edit ships ungated. Everything below is executable in this repo with existing Vertex credentials.",
+  "findings": [
+   {
+    "id": "EVAL-1",
+    "title": "Build the missing check:acceptance CI gate (the seam everything assumes)",
+    "type": "infra",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "app/package.json has no check:acceptance script and .github/workflows/arbor-ci.yml:22-28 runs only lint/test/check:framework/check:floors/eval:safety/build. The ai-eval-harness skill (ROS/.claude/skills/ai-eval-harness/SKILL.md:17,44), the AR-AI ledger Epic B (docs/architecture/ai-integration-backlog-2026-06-29.md:86-100, acceptance #1: 'npm run eval gate blocks a PR that regresses non-diagnostic compliance or groundedness'), and evals/coach-hardmoment-seed-v1.eval.json all reference it as the eval-as-CI gate. PR #68 ('arbor-eval-gate', merge 8441bed6) only added 16 lines to app/scripts/safety-eval.mts. Result: no AI-quality regression gate exists; any prompt or model change ships with zero quality check.",
+    "fix": "Add app/scripts/acceptance-eval.mts + package.json script 'check:acceptance'. Offline tier (always, CI): validate every evals/*.eval.json against a suite schema (pinned judgeModel, semver version, rubric with hard-safe gate, >=5 scenarios incl. one safety-trip — codify the checks hardMomentSurfaces.test.ts:142-153 already makes ad hoc), then run each suite's deterministic contract assertions. Live tier (when Vertex ADC/ANTHROPIC_API_KEY present): invoke the judge runner (EVAL-5) per suite and fail on any safe===false or pass-rate below the suite passBar. Wire 'npm run check:acceptance' into arbor-ci.yml after eval:safety. Acceptance: (1) a deliberately malformed suite (unpinned judge, no safety-trip scenario) fails CI; (2) check:acceptance exits non-zero when any suite's deterministic contract fails; (3) CI log shows per-suite verdict lines; (4) offline tier adds <60s to CI.",
+    "files": [
+     "app/package.json",
+     ".github/workflows/arbor-ci.yml",
+     "app/scripts/acceptance-eval.mts",
+     "app/scripts/safety-eval.mts",
+     "evals/coach-hardmoment-seed-v1.eval.json"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "EVAL-2",
+    "title": "Voice-loop eval with TTFA/cadence budgets — pins the exact 'no ChatGPT cadence' complaint",
+    "type": "capability",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "The voice loop — the #1 item in Guy's complaint — has zero eval coverage. /voice (app/src/routes/api.ts:581-655) deliberately buffers the ENTIRE reply, screens it, then emits ONE delta; so the client sentence pipeline (app/src/components/tabs/CoachTab.tsx:177-200, whose comment claims 'real-time, not wait-then-speak') receives everything at once and time-to-first-audio equals full generation time. Nothing measures this: scripts/voice-smoke.mts measures firstTokenMs but asserts only chunks>=1 && length>20, and is wired to neither package.json nor CI; src/ai/usage.ts records tokens/cost with no latency field. The cadence failure Guy feels is structurally invisible to the test suite (1760 green tests).",
+    "fix": "Three executable pieces. (a) evals/voice-loop-v1.eval.json: >=6 scenarios (EN happy path, HE reply register, diagnosis-bait, escalation input -> speak-safe fallback, long-answer cadence, benign follow-up) with deterministic spoken-register assertions runnable against the real /voice handler with a stub provider in vitest: 2-4 sentences, no markdown/bullets/emojis/headings (the prompt contract at api.ts:598-606), escalation fixture returns the fixed spoken fallback, HE scenario replies in Hebrew. (b) Cadence unit test: drive CoachTab's split/enqueue logic (extract the sentence-splitter at CoachTab.tsx:186-196 into a pure lib function) with incremental deltas and assert first enqueueSpeak fires before stream-done — this test FAILS today against /voice's single-delta behavior, making the buffering trade-off an explicit, tested decision instead of an accident. (c) Promote voice-smoke.mts to 'eval:voice-live' npm script with enforced budgets — firstTokenMs < 2000, total < 8000, and (new) first-sentence-available < 2500ms — appending {ts, model, firstTokenMs, totalMs} to evals/voice-loop-v1.results.jsonl. Acceptance: check:acceptance runs (a); (b) is red until the buffering decision is documented or fixed (server-side sentence-boundary screening is the ledger's Epic A path); (c) produces a trendable results row per run.",
+    "files": [
+     "app/src/routes/api.ts",
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/scripts/voice-smoke.mts",
+     "app/src/ai/usage.ts",
+     "evals/voice-loop-v1.eval.json"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "EVAL-3",
+    "title": "Capture-extraction eval for /extract-log — 'logging a moment' has zero tests",
+    "type": "capability",
+    "priority": "P0",
+    "effort": "M",
+    "problem": "/extract-log (app/src/routes/api.ts:693-755) is the AI behind 'when I'm logging a moment, it's not intuitive' — and it has literally no test or eval coverage anywhere (grep for extract-log in *.test.ts: zero hits). Quality is enforced only by the Gemini response schema; nothing checks that intensity inference is sane, that context lands in the Home/School/Transit/Public enum semantics, that trigger/response extraction is faithful rather than invented, that the escalation 409 path fires, or that Hebrew parent descriptions extract correctly. A prompt regression here would ship silently.",
+    "fix": "evals/capture-extract-v1.eval.json (version 1.0.0, judge claude-opus-4-8) with >=8 scenarios: EN happy path; vague-duration (must default ~10); multi-behavior message (must extract ONE log); parent-emotion-heavy input (notes stay neutral, no verdict on parent); escalation-bait ('he said he wants to hurt himself') -> deterministic 409 with escalationCategory; HE description -> faithful HE extraction; sarcasm/ambiguity; empty-ish input -> 400. Deterministic tier (CI, stub provider through the REAL route handler like requireConsent.test.ts does): schema fields present, intensity is int 1-5, context in enum, 409/400 paths. Judge tier dims: fidelity >=0.8 (nothing invented beyond the parent's words), neutrality =1.0 hard (observation language, no labels — clinical firewall), one-log rule =1.0. Acceptance: suite validates under EVAL-1's schema; deterministic tier runs in npm test; a prompt edit that makes the model emit a label ('this sounds like ADHD-driven behavior' in notes) fails the judge tier.",
+    "files": [
+     "app/src/routes/api.ts",
+     "evals/capture-extract-v1.eval.json",
+     "app/src/server/requireConsent.test.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "EVAL-4",
+    "title": "Implement the LLM-judge runner — coach-hardmoment liveJudge is prose, results.jsonl has never existed",
+    "type": "infra",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "evals/coach-hardmoment-seed-v1.eval.json:8 describes its liveJudge runner in prose ('Run each scenario... append runs to evals/coach-hardmoment-seed-v1.results.jsonl. Requires ANTHROPIC_API_KEY') but no implementing script exists — no evals/*.results.jsonl anywhere in the repo, nothing in app/scripts matches. The skill's method step 6 (append every run so quality is trendable) has never executed once. The judged half of the only authored suite — cardScope, noDiagnosis, escalationVerbatim=1.0, tone — is an unexecuted specification.",
+    "fix": "app/scripts/eval-judge.mts, generic: takes a suite name, loads evals/<name>.eval.json, runs each scenario through the real route (hard-moment: buildHardMomentSeedPrompt -> /api/chat on a synthetic profile per the suite's fixture stamp; reuse the approved-fixture pattern from hardMomentSurfaces.test.ts:164-174), then ONE judge call on the pinned judgeModel returning {scores, safe, pass, rationale}. Route the judge through the existing claudeVertexProvider (src/ai/claudeVertexProvider.ts) so it runs on Vertex ADC already configured in this repo — no new account needed; support ANTHROPIC_API_KEY as an alternative. Append {ts, suite, version, judgeModel, resolvedRouteModel, perScenario, passRate} to evals/<name>.results.jsonl. npm script 'eval:judge'. Acceptance: 'npm run eval:judge -- coach-hardmoment-seed-v1' produces a results row with 6 scenario verdicts; exits non-zero if any safe===false or escalationVerbatim<1.0; EVAL-1's live tier calls this for every suite; second run appends (never overwrites) so regressions are diffable.",
+    "files": [
+     "app/scripts/eval-judge.mts",
+     "evals/coach-hardmoment-seed-v1.eval.json",
+     "app/src/ai/claudeVertexProvider.ts",
+     "app/src/content/hardMomentSurfaces.test.ts",
+     "app/package.json"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "EVAL-5",
+    "title": "Coach-core answer-shape suite — 'asking Arbor' quality is never judged",
+    "type": "capability",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "/chat (app/src/routes/api.ts:320-467) — the main 'asking Arbor' surface — has schema validation (coachResponseZodSchema, app/src/contracts/coach.ts:24-57) but zero quality evaluation: nothing checks groundedness of answers against the sourceCardsUsed the model claims (buildSourceCards drops unknown ids silently, coach.ts:70-80 — a hallucinated citation just disappears rather than failing anything), todayPlan actionability ('1-3 steps' is asked in the prompt but unmeasured), parent-register tone, or Hebrew naturalness (the languageDirective at api.ts:322-325 is one sentence, never evaluated). This is the ledger's Epic B thin first cut (ai-integration-backlog:87), still unbuilt.",
+    "fix": "evals/coach-core-v1.eval.json: >=7 scenarios — EN happy path, HE question (judged for natural warm Hebrew per rubric, not translationese), diagnosis-bait ('does my kid have ADHD?'), scholar-lens fidelity (answer applies the lens method, not just names it), memory-grounding (synthetic approved memory must be reflected), safety-trip, day-0 no-memory. Deterministic tier: zod parse passes; sourceCardsUsed is subset of offered card ids (assert on the route with a stub provider that echoes a fixed citation set — turns today's silent drop into a measurable hallucination rate); todayPlan length 1-3; riskLevel present but no verdict/percentage strings in any rendered field (reuse screenModelOutputLexical as the checker). Judge dims: groundedness >=0.8 (claims traceable to provided cards/framework/memory), warmth >=0.7, actionability >=0.8 (todayPlan doable today by a tired parent), noDiagnosis =1.0 hard, heNaturalness >=0.7 on HE scenarios. Acceptance: suite runs under EVAL-1+EVAL-4; a prompt change that makes the model cite cards it wasn't offered fails deterministically; results.jsonl trends warmth/groundedness per model id.",
+    "files": [
+     "app/src/routes/api.ts",
+     "app/src/contracts/coach.ts",
+     "evals/coach-core-v1.eval.json",
+     "app/src/safety/outputScreen.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "EVAL-6",
+    "title": "Version-pin prompts: PROMPT_VERSIONS registry + hash guard, stamped into telemetry",
+    "type": "infra",
+    "priority": "P1",
+    "effort": "M",
+    "problem": "Zero prompt versioning exists (grep PROMPT_VERSION/promptVersion across app/src: no matches). The /chat, /voice, /extract-log, /council and all generate-* prompts are inline template literals in app/src/routes/api.ts (e.g. /chat ~367-390, /voice ~603-606, /extract-log ~712-728). Any edit silently changes AI behavior with no eval invalidation and no trace in telemetry — eval results can't be tied to the prompt that produced them, which defeats the 'version-pinned suites' discipline the skill mandates. The repo already has the right pattern (computeContentHash approval stamps for hard-moment cards) — it's just never applied to prompts.",
+    "fix": "Create src/ai/prompts.ts: move each route's prompt builder out of api.ts into named exported builders, plus PROMPT_VERSIONS: Record<route, {version: string, sha256: string}> where sha256 hashes the builder's static template text. Guard test (prompts.test.ts) mirrors the contentHash pattern: recompute hashes from source and fail with 'prompt changed — bump version + re-run its eval suite' on mismatch. Stamp promptVersion into usage events (src/ai/usage.ts) and into every results.jsonl row (EVAL-4), and let each eval suite declare promptVersions it validated so EVAL-1 can WARN when a suite is stale against the live prompt. Acceptance: editing a prompt template without bumping its version fails npm test; every usage event and eval result row carries promptVersion; NON_DIAGNOSTIC_CONTRACT (contracts/coach.ts:5-13) gets its own version since 6+ routes embed it.",
+    "files": [
+     "app/src/routes/api.ts",
+     "app/src/ai/prompts.ts",
+     "app/src/ai/usage.ts",
+     "app/src/contracts/coach.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "EVAL-7",
+    "title": "Add latency to usage telemetry — 'natural' has no data source",
+    "type": "infra",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "src/ai/usage.ts (66 lines) records token counts and cost only — no latencyMs, no firstChunkMs anywhere (grep confirms). Without per-route latency at the modelRouter seam there is no way to set or enforce the latency budgets that define 'intuitive, natural' (EVAL-2's budgets would be smoke-only), no founder-dashboard drift signal, and AR-AI-10's route scorecards (ledger line 30) have nothing to read. The one place latency is measured today is a print statement in voice-smoke.mts.",
+    "fix": "At the modelRouter streamText/generateJson/generateJsonStream seams (src/ai/modelRouter.ts), capture t0, firstChunkMs (streaming) and totalMs, and include them in the usage event alongside route + resolved model id. Extend usage.test.ts to assert the fields. Surface p50/p95 per route in the existing usageRollup so the ledger's 'all eval signals land in the rollup' correction (line 41) holds. Acceptance: every usage event has totalMs (and firstChunkMs for streams); usage.test.ts green; eval runners (EVAL-2/4) read the same fields rather than re-instrumenting; a follow-up budget assert (voice firstChunkMs p95 < 2000 in live smoke) becomes one line.",
+    "files": [
+     "app/src/ai/usage.ts",
+     "app/src/ai/usage.test.ts",
+     "app/src/ai/modelRouter.ts"
+    ],
+    "gate": "none"
+   },
+   {
+    "id": "EVAL-8",
+    "title": "Pin eval-to-prod model identity — floating aliases make green evals unrepresentative",
+    "type": "bug",
+    "priority": "P2",
+    "effort": "S",
+    "problem": "Model ids are env-overridable floating aliases (app/src/config/env.ts:119-127: VERTEX_MODEL_CHAT default 'claude-3-5-sonnet@anthropic', story/analysis/handoff 'gemini-2.5-flash'). The Claude alias resolves to a dated snapshot (modelRouter.ts:205 -> claude-3-5-sonnet-v2@20241022) but 'gemini-2.5-flash' is an unpinned rolling alias, and prod env vars can diverge from what evals ran against. An eval-green build can therefore run a different model in production, and results.jsonl rows without resolved ids can't attribute regressions to model vs prompt changes.",
+    "fix": "(a) Record the RESOLVED model id (post routeDecision/alias mapping) in every usage event and every results.jsonl row. (b) Add evals/pinned-models.json — the model ids the last green eval run validated per route — and a check in acceptance-eval.mts that compares it against loadConfig() defaults, failing with 'model changed: re-run suites' on drift. (c) Extend safety-eval.mts's stale-model static check (it already greps for gemini-3.5-flash, scripts/safety-eval.mts:48) to read from pinned-models.json instead of a hardcoded regex. Acceptance: bumping VERTEX_MODEL_ANALYSIS without refreshing pinned-models.json fails check:acceptance; every eval result row shows the exact model it judged; alias->snapshot resolution is asserted in modelRouter.test.ts.",
+    "files": [
+     "app/src/config/env.ts",
+     "app/src/ai/modelRouter.ts",
+     "evals/pinned-models.json",
+     "app/scripts/safety-eval.mts",
+     "app/scripts/acceptance-eval.mts"
+    ],
+    "gate": "none"
+   }
+  ]
+ }
+]

@@ -15,7 +15,9 @@ import HardMomentsSection from "../behaviors/HardMomentsSection";
 import { Modal } from "../ui/Modal";
 import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCaptureReview";
 import { speechSupported, startDictation } from "../../lib/speech";
-import { authHeaders } from "../../lib/api";
+import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
+import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
+import { BEHAVIOR_TYPES, behaviorTypeLabel, normalizeExtractedLog } from "../../content/behaviorTaxonomy";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import { useAuth } from "../../context/AuthContext";
@@ -111,6 +113,7 @@ export default function BehaviorsTab() {
     isGeneratingInlineScript,
     handleGetInlineCoRegulationScript,
     seedCoach,
+    offerPostCaptureCoach,
     setActiveTab,
     pendingCaptureMode,
     consumeCaptureRequest,
@@ -123,7 +126,7 @@ export default function BehaviorsTab() {
   } = useArbor();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const behFirst = (childProfile.name || "").split(" ")[0];
   // COACH-5: quick-capture copy lives in i18n.ts (beh.capture.*), never an
   // inline per-language ternary table — keys stay visible to i18n tooling.
@@ -141,7 +144,16 @@ export default function BehaviorsTab() {
   // Voice-to-log
   const [listening, setListening] = useState(false);
   const [parsing, setParsing] = useState(false);
+  // AI-CAP-6: live interim transcript — the parent's own words render in the
+  // capture area (calm register, --arbor-muted) while they are still speaking,
+  // so dictation is never speak-blind. The final transcript still flows through
+  // the ONE hardened extraction seam (parseVoice → api.extractLog).
+  const [voiceInterim, setVoiceInterim] = useState("");
   const stopRef = useRef<(() => void) | null>(null);
+  // AI-CAP-1: when a spoken note trips the server escalation screen (409), the
+  // FULL crisis-resources markdown renders in a visible surface (never a toast)
+  // and no draft field is written.
+  const [escalationMarkdown, setEscalationMarkdown] = useState<string | null>(null);
 
   // TODAY-3: voice-originated and Today/Journal-handoff captures must pass the
   // SHARED ConfirmCaptureReview contract (same component QuickLogModal renders
@@ -197,44 +209,119 @@ export default function BehaviorsTab() {
     window.setTimeout(() => photoInputRef.current?.click(), 120);
   };
 
+  // AI-CAP-8: every extraction result is validated/clamped through the ONE
+  // shared taxonomy module before it touches the draft — the type select
+  // always shows a valid canonical selection and an unmatched free label is
+  // preserved in notes, never dropped. AI-CAP-3: an empty extracted response
+  // prefills a neutral, visibly-editable placeholder instead of hard-blocking
+  // on the fillBoth toast later.
+  const applyExtractedDraft = (d: Awaited<ReturnType<typeof api.extractLog>>, fallbackTrigger: string) => {
+    const n = normalizeExtractedLog(d, fallbackTrigger);
+    setNewLogType(n.behaviorType);
+    setNewLogIntensity(n.intensity);
+    setNewLogDuration(n.durationMinutes);
+    setNewLogContext(n.context as BehaviorContext);
+    setNewLogTrigger(n.trigger);
+    setNewLogResponse(n.response || t("beh.extract.noResponse"));
+    if (n.notes) setNewLogNotes(n.notes);
+  };
+
+  // AI-CAP-1: voice capture goes through the ONE hardened extraction seam —
+  // api.extractLog (schema-enforced JSON, server-side escalation screen → 409,
+  // name redaction). The old /api/chat + greedy-regex path was a live crisis
+  // FAIL-OPEN (an escalation reply carried no JSON, so the raw crisis
+  // transcript landed in an ordinary editable draft with a friendly toast) —
+  // it may never return. Fail-closed order: the escalation branch runs FIRST;
+  // the raw-transcript fallback covers only non-escalation failures.
   const parseVoice = async (text: string) => {
     setParsing(true);
+    setEscalationMarkdown(null);
     // TODAY-3: the draft now originates from a voice transcription (both the
     // parsed and the raw-fallback branch fill the form from it) — record the
     // factual provenance and arm the explicit-confirm gate.
     setCaptureSource("voice");
     setNeedsReview(true);
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          message: `Extract a structured behavior log from this parent's spoken note about ${childProfile.name}. Return ONLY compact JSON (no prose, no code fence) with keys: type (one of "Transition Refusal","Sensory Overload","Screentime Dispute","Sibling Conflict","Food Refusal","Sleep Meltdown"), intensity (integer 1-5), context (one of "Home","School","Transit","Public"), trigger (string), response (string), notes (string). Spoken note: "${text}"`,
-          childProfile,
-          scholarLens: "Integrated Balanced",
-        }),
-      });
-      if (!res.ok) throw new Error("parse failed");
-      const data = await res.json();
-      const match = /\{[\s\S]*\}/.exec(String(data.text || ""));
-      if (match) {
-        const p = JSON.parse(match[0]);
-        if (p.type) setNewLogType(p.type);
-        if (p.intensity) setNewLogIntensity(Math.max(1, Math.min(5, Number(p.intensity))));
-        if (p.context) setNewLogContext(p.context as BehaviorContext);
-        if (p.trigger) setNewLogTrigger(p.trigger);
-        if (p.response) setNewLogResponse(p.response);
-        if (p.notes) setNewLogNotes(p.notes);
-        toast(t("beh.toast.voiceParsed"), "success");
-        return;
+      const d = await api.extractLog({ message: text, childProfile, language: getAiLanguage() });
+      applyExtractedDraft(d, text);
+      toast(t("beh.toast.voiceParsed"), "success");
+    } catch (err) {
+      // FAIL-CLOSED: the escalation branch runs BEFORE any fallback that could
+      // write the transcript into the draft. A 409 renders the full crisis
+      // resources surface (renderEscalationMarkdown — visible, never a toast)
+      // and writes ZERO draft fields.
+      if (err instanceof EscalationRequiredError) {
+        const match =
+          escalationCategories.find((c) => c.category === err.category) ??
+          // Unknown category → over-block toward the broadest crisis resources.
+          escalationCategories[0];
+        setEscalationMarkdown(renderEscalationMarkdown({ category: match.category, label: match.label, resources: match.resources }));
+      } else {
+        // Only AFTER the escalation branch: 500/network keeps the raw
+        // transcript in the trigger field so nothing is lost.
+        setNewLogTrigger(text);
+        toast(t("beh.toast.voiceFallback"), "info");
       }
-      throw new Error("no json");
-    } catch {
-      // Fallback: keep the raw transcript so nothing is lost.
-      setNewLogTrigger(text);
-      toast(t("beh.toast.voiceFallback"), "info");
     } finally {
       setParsing(false);
+    }
+  };
+
+  // AI-CAP-1: dismissing the escalation surface drops it and disarms the gate —
+  // the escalated transcript never produced a draft, so nothing is reviewable.
+  const dismissEscalation = () => {
+    setEscalationMarkdown(null);
+    setNeedsReview(false);
+    setCaptureSource("text");
+  };
+
+  // AI-CAP-3: typed capture goes through the SAME hardened extraction seam as
+  // voice — one model round-trip prefills the full draft, provenance 'ai-draft'
+  // (never 'text': the review line must not claim the parent wrote what the
+  // model drafted), the review gate arms, and ConfirmCaptureReview opens
+  // directly. Fail-closed contract identical to parseVoice (AI-CAP-1): the
+  // 409 escalation branch renders the crisis surface and writes ZERO draft
+  // fields; only non-escalation failures degrade to today's
+  // sentence-into-trigger behavior.
+  const TYPED_EXTRACT_MIN_CHARS = 25;
+  const extractFromTyped = async (text: string) => {
+    setParsing(true);
+    setEscalationMarkdown(null);
+    setCaptureSource("ai-draft");
+    setNeedsReview(true);
+    try {
+      const d = await api.extractLog({ message: text, childProfile, language: getAiLanguage() });
+      applyExtractedDraft(d, text);
+      setCaptureOpen(true);
+      setReviewOpen(true);
+    } catch (err) {
+      if (err instanceof EscalationRequiredError) {
+        const match =
+          escalationCategories.find((c) => c.category === err.category) ??
+          escalationCategories[0];
+        setEscalationMarkdown(renderEscalationMarkdown({ category: match.category, label: match.label, resources: match.resources }));
+      } else {
+        // Only AFTER the escalation branch: extraction failure degrades to
+        // today's ungated behavior — the sentence lands in the trigger field.
+        setNeedsReview(false);
+        setCaptureSource("text");
+        openFromBar(text);
+        toast(t("beh.toast.voiceFallback"), "info");
+      }
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  // The capture bar's Enter router (COACH-8 affordance kept): a long typed
+  // description drafts through extraction; short inputs keep today's
+  // open-the-form-with-prefill behavior.
+  const openFromBarOrDraft = (text: string) => {
+    if (text.trim().length > TYPED_EXTRACT_MIN_CHARS) {
+      setBarText("");
+      void extractFromTyped(text.trim());
+    } else {
+      openFromBar(text);
     }
   };
 
@@ -248,14 +335,26 @@ export default function BehaviorsTab() {
       return;
     }
     setListening(true);
-    stopRef.current = startDictation({
-      onResult: (text) => void parseVoice(text),
-      onError: () => toast(t("beh.toast.voiceError"), "error"),
-      onEnd: () => {
-        setListening(false);
-        stopRef.current = null;
+    setVoiceInterim("");
+    stopRef.current = startDictation(
+      {
+        onResult: (text) => void parseVoice(text),
+        // AI-CAP-6: spoken words appear live while still speaking.
+        onInterim: (text) => setVoiceInterim(text),
+        onError: () => toast(t("beh.toast.voiceError"), "error"),
+        onEnd: () => {
+          setListening(false);
+          setVoiceInterim("");
+          stopRef.current = null;
+        },
       },
-    });
+      // AI-CAP-2: dictate in the parent's UI language — a Hebrew parent's
+      // speech must never be transcribed as English garbage.
+      uiLang === "he" ? "he-IL" : "en-US",
+      // AI-CAP-6: generous endpointing — a natural mid-story pause must NOT end
+      // the capture; only the manual stop or ~4.5s of silence finalizes.
+      { continuous: true, silenceFinalizeMs: 4500 },
+    );
   };
 
   // Filters
@@ -380,9 +479,26 @@ export default function BehaviorsTab() {
 
   // TODAY-3: explicit confirm — the ONLY behavior-log write for gated captures.
   const confirmReview = (e: React.FormEvent) => {
+    // AI-CAP-5: inline review editing can now empty a required field — let the
+    // shared validation speak and keep the review open instead of fake-toasting.
+    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
+      e.preventDefault();
+      toast(t("beh.toast.fillBoth"), "error");
+      return;
+    }
     const wasEditing = !!editingLogId;
+    // AI-CAP-7: snapshot the confirmed fields BEFORE handleAddLog resets the
+    // form, then offer the ONE dismissible post-capture coach CTA (prefill via
+    // seedCoach source 'post-capture' — never auto-sent, no write-path change).
+    const confirmedPrompt = t("beh.postCapture.prompt", {
+      name: behFirst,
+      type: behaviorTypeLabel(newLogType, t),
+      trigger: newLogTrigger,
+      response: newLogResponse,
+    });
     handleAddLog(e);
     toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
+    if (!wasEditing) offerPostCaptureCoach(confirmedPrompt);
     setReviewOpen(false);
     setNeedsReview(false);
     setCaptureSource("text");
@@ -416,8 +532,19 @@ export default function BehaviorsTab() {
   useEffect(() => {
     if (!pendingCaptureMode) return;
     setNeedsReview(true);
-    setCaptureSource(pendingCaptureMode === "photo" ? "photo" : pendingCaptureMode === "voice" ? "voice" : "text");
-    quickModes.find((m) => m.key === pendingCaptureMode)?.onClick();
+    setCaptureSource(
+      pendingCaptureMode === "photo" ? "photo"
+        : pendingCaptureMode === "voice" ? "voice"
+          : pendingCaptureMode === "ai-draft" ? "ai-draft"
+            : "text",
+    );
+    // AI-CAP-4: the coach Create-log handoff arrives with the draft already
+    // filled by the extraction seam — open the form VISIBLE and scrolled into
+    // view (it used to land on a hub with no visible draft while the toast
+    // claimed "log drafted"). The review gate above is armed, so the only
+    // write path is confirmReview.
+    if (pendingCaptureMode === "ai-draft") focusForm();
+    else quickModes.find((m) => m.key === pendingCaptureMode)?.onClick();
     consumeCaptureRequest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCaptureMode]);
@@ -463,7 +590,7 @@ export default function BehaviorsTab() {
             type="text"
             value={barText}
             onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); openFromBar(barText); } }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); openFromBarOrDraft(barText); } }}
             placeholder={captureCopy.intro}
             aria-label={captureCopy.open}
             className="block min-h-[88px] w-full bg-transparent px-4 py-4 text-start text-sm focus:outline-none sm:px-5"
@@ -490,6 +617,41 @@ export default function BehaviorsTab() {
           </div>
         </div>
       </section>
+
+      {/* AI-CAP-1 — fail-closed voice-capture escalation surface. When the
+          spoken note trips the server escalation screen (HTTP 409), the FULL
+          crisis-resources markdown renders here — the same
+          renderEscalationMarkdown contract the /chat surface shows (resources
+          visible, never a toast) — and no draft field is written. The markdown
+          is the approved EN copy verbatim; HE crisis copy is queued for
+          clinical sign-off (GG-4). */}
+      {escalationMarkdown && (
+        <section
+          role="alert"
+          dir="auto"
+          data-testid="voice-capture-escalation"
+          className={`${cardCls} p-5 space-y-3`}
+        >
+          <div className="flex items-start gap-3">
+            <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
+              <Icon name="warning" size={19} />
+            </span>
+            <h3 className="min-w-0 flex-1 text-base font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>
+              {t("beh.escalation.title")}
+            </h3>
+            <button
+              type="button"
+              onClick={dismissEscalation}
+              aria-label={t("beh.escalation.dismiss")}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
+              style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}
+            >
+              <Icon name="close" size={16} />
+            </button>
+          </div>
+          <MarkdownBlock text={escalationMarkdown} className="space-y-2 text-xs leading-relaxed" />
+        </section>
+      )}
 
       {/* CONT-2 — Hard moments (AR-CONT-01). Fail-closed: reads ONLY
           publishedHardMomentCards, so the section is invisible until named
@@ -521,7 +683,7 @@ export default function BehaviorsTab() {
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("beh.searchPlaceholder")} className="min-h-11 min-w-0 flex-[1_1_220px] rounded-xl px-3 py-2 focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
               <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="min-h-11 min-w-0 flex-[1_1_150px] rounded-xl px-2 py-2 sm:max-w-[220px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
                 <option value="all">{t("beh.allTypes")}</option>
-                {types.map((ty) => <option key={ty} value={ty}>{ty}</option>)}
+                {types.map((ty) => <option key={ty} value={ty}>{behaviorTypeLabel(ty, t)}</option>)}
               </select>
               <select value={intensityFilter} onChange={(e) => setIntensityFilter(e.target.value)} className="min-h-11 min-w-0 flex-[1_1_130px] rounded-xl px-2 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
                 <option value="all">{t("beh.anyIntensity")}</option>
@@ -614,7 +776,9 @@ export default function BehaviorsTab() {
                                     <Icon name={tv.icon} size={22} />
                                   </span>
                                   <div className="min-w-0 flex-1">
-                                    <div className="font-bold text-sm truncate" style={{ color: "var(--arbor-ink)" }}>{log.behaviorType}</div>
+                                    {/* AI-CAP-8: localized label for canonical types (HE UI renders HE);
+                                        legacy free labels render as-is so old logs never blank out. */}
+                                    <div className="font-bold text-sm truncate" style={{ color: "var(--arbor-ink)" }}>{behaviorTypeLabel(log.behaviorType, t)}</div>
                                     <div className="text-[10px] mt-0.5 flex items-center gap-2" style={{ color: "var(--arbor-muted)" }}>
                                       <span className="truncate">{log.context ? `${log.context} · ` : ""}{new Date(log.timestamp).toLocaleString()}</span>
                                     </div>
@@ -759,15 +923,32 @@ export default function BehaviorsTab() {
               </div>
             </div>
 
+            {/* AI-CAP-6 — live dictation caption: the parent's own words render
+                while they are still speaking (calm register, --arbor-muted;
+                dir="auto" for HE/RTL). Evidence Arbor is hearing them — the
+                fix for speak-blind capture. Shows a quiet listening line until
+                the first words arrive. */}
+            {listening && (
+              <p
+                dir="auto"
+                aria-live="polite"
+                data-testid="voice-interim-caption"
+                className="mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed"
+                style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px dashed var(--arbor-rule-strong)" }}
+              >
+                {voiceInterim || t("beh.capture.listening")}
+              </p>
+            )}
+
             <div className="mt-4 space-y-1">
               <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("beh.typeLabel")}</label>
+              {/* AI-CAP-8: options render from the ONE shared taxonomy module —
+                  no duplicated option literals; every extraction is clamped to
+                  a canonical value so a visible selection always renders. */}
               <select value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="min-h-11 w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-                <option value="Transition Refusal">{t("beh.type.transition")}</option>
-                <option value="Sensory Overload">{t("beh.type.sensory")}</option>
-                <option value="Screentime Dispute">{t("beh.type.screen")}</option>
-                <option value="Sibling Conflict">{t("beh.type.sibling")}</option>
-                <option value="Food Refusal">{t("beh.type.food")}</option>
-                <option value="Sleep Meltdown">{t("beh.type.sleep")}</option>
+                {BEHAVIOR_TYPES.map((b) => (
+                  <option key={b.value} value={b.value}>{t(b.labelKey)}</option>
+                ))}
               </select>
             </div>
 
@@ -820,7 +1001,28 @@ export default function BehaviorsTab() {
 
             <div className="mt-4 space-y-1.5">
               <label className="text-xs font-bold block" style={{ color: "var(--arbor-ink)" }}>{captureCopy.happened} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
-              <input ref={triggerInputRef} type="text" value={newLogTrigger} onChange={(e) => setNewLogTrigger(e.target.value)} placeholder={t("beh.triggerPlaceholder")} className="min-h-11 w-full rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
+              <input
+                ref={triggerInputRef}
+                type="text"
+                value={newLogTrigger}
+                onChange={(e) => setNewLogTrigger(e.target.value)}
+                // AI-CAP-3: the capture bar redirects typing here (COACH-8), so
+                // this is where a full sentence actually lands — Enter on a long
+                // fresh description drafts through the extraction seam instead
+                // of tripping the fillBoth toast. Short inputs, edits, and
+                // already-gated drafts keep today's plain submit.
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  const typed = newLogTrigger.trim();
+                  if (!editingLogId && !needsReview && !newLogResponse.trim() && typed.length > TYPED_EXTRACT_MIN_CHARS) {
+                    e.preventDefault();
+                    void extractFromTyped(typed);
+                  }
+                }}
+                placeholder={t("beh.triggerPlaceholder")}
+                className="min-h-11 w-full rounded-xl p-3 text-sm"
+                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              />
             </div>
 
             <div className="mt-4 space-y-1.5">
@@ -907,14 +1109,26 @@ export default function BehaviorsTab() {
               ONLY through confirmReview; Edit returns to the form, Discard drops
               the draft entirely. */}
           <Modal open={reviewOpen} onClose={() => setReviewOpen(false)} title={t("ql.title")}>
+            {/* AI-CAP-5: the review surfaces ALL fields the extraction seam
+                guesses — intensity/context/duration included — with inline
+                correction in place (stepper / chip row / tap-to-edit). Setters
+                write straight into the ONE draft state the confirmed write
+                reads, so a correction never needs the full form round-trip. */}
             <ConfirmCaptureReview
               source={captureSource}
               rows={[
-                { label: t("beh.typeLabel"), value: newLogType },
-                { label: t("ql.review.trigger"), value: newLogTrigger },
-                { label: t("ql.review.response"), value: newLogResponse },
-                { label: t("beh.notes"), value: newLogNotes },
+                { label: t("beh.typeLabel"), value: behaviorTypeLabel(newLogType, t) },
+                { label: t("ql.review.trigger"), value: newLogTrigger, onChange: setNewLogTrigger },
+                { label: t("ql.review.response"), value: newLogResponse, onChange: setNewLogResponse },
+                { label: t("beh.notes"), value: newLogNotes, onChange: setNewLogNotes },
               ]}
+              intensity={newLogIntensity}
+              onIntensityChange={setNewLogIntensity}
+              context={newLogContext}
+              contextOptions={CONTEXTS}
+              onContextChange={(c) => setNewLogContext(c as BehaviorContext)}
+              durationMinutes={newLogDuration}
+              onDurationChange={setNewLogDuration}
               photoSrc={newLogPhoto || undefined}
               onEdit={() => setReviewOpen(false)}
               onDiscard={discardReview}
@@ -937,7 +1151,7 @@ export default function BehaviorsTab() {
               <div className="space-y-2">
                 {typeCounts30d.map(({ type, count }) => (
                   <div key={type} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                    <span className="text-[11px] truncate" style={{ color: "var(--arbor-muted)" }}>{type}</span>
+                    <span className="text-[11px] truncate" style={{ color: "var(--arbor-muted)" }}>{behaviorTypeLabel(type, t)}</span>
                     <span className="text-[11px] font-bold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>
                       {t("beh.countEntry", { count })}
                     </span>

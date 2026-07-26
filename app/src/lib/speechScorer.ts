@@ -11,6 +11,28 @@ import type { SpeechAttempt, SpeechLevel } from "../types";
 
 export type SpeechResult = SpeechAttempt["result"];
 
+/**
+ * AIX-S2: recognition language for the Record & Compare flow, derived EXACTLY
+ * as CoachTab derives it for the identical Web Speech seam
+ * (aiLang === "he" ? "he-IL" : "en-US") — never a hardcoded "en-US".
+ */
+export function recognitionLangFor(aiLang: "en" | "he"): string {
+  return aiLang === "he" ? "he-IL" : "en-US";
+}
+
+/**
+ * AIX-S2 honesty gate: SOUND_LIBRARY practice targets are English-only today,
+ * so an auto-listen verdict is only honest for an English session. For any
+ * other language the machine may NOT assert a "sounds different" verdict about
+ * a child's speech it provably cannot hear (he-IL utterances through an EN
+ * matcher are transcribed as noise). Callers must suppress the whole
+ * auto-verdict path — on-device recognition AND cloud scoring — and fall to
+ * the parent-scoring floor with honest copy (prac.speech.parentJudged).
+ */
+export function autoListenSupported(aiLang: "en" | "he"): boolean {
+  return aiLang === "en";
+}
+
 export interface UtteranceScore {
   result: SpeechResult;
   heard?: string;

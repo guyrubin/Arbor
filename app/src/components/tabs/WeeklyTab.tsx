@@ -36,7 +36,7 @@ type WeeklyReport = {
 };
 
 export default function WeeklyTab() {
-  const { behaviorLogs, milestones, actionPlans, childProfile, setActiveTab } = useArbor();
+  const { behaviorLogs, milestones, actionPlans, childProfile, setActiveTab, acceptTodayAction, activeTodayAction } = useArbor();
   const { t } = useLanguage();
   const reportsCol = useChildCollection<WeeklyReport>(childProfile.id, "weeklyReports");
 
@@ -240,6 +240,29 @@ export default function WeeklyTab() {
                 {selected.digest.tryThisWeek && (
                   <div className="rounded-xl p-3 text-sm bg-white" style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}>
                     <strong style={{ color: "var(--arbor-green-ink)" }}>{t("wk.tryThisWeek")}</strong> {selected.digest.tryThisWeek}
+                    {/* AIX-S6: feed the action loop from the digest's next-step —
+                        through the EXISTING acceptTodayAction seam, with digest
+                        provenance. TODAY-1 guard: the CTA exists ONLY for
+                        AI-generated digests (generated === "ai"); fallback
+                        digests keep the plain card so deterministic copy can
+                        never be persisted into actionLoops. */}
+                    {selected.digest.generated === "ai" && (
+                      activeTodayAction?.recommendation === selected.digest.tryThisWeek.trim() ? (
+                        <span className="mt-2.5 flex items-center gap-1.5 text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }} role="status">
+                          <Icon name="check_circle" size={15} /> {t("wk.todayStepSet")}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => acceptTodayAction(selected.digest!.tryThisWeek, "standard", "digest")}
+                          className="mt-2.5 flex items-center gap-1.5 min-h-[44px] text-[12px] font-extrabold rounded-lg transition active:scale-[0.98]"
+                          style={{ color: "var(--arbor-green-ink)" }}
+                        >
+                          <Icon name="task_alt" size={15} /> {t("today.action.make")}
+                          <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
+                        </button>
+                      )
+                    )}
                   </div>
                 )}
               </>

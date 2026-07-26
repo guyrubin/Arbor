@@ -6,7 +6,7 @@
  * defined profile (method) from the canonical registry.
  */
 import { Type } from "@google/genai";
-import type { ModelProvider } from "../ai/modelRouter.js";
+import type { ModelCallBudget, ModelProvider } from "../ai/modelRouter.js";
 import { SCHOLARS, type ScholarEntry } from "./scholars.js";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
 import type { CouncilTake } from "../types.js";
@@ -58,7 +58,7 @@ const TAKE_SCHEMA = {
 export const runScholarTakes = async (
   provider: ModelProvider,
   scholars: ScholarEntry[],
-  ctx: { message: string; childProfile: unknown; language?: string },
+  ctx: { message: string; childProfile: unknown; language?: string; budget?: ModelCallBudget },
 ): Promise<CouncilTake[]> => {
   const languageDirective = ctx.language === "he" ? "\nWrite takeaway and suggestion in warm Hebrew (עברית)." : "";
   const takes = await Promise.all(
@@ -76,6 +76,9 @@ Give one short takeaway (what your lens notices here) and one concrete, doable s
           prompt,
           schema: TAKE_SCHEMA,
           temperature: 0.5,
+          // AIR-9: takes share the route budget; a timed-out scholar degrades
+          // soft (empty take) and the synthesis call enforces the hard stop.
+          budget: ctx.budget,
         })) as { takeaway?: string; suggestion?: string };
         return { ...base, takeaway: r.takeaway || "", suggestion: r.suggestion || "" };
       } catch {

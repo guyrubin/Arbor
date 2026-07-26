@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows } from "./CoachAnswerCards";
+import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows, memoryFooterLabel } from "./CoachAnswerCards";
 import type { CoachContract } from "../../types";
 
 /**
@@ -271,20 +271,19 @@ function renderCardsHe(riskLevel: string): string {
 describe("COACH-1 — uiLang=he renders zero English chrome", () => {
   const HE_CHROME = [
     "המועצה התייעצה",        // council panel title
-    "מה אולי קורה",           // what may be happening
+    "למה זה אולי קורה",       // why this might be happening (ASK-3 disclosure)
     "לנסות היום",             // try today
     "שמירה כתוכנית",          // save as plan
     "אפשר להגיד",             // say this
     "ממה להימנע",             // avoid
     "למה לשים לב",            // watch for
-    "מסגרת התפתחותית",        // developmental frame
     "שמירה לתוכנית",          // save to plan
     "פתק למורה",              // teacher note
-    "מטרה",                   // frame chip: aim
   ];
   const EN_CHROME = [
     "The council weighed in",
     "What may be happening",
+    "Why this might be happening",
     "Try today",
     "Save as plan",
     "Say this",
@@ -321,8 +320,154 @@ describe("COACH-1 — uiLang=he renders zero English chrome", () => {
         onAddToHandoff: noop,
       })
     );
-    for (const s of ["What may be happening", "Try today", "Say this", "Watch for", "Developmental frame", "Save to plan", "Teacher note"]) {
+    for (const s of ["Why this might be happening", "Try today", "Say this", "Watch for", "Save to plan", "Teacher note"]) {
       expect(html, `missing EN chrome "${s}"`).toContain(s);
     }
+  });
+});
+
+/**
+ * ASK-6 — felt memory, counts only. The footer row renders an integer COUNT
+ * of approved facts ("Grounded in {n} facts you approved · Manage") and the
+ * review chip names THAT something is pending — never fact content, never a
+ * percentage or confidence figure (clinical firewall shape).
+ */
+describe("ASK-6 — memoryFooterLabel (counts-only helper)", () => {
+  it("is empty for 0/undefined — no false memory claim on ungrounded answers", () => {
+    expect(memoryFooterLabel(0, "en")).toBe("");
+    expect(memoryFooterLabel(undefined, "en")).toBe("");
+    expect(memoryFooterLabel(0, "he")).toBe("");
+  });
+
+  it("singular and plural forms in both languages", () => {
+    expect(memoryFooterLabel(1, "en")).toBe("Grounded in 1 fact you approved");
+    expect(memoryFooterLabel(3, "en")).toBe("Grounded in 3 facts you approved");
+    expect(memoryFooterLabel(1, "he")).toBe("מבוסס על עובדה אחת שאישרתם");
+    expect(memoryFooterLabel(3, "he")).toContain("3");
+  });
+
+  it("firewall: no percentage or confidence wording in either language", () => {
+    for (const lang of ["en", "he"] as const) {
+      for (const n of [1, 4]) {
+        const label = memoryFooterLabel(n, lang);
+        expect(label).not.toContain("%");
+        expect(label.toLowerCase()).not.toContain("confidence");
+        expect(label).not.toContain("ביטחון");
+      }
+    }
+  });
+});
+
+describe("ASK-6 — memory footer rendering", () => {
+  const SECRET_FACT = "NEVER-IN-THREAD: naps collapse after 15:00";
+
+  function renderMemory(overrides: Partial<CoachContract>, lang: "en" | "he" = "en"): string {
+    return renderToStaticMarkup(
+      React.createElement(CoachAnswerCards, {
+        contract: { ...makeContract("low"), ...overrides },
+        lang,
+        onSaveToPlan: noop,
+        onCreateLog: noop,
+        onAddToHandoff: noop,
+        onManageMemory: noop,
+      })
+    );
+  }
+
+  it("grounded answers show the count row with the manage deep-link affordance", () => {
+    const html = renderMemory({ approvedMemoryFactsUsed: 3 });
+    expect(html).toContain("Grounded in 3 facts you approved");
+    expect(html).toContain("Manage");
+  });
+
+  it("an ungrounded answer (count 0 or absent) renders no memory-claim row", () => {
+    for (const html of [renderMemory({ approvedMemoryFactsUsed: 0 }), renderMemory({})]) {
+      expect(html).not.toContain("facts you approved");
+      expect(html).not.toContain("fact you approved");
+    }
+  });
+
+  it("a proposal turn renders the review chip exactly once — with ZERO memory content in-thread", () => {
+    const html = renderMemory({
+      memoryProposals: [
+        { fact: SECRET_FACT, source: "chat", retention: "3 months" },
+        { fact: `${SECRET_FACT}-2`, source: "chat", retention: "3 months" },
+      ],
+    });
+    expect(html.match(/Arbor suggests remembering something/g)?.length).toBe(1);
+    // The binding firewall line: zero memory CONTENT rendered in-thread.
+    expect(html).not.toContain(SECRET_FACT);
+  });
+
+  it("no proposals → no review chip", () => {
+    expect(renderMemory({ approvedMemoryFactsUsed: 2 })).not.toContain("Arbor suggests remembering");
+  });
+
+  it("HE: count row and review chip render in Hebrew", () => {
+    const html = renderMemory(
+      { approvedMemoryFactsUsed: 2, memoryProposals: [{ fact: SECRET_FACT, source: "chat", retention: "3 months" }] },
+      "he"
+    );
+    expect(html).toContain("מבוסס על 2 עובדות שאישרתם");
+    expect(html).toContain("ניהול");
+    expect(html).toContain("ארבור מציעה לזכור משהו");
+    expect(html).not.toContain(SECRET_FACT);
+    expect(html).not.toContain("Grounded in");
+  });
+});
+
+/**
+ * ASK-3 — answer stack reorder: the first screenful of any contract answer is
+ * the exact words ("Say this") + the 1-3 steps ("Try today"); hypotheses are
+ * analysis and collapse into a "Why this might be happening" disclosure; the
+ * six-frame routing panel (internal orchestration vocabulary: "shadow",
+ * "marriage", "shepherd") never renders on the parent surface — it stays in
+ * the contract for telemetry/evals only.
+ */
+describe("ASK-3 — script + plan lead, hypotheses collapse, frames never render", () => {
+  function renderFullEn(): string {
+    return renderToStaticMarkup(
+      React.createElement(CoachAnswerCards, {
+        contract: makeFullContract("low"),
+        lang: "en",
+        onSaveToPlan: noop,
+        onCreateLog: noop,
+        onAddToHandoff: noop,
+      })
+    );
+  }
+
+  it("parentScript renders before todayPlan, and todayPlan before the hypotheses disclosure", () => {
+    const html = renderFullEn();
+    const script = html.indexOf("Say this");
+    const plan = html.indexOf("Try today");
+    const why = html.indexOf("Why this might be happening");
+    expect(script).toBeGreaterThan(-1);
+    expect(plan).toBeGreaterThan(-1);
+    expect(why).toBeGreaterThan(-1);
+    expect(script, "script must lead the stack").toBeLessThan(plan);
+    expect(plan, "plan must precede the hypotheses disclosure").toBeLessThan(why);
+  });
+
+  it("the frameRouting panel and its values are never visible to the parent", () => {
+    const html = renderFullEn();
+    // Panel title gone in both idioms + the contract's frame VALUES never leak.
+    expect(html).not.toContain("Developmental frame");
+    expect(html).not.toContain("Calmer exits");     // frameRouting.aim value
+    expect(html).not.toContain("Warm but firm");    // frameRouting.twoAxes value
+  });
+
+  it("hypotheses disclosure is collapsed by default but the content stays in the DOM", () => {
+    const html = renderFullEn();
+    expect(html).toContain("Why this might be happening");
+    // Content present (hidden, never unmounted) — same idiom as the citation drawer.
+    expect(html).toContain("Transition fatigue");
+    expect(html).toContain("Long day, short notice.");
+  });
+
+  it("hypotheses disclosure renders in Hebrew with zero English chrome", () => {
+    const html = renderCardsHe("low");
+    expect(html).toContain("למה זה אולי קורה");
+    expect(html).not.toContain("Why this might be happening");
   });
 });

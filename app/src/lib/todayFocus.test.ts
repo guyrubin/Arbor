@@ -135,15 +135,31 @@ describe("TodayActionLoop guard (TODAY-1: acceptTodayAction unreachable when foc
 
 describe("useTodaysFocus verdict-strip stays pinned (CODEX-2 firewall condition)", () => {
   const src = read("hooks/useTodaysFocus.ts");
+  // AIR-5: the prompt moved server-side (/api/todays-focus) — the verdict-strip
+  // condition now pins BOTH seams: the hook's payload and the server prompt.
+  const apiSrc = read("routes/api.ts");
 
-  it("never interpolates intensity averages or milestone percentages into the prompt", () => {
-    expect(src).not.toContain("${signals.avg");
-    expect(src).not.toContain("${signals.milestonesPercent");
-    expect(src.toLowerCase()).not.toContain("average intensity ${");
-    expect(src.toLowerCase()).not.toContain("readiness ${");
+  it("the hook never sends intensity averages or milestone percentages to the server", () => {
+    expect(src).not.toContain("signals.avg");
+    expect(src).not.toContain("signals.milestonesPercent");
+    // The allowed flat inputs are what the payload carries.
+    expect(src).toContain("count: signals.count");
+    expect(src).toContain("topTrigger: signals.topTrigger");
+    // The heavy coach route is gone from the ambient card (AIR-5).
+    expect(src).not.toContain('fetch("/api/chat"');
+    expect(src).toContain('fetch("/api/todays-focus"');
+  });
+
+  it("the server focus prompt never interpolates avg intensity or milestone readiness", () => {
+    const focusRoute = apiSrc.slice(apiSrc.indexOf('router.post("/todays-focus"'), apiSrc.indexOf('router.post("/vision"'));
+    expect(focusRoute.length).toBeGreaterThan(0);
+    expect(focusRoute).not.toMatch(/average intensity/i);
+    expect(focusRoute).not.toMatch(/milestone readiness/i);
+    expect(focusRoute).not.toContain("signals?.avg");
+    expect(focusRoute).not.toContain("signals?.milestonesPercent");
     // The allowed flat inputs are still what the prompt uses.
-    expect(src).toContain("${signals.count}");
-    expect(src).toContain("${signals.topTrigger");
+    expect(focusRoute).toContain("${count}");
+    expect(focusRoute).toContain("${topTrigger");
   });
 });
 

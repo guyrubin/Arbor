@@ -35,6 +35,8 @@ import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
 import { sortActionLoop, todayActionId } from "../actionLoop/model";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
+import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
+import { useLanguage } from "./LanguageContext";
 
 const readLS = (key: string): string | null => {
   try {
@@ -70,8 +72,11 @@ export type { ActiveTab };
 const VALID_TABS = new Set<string>(ROUTE_IDS);
 
 /** The modality a "log a moment" entry tile promises; the capture surface opens
- *  in this mode when a request is pending. */
-export type CaptureMode = "voice" | "photo" | "text";
+ *  in this mode when a request is pending. "ai-draft" (AI-CAP-4) is the coach
+ *  handoff: the extraction seam already filled the draft, so Behaviors opens
+ *  the form VISIBLE, scrolled into view, with the review gate armed and the
+ *  factual ai-draft provenance — the only write path stays confirmReview. */
+export type CaptureMode = "voice" | "photo" | "text" | "ai-draft";
 /** Non-functional export — lets the F1 capability-floor harness import the
  *  canonical tab list without re-deriving it. Zero behavior change: this
  *  array is derived from VALID_TABS and is never read by any render path. */
@@ -88,29 +93,31 @@ function tabFromHash(): ActiveTab | null {
 export type ChatMessage = {
   sender: "user" | "ai";
   text: string;
+  /** ASK-5: what the parent actually SAW and tapped (localized chip label /
+   *  scenario summary). Rendered as the user bubble when present; `text`
+   *  stays the canonical prompt that went to the model. */
+  displayText?: string;
   lens?: string;
   contract?: CoachContract;
   council?: CouncilTake[];
   /** COACH-2: true while this AI bubble is the live voice caption still
    *  accumulating streamed deltas; stripped when the voice turn settles. */
   voiceLive?: boolean;
+  /** ASK-1/AIR-1: true while this AI bubble is the live Ask answer still
+   *  accumulating streamed (server-screened) deltas; stripped on settle. */
+  chatLive?: boolean;
+  /** ASK-1: the bubble still shows the LOCAL acknowledgment copy — replaced
+   *  (never appended to) by the first real streamed delta. */
+  chatAck?: boolean;
 };
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
 
-export const WELCOME_MESSAGE: ChatMessage = {
-  sender: "ai",
-  text:
-    "### Welcome to Arbor Parent Coach\n" +
-    "I help turn parenting concerns into age-aware, non-diagnostic next steps. Share a hard moment, a behavior pattern, or a developmental question your child is facing.\n\n" +
-    "### Suggested starting points:\n" +
-    "- **\"Transition tantrums when leaving for school in the mornings.\"**\n" +
-    "- **\"Refuses to switch off the screen at night and screams.\"**\n" +
-    "- **\"Suggestions for improving confidence when switching between languages.\"**\n\n" +
-    "Select a **Scholar Lens** above to focus guidance through a developmental frame (Vygotsky, Bowlby, Piaget, Winnicott, etc.).",
-  lens: "Integrated Balanced",
-};
-
+// ASK-7: the English WELCOME_MESSAGE bubble was deleted — a fresh thread is
+// simply []. Orientation lives ONCE on the surface itself (mascot empty state
+// + fast-start scenarios); guards key off hasUserTurn/hasAiTurn predicates
+// instead of message-count checks. Legacy saved conversations that still
+// contain the old welcome bubble render it as an ordinary AI message.
 
 /**
  * Holds the full Arbor application state and the API handlers that were
@@ -119,6 +126,10 @@ export const WELCOME_MESSAGE: ChatMessage = {
  */
 function useArborState() {
   const showSandboxBanner = import.meta.env.VITE_HAS_GEMINI_API !== "true";
+  // ASK-1: honest streaming statuses + the acknowledgment bubble are localized
+  // through the SAME i18n dictionaries as the rest of the UI — a Hebrew
+  // session must never see an English status string.
+  const { t } = useLanguage();
 
   // Active child comes from ProfileContext so every AI call, log, and plan is
   // scoped to the selected child rather than a hardcoded profile.
@@ -157,6 +168,18 @@ function useArborState() {
   const consumeJournalFocus = () => setPendingJournalFocusId(null);
 
   /**
+   * AIX-S3 — Vision handoff-note → Consult composer prefill seam (mirrors the
+   * capture seam above). ArborVision's document flow produces a handoffNote;
+   * CoachTab threads it here and the Consult flow (AskSpecialist) consumes it
+   * into a PARENT-EDITABLE note field. Prefill is NOT consent: nothing is
+   * shared or sent without the existing explicit consult act (copy / download
+   * / export / send), all of which stay behind the reviewed-checkbox gate.
+   */
+  const [pendingConsultNote, setPendingConsultNote] = useState<string | null>(null);
+  const requestConsultPrefill = (note: string) => setPendingConsultNote(note);
+  const consumeConsultPrefill = () => setPendingConsultNote(null);
+
+  /**
    * The single seam for handing a prompt to Ask Arbor from anywhere in the app.
    * Historically 18+ surfaces hand-rolled the same `setChatInput(...) +
    * (setSelectedLens(...)) + setActiveTab("coach")` triple; that sprawl had no
@@ -170,6 +193,25 @@ function useArborState() {
     if (opts.lens) setSelectedLens(opts.lens);
     setActiveTab("coach");
     try { track("coach_seed", { source: opts.source ?? "unknown" }); } catch { /* noop */ }
+  };
+
+  /**
+   * AI-CAP-7 — post-confirm coach handoff. A gated capture confirm (BehaviorsTab
+   * confirmReview / QuickLogModal confirm) may offer ONE dismissible, non-blocking
+   * "want a next step?" CTA built from the just-confirmed log. Contract: never
+   * auto-send (accept only PREFILLS the composer via the seedCoach seam, source
+   * 'post-capture'), shown once per confirm (each confirm replaces the offer),
+   * dismiss leaves no residue, and NOTHING here touches the behavior-log write
+   * path. The offer carries only the prompt string — no scores, no verdicts.
+   */
+  const [postCaptureCoachPrompt, setPostCaptureCoachPrompt] = useState<string | null>(null);
+  const offerPostCaptureCoach = (prompt: string) => setPostCaptureCoachPrompt(prompt);
+  const dismissPostCaptureCoach = () => setPostCaptureCoachPrompt(null);
+  const acceptPostCaptureCoach = () => {
+    if (!postCaptureCoachPrompt) return;
+    // Prefill only — the parent still presses send themselves.
+    seedCoach({ prompt: postCaptureCoachPrompt, source: "post-capture" });
+    setPostCaptureCoachPrompt(null);
   };
   // UC-wireframe: the right-hand AI "how Arbor helps" rail is a third column the
   // wireframe does not have. Default it OFF (opt-in via the topbar toggle) so the
@@ -230,10 +272,13 @@ function useArborState() {
     () => actionLoop.find((entry) => entry.id === todayActionId(childProfile.id)) ?? null,
     [actionLoop, childProfile.id]
   );
-  const acceptTodayAction = (recommendation: string, capacity: ActionCapacity) => {
-    const item: ActionLoopEntry = { id: todayActionId(childProfile.id), recommendation: recommendation.trim(), source: "today-guidance", capacity, status: "accepted", acceptedAt: new Date().toISOString() };
+  // AIX-S6: `source` carries provenance — "today-guidance" (default) or
+  // "digest" (the weekly digest's AI-generated tryThisWeek text). Callers own
+  // the TODAY-1 guard: only model-generated focus text may reach this seam.
+  const acceptTodayAction = (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance") => {
+    const item: ActionLoopEntry = { id: todayActionId(childProfile.id), recommendation: recommendation.trim(), source, capacity, status: "accepted", acceptedAt: new Date().toISOString() };
     void actionLoopCol.upsert(item);
-    try { track("today_action_accepted", { capacity }); } catch { /* noop */ }
+    try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
   };
   const recordTodayOutcome = (id: string, outcome: ActionOutcome) => {
     const item = actionLoop.find((entry) => entry.id === id);
@@ -269,7 +314,7 @@ function useArborState() {
   // store (lib/onboardingJourney); the coach composer starts pre-filled with it
   // on the very first session. takeCoachSeed() is read-once-and-clear.
   const [chatInput, setChatInput] = useState<string>(() => takeCoachSeed() ?? "");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   // Multi-thread coach conversations (persisted per child).
   const conversationsCol = useChildCollection<Conversation>(childProfile.id, "conversations");
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -447,14 +492,19 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     if (loadedChatChild.current === childProfile.id) return;
     loadedChatChild.current = childProfile.id;
     setActiveConversationId(null);
-    setChatMessages([WELCOME_MESSAGE]);
+    setChatMessages([]);
   }, [childProfile.id]);
 
-  // Persist the active conversation (once it has real content).
+  // Persist the active conversation (once it has real content — ASK-7/ASK-8:
+  // "real" means the parent actually asked something; ack-only or error-only
+  // states never reach Firestore because no error bubbles are appended and a
+  // thread without a user turn is skipped here).
   useEffect(() => {
-    if (!activeConversationId || chatMessages.length <= 1) return;
+    if (!activeConversationId || !hasUserTurn(chatMessages)) return;
     const firstUser = chatMessages.find((m) => m.sender === "user");
-    const title = (firstUser ? firstUser.text : "Conversation").replace(/[#*]/g, "").trim().slice(0, 48) || "Conversation";
+    // ASK-5: the title derives from what the parent SAW (displayText for a
+    // tapped localized chip) — canonical text otherwise, same derivation.
+    const title = (firstUser ? firstUser.displayText || firstUser.text : "Conversation").replace(/[#*]/g, "").trim().slice(0, 48) || "Conversation";
     void conversationsCol.upsert({
       id: activeConversationId,
       title,
@@ -484,13 +534,13 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   // Coach conversation thread controls.
   const newConversation = () => {
     setActiveConversationId(null);
-    setChatMessages([WELCOME_MESSAGE]);
+    setChatMessages([]);
   };
   const openConversation = (id: string) => {
     const c = conversationsCol.items.find((x) => x.id === id);
     if (!c) return;
     setActiveConversationId(id);
-    setChatMessages(c.messages.length ? c.messages : [WELCOME_MESSAGE]);
+    setChatMessages(c.messages);
   };
   const deleteConversation = (id: string) => {
     void conversationsCol.remove(id);
@@ -596,6 +646,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setMemoryReviewItems(data.items || []);
   };
 
+  // ASK-1: map a server milestone stage key to its localized status line.
+  const childFirstName = (childProfile.name || "").trim().split(/\s+/)[0] || "";
+  const chatStageStatus = (stage: string): string => {
+    if (stage === "memory") return t("coach.status.memory", { name: childFirstName });
+    if (stage === "sources") return t("coach.status.sources");
+    if (stage === "plan") return t("coach.status.plan");
+    return t("coach.loading");
+  };
+
   const readStreamingChatResponse = async (res: Response): Promise<ChatResponsePayload> => {
     const reader = res.body?.getReader();
     if (!reader) throw new Error("Streaming response body unavailable");
@@ -621,9 +680,13 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
 
       const data = JSON.parse(dataLines.join("\n"));
       if (eventName === "status") {
-        setChatStreamStatus(data.text || "Arbor is preparing the developmental response...");
-      } else if (eventName === "chunk") {
-        setChatStreamStatus(`Receiving structured guidance (${data.characters || 0} chars)`);
+        // ASK-1 Phase 1: the server sends honest milestone STAGE KEYS
+        // (memory → sources → plan); the localized copy is owned here.
+        setChatStreamStatus(chatStageStatus(String(data.stage || "")));
+      } else if (eventName === "delta") {
+        // ASK-1 Phase 2 / AIR-1: server-screened sentence delta — fold it
+        // into the live bubble (the first one replaces the local ack copy).
+        setChatMessages((prev) => applyChatDelta(prev, String(data.text || ""), selectedLens));
       } else if (eventName === "done") {
         finalPayload = data as ChatResponsePayload;
       } else if (eventName === "error") {
@@ -658,24 +721,33 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   };
 
   const handleCancelChat = () => {
-    setChatStreamStatus("Stopping request...");
+    setChatStreamStatus(t("coach.status.stopping"));
     chatAbortRef.current?.abort();
   };
 
-  // Handle Parent Coach Chat
-  const handleChatSend = async (customPrompt?: string) => {
+  // Handle Parent Coach Chat. ASK-5: `opts.displayText` carries the localized
+  // label the parent actually tapped (scenario / follow-up chip) — the bubble
+  // shows their words while the canonical prompt goes to the model (the
+  // approved hardMomentSurface pattern).
+  const handleChatSend = async (customPrompt?: string, opts?: { displayText?: string }) => {
     const promptValue = customPrompt || chatInput;
     if (!promptValue.trim() || isChatLoading) return;
 
     if (!customPrompt) setChatInput("");
     setApiError(null);
-    setChatStreamStatus("Connecting to Arbor...");
+    setChatStreamStatus(t("coach.status.connecting"));
 
     // Begin a persisted conversation on the first message of a fresh thread.
     if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
 
-    const updatedMessages = [...chatMessages, { sender: "user" as const, text: promptValue, lens: selectedLens }];
-    setChatMessages(updatedMessages);
+    // ASK-1: the user turn + an IMMEDIATE locally-rendered acknowledgment
+    // bubble — the parent sees a response begin the moment they send, then the
+    // first screened streamed sentence replaces the ack copy.
+    // ASK-8: appendChatUser dedupes the retry path — after a failed turn the
+    // thread already ends with this exact question, so Retry never re-appends.
+    setChatMessages((prev) =>
+      appendChatAck(appendChatUser(prev, promptValue, selectedLens, opts?.displayText), t("coach.ack"), selectedLens),
+    );
     setIsChatLoading(true);
 
     const controller = new AbortController();
@@ -700,13 +772,11 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
         // inline instead of an error.
         if (res.status === 402) {
           openPaywall(errData?.upgrade?.feature || "coach_unlimited", errData?.upgrade?.plan === "family" ? "family" : "plus");
+          // ASK-5: the meter bubble is localized like every other injected
+          // message — never the server's English `details` string.
           setChatMessages((prev) => [
-            ...prev,
-            {
-              sender: "ai",
-              text:
-                `### You've used today's free coaching\n${errData.details || "The free plan includes a daily number of coach messages."}\n\nUpgrade to keep going — your question will still be here.`,
-            },
+            ...abortChatStream(prev),
+            { sender: "ai", text: `### ${t("coach.paywall.title")}\n${t("coach.paywall.body")}` },
           ]);
           return;
         }
@@ -717,25 +787,27 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       if (data.memoryReviewItems) {
         setMemoryReviewItems(data.memoryReviewItems);
       }
-      setChatMessages((prev) => [...prev, { sender: "ai", text: data.text, lens: selectedLens, contract: data.contract }]);
+      // ASK-1/AIR-1: settle the live bubble with the final payload. On a
+      // done-time output-screen flag (payload.outputBlocked) this RETRACTS the
+      // streamed prose and replaces it with the blocked/crisis markdown.
+      setChatMessages((prev) => settleChatTurn(prev, data, selectedLens));
       track("coach_message", { lens: selectedLens });
     } catch (err: any) {
       console.error(err);
       if (err.name === "AbortError") {
-        setChatMessages((prev) => [
-          ...prev,
-          { sender: "ai", text: "### Request Stopped\nThe live Arbor response was cancelled before completion." },
-        ]);
+        // ASK-8: keep any screened partial prose (parity with the voice loop);
+        // an ack-only bubble is dropped so no placeholder survives the stop.
+        // No cancel bubble is appended — a stop is the parent's own action,
+        // not a message from Arbor, and it must never persist into the thread.
+        setChatMessages((prev) => abortChatStream(prev));
         return;
       }
+      // ASK-8: a failure surfaces as ONE calm role=alert retry card (CoachTab
+      // renders t("coach.error") — never the raw err.message). No error bubble
+      // is appended, so no Firestore/index/provider internals ever land in a
+      // stressed parent's thread or in the persisted conversation.
       setApiError(err.message || "An exception occurred while connecting to Arbor services.");
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          sender: "ai",
-          text: renderApiConnectionError(err.message),
-        },
-      ]);
+      setChatMessages((prev) => abortChatStream(prev));
     } finally {
       setIsChatLoading(false);
       setChatStreamStatus(null);
@@ -744,16 +816,24 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   };
 
   // SAGE-2: convene the multi-agent scholar council (non-streaming orchestration).
+  // ASK-4: with an empty composer the council RE-ASKS the parent's last
+  // question — its most natural moment is right after an answer, when
+  // handleChatSend has already cleared chatInput; the old silent early-return
+  // made the button a no-op exactly then. CoachTab disables the button (with
+  // a hint) only when no prior user turn exists either.
   const handleCouncilSend = async (customPrompt?: string) => {
-    const promptValue = customPrompt || chatInput;
+    const lastUserTurn = [...chatMessages].reverse().find((m) => m.sender === "user");
+    const promptValue = customPrompt || chatInput.trim() || lastUserTurn?.text || "";
     if (!promptValue.trim() || isChatLoading) return;
 
     if (!customPrompt) setChatInput("");
     setApiError(null);
-    setChatStreamStatus("Convening the scholar council…");
+    setChatStreamStatus(t("coach.status.council"));
     if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
 
-    setChatMessages((prev) => [...prev, { sender: "user" as const, text: promptValue, lens: selectedLens }]);
+    // ASK-8: same retry-dedupe seam as handleChatSend — a council retry after
+    // a failure reuses the trailing user question instead of duplicating it.
+    setChatMessages((prev) => appendChatUser(prev, promptValue, selectedLens));
     setIsChatLoading(true);
     try {
       const data = await api.council({
@@ -773,11 +853,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       if (err instanceof PaywallError) {
         openPaywall(err.feature, err.plan);
       } else {
+        // ASK-8: the calm retry card is the single error affordance — no
+        // raw err.message bubble is appended to (or persisted with) the thread.
         setApiError(err.message || "The scholar council could not be reached.");
-        setChatMessages((prev) => [
-          ...prev,
-          { sender: "ai", text: `### Council unavailable\n${err.message}` },
-        ]);
       }
     } finally {
       setIsChatLoading(false);
@@ -1011,12 +1089,19 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     chatInput,
     setChatInput,
     seedCoach,
+    postCaptureCoachPrompt,
+    offerPostCaptureCoach,
+    dismissPostCaptureCoach,
+    acceptPostCaptureCoach,
     pendingCaptureMode,
     requestCapture,
     consumeCaptureRequest,
     pendingJournalFocusId,
     requestJournalFocus,
     consumeJournalFocus,
+    pendingConsultNote,
+    requestConsultPrefill,
+    consumeConsultPrefill,
     chatMessages,
     conversations,
     activeConversationId,

@@ -1,0 +1,16 @@
+{
+ "id": "TODAY-3",
+ "title": "Trusted Sharing surface is ~90% hardcoded English — HE/EN parity violation on the trust screen",
+ "type": "journey",
+ "priority": "P0",
+ "effort": "M",
+ "problem": "Standing constraint (HE/EN parity = P0). Only the title/subtitle/error use i18n (sec.sharing.*, err.careTeam.*; verified in lib/i18n.ts lines 694-695/2433-2434). Everything else is literal English: \"New share\", \"Find a professional\", role labels, SCOPE_OPTIONS, DURATIONS, \"Their role\", \"What to share\", \"Access duration\", \"Review before sharing\", \"Approve & share\", the TrustSafetyBar note, \"Coordinating around {name}\", \"Active shares\", \"Revoke access\", \"Shared with you\", \"Your data\", \"Export all data\", \"Delete child data\", \"This session\", audit strings, and the delete confirm text. Worse, scope display strings double as the server-stored enforcement values (createShare sends the English labels), so localization cannot be a pure copy swap.",
+ "fix": "Introduce stable scope IDs in sharing (e.g. story_timeline, weekly_insight, + preset report types) stored on the grant, with localized labels resolved at render; move ALL literals to app/src/lib/i18n.ts with HE translations; keep a migration/back-compat read for existing English-string grants. Acceptance: zero hardcoded user-facing English strings in TrustedSharing.tsx (lint/grep check), HE screenshot shows fully translated flow incl. RTL chips, existing grants still render, server tests cover legacy scope strings.",
+ "files": [
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/TrustedSharing.tsx",
+  "C:/Users/dguyr/ROS/Arbor/app/src/lib/i18n.ts",
+  "C:/Users/dguyr/ROS/Arbor/app/src/sharing/shares.ts",
+  "C:/Users/dguyr/ROS/Arbor/app/src/components/sections/Reports.tsx"
+ ],
+ "gate": "none"
+}

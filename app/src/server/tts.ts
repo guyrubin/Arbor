@@ -2,8 +2,9 @@ import { GoogleAuth } from "google-auth-library";
 import type { ArborConfig } from "../config/env.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "../ai/capabilities/policy.js";
-import type { CapabilityRequest } from "../ai/capabilities/contracts.js";
-import { screenModelOutput, type OutputScreenVerdict } from "../safety/outputScreen.js";
+import type { CapabilityAdapter, CapabilityRequest } from "../ai/capabilities/contracts.js";
+import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
+import { screenModelOutput, screenModelOutputLexical, type OutputScreenVerdict } from "../safety/outputScreen.js";
 import { logger } from "./logger.js";
 
 /**
@@ -132,9 +133,56 @@ export async function synthesizeSpeech(config: ArborConfig, input: TtsInput): Pr
   }
 }
 
-/** Public TTS trust boundary: caller-provided text is screened immediately before synthesis. */
-export async function screenAndSynthesizeSpeech(config: ArborConfig, modelProvider: ModelProvider, input: TtsInput): Promise<TtsResult> {
+/** The capability request every speech_synthesis dispatch carries. */
+const ttsCapabilityRequest = (lang: TtsLang): CapabilityRequest<"speech_synthesis"> => ({
+  capability: "speech_synthesis",
+  route: "creative_low_risk",
+  audience: "parent",
+  locale: lang,
+  dataClasses: ["public"],
+  risk: "low",
+});
+
+/**
+ * AIR-8: the speech_synthesis adapter registered into the boot-time
+ * CapabilityRegistry (createApp.buildCapabilityRegistry). The adapter is NOT
+ * an unscreened synthesizeSpeech handle: its execute runs the synchronous
+ * lexical safety floor unconditionally before any provider call, so no route
+ * that resolves the registry can synthesize lexically-unsafe text. The full
+ * model re-screen remains in `screenAndSynthesizeSpeech` (the public trust
+ * boundary); the only caller allowed to reach the adapter without it is the
+ * /api/tts HMAC-token path, whose 'already-screened' provenance is proven
+ * cryptographically (server/ttsToken.ts), never client-asserted.
+ */
+export const createTtsCapabilityAdapter = (config: ArborConfig): CapabilityAdapter<"speech_synthesis", TtsInput, TtsResult> => ({
+  capability: "speech_synthesis",
+  provider: ttsCandidateFor(config).ref,
+  execute: async (input) => {
+    const lexical = screenModelOutputLexical(input.text);
+    if (lexical.flagged) throw new UnsafeTtsOutputError(lexical);
+    return synthesizeSpeech(config, input);
+  },
+});
+
+/**
+ * AIR-8: registry dispatch — the production /api/tts path resolves synthesis
+ * through `registry.get("speech_synthesis", provider).execute(...)` instead of
+ * calling the provider function directly. Fails closed: a registry without the
+ * adapter throws AiProviderError("not_configured") from `registry.get`, and a
+ * disabled/killed TTS config throws NotConfiguredError before any lookup.
+ */
+export async function dispatchSpeechSynthesis(registry: CapabilityRegistry, config: ArborConfig, input: TtsInput): Promise<TtsResult> {
+  if (!ttsConfigured(config)) throw new NotConfiguredError();
+  const candidate = ttsCandidateFor(config);
+  const adapter = registry.get<"speech_synthesis", TtsInput, TtsResult>("speech_synthesis", candidate.ref.provider);
+  return adapter.execute(input, ttsCapabilityRequest(input.lang));
+}
+
+/** Public TTS trust boundary: caller-provided text is screened immediately
+ *  before synthesis. When a CapabilityRegistry is supplied (production), the
+ *  post-screen synthesis resolves through the registry dispatch seam (AIR-8). */
+export async function screenAndSynthesizeSpeech(config: ArborConfig, modelProvider: ModelProvider, input: TtsInput, registry?: CapabilityRegistry): Promise<TtsResult> {
   const verdict = await screenModelOutput(modelProvider, input.text);
   if (verdict.flagged) throw new UnsafeTtsOutputError(verdict);
-  return synthesizeSpeech(config, input);
+  return registry ? dispatchSpeechSynthesis(registry, config, input) : synthesizeSpeech(config, input);
 }

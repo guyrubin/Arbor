@@ -253,6 +253,11 @@ export const en: Dict = {
   "consult.send": "Send to a professional",
   "consult.opening": "Opening report…",
   "consult.exportError": "Couldn't build that report — try again.",
+  // AIX-S3(a) — Vision handoff note prefills the consult composer (parent-editable).
+  "consult.visionNote.title": "Note from Arbor Vision",
+  "consult.visionNote.hint": "Drafted by Arbor from your document — check and edit it. It is shared only when you export or send.",
+  "consult.visionNote.heading": "Parent note (drafted with Arbor, parent-reviewed)",
+  "consult.visionNote.remove": "Remove",
   "consult.empty.title": "Nothing to summarise yet",
   "consult.empty.body": "Log a moment or check a milestone and Arbor will build a shareable summary here.",
   "consult.empty.cta": "Log a moment",
@@ -340,6 +345,17 @@ export const en: Dict = {
   "coach.document": "Document",
   "coach.stop": "Stop",
   "coach.loading": "Arbor is synthesizing guidance…",
+  // ask-cadence (ASK-1): honest, milestone-driven streaming stages + the
+  // immediate local acknowledgment bubble. Stage keys arrive from the server
+  // (`status` events carry {stage}); the copy is owned here so HE never sees
+  // an English status string.
+  "coach.status.connecting": "Connecting to Arbor…",
+  "coach.status.memory": "Reading {name}'s memory…",
+  "coach.status.sources": "Checking sources…",
+  "coach.status.plan": "Shaping today's plan…",
+  "coach.status.stopping": "Stopping…",
+  "coach.status.council": "Convening the scholar council…",
+  "coach.ack": "On it — reading what you shared.",
   "coach.memReview": "Memory Review",
   "coach.memQueue": "Parent approval queue",
   "coach.memDesc": "Arbor saves proposed observations as pending review. They become active child memory only after approval.",
@@ -364,6 +380,9 @@ export const en: Dict = {
   "coach.aiDisclosure": "Arbor's guidance is AI-generated and doesn't replace professional advice. In an emergency, contact your care provider.",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "Integrated Balanced",
+  // ASK-9 — the demoted single-line lens affordance below the fast-start scenarios.
+  "coach.perspective": "Perspective",
+  "coach.perspective.change": "change",
   "coach.lens.integratedHint": "The default: connection first, then the next achievable step, then the environment. Pick a named lens when one angle should lead.",
   "coach.lens.browseAll": "Browse all lenses",
   "coach.alignedWith": "Aligned with {lens}",
@@ -380,7 +399,21 @@ export const en: Dict = {
   "coach.voice.listening": "Listening…",
   "coach.voice.thinking": "Thinking…",
   "coach.voice.speaking": "Speaking…",
+  "coach.voice.overlay.aria": "Voice conversation with Arbor",
+  "coach.voice.interrupt": "Tap to interrupt",
+  "coach.voice.end": "End voice conversation",
   "coach.councilHint": "Convene 3 scholars — each weighs in, then Arbor brings it together for you",
+  // ASK-4 — honest disabled hint: the council convenes on the latest question.
+  "coach.councilHint.empty": "Ask a question first — the council convenes on your latest question",
+  // ASK-5 — the coach-meter bubble is localized like every injected message.
+  "coach.paywall.title": "You've used today's free coaching",
+  "coach.paywall.body": "The free plan includes a daily number of coach messages. Upgrade to keep going — your question will still be here.",
+  // ASK-6 — counts-only memory visibility (clinical firewall: never content,
+  // never a percentage or confidence figure).
+  "coach.memory.grounded": "Grounded in {n} facts you approved",
+  "coach.memory.grounded.one": "Grounded in 1 fact you approved",
+  "coach.memory.manage": "Manage",
+  "coach.memory.reviewChip": "Arbor suggests remembering something — review",
   "coach.mem.source": "Source",
   "coach.mem.retention": "Retention",
   "coach.mem.frame": "Frame",
@@ -397,6 +430,8 @@ export const en: Dict = {
   // COACH-1 — CoachAnswerCards panel chrome (the flagship structured answer).
   "coach.cards.council": "The council weighed in · {n} voices",
   "coach.cards.happening": "What may be happening",
+  // ASK-3 — hypotheses collapse into a calm disclosure below the script + plan.
+  "coach.cards.why": "Why this might be happening",
   "coach.cards.tryToday": "Try today",
   "coach.cards.saveAsPlan": "Save as plan",
   "coach.cards.sayThis": "Say this",
@@ -424,8 +459,13 @@ export const en: Dict = {
   "coach.toast.teacherNoteCopied": "Teacher note copied — paste it into your Consult summary",
   "coach.toast.logPrefilled": "Pre-filled a log from this guidance — review and save",
   "coach.toast.voiceUnsupported": "Voice input isn't supported in this browser",
+  "coach.toast.micPermission": "Arbor needs microphone access — check your browser's mic permission and try again",
+  "coach.toast.micRetryStopped": "The microphone kept cutting out, so voice was paused. Tap the mic to try again",
   "coach.toast.voiceFallback": "Switched to standard voice",
+  "coach.toast.voiceStandardMode": "Voice switched to standard mode",
   "coach.toast.noteCopied": "Note copied — paste it into your Consult summary",
+  // AIX-S3(a) — the handoff note now prefills the Consult composer directly.
+  "coach.toast.handoffPrefilled": "Note added to your consult summary — review and edit it before sharing",
   "coach.toast.photoCaptured": "Captured from the photo — review and save",
   // COACH-5 — composer memory-disclosure line + lens-row collapse label.
   "coach.memoryLine": "Uses the memory you approved about {name} · you control what is remembered",
@@ -460,6 +500,13 @@ export const en: Dict = {
   "beh.capture.happened": "What happened?",
   "beh.capture.tried": "What did you try?",
   "beh.capture.optional": "Optional — helps Arbor notice context over time",
+  // AI-CAP-6 — live dictation caption (shown until the first words arrive).
+  "beh.capture.listening": "Listening — take your time, pauses are okay.",
+  // AI-CAP-7 — post-confirm coach handoff strip (one optional CTA per confirm).
+  "beh.postCapture.body": "Want a next step for this moment?",
+  "beh.postCapture.cta": "Ask Arbor",
+  "beh.postCapture.dismiss": "Not now",
+  "beh.postCapture.prompt": "I just logged this moment for {name}: {type}. What happened: {trigger}. What I tried: {response}. What would be a good next step?",
   "beh.speak": "Speak",
   "beh.stop": "Stop",
   "beh.parsing": "Arbor is filling in the form for you…",
@@ -519,12 +566,17 @@ export const en: Dict = {
   // beh toasts
   "beh.toast.voiceParsed": "Your words are in the form — review and save",
   "beh.toast.voiceFallback": "Captured your note into the trigger field",
+  "beh.extract.noResponse": "Not mentioned yet",
   "beh.toast.voiceUnsupported": "Voice capture isn't supported in this browser",
   "beh.toast.voiceError": "Couldn't hear that — try again",
   "beh.toast.fillBoth": "Fill in both \"What triggered this?\" and \"What was your response?\" to save.",
   "beh.toast.updated": "Log updated.",
   "beh.toast.logged": "Moment logged — it's in your history below.",
   "beh.toast.imageError": "Couldn't process that image",
+  // AI-CAP-1 — voice-capture escalation surface chrome (the crisis-resources
+  // markdown itself is the approved EN copy verbatim; HE copy gated on GG-4)
+  "beh.escalation.title": "Professional support recommended",
+  "beh.escalation.dismiss": "Close",
   // beh speak-to-log button aria
   "beh.speakToLog": "Speak to log",
   // beh placeholders
@@ -1227,6 +1279,7 @@ export const en: Dict = {
   "ql.review.source": "Source: written by you",
   "ql.review.source.voice": "Source: voice transcription",
   "ql.review.source.photo": "Source: photo added by you",
+  "ql.review.source.aiDraft": "Source: drafted by Arbor from your words — check every field",
   "ql.review.photoAlt": "Photo attached to this draft",
   "ql.review.edit": "Edit",
   "ql.review.discard": "Discard",
@@ -1234,6 +1287,17 @@ export const en: Dict = {
   "ql.review.notSaved": "This draft is not yet part of your child's record.",
   "ql.review.trigger": "What happened before",
   "ql.review.response": "What you tried",
+  // AI-CAP-5 — review honesty: the AI-guessed fields (intensity/context/
+  // duration) render in the review with inline correction; "From your note"
+  // is a FACTUAL provenance label (where the value came from), never a
+  // certainty claim (CODEX-7 scan applies to every ql.review.* key).
+  "ql.review.intensity": "Intensity",
+  "ql.review.intensityDown": "Lower intensity",
+  "ql.review.intensityUp": "Raise intensity",
+  "ql.review.context": "Where it happened",
+  "ql.review.duration": "How long (minutes)",
+  "ql.review.fromNote": "From your note",
+  "ql.review.tapToEdit": "Tap to edit",
   // add child modal
   "ac.title": "Add a child",
   "ac.titleStep": "Add a child · Step {step} of 3",
@@ -1327,6 +1391,8 @@ export const en: Dict = {
   // TODAY-5/PLAT-4/CODEX-6 — TodayActionLoop copy migrated from an inline
   // he-ternary object so the en/he parity test guards it.
   "today.action.eyebrow": "Today's step",
+  // AIX-S6 — provenance line when the step was accepted from the weekly digest.
+  "today.action.eyebrow.digest": "This week's step, from your weekly review",
   "today.action.tried": "What happened when you tried it?",
   "today.action.helped": "Helped",
   "today.action.somewhat": "A little",
@@ -1488,6 +1554,8 @@ export const en: Dict = {
   "wk.aiInsight": "What Arbor noticed",
   "wk.watchFor": "Worth watching:",
   "wk.tryThisWeek": "Try this week:",
+  // AIX-S6 — the digest's tryThisWeek feeds the Today action loop.
+  "wk.todayStepSet": "Set as today's step — see it on Today",
   "wk.milestoneWins": "Milestone wins ({n})",
   "wk.noMilestones": "No milestones checked in this report.",
   "wk.reviewMilestones": "Review milestones →",
@@ -2203,6 +2271,58 @@ export const en: Dict = {
   "kid.game.story-quest.sub": "Choose the way",
   "kid.game.mimic-studio.title": "Mimic Studio",
   "kid.game.mimic-studio.sub": "Copy the moves",
+  // AIX-S1 — Arbor Vision modal (was hardcoded EN end-to-end on the flagship
+  // "wow" surface; the /vision prompt now carries the same language directive).
+  "vis.title.observe": "Show Arbor a photo",
+  "vis.title.document": "Scan a document",
+  "vis.intro.observe": "Show Arbor the moment, the room, or your child's drawing. Arbor describes what it sees and offers gentle, non-diagnostic next steps.",
+  "vis.intro.document": "Photograph or upload a school report, daycare note or form. Arbor reads it and pulls out what matters — privately, on your device first.",
+  "vis.readError": "Could not read that image — try another photo.",
+  "vis.analyzeError": "Arbor could not analyze this image.",
+  "vis.upload.photo": "Take or choose a photo",
+  "vis.upload.document": "Upload or photograph a document",
+  "vis.resizedNote": "Resized on your device before sending",
+  "vis.change": "Change",
+  "vis.imageAlt": "To analyze",
+  "vis.notePlaceholder": "Optional: what's going on here? (e.g. 'bedtime, she won't settle in this room')",
+  "vis.looking": "Arbor is looking…",
+  "vis.cta.observe": "Ask Arbor to look",
+  "vis.cta.document": "Read this document",
+  "vis.offTopic": "Arbor keeps to children's development and care. This image doesn't look like something it can help with — try a photo of a moment, the environment, a drawing, or a child-related document.",
+  "vis.sec.sees": "What Arbor sees",
+  "vis.sec.mayMean": "What it may mean",
+  "vis.sec.tryToday": "Try today",
+  "vis.sec.avoid": "Avoid",
+  "vis.sec.keyPoints": "Key points",
+  "vis.sec.remember": "Worth remembering",
+  "vis.sec.askPro": "Ask the professional",
+  "vis.docType.fallback": "Document",
+  "vis.action.discuss": "Discuss in Arbor",
+  "vis.action.log": "Log this moment",
+  "vis.action.handoff": "Use in a handoff",
+  "vis.action.copy": "Copy",
+  "vis.action.copied": "Copied",
+  // AIX-S3(b) — per-item memory propose CTA (pending-approval queue only).
+  "vis.memory.save": "Save to {name}'s memory",
+  "vis.memory.saved": "Waiting for your approval",
+  "vis.memory.retry": "Try again",
+  "vis.memory.pendingNote": "Saved items wait for your approval in Profile › Child Memory — nothing is used until you approve it.",
+  "vis.seed.observe": "About the photo I showed you: {observation}. What's one thing to try this week?",
+  "vis.seed.observeWithNote": "About the photo I showed you ({note}): {observation}. What's one thing to try this week?",
+  "vis.seed.document": "Here's what a {docType} from my child's school/clinic says: {summary}. What should I take from this and do next?",
+  // AIX-S4 — "coach me on this" seed prompts (were raw-English template
+  // literals on ~10 call sites; coachSeedI18n.test.ts locks the t() pattern).
+  "seed.play": "We're going to try \"{title}\" with {name} today (it builds {domain}). How can I get the most out of it, and what should I watch for?",
+  "seed.play.withGoal": "We're going to try \"{title}\" with {name} today, working on {goal}. How can I get the most out of it, and what should I watch for?",
+  "seed.todayFocus": "About today: {focus} What is one concrete thing I can do for {name} today?",
+  "seed.milestoneGaps": "Regarding the scaffolding gap analysis on milestones:\n\n{analysis}\n\nHow do we evaluate sensory resilience relative to these milestone hurdles?",
+  "seed.planCoreg": "Regarding the Action Plan: \"{title}\". Let's formulate two additional specific co-regulation dialogue scripts dealing with the child's preoperational language-switching triggers.",
+  "seed.langWeekPlan": "Give me a gentle one-week plan to build {name}'s (age {age}) confidence in {target}, with {home} as the home language. Keep it low-pressure, play-based, and non-diagnostic — a few minutes a day.",
+  "seed.langActivity": "Help me run the \"{title}\" {target} activity with {name} (age {age}) today. Give me a 3-step script and one way to make it easier if they resist.",
+  // AIX-S2 — honest copy when the auto-listen verdict path is suppressed for a
+  // non-English session (SOUND_LIBRARY targets are English-only; the machine
+  // may never assert a "sounds different" verdict it provably cannot hear).
+  "prac.speech.parentJudged": "Auto-listen works for English practice words only for now — you're the judge here: score how it sounded below.",
 };
 
 export const he: Dict = {
@@ -2472,6 +2592,11 @@ export const he: Dict = {
   "consult.send": "שליחה לאיש מקצוע",
   "consult.opening": "פותח דוח…",
   "consult.exportError": "לא הצלחנו לבנות את הדוח — נסו שוב.",
+  // AIX-S3(a) — פתק ה־Vision ממלא מראש את חלון הייעוץ (ניתן לעריכה על ידי ההורה).
+  "consult.visionNote.title": "פתק מ־Arbor Vision",
+  "consult.visionNote.hint": "נוסח על ידי Arbor מתוך המסמך שלכם — בדקו וערכו אותו. הוא משותף רק כשאתם מייצאים או שולחים.",
+  "consult.visionNote.heading": "הערת הורה (נוסחה עם Arbor, נבדקה על ידי ההורה)",
+  "consult.visionNote.remove": "הסרה",
   "consult.empty.title": "אין עדיין מה לסכם",
   "consult.empty.body": "תעדו רגע או סמנו אבן דרך, וארבור יבנה כאן סיכום לשיתוף.",
   "consult.empty.cta": "תיעוד רגע",
@@ -2513,6 +2638,14 @@ export const he: Dict = {
   "coach.document": "מסמך",
   "coach.stop": "עצור",
   "coach.loading": "ארבור מנסח הנחיה…",
+  // ask-cadence (ASK-1): שלבי סטרימינג כנים + בועת אישור מיידית.
+  "coach.status.connecting": "מתחבר לארבור…",
+  "coach.status.memory": "קורא את הזיכרון של {name}…",
+  "coach.status.sources": "בודק מקורות…",
+  "coach.status.plan": "מגבש את הצעד להיום…",
+  "coach.status.stopping": "עוצר…",
+  "coach.status.council": "מכנס את מועצת המומחים…",
+  "coach.ack": "ארבור כאן — קורא את מה ששיתפת.",
   "coach.memReview": "סקירת זיכרון",
   "coach.memQueue": "תור אישור הורה",
   "coach.memDesc": "ארבור שומר תצפיות מוצעות כממתינות לסקירה. הן הופכות לזיכרון פעיל של הילד רק לאחר אישור.",
@@ -2537,6 +2670,9 @@ export const he: Dict = {
   "coach.aiDisclosure": "ההכוונה של ארבור נוצרת בבינה מלאכותית ואינה תחליף לייעוץ מקצועי. במקרה חירום פנו לגורם המטפל שלכם.",
   // surf-ask: Ask-pillar conformance — lens, states, actions, voice, scenarios
   "coach.lens.integrated": "משולב מאוזן",
+  // ASK-9 — שורת נקודת המבט המצומצמת מתחת לתרחישי הפתיחה המהירה.
+  "coach.perspective": "נקודת מבט",
+  "coach.perspective.change": "שינוי",
   "coach.lens.integratedHint": "ברירת המחדל: קשר תחילה, אחר כך הצעד הבא בר-השגה, ואז הסביבה. בחרו עדשה ממוקדת כשצריך להוביל מזווית אחת.",
   "coach.lens.browseAll": "עיון בכל העדשות",
   "coach.alignedWith": "מותאם ל-{lens}",
@@ -2553,7 +2689,21 @@ export const he: Dict = {
   "coach.voice.listening": "מקשיב…",
   "coach.voice.thinking": "חושב…",
   "coach.voice.speaking": "מדבר…",
+  "coach.voice.overlay.aria": "שיחה קולית עם ארבור",
+  "coach.voice.interrupt": "הקישו כדי לקטוע",
+  "coach.voice.end": "סיום השיחה הקולית",
   "coach.councilHint": "כינוס 3 מומחים — כל אחד מחווה דעה, וארבור מחברת הכול לתשובה אחת בשבילכם",
+  // ASK-4 — רמז כן כשאין עדיין שאלה שהמועצה יכולה להתכנס סביבה.
+  "coach.councilHint.empty": "שאלו שאלה קודם — המועצה מתכנסת סביב השאלה האחרונה שלכם",
+  // ASK-5 — הודעת המכסה מתורגמת כמו כל הודעה אחרת בשיחה.
+  "coach.paywall.title": "סיימתם את מכסת הליווי החינמית להיום",
+  "coach.paywall.body": "התוכנית החינמית כוללת מספר הודעות יומי למאמנת. שדרגו כדי להמשיך — השאלה שלכם תישאר כאן.",
+  // ASK-6 — שקיפות זיכרון בספירה בלבד (חומת האש הקלינית: לעולם לא תוכן,
+  // לעולם לא אחוזים או ניסוח ביטחון).
+  "coach.memory.grounded": "מבוסס על {n} עובדות שאישרתם",
+  "coach.memory.grounded.one": "מבוסס על עובדה אחת שאישרתם",
+  "coach.memory.manage": "ניהול",
+  "coach.memory.reviewChip": "ארבור מציעה לזכור משהו — לבדיקה",
   "coach.mem.source": "מקור",
   "coach.mem.retention": "שמירה",
   "coach.mem.frame": "מסגרת",
@@ -2571,6 +2721,8 @@ export const he: Dict = {
   // wide release, per the transcreation gate.
   "coach.cards.council": "המועצה התייעצה · {n} קולות",
   "coach.cards.happening": "מה אולי קורה",
+  // ASK-3 — ההשערות מתקפלות לגילוי רגוע מתחת לתסריט ולתוכנית.
+  "coach.cards.why": "למה זה אולי קורה",
   "coach.cards.tryToday": "לנסות היום",
   "coach.cards.saveAsPlan": "שמירה כתוכנית",
   "coach.cards.sayThis": "אפשר להגיד",
@@ -2599,8 +2751,13 @@ export const he: Dict = {
   "coach.toast.teacherNoteCopied": "הפתק למורה הועתק — הדביקו אותו בסיכום הייעוץ",
   "coach.toast.logPrefilled": "תיעוד מולא מראש מתוך ההדרכה — בדקו ושמרו",
   "coach.toast.voiceUnsupported": "קלט קולי אינו נתמך בדפדפן הזה",
+  "coach.toast.micPermission": "ארבור זקוק לגישה למיקרופון — בדקו את הרשאת המיקרופון בדפדפן ונסו שוב",
+  "coach.toast.micRetryStopped": "המיקרופון המשיך להתנתק, אז הקול הושהה. הקישו על המיקרופון כדי לנסות שוב",
   "coach.toast.voiceFallback": "עברנו לקול רגיל",
+  "coach.toast.voiceStandardMode": "הקול עבר למצב רגיל",
   "coach.toast.noteCopied": "הפתק הועתק — הדביקו אותו בסיכום הייעוץ",
+  // AIX-S3(a) — פתק המסירה ממלא כעת ישירות את סיכום הייעוץ.
+  "coach.toast.handoffPrefilled": "הפתק נוסף לסיכום הייעוץ — בדקו וערכו אותו לפני שיתוף",
   "coach.toast.photoCaptured": "נקלט מהתמונה — בדקו ושמרו",
   // COACH-5 — composer memory-disclosure line + lens-row collapse label (he).
   "coach.memoryLine": "משתמש בזיכרון שאישרתם על {name} · אתם שולטים במה שנשמר",
@@ -2634,6 +2791,13 @@ export const he: Dict = {
   "beh.capture.happened": "מה קרה?",
   "beh.capture.tried": "מה ניסיתם?",
   "beh.capture.optional": "אופציונלי — עוזר לארבור לזהות הקשר לאורך זמן",
+  // AI-CAP-6 — live dictation caption (he).
+  "beh.capture.listening": "מקשיבים — קחו את הזמן, הפסקות זה בסדר.",
+  // AI-CAP-7 — post-confirm coach handoff strip (he).
+  "beh.postCapture.body": "רוצים צעד הבא לרגע הזה?",
+  "beh.postCapture.cta": "שאלו את ארבור",
+  "beh.postCapture.dismiss": "לא עכשיו",
+  "beh.postCapture.prompt": "הרגע תיעדתי את הרגע הזה עבור {name}: {type}. מה קרה: {trigger}. מה ניסיתי: {response}. מה יכול להיות צעד הבא טוב?",
   "beh.speak": "דברו",
   "beh.stop": "עצור",
   "beh.parsing": "ארבור ממלאת את הטופס בשבילכם…",
@@ -2693,12 +2857,16 @@ export const he: Dict = {
   // beh toasts
   "beh.toast.voiceParsed": "המילים שלכם כבר בטופס — בדקו ושמרו",
   "beh.toast.voiceFallback": "הפתק הועבר לשדה הטריגר",
+  "beh.extract.noResponse": "עדיין לא צוין",
   "beh.toast.voiceUnsupported": "לכידת קול אינה נתמכת בדפדפן זה",
   "beh.toast.voiceError": "לא הצלחנו להאזין — נסו שוב",
   "beh.toast.fillBoth": "מלאו גם \"מה עורר את זה?\" וגם \"מה הייתה התגובה שלכם?\" לפני השמירה.",
   "beh.toast.updated": "התיעוד עודכן.",
   "beh.toast.logged": "הרגע תועד — הוא מופיע בהיסטוריה למטה.",
   "beh.toast.imageError": "לא הצלחנו לעבד את התמונה",
+  // AI-CAP-1 — voice-capture escalation surface chrome
+  "beh.escalation.title": "מומלץ לפנות לתמיכה מקצועית",
+  "beh.escalation.dismiss": "סגירה",
   // beh speak-to-log button aria
   "beh.speakToLog": "דברו לתיעוד",
   // beh placeholders
@@ -3387,6 +3555,7 @@ export const he: Dict = {
   "ql.review.source": "מקור: נכתב על ידכם",
   "ql.review.source.voice": "מקור: תמלול קולי",
   "ql.review.source.photo": "מקור: תמונה שהוספתם",
+  "ql.review.source.aiDraft": "מקור: נוסח על ידי ארבור מתוך המילים שלכם — בדקו כל שדה",
   "ql.review.photoAlt": "תמונה שצורפה לטיוטה",
   "ql.review.edit": "עריכה",
   "ql.review.discard": "מחיקה",
@@ -3394,6 +3563,14 @@ export const he: Dict = {
   "ql.review.notSaved": "הטיוטה עדיין לא נשמרה ברשומה של הילד.",
   "ql.review.trigger": "מה קרה לפני",
   "ql.review.response": "מה ניסיתם",
+  // AI-CAP-5 — review honesty (he).
+  "ql.review.intensity": "עוצמה",
+  "ql.review.intensityDown": "הפחתת עוצמה",
+  "ql.review.intensityUp": "הגברת עוצמה",
+  "ql.review.context": "איפה זה קרה",
+  "ql.review.duration": "כמה זמן (דקות)",
+  "ql.review.fromNote": "מתוך התיאור שלכם",
+  "ql.review.tapToEdit": "הקישו לעריכה",
   "ac.title": "הוספת ילד",
   "ac.titleStep": "הוספת ילד · שלב {step} מתוך 3",
   "ac.limitTitle": "ריבוי ילדים הוא תכונה של ארבור פלוס",
@@ -3484,6 +3661,8 @@ export const he: Dict = {
   // TODAY-5/PLAT-4/CODEX-6 — TodayActionLoop copy migrated verbatim from the
   // inline he-ternary object (HE rendering byte-identical).
   "today.action.eyebrow": "הצעד של היום",
+  // AIX-S6 — שורת מקור כשהצעד התקבל מהסיכום השבועי.
+  "today.action.eyebrow.digest": "הצעד של השבוע, מהסקירה השבועית שלכם",
   "today.action.tried": "מה קרה כשניסיתם?",
   "today.action.helped": "עזר",
   "today.action.somewhat": "קצת",
@@ -3611,6 +3790,8 @@ export const he: Dict = {
   "wk.aiInsight": "מה ארבור שמה לב אליו",
   "wk.watchFor": "כדאי לשים לב:",
   "wk.tryThisWeek": "נסו השבוע:",
+  // AIX-S6 — ה-tryThisWeek של הסיכום מזין את לולאת הפעולה של היום.
+  "wk.todayStepSet": "נקבע כצעד של היום — רואים אותו במסך היום",
   "wk.milestoneWins": "אבני דרך שהושגו ({n})",
   "wk.noMilestones": "לא סומנו אבני דרך בדוח זה.",
   "wk.reviewMilestones": "סקרו אבני דרך →",
@@ -4319,6 +4500,54 @@ export const he: Dict = {
   "kid.game.story-quest.sub": "Choose the way",
   "kid.game.mimic-studio.title": "Mimic Studio",
   "kid.game.mimic-studio.sub": "Copy the moves",
+  // AIX-S1 — Arbor Vision modal (HE; flagged for arbor-localization native review).
+  "vis.title.observe": "הראו לארבור תמונה",
+  "vis.title.document": "סריקת מסמך",
+  "vis.intro.observe": "הראו לארבור את הרגע, את החדר או ציור של הילד/ה. ארבור מתאר את מה שהוא רואה ומציע צעדים עדינים להמשך — בלי אבחנות.",
+  "vis.intro.document": "צלמו או העלו דוח מבית הספר, פתק מהגן או טופס. ארבור קורא אותו ומחלץ את מה שחשוב — באופן פרטי, קודם כול במכשיר שלכם.",
+  "vis.readError": "לא הצלחנו לקרוא את התמונה — נסו תמונה אחרת.",
+  "vis.analyzeError": "ארבור לא הצליח לנתח את התמונה.",
+  "vis.upload.photo": "צלמו או בחרו תמונה",
+  "vis.upload.document": "העלו או צלמו מסמך",
+  "vis.resizedNote": "התמונה מוקטנת במכשיר שלכם לפני השליחה",
+  "vis.change": "החלפה",
+  "vis.imageAlt": "לניתוח",
+  "vis.notePlaceholder": "לא חובה: מה קורה כאן? (למשל: 'שעת שינה, היא לא נרגעת בחדר הזה')",
+  "vis.looking": "ארבור מתבונן…",
+  "vis.cta.observe": "בקשו מארבור להסתכל",
+  "vis.cta.document": "לקרוא את המסמך",
+  "vis.offTopic": "ארבור עוסק בהתפתחות ובטיפול בילדים. נראה שהתמונה הזו אינה משהו שהוא יכול לעזור בו — נסו תמונה של רגע, של הסביבה, ציור, או מסמך שקשור לילד/ה.",
+  "vis.sec.sees": "מה ארבור רואה",
+  "vis.sec.mayMean": "מה זה עשוי לומר",
+  "vis.sec.tryToday": "לנסות היום",
+  "vis.sec.avoid": "להימנע",
+  "vis.sec.keyPoints": "נקודות עיקריות",
+  "vis.sec.remember": "שווה לזכור",
+  "vis.sec.askPro": "לשאול את איש המקצוע",
+  "vis.docType.fallback": "מסמך",
+  "vis.action.discuss": "לשוחח עם ארבור",
+  "vis.action.log": "לתעד את הרגע",
+  "vis.action.handoff": "לשימוש במסירת מידע",
+  "vis.action.copy": "העתקה",
+  "vis.action.copied": "הועתק",
+  // AIX-S3(b) — כפתור הצעת זיכרון לכל פריט (תור ממתין לאישור בלבד).
+  "vis.memory.save": "לשמור לזיכרון של {name}",
+  "vis.memory.saved": "ממתין לאישור שלכם",
+  "vis.memory.retry": "לנסות שוב",
+  "vis.memory.pendingNote": "פריטים שנשמרו ממתינים לאישורכם בפרופיל › זיכרון הילד — שום דבר לא נכנס לשימוש עד שתאשרו.",
+  "vis.seed.observe": "לגבי התמונה שהראיתי לך: {observation}. מה דבר אחד שכדאי לנסות השבוע?",
+  "vis.seed.observeWithNote": "לגבי התמונה שהראיתי לך ({note}): {observation}. מה דבר אחד שכדאי לנסות השבוע?",
+  "vis.seed.document": "הנה מה שכתוב ב{docType} מבית הספר/מהמרפאה של הילד/ה שלי: {summary}. מה כדאי לי לקחת מזה ומה לעשות עכשיו?",
+  // AIX-S4 — seed prompts in Hebrew (the parent sees the seed in their own chat box).
+  "seed.play": "אנחנו הולכים לנסות היום את \"{title}\" עם {name} (זה מחזק {domain}). איך אפיק מזה את המרב, ועל מה כדאי לשים לב?",
+  "seed.play.withGoal": "אנחנו הולכים לנסות היום את \"{title}\" עם {name}, בעבודה על {goal}. איך אפיק מזה את המרב, ועל מה כדאי לשים לב?",
+  "seed.todayFocus": "לגבי היום: {focus} מה דבר אחד קונקרטי שאני יכול/ה לעשות היום עבור {name}?",
+  "seed.milestoneGaps": "לגבי ניתוח פערי הפיגומים באבני הדרך:\n\n{analysis}\n\nאיך נעריך חוסן חושי ביחס לאתגרי אבני הדרך האלה?",
+  "seed.planCoreg": "לגבי תוכנית הפעולה: \"{title}\". בואו ננסח שני תסריטי דיאלוג נוספים וספציפיים לוויסות משותף, שמתמודדים עם טריגרים של מעברי שפה בשלב הפרה-אופרציונלי.",
+  "seed.langWeekPlan": "תנו לי תוכנית עדינה לשבוע אחד לחיזוק הביטחון של {name} (גיל {age}) ב{target}, כאשר {home} היא שפת הבית. בלי לחץ, מבוסס משחק ולא אבחנתי — כמה דקות ביום.",
+  "seed.langActivity": "עזרו לי להעביר היום את הפעילות \"{title}\" ב{target} עם {name} (גיל {age}). תנו לי תסריט בשלושה שלבים ודרך אחת להקל אם יש התנגדות.",
+  // AIX-S2 — honest parent-judged copy when auto-listen is suppressed for HE.
+  "prac.speech.parentJudged": "ההאזנה האוטומטית עובדת בינתיים רק עם מילות תרגול באנגלית, אז אתם השופטים — דרגו למטה איך זה נשמע.",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and
