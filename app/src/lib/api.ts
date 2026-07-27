@@ -275,6 +275,9 @@ export const api = {
   // AI-V8: config-only availability probe (no SDK call, no token mint server-side).
   // Probe THIS on mount; call liveToken only when the parent toggles voice on.
   liveAvailability: () => get<{ available: boolean }>("/api/live/availability"),
+  /** Returns ephemeral review proposals only; this endpoint cannot commit records. */
+  extractConversationProposals: (payload: { transcript: string; childProfile: ChildProfile; milestones: Pick<Milestone, "id" | "title" | "checked" | "observationStatus">[]; language?: "en" | "he" }) =>
+    post<{ proposals: unknown[] }>("/api/conversation/proposals", payload),
   // AI-V9: the session language selects the server-pinned persona + voice; the
   // pinned systemInstruction/speechConfig are echoed back for the connect call.
   liveToken: (payload: { language?: "en" | "he"; childId?: string } = {}) =>

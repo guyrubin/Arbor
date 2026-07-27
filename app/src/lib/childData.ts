@@ -26,6 +26,8 @@ export const CHILD_SUBCOLLECTIONS = [
   // asserts this list stays a superset of all useChildCollection("…") names so
   // a new sink can never silently bypass export/erasure again.
   "conversations",
+  // Parent-confirmed Harbor conversation updates + reversible audit metadata.
+  "conversationChanges",
   "playLogs",
   // AR-CAP-02: parent-accepted Today actions and parent-reported outcomes.
   "actionLoops",

@@ -216,6 +216,9 @@ export interface BehaviorLog {
   resolved?: boolean;
   resolutionNotes?: string;
   photoAttachment?: string;
+  /** Parent-confirmed Harbor conversation provenance; never written by the realtime provider. */
+  conversationProposalId?: string;
+  sourceExcerpt?: string;
 }
 
 /** A completed Daily Play activity — a positive, lightweight "win" written to

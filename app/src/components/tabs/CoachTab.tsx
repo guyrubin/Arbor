@@ -32,6 +32,8 @@ import { voiceChipAction } from "../../lib/voiceChipAction";
 // AI-V7: the calm bottom-sheet voice surface (orb + live captions), owned by
 // voicePhase !== "off". The chip below stays the ONLY entry point.
 import VoiceOverlay from "../coach/VoiceOverlay";
+import ConversationProposalTray from "../coach/ConversationProposalTray";
+import { attachProposalConflicts, normalizeConversationProposals, type ConversationProposal } from "../../lib/conversationProposals";
 // AI-V3: recognition restart with backoff + circuit breaker lives in the pure
 // dictation loop, so the phase label is always truthful (see lib/dictationLoop).
 import { createDictationLoop, type DictationLoop } from "../../lib/dictationLoop";
@@ -134,6 +136,10 @@ export default function CoachTab() {
     requestConsultPrefill,
     requestLearnRead,
     proposeMemory,
+    milestones,
+    behaviorLogs,
+    conversationChanges,
+    commitConversationProposal,
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
@@ -207,6 +213,31 @@ export default function CoachTab() {
   const voiceBufRef = useRef("");
   const streamDoneRef = useRef(false);
   const voiceAbortRef = useRef<AbortController | null>(null);
+  // Proposal drafts live at the voice interaction level and remain ephemeral
+  // until the parent confirms one in the quiet review tray.
+  const voiceSessionIdRef = useRef("voice-session-" + Date.now());
+  const voiceTurnRef = useRef(0);
+  const [conversationProposals, setConversationProposals] = useState<ConversationProposal[]>([]);
+  const [proposalBusyId, setProposalBusyId] = useState<string | null>(null);
+
+  const deriveConversationProposals = async (transcript: string) => {
+    const turnId = "turn-" + (++voiceTurnRef.current) + "-" + Date.now();
+    try {
+      const result = await api.extractConversationProposals({
+        transcript, childProfile, language: getAiLanguage(),
+        milestones: milestones.map(({ id, title, checked, observationStatus }) => ({ id, title, checked, observationStatus })),
+      });
+      const normalized = normalizeConversationProposals(result.proposals, {
+        sessionId: voiceSessionIdRef.current, turnId, childId: childProfile.id, language: getAiLanguage(),
+      });
+      const checked = attachProposalConflicts(normalized, { behaviorLogs, milestones, committedChanges: conversationChanges });
+      if (checked.length) setConversationProposals((current) => [...current, ...checked].slice(-8));
+    } catch (error) {
+      // Escalation remains owned by the existing voice safety path. Extraction
+      // failure is non-blocking: conversation continues and nothing is saved.
+      if (!(error instanceof EscalationRequiredError)) console.warn("Harbor proposal extraction unavailable", error);
+    }
+  };
 
   // AI-V8: probe Gemini Live availability once, from the config-only GET —
   // zero ephemeral tokens are minted on mount; a fresh single-use token is
@@ -351,6 +382,7 @@ export default function CoachTab() {
         // COACH-2: persist the dictated turn through the existing
         // chat-message write seam before asking.
         appendVoiceUserTurn(text);
+        void deriveConversationProposals(text);
         void streamVoiceTurn(text);
       },
       onFatal: (reason) => {
@@ -445,7 +477,7 @@ export default function CoachTab() {
               // browser loop uses (appendVoiceUser / applyVoiceDelta /
               // settleVoiceTurn → the existing conversationsCol upsert) — no
               // new capture path, conversations stays in CHILD_SUBCOLLECTIONS.
-              onUserTurn: (text) => { setVoiceInterim(""); appendVoiceUserTurn(text); },
+              onUserTurn: (text) => { setVoiceInterim(""); appendVoiceUserTurn(text); void deriveConversationProposals(text); },
               // AI-V7: Live input transcription = the parent's own words —
               // accumulate into the overlay caption while they speak.
               onUserInterim: (delta) => setVoiceInterim((prev) => (prev + delta).trimStart()),
@@ -1142,6 +1174,24 @@ export default function CoachTab() {
           forget of approved facts) lives in its real home: Profile › Child Memory
           (route "memory" → src/components/sections/ChildMemory.tsx), which renders
           the same pending/approved lists via the same handleMemoryDecision. */}
+
+      <ConversationProposalTray
+        proposals={conversationProposals}
+        language={uiLang}
+        busyId={proposalBusyId}
+        onEdit={(id, summary) => setConversationProposals((items) => items.map((item) => item.id === id ? { ...item, summary } : item))}
+        onDiscard={(id) => setConversationProposals((items) => items.filter((item) => item.id !== id))}
+        onConfirm={async (proposal) => {
+          setProposalBusyId(proposal.id);
+          try {
+            await commitConversationProposal(proposal);
+            setConversationProposals((items) => items.filter((item) => item.id !== proposal.id));
+            toast(t("coach.voice.proposalSaved"), "success");
+          } catch {
+            toast(t("coach.voice.proposalSaveError"), "error");
+          } finally { setProposalBusyId(null); }
+        }}
+      />
 
       {/* AI-V7: the voice surface — orb + live captions in a calm bottom
           sheet, owned entirely by voicePhase (unmounts when voice is off).
