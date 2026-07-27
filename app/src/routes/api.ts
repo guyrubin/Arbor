@@ -1289,7 +1289,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
         } } } },
       }), budget.signal);
       budget.settle();
-      const restored = privacy.restoreDeep(raw);
+      const restored = privacy.restoreDeep(raw) as { proposals?: Array<Record<string, unknown>> };
       const proposals = Array.isArray(restored.proposals) ? restored.proposals.slice(0, 8) : [];
       const screenable = proposals.map((item) => `${item?.summary ?? ""}\n${item?.sourceExcerpt ?? ""}`).join("\n");
       if (screenable) {
