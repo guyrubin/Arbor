@@ -122,14 +122,18 @@ export const SECTIONS: NavSection[] = [
     ],
     // Growth is now purely developmental: Development hub + the two clinical
     // spines (milestones, language), with Daily Play and the Development Check as
-    // tools. Action Plans moved to Behaviors; the Practice arcade is the child's
-    // world (Kid Mode) and is no longer a parent pill (still a valid route).
+    // tools. Action Plans moved to Behaviors. IA fix (Speech Coach was hidden):
+    // #/practice hosts the parent-register Practice Studio LAUNCHER (a visible
+    // Growth pill); the kid-register Hero Arcade lives only inside Kid Mode.
     primaryTabs: [
       { tab: "development", label: "Development", icon: Gauge },
       { tab: "milestones", label: "Milestones", icon: Sprout },
       { tab: "language", label: "Language & Communication", icon: Languages },
     ],
     tools: [
+      // The parent door into the ten practice worlds (Speech & Sounds, Word
+      // World, Feelings Lab…) — the discoverability fix for the practice suite.
+      { tab: "practice", label: "Practice Studio", icon: Target, msIcon: "extension" },
       // Wireframe: Ready-made Routines — the research-backed routine library
       // (morning, goodbye, meal, tidy, screens, bedtime…), each a step board.
       { tab: "routines", label: "Routines", icon: ListChecks, msIcon: "event_repeat" },
@@ -265,9 +269,9 @@ export const TAB_SECTION_FALLBACK: Record<string, string> = {
   journey: "growth",
   screening: "growth",
   strengths: "growth",
-  // Practice arcade + drills are the child's world (Kid Mode); they stay valid
-  // routes resolving to Growth for deep-link highlighting, but are no longer
-  // parent pills.
+  // Practice: #/practice is the parent Practice Studio launcher (a Growth tools
+  // pill); the standalone drill routes below stay valid deep links resolving to
+  // Growth for highlighting, reached through the launcher's tiles.
   practice: "growth",
   // Wireframe: Ready-made Routines library — a Growth tool pill.
   routines: "growth",

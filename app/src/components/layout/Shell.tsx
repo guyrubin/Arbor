@@ -76,7 +76,10 @@ const DevelopmentCopilot = lazy(() => import("../practice/DevelopmentCopilot"));
 // IA v3: consolidation hubs (merge confusable/duplicate leaves).
 const DevelopmentTab = lazy(() => import("../tabs/DevelopmentTab"));
 const DailyPlayTab = lazy(() => import("../tabs/DailyPlayTab"));
-const PracticeHubTab = lazy(() => import("../practice/PracticeHubTab"));
+// IA fix (AR-IA): the parent #/practice route hosts the PARENT-register
+// Practice Studio launcher; the kid-register Hero Arcade (PracticeHubTab)
+// now lives exclusively inside Kid Mode.
+const PracticeStudioTab = lazy(() => import("../practice/PracticeStudioTab"));
 const ConsultTab = lazy(() => import("../tabs/ConsultTab"));
 
 // P0-5: internal attribution + UTM funnel dashboard (admin-gated inside the view).
@@ -139,7 +142,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   copilot: DevelopmentCopilot,
   development: DevelopmentTab,
   "daily-play": DailyPlayTab,
-  practice: PracticeHubTab,
+  practice: PracticeStudioTab,
   consult: ConsultTab,
   attribution: AttributionTab,
   "day-windows": DayWindowsPanel,   // AP-051: Day Windows (read-only, from Today)
