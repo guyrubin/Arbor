@@ -1241,6 +1241,71 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     }
   });
 
+  // Harbor voice-first interaction boundary. The realtime model can produce
+  // ephemeral proposals, but this route owns no store and exposes no mutation.
+  router.post("/conversation/proposals", async (req, res) => {
+    const { transcript, childProfile, milestones, language } = req.body ?? {};
+    if (typeof transcript !== "string" || !transcript.trim()) {
+      res.status(400).json({ error: "A finalized transcript is required" });
+      return;
+    }
+    const escalationMatch = screenForImmediateEscalation({ message: transcript });
+    if (escalationMatch) {
+      res.status(409).json({ error: "Professional support recommended", escalationCategory: escalationMatch.category });
+      return;
+    }
+    const safeMilestones = Array.isArray(milestones) ? milestones.slice(0, 160).map((item) => ({
+      id: String(item?.id ?? "").slice(0, 160),
+      title: String(item?.title ?? "").slice(0, 300),
+      status: item?.observationStatus ?? (item?.checked ? "yes" : "not_yet"),
+    })).filter((item) => item.id && item.title) : [];
+    const privacy = createRedaction(childProfile?.name);
+    const languageDirective = language === "he"
+      ? "Write summaries and source excerpts in natural Hebrew. Preserve English words the parent used."
+      : "Write summaries and source excerpts in English. Preserve Hebrew words the parent used.";
+    const prompt = `${NON_DIAGNOSTIC_CONTRACT}
+You are Harbor's proposal extractor. The parent remains in control.
+Extract only concrete, parent-stated information that could usefully update the product.
+Never diagnose, infer hidden traits, or invent a date, milestone, frequency, response, or report fact.
+Return zero to eight proposals only. You cannot and must not claim anything was saved.
+Targets: observation (a concrete event or recurring pattern); milestone (only a directly supported supplied milestone, using its exact id); journal (a meaningful family moment); report_fact (a concrete fact useful in a future parent-reviewed report).
+Each proposal needs a concise summary, an exact short excerpt from the transcript, confidence 0..1, and occurredAt only when explicit. Milestones also need milestoneId and milestoneStatus (yes, not_sure, not_yet). Avoid duplicate facts across targets.
+${languageDirective}
+Child profile: ${JSON.stringify(redactProfile(privacy, childProfile ?? {}))}
+Available milestones: ${JSON.stringify(safeMilestones)}
+Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIRECTIVE}`;
+    const budget = createRouteBudget(res, "analysis");
+    try {
+      const raw = await raceWithAbort(modelProvider.generateJson({
+        route: "analysis_structured", prompt, temperature: 0.1, budget: budget.budget,
+        promptVersion: "harbor-conversation-proposals-v1",
+        schema: { type: Type.OBJECT, required: ["proposals"], properties: { proposals: { type: Type.ARRAY, items: {
+          type: Type.OBJECT, required: ["target", "summary", "sourceExcerpt", "confidence"], properties: {
+            target: { type: Type.STRING, enum: ["observation", "milestone", "journal", "report_fact"] },
+            summary: { type: Type.STRING }, sourceExcerpt: { type: Type.STRING }, confidence: { type: Type.NUMBER },
+            occurredAt: { type: Type.STRING }, milestoneId: { type: Type.STRING },
+            milestoneStatus: { type: Type.STRING, enum: ["yes", "not_sure", "not_yet"] },
+          },
+        } } } },
+      }), budget.signal);
+      budget.settle();
+      const restored = privacy.restoreDeep(raw);
+      const proposals = Array.isArray(restored.proposals) ? restored.proposals.slice(0, 8) : [];
+      const screenable = proposals.map((item) => `${item?.summary ?? ""}\n${item?.sourceExcerpt ?? ""}`).join("\n");
+      if (screenable) {
+        const verdict = await screenModelOutput(modelProvider, screenable);
+        if (verdict.flagged) { res.status(422).json({ error: "Proposal output was blocked by Arbor safety policy" }); return; }
+      }
+      res.json({ proposals });
+    } catch (error) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) { res.status(504).json(DEADLINE_ERROR); return; }
+      logger.error("Harbor proposal extraction error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Could not prepare proposed updates" });
+    }
+  });
+
   // ── AIR-5: Today's Focus — a dedicated LIGHTWEIGHT generation path. The
   // Overview card used to POST /api/chat (the heaviest route in the app:
   // Claude, memory fetch, wiki retrieval, full coach schema) and throw away

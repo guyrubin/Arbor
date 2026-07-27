@@ -39,6 +39,7 @@ import { concernsForBehaviors } from "../content/selectCards";
 import { ageYearsFromProfile } from "../lib/childAge";
 import { sortActionLoop, todayActionId } from "../actionLoop/model";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
+import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
 import { useLanguage } from "./LanguageContext";
 
@@ -262,6 +263,11 @@ function useArborState() {
     orderByField: "acceptedAt",
     orderDir: "desc",
     max: 100,
+  });
+  // Harbor voice proposals are an append/update audit ledger. Drafts remain
+  // ephemeral in CoachTab; only an explicit parent confirmation creates a row.
+  const conversationChangesCol = useChildCollection<ConversationChangeRecord>(childProfile.id, "conversationChanges", {
+    orderByField: "confirmedAt", orderDir: "desc", max: 300,
   });
   // Learn Library bookmarks — stores the card id only (curated-content
   // reference, not a child fact; Child Memory is NOT the store for these).
@@ -1073,6 +1079,53 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     });
   };
 
+  /**
+   * The ONLY durable-write seam for realtime conversation proposals. Provider
+   * adapters receive no reference to this function. Confirmation is explicit,
+   * atomic per proposal, auditable and reversible.
+   */
+  const commitConversationProposal = async (proposal: ConversationProposal): Promise<ConversationChangeRecord> => {
+    if (proposal.childId !== childProfile.id) throw new Error("Proposal belongs to a different child");
+    if (!proposal.summary.trim()) throw new Error("Proposal is empty");
+    if (proposal.conflict?.code === "missing_milestone") throw new Error("The milestone no longer exists");
+    const confirmedAt = new Date().toISOString();
+    let commitRef: ConversationChangeRecord["commitRef"];
+    let previousValue: unknown;
+    if (proposal.target === "milestone") {
+      const milestone = milestones.find((item) => item.id === proposal.milestoneId);
+      if (!milestone || !proposal.milestoneStatus) throw new Error("Milestone proposal is incomplete");
+      previousValue = milestone;
+      await milestonesCol.upsert({ ...milestone, checked: proposal.milestoneStatus === "yes", observationStatus: proposal.milestoneStatus, observationUpdatedAt: confirmedAt });
+      commitRef = { collection: "milestones", id: milestone.id };
+    } else {
+      const id = "voice-" + proposal.id;
+      const behaviorType = proposal.target === "observation" ? "Observation" : proposal.target === "journal" ? "Journal moment" : "Report fact";
+      await logsCol.upsert({
+        id, timestamp: proposal.occurredAt ?? confirmedAt, behaviorType, intensity: 1, durationMinutes: 0,
+        trigger: proposal.summary.trim(), response: "Parent-confirmed from Harbor conversation",
+        notes: proposal.sourceExcerpt, context: "Home", resolved: false,
+        conversationProposalId: proposal.id, sourceExcerpt: proposal.sourceExcerpt,
+      });
+      commitRef = { collection: "behaviorLogs", id };
+    }
+    const record: ConversationChangeRecord = {
+      ...proposal, status: "committed", committedAt: confirmedAt, confirmedAt,
+      confirmedBy: "parent", providerCanWrite: false, commitRef, previousValue,
+    };
+    await conversationChangesCol.upsert(record);
+    track("voice_proposal_confirmed", { target: proposal.target, confidence: proposal.confidence, conflict: proposal.conflict?.code ?? "none" });
+    return record;
+  };
+
+  const undoConversationChange = async (id: string) => {
+    const record = conversationChangesCol.items.find((item) => item.id === id && item.status === "committed");
+    if (!record?.commitRef) return;
+    if (record.commitRef.collection === "behaviorLogs") await logsCol.remove(record.commitRef.id);
+    if (record.commitRef.collection === "milestones" && record.previousValue) await milestonesCol.upsert(record.previousValue as Milestone);
+    await conversationChangesCol.upsert({ ...record, status: "undone" });
+    track("voice_proposal_undone", { target: record.target });
+  };
+
   // Add a custom milestone to a chosen domain
   const addCustomMilestone = (title: string, domain: DevelopmentalDomainId) => {
     void milestonesCol.upsert({
@@ -1128,6 +1181,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     donePlayIds,
     logPlayCompletion,
     actionLoop,
+    conversationChanges: conversationChangesCol.items,
+    commitConversationProposal,
+    undoConversationChange,
     activeTodayAction,
     acceptTodayAction,
     recordTodayOutcome,
