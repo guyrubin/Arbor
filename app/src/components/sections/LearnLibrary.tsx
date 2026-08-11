@@ -30,13 +30,16 @@ import { readLearnFeedback, setLearnFeedback, type LearnFeedback } from "../../l
 import {
   LEARN_CATEGORIES,
   concernsContributed,
+  continuesSaved,
   learnCategoryById,
+  learnContinuationTopics,
   rankLearnCards,
   searchLearnCards,
   type LearnCard,
   type LearnCategoryId,
   type LearnRankSignals,
 } from "../../learn/learnLibrary";
+import { continueText } from "../../lib/i18nElevation/continue";
 import { LEARN_CARDS, learnCardById } from "../../learn/learnCards";
 
 type Filter = "all" | "saved" | LearnCategoryId;
@@ -87,9 +90,17 @@ export default function LearnLibrary() {
     [behaviorLogs]
   );
 
+  // W2 2.5: saved bookmarks feed the ranking as a topic-continuation nudge
+  // ("continues what you saved") — card ids only, no child data.
   const signals: LearnRankSignals = useMemo(
-    () => ({ ageYears, focusDomain: score.focusDomain, recentConcerns, helpfulness: feedback }),
-    [ageYears, score.focusDomain, recentConcerns, feedback]
+    () => ({
+      ageYears,
+      focusDomain: score.focusDomain,
+      recentConcerns,
+      helpfulness: feedback,
+      savedIds: savedLearnIds,
+    }),
+    [ageYears, score.focusDomain, recentConcerns, feedback, savedLearnIds]
   );
 
   const ranked = useMemo(() => rankLearnCards(LEARN_CARDS, signals), [signals]);
@@ -208,10 +219,19 @@ export default function LearnLibrary() {
                 // Honest why-line: claim only the signals that actually contributed.
                 const name = firstName || t("learn.yourChild");
                 const logsContributed = featured.some((c) => concernsContributed(c, recentConcerns));
-                if (score.focusDomain && logsContributed) return t("learn.whyFullLogs", { name });
-                if (score.focusDomain) return t("learn.whyFull", { name });
-                if (logsContributed) return t("learn.whyAgeLogs", { name });
-                return t("learn.whyAge", { name });
+                const base =
+                  score.focusDomain && logsContributed ? t("learn.whyFullLogs", { name })
+                  : score.focusDomain ? t("learn.whyFull", { name })
+                  : logsContributed ? t("learn.whyAgeLogs", { name })
+                  : t("learn.whyAge", { name });
+                // W2 2.5: append the continuation variant ONLY when a saved
+                // read's topic actually boosted a featured card — the
+                // bookmark signal, never an outcome claim.
+                const topics = learnContinuationTopics(LEARN_CARDS, signals);
+                const savedBoosted = featured.some((c) => continuesSaved(c, topics));
+                return savedBoosted
+                  ? `${base} ${continueText("elev.continue.learn.why", uiLang === "he")}`
+                  : base;
               })()}
             </span>
           </div>

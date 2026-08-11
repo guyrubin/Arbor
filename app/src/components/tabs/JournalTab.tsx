@@ -15,7 +15,9 @@ import type { CaptureMode } from "../../context/ArborContext";
 import { PASTEL, IconBadge, Chip, cardCls, domainVisual, type PastelKey } from "../ui/kit";
 import { SpineRibbon } from "../ui/SpineRibbon";
 import type { DevelopmentalDomainId } from "../../types";
-import type { PlayDomain } from "../../playbank/content";
+import { bandForAge, type PlayDomain } from "../../playbank/content";
+import { dailyPromptKeys } from "../../lib/promptBank";
+import { track } from "../../lib/analytics";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -230,6 +232,22 @@ export default function JournalTab() {
     setActiveTab("behaviors");
   };
 
+  // W2 2.6 (Maytal's empty-journal ask): 3 rotating promptBank guiding
+  // questions as tappable chips ABOVE the capture triad. Same deterministic
+  // rotation + elev.prompt.* strings PromptCaptureCard mounts on Today (W1).
+  // Tap = the question becomes the visible writing cue above the compose
+  // card — NEVER injected into the draft body (the sanctioned W1 pattern:
+  // the answer belongs in the log, not the question). Toggle-off on re-tap.
+  const promptKeys = useMemo(
+    () => dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id, date: new Date() }),
+    [childProfile.age, childProfile.id],
+  );
+  const [activePromptKey, setActivePromptKey] = useState<string | null>(null);
+  const onPromptTap = (key: string) => {
+    setActivePromptKey((cur) => (cur === key ? null : key));
+    try { track("journal_prompt_tap", { band: bandForAge(childProfile.age) }); } catch { /* noop */ }
+  };
+
   // Per-signal domain: milestones + play carry an explicit domain; moments
   // classify from their own text via classifyBehaviorDomain (JRNL-6) — when
   // that returns null the row simply carries no domain chip. Never guessed.
@@ -298,6 +316,24 @@ export default function JournalTab() {
           </div>
         </div>
       </header>
+      {/* W2 2.6 — active writing cue: the tapped guiding question, visible
+          ABOVE the compose card while the parent captures. Display only —
+          the question text never enters the draft body. */}
+      {activePromptKey && (
+        <div
+          data-testid="journal-prompt-cue"
+          className="flex items-start gap-2.5 rounded-[14px] px-4 py-3"
+          style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
+          dir="auto"
+          aria-live="polite"
+        >
+          <Icon name="lightbulb" size={18} fill={1} className="flex-shrink-0 mt-0.5" />
+          <p className="text-[14px] font-bold leading-snug" style={{ fontFamily: "var(--font-display)" }}>
+            {t(activePromptKey)}
+          </p>
+        </div>
+      )}
+
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
@@ -310,6 +346,37 @@ export default function JournalTab() {
           </h2>
           </div>
           <IconBadge tone="lav" size={34}><Icon name="edit_note" size={19} fill={1} /></IconBadge>
+        </div>
+
+        {/* W2 2.6 — three rotating promptBank chips above the capture triad
+            (deterministic per child+day; elev.prompt.* strings, registered in
+            i18nElevation/journal.ts). Tap toggles the writing cue above. */}
+        <div className="mb-3">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider mb-1.5" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.prompt.lead")}
+          </p>
+          <div className="flex flex-wrap gap-2" data-testid="journal-prompt-chips">
+            {promptKeys.map((key) => {
+              const active = key === activePromptKey;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onPromptTap(key)}
+                  aria-pressed={active}
+                  dir="auto"
+                  className="min-h-[36px] rounded-full px-3.5 py-1.5 text-[12.5px] font-bold text-start transition active:scale-[0.98]"
+                  style={
+                    active
+                      ? { background: PASTEL.lav.soft, color: PASTEL.lav.ink, border: `1px solid ${PASTEL.lav.ink}` }
+                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }
+                  }
+                >
+                  {t(key)}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-2">

@@ -30,7 +30,8 @@ import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
-import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
+import { computeWeeklyDigestStats, fallbackDigestNarrative, buildDigestEmail } from "../server/digest.js";
+import { resolveEmailProvider } from "../server/emailProvider.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
@@ -2675,6 +2676,37 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
       });
       res.json({ ...fallback, stats, generated: "fallback" });
     }
+  });
+
+  // W2 2.2: weekly-email channel status — reflects server/emailProvider.ts.
+  // FAIL-CLOSED: enabled only when EMAIL_PROVIDER names an IMPLEMENTED
+  // provider; today none exists, so this truthfully reports the channel off
+  // while the client keeps the (real) opt-in list.
+  router.get("/digest/email-status", (_req, res) => {
+    const provider = resolveEmailProvider();
+    res.json({ enabled: provider.enabled, provider: provider.provider });
+  });
+
+  // W2 2.2: render the week's digest as the email it WOULD be — subject +
+  // preheader + plain-text body (reuses the digest's own fields; counts only,
+  // previousWeekMoments never rendered). NO send happens here, ever; the
+  // response carries the provider status so callers can't mistake a preview
+  // for a delivery capability.
+  router.post("/digest/email-preview", (req, res) => {
+    const { childProfile, logs, milestones, language } = req.body;
+    const childName = (childProfile?.name && String(childProfile.name)) || "Your child";
+    const stats = computeWeeklyDigestStats(Array.isArray(logs) ? logs : [], Array.isArray(milestones) ? milestones : []);
+    // Deterministic narrative on purpose: the preview must be cheap, instant,
+    // and truthful with AI off — same fields the in-app digest fallback uses.
+    const narrative = fallbackDigestNarrative(childName, stats);
+    const email = buildDigestEmail({
+      childName,
+      language: language === "he" ? "he" : "en",
+      narrative,
+      stats,
+    });
+    const provider = resolveEmailProvider();
+    res.json({ enabled: provider.enabled, provider: provider.provider, ...email });
   });
 
   // CMP-2 (GDPR Art. 15/20): server-side data export for one child. The client

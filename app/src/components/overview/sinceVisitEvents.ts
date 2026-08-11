@@ -31,6 +31,20 @@ export type SinceVisitRows = {
 
 export const SINCE_VISIT_MAX_ROWS = 3;
 
+/**
+ * W2 2.3: the timestamps feeding the cumulative continuity counter ("{n} days
+ * of moments together"). A "moment" = a behavior log or a Daily Play
+ * completion — the same definition lib/streak documents. Consumers may render
+ * computeStreak(...).totalDays ONLY; the resettable walk on that result is a
+ * streak and banned from parent surfaces (masterplan 2.3).
+ */
+export function collectMomentTimestamps(
+  behaviorLogs: ReadonlyArray<{ timestamp: string }>,
+  playLogs: ReadonlyArray<{ timestamp: string }>
+): string[] {
+  return [...behaviorLogs, ...playLogs].map((x) => x.timestamp);
+}
+
 const parseMs = (iso: string | undefined): number => {
   const ms = iso ? Date.parse(iso) : NaN;
   return Number.isFinite(ms) ? ms : NaN;

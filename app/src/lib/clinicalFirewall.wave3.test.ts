@@ -169,6 +169,8 @@ describe("Wave-3 clinical firewall — prose paths emit no intensity-trend verdi
 describe("JRNL-1 clinical firewall — weekly surfaces render no intensity score or trend verdict", () => {
   const WEEKLY_SURFACES = [
     "components/tabs/WeeklyTab.tsx",
+    // W2 2.1: the recap story-cards ritual is a weekly surface too.
+    "components/weekly/RecapStoryCards.tsx",
     "lib/reportExport.ts",
     "server/digest.ts",
   ];

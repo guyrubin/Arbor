@@ -1,39 +1,60 @@
 /**
- * AP-045: Global search input for the Topbar right-zone (slot 1 of 3).
+ * AP-045 + W2.4: Global search input for the Topbar right-zone (slot 1 of 3).
  *
- * - Opens a results overlay on focus (or Cmd/Ctrl+K).
- * - Searches the STATIC content-catalog index only (AC-6: no child-record fields).
+ * - Opens a results overlay on focus.
+ * - Searches the STATIC content-catalog index only (AC-6: no child-record
+ *   fields) — now the FULL catalog (routes, Learn, Masterclasses, Routines,
+ *   Scholars, published hard moments, activities, milestones, journeys,
+ *   worlds) with forgiving HE+EN matching (lib/searchIndex).
+ * - LAZY CONTRACT: the index module is dynamic-import()ed on first open —
+ *   only a type import lives here, so catalogs stay out of the initial parse.
+ * - Ctrl/Cmd+K is owned by Shell (kid-lock-gated SearchModal hotkey); the
+ *   old duplicate listener here was removed so one hotkey has one owner.
  * - Selecting a result deep-links via the existing setActiveTab navigation.
  * - Keyboard dismissable via Escape.
  * - RTL/HE correct: logical CSS properties throughout; overlay anchors are
  *   inline-start/end, not left/right.
  * - No raw hex values — all colours reference index.css tokens.
- * - No AI inference on query — plain string match only (via searchIndex()).
+ * - No AI inference on query — normalized string match only (searchCatalog).
  * - Does NOT touch the bell slot or kid-switcher slot.
  */
 
 import React, {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { searchIndex, type SearchEntry } from "../../lib/searchIndex";
+import { track } from "../../lib/analytics";
+import { searchnavText } from "../../lib/i18nElevation/searchnav";
+import type { SearchEntry, SearchKind } from "../../lib/searchIndex";
 import { Icon } from "../ui/Icon";
 
-const CATEGORY_TOKEN: Record<SearchEntry["category"], string> = {
-  "Activity":        "var(--arbor-green-ink)",
-  "Milestone":       "var(--arbor-sky-ink)",
-  "Journey":         "var(--arbor-lav-ink)",
-  "Practice World":  "var(--arbor-peach-ink)",
+type SearchIndexModule = {
+  searchCatalog: (query: string, limit?: number) => SearchEntry[];
+};
+
+const KIND_TOKEN: Partial<Record<SearchKind, string>> = {
+  route: "var(--arbor-green-ink)",
+  learn: "var(--arbor-sky-ink)",
+  masterclass: "var(--arbor-lav-ink)",
+  routine: "var(--arbor-peach-ink)",
+  scholar: "var(--arbor-green-ink)",
+  "hard-moment": "var(--arbor-clay-deep)",
+  activity: "var(--arbor-green-ink)",
+  milestone: "var(--arbor-sky-ink)",
+  journey: "var(--arbor-lav-ink)",
+  world: "var(--arbor-peach-ink)",
 };
 
 /** AP-045 global search input + results overlay (topbar slot 1). */
 export default function TopbarSearch() {
   const { setActiveTab } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const heLang = uiLang === "he";
   const [query, setQuery]       = useState("");
   const [open, setOpen]         = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -42,23 +63,31 @@ export default function TopbarSearch() {
   const overlayRef  = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const results = searchIndex(query);
+  // W2.4 lazy index: load the catalog module on first open.
+  const [indexMod, setIndexMod] = useState<SearchIndexModule | null>(null);
+  useEffect(() => {
+    if (!open || indexMod) return;
+    let alive = true;
+    import("../../lib/searchIndex")
+      .then((m) => { if (alive) setIndexMod(m); })
+      .catch(() => { /* overlay simply shows no matches */ });
+    return () => { alive = false; };
+  }, [open, indexMod]);
+
+  // Analytics: one search_open per closed→open transition.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (open && !wasOpen.current) track("search_open", { surface: "desktop" });
+    wasOpen.current = open;
+  }, [open]);
+
+  const results = useMemo(
+    () => (indexMod && query.trim() ? indexMod.searchCatalog(query, 10) : []),
+    [indexMod, query],
+  );
 
   // Reset active index whenever results change.
   useEffect(() => { setActiveIdx(0); }, [results.length]);
-
-  // Cmd/Ctrl+K → focus the input from anywhere.
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-        setOpen(true);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
 
   // Close on click outside.
   useEffect(() => {
@@ -75,6 +104,7 @@ export default function TopbarSearch() {
 
   const navigate = useCallback(
     (entry: SearchEntry) => {
+      track("search_result_tap", { kind: entry.kind });
       setActiveTab(entry.tab);
       setOpen(false);
       setQuery("");
@@ -104,6 +134,9 @@ export default function TopbarSearch() {
   };
 
   const showOverlay = open && query.trim().length > 0;
+  const pick = (p: { en: string; he: string }) => (heLang ? p.he : p.en);
+  const kindLabel = (k: SearchKind) => searchnavText("elev.searchnav.kind." + k, heLang);
+  const kindColor = (k: SearchKind) => KIND_TOKEN[k] ?? "var(--arbor-green-ink)";
 
   return (
     <div
@@ -150,7 +183,7 @@ export default function TopbarSearch() {
           }
           autoComplete="off"
           value={query}
-          placeholder="Search…"
+          placeholder={t("top.search") + "…"}
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
@@ -221,13 +254,13 @@ export default function TopbarSearch() {
                 color: "var(--arbor-muted)",
               }}
             >
-              No matches for &ldquo;{query}&rdquo;
+              {t("sm.noMatches")}
             </div>
           ) : (
             results.map((entry, i) => (
               <div
                 id={`search-result-${i}`}
-                key={entry.key}
+                key={entry.id}
                 role="option"
                 aria-selected={i === activeIdx}
                 onClick={() => navigate(entry)}
@@ -237,6 +270,7 @@ export default function TopbarSearch() {
                   alignItems: "center",
                   gap: "10px",
                   padding: "8px 10px",
+                  minHeight: "44px",
                   borderRadius: "10px",
                   cursor: "pointer",
                   background:
@@ -247,7 +281,7 @@ export default function TopbarSearch() {
                   userSelect: "none",
                 }}
               >
-                {/* Category dot */}
+                {/* Kind dot */}
                 <span
                   aria-hidden="true"
                   style={{
@@ -255,7 +289,7 @@ export default function TopbarSearch() {
                     height: "7px",
                     borderRadius: "50%",
                     flexShrink: 0,
-                    background: CATEGORY_TOKEN[entry.category],
+                    background: kindColor(entry.kind),
                   }}
                 />
 
@@ -272,7 +306,7 @@ export default function TopbarSearch() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {entry.label}
+                    {pick(entry.title)}
                   </span>
                   <span
                     style={{
@@ -284,11 +318,11 @@ export default function TopbarSearch() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {entry.sub}
+                    {pick(entry.sub) || kindLabel(entry.kind)}
                   </span>
                 </span>
 
-                {/* Category badge */}
+                {/* Kind badge */}
                 <span
                   style={{
                     fontSize: "9px",
@@ -296,10 +330,10 @@ export default function TopbarSearch() {
                     textTransform: "uppercase",
                     letterSpacing: "0.05em",
                     flexShrink: 0,
-                    color: CATEGORY_TOKEN[entry.category],
+                    color: kindColor(entry.kind),
                   }}
                 >
-                  {entry.category}
+                  {kindLabel(entry.kind)}
                 </span>
               </div>
             ))

@@ -1,15 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   LEARN_CATEGORIES,
+  SAVED_TOPIC_BOOST,
   bestCardForDomain,
   cardConcerns,
   concernsContributed,
+  continuesSaved,
   learnCardScore,
+  learnContinuationTopics,
   matchLearnCards,
   rankLearnCards,
   searchLearnCards,
 } from "./learnLibrary";
 import { LEARN_CARDS, learnCardById } from "./learnCards";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 describe("Learn Library catalogue integrity", () => {
   it("has unique ids, 5 key points, and full EN+HE on every card", () => {
@@ -118,5 +124,69 @@ describe("search + lookup", () => {
   it("learnCardById resolves every catalogue id and rejects unknowns", () => {
     for (const c of LEARN_CARDS) expect(learnCardById(c.id)).toBe(c);
     expect(learnCardById("no-such-card")).toBeUndefined();
+  });
+});
+
+// ── W2 masterplan 2.5: Learn continuation (saved-topic boost) ────────────────
+// Saved reads' topics get a small +1 nudge ("continues what you saved" — the
+// bookmark signal only, never an outcome claim). No saved/completed input →
+// byte-identical ranking.
+describe("W2 2.5 saved-topic continuation boost", () => {
+  const base = { ageYears: null, focusDomain: null };
+
+  it("topic-mates of a saved card rank above unrelated cards (all else equal)", () => {
+    const saved = LEARN_CARDS[0];
+    const topics = learnContinuationTopics(LEARN_CARDS, { ...base, savedIds: [saved.id] });
+    expect(topics).not.toBeNull();
+    const ranked = rankLearnCards(LEARN_CARDS, { ...base, savedIds: [saved.id] });
+    // With null age/focus every base score is 0, so the ranking must be:
+    // every boosted (topic-sharing) card before every non-boosted card,
+    // catalogue order preserved inside each block (stable sort).
+    const boostedBlock = LEARN_CARDS.filter((c) => continuesSaved(c, topics));
+    const restBlock = LEARN_CARDS.filter((c) => !continuesSaved(c, topics));
+    expect(ranked.map((c) => c.id)).toEqual([...boostedBlock, ...restBlock].map((c) => c.id));
+    expect(boostedBlock.length).toBeGreaterThan(0);
+    expect(restBlock.length).toBeGreaterThan(0);
+  });
+
+  it("a completed card is never itself re-boosted, but its topics are", () => {
+    const done = LEARN_CARDS[0];
+    const topics = learnContinuationTopics(LEARN_CARDS, { ...base, completedIds: [done.id] });
+    expect(topics).not.toBeNull();
+    expect(continuesSaved(done, topics)).toBe(false);
+    const mate = LEARN_CARDS.find((c) => c.id !== done.id && c.category === done.category);
+    if (mate) expect(continuesSaved(mate, topics)).toBe(true);
+  });
+
+  it("boost stays a nudge: below focus-domain (+3) and in-window age (+2)", () => {
+    expect(SAVED_TOPIC_BOOST).toBeLessThan(2);
+    expect(SAVED_TOPIC_BOOST).toBeGreaterThan(0);
+  });
+
+  it("no topics from empty/unknown ids (no boost from thin air)", () => {
+    expect(learnContinuationTopics(LEARN_CARDS, base)).toBeNull();
+    expect(learnContinuationTopics(LEARN_CARDS, { ...base, savedIds: [] })).toBeNull();
+    expect(learnContinuationTopics(LEARN_CARDS, { ...base, savedIds: ["no-such-card"] })).toBeNull();
+    expect(continuesSaved(LEARN_CARDS[0], null)).toBe(false);
+  });
+
+  it("ZERO-REGRESSION: absent or empty saved/completed input is byte-identical", () => {
+    const signals = { ageYears: 4, focusDomain: "attachment_regulation", recentConcerns: [] as never[] };
+    const bare = JSON.stringify(rankLearnCards(LEARN_CARDS, signals));
+    expect(JSON.stringify(rankLearnCards(LEARN_CARDS, { ...signals, savedIds: [], completedIds: [] }))).toBe(bare);
+    expect(JSON.stringify(rankLearnCards(LEARN_CARDS, { ...signals, savedIds: undefined }))).toBe(bare);
+  });
+
+  it("render site mounts the why-line variant behind the actual boost (source pin)", () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(path.join(here, "../components/sections/LearnLibrary.tsx"), "utf8")
+      .replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    // savedIds flows into the ranking signals…
+    expect(src).toContain("savedIds: savedLearnIds");
+    // …and the "continues what you saved" variant renders only when the boost
+    // actually contributed to a featured card.
+    expect(src).toContain("continuesSaved");
+    expect(src).toContain('continueText("elev.continue.learn.why"');
+    expect(src.indexOf("savedBoosted")).toBeGreaterThan(-1);
   });
 });

@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   selectDailyPlay, rankDailyPlay, concernDomainsFromLogs, domainForBehaviorType, daySeedFor,
   sanitizeInterestToken, SESSION_LENGTH_RANGES, SESSION_LENGTHS, MIN_SESSION_BUCKET,
-  availableSessionLengths,
+  availableSessionLengths, domainForRecommendation,
+  CONTINUATION_NEXT_STEP_BOOST, CONTINUATION_SWITCH_DAMP,
+  CONTINUATION_LOW_EFFORT_BOOST, CONTINUATION_LOW_EFFORT_MAX_MIN,
+  type PlaySelectContext,
 } from "./select";
 import { bandForAge, PLAY_ACTIVITIES, PLAY_BANDS } from "./content";
 import { readFileSync } from "node:fs";
@@ -401,5 +404,135 @@ describe("KID-3 session-length honesty", () => {
         `${rel} must not render a play.session.* range label as the badge`
       ).not.toMatch(/play\.session\.(short|standard|extended)/);
     }
+  });
+});
+
+// ── W2 masterplan 2.5: recommendation continuation (Maytal frame 5) ──────────
+// The parent's last reported outcome adjusts ranking WEIGHTS only:
+// helped → same-domain next step ×1.35; not_today → same-domain ×0.75 +
+// low-effort ×1.15; somewhat/absent → byte-identical. The `continuation` flag
+// (and the card line it gates) derives ONLY from a parent-reported "helped".
+describe("W2 2.5 Daily Play continuation", () => {
+  const helpedReg = { recommendation: "Try a calm breathing moment before the transition", outcome: "helped" as const };
+  const notTodayReg = { recommendation: "Try a calm breathing moment before the transition", outcome: "not_today" as const };
+
+  describe("domainForRecommendation", () => {
+    it("routes behaviour-lexicon text and activity-verb text to a domain", () => {
+      expect(domainForRecommendation("handle the tantrum at bedtime")).toBe("regulation");
+      expect(domainForRecommendation("a calm breathing game")).toBe("regulation");
+      expect(domainForRecommendation("read a picture book aloud")).toBe("language");
+      expect(domainForRecommendation("sort the laundry by color and count")).toBe("cognitive");
+      expect(domainForRecommendation("completely unrelated text")).toBeNull();
+    });
+  });
+
+  it("helped → same-domain activities score higher; every other score is untouched", () => {
+    const base = rankDailyPlay({ ageYears: 4, daySeed: 1 });
+    const withHelped = rankDailyPlay({ ageYears: 4, daySeed: 1, lastAction: helpedReg });
+    for (const p of withHelped) {
+      const before = base.find((b) => b.activity.id === p.activity.id)!;
+      if (p.activity.domain === "regulation") {
+        expect(p.score).toBeGreaterThan(before.score);
+      } else {
+        expect(p.score).toBe(before.score);
+      }
+    }
+  });
+
+  it("helped → a same-domain pick surfaces at the top, flagged as continuation", () => {
+    const picks = selectDailyPlay({ ageYears: 4, daySeed: 1, lastAction: helpedReg });
+    const flagged = picks.filter((p) => p.continuation);
+    expect(flagged.length).toBeGreaterThan(0);
+    for (const p of flagged) {
+      expect(p.activity.domain).toBe("regulation");
+      expect(p.activity.bands).toContain("preschool");
+    }
+  });
+
+  it("continuation boost (1.35) stays below goal (1.6) and top-concern (1.8) weights", () => {
+    expect(CONTINUATION_NEXT_STEP_BOOST).toBeLessThan(1.6);
+    expect(CONTINUATION_NEXT_STEP_BOOST).toBeLessThan(1.8);
+    expect(CONTINUATION_SWITCH_DAMP).toBeLessThan(1);
+    expect(CONTINUATION_LOW_EFFORT_BOOST).toBeGreaterThan(1);
+  });
+
+  it("not_today → same-domain damped, low-effort nudged, and NEVER flagged", () => {
+    const base = rankDailyPlay({ ageYears: 4, daySeed: 1 });
+    const withNo = rankDailyPlay({ ageYears: 4, daySeed: 1, lastAction: notTodayReg });
+    expect(withNo.some((p) => p.continuation)).toBe(false);
+    for (const p of withNo) {
+      const before = base.find((b) => b.activity.id === p.activity.id)!;
+      const lowEffort = p.activity.durationMin <= CONTINUATION_LOW_EFFORT_MAX_MIN;
+      const sameDomain = p.activity.domain === "regulation";
+      if (sameDomain && !lowEffort) expect(p.score).toBeLessThan(before.score);
+      if (!sameDomain && lowEffort) expect(p.score).toBeGreaterThan(before.score);
+      if (!sameDomain && !lowEffort) expect(p.score).toBe(before.score);
+    }
+  });
+
+  it('"somewhat" is neutral — byte-identical ranking to no lastAction', () => {
+    const base = selectDailyPlay({ ageYears: 4, concernDomains: ["social"], daySeed: 3 });
+    const somewhat = selectDailyPlay({
+      ageYears: 4, concernDomains: ["social"], daySeed: 3,
+      lastAction: { recommendation: "a calm breathing game", outcome: "somewhat" },
+    });
+    expect(JSON.stringify(somewhat)).toBe(JSON.stringify(base));
+  });
+
+  it("ZERO-REGRESSION: no lastAction → byte-identical selection, no continuation key", () => {
+    const ctx: PlaySelectContext = { ageYears: 3, concernDomains: ["language"], interests: ["Trains"], daySeed: 9 };
+    const bare = selectDailyPlay(ctx);
+    const explicitUndefined = selectDailyPlay({ ...ctx, lastAction: undefined });
+    expect(JSON.stringify(bare)).toBe(JSON.stringify(explicitUndefined));
+    // JSON drops undefined fields — absent input must never serialize a flag.
+    expect(JSON.stringify(bare)).not.toContain("continuation");
+  });
+
+  it("unmatchable recommendation text adjusts nothing on helped", () => {
+    const base = selectDailyPlay({ ageYears: 4, daySeed: 2 });
+    const noMatch = selectDailyPlay({
+      ageYears: 4, daySeed: 2,
+      lastAction: { recommendation: "zzz nothing recognizable", outcome: "helped" },
+    });
+    expect(JSON.stringify(noMatch)).toBe(JSON.stringify(base));
+  });
+
+  it("is deterministic for a given seed with lastAction (weights, never randomness)", () => {
+    const a = selectDailyPlay({ ageYears: 4, daySeed: 11, lastAction: helpedReg });
+    const b = selectDailyPlay({ ageYears: 4, daySeed: 11, lastAction: helpedReg });
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+});
+
+// ── W2 2.5 attribution pin (verification-panel HARD RULE) ────────────────────
+// The continuation line is ALWAYS an echo of the parent's own report — the
+// flag derives only from outcome === "helped", the card renders the line only
+// behind that flag, and the copy carries the "You said / אמרת" attribution.
+describe("W2 2.5 'you said' attribution pin", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const noComments = (src: string) =>
+    src.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+
+  it("select.ts sets `continuation` only under a parent-reported 'helped' outcome", () => {
+    const src = noComments(readFileSync(path.join(here, "./select.ts"), "utf8"));
+    const assignment = src.match(/const continuation =[\s\S]*?;/);
+    expect(assignment, "continuation assignment must exist").toBeTruthy();
+    expect(assignment![0]).toContain('lastOutcome === "helped"');
+    // No other code path may set the flag.
+    expect(src.match(/continuation\s*=/g)!.length).toBe(1);
+  });
+
+  it("DailyPlayCard renders the line ONLY behind pick.continuation, with the attribution key", () => {
+    const src = noComments(
+      readFileSync(path.join(here, "../components/overview/DailyPlayCard.tsx"), "utf8")
+    );
+    expect(src).toContain("pick.continuation &&");
+    expect(src).toContain('continueText("elev.continue.play.helped"');
+    // The key must not render outside the continuation gate: the only mount
+    // of the string sits inside the {pick.continuation && ...} block.
+    const gate = src.indexOf("pick.continuation &&");
+    const key = src.indexOf('elev.continue.play.helped');
+    expect(gate).toBeGreaterThan(-1);
+    expect(key).toBeGreaterThan(gate);
   });
 });

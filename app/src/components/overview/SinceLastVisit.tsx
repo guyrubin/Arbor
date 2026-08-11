@@ -1,9 +1,13 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { Icon } from "../ui/Icon";
+import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
 import { en as svEn, he as svHe } from "../../lib/i18nElevation/sincevisit";
-import type { SinceVisitRow } from "./sinceVisitEvents";
+import { rcString } from "../weekly/recapStrings";
+import { useWeeklyRecap } from "../../hooks/useWeeklyRecap";
+import { computeStreak } from "../../lib/streak";
+import { collectMomentTimestamps, type SinceVisitRow } from "./sinceVisitEvents";
 
 /**
  * SinceLastVisit — W1 1.1 (Maytal Row-1 #1, Oura "Top Stories" pattern).
@@ -14,6 +18,20 @@ import type { SinceVisitRow } from "./sinceVisitEvents";
  * its source surface (Journal / Development / coach), plus a "+N more in
  * Journal" overflow link.
  *
+ * W2 2.1 — this component is ALSO the app-open mount of useWeeklyRecap: on
+ * the first open of a new week (with data) the weekly digest auto-generates
+ * here, on Today, instead of waiting for the buried Weekly pill. When the
+ * fresh recap is still unopened, the strip's FIRST line is the recap entry
+ * ("Your week with {name} is ready") deep-linking to #/weekly. Known v1
+ * limitation: this mount renders for RETURNING parents with since-visit
+ * events; day-0 parents (and event-less opens) still generate on WeeklyTab
+ * entry — exactly today's behavior, no regression.
+ *
+ * W2 2.3 — the footer carries the cumulative continuity counter: "{n} days of
+ * moments together" from computeStreak(...).totalDays. The resettable value
+ * on that result is a streak and BANNED from rendering (masterplan 2.3);
+ * recapStoryCards.test.ts source-scans these files for any use of it.
+ *
  * Rule A (Today budget): continuity lines collapse INTO this strip — the
  * "Arbor remembers" count line renders here as the footer, and the ArborNoticed
  * card folds in as a row when Today would otherwise exceed 5 modules.
@@ -22,10 +40,11 @@ import type { SinceVisitRow } from "./sinceVisitEvents";
  * never comparative/trend wording (a delta between visits is a trend by
  * inspection). Pinned by sinceLastVisit.test.ts.
  *
- * i18n: keys live in lib/i18nElevation/sincevisit.ts. The module is not yet
- * registered in i18nElevation/index.ts (integration-lane file), so `sv()`
- * resolves through t() FIRST and falls back to the module records — identical
- * behavior before and after registration.
+ * i18n: keys live in lib/i18nElevation/sincevisit.ts (+ recap.ts for the
+ * recap/counter lines). The modules are not yet registered in
+ * i18nElevation/index.ts (integration-lane file), so `sv()`/`rc()` resolve
+ * through t() FIRST and fall back to the module records — identical behavior
+ * before and after registration.
  */
 
 const ROW_ICON: Record<SinceVisitRow["kind"], string> = {
@@ -75,8 +94,22 @@ export default function SinceLastVisit({
   onMore: () => void;
 }) {
   const { t, uiLang } = useLanguage();
+  const { behaviorLogs, playLogs, childProfile, setActiveTab } = useArbor();
+
+  // W2 2.1: app-open recap mount — auto-generates this week's digest for
+  // returning parents (the hook's module-level guard keeps WeeklyTab and this
+  // mount from double-firing in one session).
+  const recap = useWeeklyRecap();
+  const recapLine = !!recap.currentReport && recap.recapUnopened;
 
   const sv = (key: string, vars?: Record<string, string | number>): string => svString(t, uiLang, key, vars);
+  const rc = (key: string, vars?: Record<string, string | number>): string => rcString(t, uiLang, key, vars);
+
+  const firstName = childProfile.name.split(" ")[0];
+
+  // W2 2.3: cumulative days-with-moments — totalDays ONLY (the resettable
+  // walk on the same result is banned from every parent surface).
+  const totalDays = computeStreak(collectMomentTimestamps(behaviorLogs, playLogs)).totalDays;
 
   const rowLabel = (row: SinceVisitRow): string => {
     switch (row.kind) {
@@ -94,12 +127,12 @@ export default function SinceLastVisit({
   };
 
   // Instrument once per mount (KPI 0.8: % opens showing a since-visit delta).
-  const trackedRows = useRef(false);
+  // Mount-once is exact here: OverviewTab renders the strip only when rows
+  // exist, so this effect fires exactly when the strip is actually shown.
   useEffect(() => {
-    if (trackedRows.current || rows.length === 0) return;
-    trackedRows.current = true;
-    track("sincevisit_shown", { rows: rows.length });
-  }, [rows.length]);
+    if (rows.length > 0) track("sincevisit_shown", { rows: rows.length });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (rows.length === 0) return null;
 
@@ -116,6 +149,33 @@ export default function SinceLastVisit({
       <h2 className="mt-1 text-[17px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>
         {sv("elev.sincevisit.title")}
       </h2>
+
+      {/* W2 2.1: recap entry — the strip's FIRST line while this week's fresh
+          recap is unopened; tap deep-links to the Weekly recap (#/weekly). */}
+      {recapLine && (
+        <button
+          type="button"
+          onClick={() => {
+            track("recap_ready_tap", { week: recap.currentId });
+            setActiveTab("weekly");
+          }}
+          aria-label={rc("elev.recap.ready.aria")}
+          className="mt-3 flex w-full min-h-[44px] items-center gap-3 rounded-xl px-3 py-2 text-start transition active:scale-[0.99]"
+          style={{ background: "var(--arbor-lav-soft)" }}
+          data-testid="since-recap-ready"
+        >
+          <span
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-full"
+            style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-lav-ink)" }}
+          >
+            <Icon name="auto_awesome" size={17} fill={1} />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[13.5px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>
+            {rc("elev.recap.ready", { name: firstName })}
+          </span>
+          <Icon name="chevron_right" size={17} className="flex-none rtl:-scale-x-100" style={{ color: "var(--arbor-lav-ink)" }} />
+        </button>
+      )}
 
       <ul className="mt-3 space-y-1.5">
         {rows.map((row, i) => (
@@ -166,6 +226,15 @@ export default function SinceLastVisit({
         <span className="font-extrabold" style={{ color: "var(--arbor-muted)" }}>{t("today.intent.remembers")}</span>{" "}
         {t("today.intent.memoryLine", { captured: capturedToday, week: weekCount, story: storyCount })}
       </p>
+
+      {/* W2 2.3: cumulative continuity counter — a LINE in the strip (Rule A),
+          monotonic count only, zero guilt on gaps. */}
+      {totalDays > 0 && (
+        <p className="mt-1.5 text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }} data-testid="since-days-together">
+          <Icon name="favorite" size={12} fill={1} className="inline-block align-[-1px] me-1" style={{ color: "var(--arbor-green-ink)" }} />
+          {rc("elev.recap.days", { n: totalDays })}
+        </p>
+      )}
     </section>
   );
 }

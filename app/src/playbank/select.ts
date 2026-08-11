@@ -16,6 +16,7 @@
 import {
   PLAY_ACTIVITIES, bandForAge, type PlayActivity, type PlayBand, type PlayDomain,
 } from "./content";
+import type { ActionOutcome } from "../actionLoop/model";
 
 // CI-29 / FIX 3: sanitize a parent-typed interest token before it surfaces in
 // card copy. Runs the CONDITIONS lexicon from outputScreen.ts (same source of
@@ -96,6 +97,58 @@ export function availableSessionLengths(ageYears: number): SessionLength[] {
   });
 }
 
+/* ── W2 masterplan 2.5: recommendation continuation (Maytal frame 5) ─────────
+ * The parent's LAST reported outcome on a recommendation feeds the ranking:
+ *  - "helped"     → prefer a next step in the SAME domain (×1.35 — above the
+ *                   interest nudge at 1.3, below goal 1.6 / top-concern 1.8,
+ *                   so parent-explicit intent still wins);
+ *  - "not_today"  → prefer a DIFFERENT domain (same-domain ×0.75) and nudge
+ *                   lower-effort picks (durationMin ≤ 10 → ×1.15);
+ *  - "somewhat"   → neutral: ranking is byte-identical to no input.
+ * Deterministic: weights only — never randomness; the day seed stays the sole
+ * rotation source. No lastAction → byte-identical selection (test-pinned).
+ *
+ * CLINICAL FIREWALL / attribution rule: the `continuation` flag below may be
+ * set ONLY from a parent-reported "helped" outcome — the UI line it gates is
+ * an echo of the parent's own report ("you said this helped"), never an AI
+ * efficacy claim and never a grade. */
+
+/** Continuation same-domain boost after a parent-reported "helped". */
+export const CONTINUATION_NEXT_STEP_BOOST = 1.35;
+/** Same-domain damping after a parent-reported "not_today". */
+export const CONTINUATION_SWITCH_DAMP = 0.75;
+/** Lower-effort (durationMin ≤ 10) nudge after "not_today". */
+export const CONTINUATION_LOW_EFFORT_BOOST = 1.15;
+/** durationMin ceiling considered "lower effort" for the not_today nudge. */
+export const CONTINUATION_LOW_EFFORT_MAX_MIN = 10;
+
+/** The parent's last recommendation + their own reported outcome on it. */
+export interface LastPlayAction {
+  /** The recommendation text the parent acted on (actionLoops record). */
+  recommendation: string;
+  /** Parent-reported outcome — the ONLY source of continuation framing. */
+  outcome: ActionOutcome;
+}
+
+/**
+ * Best-effort domain read of a free-text recommendation (AI focus text /
+ * digest step / learn tryToday). Reuses the behaviour-type lexicon first,
+ * then a small activity-verb lexicon. Deterministic regex only — returns
+ * null when nothing matches (continuation then adjusts nothing except the
+ * not_today low-effort nudge).
+ */
+export function domainForRecommendation(text: string): PlayDomain | null {
+  const viaBehavior = domainForBehaviorType(text);
+  if (viaBehavior) return viaBehavior;
+  const t = text.toLowerCase();
+  if (/(breath|calm|sooth|feeling|emotion|wind.?down|relax)/.test(t)) return "regulation";
+  if (/(story|book|read|sing|rhyme|narrat|vocabul)/.test(t)) return "language";
+  if (/(puzzle|count|sort|match|memory|build|stack)/.test(t)) return "cognitive";
+  if (/(together|turn.?tak|pretend|role.?play|greet)/.test(t)) return "social";
+  if (/(jump|run|climb|ball|dance|draw|scissor|crawl)/.test(t)) return "motor";
+  return null;
+}
+
 export interface PlaySelectContext {
   ageYears: number;
   /** Domains the child has recently struggled with (from their log). */
@@ -126,6 +179,12 @@ export interface PlaySelectContext {
    * is never a cold-start failure from an empty bucket). No child-data write.
    */
   sessionLength?: SessionLength;
+  /**
+   * W2 2.5: the last recommendation + the parent's own reported outcome
+   * (actionLoops). Adjusts ranking WEIGHTS only (see constants above) —
+   * never randomness. Absent → selection is byte-identical to today.
+   */
+  lastAction?: LastPlayAction;
 }
 
 export interface ScoredActivity {
@@ -145,6 +204,14 @@ export interface ScoredActivity {
    * "Matched to [name]'s love of [interest]" without any further processing.
    */
   matchedInterest?: string;
+  /**
+   * W2 2.5: true ONLY when the parent reported "helped" on their last
+   * recommendation AND this activity is the same-domain next step that the
+   * continuation boost surfaced. Gates the DailyPlayCard continuation line
+   * ("You said this helped — the next step:") — an echo of the parent's own
+   * report, never an AI efficacy claim. Absent lastAction → never set.
+   */
+  continuation?: boolean;
 }
 
 /** Map a logged behaviour type to the developmental domain it stresses. */
@@ -198,6 +265,15 @@ export function rankDailyPlay(ctx: PlaySelectContext): ScoredActivity[] {
   const interests = (ctx.interests ?? []).map(sanitizeInterestToken).filter(Boolean);
   const hasInterests = interests.length > 0;
 
+  // W2 2.5: continuation weights from the parent's own last report. "somewhat"
+  // is deliberately neutral — the spec defines re-ranking for "helped" and
+  // "not_today" only, and anything else must stay byte-identical.
+  const lastOutcome = ctx.lastAction?.outcome;
+  const lastDomain =
+    ctx.lastAction && (lastOutcome === "helped" || lastOutcome === "not_today")
+      ? domainForRecommendation(ctx.lastAction.recommendation)
+      : null;
+
   // CI-31: apply session-length filter only when explicitly provided.
   // When the filtered pool is empty (e.g. no activities yet in the extended
   // bucket) fall back to the full pool so there is never a cold-start failure.
@@ -229,7 +305,22 @@ export function rankDailyPlay(ctx: PlaySelectContext): ScoredActivity[] {
       // interests are recorded. Lower than goal (1.6×) and top concern (1.8×)
       // so it nudges without overriding explicit parent intent.
       const interestBoost = hasInterests && activity.themeableContextSlot ? 1.3 : 1;
-      const score = bandScore * goalBoost * concernBoost * interestBoost * novelty + jitter(activity.id, daySeed) * 0.05;
+      // W2 2.5: continuation weights — helped → same-domain next step up
+      // (1.35×); not_today → same-domain damped (0.75×) + lower-effort nudge
+      // (1.15× for durationMin ≤ 10). No lastAction → all three stay 1.
+      const sameDomainAsLast = lastDomain !== null && activity.domain === lastDomain;
+      const continuationBoost =
+        lastOutcome === "helped" && sameDomainAsLast ? CONTINUATION_NEXT_STEP_BOOST
+        : lastOutcome === "not_today" && sameDomainAsLast ? CONTINUATION_SWITCH_DAMP
+        : 1;
+      const lowEffortBoost =
+        lastOutcome === "not_today" && activity.durationMin <= CONTINUATION_LOW_EFFORT_MAX_MIN
+          ? CONTINUATION_LOW_EFFORT_BOOST
+          : 1;
+      const score =
+        bandScore * goalBoost * concernBoost * interestBoost * novelty *
+          continuationBoost * lowEffortBoost +
+        jitter(activity.id, daySeed) * 0.05;
       // Reason precedence: goal-match > concern-match > interest-match > stage-match.
       const isInterestMatch = hasInterests && !!activity.themeableContextSlot && matchesBand(activity, band);
       const reason: ScoredActivity["reason"] =
@@ -241,7 +332,13 @@ export function rankDailyPlay(ctx: PlaySelectContext): ScoredActivity[] {
           ? "interest-match"
           : "stage-match";
       const matchedInterest = reason === "interest-match" ? interests[0] : undefined;
-      return { activity, score, reason, matchedInterest };
+      // ATTRIBUTION PIN: `continuation` derives ONLY from the parent-reported
+      // "helped" outcome (never "somewhat"/"not_today", never absent input).
+      const continuation =
+        lastOutcome === "helped" && sameDomainAsLast && matchesBand(activity, band)
+          ? true
+          : undefined;
+      return { activity, score, reason, matchedInterest, continuation };
     })
     .sort((a, b) => b.score - a.score);
 }

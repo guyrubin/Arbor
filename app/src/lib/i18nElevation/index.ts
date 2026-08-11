@@ -25,20 +25,25 @@ import * as careprofile from "./careprofile";
 import * as celebrate from "./celebrate";
 import * as childsignals from "./childsignals";
 import * as coachcontract from "./coachcontract";
+import * as continueModule from "./continue";
 import * as foundation from "./foundation";
 import * as fullpicture from "./fullpicture";
 import * as gate from "./gate";
 import * as growth from "./growth";
 import * as journal from "./journal";
 import * as personal from "./personal";
+import * as planclarity from "./planclarity";
 import * as promise from "./promise";
+import * as recap from "./recap";
 import * as safety from "./safety";
 import * as screeningcalm from "./screeningcalm";
+import * as searchnav from "./searchnav";
 import * as sidebar from "./sidebar";
 import * as sincevisit from "./sincevisit";
 import * as spine from "./spine";
 import * as syncstatus from "./syncstatus";
 import * as today from "./today";
+import * as trustcenter from "./trustcenter";
 import * as wow from "./wow";
 
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
@@ -50,20 +55,25 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   celebrate,
   childsignals,
   coachcontract,
+  continueModule,
   foundation,
   fullpicture,
   gate,
   growth,
   journal,
   personal,
+  planclarity,
   promise,
+  recap,
   safety,
   screeningcalm,
+  searchnav,
   sidebar,
   sincevisit,
   spine,
   syncstatus,
   today,
+  trustcenter,
   wow,
 ];
 

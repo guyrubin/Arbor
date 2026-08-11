@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect, useSyncExternalStore } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
@@ -15,7 +15,8 @@ import MobileNav from "./MobileNav";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { ArborMark } from "../ui/ArborMark";
 import { TabSkeleton } from "../ui/Skeleton";
-import SearchModal from "../search/SearchModal";
+import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurface } from "../search/SearchModal";
+import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
 import { refreshEntitlement } from "../../hooks/useEntitlement";
@@ -170,6 +171,10 @@ export default function Shell() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // W2.4 analytics: mirror of searchOpen for the deps-free hotkey listener,
+  // so search_open fires only on the closed→open transition.
+  const searchOpenRef = useRef(false);
+  useEffect(() => { searchOpenRef.current = searchOpen; }, [searchOpen]);
   // KID-LOCK (W0.9, LEAK 5): live gate value for render-time modal gating.
   const kidLocked = useSyncExternalStore(subscribeKidMode, isKidModeActive);
   useEffect(() => {
@@ -180,11 +185,25 @@ export default function Shell() {
         // outside the inert shield, steals focus, and Enter navigates parent
         // tabs — the hotkey is a no-op while Kid Mode is open.
         if (isKidModeActive()) return;
+        if (!searchOpenRef.current) track("search_open", { surface: "desktop" });
         setSearchOpen((s) => !s);
       }
     };
+    // W1.9 mobile entry points (accessories strip + MobileNav More sheet)
+    // signal via requestOpenSearch(); the gate is re-checked here so every
+    // path into SearchModal passes the same KID-LOCK guard as the hotkey.
+    const onOpenRequest = (e: Event) => {
+      if (isKidModeActive()) return;
+      const surface = ((e as CustomEvent).detail?.surface ?? "mobile") as SearchOpenSurface;
+      if (!searchOpenRef.current) track("search_open", { surface });
+      setSearchOpen(true);
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener(SEARCH_OPEN_EVENT, onOpenRequest);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(SEARCH_OPEN_EVENT, onOpenRequest);
+    };
   }, []);
 
   // KID-LOCK (W0.9, LEAK 5): a modal left open when Kid Mode engages must not
@@ -270,7 +289,7 @@ export default function Shell() {
                   panel — so the mobile language path is preserved without a duplicate
                   in-content toggle. */}
               <button
-                onClick={() => setSearchOpen(true)}
+                onClick={() => requestOpenSearch("mobile")}
                 aria-label={t("top.search")}
                 title="Search (Ctrl/Cmd+K)"
                 className="flex flex-shrink-0 items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-bold transition bg-white"

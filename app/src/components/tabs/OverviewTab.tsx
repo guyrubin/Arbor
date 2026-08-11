@@ -131,6 +131,11 @@ export default function OverviewTab() {
     try { localStorage.setItem(`arbor.play.sessionLength.${childProfile.id}`, v); } catch { /* ignore */ }
   };
 
+  const latestCompletedAction = useMemo(
+    () => actionLoop.find((entry) => entry.status === "completed" && entry.outcome),
+    [actionLoop]
+  );
+
   const dailyPlay: ScoredActivity | null = useMemo(() => {
     const concernDomains = concernDomainsFromLogs(
       behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, timestamp: l.timestamp })),
@@ -144,9 +149,13 @@ export default function OverviewTab() {
       daySeed: daySeedFor(Date.now()),
       interests: childProfile.interests,
       sessionLength,
+      // W2.5: continuation weighting from the parent's own reported outcome.
+      lastAction: latestCompletedAction?.outcome
+        ? { recommendation: latestCompletedAction.recommendation, outcome: latestCompletedAction.outcome }
+        : undefined,
     }, 1);
     return picks[0] ?? null;
-  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains, sessionLength]);
+  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains, sessionLength, latestCompletedAction]);
 
   // AIX-S4: seeds go through i18n (seed.*) — HE parents see Hebrew in the chat box.
   const coachOnPlay = (p: ScoredActivity) => {
@@ -190,10 +199,6 @@ export default function OverviewTab() {
     return top;
   }, [behaviorLogs]);
 
-  const latestCompletedAction = useMemo(
-    () => actionLoop.find((entry) => entry.status === "completed" && entry.outcome),
-    [actionLoop]
-  );
   const { focus, loading: focusLoading } = useTodaysFocus(childProfile, {
     count: recentCount,
     avg: weekAvg,
