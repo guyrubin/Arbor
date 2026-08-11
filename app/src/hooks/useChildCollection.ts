@@ -1,13 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { collection, deleteDoc, doc, limit as fbLimit, onSnapshot, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+import { clearSyncError, getSyncSnapshot, reportSyncError, subscribeSyncStatus } from "../lib/syncStore";
 
 type WithId = { id: string };
 
 export interface ChildCollection<T extends WithId> {
   items: T[];
   loaded: boolean;
+  /**
+   * W0.5: true while the live Firestore listener is in error state — `items`
+   * then holds the localStorage fallback (possibly stale), NOT confirmed-empty
+   * data. Cleared by the next successful snapshot. Screens may render a subtle
+   * hint off this, but the global SyncStatusBanner is the canonical surface.
+   */
+  error: boolean;
   /** True when backed by Firestore (vs localStorage sandbox). */
   remote: boolean;
   /** Create or replace a single item. */
@@ -37,8 +45,18 @@ export function useChildCollection<T extends WithId>(
 
   const [items, setItems] = useState<T[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
   const lsKey = `arbor.${name}.${childId}`;
   const seededRef = useRef(false);
+
+  // W0.6: the SyncStatusBanner's Retry bumps the store version — having it in
+  // the subscribe-effect deps re-mounts the Firestore listener (full retry).
+  // On the happy path the version never changes, so behavior is identical.
+  const syncVersion = useSyncExternalStore(
+    subscribeSyncStatus,
+    () => getSyncSnapshot().version,
+    () => 0
+  );
 
   const readLocal = useCallback(
     (fallback?: T[]): T[] => {
@@ -58,6 +76,7 @@ export function useChildCollection<T extends WithId>(
     if (!childId) return;
     seededRef.current = false;
     setLoaded(false);
+    setError(false);
 
     if (remote && db && uid) {
       const colRef = collection(db, `users/${uid}/children/${childId}/${name}`);
@@ -77,20 +96,34 @@ export function useChildCollection<T extends WithId>(
           }
           setItems(snap.docs.map((d) => ({ ...(d.data() as object), id: d.id })) as T[]);
           setLoaded(true);
+          // W0.5: a successful snapshot clears the error state (additive — the
+          // two lines above are byte-identical to the pre-W0.5 happy path).
+          setError(false);
+          clearSyncError(name, childId);
         },
         () => {
-          // Permission/network error → degrade to local.
+          // Permission/network error → degrade to local (unchanged), but no
+          // longer silently: W0.5 surfaces it. The local fallback KEEPS
+          // rendering; error just says "this may be stale, not empty", and the
+          // store registration lets ONE global banner report it app-wide.
           setItems(readLocal());
           setLoaded(true);
+          setError(true);
+          reportSyncError(name, childId);
         }
       );
-      return unsub;
+      return () => {
+        unsub();
+        // Leaving the screen (or switching child) retires this listener's
+        // banner registration — a stale entry must not outlive its listener.
+        clearSyncError(name, childId);
+      };
     }
 
     setItems(readLocal(opts?.sandboxSeed));
     setLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remote, uid, childId, name]);
+  }, [remote, uid, childId, name, syncVersion]);
 
   // Mirror to localStorage in sandbox mode.
   useEffect(() => {
@@ -147,5 +180,5 @@ export function useChildCollection<T extends WithId>(
     [remote, uid, childId, name]
   );
 
-  return { items, loaded, remote, upsert, remove, replaceAll };
+  return { items, loaded, error, remote, upsert, remove, replaceAll };
 }

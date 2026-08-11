@@ -33,6 +33,8 @@ import WowOnboarding from "../onboarding/WowOnboarding";
 // every gated capture confirm (BehaviorsTab review + QuickLogModal); prefills
 // Ask Arbor via seedCoach(source 'post-capture'), never auto-sends.
 import PostCaptureCoachStrip from "../overview/PostCaptureCoachStrip";
+// W0.5+W0.6: ONE global data-freshness banner (offline / couldn't-refresh).
+import SyncStatusBanner from "../ui/SyncStatusBanner";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -305,6 +307,11 @@ export default function Shell() {
               })}
             </div>
           )}
+
+          {/* W0.5+W0.6: global freshness banner — offline / sync-error, mounted
+              ONCE here so 18 useChildCollection screens don't each grow one.
+              Additive: cached/local data keeps rendering below, never a wall. */}
+          <SyncStatusBanner />
 
           {/* Sandbox banner if API key is missing */}
           {showSandboxBanner && (

@@ -441,7 +441,9 @@ export interface BehaviorAnalysis {
   frequencyCount: { [key: string]: number };
   intensityTrend: string; // "rising" | "decreasing" | "stable"
   triggerBreakdown: { trigger: string; percentage: number }[];
-  effectivenessRating: string; // feedback on parent's responses
+  // W0.4: effectivenessRating ("feedback on parent's responses") removed — the
+  // app never scores the parent. Legacy server responses may still carry the
+  // key; consumers must ignore it rather than render it.
   expertInsights: {
     heading: string;
     text: string;

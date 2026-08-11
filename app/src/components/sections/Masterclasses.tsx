@@ -11,6 +11,11 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { MASTERCLASSES, FRAME_LABELS, type FrameId, type Masterclass } from "../../lib/masterclasses";
 import { loadCharter, aimVirtues } from "../../lib/becoming";
+// W0.7 — age-fit filtering (shared helper; banding reused from playbank/stages)
+import { filterByAge, loadShowAllAges, saveShowAllAges, windowFromYears } from "../../lib/ageFilter";
+import { agefilterText } from "../../lib/i18nElevation/agefilter";
+import { ageMonthsFromProfile } from "../../lib/childAge";
+import { track } from "../../lib/analytics";
 import type { DevelopmentMetricId } from "../../types";
 // AP-055: Scholar Hub weekly concept feed
 import ScholarHubCard from "./ScholarHubCard";
@@ -55,6 +60,25 @@ export default function Masterclasses() {
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [reflection, setReflection] = useState<Record<string, string>>({});
 
+  // W0.7 — default the catalog to the child's age band; "Show all ages"
+  // (persisted per surface) keeps every course reachable (UC-1 rule).
+  const [showAllAges, setShowAllAges] = useState<boolean>(() => loadShowAllAges("masterclasses"));
+  const childMonths = ageMonthsFromProfile(childProfile);
+  const { visible: ageVisible, hidden: ageHidden, fits: ageFits } = filterByAge(
+    MASTERCLASSES,
+    (m) => windowFromYears(m.ageMinYears, m.ageMaxYears),
+    childMonths,
+  );
+  const catalog = showAllAges ? MASTERCLASSES : ageVisible;
+  const toggleShowAllAges = () => {
+    setShowAllAges((prev) => {
+      const next = !prev;
+      saveShowAllAges("masterclasses", next);
+      track("agefilter_toggle", { surface: "masterclasses", showAll: next });
+      return next;
+    });
+  };
+
   useEffect(() => { setDone(loadDone()); setReflection(loadReflection()); }, []);
   const markDone = (id: string) => {
     setDone((d) => {
@@ -75,9 +99,11 @@ export default function Masterclasses() {
   const frameLabel = (f: FrameId) => (he ? FRAME_LABELS[f].he : FRAME_LABELS[f].en);
 
   // D3: recommend the masterclasses that build the family's chosen virtues.
+  // W0.7: the strip draws from the age-visible catalog, so a course written
+  // for ages 4–8 is never "recommended" to a baby's parent by default.
   const aims = aimVirtues(loadCharter());
   const recommended = aims.length
-    ? MASTERCLASSES.filter((m) => (MASTERCLASS_VIRTUES[m.id] || []).some((v) => aims.includes(v)))
+    ? catalog.filter((m) => (MASTERCLASS_VIRTUES[m.id] || []).some((v) => aims.includes(v)))
     : [];
 
   // ── Reader ───────────────────────────────────────────────────────────────
@@ -94,7 +120,9 @@ export default function Masterclasses() {
   // plain duration fact only (total courses / completed / minutes to next).
   // There is no per-course "started" state in the app — we render the honest
   // catalog count instead of fabricating one.
-  const nextCourse = MASTERCLASSES.find((m) => !done[m.id]);
+  // W0.7: the ONE CTA points at the next unfinished course the parent can SEE
+  // (the age-visible catalog), never at an age-hidden one.
+  const nextCourse = catalog.find((m) => !done[m.id]);
   const heroStats = [
     { value: total, label: t("elev.hero.academy.stat.courses") },
     { value: doneCount, label: t("elev.hero.academy.stat.completed") },
@@ -219,13 +247,45 @@ export default function Masterclasses() {
 
         {/* ── Right column: All courses gallery ───────────────────────────── */}
         <div className="space-y-4 min-w-0">
-          <h2 className="text-[15px] font-extrabold uppercase tracking-widest px-1" style={{ color: "var(--arbor-muted)" }}>
-            {t("academy.courses.title")}
-          </h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
+            <h2 className="text-[15px] font-extrabold uppercase tracking-widest" style={{ color: "var(--arbor-muted)" }}>
+              {t("academy.courses.title")}
+            </h2>
+            {/* W0.7 — "Show all ages" toggle: only rendered when the child's-age
+                view actually hides something (or the parent already opted in). */}
+            {(ageHidden.length > 0 || showAllAges) && (
+              <span className="ms-auto inline-flex items-center gap-2">
+                {!showAllAges && ageHidden.length > 0 && (
+                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }} dir="auto">
+                    {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={showAllAges}
+                  onClick={toggleShowAllAges}
+                  data-testid="agefilter-toggle-masterclasses"
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-extrabold transition"
+                  style={
+                    showAllAges
+                      ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.25)" }
+                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+                  }
+                >
+                  <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
+                  {agefilterText("elev.agefilter.showAll", he)}
+                </button>
+              </span>
+            )}
+          </div>
           <div className="grid sm:grid-cols-2 gap-4">
-            {MASTERCLASSES.map((c) => {
+            {catalog.map((c) => {
               const p = PASTEL[FRAME_TONE[c.frame]];
               const isCardDone = !!done[c.id];
+              // W0.7: out-of-band courses (reachable via "Show all ages") carry a
+              // small age chip so the parent knows why they were tucked away.
+              const outOfBand = ageFits.get(c) === "out";
               // Lesson count = number of authored sections (an honest catalog
               // fact, never a fabricated granular %). Pairs with duration in the
               // meta line ("N lessons · M min").
@@ -253,8 +313,18 @@ export default function Masterclasses() {
                   {/* Body */}
                   <div className="flex flex-col gap-2 p-5 flex-1">
                     {/* domain/frame pill at the top of the body */}
-                    <span className="self-start text-[10.5px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: p.soft, color: p.ink }}>
-                      {frameLabel(c.frame)}
+                    <span className="self-start inline-flex items-center gap-1.5">
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: p.soft, color: p.ink }}>
+                        {frameLabel(c.frame)}
+                      </span>
+                      {/* W0.7 age chip — a catalog fact ("Ages 4–8"), never a verdict. */}
+                      {outOfBand && c.ageMinYears != null && (
+                        <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full" dir="auto" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                          {c.ageMaxYears != null
+                            ? agefilterText("elev.agefilter.chip", he, { min: c.ageMinYears, max: c.ageMaxYears })
+                            : agefilterText("elev.agefilter.chipPlus", he, { min: c.ageMinYears })}
+                        </span>
+                      )}
                     </span>
                     <h3 className="text-[15px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
                       {he ? c.titleHe : c.title}

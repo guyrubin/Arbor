@@ -217,3 +217,40 @@ export function escalationLiteralsIntact(): boolean {
   const all = escalationCategories.map((c) => c.resources).join("\n") + EMERGENCY;
   return CRITICAL_HELPLINE_LITERALS.every((lit) => all.includes(lit));
 }
+
+/* W0.2 — structured crisis-helpline directory (ADDITIVE ONLY).
+ *
+ * The markdown `resources` blocks above are the coach-side escalation copy and
+ * stay untouched. The Safety screen needs the SAME numbers in a renderable
+ * shape so each one can be a real `tel:` link. This directory mirrors those
+ * numbers; a unit tripwire (SafetyTab.safety.test.ts) asserts every `number`
+ * below still appears verbatim in the markdown above, so the two shapes cannot
+ * silently drift apart. Update both together on each HELPLINES_REVIEWED_ON
+ * re-review. */
+
+export type HelplineRegion = "il" | "eu" | "nl" | "be" | "us";
+
+export type HelplineEntry = {
+  /** Stable id — also the i18n label suffix (`elev.safety.helpline.<id>`). */
+  id: string;
+  region: HelplineRegion;
+  /** Display number, verbatim as it appears in the escalation markdown. */
+  number: string;
+  /** Dialable `tel:` target (digits and `+` only). */
+  tel: string;
+};
+
+export const HELPLINE_DIRECTORY: readonly HelplineEntry[] = [
+  { id: "il_eran",   region: "il", number: "1201",      tel: "1201" },
+  { id: "il_mda",    region: "il", number: "101",       tel: "101" },
+  { id: "il_police", region: "il", number: "100",       tel: "100" },
+  { id: "eu_112",    region: "eu", number: "112",       tel: "112" },
+  { id: "nl_113",    region: "nl", number: "0800-0113", tel: "08000113" },
+  { id: "be_1813",   region: "be", number: "1813",      tel: "1813" },
+  { id: "be_1712",   region: "be", number: "1712",      tel: "1712" },
+  { id: "us_988",    region: "us", number: "988",       tel: "988" },
+  { id: "us_911",    region: "us", number: "911",       tel: "911" },
+];
+
+/** International helpline directory — the FIND_LOCAL fallback, linkable. */
+export const FIND_A_HELPLINE_URL = "https://findahelpline.com";

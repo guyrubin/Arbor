@@ -700,8 +700,9 @@ export default function BehaviorsTab() {
             {behaviorAnalysis && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
                 <h4 className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={15} fill={1} /> {t("beh.patternShows")}</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("beh.responseEval")}</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.effectivenessRating}</p></div>
+                {/* W0.4: the "Parent Response Evaluation" (effectivenessRating) card was
+                    removed — the app never grades the parent's responses. */}
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2"><span className="font-bold block" style={{ color: "var(--arbor-ink)" }}>{t("beh.devRec")}</span><p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{behaviorAnalysis.actionPlanSuggestion}</p></div>
                 </div>
                 <div className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>

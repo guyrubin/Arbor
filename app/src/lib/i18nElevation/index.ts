@@ -19,6 +19,7 @@
 
 // ── Module imports: ONE line per module, ALPHABETICAL by module name. ─────────
 import * as agechips from "./agechips";
+import * as agefilter from "./agefilter";
 import * as auth from "./auth";
 import * as careprofile from "./careprofile";
 import * as celebrate from "./celebrate";
@@ -27,14 +28,18 @@ import * as gate from "./gate";
 import * as growth from "./growth";
 import * as journal from "./journal";
 import * as personal from "./personal";
+import * as safety from "./safety";
+import * as screeningcalm from "./screeningcalm";
 import * as sidebar from "./sidebar";
 import * as spine from "./spine";
+import * as syncstatus from "./syncstatus";
 import * as today from "./today";
 import * as wow from "./wow";
 
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
 const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, string> }> = [
   agechips,
+  agefilter,
   auth,
   careprofile,
   celebrate,
@@ -43,8 +48,11 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   growth,
   journal,
   personal,
+  safety,
+  screeningcalm,
   sidebar,
   spine,
+  syncstatus,
   today,
   wow,
 ];

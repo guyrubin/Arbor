@@ -2361,7 +2361,7 @@ ${developmentalFramework}
 Analyze Arbor parent-logged observations.
 Child Details: ${JSON.stringify(childProfile)}
 Behavior Logs: ${JSON.stringify(logs)}
-Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectivenessRating, expertInsights, actionPlanSuggestion.
+Return JSON with frequencyCount, intensityTrend, triggerBreakdown, expertInsights, actionPlanSuggestion.
 `;
       const privacy = createRedaction(childProfile?.name);
       const analysis = privacy.restoreDeep(await modelProvider.generateJson({
@@ -2369,7 +2369,7 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: {
           type: Type.OBJECT,
-          required: ["frequencyCount", "intensityTrend", "triggerBreakdown", "effectivenessRating", "expertInsights", "actionPlanSuggestion"],
+          required: ["frequencyCount", "intensityTrend", "triggerBreakdown", "expertInsights", "actionPlanSuggestion"],
           properties: {
             frequencyCount: { type: Type.OBJECT, properties: {} },
             intensityTrend: { type: Type.STRING },
@@ -2384,7 +2384,6 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
                 }
               }
             },
-            effectivenessRating: { type: Type.STRING },
             expertInsights: {
               type: Type.ARRAY,
               items: {
@@ -2402,15 +2401,19 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
         }
       })) as Record<string, any>;
 
+      // W0.4: the app never scores the parent. effectivenessRating was removed
+      // from the prompt/schema above; strip it defensively in case the model
+      // emits it anyway so no parent-grading text can reach the client.
+      delete analysis.effectivenessRating;
+
       // AI-2 / CI-13: output-side safety screen for the model-authored free-text
-      // fields. effectivenessRating, expertInsights[].heading/.text, and
-      // actionPlanSuggestion are the diagnostic-label-leak surfaces here; the
-      // numeric/structured fields are kept regardless. Mirror the /chat and /voice
-      // blocked behavior — log a warn with requestId+category and DO NOT leak the
-      // flagged text; swap the free-text fields for a safe, non-diagnostic fallback.
+      // fields. expertInsights[].heading/.text and actionPlanSuggestion are the
+      // diagnostic-label-leak surfaces here; the numeric/structured fields are
+      // kept regardless. Mirror the /chat and /voice blocked behavior — log a
+      // warn with requestId+category and DO NOT leak the flagged text; swap the
+      // free-text fields for a safe, non-diagnostic fallback.
       const insights = Array.isArray(analysis.expertInsights) ? analysis.expertInsights : [];
       const screenable = [
-        analysis.effectivenessRating,
         ...insights.flatMap((i: any) => [i?.heading, i?.text]),
         analysis.actionPlanSuggestion,
       ].filter((s: unknown): s is string => typeof s === "string" && s.length > 0).join("\n");
@@ -2421,7 +2424,6 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
           category: outputVerdict.category,
           reason: outputVerdict.reason,
         });
-        analysis.effectivenessRating = "Arbor can't summarize how well the strategies are working here.";
         analysis.expertInsights = [{
           heading: "Let's pause on the interpretation",
           text: "Part of what Arbor drafted stepped outside what an AI parenting coach should say — it sounded diagnostic or medical. Arbor only offers observations, never a diagnosis. If you're worried about a possible condition, bring these notes to your pediatrician or family health centre; you can generate a professional handoff brief from Reports & Handoffs to make that conversation easier.",
