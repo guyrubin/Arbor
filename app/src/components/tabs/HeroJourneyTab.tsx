@@ -34,6 +34,8 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { EmptyState } from "../ui/EmptyState";
+import { SectionSkeleton } from "../ui/Skeleton";
+import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
@@ -536,7 +538,9 @@ export default function HeroJourneyTab() {
                       </span>
                       <span className="ms-auto inline-flex items-center gap-1 text-[13px] font-black" style={{ color: w.ink }}>
                         {isLoading ? (
-                          <><Icon name="autorenew" size={16} className="animate-spin" /> {he ? "טוען…" : "Loading…"}</>
+                          /* Press feedback while the story generates — label
+                             via i18n (masterplan 4.3: no hardcoded literals). */
+                          <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
                         ) : (
                           <>{he ? "שחקו" : "Play"} <Icon name="play_arrow" size={16} fill={1} /></>
                         )}
@@ -555,7 +559,10 @@ export default function HeroJourneyTab() {
             <Icon name="auto_stories" size={20} /> {he ? `הספרייה (${runs.length})` : `Library (${runs.length})`}
           </h2>
           {!runsCol.loaded ? (
-            <p className="text-[13px] font-bold" style={{ color: "var(--arbor-muted)" }}>{he ? "טוען…" : "Loading…"}</p>
+            /* Masterplan 4.3 — per-section skeleton mimicking the library tile
+               grid (reserves real dimensions; ~10s → inline retry wired to the
+               W0 syncStore, which re-mounts this runsCol listener). */
+            <SectionSkeleton title={false} rows={2} rowClassName="h-[120px]" loaded={runsCol.loaded} testId="hero-library-skeleton" />
           ) : runs.length === 0 ? (
             <div className="comic-panel p-5">
               <EmptyState

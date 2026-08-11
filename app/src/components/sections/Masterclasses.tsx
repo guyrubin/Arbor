@@ -232,7 +232,7 @@ export default function Masterclasses() {
                   <button
                     key={c.id}
                     onClick={() => setOpenId(c.id)}
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition hover:-translate-y-0.5"
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition motion-safe:hover:-translate-y-0.5"
                     dir="auto"
                     style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
                   >

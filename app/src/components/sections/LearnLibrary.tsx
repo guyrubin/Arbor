@@ -41,6 +41,7 @@ import {
 } from "../../learn/learnLibrary";
 import { continueText } from "../../lib/i18nElevation/continue";
 import { LEARN_CARDS, learnCardById } from "../../learn/learnCards";
+import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 
 type Filter = "all" | "saved" | LearnCategoryId;
 
@@ -214,8 +215,12 @@ export default function LearnLibrary() {
               <Icon name="auto_awesome" size={16} className="opacity-80" />
               {t("learn.pickedTitle", { name: firstName || t("learn.yourChild") })}
             </h2>
-            <span className="text-[11.5px]" style={{ color: "var(--arbor-muted)" }}>
-              {(() => {
+            {/* Why-line rides the shared slot (masterplan 3.1) — TrustLink mounts
+                directly after the why text ("How Arbor decides →"). */}
+            <ContentWhyLine
+              surface="learn-rail"
+              trustLink
+              why={(() => {
                 // Honest why-line: claim only the signals that actually contributed.
                 const name = firstName || t("learn.yourChild");
                 const logsContributed = featured.some((c) => concernsContributed(c, recentConcerns));
@@ -233,7 +238,7 @@ export default function LearnLibrary() {
                   ? `${base} ${continueText("elev.continue.learn.why", uiLang === "he")}`
                   : base;
               })()}
-            </span>
+            />
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             {featured.map((card, i) => (
@@ -423,20 +428,25 @@ function LearnGridCard({
           </span>
         </div>
       </button>
-      {/* Bookmark — sibling, never nested inside the open button */}
-      <button
-        onClick={onToggleSave}
-        aria-label={saved ? t("learn.savedLabel") : t("learn.save")}
-        aria-pressed={saved}
-        className="absolute top-2.5 end-2.5 inline-flex items-center justify-center rounded-full w-10 h-10 transition active:scale-[0.92] focus:outline-none focus-visible:ring-2"
-        style={{
-          background: "var(--arbor-paper-elevated)",
-          color: saved ? "var(--arbor-clay)" : "var(--arbor-muted)",
-          boxShadow: "var(--shadow-xs)",
-        }}
-      >
-        <Icon name={saved ? "bookmark_added" : "bookmark"} size={19} fill={saved ? 1 : 0} />
-      </button>
+      {/* Bookmark — sibling, never nested inside the open button. The card-level
+          save is the shared bar's compact variant: same verb, same order canon,
+          same handler as the reader's segmented bar. */}
+      <div className="absolute top-2.5 end-2.5">
+        <ContentActionBar
+          variant="inline"
+          surface="learn-card"
+          actions={[
+            {
+              verb: "save",
+              onClick: onToggleSave,
+              active: saved,
+              label: saved ? t("learn.savedLabel") : t("learn.save"),
+              icon: saved ? "bookmark_added" : "bookmark",
+              fill: saved ? 1 : 0,
+            },
+          ]}
+        />
+      </div>
     </motion.div>
   );
 }
@@ -557,35 +567,56 @@ function LearnReader({
         </p>
       </div>
 
-      {/* Action bar — save · listen · share · ask */}
-      <div className={`${cardCls} grid ${voice.supported ? "grid-cols-4" : "grid-cols-3"} overflow-hidden`}>
-        <ReaderAction
-          icon={saved ? "bookmark_added" : "bookmark"}
-          fill={saved ? 1 : 0}
-          label={saved ? t("learn.savedLabel") : t("learn.save")}
-          active={saved}
-          onClick={onToggleSave}
-        />
-        {voice.supported && (
-          <ReaderAction
-            icon={voice.speaking ? "stop_circle" : "graphic_eq"}
-            label={voice.speaking ? t("learn.listening") : t("learn.listen")}
-            active={voice.speaking}
-            onClick={() => {
-              voice.toggle(listenText);
-              try { track("learn_listen", { card: card.id }); } catch { /* noop */ }
-            }}
-            divided
-          />
-        )}
-        <ReaderAction
-          icon={copied ? "check" : "ios_share"}
-          label={copied ? t("learn.copied") : t("learn.share")}
-          onClick={() => void share()}
-          divided
-        />
-        <ReaderAction icon="forum" label={t("nav.tab.coach")} onClick={onAsk} divided />
-      </div>
+      {/* Action bar — the shared ContentActionBar: canonical done · save ·
+          share, then this surface's extras (listen · ask). "Add to today" also
+          keeps its in-context CTA in the try-today section below — same
+          handler, contextual primary (documented judgment call). */}
+      <ContentActionBar
+        variant="bar"
+        surface="learn-reader"
+        actions={[
+          {
+            verb: "done",
+            onClick: onAddToday,
+            active: todayTaken,
+            disabled: todayTaken,
+            label: todayTaken ? t("learn.addedToday") : t("learn.addToday"),
+            icon: todayTaken ? "check_circle" : "add_task",
+            fill: todayTaken ? 1 : 0,
+          },
+          {
+            verb: "save",
+            onClick: onToggleSave,
+            active: saved,
+            label: saved ? t("learn.savedLabel") : t("learn.save"),
+            icon: saved ? "bookmark_added" : "bookmark",
+            fill: saved ? 1 : 0,
+          },
+          {
+            verb: "share",
+            onClick: () => void share(),
+            label: copied ? t("learn.copied") : t("learn.share"),
+            icon: copied ? "check" : "ios_share",
+          },
+        ]}
+        extras={[
+          ...(voice.supported
+            ? [
+                {
+                  id: "listen",
+                  label: voice.speaking ? t("learn.listening") : t("learn.listen"),
+                  icon: voice.speaking ? "stop_circle" : "graphic_eq",
+                  active: voice.speaking,
+                  onClick: () => {
+                    voice.toggle(listenText);
+                    try { track("learn_listen", { card: card.id }); } catch { /* noop */ }
+                  },
+                },
+              ]
+            : []),
+          { id: "ask", label: t("nav.tab.coach"), icon: "forum", onClick: onAsk },
+        ]}
+      />
 
       {/* Key points */}
       <section aria-label={t("learn.keyPoints")}>
@@ -694,37 +725,6 @@ function LearnReader({
         {t("learn.provenance")}
       </p>
     </motion.article>
-  );
-}
-
-function ReaderAction({
-  icon,
-  label,
-  onClick,
-  active,
-  divided,
-  fill,
-}: {
-  icon: string;
-  label: string;
-  onClick: () => void;
-  active?: boolean;
-  divided?: boolean;
-  fill?: 0 | 1;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      className="flex flex-col items-center justify-center gap-1 py-3 min-h-[60px] transition active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
-      style={{
-        color: active ? "var(--arbor-clay)" : "var(--arbor-ink-soft)",
-        borderInlineStart: divided ? "1px solid var(--arbor-rule)" : undefined,
-      }}
-    >
-      <Icon name={icon} size={20} fill={fill ?? 0} />
-      <span className="text-[11.5px] font-bold">{label}</span>
-    </button>
   );
 }
 

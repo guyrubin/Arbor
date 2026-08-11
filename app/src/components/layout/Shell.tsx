@@ -375,12 +375,16 @@ export default function Shell() {
 
           <Suspense fallback={<TabSkeleton />}>
             <AnimatePresence mode="wait">
+              {/* W4.5: THE single tab entrance — the redundant CSS nth-child
+                  stagger in index.css was removed (it double-fired with this
+                  and capped at 6 children). Respects MotionConfig
+                  reducedMotion="user" (App.tsx). */}
               <motion.div
                 key={activeTab}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.16 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
               >
                 <ErrorBoundary>
                   <ActiveTabComponent />

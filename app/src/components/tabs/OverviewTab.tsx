@@ -547,7 +547,7 @@ export default function OverviewTab() {
           return (
             <section
               onClick={() => setActiveTab("development")}
-              className="rounded-[22px] p-5 flex flex-col transition hover:-translate-y-0.5 cursor-pointer"
+              className="rounded-[22px] p-5 flex flex-col transition motion-safe:hover:-translate-y-0.5 cursor-pointer"
               style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}
             >
               <div className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-clay)" }}>

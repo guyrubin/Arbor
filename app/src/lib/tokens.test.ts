@@ -281,3 +281,296 @@ describe("hex-creep guard — src/components/**/*.tsx stays on the token allowli
     ).toEqual([]);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   W4.1 — flat-register token-leak freeze (provisional-pending-GD-2).
+   :root declares the glass/2035 palette; the flat clinical block
+   (.arbor-app,.arbor-parent) historically re-declared only a subset, so the
+   remaining :root tokens LEAKED glass values into the flat register. The
+   freeze byte-copies today's resolved values into the flat block so rendering
+   is unchanged and a future GD-2 retint edits ONE block. This suite pins that
+   contract: every :root custom property must be re-declared in the flat
+   block, and the frozen values must equal the :root ones — except the
+   documented exception sets below.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** The 24 tokens the flat block ALREADY overrode by design (the clinical
+    re-skin). Their values intentionally differ from :root — GD-1/GD-2 own any
+    change to this set. */
+const FLAT_INTENTIONAL_OVERRIDES = new Set([
+  "--arbor-paper", "--arbor-paper-elevated", "--arbor-paper-deep", "--arbor-paper-sunk",
+  "--arbor-paper-tinted",
+  "--shadow-xs", "--shadow-sm", "--shadow-md", "--shadow-lg", "--shadow-xl",
+  "--glass-blur", "--glass-border",
+  "--arbor-rule", "--arbor-rule-strong",
+  "--arbor-ink", "--arbor-ink-soft", "--arbor-muted", "--arbor-faint",
+  "--arbor-clay", "--arbor-clay-deep", "--arbor-clay-dim", "--arbor-clay-border",
+  "--arbor-green-soft", "--arbor-green-ink",
+]);
+
+/** Tokens whose :root value contains var(--arbor-clay*)/var(--arbor-green-cta-start)
+    references that the flat block overrides. A verbatim copy would re-resolve
+    them against the flat clay (#2b7fff) and CHANGE rendering, because custom
+    properties substitute var() at the scope where they are declared (the flat
+    register inherited these already substituted at :root). They are frozen at
+    today's :root-RESOLVED literals instead. */
+const FLAT_RESOLVED_INLINE: Record<string, string> = {
+  "--arbor-gradient-primary": "linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb)",
+  "--arbor-gradient-progress": "linear-gradient(90deg, #58a6ff, #1f6feb)",
+  "--gradient-cta": "linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb)",
+};
+
+describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", () => {
+  /** Extract `sel { ... }` body (first block whose header line matches). */
+  const blockBody = (css: string, header: RegExp): string => {
+    const m = header.exec(css);
+    if (!m) return "";
+    const open = css.indexOf("{", m.index);
+    const close = css.indexOf("\n}", open); // top-level blocks in index.css close at col 0
+    return css.slice(open + 1, close);
+  };
+
+  /** name → last-declared value (later duplicate wins, matching the cascade). */
+  const declsOf = (body: string): Map<string, string> => {
+    const out = new Map<string, string>();
+    // strip comments so commented-out decls don't count
+    const clean = body.replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const m of clean.matchAll(/(?:^|[;{\s])(--[a-zA-Z0-9-]+)\s*:\s*([^;]+);/g)) {
+      out.set(m[1], m[2].replace(/\s+/g, " ").trim());
+    }
+    return out;
+  };
+
+  const rootDecls = declsOf(blockBody(indexCss, /^:root\s*$|^:root\s*\{/m));
+  const flatDecls = declsOf(blockBody(indexCss, /^\.arbor-app,\s*\n\.arbor-parent/m));
+
+  it("parses both blocks (sanity)", () => {
+    expect(rootDecls.size).toBeGreaterThanOrEqual(95);
+    expect(flatDecls.size).toBeGreaterThanOrEqual(95); // 95 mirrored + flat-only tokens
+  });
+
+  it("every :root custom property is re-declared in the flat block (no leak)", () => {
+    const missing = [...rootDecls.keys()].filter((k) => !flatDecls.has(k));
+    expect(
+      missing,
+      `:root tokens leaking glass values into the flat register — add a byte-copied ` +
+        `declaration to the W4.1 freeze block in index.css:\n${missing.join("\n")}`,
+    ).toEqual([]);
+    const overlap = [...rootDecls.keys()].filter((k) => flatDecls.has(k)).length;
+    expect(overlap).toBeGreaterThanOrEqual(95);
+  });
+
+  it("frozen values are string-equal to :root (outside the two exception sets)", () => {
+    const drift: string[] = [];
+    for (const [name, rootVal] of rootDecls) {
+      if (FLAT_INTENTIONAL_OVERRIDES.has(name)) continue;
+      if (name in FLAT_RESOLVED_INLINE) continue;
+      const flatVal = flatDecls.get(name);
+      if (flatVal !== rootVal) drift.push(`${name}: root=[${rootVal}] flat=[${flatVal}]`);
+    }
+    expect(
+      drift,
+      `W4.1 freeze drift — the flat block must byte-copy :root until GD-2 rules:\n${drift.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("resolved-inline exceptions carry today's :root-resolved literals", () => {
+    for (const [name, expected] of Object.entries(FLAT_RESOLVED_INLINE)) {
+      // the :root source must still be var()-based (else fold back to byte-copy)
+      expect(rootDecls.get(name), `${name} in :root should still reference var()`).toContain("var(");
+      expect(flatDecls.get(name), `${name} frozen literal drifted`).toBe(expected);
+    }
+  });
+
+  it("intentional-override allowlist is exactly the pre-freeze 24 and all present", () => {
+    expect(FLAT_INTENTIONAL_OVERRIDES.size).toBe(24);
+    for (const name of FLAT_INTENTIONAL_OVERRIDES) {
+      expect(rootDecls.has(name), `${name} gone from :root — update the allowlist`).toBe(true);
+      expect(flatDecls.has(name), `${name} gone from the flat block — update the allowlist`).toBe(true);
+    }
+  });
+
+  it("Hebrew font swap survives the freeze (html[lang=he] mirror present)", () => {
+    // The flat block re-declares --font-sans/--font-display at .arbor-app scope,
+    // which beats the inherited html[lang="he"] values; the mirror restores them.
+    expect(indexCss).toMatch(/html\[lang="he"\]\s+\.arbor-app,\s*\n\s*html\[lang="he"\]\s+\.arbor-parent\s*\{[^}]*--font-sans:\s*"Heebo"/);
+  });
+
+  it("W4.5: the CSS nth-child entrance stagger stays removed (Shell owns entrance)", () => {
+    expect(indexCss).not.toContain("arbor-fade-up");
+    expect(indexCss).not.toMatch(/main\s*>\s*div\s*>\s*\*:nth-child/);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   W4.4a — rgba()-creep ratchet over ALL of src/ (ts, tsx, css; test files
+   excluded — allowlists live in them). rgba literals evade the hex guard on a
+   technicality. GD-1 blocks deleting the existing ones (some may still
+   render), so this is growth-prevention only: any INCREASE per file fails;
+   decreases and file removals are auto-tolerated (no stale-baseline failure);
+   a file not listed here must not introduce rgba at all.
+   Baseline snapshot: 2026-08-11 (post-W4.1 freeze — index.css includes the 21
+   rgba occurrences byte-copied from :root by the freeze block).
+   ═══════════════════════════════════════════════════════════════════════════ */
+const RGBA_BASELINE: Record<string, number> = {
+  "components/auth/LoginScreen.tsx": 1,
+  "components/auth/OnboardingFlow.tsx": 9,
+  "components/coach/ArborVision.tsx": 1,
+  "components/ErrorBoundary.tsx": 2,
+  "components/kidmode/ParentChallenge.tsx": 1,
+  "components/layout/MobileNav.tsx": 2,
+  "components/layout/SettingsModal.tsx": 1,
+  "components/layout/TopbarBell.tsx": 1,
+  "components/overview/CourseCard.tsx": 1,
+  "components/overview/DailyCheckinCard.tsx": 2,
+  "components/plans/PlanKanban.tsx": 2,
+  "components/plans/RoutinesCard.tsx": 1,
+  "components/practice/AdventuresTab.tsx": 1,
+  "components/practice/EarlyReadingTrack.tsx": 2,
+  "components/practice/FeelingsLabTab.tsx": 1,
+  "components/practice/HeroArcade.tsx": 1,
+  "components/practice/JourneyTab.tsx": 1,
+  "components/practice/MemoryMatch.tsx": 1,
+  "components/practice/MimicMatch.tsx": 5,
+  "components/practice/MimicStudioTab.tsx": 1,
+  "components/practice/SpeechCoachTab.tsx": 2,
+  "components/profile/AddChildModal.tsx": 2,
+  "components/profile/AvatarCreator.tsx": 6,
+  "components/profile/ProfileEditDrawer.tsx": 1,
+  "components/profile/ProfileSwitcher.tsx": 1,
+  "components/profile/RewardsCard.tsx": 1,
+  "components/search/TopbarSearch.tsx": 1,
+  "components/sections/AcademyForYou.tsx": 1,
+  "components/sections/AskSpecialist.tsx": 2,
+  "components/sections/DevScoreCard.tsx": 1,
+  "components/sections/FindProfessional.tsx": 3,
+  "components/sections/Masterclasses.tsx": 3,
+  "components/sections/Screening.tsx": 3,
+  "components/sections/ScreeningSheet.tsx": 1,
+  "components/sections/SmartRemindersPanel.tsx": 1,
+  "components/stories/ComicReader.tsx": 1,
+  "components/tabs/BedtimeStoriesTab.tsx": 3,
+  "components/tabs/BehaviorsTab.tsx": 3,
+  "components/tabs/CoachTab.tsx": 3,
+  "components/tabs/ComicsTab.tsx": 1,
+  "components/tabs/HeroJourneyTab.tsx": 5,
+  "components/tabs/LanguageLabVocabView.tsx": 2,
+  "components/tabs/MilestonesTab.tsx": 4,
+  "components/tabs/PlansTab.tsx": 1,
+  "components/tabs/SciencePage.tsx": 1,
+  "components/tabs/StoryTimelineTab.tsx": 2,
+  "components/ui/Avatar.tsx": 1,
+  "components/ui/Button.tsx": 2,
+  "components/ui/EmotionAvatar.tsx": 1,
+  "components/ui/HeroAvatar.tsx": 2,
+  "components/ui/Modal.tsx": 1,
+  "components/ui/playkit.tsx": 8,
+  "components/ui/ProgressRing.tsx": 1,
+  "components/ui/ProvenanceBadge.tsx": 1,
+  "context/ToastContext.tsx": 3,
+  "index.css": 76,
+  "lib/shareCard.ts": 2,
+};
+
+const srcRoot = path.join(here, "..");
+
+const walkSrc = (dir: string, exts: readonly string[]): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) return walkSrc(p, exts);
+    return exts.some((x) => e.name.endsWith(x)) ? [p] : [];
+  });
+
+const relOf = (abs: string): string => path.relative(srcRoot, abs).split(path.sep).join("/");
+const isTestFile = (rel: string): boolean => /\.test\.(ts|tsx)$/.test(rel);
+
+describe("rgba-creep ratchet — src/**/*.{ts,tsx,css} may only shrink", () => {
+  const counts = new Map<string, number>();
+  for (const abs of walkSrc(srcRoot, [".ts", ".tsx", ".css"])) {
+    const rel = relOf(abs);
+    if (isTestFile(rel)) continue; // ratchet baselines live in test files
+    const n = (readFileSync(abs, "utf8").match(/rgba\(/g) ?? []).length;
+    if (n > 0) counts.set(rel, n);
+  }
+
+  it("scans a non-trivial set (sanity)", () => {
+    expect(counts.size).toBeGreaterThan(20);
+  });
+
+  it("no file grows its rgba() count; unlisted files introduce none", () => {
+    const growth: string[] = [];
+    for (const [rel, n] of counts) {
+      const allowed = RGBA_BASELINE[rel] ?? 0;
+      if (n > allowed) growth.push(`${rel}: ${n} > baseline ${allowed}`);
+    }
+    expect(
+      growth,
+      `rgba() creep — use a var(--arbor-*) token instead (GD-1 blocks deleting old ` +
+        `literals, but nothing may add new ones). If a decrease landed, ratchet the ` +
+        `RGBA_BASELINE down in a reviewed commit:\n${growth.join("\n")}`,
+    ).toEqual([]);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   W4.4b — hex-creep guard extension: src/lib/ + src/practice/ (.ts/.tsx,
+   test files excluded — fixtures/allowlists live there). Same ratchet rules
+   as the components guard above. GD-1 blocks the stale-green cleanup, so the
+   values below (incl. legacy greens like #3cc081/#34b277) stay listed until
+   that gate opens — the guard only prevents growth.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const LIB_PRACTICE_HEX_ALLOWLIST: Record<string, readonly string[]> = {
+  "lib/behaviorUtils.ts": ["#6f9e6f", "#9bbf5a", "#d7aa55", "#e08a3c", "#e2562d"],
+  "lib/native.ts": ["#eef2ef"],
+  "lib/reportExport.ts": ["#1f8a5a", "#29333f", "#2a9c66", "#69747f", "#9aa0a8", "#e4f4ec", "#e8edea", "#fff"], // print-report CSS template
+  "lib/shareCard.ts": ["#1f8a5a", "#29333f", "#34b277", "#3a4651", "#5f6b75", "#d6ebde", "#e4f4ec", "#eef6f0", "#fff", "#ffffff"], // share-card canvas art
+  "lib/tokens.ts": ["#16352a", "#2a9c66", "#34b277", "#3cc081", "#3f8cc9", "#5fce97", "#69747f", "#7a6bd8", "#c2882a", "#d65f87", "#d9763f", "#eef6f1"], // legacy brand literals (GD-1)
+  "practice/content.ts": ["#1f8a5a", "#2f7bbf", "#6354c4", "#a9780f", "#bd4f74", "#e4f4ec", "#e5f0fb", "#ece9fb", "#fbf1d4", "#fce2ec"],
+  "practice/goalBuilder.ts": ["#34b277", "#3cc081", "#3f8cc9", "#7a6bd8", "#c2882a", "#d9763f", "#e07b5a"],
+  "practice/playContent.ts": ["#1f8a5a", "#2f7bbf", "#6354c4", "#a9780f", "#bd4f74", "#cf6f37"],
+};
+
+describe("hex-creep guard — src/lib + src/practice stay on the token allowlist", () => {
+  const found = new Map<string, string[]>();
+  for (const dir of ["lib", "practice"]) {
+    for (const abs of walkSrc(path.join(srcRoot, dir), [".ts", ".tsx"])) {
+      const rel = relOf(abs);
+      if (isTestFile(rel)) continue;
+      const hexes = [...new Set((readFileSync(abs, "utf8").match(HEX_RE) ?? []).map((h) => h.toLowerCase()))].sort();
+      if (hexes.length > 0) found.set(rel, hexes);
+    }
+  }
+
+  it("scans both directories (sanity)", () => {
+    expect([...found.keys()].some((r) => r.startsWith("lib/"))).toBe(true);
+    expect([...found.keys()].some((r) => r.startsWith("practice/"))).toBe(true);
+  });
+
+  it("no hex literals outside the allowlist (new file or new value = creep)", () => {
+    const violations: string[] = [];
+    for (const [rel, hexes] of found) {
+      const allowed = new Set(LIB_PRACTICE_HEX_ALLOWLIST[rel] ?? []);
+      for (const h of hexes) {
+        if (!allowed.has(h)) violations.push(`${rel}: ${h}`);
+      }
+    }
+    expect(
+      violations,
+      `Hex creep in lib/practice — use a var(--arbor-*) token instead:\n${violations.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("allowlist carries no stale entries (ratchet down when hex is removed)", () => {
+    const stale: string[] = [];
+    for (const [rel, allowed] of Object.entries(LIB_PRACTICE_HEX_ALLOWLIST)) {
+      const present = new Set(found.get(rel) ?? []);
+      for (const h of allowed) {
+        if (!present.has(h)) stale.push(`${rel}: ${h}`);
+      }
+    }
+    expect(
+      stale,
+      `LIB_PRACTICE_HEX_ALLOWLIST entries no longer present — delete them so the ratchet only tightens:\n${stale.join("\n")}`,
+    ).toEqual([]);
+  });
+});

@@ -365,17 +365,11 @@ body {
 .arbor-app ::-webkit-scrollbar-thumb    { background: var(--arbor-rule-strong); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
 .arbor-app ::-webkit-scrollbar-thumb:hover { background: var(--arbor-faint); }
 
-/* ─── Stagger Entry Animations ────────────────────────────────────────────── */
-@keyframes arbor-fade-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.arbor-app main > div > *:nth-child(1) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay:   0ms; }
-.arbor-app main > div > *:nth-child(2) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay:  60ms; }
-.arbor-app main > div > *:nth-child(3) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 120ms; }
-.arbor-app main > div > *:nth-child(4) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 180ms; }
-.arbor-app main > div > *:nth-child(5) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 240ms; }
-.arbor-app main > div > *:nth-child(6) { animation: arbor-fade-up 0.42s cubic-bezier(0.22,1,0.36,1) both; animation-delay: 300ms; }
+/* ─── Entrance animation (W4.5) ───────────────────────────────────────────────
+   The CSS nth-child fade-up stagger that lived here (capped at 6 children)
+   double-fired with Shell.tsx's tab-switch motion.div fade; the
+   single entrance now lives in Shell.tsx (0.22s ease-out, respects
+   MotionConfig reducedMotion="user"). Do not reintroduce a CSS entrance. */
 
 /* ─── AI Rail Engine Cards ────────────────────────────────────────────────── */
 .arbor-app aside button[class*="rounded-xl"] {
@@ -791,4 +785,97 @@ body {
   --arbor-topbar-band:    #eef3fb;   /* sapphire-tinted topbar surface */
   --arbor-subtab-active:  #14225a;   /* navy active sub-tab pill fill */
   --arbor-subtab-on-ink:  #ffffff;   /* ink on the active navy pill */
+
+  /* W4.1 provisional-pending-GD-2: leak freeze, values byte-copied from :root.
+     These are the 71 :root tokens the flat register never re-declared — until
+     now they leaked their glass/2035 values into the flat scope (mint -soft
+     flat while the other five -softs render glass gradients; two sapphires;
+     glass glow on flat CTAs). This block pins EXACTLY what resolved here
+     today, so rendering does not change at all and a future GD-2 retint edits
+     ONE block. Do NOT "fix" values here — that is the GD-2 decision.
+     Byte-copy exceptions (still rendering-identical, see freeze test):
+     · --arbor-gradient-primary / --arbor-gradient-progress / --gradient-cta
+       reference var(--arbor-clay*) / var(--arbor-green-cta-start), which THIS
+       block overrides; a verbatim copy would re-resolve them to the flat clay
+       (#2b7fff) and change rendering (custom properties substitute var() at
+       the scope where they are declared). They are frozen at today's
+       :root-resolved literals instead.
+     · --font-sans / --font-display are re-declared here verbatim, and the
+       html[lang="he"] override is mirrored right after this block so the
+       Hebrew font swap keeps winning (a scoped declaration would otherwise
+       beat the inherited html[lang="he"] value). */
+  --mobile-nav-h:         58px;
+  --arbor-clay-soft:      linear-gradient(135deg, rgba(88,166,255,0.15), rgba(88,166,255,0.05));
+  --arbor-clay-glow:      0 0 20px rgba(88, 166, 255, 0.3);
+  --arbor-sage:           #10b981;
+  --arbor-gradient-primary: linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb); /* :root-resolved */
+  --arbor-gradient-lav: linear-gradient(135deg, var(--arbor-lav), var(--arbor-lav-ink));
+  --shadow-lav: 0 8px 20px rgba(167,139,250,0.28);
+  --arbor-gradient-progress: linear-gradient(90deg, #58a6ff, #1f6feb); /* :root-resolved */
+  --arbor-peach:       #f97316;
+  --arbor-peach-soft:  linear-gradient(135deg, rgba(249,115,22,0.15), rgba(249,115,22,0.05));
+  --arbor-peach-ink:   #b45309;
+  --arbor-peach-glow:  0 0 16px rgba(249,115,22,0.2);
+  --arbor-lav:         #a78bfa;
+  --arbor-lav-soft:    linear-gradient(135deg, rgba(167,139,250,0.15), rgba(167,139,250,0.05));
+  --arbor-lav-ink:     #6d28d9;
+  --arbor-lav-glow:    0 0 16px rgba(167,139,250,0.2);
+  --arbor-yellow:      #fbbf24;
+  --arbor-yellow-soft: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(251,191,36,0.05));
+  --arbor-yellow-ink:  #b45309;
+  --arbor-yellow-glow: 0 0 16px rgba(251,191,36,0.2);
+  --arbor-pink:        #ec4899;
+  --arbor-pink-soft:   linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05));
+  --arbor-pink-ink:    #be185d;
+  --arbor-pink-glow:   0 0 16px rgba(236,72,153,0.2);
+  --arbor-sky:         #0ea5e9;
+  --arbor-sky-soft:    linear-gradient(135deg, rgba(14,165,233,0.15), rgba(14,165,233,0.05));
+  --arbor-sky-ink:     #0369a1;
+  --arbor-sky-glow:    0 0 16px rgba(14,165,233,0.2);
+  --arbor-blue:        #58a6ff;
+  --arbor-ochre:       #f59e0b;
+  --arbor-danger:      #ef4444;
+  --t-caption: 10px;
+  --t-body:    13px;
+  --t-display: 26px;
+  --t-xs: 0.75rem; --t-sm: 0.8125rem; --t-base: 0.9375rem; --t-md: 1.0625rem;
+  --t-lg: 1.1875rem; --t-xl: 1.4375rem; --t-2xl: 1.75rem;
+  --arbor-on-accent:    #ffffff;
+  --arbor-cam-stage:    #1c222b;
+  --arbor-on-dark-muted:#a8a093;
+  --arbor-green-cta-start: #58a6ff;
+  --arbor-green-mid: #79b8ff;
+  --arbor-cam-floor: #16352a;
+  --arbor-muted-alt: #69747f;
+  --gradient-cta: linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb); /* :root-resolved */
+  --arbor-pack-courage:         #e2562d;
+  --arbor-pack-responsibility:  #d7aa55;
+  --arbor-pack-growth:          #6f9e6f;
+  --arbor-pack-wisdom:          #68b4ff;
+  --arbor-metric-resilience:    #a07af8;
+  --arbor-metric-empathy:       #38c8f0;
+  --arbor-pack-truth:           #4f6ae6;
+  --arbor-metric-truth:         #4f6ae6;
+  --font-display:   'Fraunces', 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif;
+  --font-sans:      'Nunito', 'Heebo', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-editorial: 'Instrument Serif', Georgia, serif;
+  --touch-min: 44px;
+  --r-sm: 10px; --r: 14px; --r-lg: 18px; --r-xl: 22px;
+  --shadow-green: 0 0 24px rgba(52,211,153,0.25);
+  --ring:         0 0 0 3px rgba(88, 166, 255, 0.18);
+  --page-max: 1480px;
+  --content-max: 1040px;
+  --rail-width: 360px;
+  --shell-pad-x: clamp(16px, 3vw, 48px);
+}
+
+/* W4.1 leak-freeze companion: the flat block above re-declares --font-sans /
+   --font-display at .arbor-app scope, which would otherwise defeat the
+   html[lang="he"] font swap (a declaration on the scope element beats the
+   value inherited from <html>). Byte-copied from the html[lang="he"] rule so
+   Hebrew rendering is unchanged. Remove together with the freeze block. */
+html[lang="he"] .arbor-app,
+html[lang="he"] .arbor-parent {
+  --font-sans: "Heebo", "Assistant", -apple-system, system-ui, sans-serif;
+  --font-display: "Frank Ruhl Libre", "Heebo", Georgia, serif;
 }

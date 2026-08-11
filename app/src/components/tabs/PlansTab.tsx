@@ -1,10 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { Skeleton } from "../ui/Skeleton";
-import { EmptyState } from "../ui/EmptyState";
+import { SectionSkeleton } from "../ui/Skeleton";
+import { EmptyState, GhostBlock } from "../ui/EmptyState";
+import { statesText } from "../../lib/i18nElevation/states";
+import { track } from "../../lib/analytics";
 import { PageHeader, cardCls } from "../ui/kit";
 import PlanKanban from "../plans/PlanKanban";
 import RoutinesCard from "../plans/RoutinesCard";
@@ -23,8 +25,19 @@ export default function PlansTab() {
     plansLoaded,
     seedCoach,
   } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
+
+  // Masterplan 4.3 teach-empty: the ONE CTA focuses the existing challenge
+  // input above — no second create path.
+  const topicInputRef = useRef<HTMLInputElement | null>(null);
+  const focusTopicInput = () => {
+    try { track("empty_cta_tap", { surface: "plans" }); } catch { /* noop */ }
+    const el = topicInputRef.current;
+    if (!el) return;
+    try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch { /* jsdom/SSR */ }
+    el.focus();
+  };
 
   // Closed loop: plan topics suggested from {name}'s own recent logged behavior.
   const suggestions = useMemo(
@@ -96,6 +109,7 @@ export default function PlansTab() {
 
         <div className="flex flex-col sm:flex-row gap-3">
           <input
+            ref={topicInputRef}
             type="text"
             value={planChallengeTopic}
             onChange={(e) => setPlanChallengeTopic(e.target.value)}
@@ -117,13 +131,35 @@ export default function PlansTab() {
       <RoutinesCard />
 
       {!plansLoaded && (
-        <div className="space-y-4"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>
+        /* Masterplan 4.3 — per-section skeleton reserving the plan cards'
+           real dimensions; ~10s → inline retry via the W0 syncStore. */
+        <SectionSkeleton title={false} rows={2} rowClassName="h-48" loaded={plansLoaded} testId="plans-skeleton" />
       )}
       {plansLoaded && actionPlans.length === 0 && (
+        /* Masterplan 4.3 — teach-empty upgrade: ghost of a filled plan card
+           (title + progress bar + step rows) + the ONE CTA focusing the
+           challenge input above. Headline/body keep the existing plan.empty.*
+           keys; only the CTA label is new (elev.states.plans.cta). */
         <EmptyState
           icon={<Icon name="tune" size={32} />}
           headline={t("plan.empty.head")}
           body={t("plan.empty.body")}
+          cta={statesText("elev.states.plans.cta", uiLang === "he")}
+          onCta={focusTopicInput}
+          ctaTestId="plans-empty-cta"
+          preview={
+            <div className="mx-auto w-full max-w-md rounded-2xl border p-4 text-start" style={{ borderColor: "var(--arbor-rule)" }}>
+              <div className="flex items-center justify-between gap-3">
+                <GhostBlock className="h-4 w-40 rounded-full" />
+                <GhostBlock className="h-3 w-16 rounded-full" />
+              </div>
+              <GhostBlock className="mt-3 h-2 w-full rounded-full" />
+              <div className="mt-3 space-y-2">
+                <GhostBlock className="h-3 w-4/5" />
+                <GhostBlock className="h-3 w-3/5" />
+              </div>
+            </div>
+          }
         />
       )}
 

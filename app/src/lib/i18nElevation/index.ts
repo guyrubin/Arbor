@@ -18,6 +18,7 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 // ── Module imports: ONE line per module, ALPHABETICAL by module name. ─────────
+import * as actionbar from "./actionbar";
 import * as agechips from "./agechips";
 import * as agefilter from "./agefilter";
 import * as auth from "./auth";
@@ -41,6 +42,7 @@ import * as searchnav from "./searchnav";
 import * as sidebar from "./sidebar";
 import * as sincevisit from "./sincevisit";
 import * as spine from "./spine";
+import * as states from "./states";
 import * as syncstatus from "./syncstatus";
 import * as today from "./today";
 import * as trustcenter from "./trustcenter";
@@ -48,6 +50,7 @@ import * as wow from "./wow";
 
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
 const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, string> }> = [
+  actionbar,
   agechips,
   agefilter,
   auth,
@@ -71,6 +74,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   sidebar,
   sincevisit,
   spine,
+  states,
   syncstatus,
   today,
   trustcenter,

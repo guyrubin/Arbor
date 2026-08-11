@@ -371,7 +371,7 @@ export default function StoryTimelineTab() {
           {nextStep.cta && (
             <button
               onClick={() => (nextStep.cta!.prompt ? handleCoach(nextStep.cta!.prompt) : setActiveTab("behaviors"))}
-              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold flex-shrink-0 transition hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold flex-shrink-0 transition motion-safe:hover:-translate-y-0.5"
               style={{ background: PASTEL.coral.ink, color: "#fff" }}
             >
               {nextStep.cta.label} →
@@ -445,7 +445,7 @@ export default function StoryTimelineTab() {
           </p>
           <button
             onClick={() => setActiveTab("behaviors")}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold mt-4 transition hover:-translate-y-0.5"
+            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold mt-4 transition motion-safe:hover:-translate-y-0.5"
             style={{ background: PASTEL.coral.ink, color: "#fff" }}
           >
             <Icon name="photo_camera" size={18} /> Capture the first moment

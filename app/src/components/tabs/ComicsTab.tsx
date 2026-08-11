@@ -4,6 +4,8 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel } from "../ui/playkit";
+import { EmptyState, GhostBlock } from "../ui/EmptyState";
+import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { ComicReader } from "../stories/ComicReader";
 import {
@@ -279,6 +281,39 @@ export default function ComicsTab() {
           )}
         </div>
       </PlayPanel>
+
+      {/* Masterplan 4.3 — teach-empty for the untouched shelf: a ghost
+          bookshelf shows what saved books will look like lined up, with ONE
+          CTA that opens the first age-fit adventure (the same openComic path
+          every cover uses — no second build entry). Copy = elev.states.
+          comics.* (en+he, encouraging, never celebrating the zero). */}
+      {savedCount === 0 && shelfAdventures.length > 0 && (
+        <PlayPanel tone="lav">
+          <EmptyState
+            className="py-4"
+            headline={statesText("elev.states.comics.head", he)}
+            body={statesText("elev.states.comics.body", he, { name })}
+            cta={statesText("elev.states.comics.cta", he)}
+            ctaTestId="comics-empty-cta"
+            onCta={() => {
+              try { track("empty_cta_tap", { surface: "comics" }); } catch { /* noop */ }
+              openComic(shelfAdventures[0].id);
+            }}
+            preview={
+              /* Ghost bookshelf: three muted book covers on a shelf line —
+                 the filled state in miniature. */
+              <div className="mx-auto w-full max-w-[260px]">
+                <div className="flex items-end justify-center gap-2.5">
+                  <GhostBlock className="w-16 rounded-md" style={{ height: 64 }} />
+                  <GhostBlock className="w-16 rounded-md" style={{ height: 78 }} />
+                  <GhostBlock className="w-16 rounded-md" style={{ height: 70 }} />
+                </div>
+                <div className="mt-1 h-1.5 rounded-full" style={{ background: "var(--arbor-rule)" }} />
+              </div>
+            }
+          />
+        </PlayPanel>
+      )}
 
       {/* W0.7 — honest empty state when every book is for other ages. */}
       {shelfAdventures.length === 0 && hiddenSpecs.length > 0 && (

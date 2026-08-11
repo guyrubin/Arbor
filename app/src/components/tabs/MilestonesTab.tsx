@@ -1,7 +1,18 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { Icon } from "../ui/Icon";
+// W5 celebration chain — the shared E7 celebration grammar layered on a fresh
+// milestone "yes" (once per milestone id, ≤1/session), plus the threshold-
+// crossing pride card (Rule A bars it from Today; the Map is its home).
+import {
+  CelebrationMoment,
+  celebrationSessionAvailable,
+  hasCelebrated,
+  markCelebrated,
+} from "../ui/CelebrationMoment";
+import PrideMomentCard from "../overview/PrideMomentCard";
+import { prefersReducedMotion } from "../../lib/devscore";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
@@ -25,6 +36,8 @@ import framework from "../../framework.json";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 
 function celebrate() {
+  // Reduced motion: a particle burst is pure motion — skip it entirely.
+  if (prefersReducedMotion()) return;
   confetti({
     particleCount: 90,
     spread: 70,
@@ -67,6 +80,34 @@ export default function MilestonesTab() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // W5 — the milestone whose CelebrationMoment overlay is currently layered.
+  const [celebratingId, setCelebratingId] = useState<string | null>(null);
+
+  // Escape dismisses the celebration overlay (the card's X stays the ≥44px target).
+  useEffect(() => {
+    if (!celebratingId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCelebratingId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [celebratingId]);
+
+  /** One place decides what a mark does. Celebration fires ONLY on a fresh
+   *  "yes" (never on uncheck / not_yet / not_sure): confetti stays the light
+   *  layer, and the FULL CelebrationMoment (parent-mediated share included)
+   *  layers at most once per milestone id ever (arbor.celebrate.seen.{childId})
+   *  and at most once per session — the card's own session guard is checked
+   *  BEFORE opening so the overlay never mounts around an empty card. */
+  const observeMilestone = (item: Milestone, status: "yes" | "not_sure" | "not_yet") => {
+    setMilestoneObservation(item.id, status);
+    if (status !== "yes" || item.checked) return;
+    celebrate();
+    if (!hasCelebrated(childProfile.id, item.id) && celebrationSessionAvailable()) {
+      markCelebrated(childProfile.id, item.id);
+      setCelebratingId(item.id);
+    }
+  };
 
   // ── Corrected age (preterm) ──────────────────────────────────────────────
   // B0: prefer months-precise value from birthDate/ageMonths over the legacy
@@ -204,7 +245,7 @@ export default function MilestonesTab() {
               ["not_yet", t("ms.observe.notYet")],
             ] as const).map(([status, label]) => {
               const selected = (item.observationStatus ?? (item.checked ? "yes" : undefined)) === status;
-              return <button key={status} type="button" onClick={() => { setMilestoneObservation(item.id, status); if (status === "yes" && !item.checked) celebrate(); }} aria-pressed={selected} className="min-h-9 rounded-lg px-1.5 text-[11px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "rgba(52,178,119,0.30)" : "var(--arbor-rule)"}` }}>{label}</button>;
+              return <button key={status} type="button" onClick={() => observeMilestone(item, status)} aria-pressed={selected} className="min-h-9 rounded-lg px-1.5 text-[11px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "rgba(52,178,119,0.30)" : "var(--arbor-rule)"}` }}>{label}</button>;
             })}
           </div>
           {item.observationStatus === "not_sure" && <p className="pt-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
@@ -440,6 +481,12 @@ export default function MilestonesTab() {
           <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("ms.subtitle")}</p>
         </div>
       </div>
+
+      {/* W5 mount — the R3 threshold-crossing pride moment. Designed for Today,
+          but Rule A caps Today's module budget, so it lives here: the Map is
+          where crossings are born. Renders nothing when there is no new
+          crossing; ≤1/session via the shared CelebrationMoment guard. */}
+      <PrideMomentCard />
 
       {/* Master/detail spine: left rail = the persistent Development Map summary
           (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
@@ -710,6 +757,32 @@ export default function MilestonesTab() {
                 t("ms.watch.none")
               )}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* W5 celebration chain — the FULL moment layered over the tab on a fresh
+          "yes" (never on uncheck), on top of the confetti burst. The card body
+          is the shared E7 CelebrationMoment (parent register, factual copy,
+          parent-mediated ShareButton, reduced-motion handled internally); the
+          scrim click and Escape both dismiss. Dedupe: once per milestone id
+          ever + ≤1/session, both enforced in observeMilestone before opening. */}
+      {celebratingId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("elev.celebrate.titleGeneric")}
+          data-testid="milestone-celebration-overlay"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-5"
+          onClick={() => setCelebratingId(null)}
+        >
+          <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <CelebrationMoment
+              firstName={firstName || undefined}
+              surface="milestones"
+              onDismiss={() => setCelebratingId(null)}
+              testId="milestone-celebration"
+            />
           </div>
         </div>
       )}

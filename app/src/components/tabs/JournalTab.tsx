@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { Skeleton } from "../ui/Skeleton";
+import { EmptyState, GhostBlock } from "../ui/EmptyState";
+import { statesText } from "../../lib/i18nElevation/states";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
@@ -232,6 +234,18 @@ export default function JournalTab() {
     setActiveTab("behaviors");
   };
 
+  // Masterplan 4.3 teach-empty: the empty feed's ONE CTA focuses the capture
+  // bar (the compose card's modality tiles) instead of duplicating a second
+  // capture path — the filled state is reached exactly where it always is.
+  const composeRef = useRef<HTMLElement | null>(null);
+  const focusCaptureBar = () => {
+    try { track("empty_cta_tap", { surface: "journal" }); } catch { /* noop */ }
+    const section = composeRef.current;
+    if (!section) return;
+    try { section.scrollIntoView({ block: "center", behavior: "smooth" }); } catch { /* jsdom/SSR */ }
+    section.querySelector<HTMLButtonElement>("[data-capture-bar] button")?.focus();
+  };
+
   // W2 2.6 (Maytal's empty-journal ask): 3 rotating promptBank guiding
   // questions as tappable chips ABOVE the capture triad. Same deterministic
   // rotation + elev.prompt.* strings PromptCaptureCard mounts on Today (W1).
@@ -337,7 +351,7 @@ export default function JournalTab() {
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
-      <section className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
+      <section ref={composeRef} className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
@@ -379,7 +393,7 @@ export default function JournalTab() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2" data-capture-bar>
           {MODE_TILES.map(({ ms, key }) => (
             <button
               key={key}
@@ -416,14 +430,44 @@ export default function JournalTab() {
           <Skeleton className="h-20" />
         </div>
       ) : signals.length === 0 ? (
-        <div className={`${cardCls} p-10 text-center`}>
-          <div className="inline-flex"><IconBadge tone="lav" size={48}><Icon name="edit_note" size={26} fill={1} /></IconBadge></div>
-          <p
-            className="text-[17px] mt-4 max-w-md mx-auto leading-snug"
-            style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }}
-          >
-            {t("journal.empty")}
-          </p>
+        /* Masterplan 4.3 — shared teach-empty: a ghosted miniature of a filled
+           day-group teaches what saved moments become; the ONE CTA focuses the
+           capture bar above. Copy = elev.states.journal.* (en+he, encouraging,
+           never celebrating the zero). Replaces the bespoke card+IconBadge+
+           editorial-font shape (one of the 3 competing EmptyState shapes). */
+        <div className={`${cardCls} p-6 sm:p-8`} data-testid="journal-teach-empty">
+          <EmptyState
+            className="py-6"
+            icon={<IconBadge tone="lav" size={48}><Icon name="edit_note" size={26} fill={1} /></IconBadge>}
+            headline={statesText("elev.states.journal.head", uiLang === "he")}
+            body={statesText("elev.states.journal.body", uiLang === "he", { name: childFirstName })}
+            cta={statesText("elev.states.journal.cta", uiLang === "he")}
+            onCta={focusCaptureBar}
+            ctaTestId="journal-empty-cta"
+            preview={
+              /* Ghost of a filled day-group: day header rule + two moment rows
+                 (icon tile, provenance line, text line) — same anatomy as
+                 JournalRow so the promise matches the real filled state. */
+              <div className="mx-auto w-full max-w-md space-y-4 text-start">
+                <div className="flex items-center gap-3">
+                  <GhostBlock className="h-3 w-16 rounded-full" />
+                  <span className="h-px flex-1" style={{ background: "var(--arbor-rule)" }} />
+                </div>
+                {[0, 1].map((i) => (
+                  <div key={i} className="flex gap-3.5">
+                    <GhostBlock className="h-10 w-10 rounded-full flex-shrink-0" />
+                    <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+                      <div className="flex items-center gap-2">
+                        <GhostBlock className="h-4 w-14 rounded-md" />
+                        <GhostBlock className="h-4 w-20 rounded-full" />
+                      </div>
+                      <GhostBlock className={i === 0 ? "h-3 w-4/5" : "h-3 w-3/5"} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            }
+          />
         </div>
       ) : (
         <section aria-labelledby="journal-timeline-title">

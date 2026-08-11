@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
+import { ContentActionBar } from "../ui/ContentActionBar";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity, type PlayActivity } from "../../playbank/content";
 import { localizeCourse, courseActivities, courseProgress, type PlayCourse } from "../../playbank/courses";
@@ -111,22 +112,31 @@ export default function CourseCard({
                         </li>
                       ))}
                     </ol>
-                    <div className="flex flex-wrap gap-2.5 mt-4">
-                      <button
-                        onClick={() => onToggle(a.id)}
-                        className="inline-flex items-center justify-center gap-2 font-bold text-[13px] rounded-xl px-4 py-2.5 transition active:scale-[0.98]"
-                        style={done ? { background: GREEN_SOFT, color: GREEN } : { background: "var(--arbor-gradient-primary)", color: "#fff", boxShadow: "var(--arbor-clay-glow)" }}
-                      >
-                        <Icon name="check" size={16} /> {done ? t("play.added", { name: childName }) : t("play.did")}
-                      </button>
-                      <button
-                        onClick={() => onCoach(a)}
-                        className="inline-flex items-center justify-center gap-2 font-bold text-[13px] rounded-xl px-4 py-2.5 transition"
-                        style={{ background: "var(--arbor-paper-elevated)", color: GREEN, border: `1px solid ${RULE}` }}
-                      >
-                        <Icon name="chat_bubble" size={16} /> {t("play.coach")}
-                      </button>
-                    </div>
+                    {/* Shared ContentActionBar (masterplan 4.2) replaces the old
+                        paired lozenges. Judgment call, documented: "I did it" IS
+                        the canonical done verb (toggle, active when done), so the
+                        primary CTA moves INTO the bar rather than staying outside
+                        it; "Coach me on this" is a surface-specific extra (ask),
+                        rendered after the canonical verbs. Same handlers as
+                        before — onToggle(a.id) / onCoach(a). */}
+                    <ContentActionBar
+                      variant="bar"
+                      surface="course-activity"
+                      className="mt-4"
+                      actions={[
+                        {
+                          verb: "done",
+                          onClick: () => onToggle(a.id),
+                          active: done,
+                          label: done ? t("play.added", { name: childName }) : t("play.did"),
+                          icon: done ? "check_circle" : "check",
+                          fill: done ? 1 : 0,
+                        },
+                      ]}
+                      extras={[
+                        { id: "ask", label: t("play.coach"), icon: "chat_bubble", onClick: () => onCoach(a) },
+                      ]}
+                    />
                   </div>
                 )}
               </li>
