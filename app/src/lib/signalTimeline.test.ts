@@ -118,9 +118,10 @@ describe("buildTimeline", () => {
 });
 
 // JRNL-4 — provenance honesty: the parent authored moments, confirmed
-// milestones and play; Arbor authored coach sessions, memory facts and plans.
+// milestones and play; Arbor authored coach sessions, memory facts and plans;
+// the CHILD authored practice-kind activity (masterplan 1.4).
 describe("signal provenance", () => {
-  it("locks the kind → provenance table (MANUAL = moment/milestone/play)", () => {
+  it("locks the kind → provenance table (MANUAL = moment/milestone/play, CHILD = practice)", () => {
     expect(SIGNAL_PROVENANCE).toEqual({
       moment: "manual",
       milestone: "manual",
@@ -128,6 +129,7 @@ describe("signal provenance", () => {
       plan: "auto",
       memory: "auto",
       coach: "auto",
+      practice: "child",
     });
     expect(isAutoSignal("moment")).toBe(false);
     expect(isAutoSignal("milestone")).toBe(false);
@@ -135,6 +137,8 @@ describe("signal provenance", () => {
     expect(isAutoSignal("plan")).toBe(true);
     expect(isAutoSignal("memory")).toBe(true);
     expect(isAutoSignal("coach")).toBe(true);
+    // Child activity is neither the parent's manual log nor an Arbor derivation.
+    expect(isAutoSignal("practice")).toBe(false);
   });
 });
 

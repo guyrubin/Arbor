@@ -23,6 +23,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft } from "lucide-react";
 import { useKidMode } from "./KidModeContext";
 import { shieldShellSiblings } from "./kidModeShield";
+import { trapTabKey, type TrapRoot } from "./kidModeFocusTrap";
+import { readKidModeState, writeKidModeState } from "../../lib/kidModeGate";
 import { TabSkeleton } from "../ui/Skeleton";
 import { useLanguage } from "../../context/LanguageContext";
 import KidDashboard, { type KidSurface } from "./KidDashboard";
@@ -45,10 +47,19 @@ type View = "home" | KidSurface;
 export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
   const { t } = useLanguage();
-  const [view, setView] = useState<View>("home");
+  // KID-LOCK LEAK 1: rehydrate the surface in view from the persisted state so
+  // a reload lands the child on the SAME kid surface (validated against
+  // SURFACE_META — a stale/garbage view degrades to the home dashboard).
+  const [view, setView] = useState<View>(() => {
+    const p = readKidModeState();
+    return p.open && p.view && (p.view === "home" || p.view in SURFACE_META) ? (p.view as View) : "home";
+  });
   // KID-4: when a dashboard game tile opens the arcade, it names the HeroArcade
   // world to pre-select so the tile's title appears verbatim on arrival.
-  const [arcadeWorldId, setArcadeWorldId] = useState<string | null>(null);
+  const [arcadeWorldId, setArcadeWorldId] = useState<string | null>(() => {
+    const p = readKidModeState();
+    return p.open ? p.worldId ?? null : null;
+  });
   const overlayRef = useRef<HTMLDivElement | null>(null);
 
   const openSurface = (s: KidSurface, worldId?: string) => {
@@ -56,13 +67,24 @@ export default function KidModeOverlay() {
     setView(s);
   };
 
-  // Reset to the home dashboard whenever the overlay opens.
+  // Reset to the home dashboard whenever the overlay opens — but only on a
+  // real closed→open transition. A rehydrated mount (already open) keeps the
+  // persisted view instead of snapping back home.
+  const wasOpenRef = useRef(isKidModeOpen);
   useEffect(() => {
-    if (isKidModeOpen) {
+    if (isKidModeOpen && !wasOpenRef.current) {
       setView("home");
       setArcadeWorldId(null);
     }
+    wasOpenRef.current = isKidModeOpen;
   }, [isKidModeOpen]);
+
+  // KID-LOCK LEAK 1: persist the current kid surface while open, so the next
+  // reload restores it. Device-local UI state only — no child data.
+  useEffect(() => {
+    if (!isKidModeOpen) return;
+    writeKidModeState({ open: true, view, worldId: arcadeWorldId });
+  }, [isKidModeOpen, view, arcadeWorldId]);
 
   // Block Escape inside Kid Mode — a child must not press Escape to exit. The
   // parent gate (hold button) is the only way out.
@@ -78,23 +100,58 @@ export default function KidModeOverlay() {
     return () => document.removeEventListener("keydown", onKey, true);
   }, [isKidModeOpen]);
 
-  // KID-2: the keyboard half of the lock. Pointer events are swallowed by the
-  // backdrop, but Tab could still walk focus into invisible parent-shell
-  // controls (nav, capture, settings, sign-out) behind the overlay. While Kid
-  // Mode is open, every sibling of the Kid Mode layers inside the Shell mount
-  // node is made inert + aria-hidden (shieldShellSiblings) so focus can never
-  // leave the overlay; the cleanup restores the shell exactly on close.
+  // KID-2 + KID-LOCK LEAK 6: the keyboard half of the lock. Pointer events are
+  // swallowed by the backdrop, but Tab could still walk focus into invisible
+  // parent-shell controls (nav, capture, settings, sign-out) behind the
+  // overlay. While Kid Mode is open, every sibling of the Kid Mode layers
+  // inside the Shell mount node is made inert + aria-hidden
+  // (shieldShellSiblings) — and a MutationObserver re-runs the shield whenever
+  // the mount node's children change, so LATE-mounting siblings (e.g.
+  // PostCaptureCoachStrip) get inerted too instead of staying tabbable behind
+  // a one-shot snapshot. The cleanup restores the shell exactly on close.
   useEffect(() => {
     if (!isKidModeOpen) return;
     const parent = overlayRef.current?.parentElement;
     if (!parent) return;
-    return shieldShellSiblings(Array.from(parent.children));
+    let undo = shieldShellSiblings(Array.from(parent.children));
+    const observer = new MutationObserver(() => {
+      // Re-snapshot: restore, then shield the CURRENT sibling set. Attribute
+      // mutations are not observed (childList only), so this never loops.
+      undo();
+      undo = shieldShellSiblings(Array.from(parent.children));
+    });
+    observer.observe(parent, { childList: true });
+    return () => {
+      observer.disconnect();
+      undo();
+    };
+  }, [isKidModeOpen]);
+
+  // KID-LOCK LEAK 6: real focus trap. The shield covers .arbor-app siblings,
+  // but body portals (Modal, toast container) live OUTSIDE the shield. Owning
+  // Tab at document capture makes focus wrap within the overlay subtree and
+  // recaptures any focus that escaped into a portal — no enumeration of
+  // portal classes needed. Escape stays blocked by the capture above.
+  useEffect(() => {
+    if (!isKidModeOpen) return;
+    const onTab = (e: KeyboardEvent) => {
+      const root = overlayRef.current;
+      if (!root) return;
+      trapTabKey(e, root as unknown as TrapRoot, document.activeElement);
+    };
+    document.addEventListener("keydown", onTab, true);
+    return () => document.removeEventListener("keydown", onTab, true);
   }, [isKidModeOpen]);
 
   const surface = view === "home" ? null : SURFACE_META[view];
 
   return (
-    <AnimatePresence>
+    // KID-LOCK LEAK 1: initial={false} — on a rehydrated mount (reload while
+    // Kid Mode was open) the overlay renders at full opacity on the FIRST
+    // paint, with no enter animation frame exposing the parent app beneath.
+    // Later closed→open transitions still animate normally (children absent
+    // on first render, so their eventual mount animates as before).
+    <AnimatePresence initial={false}>
       {isKidModeOpen && (
         <motion.div
           key="kid-mode-backdrop"

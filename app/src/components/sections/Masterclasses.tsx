@@ -4,6 +4,7 @@ import confetti from "canvas-confetti";
 import { GraduationCap } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { HubHero } from "../ui/HubHero";
+import { SpineRibbon } from "../ui/SpineRibbon";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
 import { BRAND_CONFETTI } from "../../lib/tokens";
@@ -185,6 +186,18 @@ export default function Masterclasses() {
         <h1 className="mt-1 text-2xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("sec.master.title")}</h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.master.sub")}</p>
       </header>
+
+      {/* Masterplan 1.5 — spine ribbon: what tunes this catalog (ONE direction:
+          → the Development Map). Quiet strip below the hero + catalog header,
+          never above the primary content. Plain activity fact — no %, verdicts,
+          or deltas (clinical firewall). */}
+      <SpineRibbon
+        tone="sky"
+        icon="account_tree"
+        text={t("elev.spine.academy")}
+        onFollow={() => setActiveTab("development")}
+        testId="academy-spine-ribbon"
+      />
 
       {/* Design's two-column shell: left = the Learning Map rail (the explicit
           development-map spine — courses matched to where the child is growing),

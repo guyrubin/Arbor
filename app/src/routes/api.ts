@@ -5,6 +5,10 @@ import { abortableIterate, raceWithAbort } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildVoiceReplyPrompt } from "../ai/prompts.js";
+// Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
+// fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
+// the byte-identical legacy prompt on any malformed/absent input.
+import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -440,7 +444,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   };
 
   router.post("/chat", async (req, res) => {
-    const { message, childProfile, scholarLens, language, libraryContext } = req.body;
+    // 1.3: `recentTurns` (same-thread continuity, no consent change — the
+    // parent is looking at these turns) and `weeklyContext` (parent-toggle-
+    // gated, counts/categories only) are OPTIONAL and hard-sanitized below;
+    // requests without them produce a prompt byte-identical to coach_chat 1.0.0.
+    const { message, childProfile, scholarLens, language, libraryContext, recentTurns, weeklyContext } = req.body;
     const languageDirective =
       language === "he"
         ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
@@ -511,7 +519,13 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         childProfile,
         scholar,
         message,
-        languageDirective
+        languageDirective,
+        // 1.3 — client-supplied prompt input, so the caps are re-enforced HERE
+        // (role whitelist, per-turn 800 chars, last 6 turns, ~4000-char total;
+        // integer clamps + trigger-label cap + outcome enum) no matter what
+        // the wire delivered. Empty/invalid ⇒ "" blocks ⇒ legacy bytes.
+        recentTurns: sanitizeRecentTurns(recentTurns),
+        weeklyContext: sanitizeWeeklyContext(weeklyContext)
       });
 
       // SEC/CMP P0: child PII never reaches the model — redact at the call seam,

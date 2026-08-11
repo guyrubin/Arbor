@@ -14,6 +14,12 @@ import { ArborMascot } from "../ui/ArborMascot";
 import { scholarsInfo } from "../../initialData";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TrustSafetyBar, cardCls } from "../ui/kit";
+// Masterplan 1.3 — the Ask data-contract panel: TrustPanel (the one reusable
+// trust pattern, previously mounted only on AvatarCreator) states EXACTLY what
+// each coach request sends, and hosts the weekly-context consent toggle.
+import { TrustPanel } from "../ui/TrustPanel";
+import { coachContractText } from "../../lib/i18nElevation/coachcontract";
+import { readWeeklyContextConsent, writeWeeklyContextConsent } from "../../ai/chatContext";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import { ShareButton } from "../ui/ShareButton";
@@ -179,6 +185,26 @@ export default function CoachTab() {
       2
     );
   }, [showFollowUps, lastMessage, childProfile]);
+
+  // Masterplan 1.3 — "What the coach sees": collapsible data-contract panel in
+  // the thread header + the per-child weekly-context consent toggle (DEFAULT
+  // OFF; persisted at arbor.coach.weeklyContext.{childId} and read fresh by the
+  // send path, so the flag itself is the single source of truth).
+  const [contractOpen, setContractOpen] = useState(false);
+  const [weeklyOn, setWeeklyOn] = useState(() => readWeeklyContextConsent(childProfile.id));
+  useEffect(() => { setWeeklyOn(readWeeklyContextConsent(childProfile.id)); }, [childProfile.id]);
+  // Parent-register copy; module not yet in the i18nElevation index (owned by
+  // a parallel stream) so it resolves through its own lookup, same semantics.
+  const tcc = (key: string, params?: Record<string, string | number>) =>
+    coachContractText(uiLang === "he" ? "he" : "en", key, params);
+  // ASK-6 count, per answer: the most recent settled answer's server-backfilled
+  // approved-memory fact count (an integer only — never fact content).
+  const lastFactsUsed = useMemo(
+    () =>
+      [...chatMessages].reverse().find((m) => m.sender === "ai" && typeof m.contract?.approvedMemoryFactsUsed === "number")
+        ?.contract?.approvedMemoryFactsUsed,
+    [chatMessages],
+  );
 
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
@@ -809,7 +835,87 @@ export default function CoachTab() {
             {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
             <span className="truncate max-w-[160px]">{t("coach.lensLabel")}: {selectedLens}</span>
           </span>
+          {/* Masterplan 1.3: "What the coach sees" disclosure — opens the data
+              contract panel below this strip. Parent register only. */}
+          <button
+            type="button"
+            onClick={() => setContractOpen((v) => !v)}
+            aria-expanded={contractOpen}
+            aria-label={tcc("elev.coachcontract.title")}
+            data-testid="coach-contract-toggle"
+            className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-bold min-h-[36px] px-2 rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+            style={{ color: contractOpen ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
+          >
+            <Icon name="shield" size={13} />
+            <span className="hidden sm:inline">{tcc("elev.coachcontract.title")}</span>
+            <Icon name={contractOpen ? "expand_less" : "expand_more"} size={13} />
+          </button>
         </div>
+
+        {/* Masterplan 1.3 — the collapsible data-contract panel. Copy states
+            exactly what each request sends: message · profile · approved
+            memory (count) · this thread's recent turns · and, only while the
+            toggle is on, this week's counts. The toggle LIVES here (TrustPanel
+            footer slot); its state is the per-child localStorage consent flag
+            the send path reads. */}
+        {contractOpen && (
+          <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--arbor-rule)" }} data-testid="coach-contract-panel">
+            <TrustPanel
+              uses={[
+                tcc("elev.coachcontract.uses.message"),
+                tcc("elev.coachcontract.uses.profile", { name: childFirst || childProfile.name }),
+                typeof lastFactsUsed === "number"
+                  ? tcc("elev.coachcontract.uses.memory", { count: lastFactsUsed })
+                  : tcc("elev.coachcontract.uses.memoryNone"),
+                tcc("elev.coachcontract.uses.turns"),
+                ...(weeklyOn ? [tcc("elev.coachcontract.uses.weekly")] : []),
+              ]}
+              stores={[
+                // Reused dead key — still accurate: durable facts wait for
+                // explicit parent approval before becoming memory.
+                t("coach.contract.memoryBody"),
+                tcc("elev.coachcontract.stores.thread"),
+              ]}
+              controls={[
+                tcc("elev.coachcontract.controls.memory"),
+                tcc("elev.coachcontract.controls.weekly"),
+              ]}
+              footer={
+                <div className="pt-2 space-y-1.5" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={weeklyOn}
+                    data-testid="coach-weekly-context-toggle"
+                    onClick={() => {
+                      const next = !weeklyOn;
+                      setWeeklyOn(next);
+                      writeWeeklyContextConsent(childProfile.id, next);
+                    }}
+                    className="flex items-center gap-2.5 min-h-[44px] w-full text-start focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+                  >
+                    <span
+                      aria-hidden
+                      className="relative inline-flex flex-shrink-0 rounded-full transition-colors"
+                      style={{ width: 34, height: 20, background: weeklyOn ? "var(--arbor-green-ink)" : "var(--arbor-rule-strong)" }}
+                    >
+                      <span
+                        className="absolute top-[2px] rounded-full transition-all"
+                        style={{ width: 16, height: 16, background: "var(--arbor-on-accent)", insetInlineStart: weeklyOn ? 16 : 2 }}
+                      />
+                    </span>
+                    <span className="text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>
+                      {tcc("elev.coachcontract.toggle")}
+                    </span>
+                  </button>
+                  <p className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
+                    {tcc("elev.coachcontract.toggleHint")}
+                  </p>
+                </div>
+              }
+            />
+          </div>
+        )}
 
         <div className="flex-1 p-4 md:p-6">
          <div className="max-w-[760px] mx-auto space-y-3.5">

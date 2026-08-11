@@ -1,8 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   Heart, MessageCircle, Users, Moon, BookOpen, Repeat2, Utensils,
-  ShieldCheck, RefreshCw, ChevronLeft,
+  ShieldCheck, RefreshCw, ChevronLeft, Sun, CalendarDays,
 } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
@@ -12,6 +12,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 import { api } from "../../lib/api";
 import { birthDateFromAgeMonths } from "../../lib/childAge";
+import { promiseText } from "../../lib/i18nElevation/promise";
+import { track } from "../../lib/analytics";
 import AvatarCreator from "../profile/AvatarCreator";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -553,6 +555,71 @@ function StepAvatar({
   );
 }
 
+// ── First-run promise card (masterplan 1.6; mockup Row-2 #2, de-jargoned) ──
+// The FINAL card of the Ready step — the one screenful a parent sees ONCE at
+// the end of setup, before their first Today: the one-sentence promise, the
+// three rhythms (daily / weekly / over months), and the data-lock line.
+// Strings live in i18nElevation/promise.ts (elev.promise.*) — de-jargoned per
+// masterplan 1.6: the promise says what Arbor does for the parent, never how.
+
+function PromiseCard({ name }: { name: string }) {
+  const { uiLang } = useLanguage();
+  const heMode = uiLang === "he";
+  const p = (key: string) => promiseText(key, heMode, { name });
+
+  // track("promise_shown") exactly once per Ready-step mount (StrictMode's
+  // double-invoke of effects is guarded by the ref).
+  const tracked = useRef(false);
+  useEffect(() => {
+    if (tracked.current) return;
+    tracked.current = true;
+    track("promise_shown");
+  }, []);
+
+  const rhythms = [
+    { icon: <Sun className="w-4 h-4" aria-hidden />, label: p("elev.promise.daily.label"), text: p("elev.promise.daily") },
+    { icon: <CalendarDays className="w-4 h-4" aria-hidden />, label: p("elev.promise.weekly.label"), text: p("elev.promise.weekly") },
+    { icon: <BookOpen className="w-4 h-4" aria-hidden />, label: p("elev.promise.months.label"), text: p("elev.promise.months") },
+  ];
+
+  return (
+    <div
+      data-testid="onboarding-promise-card"
+      className="rounded-2xl p-4 space-y-3"
+      style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" }}
+    >
+      <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
+        {p("elev.promise.eyebrow")}
+      </p>
+      <p className="text-sm font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+        {p("elev.promise.headline")}
+      </p>
+
+      <div className="space-y-2">
+        {rhythms.map((r) => (
+          <div key={r.label} className="flex items-start gap-2.5">
+            <span className="mt-0.5 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }}>{r.icon}</span>
+            <span className="min-w-0 text-[12px] leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+              <span className="font-extrabold">{r.label}</span>
+              <span style={{ color: "var(--arbor-muted)" }}> — {r.text}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Data-lock line — ships verbatim from the mockup (green lock). */}
+      <p
+        className="flex items-start gap-2 border-t pt-2.5 text-[11.5px] font-bold leading-snug"
+        dir="auto"
+        style={{ borderColor: "rgba(52,178,119,0.25)", color: "var(--arbor-green-ink)" }}
+      >
+        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+        <span className="min-w-0">{p("elev.promise.lock")}</span>
+      </p>
+    </div>
+  );
+}
+
 // ── Step 5 — Ready ─────────────────────────────────────────────────────────
 
 function StepReady({
@@ -619,6 +686,11 @@ function StepReady({
           avatarResult ? t("ob.step.ready.avatarSet") : t("ob.step.ready.avatarSkipped"),
         )}
       </div>
+
+      {/* Masterplan 1.6 — the first-run promise, the FINAL card before the
+          submit CTA. Additive only: steps, summary rows, and submit behavior
+          above/below are unchanged. */}
+      <PromiseCard name={name} />
 
       <button
         type="button"

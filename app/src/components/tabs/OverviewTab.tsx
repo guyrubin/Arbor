@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -13,17 +13,27 @@ import TodayActionLoop from "../overview/TodayActionLoop";
 import HardMomentTodayOffer from "../overview/HardMomentTodayOffer";
 import ProgressNarrative from "../overview/ProgressNarrative";
 import QuickLogModal from "../overview/QuickLogModal";
+import SinceLastVisit, { svString } from "../overview/SinceLastVisit";
+import PromptCaptureCard from "../overview/PromptCaptureCard";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
 import type { CaptureMode } from "../../context/ArborContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
+import { useLastVisit } from "../../hooks/useLastVisit";
 import { PASTEL } from "../ui/kit";
 import { predictRhythm, hourLabel } from "../../rhythm/predict";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { useDevScore } from "../../hooks/useDevScore";
+import { useMonitoring } from "../../hooks/useMonitoring";
+import { pickHighestWatchSignal } from "../../lib/monitoring";
+import { todayHardMomentOffer } from "../../content/hardMomentSurface";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
 import { focusHeadlineFrom } from "../../lib/todayFocus";
+import { dailyPromptKeys } from "../../lib/promptBank";
+import { buildSinceVisitRows, type SinceVisitRow } from "../overview/sinceVisitEvents";
+import { chooseTodayAction } from "../overview/chooseTodayAction";
+import { track } from "../../lib/analytics";
 
 const DAY = 86_400_000;
 
@@ -32,34 +42,41 @@ const GREEN = "var(--arbor-green-ink)";
 const GREEN_SOFT = "var(--arbor-green-soft)";
 
 /**
- * TODAY — one integrated loop, not stacked widgets (TODAY-2/CODEX-1).
+ * TODAY — one integrated loop, not stacked widgets (TODAY-2/CODEX-1), now under
+ * the W1 Rule-A budget (masterplan 2026-08-11): ≤5 visible modules and exactly
+ * ONE primary action above the fold, on every open.
  *
  * What renders now (top → bottom):
- *   Quick Capture bar (W6.2/TODAY-4): ambient voice/photo/text capture — first
- *       in the DOM, pinned bottom on phones, inline on lg+.
- *   Row 1 (1.85fr / 0.85fr): ONE day anchor in the left slot —
- *       pre-accept: Guidance hero (focus headline + capacity sizing chips +
- *         the single gradient "Make this today's step" CTA; "Begin" → coach
- *         demoted to a secondary button),
- *       accepted/completed: the TodayActionLoop card (outcome buttons /
- *         receipt) REPLACES the hero, so the focus headline never renders
- *         twice and Today never shows two gradient-primary CTAs
+ *   Quick Capture bar (W6.2/TODAY-4): ambient capture chrome — first in the
+ *       DOM, pinned bottom on phones, inline on lg+.
+ *   SinceLastVisit (W1 1.1): returning parents only — warm greeting + ≤3
+ *       tappable EVENT rows since the previous visit (+N more in Journal),
+ *       with the "Arbor remembers" count line as its footer. Continuity lines
+ *       collapse INTO this strip (Rule A), incl. the ArborNoticed fold below.
+ *   Row 1 (1.85fr / 0.85fr): the GUARANTEED action in the left slot — the
+ *       chooseTodayAction chain picks exactly one of:
+ *         loop (accepted action) → focus hero (+why-line) → promptBank capture
+ *         card (+why-line) → Daily Play promotion → bare capture card.
  *       · Development-Map count card (→ Growth) on the right.
- *   Arbor Noticed (DUX-011): the single highest watch signal, conditional.
- *   Progress narrative: what changed + the ONE recent-moments/evidence surface
- *       (the old duplicate "Recent context" section was deleted — CODEX-1).
- *   Try together: Daily Play pick + coach row.
- *   Daily tools: collapsed disclosure keeping the wellness check-in reachable.
+ *   Arbor Noticed (DUX-011): conditional; when Today would exceed the budget
+ *       (strip + hard-moment + noticed all present) it FOLDS into a
+ *       SinceLastVisit row instead of rendering as a sibling card.
+ *   Progress narrative: retrospective picture + the ONE evidence surface.
+ *   More (collapsed disclosure): the activity feed, the Daily Play section
+ *       when displaced by the hard-moment offer, and the wellness check-in.
+ *   Day-0 (no data, first visit): header + capture bar + primary action ONLY
+ *       (the wow/FirstSteps rail stays Shell-owned).
  *
  * CLINICAL FIREWALL: every child-data surface here shows COUNTS ONLY — never a
- * %, 0–100 score, verdict/status tag, percentile or deficit pointer.
+ * %, 0–100 score, verdict/status tag, percentile or deficit pointer. The
+ * since-visit strip is EVENT language only — never comparative/trend wording.
  */
 export default function OverviewTab() {
   const {
     setActiveTab, milestones, milestonesPercent, checkedMilestones, totalMilestones,
     behaviorLogs, childProfile, seedCoach,
     donePlayIds, logPlayCompletion, playLogs, requestCapture, setShowAiRail, actionLoop,
-    activeTodayAction, acceptTodayAction, requestJournalFocus,
+    activeTodayAction, acceptTodayAction, requestJournalFocus, conversations,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -69,9 +86,9 @@ export default function OverviewTab() {
   // the Development hub and the other picture surfaces read. Hoisted here
   // because the dev-map card below renders it inside a JSX callback.
   const devScore = useDevScore();
-  // The wellness check-in is the only genuinely interactive daily card and its
-  // only home, so it opens by default rather than hiding behind the disclosure.
-  const [showTools, setShowTools] = useState(true);
+  // Rule A: the disclosure is a SECONDARY drawer now (feed + displaced play +
+  // wellness check-in) — collapsed by default so Today stays ≤5 modules.
+  const [showTools, setShowTools] = useState(false);
   // W6.2 ambient capture — text mode opens the existing QuickLogModal inline
   // (the parent never leaves Today); voice/photo hand the mode to the SAME
   // requestCapture() seam JournalTab's compose tiles use (BehaviorsTab consumes
@@ -89,6 +106,9 @@ export default function OverviewTab() {
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const parentFirstName = (user?.displayName || t("nav.parent")).split(" ")[0];
+
+  // ── W1 1.1: two-slot visit tracking (mounted ONCE, here) ──
+  const { previousVisitAt, isReturning } = useLastVisit(childProfile);
 
   // ── Rhythm prediction + Daily Play pick (memory-driven) ──
   const rhythm = useMemo(
@@ -185,10 +205,33 @@ export default function OverviewTab() {
 
   // TODAY-1/CODEX-2: the headline is ALWAYS derived from the AI focus text
   // (pure scrub in lib/todayFocus — no keyword override, no canned copy).
-  // null = no real focus (day-0 / failed fetch): the hero shows display-only
-  // fallback copy, but TodayActionLoop gets null so the fallback can never be
-  // persisted via acceptTodayAction nor injected into the next focus prompt.
+  // null = no real focus (day-0 / failed fetch): W1 1.2 routes that case into
+  // the guaranteed-action chain below — TodayActionLoop still gets null so the
+  // fallback can never be persisted via acceptTodayAction nor injected into
+  // the next focus prompt.
   const focusHeadline = useMemo(() => focusHeadlineFrom(focus?.text), [focus?.text]);
+
+  // ── W1 1.2: the guaranteed action — deterministic fallback chain. A fetch
+  //    in flight for a child WITH signals keeps the hero (skeleton) so the
+  //    slot never flickers prompt→focus mid-load. ──
+  const promptKeys = useMemo(
+    () => dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id, date: new Date() }),
+    [childProfile.age, childProfile.id]
+  );
+  const todayChoice = useMemo(
+    () => chooseTodayAction({
+      hasActiveAction: !!activeTodayAction,
+      focusHeadline,
+      focusPending: focusLoading && !focus && recentCount > 0,
+      promptKeys,
+      hasDailyPlay: !!dailyPlay,
+    }),
+    [activeTodayAction, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay]
+  );
+  // KPI 0.8: % opens ending in an offered action (target 100%).
+  useEffect(() => {
+    track("today_action_offered", { kind: todayChoice.kind });
+  }, [todayChoice.kind]);
 
   // CODEX-2: time-of-day-aware greeting (was hardcoded to the morning copy).
   const hour = new Date().getHours();
@@ -277,6 +320,100 @@ export default function OverviewTab() {
     return { focus: focusCount, domains: domainsWithProgress, week: weekActivity };
   }, [activeGoals.length, milestones, behaviorLogs, playLogs]);
 
+  // ── Rule A budget inputs: would the two conditional cards render? ──
+  // Mirrors HardMomentTodayOffer's own render condition (same inputs, same
+  // selector) so the budget math and the card can never disagree.
+  const hardMomentWould = useMemo(
+    () => !activeTodayAction && !!todayHardMomentOffer(behaviorLogs),
+    [activeTodayAction, behaviorLogs]
+  );
+  // Mirrors ArborNoticedCard's render gate (monitor-level signal, not dismissed).
+  const monitoring = useMonitoring();
+  const noticedWould = useMemo(() => {
+    const signal = pickHighestWatchSignal(monitoring);
+    if (!signal || signal.level !== "monitor") return false;
+    try {
+      const raw = window.localStorage.getItem(`arbor.noticed.dismissed.${childProfile.id}`);
+      const dismissed = raw ? (JSON.parse(raw) as unknown) : [];
+      return !(Array.isArray(dismissed) && dismissed.includes(`${signal.domain}:${signal.level}`));
+    } catch {
+      return true;
+    }
+  }, [monitoring, childProfile.id]);
+
+  // Rule A fold: with the strip + a primary + hard-moment + dev-map + narrative
+  // all present, a sibling ArborNoticed card would be module #6 — it collapses
+  // into a SinceLastVisit row ("Arbor noticed something — look") instead.
+  const foldNoticed = isReturning && noticedWould && hardMomentWould;
+
+  // ── W1 1.1: the since-visit EVENT rows (strictly newer than the previous visit) ──
+  const sinceVisit = useMemo(
+    () => buildSinceVisitRows({
+      previousVisitAt: isReturning ? previousVisitAt : null,
+      behaviorLogs,
+      playLogs,
+      milestones,
+      conversations,
+      includeNoticedRow: foldNoticed,
+    }),
+    [isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations, foldNoticed]
+  );
+  const showSinceStrip = isReturning && sinceVisit.rows.length > 0;
+
+  const onSinceRowTap = (row: SinceVisitRow) => {
+    if (row.kind === "milestone" || row.kind === "noticed") {
+      setActiveTab("development");
+      return;
+    }
+    if (row.kind === "conversations") {
+      setActiveTab("coach");
+      return;
+    }
+    // moments / plays deep-link to the exact journal timeline signal.
+    requestJournalFocus(row.focusId);
+    setActiveTab("journal");
+  };
+
+  // "Arbor remembers" footer counts (counts only — clinical firewall).
+  const memoryCounts = useMemo(() => {
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const s = dayStart.getTime();
+    const capturedToday =
+      behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= s).length +
+      playLogs.filter((p) => new Date(p.timestamp).getTime() >= s).length;
+    return { capturedToday, week: devStats.week, story: behaviorLogs.length + playLogs.length };
+  }, [behaviorLogs, playLogs, devStats.week]);
+
+  // ── Day-0 (first visit, zero data): header + capture bar + primary ONLY —
+  //    the wow/FirstSteps rail stays Shell-owned (Rule A day-0 shape). ──
+  const dayZero =
+    !isReturning && behaviorLogs.length === 0 && playLogs.length === 0 && checkedMilestones === 0;
+
+  // The Daily Play "Try together" section — ONE JSX instance, placed either as
+  // the visible 5th module, in the left slot when it IS the primary action, or
+  // inside the More disclosure when the hard-moment offer displaces it.
+  const playSection = (
+    <section className="border-y py-5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("today.feed.title", { name: firstName })}>
+      <div className="mb-3 flex items-center justify-between gap-3 px-1">
+        <div>
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-clay)" }}>{t("today.feed.eyebrow")}</div>
+          <h2 className="mt-1 text-[17px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.feed.title", { name: firstName })}</h2>
+        </div>
+        {hasRecentActivity && <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--arbor-clay)" }} />{t("today.live")}</span>}
+      </div>
+      {dailyPlay ? (
+        <DailyPlayCard pick={dailyPlay} childName={firstName} done={donePlayIds.includes(dailyPlay.activity.id)} onDid={markPlayDone} onCoach={coachOnPlay} concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined} goalLabel={dailyPlay.reason === "goal-match" ? activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label : undefined} sessionLength={sessionLength} onSessionLengthChange={handleSessionLength} ageYears={childProfile.age} sessionTapped={sessionTapped} rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined} />
+      ) : (
+        <div className="flex items-center gap-3 px-1 py-3"><Icon name="auto_awesome" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} /><div><div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoLoading", { name: firstName })}</div><div className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("ov.play.desc")}</div></div></div>
+      )}
+      <button onClick={() => seedCoach({ prompt: focus ? t("seed.todayFocus", { focus: focus.text, name: firstName }) : undefined, source: "today-coach-row" })} className="mt-3 inline-flex min-h-[44px] items-center gap-2 px-1 text-[12px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><Icon name="forum" size={18} />{t("today.coach.reply")}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
+    </section>
+  );
+  // Visible only while it fits the ≤5 budget: not day-0, not already the
+  // primary action, not displaced by the hard-moment offer.
+  const showPlayInline = !dayZero && todayChoice.kind !== "play" && !hardMomentWould;
+
   return (
     <motion.div
       /* Fade-only entrance (no `y`): a transform on this column would become
@@ -321,42 +458,76 @@ export default function OverviewTab() {
         />
       </div>
 
-      {/* ── Row 1 (1.6fr / 1fr): Guidance hero · Development-Map card ─────────── */}
+      {/* ── W1 1.1: "Since your last visit" — returning parents only, BEFORE the
+             primary action (Maytal Row-1 #1: greeting → what's new → resume). ── */}
+      {showSinceStrip && (
+        <SinceLastVisit
+          rows={sinceVisit.rows}
+          hiddenCount={sinceVisit.hiddenCount}
+          capturedToday={memoryCounts.capturedToday}
+          weekCount={memoryCounts.week}
+          storyCount={memoryCounts.story}
+          onRowTap={onSinceRowTap}
+          onMore={() => setActiveTab("journal")}
+        />
+      )}
+
+      {/* ── Row 1 (1.85fr / 0.85fr): guaranteed action · Development-Map card ── */}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
-        {/* ── Day anchor (left slot) — TODAY-2/CODEX-1: ONE card, two states.
-               Pre-accept: the guidance hero owns the whole loop entry — focus
-               headline, capacity sizing chips and the single gradient accept
-               CTA ("Begin" → coach is secondary). Once today's action exists
-               (accepted/completed) the TodayActionLoop card takes this slot
-               INSTEAD of the hero, so the headline renders exactly once.
-               TODAY-1: `accept` is passed ONLY with a real AI focus headline —
-               day-0/fallback copy can never reach acceptTodayAction, so it can
-               never be persisted into actionLoops nor injected into the next
-               focus prompt. */}
+        {/* ── Day anchor (left slot) — W1 1.2 guaranteed action. ONE slot, one
+               primary: an accepted action owns it (TodayActionLoop); else the
+               chooseTodayAction chain renders the AI focus hero, the promptBank
+               capture card, the Daily Play promotion, or the bare capture
+               floor. TODAY-1: `accept` is passed ONLY with a real AI focus
+               headline — day-0/fallback copy can never reach acceptTodayAction,
+               so it can never be persisted into actionLoops nor injected into
+               the next focus prompt. */}
         <div className="min-w-0">
+          {showSinceStrip && (
+            /* Mockup frame 1: "ממשיכים מאיפה שהפסקנו" — the resume framing sits
+               directly above the guaranteed-action card for returning parents. */
+            <p className="mb-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-clay)" }}>
+              {svString(t, uiLang, "elev.sincevisit.resume")}
+            </p>
+          )}
           {activeTodayAction ? (
             <TodayActionLoop />
+          ) : todayChoice.kind === "focus" ? (
+            <>
+              <TodayRecommendation
+                eyebrow={t("today.guidance.tag")}
+                headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })}
+                meta={t("today.meta")}
+                action={t("today.begin")}
+                loading={focusLoading && !focus}
+                onBegin={beginGuidance}
+                accept={focusHeadline ? {
+                  label: t("today.action.make"),
+                  lengthAria: t("today.action.length"),
+                  minUnit: t("today.action.min"),
+                  onAccept: (capacity) => acceptTodayAction(focusHeadline, capacity),
+                } : undefined}
+              />
+              {/* W1 1.2 why-line under the AI focus (authored, previously dead). */}
+              <p className="mt-2 px-1 text-[11.5px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>
+                <span className="font-extrabold" style={{ color: "var(--arbor-muted)" }}>{t("today.intent.why")}</span>{" "}
+                {t("today.intent.whyRhythm")}
+              </p>
+            </>
+          ) : todayChoice.kind === "play" ? (
+            playSection
           ) : (
-            <TodayRecommendation
-              eyebrow={t("today.guidance.tag")}
-              headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })}
-              meta={t("today.meta")}
-              action={t("today.begin")}
-              loading={focusLoading && !focus}
-              onBegin={beginGuidance}
-              accept={focusHeadline ? {
-                label: t("today.action.make"),
-                lengthAria: t("today.action.length"),
-                minUnit: t("today.action.min"),
-                onAccept: (capacity) => acceptTodayAction(focusHeadline, capacity),
-              } : undefined}
+            <PromptCaptureCard
+              promptKey={todayChoice.kind === "prompt" ? todayChoice.promptKey : null}
+              childName={firstName}
+              onCapture={() => setQuickLogOpen(true)}
             />
           )}
           {/* CONT-2 — hard-moment offer (AR-CONT-01). Fail-closed on
               publishedHardMomentCards via selectCards; offers a matched card's
               doNow through the EXISTING acceptTodayAction seam (outline button
-              — the hero keeps the single gradient-primary CTA). Renders
+              — the anchor keeps the single gradient-primary CTA). Renders
               nothing until clinical review publishes cards (GD-10). */}
           <HardMomentTodayOffer />
         </div>
@@ -365,6 +536,7 @@ export default function OverviewTab() {
             footer (Focus / Domains / Week). NO 0–100 ring, no per-domain %, no
             on-track verdict, no weakest-domain pointer. Click → Growth. */}
         {(() => {
+          if (dayZero) return null;
           const score = devScore;
           if (score.confidence === "none") return null;
           return (
@@ -421,68 +593,81 @@ export default function OverviewTab() {
       </div>
 
       {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
-             child's own logged data, below the hero row. Renders NOTHING with
+             child's own logged data, below the anchor row. Renders NOTHING with
              zero detections and self-hides per-detection once dismissed; copy is
-             counts/patterns only (non-diagnostic, monitoring.ts framing). ── */}
-      <ArborNoticedCard />
+             counts/patterns only (non-diagnostic, monitoring.ts framing).
+             Rule A: when the since-strip + hard-moment offer are both up it
+             FOLDS into a SinceLastVisit row instead (foldNoticed above). ── */}
+      {!foldNoticed && <ArborNoticedCard />}
 
       {/* ── Progress narrative — retrospective picture. Its "Your evidence" cell
-             is the ONE recent-moments surface on Today (the duplicate "Recent
-             context" section was deleted — CODEX-1). ── */}
+             is the ONE recent-moments surface on Today (CODEX-1). Skipped on
+             day-0 (Rule A: day-0 = capture bar + primary action only). ── */}
       {/* TODAY-6: evidence ids are the JOURNAL TIMELINE SIGNAL ids (the same
              `moment-`/`play-` prefixes buildTimeline assigns), so a tapped row
              deep-links to exactly that entry via the requestJournalFocus seam.
              The deep-link carries only the id — never a derived score. */}
-      <ProgressNarrative
-        childName={firstName}
-        behaviorLogs={behaviorLogs.map((item) => ({ id: `moment-${item.id}`, timestamp: item.timestamp, label: item.context || item.notes || t("today.feed.logged") }))}
-        playLogs={playLogs.map((item) => ({ id: `play-${item.id}`, timestamp: item.timestamp, label: item.title }))}
-        noticedMilestones={checkedMilestones}
-        momentsLastWeek={momentsLastWeek}
-        actions={actionLoop}
-        onOpenEvidence={(evidenceId) => {
-          if (evidenceId) requestJournalFocus(evidenceId);
-          setActiveTab("journal");
-        }}
-      />
+      {!dayZero && (
+        <ProgressNarrative
+          childName={firstName}
+          behaviorLogs={behaviorLogs.map((item) => ({ id: `moment-${item.id}`, timestamp: item.timestamp, label: item.context || item.notes || t("today.feed.logged") }))}
+          playLogs={playLogs.map((item) => ({ id: `play-${item.id}`, timestamp: item.timestamp, label: item.title }))}
+          noticedMilestones={checkedMilestones}
+          momentsLastWeek={momentsLastWeek}
+          actions={actionLoop}
+          onOpenEvidence={(evidenceId) => {
+            if (evidenceId) requestJournalFocus(evidenceId); setActiveTab("journal");
+          }}
+        />
+      )}
 
-      <section className="border-y py-5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("today.feed.title", { name: firstName })}>
-        <div className="mb-3 flex items-center justify-between gap-3 px-1">
-          <div>
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-clay)" }}>{t("today.feed.eyebrow")}</div>
-            <h2 className="mt-1 text-[17px] font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("today.feed.title", { name: firstName })}</h2>
-          </div>
-          {hasRecentActivity && <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--arbor-clay)" }} />{t("today.live")}</span>}
-        </div>
-        {dailyPlay ? (
-          <DailyPlayCard pick={dailyPlay} childName={firstName} done={donePlayIds.includes(dailyPlay.activity.id)} onDid={markPlayDone} onCoach={coachOnPlay} concernLabel={dailyPlay.reason === "concern-match" ? playDomainLabel(dailyPlay.activity.domain, uiLang) : undefined} goalLabel={dailyPlay.reason === "goal-match" ? activeGoals.find((g) => g.domainId === dailyPlay.activity.domain)?.label : undefined} sessionLength={sessionLength} onSessionLengthChange={handleSessionLength} ageYears={childProfile.age} sessionTapped={sessionTapped} rhythmHintTime={rhythm.calmWindow ? hourLabel(rhythm.calmWindow.startHour) : undefined} />
-        ) : (
-          <div className="flex items-center gap-3 px-1 py-3"><Icon name="auto_awesome" size={20} fill={1} style={{ color: "var(--arbor-clay)" }} /><div><div className="text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ov.recoLoading", { name: firstName })}</div><div className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("ov.play.desc")}</div></div></div>
-        )}
-        <button onClick={() => seedCoach({ prompt: focus ? t("seed.todayFocus", { focus: focus.text, name: firstName }) : undefined, source: "today-coach-row" })} className="mt-3 inline-flex min-h-[44px] items-center gap-2 px-1 text-[12px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><Icon name="forum" size={18} />{t("today.coach.reply")}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
-      </section>
+      {/* ── Daily Play "Try together" — visible as the 5th module only while the
+             budget allows; the primary-slot chain renders it when it IS the
+             action; the hard-moment offer displaces it into the disclosure. ── */}
+      {showPlayInline && playSection}
 
-      {/* ── Daily tools (secondary, collapsed) — keeps the wellness check-in
-             reachable (its only home). Day Windows + Reminders are NOT duplicated
-             here; they are Today's sub-tab pills rendered by the Shell. ── */}
-      <section className="pt-1">
-        <button
-          onClick={() => setShowTools((v) => !v)}
-          className="w-full flex items-center justify-between mb-3"
-          aria-expanded={showTools}
-        >
-          <h2 className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>{t("ov.dailyTools")}</h2>
-          <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: GREEN }}>
-            {showTools ? t("ov.tools.hide") : t("ov.tools.show")}
-            <Icon name="chevron_right" size={18} className={`transition-transform rtl:-scale-x-100 ${showTools ? "rotate-90" : ""}`} />
-          </span>
-        </button>
-        {showTools && (
-          <div className="max-w-[520px]">
-            <DailyCheckinCard />
-          </div>
-        )}
-      </section>
+      {/* ── More (secondary, collapsed — Rule A): the activity feed, the Daily
+             Play section when displaced, and the wellness check-in. ── */}
+      {!dayZero && (
+        <section className="pt-1">
+          <button
+            onClick={() => setShowTools((v) => !v)}
+            className="w-full flex items-center justify-between mb-3"
+            aria-expanded={showTools}
+          >
+            <h2 className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>{t("ov.dailyTools")}</h2>
+            <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: GREEN }}>
+              {showTools ? t("ov.tools.hide") : t("ov.tools.show")}
+              <Icon name="chevron_right" size={18} className={`transition-transform rtl:-scale-x-100 ${showTools ? "rotate-90" : ""}`} />
+            </span>
+          </button>
+          {showTools && (
+            <div className="space-y-4">
+              {/* The unified activity feed (parent-logged + kid-side events). */}
+              {activityFeed.length > 0 ? (
+                <ul className="space-y-2.5" aria-label={t("today.feed.title", { name: firstName })}>
+                  {activityFeed.map((r) => (
+                    <li key={r.id} className="flex items-center gap-3 px-1">
+                      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full" style={{ background: r.tone.soft, color: r.tone.ink }}>{r.icon}</span>
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{r.title}</div>
+                        <div className="truncate text-[11px]" style={{ color: "var(--arbor-faint)" }}>{r.sub}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-1 text-[12px]" style={{ color: "var(--arbor-faint)" }}>{t("today.feed.empty", { name: firstName })}</p>
+              )}
+              {/* Daily Play displaced here by the hard-moment offer (budget). */}
+              {!showPlayInline && todayChoice.kind !== "play" && playSection}
+              <div className="max-w-[520px]">
+                <DailyCheckinCard />
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Text-mode quick capture — the orphaned-but-working QuickLogModal, revived.
           Portals to document.body, so it contributes no box to the flex column. */}

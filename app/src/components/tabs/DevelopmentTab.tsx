@@ -13,6 +13,18 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import DevScoreCard from "../sections/DevScoreCard";
 import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
 import ScreeningSheet from "../sections/ScreeningSheet";
+import { SpineRibbon } from "../ui/SpineRibbon";
+import { DOMAIN_META } from "../../practice/content";
+import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
+
+/** Masterplan 1.7 — module-local string resolution for the Full Picture entry
+ *  card (same recipe as Screening.tsx × screeningcalm: i18nElevation/index.ts
+ *  registration is that file's own recipe, owned separately). */
+function tFP(uiLang: string, key: string, vars?: Record<string, string | number>): string {
+  let s = (uiLang === "he" ? fullPictureHe[key] : undefined) ?? fullPictureEn[key] ?? key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+  return s;
+}
 
 /* Growth › Development — ONE coherent screen, no inner tab layer (masterplan
    L2: category → pill is the only navigation; deeper capabilities appear as
@@ -52,7 +64,7 @@ function PushOptInToggle({
 }
 
 export default function DevelopmentTab() {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const { milestones, behaviorLogs, playLogs, childProfile, setActiveTab } = useArbor();
   const [checkOpen, setCheckOpen] = useState(false);
   const firstName = (childProfile.name || "").split(" ")[0];
@@ -229,8 +241,60 @@ export default function DevelopmentTab() {
           </div>
         </div>
       </section>
+      {/* Masterplan 1.7 / IA canon (L3): the Full Picture (route id "copilot")
+          is homed HERE, as a card on the hub's Now region — never a hub pill.
+          This is the upgraded form of the old deep-dive link tile (one home,
+          no duplicate). Teaser is a plain COUNT of areas the surface reviews —
+          no score, verdict, or risk framing (CLINICAL FIREWALL). */}
+      <section
+        data-testid="full-picture-card"
+        className="overflow-hidden rounded-[24px] p-4 sm:p-6"
+        style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}
+        aria-labelledby="full-picture-title"
+      >
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+            <Icon name="center_focus_strong" size={24} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 id="full-picture-title" className="break-words text-lg font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                {tFP(uiLang, "elev.fullpicture.title")}
+              </h2>
+              <span className="inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+                {tFP(uiLang, "elev.fullpicture.card.teaser", { n: Object.keys(DOMAIN_META).length })}
+              </span>
+            </div>
+            <p className="mt-1 max-w-2xl break-words text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              {firstName
+                ? tFP(uiLang, "elev.fullpicture.card.promise", { name: firstName })
+                : tFP(uiLang, "elev.fullpicture.card.promise.generic")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("copilot")}
+            data-testid="full-picture-cta"
+            className="inline-flex min-h-11 flex-shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-white transition active:scale-[0.98]"
+            style={{ background: "var(--arbor-clay)" }}
+          >
+            {tFP(uiLang, "elev.fullpicture.card.cta")}
+            <Icon name="chevron_right" size={18} className="rtl:rotate-180" />
+          </button>
+        </div>
+      </section>
       {/* The Map — the record's home (counts only). */}
       <DevScoreCard />
+      {/* E3 — the spine, made visible (first mount): what this surface's
+          noticing feeds. One direction only; plain activity fact, no verdicts.
+          The Academy hub's landing route is "masterclasses" (navigation.ts). */}
+      <SpineRibbon
+        text={t("elev.spine.growth")}
+        tone="mint"
+        icon="school"
+        onFollow={() => setActiveTab("masterclasses")}
+        testId="growth-spine-ribbon"
+      />
       {/* C1 — Monitoring now lives in ONE home: Development Check (the
           ScreeningSheet). The hub keeps only a slim, neutral pointer into it —
           no scores, verdicts, or risk framing (CLINICAL FIREWALL). */}
@@ -266,12 +330,13 @@ export default function DevelopmentTab() {
         </span>
       </button>
       {/* Deep-dive doors — visible cards, not a second tab layer. Each is a
-          real route (also reachable from the Growth pill row / fallbacks). */}
+          real route (also reachable from the Growth pill row / fallbacks).
+          Masterplan 1.7: the copilot tile moved UP into the Full Picture card
+          on the Now region — one home, no duplicate link. */}
       <div className="grid gap-3 sm:grid-cols-2">
         {([
           { tab: "milestones", glyph: "check_circle", label: t("hub.milestones"), sub: t("elev.growth.link.milestones.sub") },
           { tab: "journey", glyph: "calendar_month", label: t("hub.journey"), sub: t("elev.growth.link.journey.sub") },
-          { tab: "copilot", glyph: "center_focus_strong", label: t("elev.growth.link.copilot.label"), sub: t("elev.growth.link.copilot.sub") },
         ] as const).map((l) => (
           <button
             key={l.tab}

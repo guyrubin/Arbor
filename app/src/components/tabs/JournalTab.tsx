@@ -5,13 +5,15 @@ import { Skeleton } from "../ui/Skeleton";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
-  groupByDay, isAutoSignal, signalDetail, signalTitle,
-  type SignalKind, type TimelineSignal,
+  groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle,
+  type SignalKind, type SignalProvenance, type TimelineSignal,
 } from "../../lib/signalTimeline";
+import { withChildSignals } from "../../lib/i18nElevation/childsignals";
 import { classifyBehaviorDomain } from "../../lib/monitoring";
 import { useTimeline } from "../../hooks/useTimeline";
 import type { CaptureMode } from "../../context/ArborContext";
 import { PASTEL, IconBadge, Chip, cardCls, domainVisual, type PastelKey } from "../ui/kit";
+import { SpineRibbon } from "../ui/SpineRibbon";
 import type { DevelopmentalDomainId } from "../../types";
 import type { PlayDomain } from "../../playbank/content";
 
@@ -34,9 +36,11 @@ import type { PlayDomain } from "../../playbank/content";
  *     domain chip (omitted when the source can't be classified — never guessed,
  *     JRNL-6), and a right-aligned time within its day group.
  *
- * Removed vs. the old dashboard-y Journal: the stat-trio hero, the spine ribbon,
- * the "story draft" CTA card, and the guiding-prompt strip — all duplicated
- * capabilities that live elsewhere (Story lives behind the timeline tab).
+ * Removed vs. the old dashboard-y Journal: the stat-trio hero, the "story
+ * draft" CTA card, and the guiding-prompt strip — all duplicated capabilities
+ * that live elsewhere (Story lives behind the timeline tab). The spine ribbon
+ * returned in masterplan 1.5 as ONE quiet strip under the compose card (what a
+ * saved moment feeds → the weekly story), not the old hero clutter.
  *
  * CLINICAL FIREWALL: domain chips are DESCRIPTIVE, never evaluative; no 0–100
  * score, verdict tag, intensity-trend coloring, or weakest-domain pointer.
@@ -88,6 +92,7 @@ const KIND_MS: Record<SignalKind, string> = {
   memory: "bookmark",
   coach: "chat_bubble",
   play: "toys",
+  practice: "rocket_launch",
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -95,7 +100,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 function JournalRow({
   signal,
   domain,
-  auto,
+  prov,
   when,
   provLabel,
   domainLabel,
@@ -105,7 +110,8 @@ function JournalRow({
 }: {
   signal: TimelineSignal;
   domain: DevelopmentalDomainId | null;
-  auto: boolean;
+  /** JRNL-4 + masterplan 1.4: manual = the parent, auto = Arbor, child = the child. */
+  prov: SignalProvenance;
   when: string;
   provLabel: string;
   domainLabel: string;
@@ -133,16 +139,21 @@ function JournalRow({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Provenance badge — AUTO gets the accent "Arbor" mark, MANUAL a neutral one. */}
+          {/* Provenance badge — AUTO gets the accent "Arbor" mark, CHILD a soft
+              lav chip with the child's name, MANUAL a neutral "You" one. */}
           <span
             className="inline-flex items-center gap-1 text-[var(--t-xs)] font-extrabold uppercase tracking-wide rounded-md px-2 py-0.5"
+            dir="auto"
             style={
-              auto
+              prov === "auto"
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
-                : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+                : prov === "child"
+                  ? { background: PASTEL.lav.soft, color: PASTEL.lav.ink }
+                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
             }
           >
-            {auto && <Icon name="auto_awesome" size={12} fill={1} />}
+            {prov === "auto" && <Icon name="auto_awesome" size={12} fill={1} />}
+            {prov === "child" && <Icon name="child_care" size={12} fill={1} />}
             {provLabel}
           </span>
           {/* Domain chip — omitted when the entry can't be classified (JRNL-6). */}
@@ -175,9 +186,15 @@ function JournalRow({
 }
 
 export default function JournalTab() {
-  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus } = useArbor();
+  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
+  // elev.childsignals.* keys (practice-kind titles) resolve from the module
+  // until it registers in i18nElevation/index.ts (owned elsewhere this wave).
+  const tt = useMemo(() => withChildSignals(t, uiLang === "he"), [t, uiLang]);
+  // Fallback via the registered i18n key (inline he-ternaries are banned in
+  // components/ by the i18nInlineCopy guard).
+  const childFirstName = (childProfile.name || "").split(" ")[0] || t("learn.yourChild");
 
   // The ONE timeline read (hooks/useTimeline) — the same stream the Story
   // density renders. No second read, no new write path.
@@ -311,6 +328,18 @@ export default function JournalTab() {
         </div>
       </section>
 
+      {/* Masterplan 1.5 — spine ribbon: what a saved moment feeds (ONE direction:
+          → the weekly story behind the timeline tab). Quiet strip below the
+          header + compose region, never above them (Rule A keeps it off Today).
+          Plain activity fact — no %, verdicts, or deltas (clinical firewall). */}
+      <SpineRibbon
+        tone="lav"
+        icon="auto_stories"
+        text={t("elev.spine.journal", { name: childFirstName })}
+        onFollow={() => setActiveTab("timeline")}
+        testId="journal-spine-ribbon"
+      />
+
       {/* Flat single-column feed — day-grouped, gated on the ledger load (JRNL-7)
           so a returning parent never sees a false "No moments yet" flash. */}
       {!logsLoaded ? (
@@ -350,7 +379,9 @@ export default function JournalTab() {
               </div>
               {group.signals.map((s) => {
                 const domain = domainOf.get(s.id) ?? KIND_DOMAIN[s.kind] ?? null;
-                const auto = isAutoSignal(s.kind);
+                // Masterplan 1.4: third provenance class — the CHILD's own
+                // practice/play activity gets the child's name as its badge.
+                const prov = SIGNAL_PROVENANCE[s.kind];
                 // Time-only inside a day group (the header carries the date);
                 // undated rows sit under "Ongoing" and show no time.
                 const when = s.at
@@ -361,12 +392,12 @@ export default function JournalTab() {
                     key={s.id}
                     signal={s}
                     domain={domain}
-                    auto={auto}
+                    prov={prov}
                     when={when}
-                    provLabel={auto ? autoLabel : manualLabel}
+                    provLabel={prov === "auto" ? autoLabel : prov === "child" ? childFirstName : manualLabel}
                     domainLabel={domain ? t(`journal.domain.${domain}`) : ""}
-                    title={signalTitle(s, t)}
-                    detail={signalDetail(s, t)}
+                    title={signalTitle(s, tt)}
+                    detail={signalDetail(s, tt)}
                     focused={s.id === focusId}
                   />
                 );

@@ -21,6 +21,7 @@ export function TrustPanel({
   stores,
   controls,
   tone = "panel",
+  footer,
 }: {
   /** Already-translated bullet strings — "what Arbor uses". */
   uses: string[];
@@ -29,6 +30,10 @@ export function TrustPanel({
   /** Already-translated bullet strings — "what you control". */
   controls: string[];
   tone?: "inline" | "panel";
+  /** Optional caller-owned node rendered after the three groups, INSIDE the
+   *  panel chrome — e.g. CoachTab's weekly-context consent toggle (masterplan
+   *  1.3). The panel stays presentational: any state lives with the caller. */
+  footer?: React.ReactNode;
 }) {
   const { t } = useLanguage();
   const groups = [
@@ -59,6 +64,7 @@ export function TrustPanel({
           </div>
         ) : null,
       )}
+      {footer}
     </div>
   );
 }

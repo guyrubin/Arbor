@@ -11,17 +11,41 @@ import { hardMomentCards, type HardMomentCard, type HardMomentCategory } from ".
  * dark until named clinical review stamps the pack (GD-10).
  */
 
-function publishable(cards: HardMomentCard[], now: Date): HardMomentCard[] {
-  return cards.filter((card) => isPublishableContent(card, now));
+/**
+ * W0 age fix — the governed ageBands metadata ("2-5", "6-9", "6+") was
+ * authored per-card but never applied at selection, so a toddler could be
+ * offered a homework card. A card is in-band when ANY of its bands covers the
+ * child's age; bands are in YEARS ("2-5" spans 24..71 months inclusive).
+ * FAIL-OPEN on absence only: no child age, no bands, or an unparseable band →
+ * treated as in-band, so behavior is byte-identical when metadata (or the
+ * caller-provided age) is absent. It is a CONTENT fact ("written for ages
+ * 2-5"), never a claim about the child.
+ */
+export function inAgeBand(card: HardMomentCard, ageMonths?: number | null): boolean {
+  if (ageMonths == null || !card.ageBands || card.ageBands.length === 0) return true;
+  return card.ageBands.some((band) => {
+    const range = /^(\d+)\s*[-–]\s*(\d+)$/.exec(band.trim());
+    if (range) return ageMonths >= Number(range[1]) * 12 && ageMonths < (Number(range[2]) + 1) * 12;
+    const open = /^(\d+)\s*\+$/.exec(band.trim());
+    if (open) return ageMonths >= Number(open[1]) * 12;
+    return true; // unparseable metadata never hides a card
+  });
 }
 
-/** Published cards for one hard-moment category, in authored order. */
+function publishable(cards: HardMomentCard[], now: Date, ageMonths?: number | null): HardMomentCard[] {
+  return cards.filter((card) => isPublishableContent(card, now) && inAgeBand(card, ageMonths));
+}
+
+/** Published cards for one hard-moment category, in authored order.
+ *  `ageMonths` (optional, child age in months — see lib/childAge.ts
+ *  ageMonthsFromProfile) additionally keeps only age-band-matching cards. */
 export function byCategory(
   category: HardMomentCategory,
   cards: HardMomentCard[] = hardMomentCards,
   now: Date = new Date(),
+  ageMonths?: number | null,
 ): HardMomentCard[] {
-  return publishable(cards, now).filter((card) => card.category === category);
+  return publishable(cards, now, ageMonths).filter((card) => card.category === category);
 }
 
 /** Published cards tagged with one parent-concern, in authored order. */
@@ -29,8 +53,9 @@ export function byConcern(
   concern: ContentConcern,
   cards: HardMomentCard[] = hardMomentCards,
   now: Date = new Date(),
+  ageMonths?: number | null,
 ): HardMomentCard[] {
-  return publishable(cards, now).filter((card) => card.concerns.includes(concern));
+  return publishable(cards, now, ageMonths).filter((card) => card.concerns.includes(concern));
 }
 
 /**
@@ -102,11 +127,12 @@ export function matchToRecentBehaviors(
   behaviorCategories: string[],
   cards: HardMomentCard[] = hardMomentCards,
   now: Date = new Date(),
+  ageMonths?: number | null,
 ): HardMomentCard[] {
   const concerns = concernsForBehaviors(behaviorCategories);
   if (concerns.length === 0) return [];
   const loweredBehaviors = behaviorCategories.map((b) => b.toLowerCase());
-  return publishable(cards, now)
+  return publishable(cards, now, ageMonths)
     .map((card, index) => {
       let score = card.concerns.filter((c) => concerns.includes(c)).length;
       const moment = (card.moment ?? card.id).toLowerCase();

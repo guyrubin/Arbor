@@ -28,6 +28,7 @@
  */
 import { createHash } from "node:crypto";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
+import type { RecentTurn, WeeklyContext } from "./chatContext.js";
 
 export type PromptKey =
   | "non_diagnostic_contract"
@@ -43,7 +44,11 @@ export type PromptKey =
  */
 export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: string }> = {
   non_diagnostic_contract: { version: "1.0.0", sha256: "b9179613d1346f25bfc95c4f10a0bbada56a2c2bae5202bceb5fbb769555763a" },
-  coach_chat: { version: "1.0.0", sha256: "47871f42bfdb1cb2d63d2adcde56662e7792c40f086d4139dfd438d62a8686c5" },
+  // 1.1.0 — masterplan 1.3: optional recentTurns transcript block + optional
+  // weeklyContext line (both between the scholar-lens paragraph and "Parent
+  // question:"). With BOTH absent the rendered prompt is byte-identical to
+  // 1.0.0 (sha 47871f42…) — pinned by the legacy-parity test in prompts.test.ts.
+  coach_chat: { version: "1.1.0", sha256: "1a74be578e5eb307c92d9c034e911f7c990172ae855104cafa95d44b913c89c8" },
   council_synthesis: { version: "1.0.0", sha256: "eeca63a0b6f414c196b5914ee5f93ab175ae1217c07f8914e756259d8320208c" },
   voice_reply: { version: "1.0.0", sha256: "452e343ec9bcd855157d935c19d2b6d9e2bd4167d73b3ad0e33a9fa0c820b9ea" },
   extract_log: { version: "1.0.0", sha256: "f296df39c25469f3db5878adb03c2dd29781d8b19111cd68995d9b909b2b4891" },
@@ -61,6 +66,35 @@ export type ChatPromptArgs = {
   scholar: { name: string; concept: string; method: string; defaultFrame: string };
   message: string;
   languageDirective: string;
+  /** Masterplan 1.3(a) — sanitized same-thread transcript (routes/api.ts runs
+   *  sanitizeRecentTurns on the client-supplied body field before this).
+   *  Absent/empty ⇒ the rendered prompt is byte-identical to v1.0.0. */
+  recentTurns?: RecentTurn[];
+  /** Masterplan 1.3(b) — consent-gated counts-only weekly digest (sanitized
+   *  server-side). Absent/null ⇒ byte-identical to v1.0.0. */
+  weeklyContext?: WeeklyContext | null;
+};
+
+/** 1.3(a): the continuity transcript block — "" when there are no turns, so
+ *  the legacy prompt bytes are untouched. Rendered BEFORE the new question. */
+const renderRecentTurnsBlock = (turns?: RecentTurn[]): string => {
+  if (!turns || turns.length === 0) return "";
+  const lines = turns.map((t) => `${t.role === "parent" ? "Parent" : "Coach"}: ${t.text}`);
+  return `Recent turns of this same conversation, for continuity — read them so pronouns and follow-ups resolve, and do not repeat advice already given:
+${lines.join("\n")}
+`;
+};
+
+/** 1.3(b): ONE short context line from the parent-enabled weekly digest —
+ *  counts and category labels only; "" when the toggle is off/absent. */
+const renderWeeklyContextLine = (weekly?: WeeklyContext | null): string => {
+  if (!weekly) return "";
+  const parts = [`${weekly.momentCount} moment(s) logged`];
+  if (weekly.topTrigger) parts.push(`most frequent trigger: ${weekly.topTrigger}`);
+  parts.push(`${weekly.milestonesCrossedCount} milestone(s) newly observed`);
+  if (weekly.lastActionOutcome) parts.push(`last suggested action outcome: ${weekly.lastActionOutcome.replace("_", " ")}`);
+  return `THIS WEEK AT A GLANCE (parent-enabled, counts and categories only — no notes were shared): ${parts.join("; ")}.
+`;
 };
 
 /** /chat — the parent coach structured-contract prompt. */
@@ -72,6 +106,8 @@ export const buildChatPrompt = ({
   scholar,
   message,
   languageDirective,
+  recentTurns,
+  weeklyContext,
 }: ChatPromptArgs): string => `
 ${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
@@ -89,7 +125,7 @@ ${childProfile ? JSON.stringify(childProfile, null, 2) : "None provided"}
 ACTIVE SCHOLAR LENS — apply this method, do not just name it:
 ${scholar.name} — ${scholar.concept}. ${scholar.method}
 Ground "What To Do Today" and the parent script in this lens, and prefer Six Frame "${scholar.defaultFrame}" unless safety dictates otherwise.
-Parent question:
+${renderRecentTurnsBlock(recentTurns)}${renderWeeklyContextLine(weeklyContext)}Parent question:
 ${message}
 
 Return only JSON that matches the response schema. Open with the "text" field FIRST: 2-4 warm, plain sentences that briefly acknowledge the parent and give the heart of your answer — no headings, no lists, no labels. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used. Include followUps: 2-3 short, natural next questions THIS parent is likely to ask after THIS answer (specific to their situation, never generic), each under 100 characters, in the same language as your other text values.${languageDirective}
@@ -212,6 +248,18 @@ const CANONICAL = {
   languageDirective: "«language-directive»",
   persona: "«spoken-persona»",
   behaviorTypes: "«behavior-types»",
+  // Masterplan 1.3 — the coach_chat fingerprint pins the NEW optional blocks'
+  // template text too (framing line, role labels, weekly-line phrasing).
+  recentTurns: [
+    { role: "parent", text: "«turn-parent»" },
+    { role: "coach", text: "«turn-coach»" },
+  ] as RecentTurn[],
+  weeklyContext: {
+    momentCount: 3,
+    topTrigger: "«top-trigger»",
+    milestonesCrossedCount: 1,
+    lastActionOutcome: "helped",
+  } as WeeklyContext,
 } as const;
 
 /** Recompute the pinned template fingerprint for a prompt key. */
@@ -228,6 +276,8 @@ export const promptFingerprint = (key: PromptKey): string => {
         scholar: CANONICAL.scholar,
         message: CANONICAL.message,
         languageDirective: CANONICAL.languageDirective,
+        recentTurns: CANONICAL.recentTurns,
+        weeklyContext: CANONICAL.weeklyContext,
       }));
     case "council_synthesis":
       return sha256(buildCouncilSynthesisPrompt({

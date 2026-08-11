@@ -1,4 +1,16 @@
-import type { BehaviorLog, Milestone, ActionPlan, MemoryReviewItem, PlayLog } from "../types";
+import type {
+  ActionPlan,
+  AdventureResult,
+  BehaviorLog,
+  HeroJourneyRun,
+  MemoryReviewItem,
+  Milestone,
+  MimicSession,
+  MissionRecord,
+  PlayLog,
+  PracticeEvent,
+  SpeechAttempt,
+} from "../types";
 
 /**
  * The Signal Timeline — Arbor's unified developmental activity stream.
@@ -12,8 +24,16 @@ import type { BehaviorLog, Milestone, ActionPlan, MemoryReviewItem, PlayLog } fr
  * Soft-Daylight PASTEL keys in `ui/kit` without importing React.
  */
 
-export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach" | "play";
+export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach" | "play" | "practice";
 export type SignalTone = "mint" | "coral" | "lav" | "yellow" | "pink" | "sky";
+
+/**
+ * Masterplan 1.4 — the six child-activity ledgers folded into the timeline as
+ * kind "practice". The type distinguishes the source for the warm event copy;
+ * all six share the third provenance class "child" (the CHILD did this in
+ * kid-mode/practice, not the parent and not Arbor).
+ */
+export type ChildActivityType = "practice" | "speech" | "mimic" | "adventure" | "mission" | "hero";
 
 /**
  * JRNL-3: signals are STRUCTURED — this module never bakes display English.
@@ -43,6 +63,14 @@ export interface TimelineSignal {
   memorySource?: string;
   playDomain?: PlayLog["domain"];
   concernMatch?: boolean;
+  /** Which child-activity ledger a kind:"practice" signal came from. */
+  practiceType?: ChildActivityType;
+  /**
+   * Same-day same-type aggregation count (kind:"practice" only) — one warm
+   * signal per day per activity type, never one row per raw event.
+   * FIREWALL: a flat event count, never a rate or a period-vs-period delta.
+   */
+  count?: number;
 }
 
 /**
@@ -51,8 +79,11 @@ export interface TimelineSignal {
  * observation, played an activity. AUTO ("Arbor") = Arbor derived it: a coach
  * session, an approved memory fact, a generated growth plan. No new flag is
  * written to the ledger; this maps the existing signal kind at render time.
+ * CHILD (the child's first name at render) = the child acted in a practice/
+ * play surface: a speech round, a mimic session, an adventure scene, a daily
+ * mission, a hero journey, a practice game.
  */
-export type SignalProvenance = "manual" | "auto";
+export type SignalProvenance = "manual" | "auto" | "child";
 
 export const SIGNAL_PROVENANCE: Record<SignalKind, SignalProvenance> = {
   moment: "manual",
@@ -61,6 +92,7 @@ export const SIGNAL_PROVENANCE: Record<SignalKind, SignalProvenance> = {
   plan: "auto",
   memory: "auto",
   coach: "auto",
+  practice: "child",
 };
 
 export const isAutoSignal = (kind: SignalKind): boolean => SIGNAL_PROVENANCE[kind] === "auto";
@@ -83,6 +115,14 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
       return t("timeline.title.coach");
     case "play":
       return t("timeline.title.played", { title: s.refTitle ?? "" });
+    case "practice": {
+      // Warm aggregated child-activity copy — keys live in the childsignals
+      // i18n module (i18nElevation/childsignals.ts); callers wrap t via
+      // withChildSignals until the module is registered in index.ts.
+      const n = s.count ?? 1;
+      const type = s.practiceType ?? "practice";
+      return t(`elev.childsignals.title.${type}.${n === 1 ? "one" : "many"}`, { count: n });
+    }
   }
 };
 
@@ -117,6 +157,9 @@ export const signalMeta = (s: TimelineSignal, t: TranslateFn): string | undefine
       return s.concernMatch ? t("timeline.meta.match") : undefined;
     case "coach":
       return undefined;
+    case "practice":
+      // The title already carries the count; no extra meta chip.
+      return undefined;
   }
 };
 
@@ -127,6 +170,15 @@ export interface TimelineSources {
   memory?: MemoryReviewItem[];
   conversations?: { id: string; title: string; updatedAt: string }[];
   play?: PlayLog[];
+  // Masterplan 1.4 — the six child-activity ledgers (all registered in
+  // CHILD_SUBCOLLECTIONS; read directly via useChildCollection, no derived
+  // sink). Folded as kind "practice", provenance "child".
+  practiceEvents?: PracticeEvent[];
+  speechAttempts?: SpeechAttempt[];
+  mimicSessions?: MimicSession[];
+  adventureResults?: AdventureResult[];
+  missionRecords?: MissionRecord[];
+  heroRuns?: HeroJourneyRun[];
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -162,6 +214,48 @@ const topOf = (values: (string | undefined | null)[]): string | null => {
     }
   }
   return best;
+};
+
+/**
+ * Fold one child-activity ledger into same-day aggregate signals: one signal
+ * per UTC day per activity type, `count` = events that day, `at` = the latest
+ * event timestamp (so recency ordering holds). Aggregation keeps the feed calm
+ * — 14 speech rounds are one warm row, never fourteen.
+ * FIREWALL: only the count and the day survive; correctness/ratings/scores on
+ * the raw records are deliberately dropped, never surfaced.
+ */
+const foldChildActivity = (
+  signals: TimelineSignal[],
+  type: ChildActivityType,
+  stamps: (string | undefined | null)[],
+): void => {
+  const days = new Map<string, { count: number; latest: string; latestMs: number }>();
+  for (const ts of stamps) {
+    if (!ts) continue;
+    const ms = new Date(ts).getTime();
+    if (!Number.isFinite(ms)) continue;
+    const day = new Date(ms).toISOString().slice(0, 10);
+    const entry = days.get(day);
+    if (!entry) {
+      days.set(day, { count: 1, latest: ts, latestMs: ms });
+    } else {
+      entry.count += 1;
+      if (ms > entry.latestMs) {
+        entry.latest = ts;
+        entry.latestMs = ms;
+      }
+    }
+  }
+  for (const [day, entry] of days) {
+    signals.push({
+      id: `child-${type}-${day}`,
+      kind: "practice",
+      at: entry.latest,
+      tone: "sky",
+      practiceType: type,
+      count: entry.count,
+    });
+  }
 };
 
 /** Fold every source into one stream, newest first; undated signals sort last. */
@@ -244,6 +338,16 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       concernMatch: p.reason === "concern-match",
     });
   }
+
+  // Masterplan 1.4 — child-activity ledgers, aggregated same-day same-type.
+  foldChildActivity(signals, "practice", (sources.practiceEvents || []).map((e) => e.timestamp));
+  foldChildActivity(signals, "speech", (sources.speechAttempts || []).map((a) => a.timestamp));
+  foldChildActivity(signals, "mimic", (sources.mimicSessions || []).map((m) => m.timestamp));
+  foldChildActivity(signals, "adventure", (sources.adventureResults || []).map((r) => r.timestamp));
+  // Missions: only completions are events; an uncompleted record is not a story beat.
+  foldChildActivity(signals, "mission", (sources.missionRecords || []).filter((m) => m.completed).map((m) => m.timestamp));
+  // Hero runs: prefer the completion moment, fall back to the start of the run.
+  foldChildActivity(signals, "hero", (sources.heroRuns || []).map((r) => r.completedAt || r.startedAt));
 
   return signals.sort((a, b) => {
     if (a.at && b.at) return a.at < b.at ? 1 : a.at > b.at ? -1 : 0;
@@ -441,4 +545,53 @@ export const groupByDay = (
     if (b.key === "ongoing") return -1;
     return a.key < b.key ? 1 : -1;
   });
+};
+
+/**
+ * Masterplan 1.8 — the "Over the months" spine layer (mockup Row-1 #3:
+ * vertical spine, event nodes by recency).
+ *
+ * One node per calendar month (UTC, matching dayKey/groupByDay) that holds:
+ *  - the milestone crossings observed that month (an EVENT list), and
+ *  - the CUMULATIVE moments-captured total by the end of that month.
+ *
+ * CLINICAL FIREWALL: the cumulative total is monotonic by construction —
+ * "by March: 89 moments". A per-month count is deliberately NOT exposed on
+ * this type: rendering monthly counts side-by-side is a period-vs-period
+ * series (verdict-shaped on a child). No rate, no delta, no comparison.
+ */
+export interface MonthNode {
+  /** "YYYY-MM" (UTC). */
+  key: string;
+  /** Milestone signals whose observation date fell in this month, feed order. */
+  milestones: TimelineSignal[];
+  /** Total dated signals captured from the beginning of the story through this month. */
+  cumulativeMoments: number;
+}
+
+/** Group dated signals into month nodes, newest month first. Undated signals are excluded. */
+export const buildMonthsLayer = (signals: TimelineSignal[]): MonthNode[] => {
+  const byMonth = new Map<string, { milestones: TimelineSignal[]; count: number }>();
+  for (const s of signals) {
+    if (!s.at) continue;
+    const ms = new Date(s.at).getTime();
+    if (!Number.isFinite(ms)) continue;
+    const key = new Date(ms).toISOString().slice(0, 7);
+    let entry = byMonth.get(key);
+    if (!entry) {
+      entry = { milestones: [], count: 0 };
+      byMonth.set(key, entry);
+    }
+    entry.count += 1;
+    if (s.kind === "milestone") entry.milestones.push(s);
+  }
+
+  const keys = Array.from(byMonth.keys()).sort(); // oldest → newest
+  let cumulative = 0;
+  const nodes: MonthNode[] = keys.map((key) => {
+    const entry = byMonth.get(key)!;
+    cumulative += entry.count;
+    return { key, milestones: entry.milestones, cumulativeMoments: cumulative };
+  });
+  return nodes.reverse(); // newest month first — spine ordered by recency
 };

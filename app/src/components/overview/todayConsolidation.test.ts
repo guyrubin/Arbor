@@ -36,11 +36,15 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
   const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
   const hero = stripComments(read("components/overview/TodayRecommendation.tsx"));
   const loop = stripComments(read("components/overview/TodayActionLoop.tsx"));
+  const promptCard = stripComments(read("components/overview/PromptCaptureCard.tsx"));
 
-  it("OverviewTab swaps hero ↔ action card on activeTodayAction (mutually exclusive)", () => {
-    expect(overview).toMatch(/activeTodayAction\s*\?\s*\(\s*<TodayActionLoop\s*\/>\s*\)\s*:\s*\(\s*<TodayRecommendation/);
+  it("OverviewTab renders ONE mutually-exclusive primary slot (W1 1.2 chain)", () => {
+    // The guaranteed-action chain: accepted action → focus hero → prompt
+    // capture card / play promotion — one ternary chain, one slot.
+    expect(overview).toMatch(/activeTodayAction\s*\?\s*\(\s*<TodayActionLoop\s*\/>\s*\)\s*:\s*todayChoice\.kind\s*===\s*"focus"\s*\?\s*\(/);
     expect(count(overview, /<TodayActionLoop/g)).toBe(1);
     expect(count(overview, /<TodayRecommendation/g)).toBe(1);
+    expect(count(overview, /<PromptCaptureCard/g)).toBe(1);
   });
 
   it("the hero owns the pre-accept state: capacity chips + accept row", () => {
@@ -59,8 +63,12 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(loop).not.toMatch(/today\.loop\.empty/);
   });
 
-  it("exactly ONE gradient-primary CTA on the pre-accept anchor, none on the action card", () => {
+  it("exactly ONE gradient-primary CTA per possible anchor, none on the action card", () => {
     expect(count(hero, /--arbor-gradient-primary/g)).toBe(1);
+    // The prompt capture card is the hero's mutually-exclusive sibling in the
+    // chain — it carries its own single gradient primary; at runtime only one
+    // of the two renders (Rule A: one primary action above the fold).
+    expect(count(promptCard, /--arbor-gradient-primary/g)).toBe(1);
     expect(count(loop, /--arbor-gradient-primary/g)).toBe(0);
     expect(count(overview, /--arbor-gradient-primary/g)).toBe(0);
   });
@@ -71,17 +79,21 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(overview).not.toMatch(/today-recent-context/);
   });
 
-  it("section order: capture → day anchor → noticed → narrative → play → tools", () => {
+  it("section order: capture → since-strip → day anchor → noticed → narrative → tools", () => {
+    // W1 Rule A: SinceLastVisit sits between the capture chrome and the
+    // primary-action slot; the Daily Play section is a single JSX instance
+    // (playSection const, placed by the budget logic) so it is order-exempt.
     const order = [
       overview.indexOf("<QuickCaptureBar"),
+      overview.indexOf("<SinceLastVisit"),
       overview.indexOf("<TodayActionLoop"),
       overview.indexOf("<ArborNoticedCard"),
       overview.indexOf("<ProgressNarrative"),
-      overview.indexOf("<DailyPlayCard"),
       overview.indexOf("<DailyCheckinCard"),
     ];
     for (const idx of order) expect(idx).toBeGreaterThan(-1);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(count(overview, /<DailyPlayCard/g)).toBe(1);
   });
 
   it("the merged action row is fully bilingual (today.action.* in both dictionaries)", () => {

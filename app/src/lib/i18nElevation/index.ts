@@ -23,14 +23,19 @@ import * as agefilter from "./agefilter";
 import * as auth from "./auth";
 import * as careprofile from "./careprofile";
 import * as celebrate from "./celebrate";
+import * as childsignals from "./childsignals";
+import * as coachcontract from "./coachcontract";
 import * as foundation from "./foundation";
+import * as fullpicture from "./fullpicture";
 import * as gate from "./gate";
 import * as growth from "./growth";
 import * as journal from "./journal";
 import * as personal from "./personal";
+import * as promise from "./promise";
 import * as safety from "./safety";
 import * as screeningcalm from "./screeningcalm";
 import * as sidebar from "./sidebar";
+import * as sincevisit from "./sincevisit";
 import * as spine from "./spine";
 import * as syncstatus from "./syncstatus";
 import * as today from "./today";
@@ -43,14 +48,19 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   auth,
   careprofile,
   celebrate,
+  childsignals,
+  coachcontract,
   foundation,
+  fullpicture,
   gate,
   growth,
   journal,
   personal,
+  promise,
   safety,
   screeningcalm,
   sidebar,
+  sincevisit,
   spine,
   syncstatus,
   today,
