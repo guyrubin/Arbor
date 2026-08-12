@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
 import {
@@ -101,6 +102,47 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
     expect(prompt.endsWith("DIRECTIVE")).toBe(true);
   });
 
+  it("chat prompt renders the continuity transcript BEFORE the new question when recentTurns are present", () => {
+    const prompt = buildChatPrompt({
+      developmentalFramework: "FW",
+      approvedMemory: "",
+      knowledgeContext: "",
+      childProfile: { name: "Mia" },
+      scholar,
+      message: "And what about bedtime?",
+      languageDirective: "",
+      recentTurns: [
+        { role: "parent", text: "He melts down at iPad shutoff." },
+        { role: "coach", text: "Try a two-minute warning and one choice." },
+      ],
+    });
+    expect(prompt).toContain("Recent turns of this same conversation, for continuity");
+    expect(prompt).toContain("Parent: He melts down at iPad shutoff.");
+    expect(prompt).toContain("Coach: Try a two-minute warning and one choice.");
+    // Transcript block sits BEFORE the new question.
+    expect(prompt.indexOf("Recent turns of this same conversation")).toBeLessThan(prompt.indexOf("Parent question:"));
+    // No weekly line without weeklyContext.
+    expect(prompt).not.toContain("THIS WEEK AT A GLANCE");
+  });
+
+  it("chat prompt renders ONE counts-only weekly line when weeklyContext is present", () => {
+    const prompt = buildChatPrompt({
+      developmentalFramework: "FW",
+      approvedMemory: "",
+      knowledgeContext: "",
+      childProfile: { name: "Mia" },
+      scholar,
+      message: "Q",
+      languageDirective: "",
+      weeklyContext: { momentCount: 4, milestonesCrossedCount: 2, lastActionOutcome: "not_today" },
+    });
+    expect(prompt).toContain(
+      "THIS WEEK AT A GLANCE (parent-enabled, counts and categories only — no notes were shared): 4 moment(s) logged; 2 milestone(s) newly observed; last suggested action outcome: not today.",
+    );
+    expect(prompt).not.toContain("Recent turns of this same conversation");
+    expect(prompt.indexOf("THIS WEEK AT A GLANCE")).toBeLessThan(prompt.indexOf("Parent question:"));
+  });
+
   it("extract-log prompt interpolates the taxonomy list passed from the call site", () => {
     const prompt = buildExtractLogPrompt({
       childProfile: null,
@@ -112,5 +154,46 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
     expect(prompt).toContain("prefer one of exactly A | B | C when one fits");
     expect(prompt).toContain("Return only JSON matching the schema.");
     expect(prompt).toContain('Parent description: "Meltdown at breakfast"');
+  });
+});
+
+/**
+ * Masterplan 1.3 — coach_chat 1.1.0: the two OPTIONAL context blocks
+ * (recentTurns transcript + weeklyContext line) must be pure ADDITIONS.
+ * The load-bearing guarantee is byte-parity on the legacy path: a request
+ * carrying neither field produces EXACTLY the 1.0.0 prompt bytes — pinned
+ * here against the retired 1.0.0 sha256 so a regression that perturbs the
+ * legacy template (even by one byte) fails loudly.
+ */
+describe("Masterplan 1.3 — coach_chat legacy byte-parity (v1.0.0 pin)", () => {
+  const COACH_CHAT_V1_0_0_SHA256 = "47871f42bfdb1cb2d63d2adcde56662e7792c40f086d4139dfd438d62a8686c5";
+  const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
+  const legacyArgs = {
+    developmentalFramework: "«framework»",
+    approvedMemory: "«approved-memory»",
+    knowledgeContext: "«knowledge-cards»",
+    childProfile: { id: "«child»", name: "«name»", age: 4 },
+    scholar: { name: "«scholar»", concept: "«concept»", method: "«method»", defaultFrame: "«frame»" },
+    message: "«parent-message»",
+    languageDirective: "«language-directive»",
+  } as const;
+
+  it("with BOTH new fields absent, the prompt is byte-identical to coach_chat 1.0.0", () => {
+    expect(sha256(buildChatPrompt({ ...legacyArgs }))).toBe(COACH_CHAT_V1_0_0_SHA256);
+  });
+
+  it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep 1.0.0 bytes", () => {
+    expect(sha256(buildChatPrompt({ ...legacyArgs, recentTurns: [], weeklyContext: null }))).toBe(
+      COACH_CHAT_V1_0_0_SHA256,
+    );
+  });
+
+  it("either block present breaks parity (so the new pin actually covers the new text)", () => {
+    expect(
+      sha256(buildChatPrompt({ ...legacyArgs, recentTurns: [{ role: "parent", text: "hi" }] })),
+    ).not.toBe(COACH_CHAT_V1_0_0_SHA256);
+    expect(
+      sha256(buildChatPrompt({ ...legacyArgs, weeklyContext: { momentCount: 1, milestonesCrossedCount: 0 } })),
+    ).not.toBe(COACH_CHAT_V1_0_0_SHA256);
   });
 });

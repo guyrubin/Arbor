@@ -27,8 +27,15 @@ import type {
   HeroStorySpec,
 } from "../../types";
 import { loadCharter, aimVirtues } from "../../lib/becoming";
+// W0.7 — age-fit filtering (shared helper; banding reused from playbank/stages)
+import { filterByAge, loadShowAllAges, saveShowAllAges, windowFromRange } from "../../lib/ageFilter";
+import { agefilterText } from "../../lib/i18nElevation/agefilter";
+import { ageMonthsFromProfile } from "../../lib/childAge";
+import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { EmptyState } from "../ui/EmptyState";
+import { SectionSkeleton } from "../ui/Skeleton";
+import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
@@ -98,6 +105,18 @@ export default function HeroJourneyTab() {
   );
 
   const [packFilter, setPackFilter] = useState<HeroPackId | "all">("all");
+  // W0.7 — default the story catalog to the child's age band; "Show all ages"
+  // (persisted per surface) keeps every story reachable (UC-1 rule).
+  const [showAllAges, setShowAllAges] = useState<boolean>(() => loadShowAllAges("hero-journeys"));
+  const childMonths = ageMonthsFromProfile(childProfile);
+  const toggleShowAllAges = () => {
+    setShowAllAges((prev) => {
+      const next = !prev;
+      saveShowAllAges("hero-journeys", next);
+      track("agefilter_toggle", { surface: "hero-journeys", showAll: next });
+      return next;
+    });
+  };
   const [activeStory, setActiveStory] = useState<HeroStorySpec | null>(null);
   const [render, setRender] = useState<HeroJourneyRender | null>(null);
   const [sceneIndex, setSceneIndex] = useState(0);
@@ -269,6 +288,22 @@ export default function HeroJourneyTab() {
     const orderedStories = aims.length
       ? [...visibleStories].sort((a, b) => (isAimed(b) ? 1 : 0) - (isAimed(a) ? 1 : 0))
       : visibleStories;
+    // W0.7 — age gate AFTER pack filter + aim ordering (never re-ranks). Every
+    // canon story is authored for ages 4–8, so for a younger child the default
+    // view is an honest empty state with the "Show all ages" door, not a grid
+    // of content written for someone else's age.
+    const { visible: ageVisibleStories, hidden: ageHiddenStories } = filterByAge(
+      orderedStories,
+      (s) => windowFromRange(s.ageRange),
+      childMonths,
+    );
+    const displayStories = showAllAges ? orderedStories : ageVisibleStories;
+    const hiddenAgeMin = ageHiddenStories.length
+      ? Math.min(...ageHiddenStories.map((s) => s.ageRange[0]))
+      : null;
+    const hiddenAgeMax = ageHiddenStories.length
+      ? Math.max(...ageHiddenStories.map((s) => s.ageRange[1]))
+      : null;
     return (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -386,11 +421,60 @@ export default function HeroJourneyTab() {
 
         {/* STORY WORLDS — each card is an illustrated world starring the hero */}
         <div>
-          <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
-            {he ? "בחרו את הסיפור שלכם" : "Choose your story"}
-          </h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
+            <h2 className="font-black" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
+              {he ? "בחרו את הסיפור שלכם" : "Choose your story"}
+            </h2>
+            {/* W0.7 — "Show all ages" toggle (comic register), shown only when
+                the child's-age view actually hides stories or it's already on. */}
+            {(ageHiddenStories.length > 0 || showAllAges) && (
+              <span className="ms-auto inline-flex items-center gap-2">
+                {!showAllAges && ageHiddenStories.length > 0 && (
+                  <span className="text-[11.5px] font-black" style={{ color: "var(--arbor-muted)" }} dir="auto">
+                    {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHiddenStories.length })}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={showAllAges}
+                  onClick={toggleShowAllAges}
+                  data-testid="agefilter-toggle-hero-journeys"
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11.5px] font-black"
+                  style={{
+                    background: showAllAges ? "var(--arbor-yellow)" : "#fff",
+                    border: "2px solid var(--comic-ink)",
+                    color: "var(--arbor-ink)",
+                  }}
+                >
+                  <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
+                  {agefilterText("elev.agefilter.showAll", he)}
+                </button>
+              </span>
+            )}
+          </div>
+          {/* W0.7 — honest empty state: the catalog is written for older ages. */}
+          {displayStories.length === 0 && ageHiddenStories.length > 0 && (
+            <div className="comic-panel p-5 text-center" data-testid="agefilter-empty-hero-journeys">
+              <p className="text-[14px] font-black" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                {agefilterText("elev.agefilter.empty", he, {
+                  min: hiddenAgeMin ?? "",
+                  max: hiddenAgeMax ?? "",
+                  name,
+                })}
+              </p>
+              <button
+                type="button"
+                onClick={toggleShowAllAges}
+                className="mt-3 inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12.5px] font-black"
+                style={{ background: "var(--arbor-yellow)", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name="unfold_more" size={15} /> {agefilterText("elev.agefilter.showAll", he)}
+              </button>
+            </div>
+          )}
           <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
-            {orderedStories.map((story) => {
+            {displayStories.map((story) => {
               const w = PACK_WORLD[story.pack];
               const art = STORY_ART[story.id] ?? { emoji: "⭐", sfx: "POW!", sfxHe: "פאו!" };
               const isLoading = loadingId === story.id;
@@ -454,7 +538,9 @@ export default function HeroJourneyTab() {
                       </span>
                       <span className="ms-auto inline-flex items-center gap-1 text-[13px] font-black" style={{ color: w.ink }}>
                         {isLoading ? (
-                          <><Icon name="autorenew" size={16} className="animate-spin" /> {he ? "טוען…" : "Loading…"}</>
+                          /* Press feedback while the story generates — label
+                             via i18n (masterplan 4.3: no hardcoded literals). */
+                          <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
                         ) : (
                           <>{he ? "שחקו" : "Play"} <Icon name="play_arrow" size={16} fill={1} /></>
                         )}
@@ -473,7 +559,10 @@ export default function HeroJourneyTab() {
             <Icon name="auto_stories" size={20} /> {he ? `הספרייה (${runs.length})` : `Library (${runs.length})`}
           </h2>
           {!runsCol.loaded ? (
-            <p className="text-[13px] font-bold" style={{ color: "var(--arbor-muted)" }}>{he ? "טוען…" : "Loading…"}</p>
+            /* Masterplan 4.3 — per-section skeleton mimicking the library tile
+               grid (reserves real dimensions; ~10s → inline retry wired to the
+               W0 syncStore, which re-mounts this runsCol listener). */
+            <SectionSkeleton title={false} rows={2} rowClassName="h-[120px]" loaded={runsCol.loaded} testId="hero-library-skeleton" />
           ) : runs.length === 0 ? (
             <div className="comic-panel p-5">
               <EmptyState

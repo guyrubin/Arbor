@@ -627,7 +627,10 @@ export function recommend(bands: DomainBand[], missions: MissionRecord[]): Copil
     domain: target.domain,
     missionId: DOMAIN_MISSION[target.domain],
     headline: `Increase ${DOMAIN_ACTIVITY[target.domain]} this week`,
-    why: `This is currently the domain with the least signal (${target.band}). Small daily reps move it fastest — tomorrow's mission is aimed there.`,
+    // Presentation string (renders on the Full Picture) — CLINICAL FIREWALL /
+    // GD-10: never interpolate the band VALUE here; the band stays an internal
+    // ranking input only.
+    why: `This is currently the area with the least practice signal. Small daily reps move it fastest — tomorrow's mission is aimed there.`,
   };
 }
 

@@ -3,6 +3,7 @@ import TopbarKidSwitcher from "./TopbarKidSwitcher";
 import TopbarSearch from "../search/TopbarSearch";
 import TopbarBell from "./TopbarBell";
 import KidModeButton from "./KidModeButton";
+import OfflineChip from "../ui/OfflineChip"; // W0.6: renders only while offline
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -52,6 +53,8 @@ export default function Topbar() {
       {/* Right zone: lean desktop control band (search → Kid Mode → rail toggle →
           bell → child switcher). Ask Arbor lives in the sidebar, not here. */}
       <div className="flex min-w-0 flex-shrink-0 items-center gap-2.5">
+        {/* W0.6: subtle offline chip — self-hides while online, RTL-safe. */}
+        <OfflineChip />
         <div className="hidden lg:block">
           <TopbarSearch />
         </div>

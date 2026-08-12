@@ -1,4 +1,5 @@
 import { isNativePlatform, nativePlatform } from "./runtime";
+import { isKidModeActive } from "./kidModeGate";
 
 /**
  * Native-shell bootstrap (Capacitor). All imports are dynamic so the web bundle
@@ -42,6 +43,10 @@ export async function initNativeShell(): Promise<void> {
   try {
     const { App } = await import("@capacitor/app");
     void App.addListener("backButton", ({ canGoBack }) => {
+      // KID-LOCK (W0.9, LEAK 2): while Kid Mode is open the hardware back
+      // button must neither pop the parent hash history nor exit the app —
+      // the parent gate (hold + challenge) is the only way out. No-op.
+      if (isKidModeActive()) return;
       if (window.history.length > 1 && canGoBack) window.history.back();
       else void App.exitApp();
     });

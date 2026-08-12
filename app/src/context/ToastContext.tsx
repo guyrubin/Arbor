@@ -1,7 +1,8 @@
-import React, { createContext, useCallback, useContext, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, AlertTriangle, Info, X } from "lucide-react";
 import { useLanguage } from "./LanguageContext";
+import { isKidModeActive, subscribeKidMode } from "../lib/kidModeGate";
 
 type ToastType = "success" | "error" | "info";
 type Toast = { id: number; type: ToastType; message: string };
@@ -23,20 +24,44 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const { t } = useLanguage();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // KID-LOCK (W0.9, LEAK 4): ToastProvider renders OUTSIDE Shell (App.tsx), so
+  // its z-[80] container paints ABOVE the Kid Mode overlay (z-70) with a
+  // tabbable dismiss button. Parent-register toast text must never paint over
+  // the kid surface: while the gate is active, toast() queues instead of
+  // rendering (all types — error toasts are parent-register too) and the
+  // container is not mounted at all; the queue flushes on Kid Mode exit.
+  const [kidLocked, setKidLocked] = useState(isKidModeActive);
+  const queueRef = useRef<Toast[]>([]);
+  useEffect(() => subscribeKidMode(setKidLocked), []);
+
   const remove = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
   const toast = useCallback(
     (message: string, type: ToastType = "info") => {
       const id = Date.now() + Math.random();
+      if (isKidModeActive()) {
+        queueRef.current.push({ id, type, message });
+        return;
+      }
       setToasts((t) => [...t, { id, type, message }]);
       setTimeout(() => remove(id), 4000);
     },
     [remove]
   );
 
+  // Flush the queued toasts once Kid Mode exits (parent is back in control).
+  useEffect(() => {
+    if (kidLocked || queueRef.current.length === 0) return;
+    const queued = queueRef.current;
+    queueRef.current = [];
+    setToasts((t) => [...t, ...queued]);
+    for (const q of queued) setTimeout(() => remove(q.id), 4000);
+  }, [kidLocked, remove]);
+
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
+      {!kidLocked && (
       <div role="status" aria-live="polite" className="fixed top-4 end-4 z-[80] flex flex-col gap-2 w-[min(92vw,340px)]">
         <AnimatePresence>
           {toasts.map((tc) => (
@@ -61,6 +86,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           ))}
         </AnimatePresence>
       </div>
+      )}
     </ToastContext.Provider>
   );
 }

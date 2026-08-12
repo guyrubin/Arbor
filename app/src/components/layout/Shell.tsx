@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
@@ -15,7 +15,8 @@ import MobileNav from "./MobileNav";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { ArborMark } from "../ui/ArborMark";
 import { TabSkeleton } from "../ui/Skeleton";
-import SearchModal from "../search/SearchModal";
+import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurface } from "../search/SearchModal";
+import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
 import { refreshEntitlement } from "../../hooks/useEntitlement";
@@ -23,6 +24,9 @@ import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
 import { KidModeProvider } from "../kidmode/KidModeContext";
 import KidModeOverlay from "../kidmode/KidModeOverlay";
+// KID-LOCK (W0.9): Shell's own hooks run OUTSIDE the KidModeProvider it
+// renders, so the lock state comes from the module gate singleton instead.
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 // E11: first-steps rail for new accounts (parent register only, dismissible)
 import FirstStepsRail from "../onboarding/FirstStepsRail";
 // E0: hero-comic wow onboarding — fires exactly once, right after OnboardingFlow
@@ -33,6 +37,8 @@ import WowOnboarding from "../onboarding/WowOnboarding";
 // every gated capture confirm (BehaviorsTab review + QuickLogModal); prefills
 // Ask Arbor via seedCoach(source 'post-capture'), never auto-sends.
 import PostCaptureCoachStrip from "../overview/PostCaptureCoachStrip";
+// W0.5+W0.6: ONE global data-freshness banner (offline / couldn't-refresh).
+import SyncStatusBanner from "../ui/SyncStatusBanner";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -165,16 +171,48 @@ export default function Shell() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // W2.4 analytics: mirror of searchOpen for the deps-free hotkey listener,
+  // so search_open fires only on the closed→open transition.
+  const searchOpenRef = useRef(false);
+  useEffect(() => { searchOpenRef.current = searchOpen; }, [searchOpen]);
+  // KID-LOCK (W0.9, LEAK 5): live gate value for render-time modal gating.
+  const kidLocked = useSyncExternalStore(subscribeKidMode, isKidModeActive);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        // KID-LOCK (W0.9, LEAK 5): SearchModal portals to document.body,
+        // outside the inert shield, steals focus, and Enter navigates parent
+        // tabs — the hotkey is a no-op while Kid Mode is open.
+        if (isKidModeActive()) return;
+        if (!searchOpenRef.current) track("search_open", { surface: "desktop" });
         setSearchOpen((s) => !s);
       }
     };
+    // W1.9 mobile entry points (accessories strip + MobileNav More sheet)
+    // signal via requestOpenSearch(); the gate is re-checked here so every
+    // path into SearchModal passes the same KID-LOCK guard as the hotkey.
+    const onOpenRequest = (e: Event) => {
+      if (isKidModeActive()) return;
+      const surface = ((e as CustomEvent).detail?.surface ?? "mobile") as SearchOpenSurface;
+      if (!searchOpenRef.current) track("search_open", { surface });
+      setSearchOpen(true);
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener(SEARCH_OPEN_EVENT, onOpenRequest);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(SEARCH_OPEN_EVENT, onOpenRequest);
+    };
   }, []);
+
+  // KID-LOCK (W0.9, LEAK 5): a modal left open when Kid Mode engages must not
+  // reappear beneath/over the kid surface — drop the local open flags.
+  useEffect(() => {
+    if (!kidLocked) return;
+    setSearchOpen(false);
+    setSettingsOpen(false);
+  }, [kidLocked]);
 
   // MON-2: returning from hosted checkout (success URL carries ?billing=success).
   // The RevenueCat webhook writes the entitlement async, so poll a few times until
@@ -251,7 +289,7 @@ export default function Shell() {
                   panel — so the mobile language path is preserved without a duplicate
                   in-content toggle. */}
               <button
-                onClick={() => setSearchOpen(true)}
+                onClick={() => requestOpenSearch("mobile")}
                 aria-label={t("top.search")}
                 title="Search (Ctrl/Cmd+K)"
                 className="flex flex-shrink-0 items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] min-w-[44px] rounded-xl text-[11px] font-bold transition bg-white"
@@ -306,6 +344,11 @@ export default function Shell() {
             </div>
           )}
 
+          {/* W0.5+W0.6: global freshness banner — offline / sync-error, mounted
+              ONCE here so 18 useChildCollection screens don't each grow one.
+              Additive: cached/local data keeps rendering below, never a wall. */}
+          <SyncStatusBanner />
+
           {/* Sandbox banner if API key is missing */}
           {showSandboxBanner && (
             <div className="mb-6 p-4 rounded-2xl text-xs flex items-center justify-between gap-4" style={{ background: "var(--arbor-peach-soft)", color: "#8a5326" }}>
@@ -332,12 +375,16 @@ export default function Shell() {
 
           <Suspense fallback={<TabSkeleton />}>
             <AnimatePresence mode="wait">
+              {/* W4.5: THE single tab entrance — the redundant CSS nth-child
+                  stagger in index.css was removed (it double-fired with this
+                  and capped at 6 children). Respects MotionConfig
+                  reducedMotion="user" (App.tsx). */}
               <motion.div
                 key={activeTab}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.16 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
               >
                 <ErrorBoundary>
                   <ActiveTabComponent />
@@ -355,9 +402,15 @@ export default function Shell() {
       {/* AI-CAP-7: fixed above MobileNav (z-30 < nav z-40) — non-blocking,
           dismissible, appears only right after a confirmed capture. */}
       <PostCaptureCoachStrip />
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <PaywallModal />
+      {/* KID-LOCK (W0.9, LEAK 5): these three portal to document.body — outside
+          the inert shield — so they are not MOUNTED while Kid Mode is open.
+          PaywallModal's open state lives in ArborContext (openPaywall on 402s
+          from kid-surface AI calls) and stays queued there; the modal renders
+          after exit. Parent-mode rendering is byte-identical when the gate is
+          off. */}
+      {!kidLocked && <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />}
+      {!kidLocked && <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
+      {!kidLocked && <PaywallModal />}
       {/* AP-048: Kid Mode full-screen overlay — rendered at z-70, above everything.
           Desktop-only entry point (Topbar button starts at lg). The overlay
           itself is responsive; MobileNav is byte-unchanged. */}

@@ -5,6 +5,7 @@ import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
 import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
 import { usePulses, type HubId } from "../../lib/pulse";
+import { requestOpenSearch } from "../search/SearchModal";
 
 /**
  * Bottom tab bar shown on mobile and tablet (< lg). The UC-1 IA has EIGHT categories, which
@@ -14,6 +15,13 @@ import { usePulses, type HubId } from "../../lib/pulse";
 // Mobile is job-prioritized rather than a slice of the desktop IA. Ask Arbor is
 // a frequent in-the-moment parent action; Behaviors remains one tap away in More.
 const PRIMARY_SECTION_IDS = ["today", "growth", "ask", "journal"] as const;
+
+// W2.7 nav de-overload (anti-overload, EMPHASIS ONLY — zero regression): the
+// three primary jobs (Today / Ask / Journal) carry more visual weight; the
+// remaining tab (Growth) and More render quieter via size/opacity tokens.
+// NO tab is removed and NO order changes — full IA reduction stays with the
+// IA canon (recorded as a canon follow-up in the 2026-08-11 masterplan §2.7).
+const EMPHASIZED_SECTION_IDS = new Set<string>(["today", "ask", "journal"]);
 
 export default function MobileNav() {
   const { activeTab, setActiveTab } = useArbor();
@@ -51,27 +59,37 @@ export default function MobileNav() {
       >
         {primary.map((sec) => {
           const on = sec.id === activeSectionId;
+          // W2.7: emphasis-only weighting — primary jobs slightly larger,
+          // the quieter tab dims when inactive. Colors stay on tokens.
+          const emphasized = EMPHASIZED_SECTION_IDS.has(sec.id);
           return (
             <button
               key={sec.id}
               onClick={() => go(sec.id)}
-              className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9.5px] font-bold transition"
-              style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 font-bold transition ${emphasized ? "text-[10px]" : "text-[9px]"}`}
+              style={{
+                color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)",
+                opacity: emphasized || on ? 1 : 0.72,
+              }}
             >
-              <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} />
+              <Icon name={sec.msIcon} size={emphasized ? 21 : 18} fill={on ? 1 : 0} />
               {t("nav.short." + sec.id)}
             </button>
           );
         })}
-        {/* More — opens the overflow sheet exposing every remaining category */}
+        {/* More — opens the overflow sheet exposing every remaining category.
+            W2.7: renders quieter (same treatment as the non-primary tab). */}
         <button
           onClick={() => setMoreOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
-          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9.5px] font-bold transition"
-          style={{ color: overflowActive ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
+          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[9px] font-bold transition"
+          style={{
+            color: overflowActive ? "var(--arbor-clay-deep)" : "var(--arbor-muted)",
+            opacity: overflowActive ? 1 : 0.72,
+          }}
         >
-          <Icon name="more_horiz" size={20} fill={overflowActive ? 1 : 0} />
+          <Icon name="more_horiz" size={18} fill={overflowActive ? 1 : 0} />
           {t("nav.short.more")}
         </button>
       </nav>
@@ -96,6 +114,17 @@ export default function MobileNav() {
                 <Icon name="close" size={18} />
               </button>
             </div>
+            {/* W1.9 mobile search entry: full-width row above the category
+                grid — opens the same SearchModal as the accessories strip
+                and desktop Ctrl/Cmd+K (Shell owns the open state + kid gate). */}
+            <button
+              onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSearch("more"); }}
+              className="w-full flex items-center gap-2.5 px-3 py-3 mb-2 min-h-[44px] rounded-2xl text-start text-sm font-bold transition"
+              style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+            >
+              <Icon name="search" size={20} />
+              <span className="truncate">{t("top.search")}</span>
+            </button>
             <div className="grid grid-cols-2 gap-2">
               {overflow.map((sec) => {
                 const on = sec.id === activeSectionId;

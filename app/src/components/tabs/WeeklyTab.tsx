@@ -1,49 +1,43 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Skeleton } from "../ui/Skeleton";
-import { scholarsInfo } from "../../initialData";
-import { useChildCollection } from "../../hooks/useChildCollection";
-import { api, getAiLanguage, type WeeklyDigest } from "../../lib/api";
 import { PageHeader, SectionCard, cardCls, IconBadge } from "../ui/kit";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { useDevScore } from "../../hooks/useDevScore";
+import { useWeeklyRecap, type WeeklyReport } from "../../hooks/useWeeklyRecap";
 import { rankLearnCards } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
 import { ageYearsFromProfile } from "../../lib/childAge";
+import { track } from "../../lib/analytics";
+import RecapStoryCards from "../weekly/RecapStoryCards";
+import { rcString } from "../weekly/recapStrings";
+import { fetchDigestEmailStatus, readEmailOptIn, writeEmailOptIn, type DigestEmailStatus } from "../weekly/recapEmail";
+import type { WeeklyDigest } from "../../lib/api";
 
-const DAY = 86_400_000;
-
-function weekId(d = new Date()): string {
-  const onejan = new Date(d.getFullYear(), 0, 1);
-  const week = Math.ceil(((d.getTime() - onejan.getTime()) / DAY + onejan.getDay() + 1) / 7);
-  return `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
-}
-
-type WeeklyReport = {
-  id: string; // = weekId
-  weekLabel: string;
-  generatedAt: string;
-  /** Counts only (clinical firewall): no derived intensity score is stored or
-   *  rendered — parent surfaces show counts, never scores. Legacy docs may
-   *  still carry an `avg` field in Firestore; it is never read. */
-  summary: { count: number; resolved?: number; topTrigger: string };
-  milestoneWins: string[];
-  planProgress: { done: number; total: number };
-  spotlight: { name: string; concept: string; value: string };
-  insight: string;
-  /** RET-1: the structured "{child}'s week" digest (email/push-ready payload). */
-  digest?: WeeklyDigest;
-};
-
+/**
+ * WeeklyTab — the weekly report surface. W2 2.1 hoisted ALL generation state
+ * into hooks/useWeeklyRecap (app-level: the Since-strip mounts the same hook
+ * on Today, so returning parents get this week's recap before ever finding
+ * this tab); this component renders what the hook holds. The current week
+ * leads with the RecapStoryCards ritual (Maytal Row-1 #2/#4); history weeks
+ * keep the classic report layout. W2 2.2 adds the weekly-email opt-in row —
+ * fail-closed: the opt-in is real, the channel ships when a provider is
+ * configured (server/emailProvider.ts).
+ */
 export default function WeeklyTab() {
-  const { behaviorLogs, milestones, actionPlans, childProfile, setActiveTab, acceptTodayAction, activeTodayAction, requestLearnRead } = useArbor();
-  const { t, aiLang } = useLanguage();
+  const { childProfile, setActiveTab, acceptTodayAction, activeTodayAction, requestLearnRead } = useArbor();
+  const { user } = useAuth();
+  const { t, uiLang, aiLang } = useLanguage();
   const he = aiLang === "he";
-  const reportsCol = useChildCollection<WeeklyReport>(childProfile.id, "weeklyReports");
+  const rc = (key: string, vars?: Record<string, string | number>) => rcString(t, uiLang, key, vars);
+
+  const recap = useWeeklyRecap();
+  const { reports, generating, generate, currentId, currentLabel } = recap;
 
   // LL-A4: "This week's read" — the same explainable ranking the Library uses
   // (age window + focus-domain nurture), surfaced as one pick in the report.
@@ -53,94 +47,10 @@ export default function WeeklyTab() {
     [childProfile, devScore.focusDomain]
   );
 
-  const [generating, setGenerating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const triedAuto = useRef<string | null>(null);
-
-  const currentId = weekId();
-  const currentLabel = `${t("wk.weekOf")} ${new Date().toLocaleDateString(undefined, { month: "long", day: "numeric" })}`;
-
-  const reports = useMemo(
-    () => [...reportsCol.items].sort((a, b) => (a.id < b.id ? 1 : -1)),
-    [reportsCol.items]
-  );
-
-  // Live snapshot of the current week (used at generation time).
-  const snapshot = useMemo(() => {
-    const cutoff = Date.now() - 7 * DAY;
-    const recent = behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= cutoff);
-    const resolved = recent.filter((l) => l.resolved).length;
-    const counts = new Map<string, number>();
-    recent.forEach((l) => counts.set(l.trigger || l.behaviorType, (counts.get(l.trigger || l.behaviorType) || 0) + 1));
-    let topTrigger = "—";
-    let max = 0;
-    counts.forEach((v, k) => {
-      if (v > max) {
-        max = v;
-        topTrigger = k;
-      }
-    });
-    const wins = milestones.filter((m) => m.checked).map((m) => m.title);
-    let done = 0;
-    let total = 0;
-    actionPlans.forEach((p) => p.phases.forEach((ph) => ph.steps.forEach((s) => {
-      total += 1;
-      if (s.completed) done += 1;
-    })));
-    const spotlight = scholarsInfo[new Date().getDate() % scholarsInfo.length];
-    return {
-      summary: { count: recent.length, resolved, topTrigger },
-      milestoneWins: wins,
-      planProgress: { done, total },
-      spotlight: { name: spotlight.name, concept: spotlight.concept, value: spotlight.value },
-    };
-  }, [behaviorLogs, milestones, actionPlans]);
-
-  const generate = async () => {
-    setGenerating(true);
-    try {
-      // RET-1: the digest endpoint computes truthful stats server-side and
-      // writes the warm narrative on top (deterministic fallback when AI is off).
-      let digest: WeeklyDigest | undefined;
-      try {
-        digest = await api.digest({
-          childProfile,
-          logs: behaviorLogs,
-          milestones,
-          language: getAiLanguage(),
-        });
-      } catch {
-        digest = undefined;
-      }
-      const insight = digest
-        ? [digest.summary, digest.tryThisWeek && `**Try this week:** ${digest.tryThisWeek}`].filter(Boolean).join("\n\n")
-        : "AI insight unavailable right now — the structured summary below still reflects this week. Add your model key/credentials to enable live weekly insights.";
-      const report: WeeklyReport = {
-        id: currentId,
-        weekLabel: currentLabel,
-        generatedAt: new Date().toISOString(),
-        ...snapshot,
-        insight,
-        ...(digest ? { digest } : {}),
-      };
-      await reportsCol.upsert(report);
-      setSelectedId(currentId);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  // Auto-generate the current week once if missing and there is data.
   useEffect(() => {
-    if (!reportsCol.loaded) return;
-    const hasCurrent = reportsCol.items.some((r) => r.id === currentId);
-    if (!hasCurrent && triedAuto.current !== currentId && snapshot.summary.count > 0 && !generating) {
-      triedAuto.current = currentId;
-      void generate();
-    }
     if (!selectedId) setSelectedId(reports[0]?.id ?? currentId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportsCol.loaded, reportsCol.items, snapshot.summary.count]);
+  }, [reports, selectedId, currentId]);
 
   const selected = reports.find((r) => r.id === selectedId) || reports[0] || null;
   // Counts only under the moments stat (clinical firewall — never a derived
@@ -148,6 +58,37 @@ export default function WeeklyTab() {
   // resolvedCount; when neither exists the line is simply omitted.
   const selectedWins = selected ? selected.summary.resolved ?? selected.digest?.stats.resolvedCount : undefined;
   const first = childProfile.name.split(" ")[0];
+
+  // W2 2.1: the CURRENT week renders as the story-card ritual when its digest
+  // exists; history weeks keep the classic layout below.
+  const showRecap = !!selected?.digest && selected.id === currentId;
+  useEffect(() => {
+    if (showRecap && recap.recapUnopened) recap.markRecapOpened();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRecap, recap.recapUnopened]);
+
+  // ── W2 2.2: weekly email opt-in (fail-closed channel) ──
+  const accountId = user?.uid ?? "local";
+  const [emailOptIn, setEmailOptIn] = useState(false);
+  useEffect(() => {
+    setEmailOptIn(readEmailOptIn(accountId));
+  }, [accountId]);
+  const [emailStatus, setEmailStatus] = useState<DigestEmailStatus>({ enabled: false, provider: null });
+  useEffect(() => {
+    let live = true;
+    void fetchDigestEmailStatus().then((s) => {
+      if (live) setEmailStatus(s);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const toggleEmailOptIn = () => {
+    const next = !emailOptIn;
+    writeEmailOptIn(accountId, next);
+    setEmailOptIn(next);
+    track("recap_email_optin", { on: next, channelEnabled: emailStatus.enabled });
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
@@ -212,6 +153,20 @@ export default function WeeklyTab() {
         </div>
       ) : (
         <>
+          {/* ── W2 2.1: the recap ritual — the PRIMARY view of this week's
+                 report. Story cards, one stat per card, last card = the single
+                 recommendation (CTA through the acceptTodayAction seam inside,
+                 TODAY-1: AI digests only). ── */}
+          {showRecap && selected.digest && (
+            <RecapStoryCards
+              report={selected as WeeklyReport & { digest: WeeklyDigest }}
+              childName={childProfile.name}
+              canAccept={selected.digest.generated === "ai"}
+              accepted={activeTodayAction?.recommendation === selected.digest.tryThisWeek.trim()}
+              onAccept={() => acceptTodayAction(selected.digest!.tryThisWeek, "standard", "digest")}
+            />
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className={`${cardCls} p-5`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.behaviorEvents")}</span>
@@ -231,6 +186,9 @@ export default function WeeklyTab() {
             </div>
           </div>
 
+          {/* Classic insight card — history weeks (and digest-less reports);
+              the current week's digest already leads as the story cards. */}
+          {!showRecap && (
           <div className="rounded-[22px] p-6 space-y-3" style={{ background: "var(--arbor-green-soft)" }}>
             <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
               <Icon name="auto_awesome" size={14} /> {selected.digest ? selected.digest.title : t("wk.aiInsight")}
@@ -283,6 +241,7 @@ export default function WeeklyTab() {
               <MarkdownBlock text={selected.insight} className="space-y-2 text-sm" />
             )}
           </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <SectionCard title={t("wk.milestoneWins", { n: selected.milestoneWins.length })} icon={<Icon name="trophy" size={20} />} tone="mint">
@@ -331,6 +290,39 @@ export default function WeeklyTab() {
                 </button>
               </SectionCard>
             )}
+          </div>
+
+          {/* ── W2 2.2: weekly email opt-in — settings row. The channel is
+                 FAIL-CLOSED until a provider is configured server-side; the
+                 opt-in is stored per account and honored the day it ships. ── */}
+          <div className={`${cardCls} p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
+            <div className="flex items-center gap-3 min-w-0">
+              <IconBadge tone="lav"><Icon name="mail" size={20} /></IconBadge>
+              <div className="min-w-0">
+                <h3 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{rc("elev.recap.email.title")}</h3>
+                <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>{rc("elev.recap.email.desc", { name: first })}</p>
+                {emailOptIn && !emailStatus.enabled && (
+                  <p className="text-[12px] font-bold mt-1.5" style={{ color: "var(--arbor-green-ink)" }} role="status">
+                    {rc("elev.recap.email.soon")}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={emailOptIn}
+              aria-label={rc("elev.recap.email.aria")}
+              onClick={toggleEmailOptIn}
+              className="relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full transition-colors min-h-[44px] py-[6px] box-content"
+              style={{ background: emailOptIn ? "var(--arbor-green-ink)" : "var(--arbor-rule-strong)" }}
+            >
+              <span
+                aria-hidden
+                className="inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ltr:translate-x-1 rtl:-translate-x-1"
+                style={{ transform: emailOptIn ? (uiLang === "he" ? "translateX(-28px)" : "translateX(28px)") : undefined }}
+              />
+            </button>
           </div>
 
           <div className={`${cardCls} p-6 flex flex-col sm:flex-row items-center justify-between gap-4`}>

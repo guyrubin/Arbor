@@ -77,6 +77,18 @@ export interface ChildProfile {
    */
   birthDate?: string;
   ageMonths?: number;
+  /**
+   * W1 1.1 — two-slot per-child visit tracking for the Today "Since your last
+   * visit" strip (hooks/useLastVisit). Two slots so the open that stamps the
+   * CURRENT visit never overwrites the timestamp the strip needs to read.
+   * `lastVisitAt` = the most recent app open (bumped within a session);
+   * `lastVisitPreviousAt` = the visit before it (rotated only on a 30+ min gap).
+   * Deliberately fields ON the profile document — they ride the existing
+   * profile sync/export/erase paths (NOT a new subcollection, so the
+   * CHILD_SUBCOLLECTIONS GDPR guard stays sighted). Append-only rule honored.
+   */
+  lastVisitAt?: string;
+  lastVisitPreviousAt?: string;
 }
 
 export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';
@@ -441,7 +453,9 @@ export interface BehaviorAnalysis {
   frequencyCount: { [key: string]: number };
   intensityTrend: string; // "rising" | "decreasing" | "stable"
   triggerBreakdown: { trigger: string; percentage: number }[];
-  effectivenessRating: string; // feedback on parent's responses
+  // W0.4: effectivenessRating ("feedback on parent's responses") removed — the
+  // app never scores the parent. Legacy server responses may still carry the
+  // key; consumers must ignore it rather than render it.
   expertInsights: {
     heading: string;
     text: string;

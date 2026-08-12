@@ -18,7 +18,7 @@ import type { ShareCardOpts } from "../../lib/shareCard";
 
    Motion: a single one-shot rise-fade entrance (the HubHero CSS grammar),
    collapsed to an instant render under prefers-reduced-motion. Never loops.
-   KID DARK-PATTERN BAN: no streaks/countdowns/urgency; renders AT MOST ONCE
+   KID DARK-PATTERN BAN: no chain/timer/urgency mechanics; renders AT MOST ONCE
    per browser session (sessionStorage guard), so the celebration — and its
    share prompt — can never nag.
    CLINICAL FIREWALL: presentation only; the copy is factual noticing (no %,
@@ -32,16 +32,82 @@ import type { ShareCardOpts } from "../../lib/shareCard";
 
 const SESSION_KEY = "arbor.elev.celebrate.shown";
 
+/* ── W5 celebration-chain helpers (pure, storage-injectable for node tests) ──
+   Per-milestone dedupe: a milestone id celebrates AT MOST ONCE EVER per child
+   (localStorage arbor.celebrate.seen.{childId} — an id array), on top of the
+   card's own ≤1/session guard. Callers check celebrationSessionAvailable()
+   BEFORE layering the card in an overlay, so a session whose slot is already
+   claimed never mounts an empty overlay shell. */
+
+export const celebrateSeenKey = (childId: string) => `arbor.celebrate.seen.${childId}`;
+
+type ReadableStorage = Pick<Storage, "getItem">;
+type WritableStorage = Pick<Storage, "getItem" | "setItem">;
+
+const defaultLocal = (): WritableStorage | undefined => {
+  try {
+    return typeof localStorage === "undefined" ? undefined : localStorage;
+  } catch {
+    return undefined;
+  }
+};
+const defaultSession = (): ReadableStorage | undefined => {
+  try {
+    return typeof sessionStorage === "undefined" ? undefined : sessionStorage;
+  } catch {
+    return undefined;
+  }
+};
+
+/** The milestone ids already celebrated for this child (corrupt/absent → []). */
+export function loadCelebratedIds(childId: string, storage: ReadableStorage | undefined = defaultLocal()): string[] {
+  try {
+    const raw = storage?.getItem(celebrateSeenKey(childId));
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Has this milestone id already had its celebration moment? */
+export function hasCelebrated(childId: string, milestoneId: string, storage: ReadableStorage | undefined = defaultLocal()): boolean {
+  return loadCelebratedIds(childId, storage).includes(milestoneId);
+}
+
+/** Record a milestone id as celebrated (idempotent; storage-unavailable = no-op). */
+export function markCelebrated(childId: string, milestoneId: string, storage: WritableStorage | undefined = defaultLocal()): void {
+  try {
+    const ids = loadCelebratedIds(childId, storage);
+    if (ids.includes(milestoneId)) return;
+    storage?.setItem(celebrateSeenKey(childId), JSON.stringify([...ids, milestoneId]));
+  } catch {
+    /* storage unavailable — worst case the moment could repeat once */
+  }
+}
+
+/** True while this browser session's single celebration slot is unclaimed. */
+export function celebrationSessionAvailable(storage: ReadableStorage | undefined = defaultSession()): boolean {
+  try {
+    return storage ? storage.getItem(SESSION_KEY) === null : true;
+  } catch {
+    return true; // storage unavailable — show rather than dead-end
+  }
+}
+
 export function CelebrationMoment({
   firstName,
   onDismiss,
   testId,
+  surface = "today",
 }: {
   /** Child first name (no surname). Optional — copy degrades gracefully. */
   firstName?: string;
   /** Persists/clears the data trigger upstream (e.g. usePrideMoment.dismiss). */
   onDismiss: () => void;
   testId?: string;
+  /** Analytics surface tag for the share pipeline (defaults to the Today mount). */
+  surface?: string;
 }) {
   const { t } = useLanguage();
   const { url, isGenerated } = useHeroAvatar();
@@ -137,7 +203,7 @@ export function CelebrationMoment({
       <div className="mt-3">
         <ShareButton
           artifact="growth_card"
-          surface="today"
+          surface={surface}
           childName={firstName}
           getCardOpts={getCardOpts}
           captionKey="pride.shareCaption"

@@ -38,7 +38,7 @@ function AgeChip({ age }: { age: number }) {
 }
 
 export default function DailyPlayTab() {
-  const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, updateChild, seedCoach } = useArbor();
+  const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, updateChild, seedCoach, actionLoop } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const firstName = (childProfile.name || "your child").split(" ")[0];
@@ -95,8 +95,13 @@ export default function DailyPlayTab() {
       interests: childProfile.interests,
       // CI-31: filter by the parent's declared session length.
       sessionLength,
+      // W2.5: continuation weighting from the parent's own reported outcome.
+      lastAction: (() => {
+        const last = actionLoop.find((entry) => entry.status === "completed" && entry.outcome);
+        return last?.outcome ? { recommendation: last.recommendation, outcome: last.outcome } : undefined;
+      })(),
     }, 4),
-    [concernDomains, goalDomains, childProfile.age, childProfile.interests, doneIds, sessionLength]
+    [concernDomains, goalDomains, childProfile.age, childProfile.interests, doneIds, sessionLength, actionLoop]
   );
 
   // Recommended course — matched to the child's top logged concern (the moat).

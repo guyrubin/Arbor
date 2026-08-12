@@ -79,6 +79,78 @@ export const computeWeeklyDigestStats = (
   };
 };
 
+/** The narrative fields an email render needs (AI or fallback — same shape). */
+export type DigestNarrativeFields = {
+  title: string;
+  subject: string;
+  preheader: string;
+  summary: string;
+  highlights: string[];
+  watchFor: string[];
+  tryThisWeek: string;
+};
+
+export type DigestEmailRender = { subject: string; preheader: string; bodyText: string };
+
+/**
+ * W2 2.2: render the weekly digest as a plain-text email (subject + preheader
+ * + body). Pure and deterministic — the /api/digest/email-preview endpoint
+ * and any future provider send both go through here, so the email channel can
+ * never drift from the in-app digest.
+ *
+ * Subject = the mockup frame-6 notification voice ("היום יש תובנה חדשה
+ * בשבילכם 💚 / פתחו את Arbor ותגלו מה חדש"), localized by `language`.
+ *
+ * Clinical firewall (JRNL-1 extends to email): counts only. The body renders
+ * this week's counts and never touches previousWeekMoments — two week counts
+ * side by side read as a trend delta.
+ */
+export const buildDigestEmail = (input: {
+  childName: string;
+  language?: "en" | "he";
+  narrative: DigestNarrativeFields;
+  stats: WeeklyDigestStats;
+}): DigestEmailRender => {
+  const he = input.language === "he";
+  const { narrative: n, stats: s, childName } = input;
+
+  // Notification voice (Maytal frame 6) for the subject line.
+  const subject = he
+    ? `יש תובנה חדשה על ${childName} 💚`
+    : `A new insight about ${childName} is waiting 💚`;
+  const preheader = n.preheader.trim() || (he ? "פתחו את Arbor ותגלו מה חדש" : "Open Arbor to see what's new");
+
+  const L = he
+    ? {
+        watch: "שווה שיחה:",
+        tryLbl: "שווה לנסות השבוע:",
+        counts: `השבוע במספרים: ${s.momentsLogged} רגעים נשמרו על פני ${s.daysCovered} ימים · ${s.resolvedCount} נפתרו יחד · אבני דרך: ${s.milestonesDone} מתוך ${s.milestonesTotal}.`,
+        open: "פתחו את Arbor ותגלו מה חדש.",
+      }
+    : {
+        watch: "Worth a conversation:",
+        tryLbl: "Try this week:",
+        counts: `The week in counts: ${s.momentsLogged} moments captured across ${s.daysCovered} days · ${s.resolvedCount} worked through together · milestones: ${s.milestonesDone} of ${s.milestonesTotal}.`,
+        open: "Open Arbor to see what's new.",
+      };
+
+  const bodyText = [
+    n.title,
+    "",
+    n.summary,
+    "",
+    ...n.highlights.map((h) => `• ${h}`),
+    ...(n.watchFor.length > 0 ? ["", `${L.watch} ${n.watchFor.join(" ")}`] : []),
+    "",
+    `${L.tryLbl} ${n.tryThisWeek}`,
+    "",
+    L.counts,
+    L.open,
+  ].join("\n");
+
+  return { subject, preheader, bodyText };
+};
+
 /** Deterministic fallback narrative when AI is unavailable. */
 export const fallbackDigestNarrative = (childName: string, stats: WeeklyDigestStats) => {
   const highlights: string[] = [];

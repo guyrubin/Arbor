@@ -5,6 +5,10 @@ import { abortableIterate, raceWithAbort } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildVoiceReplyPrompt } from "../ai/prompts.js";
+// Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
+// fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
+// the byte-identical legacy prompt on any malformed/absent input.
+import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
@@ -26,7 +30,8 @@ import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
-import { computeWeeklyDigestStats, fallbackDigestNarrative } from "../server/digest.js";
+import { computeWeeklyDigestStats, fallbackDigestNarrative, buildDigestEmail } from "../server/digest.js";
+import { resolveEmailProvider } from "../server/emailProvider.js";
 import { buildConsultRequest, type ConsultStore } from "../server/consultRequests.js";
 import { resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
@@ -440,7 +445,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   };
 
   router.post("/chat", async (req, res) => {
-    const { message, childProfile, scholarLens, language, libraryContext } = req.body;
+    // 1.3: `recentTurns` (same-thread continuity, no consent change — the
+    // parent is looking at these turns) and `weeklyContext` (parent-toggle-
+    // gated, counts/categories only) are OPTIONAL and hard-sanitized below;
+    // requests without them produce a prompt byte-identical to coach_chat 1.0.0.
+    const { message, childProfile, scholarLens, language, libraryContext, recentTurns, weeklyContext } = req.body;
     const languageDirective =
       language === "he"
         ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
@@ -511,7 +520,13 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         childProfile,
         scholar,
         message,
-        languageDirective
+        languageDirective,
+        // 1.3 — client-supplied prompt input, so the caps are re-enforced HERE
+        // (role whitelist, per-turn 800 chars, last 6 turns, ~4000-char total;
+        // integer clamps + trigger-label cap + outcome enum) no matter what
+        // the wire delivered. Empty/invalid ⇒ "" blocks ⇒ legacy bytes.
+        recentTurns: sanitizeRecentTurns(recentTurns),
+        weeklyContext: sanitizeWeeklyContext(weeklyContext)
       });
 
       // SEC/CMP P0: child PII never reaches the model — redact at the call seam,
@@ -2361,7 +2376,7 @@ ${developmentalFramework}
 Analyze Arbor parent-logged observations.
 Child Details: ${JSON.stringify(childProfile)}
 Behavior Logs: ${JSON.stringify(logs)}
-Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectivenessRating, expertInsights, actionPlanSuggestion.
+Return JSON with frequencyCount, intensityTrend, triggerBreakdown, expertInsights, actionPlanSuggestion.
 `;
       const privacy = createRedaction(childProfile?.name);
       const analysis = privacy.restoreDeep(await modelProvider.generateJson({
@@ -2369,7 +2384,7 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: {
           type: Type.OBJECT,
-          required: ["frequencyCount", "intensityTrend", "triggerBreakdown", "effectivenessRating", "expertInsights", "actionPlanSuggestion"],
+          required: ["frequencyCount", "intensityTrend", "triggerBreakdown", "expertInsights", "actionPlanSuggestion"],
           properties: {
             frequencyCount: { type: Type.OBJECT, properties: {} },
             intensityTrend: { type: Type.STRING },
@@ -2384,7 +2399,6 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
                 }
               }
             },
-            effectivenessRating: { type: Type.STRING },
             expertInsights: {
               type: Type.ARRAY,
               items: {
@@ -2402,15 +2416,19 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
         }
       })) as Record<string, any>;
 
+      // W0.4: the app never scores the parent. effectivenessRating was removed
+      // from the prompt/schema above; strip it defensively in case the model
+      // emits it anyway so no parent-grading text can reach the client.
+      delete analysis.effectivenessRating;
+
       // AI-2 / CI-13: output-side safety screen for the model-authored free-text
-      // fields. effectivenessRating, expertInsights[].heading/.text, and
-      // actionPlanSuggestion are the diagnostic-label-leak surfaces here; the
-      // numeric/structured fields are kept regardless. Mirror the /chat and /voice
-      // blocked behavior — log a warn with requestId+category and DO NOT leak the
-      // flagged text; swap the free-text fields for a safe, non-diagnostic fallback.
+      // fields. expertInsights[].heading/.text and actionPlanSuggestion are the
+      // diagnostic-label-leak surfaces here; the numeric/structured fields are
+      // kept regardless. Mirror the /chat and /voice blocked behavior — log a
+      // warn with requestId+category and DO NOT leak the flagged text; swap the
+      // free-text fields for a safe, non-diagnostic fallback.
       const insights = Array.isArray(analysis.expertInsights) ? analysis.expertInsights : [];
       const screenable = [
-        analysis.effectivenessRating,
         ...insights.flatMap((i: any) => [i?.heading, i?.text]),
         analysis.actionPlanSuggestion,
       ].filter((s: unknown): s is string => typeof s === "string" && s.length > 0).join("\n");
@@ -2421,7 +2439,6 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, effectiveness
           category: outputVerdict.category,
           reason: outputVerdict.reason,
         });
-        analysis.effectivenessRating = "Arbor can't summarize how well the strategies are working here.";
         analysis.expertInsights = [{
           heading: "Let's pause on the interpretation",
           text: "Part of what Arbor drafted stepped outside what an AI parenting coach should say — it sounded diagnostic or medical. Arbor only offers observations, never a diagnosis. If you're worried about a possible condition, bring these notes to your pediatrician or family health centre; you can generate a professional handoff brief from Reports & Handoffs to make that conversation easier.",
@@ -2650,8 +2667,28 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
             tryThisWeek: { type: Type.STRING }
           }
         }
-      }) as Record<string, unknown>);
-      res.json({ ...(narrative as Record<string, unknown>), stats, generated: "ai" });
+      }) as Record<string, unknown>) as Record<string, unknown>;
+      // Output safety screen — same wall as /chat, /voice and behavior-analysis.
+      // The recap is auto-generated on week-open and its title rides an external
+      // share card (W2.1), so digest free text must never bypass the screen: on a
+      // flagged verdict we serve the deterministic counts-only fallback verbatim.
+      const digestScreenable = [
+        narrative.title, narrative.subject, narrative.preheader, narrative.summary,
+        ...(Array.isArray(narrative.highlights) ? narrative.highlights : []),
+        ...(Array.isArray(narrative.watchFor) ? narrative.watchFor : []),
+        narrative.tryThisWeek,
+      ].filter((s: unknown): s is string => typeof s === "string" && s.length > 0).join("\n");
+      const digestVerdict = await screenModelOutput(modelProvider, digestScreenable);
+      if (digestVerdict.flagged) {
+        logger.warn("Digest narrative blocked by output safety screen — serving deterministic fallback", {
+          requestId: requestIdOf(req),
+          category: digestVerdict.category,
+          reason: digestVerdict.reason,
+        });
+        res.json({ ...fallback, stats, generated: "fallback", outputBlocked: true });
+        return;
+      }
+      res.json({ ...narrative, stats, generated: "ai" });
     } catch (error: any) {
       logger.warn("Digest AI narrative unavailable — serving deterministic fallback", {
         requestId: requestIdOf(req),
@@ -2659,6 +2696,37 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
       });
       res.json({ ...fallback, stats, generated: "fallback" });
     }
+  });
+
+  // W2 2.2: weekly-email channel status — reflects server/emailProvider.ts.
+  // FAIL-CLOSED: enabled only when EMAIL_PROVIDER names an IMPLEMENTED
+  // provider; today none exists, so this truthfully reports the channel off
+  // while the client keeps the (real) opt-in list.
+  router.get("/digest/email-status", (_req, res) => {
+    const provider = resolveEmailProvider();
+    res.json({ enabled: provider.enabled, provider: provider.provider });
+  });
+
+  // W2 2.2: render the week's digest as the email it WOULD be — subject +
+  // preheader + plain-text body (reuses the digest's own fields; counts only,
+  // previousWeekMoments never rendered). NO send happens here, ever; the
+  // response carries the provider status so callers can't mistake a preview
+  // for a delivery capability.
+  router.post("/digest/email-preview", (req, res) => {
+    const { childProfile, logs, milestones, language } = req.body;
+    const childName = (childProfile?.name && String(childProfile.name)) || "Your child";
+    const stats = computeWeeklyDigestStats(Array.isArray(logs) ? logs : [], Array.isArray(milestones) ? milestones : []);
+    // Deterministic narrative on purpose: the preview must be cheap, instant,
+    // and truthful with AI off — same fields the in-app digest fallback uses.
+    const narrative = fallbackDigestNarrative(childName, stats);
+    const email = buildDigestEmail({
+      childName,
+      language: language === "he" ? "he" : "en",
+      narrative,
+      stats,
+    });
+    const provider = resolveEmailProvider();
+    res.json({ enabled: provider.enabled, provider: provider.provider, ...email });
   });
 
   // CMP-2 (GDPR Art. 15/20): server-side data export for one child. The client

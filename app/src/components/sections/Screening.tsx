@@ -13,6 +13,17 @@ import { computeRecheckDueAt, isRecheckDue } from "../../lib/screeningRecheck";
 import { buildMonitoringReportDoc, type DomainSignal } from "../../lib/monitoring";
 import { useMonitoring } from "../../hooks/useMonitoring";
 import { openPrintableReport } from "../../lib/reportExport";
+import { en as screenCalmEn, he as screenCalmHe } from "../../lib/i18nElevation/screeningcalm";
+
+/** W0.3 — module-local string resolution for the calm-result reframe.
+ *  i18nElevation/index.ts registration is that file's own recipe (one line per
+ *  module, owned separately); resolving directly here keeps this workstream
+ *  inside the files it owns while mirroring i18n.ts {var} interpolation. */
+function tCalm(uiLang: string, key: string, vars?: Record<string, string | number>): string {
+  let s = (uiLang === "he" ? screenCalmHe[key] : undefined) ?? screenCalmEn[key] ?? key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+  return s;
+}
 
 type SavedScreening = ScreeningResult & { id: string; recheckDueAt?: string };
 
@@ -81,7 +92,9 @@ export default function Screening() {
       <SectionCard
         title={t("monitor.title")}
         icon={<Icon name="visibility" size={20} />}
-        tone={monitoring.elevated ? "yellow" : "mint"}
+        // W0.3 clinical firewall — ONE card tone regardless of outcome; the
+        // old outcome-flipped amber/green tone was verdict coloring in disguise.
+        tone="mint"
         action={
           monitoring.elevated ? (
             <button
@@ -104,10 +117,12 @@ export default function Screening() {
                 ? t("screen.monitor.headline.one")
                 : t("screen.monitor.headline.many", { n: monitoring.watchAreas.length })}.
             </p>
+            {/* W0.3 — neutral surface + observational eye icon: the amber wash
+                and warning triangle were traffic-light semantics. */}
             {monitoring.watchAreas.map((d) => (
-              <div key={d.domain} className="rounded-2xl p-3.5" style={{ background: "var(--arbor-yellow-soft)" }}>
+              <div key={d.domain} className="rounded-2xl p-3.5" style={{ background: "var(--arbor-paper-deep)" }}>
                 <div className="flex items-center gap-2">
-                  <Icon name="warning" size={14} style={{ color: "var(--arbor-clay-deep)" }} />
+                  <Icon name="visibility" size={14} style={{ color: "var(--arbor-muted)" }} />
                   <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t(`screen.domain.${d.domain}`)}</span>
                 </div>
                 <p className="text-[12.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{watchNote(d)}</p>
@@ -115,8 +130,8 @@ export default function Screening() {
             ))}
           </div>
         ) : (
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-bold" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-            <Icon name="check" size={14} /> {t("monitor.calm")}
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
+            <Icon name="visibility" size={14} /> {t("monitor.calm")}
           </div>
         )}
       </SectionCard>
@@ -132,7 +147,7 @@ export default function Screening() {
 export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
   const { childProfile, setActiveTab } = useArbor();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   // UND-5 — months-precise, corrected-age band selection: the SAME corrected
@@ -298,33 +313,43 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
       <AnimatePresence>
         {phase === "result" && result && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-            {/* Headline */}
-            <div className="rounded-[22px] p-6" style={{ background: result.elevated ? "var(--arbor-yellow-soft)" : "var(--arbor-green-soft)" }}>
+            {/* Headline — W0.3 clinical firewall: ONE neutral card regardless of
+                outcome. UND-1 removed the verdict WORDS; this removes the verdict
+                COLOR mechanism (the amber-vs-green wash + badge flip). The
+                headline reports a count, observationally — which is what the
+                safetyNote below has promised all along. */}
+            <div className="rounded-[22px] p-6" style={{ background: "var(--arbor-paper-deep)" }}>
               <div className="flex items-center gap-3">
-                <IconBadge tone={result.elevated ? "yellow" : "mint"}>
-                  {result.elevated ? <Icon name="warning" size={20} /> : <Icon name="check_circle" size={20} />}
+                <IconBadge tone="lav">
+                  <Icon name="fact_check" size={20} />
                 </IconBadge>
                 <div>
-                  {/* UND-1 firewall condition: the calm headline is observational
-                      ("nothing stands out"), never an "on track" verdict. */}
                   <h3 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                    {result.elevated ? t("screen.result.title.watch") : t("screen.result.title.calm", { name: first })}
+                    {result.watchAreas.length === 0
+                      ? tCalm(uiLang, "elev.screencalm.title.none", { total: result.domains.length })
+                      : result.watchAreas.length === 1
+                        ? tCalm(uiLang, "elev.screencalm.title.one")
+                        : tCalm(uiLang, "elev.screencalm.title.many", { n: result.watchAreas.length })}
                   </h3>
                   <p className="text-sm mt-0.5" style={{ color: "var(--arbor-muted)" }}>
-                    {result.elevated ? t("screen.result.body.watch") : t("screen.result.body.calm")}
+                    {result.watchAreas.length > 0
+                      ? tCalm(uiLang, "elev.screencalm.body.some")
+                      : tCalm(uiLang, "elev.screencalm.body.none")}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Per-domain breakdown */}
+            {/* Per-domain breakdown — same neutral marker tone for EVERY domain;
+                the row wording routes ("worth a conversation" / "reviewed"),
+                it never grades. */}
             <div className="grid sm:grid-cols-2 gap-3">
               {result.domains.map((d) => (
                 <div key={d.domain} className={`${cardCls} p-4 flex items-center justify-between gap-3`}>
                   <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t(`screen.domain.${d.domain}`)}</span>
-                  {d.status === "watch"
-                    ? <Chip tone="yellow" icon={<Icon name="warning" size={14} />}>{t("screen.chip.watch")}</Chip>
-                    : <Chip tone="mint" icon={<Icon name="check" size={14} />}>{t("screen.chip.calm")}</Chip>}
+                  <Chip tone="lav">
+                    {tCalm(uiLang, d.status === "watch" ? "elev.screencalm.row.discuss" : "elev.screencalm.row.reviewed")}
+                  </Chip>
                 </div>
               ))}
             </div>

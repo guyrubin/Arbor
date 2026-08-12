@@ -77,10 +77,11 @@ export function todayHardMomentOffer(
   logs: Pick<BehaviorLog, "behaviorType" | "timestamp">[],
   cards: HardMomentCard[] = hardMomentCards,
   now: Date = new Date(),
+  ageMonths?: number | null,
 ): HardMomentTodayOffer | null {
   const types = recentBehaviorTypes(logs, now);
   if (types.length === 0) return null;
-  const matched = matchToRecentBehaviors(types, cards, now);
+  const matched = matchToRecentBehaviors(types, cards, now, ageMonths);
   return matched.length > 0 ? { card: matched[0] } : null;
 }
 

@@ -4,6 +4,8 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel } from "../ui/playkit";
+import { EmptyState, GhostBlock } from "../ui/EmptyState";
+import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { ComicReader } from "../stories/ComicReader";
 import {
@@ -18,6 +20,13 @@ import {
   type SavedComicMeta,
 } from "../../lib/heroComics";
 import { getScene } from "../../lib/sceneCache";
+// W0.7 — age-fit filtering (shared helper; windows come from the canon
+// HeroStorySpec ageRange each adventure is built from)
+import { classifyAgeFit, loadShowAllAges, saveShowAllAges, windowFromRange } from "../../lib/ageFilter";
+import { agefilterText } from "../../lib/i18nElevation/agefilter";
+import { ageMonthsFromProfile } from "../../lib/childAge";
+import { getStorySpec } from "../../lib/heroJourneys";
+import { track } from "../../lib/analytics";
 import type { HeroPackId } from "../../types";
 
 /**
@@ -84,6 +93,21 @@ export default function ComicsTab() {
   // device-local IndexedDB store) so the reader mounts with the art in hand —
   // fully cached books re-open with ZERO /generate-comic calls.
   const [openBook, setOpenBook] = useState<{ id: string; pages: string[] } | null>(null);
+
+  // W0.7 — default the bookshelf to the child's age band; "Show all ages"
+  // (persisted per surface) keeps every book reachable (UC-1 rule). SAVED
+  // books are ALWAYS shown regardless of age fit — the shelf is the child's
+  // own library, never pruned by a filter.
+  const [showAllAges, setShowAllAges] = useState<boolean>(() => loadShowAllAges("comics"));
+  const childMonths = ageMonthsFromProfile(childProfile);
+  const toggleShowAllAges = () => {
+    setShowAllAges((prev) => {
+      const next = !prev;
+      saveShowAllAges("comics", next);
+      track("agefilter_toggle", { surface: "comics", showAll: next });
+      return next;
+    });
+  };
 
   const he = aiLang === "he";
   const heroDataUrl = heroUrl && heroUrl.startsWith("data:") ? heroUrl : undefined;
@@ -195,6 +219,20 @@ export default function ComicsTab() {
   }
 
   // ── Bookshelf view ─────────────────────────────────────────────────────────
+  // W0.7 — per-adventure age fit from the canon story spec it was built from.
+  // Saved books always show (the child's own shelf); unsaved out-of-band books
+  // sit behind the "Show all ages" door with an age chip explaining why.
+  const adventureFit = (id: string) =>
+    classifyAgeFit(windowFromRange(getStorySpec(id)?.ageRange), childMonths);
+  const shelfAdventures = showAllAges
+    ? ADVENTURES
+    : ADVENTURES.filter((a) => !!savedByAdventure[a.id] || adventureFit(a.id) !== "out");
+  const hiddenAdventures = ADVENTURES.length - shelfAdventures.length;
+  const hiddenSpecs = ADVENTURES
+    .filter((a) => !shelfAdventures.includes(a))
+    .map((a) => getStorySpec(a.id))
+    .filter((s): s is NonNullable<typeof s> => !!s);
+
   return (
     <PlayShell>
       <PlayHeader
@@ -205,17 +243,97 @@ export default function ComicsTab() {
 
       {/* Shelf summary */}
       <PlayPanel tone="clay">
-        <p className="text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-          {he ? `מדף הקומיקס של ${name}` : `${name}'s comic bookshelf`}
-        </p>
-        <p className="text-[12.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }} dir="auto">
-          {he ? `${savedCount} מתוך ${ADVENTURES.length} ספרים על המדף` : `${savedCount} of ${ADVENTURES.length} books on the shelf`}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <div className="min-w-0">
+            <p className="text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+              {he ? `מדף הקומיקס של ${name}` : `${name}'s comic bookshelf`}
+            </p>
+            <p className="text-[12.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              {he ? `${savedCount} מתוך ${ADVENTURES.length} ספרים על המדף` : `${savedCount} of ${ADVENTURES.length} books on the shelf`}
+            </p>
+          </div>
+          {/* W0.7 — "Show all ages" toggle: only when the child's-age view
+              actually hides books (or the parent already opted in). */}
+          {(hiddenAdventures > 0 || showAllAges) && (
+            <span className="ms-auto inline-flex items-center gap-2">
+              {!showAllAges && hiddenAdventures > 0 && (
+                <span className="text-[11.5px] font-black" style={{ color: "var(--arbor-muted)" }} dir="auto">
+                  {agefilterText("elev.agefilter.hiddenCount", he, { n: hiddenAdventures })}
+                </span>
+              )}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showAllAges}
+                onClick={toggleShowAllAges}
+                data-testid="agefilter-toggle-comics"
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11.5px] font-black"
+                style={{
+                  background: showAllAges ? "var(--arbor-yellow)" : "#fff",
+                  border: "2px solid var(--comic-ink)",
+                  color: "var(--arbor-ink)",
+                }}
+              >
+                <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
+                {agefilterText("elev.agefilter.showAll", he)}
+              </button>
+            </span>
+          )}
+        </div>
       </PlayPanel>
+
+      {/* Masterplan 4.3 — teach-empty for the untouched shelf: a ghost
+          bookshelf shows what saved books will look like lined up, with ONE
+          CTA that opens the first age-fit adventure (the same openComic path
+          every cover uses — no second build entry). Copy = elev.states.
+          comics.* (en+he, encouraging, never celebrating the zero). */}
+      {savedCount === 0 && shelfAdventures.length > 0 && (
+        <PlayPanel tone="lav">
+          <EmptyState
+            className="py-4"
+            headline={statesText("elev.states.comics.head", he)}
+            body={statesText("elev.states.comics.body", he, { name })}
+            cta={statesText("elev.states.comics.cta", he)}
+            ctaTestId="comics-empty-cta"
+            onCta={() => {
+              try { track("empty_cta_tap", { surface: "comics" }); } catch { /* noop */ }
+              openComic(shelfAdventures[0].id);
+            }}
+            preview={
+              /* Ghost bookshelf: three muted book covers on a shelf line —
+                 the filled state in miniature. */
+              <div className="mx-auto w-full max-w-[260px]">
+                <div className="flex items-end justify-center gap-2.5">
+                  <GhostBlock className="w-16 rounded-md" style={{ height: 64 }} />
+                  <GhostBlock className="w-16 rounded-md" style={{ height: 78 }} />
+                  <GhostBlock className="w-16 rounded-md" style={{ height: 70 }} />
+                </div>
+                <div className="mt-1 h-1.5 rounded-full" style={{ background: "var(--arbor-rule)" }} />
+              </div>
+            }
+          />
+        </PlayPanel>
+      )}
+
+      {/* W0.7 — honest empty state when every book is for other ages. */}
+      {shelfAdventures.length === 0 && hiddenSpecs.length > 0 && (
+        <PlayPanel tone="lav" className="text-center">
+          <p className="text-[14px] font-black" dir="auto" data-testid="agefilter-empty-comics" style={{ color: "var(--arbor-ink)" }}>
+            {agefilterText("elev.agefilter.empty", he, {
+              min: Math.min(...hiddenSpecs.map((s) => s.ageRange[0])),
+              max: Math.max(...hiddenSpecs.map((s) => s.ageRange[1])),
+              name,
+            })}
+          </p>
+          <PlayButton tone="clay" className="mt-3" onClick={toggleShowAllAges}>
+            <Icon name="unfold_more" size={15} /> {agefilterText("elev.agefilter.showAll", he)}
+          </PlayButton>
+        </PlayPanel>
+      )}
 
       {/* Book grid — every canon adventure as a multi-page comic book */}
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
-        {ADVENTURES.map((a) => {
+        {shelfAdventures.map((a) => {
           const w = PACK_WORLD[a.pack];
           const emoji = STORY_EMOJI[a.id] ?? "⭐";
           const saved = savedByAdventure[a.id];
@@ -274,8 +392,20 @@ export default function ComicsTab() {
                   <span className="font-black text-[15px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
                     {title}
                   </span>
-                  <span className="ms-auto inline-block text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: w.ink }}>
-                    {he ? w.labelHe : w.label}
+                  <span className="ms-auto inline-flex items-center gap-1.5">
+                    {/* W0.7 age chip — only on out-of-band books (a catalog
+                        fact about the story, never a claim about the child). */}
+                    {adventureFit(a.id) === "out" && getStorySpec(a.id) && (
+                      <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
+                        {agefilterText("elev.agefilter.chip", he, {
+                          min: getStorySpec(a.id)!.ageRange[0],
+                          max: getStorySpec(a.id)!.ageRange[1],
+                        })}
+                      </span>
+                    )}
+                    <span className="inline-block text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: w.ink }}>
+                      {he ? w.labelHe : w.label}
+                    </span>
                   </span>
                 </div>
                 {saved && (

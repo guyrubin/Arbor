@@ -5,6 +5,10 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useCheckout } from "../../hooks/useCheckout";
 import { PlanPrices } from "./PlanPrices";
+import { PlanBadge } from "../ui/PlanBadge";
+// Direct module import (3.6): planclarity IS registered in i18nElevation/index.ts;
+// the direct read is kept so this modal renders the split even if t() overrides drift.
+import * as planclarity from "../../lib/i18nElevation/planclarity";
 
 /**
  * MON-2: the conversion moment. Opened by ArborContext when a metered/Plus-gated
@@ -13,7 +17,9 @@ import { PlanPrices } from "./PlanPrices";
  */
 export default function PaywallModal() {
   const { paywall, closePaywall } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  // 3.6 free-vs-Plus clarity strings (see import note above).
+  const pc = (k: string) => (uiLang === "he" ? planclarity.he : planclarity.en)[`elev.plan.${k}`] ?? "";
   const { busy, startCheckout } = useCheckout();
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
 
@@ -32,6 +38,32 @@ export default function PaywallModal() {
             <Sparkles className="w-4.5 h-4.5" />
           </span>
           <p className="leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{body}</p>
+        </div>
+
+        {/* 3.6 — the mom-test answer to "what's free vs paid?": the split, stated
+            plainly BEFORE the price. Free column first — the parent keeps it all
+            either way; the upgrade only ADDS. */}
+        <div dir="auto" className="rounded-xl p-3 grid gap-3 sm:grid-cols-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+          <div>
+            <p className="font-bold mb-1" style={{ color: "var(--arbor-ink)" }}>{pc("freeTitle")}</p>
+            <ul className="space-y-0.5 list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
+              {(["free.1", "free.2", "free.3"] as const).map((k) => <li key={k}>{pc(k)}</li>)}
+            </ul>
+          </div>
+          <div>
+            <p className="font-bold mb-1 flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
+              <PlanBadge plan="plus" />{pc("plusTitle")}
+            </p>
+            <ul className="space-y-0.5 list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
+              {(["plus.1", "plus.2", "plus.3", "plus.4"] as const).map((k) => <li key={k}>{pc(k)}</li>)}
+            </ul>
+            <p className="font-bold mt-2 mb-1 flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
+              <PlanBadge plan="family" />{pc("familyTitle")}
+            </p>
+            <ul className="space-y-0.5 list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
+              <li>{pc("family.1")}</li>
+            </ul>
+          </div>
         </div>
 
         <div className="flex items-center gap-1 rounded-xl p-1 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>

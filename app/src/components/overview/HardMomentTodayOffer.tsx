@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { locText, todayHardMomentOffer } from "../../content/hardMomentSurface";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 
 /**
  * CONT-2 (AR-CONT-01) — the Today hard-moment offer, built dark. When a
@@ -15,10 +16,13 @@ import { locText, todayHardMomentOffer } from "../../content/hardMomentSurface";
  * control — the guidance hero keeps the single gradient-primary CTA.
  */
 export default function HardMomentTodayOffer() {
-  const { behaviorLogs, activeTodayAction, acceptTodayAction } = useArbor();
+  const { behaviorLogs, activeTodayAction, acceptTodayAction, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
 
-  const offer = useMemo(() => todayHardMomentOffer(behaviorLogs), [behaviorLogs]);
+  const offer = useMemo(
+    () => todayHardMomentOffer(behaviorLogs, undefined, new Date(), ageMonthsFromProfile(childProfile)),
+    [behaviorLogs, childProfile],
+  );
   if (activeTodayAction || !offer) return null;
 
   const locale = uiLang === "he" ? "he" : "en";

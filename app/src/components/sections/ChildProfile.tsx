@@ -166,7 +166,7 @@ export default function ChildProfile() {
               )}
               <button
                 onClick={() => setActiveTab("sharing")}
-                className="w-full flex items-center gap-3 rounded-2xl p-2 text-start transition hover:-translate-y-0.5"
+                className="w-full flex items-center gap-3 rounded-2xl p-2 text-start transition motion-safe:hover:-translate-y-0.5"
               >
                 <span className="inline-flex items-center justify-center flex-shrink-0 rounded-[15px]" style={{ width: 42, height: 42, background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
                   <Icon name="person_add" size={20} />
@@ -396,7 +396,7 @@ export default function ChildProfile() {
           { tab: "behaviors" as const, tone: "coral" as const, icon: <Icon name="monitoring" size={18} />, label: t("cp.footer.moments") },
           { tab: "memory" as const, tone: "lav" as const, icon: <Icon name="bookmark" size={18} />, label: t("cp.footer.memory") },
         ]).map((l) => (
-          <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} p-4 text-start flex items-center gap-3 transition hover:-translate-y-0.5`}>
+          <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} p-4 text-start flex items-center gap-3 transition motion-safe:hover:-translate-y-0.5`}>
             <IconBadge tone={l.tone}>{l.icon}</IconBadge>
             <span className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
               {l.label} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" style={{ color: PASTEL[l.tone].ink }} />

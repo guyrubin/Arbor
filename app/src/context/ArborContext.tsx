@@ -28,6 +28,7 @@ import { useProfile } from "./ProfileContext";
 import { api, authHeaders, getAiLanguage, PaywallError } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 import { track } from "../lib/analytics";
+import { isKidModeActive } from "../lib/kidModeGate";
 import { runInstrumented } from "../hooks/useAsyncAction";
 import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
 import { consumeReferralCode } from "../lib/attribution";
@@ -41,6 +42,7 @@ import { sortActionLoop, todayActionId } from "../actionLoop/model";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
+import { buildChatContext, readWeeklyContextConsent } from "../ai/chatContext";
 import { useLanguage } from "./LanguageContext";
 
 const readLS = (key: string): string | null => {
@@ -145,6 +147,15 @@ function useArborState() {
   // link), then last-used (localStorage), then Home.
   const [activeTab, setActiveTabState] = useState<ActiveTab>(() => tabFromHash() || (readLS("arbor.activeTab") as ActiveTab) || "overview");
   const setActiveTab = (t: ActiveTab) => {
+    // KID-LOCK (W0.9, LEAK 3): while Kid Mode is open, parent navigation is
+    // frozen at the root. Kid surfaces reuse parent tabs (HeroJourneyTab,
+    // HeroArcade) whose CTAs call setActiveTab("comics"/"family") under the
+    // overlay — without this guard the hash + arbor.activeTab mutate silently
+    // and the parent exits (or the child reloads) into the wrong tab.
+    if (isKidModeActive()) {
+      try { track("kidlock_blocked_nav", { tab: t }); } catch { /* noop */ }
+      return;
+    }
     setActiveTabState(t);
     try { if (window.location.hash.replace(/^#\/?/, "") !== t) window.location.hash = `/${t}`; } catch { /* noop */ }
     try { track("view_tab", { tab: t }); } catch { /* noop */ }
@@ -594,7 +605,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   // IA-1: keep the URL hash in sync with the active view, and respond to
   // back/forward by reading the hash.
   useEffect(() => {
-    const onHash = () => { const t = tabFromHash(); if (t) setActiveTabState(t); };
+    // LEAK-3 companion: browser back/forward must not rotate parent tab state
+    // while the kid overlay is up (same wall as the gated setActiveTab).
+    const onHash = () => { if (isKidModeActive()) return; const t = tabFromHash(); if (t) setActiveTabState(t); };
     if (typeof window !== "undefined") {
       if (!window.location.hash) { try { window.history.replaceState(null, "", `#/${activeTab}`); } catch { /* noop */ } }
       window.addEventListener("hashchange", onHash);
@@ -819,6 +832,17 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
               ? { id: match.id, title: match.title.en, keyPoints: match.keyPoints.map((k) => k.en) }
               : undefined;
           })(),
+          // Masterplan 1.3: same-thread continuity + consent-gated weekly counts.
+          // `chatMessages` here is the PRE-append thread (setState hasn't flushed),
+          // i.e. exactly the turns BEFORE the new question. Both fields are absent
+          // when empty/off, keeping the request byte-identical to today's.
+          ...buildChatContext({
+            thread: chatMessages,
+            behaviorLogs,
+            milestones,
+            actionLoop,
+            weeklyContextEnabled: readWeeklyContextConsent(childProfile.id),
+          }),
         }),
       });
 

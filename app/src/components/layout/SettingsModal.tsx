@@ -4,6 +4,7 @@ import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
 import InviteCard from "../referral/InviteCard";
 import { PlanPrices } from "../billing/PlanPrices";
+import { PlanBadge } from "../ui/PlanBadge";
 import { useLanguage, type AiLang } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
@@ -132,8 +133,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-clay-deep)" }}><Icon name="auto_awesome" size={18} /></span>
               <div className="min-w-0">
-                <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>
+                <p className="font-bold flex items-center gap-2 flex-wrap" style={{ color: "var(--arbor-ink)" }}>
                   {t("set.plan.your", { plan: planLabel })}
+                  {/* 3.6 — the plan chip on the plan row itself (paid plans only). */}
+                  {entitlement.plan === "plus" && <PlanBadge plan="plus" />}
+                  {entitlement.plan === "family" && <PlanBadge plan="family" />}
                 </p>
                 <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{planDesc}</p>
               </div>
@@ -182,13 +186,21 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <div className="mt-2.5">
                 <PlanPrices cadence={cadence} />
               </div>
-              <div className="flex flex-wrap gap-2 mt-2.5">
-                <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
-                  {t("set.plan.upgradePlus")}
-                </button>
-                <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
-                  {t("set.plan.upgradeFamily")}
-                </button>
+              {/* 3.6 — each upgrade row carries its plan badge, so what's paid is
+                  labeled BEFORE any tap toward checkout. */}
+              <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                <span className="inline-flex items-center gap-1.5">
+                  <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+                    {t("set.plan.upgradePlus")}
+                  </button>
+                  <PlanBadge plan="plus" />
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
+                    {t("set.plan.upgradeFamily")}
+                  </button>
+                  <PlanBadge plan="family" />
+                </span>
               </div>
             </>
           )}

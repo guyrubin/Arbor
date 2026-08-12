@@ -6,6 +6,7 @@ import type { ScoredActivity, SessionLength } from "../../playbank/select";
 import { ShareButton } from "../ui/ShareButton";
 import type { ShareCardOpts } from "../../lib/shareCard";
 import SessionLengthChips from "../practice/SessionLengthChips";
+import { continueText } from "../../lib/i18nElevation/continue";
 
 /* Daily Play — one stage-appropriate, household-item activity for today,
    matched to what the child has been working through. "Did this" writes a
@@ -84,6 +85,23 @@ export default function DailyPlayCard({
       style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
       <div className="p-6">
+        {/* W2 2.5 continuation line (Maytal frame 5 "ממשיך מכאן") — renders
+            ONLY when select.ts flagged this pick from a parent-reported
+            "helped" outcome (pick.continuation). The copy is an echo of the
+            parent's own report ("You said this helped — the next step:"),
+            never an AI efficacy claim; the pick's title below IS the next
+            step. Strings live in i18nElevation/continue.ts. */}
+        {pick.continuation && (
+          <p
+            data-testid="play-continuation-line"
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-bold mb-2"
+            style={{ color: GREEN }}
+            dir="auto"
+          >
+            <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+            {continueText("elev.continue.play.helped", uiLang === "he")}
+          </p>
+        )}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>

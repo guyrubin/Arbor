@@ -1,19 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { Skeleton } from "../ui/Skeleton";
+import { EmptyState, GhostBlock } from "../ui/EmptyState";
+import { statesText } from "../../lib/i18nElevation/states";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
-  groupByDay, isAutoSignal, signalDetail, signalTitle,
-  type SignalKind, type TimelineSignal,
+  groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle,
+  type SignalKind, type SignalProvenance, type TimelineSignal,
 } from "../../lib/signalTimeline";
+import { withChildSignals } from "../../lib/i18nElevation/childsignals";
 import { classifyBehaviorDomain } from "../../lib/monitoring";
 import { useTimeline } from "../../hooks/useTimeline";
 import type { CaptureMode } from "../../context/ArborContext";
 import { PASTEL, IconBadge, Chip, cardCls, domainVisual, type PastelKey } from "../ui/kit";
+import { SpineRibbon } from "../ui/SpineRibbon";
 import type { DevelopmentalDomainId } from "../../types";
-import type { PlayDomain } from "../../playbank/content";
+import { bandForAge, type PlayDomain } from "../../playbank/content";
+import { dailyPromptKeys } from "../../lib/promptBank";
+import { track } from "../../lib/analytics";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -34,9 +40,11 @@ import type { PlayDomain } from "../../playbank/content";
  *     domain chip (omitted when the source can't be classified — never guessed,
  *     JRNL-6), and a right-aligned time within its day group.
  *
- * Removed vs. the old dashboard-y Journal: the stat-trio hero, the spine ribbon,
- * the "story draft" CTA card, and the guiding-prompt strip — all duplicated
- * capabilities that live elsewhere (Story lives behind the timeline tab).
+ * Removed vs. the old dashboard-y Journal: the stat-trio hero, the "story
+ * draft" CTA card, and the guiding-prompt strip — all duplicated capabilities
+ * that live elsewhere (Story lives behind the timeline tab). The spine ribbon
+ * returned in masterplan 1.5 as ONE quiet strip under the compose card (what a
+ * saved moment feeds → the weekly story), not the old hero clutter.
  *
  * CLINICAL FIREWALL: domain chips are DESCRIPTIVE, never evaluative; no 0–100
  * score, verdict tag, intensity-trend coloring, or weakest-domain pointer.
@@ -88,6 +96,7 @@ const KIND_MS: Record<SignalKind, string> = {
   memory: "bookmark",
   coach: "chat_bubble",
   play: "toys",
+  practice: "rocket_launch",
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -95,7 +104,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 function JournalRow({
   signal,
   domain,
-  auto,
+  prov,
   when,
   provLabel,
   domainLabel,
@@ -105,7 +114,8 @@ function JournalRow({
 }: {
   signal: TimelineSignal;
   domain: DevelopmentalDomainId | null;
-  auto: boolean;
+  /** JRNL-4 + masterplan 1.4: manual = the parent, auto = Arbor, child = the child. */
+  prov: SignalProvenance;
   when: string;
   provLabel: string;
   domainLabel: string;
@@ -133,16 +143,21 @@ function JournalRow({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Provenance badge — AUTO gets the accent "Arbor" mark, MANUAL a neutral one. */}
+          {/* Provenance badge — AUTO gets the accent "Arbor" mark, CHILD a soft
+              lav chip with the child's name, MANUAL a neutral "You" one. */}
           <span
             className="inline-flex items-center gap-1 text-[var(--t-xs)] font-extrabold uppercase tracking-wide rounded-md px-2 py-0.5"
+            dir="auto"
             style={
-              auto
+              prov === "auto"
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
-                : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+                : prov === "child"
+                  ? { background: PASTEL.lav.soft, color: PASTEL.lav.ink }
+                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
             }
           >
-            {auto && <Icon name="auto_awesome" size={12} fill={1} />}
+            {prov === "auto" && <Icon name="auto_awesome" size={12} fill={1} />}
+            {prov === "child" && <Icon name="child_care" size={12} fill={1} />}
             {provLabel}
           </span>
           {/* Domain chip — omitted when the entry can't be classified (JRNL-6). */}
@@ -175,9 +190,15 @@ function JournalRow({
 }
 
 export default function JournalTab() {
-  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus } = useArbor();
+  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
+  // elev.childsignals.* keys (practice-kind titles) resolve from the module
+  // until it registers in i18nElevation/index.ts (owned elsewhere this wave).
+  const tt = useMemo(() => withChildSignals(t, uiLang === "he"), [t, uiLang]);
+  // Fallback via the registered i18n key (inline he-ternaries are banned in
+  // components/ by the i18nInlineCopy guard).
+  const childFirstName = (childProfile.name || "").split(" ")[0] || t("learn.yourChild");
 
   // The ONE timeline read (hooks/useTimeline) — the same stream the Story
   // density renders. No second read, no new write path.
@@ -211,6 +232,34 @@ export default function JournalTab() {
   const startCapture = (mode: CaptureMode) => {
     requestCapture(mode);
     setActiveTab("behaviors");
+  };
+
+  // Masterplan 4.3 teach-empty: the empty feed's ONE CTA focuses the capture
+  // bar (the compose card's modality tiles) instead of duplicating a second
+  // capture path — the filled state is reached exactly where it always is.
+  const composeRef = useRef<HTMLElement | null>(null);
+  const focusCaptureBar = () => {
+    try { track("empty_cta_tap", { surface: "journal" }); } catch { /* noop */ }
+    const section = composeRef.current;
+    if (!section) return;
+    try { section.scrollIntoView({ block: "center", behavior: "smooth" }); } catch { /* jsdom/SSR */ }
+    section.querySelector<HTMLButtonElement>("[data-capture-bar] button")?.focus();
+  };
+
+  // W2 2.6 (Maytal's empty-journal ask): 3 rotating promptBank guiding
+  // questions as tappable chips ABOVE the capture triad. Same deterministic
+  // rotation + elev.prompt.* strings PromptCaptureCard mounts on Today (W1).
+  // Tap = the question becomes the visible writing cue above the compose
+  // card — NEVER injected into the draft body (the sanctioned W1 pattern:
+  // the answer belongs in the log, not the question). Toggle-off on re-tap.
+  const promptKeys = useMemo(
+    () => dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id, date: new Date() }),
+    [childProfile.age, childProfile.id],
+  );
+  const [activePromptKey, setActivePromptKey] = useState<string | null>(null);
+  const onPromptTap = (key: string) => {
+    setActivePromptKey((cur) => (cur === key ? null : key));
+    try { track("journal_prompt_tap", { band: bandForAge(childProfile.age) }); } catch { /* noop */ }
   };
 
   // Per-signal domain: milestones + play carry an explicit domain; moments
@@ -281,10 +330,28 @@ export default function JournalTab() {
           </div>
         </div>
       </header>
+      {/* W2 2.6 — active writing cue: the tapped guiding question, visible
+          ABOVE the compose card while the parent captures. Display only —
+          the question text never enters the draft body. */}
+      {activePromptKey && (
+        <div
+          data-testid="journal-prompt-cue"
+          className="flex items-start gap-2.5 rounded-[14px] px-4 py-3"
+          style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
+          dir="auto"
+          aria-live="polite"
+        >
+          <Icon name="lightbulb" size={18} fill={1} className="flex-shrink-0 mt-0.5" />
+          <p className="text-[14px] font-bold leading-snug" style={{ fontFamily: "var(--font-display)" }}>
+            {t(activePromptKey)}
+          </p>
+        </div>
+      )}
+
       {/* Compose card — "Log a moment" + three modality tiles. All three trigger the
           EXISTING capture flow (BehaviorsTab); the Voice/Photo/Text split is an
           entry affordance, not a new capture path. */}
-      <section className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
+      <section ref={composeRef} className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>{t("journal.compose.eyebrow")}</p>
@@ -295,7 +362,38 @@ export default function JournalTab() {
           <IconBadge tone="lav" size={34}><Icon name="edit_note" size={19} fill={1} /></IconBadge>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        {/* W2 2.6 — three rotating promptBank chips above the capture triad
+            (deterministic per child+day; elev.prompt.* strings, registered in
+            i18nElevation/journal.ts). Tap toggles the writing cue above. */}
+        <div className="mb-3">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider mb-1.5" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.prompt.lead")}
+          </p>
+          <div className="flex flex-wrap gap-2" data-testid="journal-prompt-chips">
+            {promptKeys.map((key) => {
+              const active = key === activePromptKey;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onPromptTap(key)}
+                  aria-pressed={active}
+                  dir="auto"
+                  className="min-h-[36px] rounded-full px-3.5 py-1.5 text-[12.5px] font-bold text-start transition active:scale-[0.98]"
+                  style={
+                    active
+                      ? { background: PASTEL.lav.soft, color: PASTEL.lav.ink, border: `1px solid ${PASTEL.lav.ink}` }
+                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }
+                  }
+                >
+                  {t(key)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2" data-capture-bar>
           {MODE_TILES.map(({ ms, key }) => (
             <button
               key={key}
@@ -311,6 +409,18 @@ export default function JournalTab() {
         </div>
       </section>
 
+      {/* Masterplan 1.5 — spine ribbon: what a saved moment feeds (ONE direction:
+          → the weekly story behind the timeline tab). Quiet strip below the
+          header + compose region, never above them (Rule A keeps it off Today).
+          Plain activity fact — no %, verdicts, or deltas (clinical firewall). */}
+      <SpineRibbon
+        tone="lav"
+        icon="auto_stories"
+        text={t("elev.spine.journal", { name: childFirstName })}
+        onFollow={() => setActiveTab("timeline")}
+        testId="journal-spine-ribbon"
+      />
+
       {/* Flat single-column feed — day-grouped, gated on the ledger load (JRNL-7)
           so a returning parent never sees a false "No moments yet" flash. */}
       {!logsLoaded ? (
@@ -320,14 +430,44 @@ export default function JournalTab() {
           <Skeleton className="h-20" />
         </div>
       ) : signals.length === 0 ? (
-        <div className={`${cardCls} p-10 text-center`}>
-          <div className="inline-flex"><IconBadge tone="lav" size={48}><Icon name="edit_note" size={26} fill={1} /></IconBadge></div>
-          <p
-            className="text-[17px] mt-4 max-w-md mx-auto leading-snug"
-            style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }}
-          >
-            {t("journal.empty")}
-          </p>
+        /* Masterplan 4.3 — shared teach-empty: a ghosted miniature of a filled
+           day-group teaches what saved moments become; the ONE CTA focuses the
+           capture bar above. Copy = elev.states.journal.* (en+he, encouraging,
+           never celebrating the zero). Replaces the bespoke card+IconBadge+
+           editorial-font shape (one of the 3 competing EmptyState shapes). */
+        <div className={`${cardCls} p-6 sm:p-8`} data-testid="journal-teach-empty">
+          <EmptyState
+            className="py-6"
+            icon={<IconBadge tone="lav" size={48}><Icon name="edit_note" size={26} fill={1} /></IconBadge>}
+            headline={statesText("elev.states.journal.head", uiLang === "he")}
+            body={statesText("elev.states.journal.body", uiLang === "he", { name: childFirstName })}
+            cta={statesText("elev.states.journal.cta", uiLang === "he")}
+            onCta={focusCaptureBar}
+            ctaTestId="journal-empty-cta"
+            preview={
+              /* Ghost of a filled day-group: day header rule + two moment rows
+                 (icon tile, provenance line, text line) — same anatomy as
+                 JournalRow so the promise matches the real filled state. */
+              <div className="mx-auto w-full max-w-md space-y-4 text-start">
+                <div className="flex items-center gap-3">
+                  <GhostBlock className="h-3 w-16 rounded-full" />
+                  <span className="h-px flex-1" style={{ background: "var(--arbor-rule)" }} />
+                </div>
+                {[0, 1].map((i) => (
+                  <div key={i} className="flex gap-3.5">
+                    <GhostBlock className="h-10 w-10 rounded-full flex-shrink-0" />
+                    <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+                      <div className="flex items-center gap-2">
+                        <GhostBlock className="h-4 w-14 rounded-md" />
+                        <GhostBlock className="h-4 w-20 rounded-full" />
+                      </div>
+                      <GhostBlock className={i === 0 ? "h-3 w-4/5" : "h-3 w-3/5"} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            }
+          />
         </div>
       ) : (
         <section aria-labelledby="journal-timeline-title">
@@ -350,7 +490,9 @@ export default function JournalTab() {
               </div>
               {group.signals.map((s) => {
                 const domain = domainOf.get(s.id) ?? KIND_DOMAIN[s.kind] ?? null;
-                const auto = isAutoSignal(s.kind);
+                // Masterplan 1.4: third provenance class — the CHILD's own
+                // practice/play activity gets the child's name as its badge.
+                const prov = SIGNAL_PROVENANCE[s.kind];
                 // Time-only inside a day group (the header carries the date);
                 // undated rows sit under "Ongoing" and show no time.
                 const when = s.at
@@ -361,12 +503,12 @@ export default function JournalTab() {
                     key={s.id}
                     signal={s}
                     domain={domain}
-                    auto={auto}
+                    prov={prov}
                     when={when}
-                    provLabel={auto ? autoLabel : manualLabel}
+                    provLabel={prov === "auto" ? autoLabel : prov === "child" ? childFirstName : manualLabel}
                     domainLabel={domain ? t(`journal.domain.${domain}`) : ""}
-                    title={signalTitle(s, t)}
-                    detail={signalDetail(s, t)}
+                    title={signalTitle(s, tt)}
+                    detail={signalDetail(s, tt)}
                     focused={s.id === focusId}
                   />
                 );

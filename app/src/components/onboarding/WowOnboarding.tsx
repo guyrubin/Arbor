@@ -37,7 +37,8 @@ import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
-import { STORY_COMIC } from "../../lib/heroComics";
+import { STORY_COMIC, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
+import { useChildCollection } from "../../hooks/useChildCollection";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 import { renderHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import { prefersReducedMotion } from "../../lib/devscore";
@@ -83,6 +84,16 @@ export function WowOnboarding() {
   const [freshAvatar, setFreshAvatar] = useState<string | undefined>();
   const comicStarted = useRef(false);
   const startedTracked = useRef(false);
+
+  // W5 Wow → Story seed: the EXISTING savedComics shelf collection (the exact
+  // ComicsTab save path — the savedComics collection hook + toSavedComicMeta,
+  // metadata only per the W5.4 doctrine; art data-URLs never persist). Seeding
+  // makes the first comic the child's first durable artifact on the Comics
+  // shelf instead of a shown-once-and-lost page. NOTE (timeline gap): the
+  // savedComics collection is NOT a buildTimeline source, so the seed surfaces
+  // on the Comics shelf but not yet in the Story timeline — wiring savedComics
+  // into signalTimeline is a separate, non-W5 change (no new write path here).
+  const savedComicsCol = useChildCollection<SavedComicMeta>(activeChild.id, "savedComics");
 
   const he = aiLang === "he";
   const firstStory = HERO_STORIES[0];
@@ -149,10 +160,45 @@ export function WowOnboarding() {
       setComic(result);
       setStep("closing");
       track("wow_comic_shown", { fallback: result.fallback });
+
+      // W5 seed — runs for the real page AND the pre-composed fallback page
+      // (both are pages the parent actually saw); the null final-DOM fallback
+      // seeds nothing (no page artifact exists). Dedupe: once per child via
+      // arbor.wow.seeded.{childId}; the doc id is the adventureId anyway, so
+      // even a re-seed would upsert the same shelf slot, never duplicate.
+      if (result.url) {
+        const seedKey = `arbor.wow.seeded.${activeChild.id}`;
+        let alreadySeeded = false;
+        try {
+          alreadySeeded = localStorage.getItem(seedKey) !== null;
+          if (!alreadySeeded) localStorage.setItem(seedKey, "1");
+        } catch {
+          /* storage unavailable — upsert-by-adventureId keeps this idempotent */
+        }
+        if (!alreadySeeded) {
+          void savedComicsCol
+            .upsert(
+              toSavedComicMeta({
+                id: firstStory.id,
+                adventureId: firstStory.id,
+                title: storyTitle,
+                lang: he ? "he" : "en",
+                pageUrls: [],
+                createdAt: new Date().toISOString(),
+              })
+            )
+            .catch(() => {
+              /* seeding is best-effort — the wow moment itself already landed */
+            });
+        }
+      }
     })();
     return () => {
       alive = false;
     };
+    // comicStarted guards re-entry; the seed identities (activeChild.id,
+    // firstStory.id, savedComicsCol.upsert) are stable for the flow's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, step, heroDataUrl, name, he, storyTitle]);
 
   // ── Keyboard: Escape dismisses, Tab is trapped — but ONLY while no reused

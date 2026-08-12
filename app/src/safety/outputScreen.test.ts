@@ -108,23 +108,22 @@ describe("output safety screen (CI-13) — hedged-inference label leaks", () => 
   // The exact model-authored strings each wired route concatenates and screens.
   it("catches a hedged label inside an /analyze-behavior expertInsights+actionPlan concat", () => {
     const insightStrings = ["Pattern note\nFrom the logs, this looks like ADHD and would explain the focus dips."].join("\n");
-    const screenable = ["Strategies are mixed", insightStrings, "Next, try a visual schedule."].join("\n");
+    const screenable = [insightStrings, "Next, try a visual schedule."].join("\n");
     expect(screenModelOutputLexical(screenable).flagged).toBe(true);
   });
 
   // Exercises the SAME async screenModelOutput the /analyze-behavior route calls,
-  // built exactly as the route concatenates effectivenessRating + each
-  // expertInsights[].heading/.text + actionPlanSuggestion.
+  // built exactly as the route concatenates each expertInsights[].heading/.text
+  // + actionPlanSuggestion. (W0.4: effectivenessRating was removed — the app
+  // never scores the parent.)
   it("flags an /analyze-behavior free-text concat via screenModelOutput (route path)", async () => {
     const analysis = {
-      effectivenessRating: "Mixed — redirection helps, time-outs less so.",
       expertInsights: [
         { heading: "Focus pattern", text: "From the logs, this looks like ADHD, which would explain the focus dips." },
       ],
       actionPlanSuggestion: "Introduce a visual schedule and short transition warnings.",
     };
     const screenable = [
-      analysis.effectivenessRating,
       ...analysis.expertInsights.flatMap((i) => [i.heading, i.text]),
       analysis.actionPlanSuggestion,
     ].join("\n");
@@ -135,7 +134,6 @@ describe("output safety screen (CI-13) — hedged-inference label leaks", () => 
 
   it("does NOT flag a clean /analyze-behavior free-text concat via screenModelOutput", async () => {
     const screenable = [
-      "Mixed — redirection helps, time-outs less so.",
       "Transitions",
       "Goodbyes are the hardest part of her day; naming the feeling and offering two choices helps.",
       "Try a short visual schedule and a 5 minute wind-down before transitions.",
