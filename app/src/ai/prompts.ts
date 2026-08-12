@@ -48,7 +48,7 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // weeklyContext line (both between the scholar-lens paragraph and "Parent
   // question:"). With BOTH absent the rendered prompt is byte-identical to
   // 1.0.0 (sha 47871f42…) — pinned by the legacy-parity test in prompts.test.ts.
-  coach_chat: { version: "1.1.0", sha256: "1a74be578e5eb307c92d9c034e911f7c990172ae855104cafa95d44b913c89c8" },
+  coach_chat: { version: "1.1.1", sha256: "e3aba865853b94e6786c418625be9ba3c4de183fa1b0d43732cdb3bc26a79a17" },
   council_synthesis: { version: "1.0.0", sha256: "eeca63a0b6f414c196b5914ee5f93ab175ae1217c07f8914e756259d8320208c" },
   voice_reply: { version: "1.0.0", sha256: "452e343ec9bcd855157d935c19d2b6d9e2bd4167d73b3ad0e33a9fa0c820b9ea" },
   extract_log: { version: "1.0.0", sha256: "f296df39c25469f3db5878adb03c2dd29781d8b19111cd68995d9b909b2b4891" },
@@ -90,7 +90,6 @@ ${lines.join("\n")}
 const renderWeeklyContextLine = (weekly?: WeeklyContext | null): string => {
   if (!weekly) return "";
   const parts = [`${weekly.momentCount} moment(s) logged`];
-  if (weekly.topTrigger) parts.push(`most frequent trigger: ${weekly.topTrigger}`);
   parts.push(`${weekly.milestonesCrossedCount} milestone(s) newly observed`);
   if (weekly.lastActionOutcome) parts.push(`last suggested action outcome: ${weekly.lastActionOutcome.replace("_", " ")}`);
   return `THIS WEEK AT A GLANCE (parent-enabled, counts and categories only — no notes were shared): ${parts.join("; ")}.
@@ -256,7 +255,6 @@ const CANONICAL = {
   ] as RecentTurn[],
   weeklyContext: {
     momentCount: 3,
-    topTrigger: "«top-trigger»",
     milestonesCrossedCount: 1,
     lastActionOutcome: "helped",
   } as WeeklyContext,

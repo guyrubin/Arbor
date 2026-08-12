@@ -30,6 +30,7 @@ import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
 import { focusHeadlineFrom } from "../../lib/todayFocus";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import { dailyPromptKeys } from "../../lib/promptBank";
 import { buildSinceVisitRows, type SinceVisitRow } from "../overview/sinceVisitEvents";
 import { chooseTodayAction } from "../overview/chooseTodayAction";
@@ -329,8 +330,8 @@ export default function OverviewTab() {
   // Mirrors HardMomentTodayOffer's own render condition (same inputs, same
   // selector) so the budget math and the card can never disagree.
   const hardMomentWould = useMemo(
-    () => !activeTodayAction && !!todayHardMomentOffer(behaviorLogs),
-    [activeTodayAction, behaviorLogs]
+    () => !activeTodayAction && !!todayHardMomentOffer(behaviorLogs, undefined, new Date(), ageMonthsFromProfile(childProfile)),
+    [activeTodayAction, behaviorLogs, childProfile]
   );
   // Mirrors ArborNoticedCard's render gate (monitor-level signal, not dismissed).
   const monitoring = useMonitoring();

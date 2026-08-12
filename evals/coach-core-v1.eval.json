@@ -4,14 +4,15 @@
   "feature": "Parent coach core (/api/chat structured contract + ask-cadence streaming). Authored by the ask-cadence entry (ASK-1+AIR-1); COMPLETED by EVAL-5 (Wave 3): full deterministic tier (EN, HE, diagnosis-bait, lens fidelity, memory grounding, safety-trip, day-0, followUps, grounding, no-verdict) + the judge dimensions below. The named suite for ASK-1/ASK-4/AIR-1/AIR-4 — AIR-4's model bump re-runs THIS suite green against the new resolved id before any prod flip (GG-3).",
   "judgeModel": "claude-opus-4-8",
   "promptVersions": {
-    "coach_chat": "1.0.0",
+    "coach_chat": "1.1.1",
     "non_diagnostic_contract": "1.0.0"
   },
   "runner": {
     "offlineGate": "app/src/routes/coachCoreEval.test.ts runs every deterministic-tier scenario below against the REAL /api/chat handler with a stubbed model stream — this is the CI gate for this suite. app/src/routes/chatStreaming.test.ts pins the ask-cadence stream contract (cumulative alias-restored lexical screen per sentence delta, retractable done); app/src/routes/crisisOutput.test.ts keeps the VC-8 crisis-output routing pinned on /chat.",
     "liveJudge": "npm run eval:judge -- coach-core-v1 — every scenario runs through the live /api/chat route (scholarLens passed through; approvedMemoryFacts seeded via the parent memory propose→approve seam before the call, synthetic child only); one judge call per scenario on the pinned judgeModel returning {scores, safe, pass, rationale}; rows append to evals/coach-core-v1.results.jsonl keyed by the resolved coach_high_stakes model id so warmth/groundedness trend per model (EVAL-8).",
     "liveBudgets": "ASK-1 acceptance: p50 time-to-first-visible-words < 2500ms on /chat (first delta or first status-backed ack render). Deterministic proxy asserted in CI: the first sentence delta arrives BEFORE the provider finishes generating (causal timeline in chatStreaming.test.ts).",
-    "gateNote": "Sentence-level streaming of lexically-screened deltas on /chat is the GG-5 clinical-gated release pattern (same pattern as /voice Wave-1 cadence). Phase 1 (honest stage statuses + local ack bubble, no typewriter) is PASS as-is; the streamed-delta pattern ships with the GG-5 sign-off queued."
+    "gateNote": "Sentence-level streaming of lexically-screened deltas on /chat is the GG-5 clinical-gated release pattern (same pattern as /voice Wave-1 cadence). Phase 1 (honest stage statuses + local ack bubble, no typewriter) is PASS as-is; the streamed-delta pattern ships with the GG-5 sign-off queued.",
+    "revalidation-2026-08-12": "coach_chat 1.0.0 -> 1.1.1 (masterplan 1.3: optional same-thread recentTurns block + consent-gated counts-only weeklyContext block; both absent => byte-identical legacy prompt, pinned by test). RE-RUN GREEN: the deterministic tier — this suite's designated CI gate — 13/13 via app/src/routes/coachCoreEval.test.ts against the real /api/chat handler on 1.1.1, plus chatStreaming + crisisOutput + the new chatContextRoute hostile-input suite. NOT RE-RUN: the live judge tier — the pinned judgeModel claude-opus-4-8 is not enabled on this project's Vertex (404 in both europe-west4 and us-east5) and no ANTHROPIC_API_KEY is configured, so evals/coach-core-v1.results.jsonl carries NO rows for 1.1.1 and the warmth/groundedness/heNaturalness trend is unrefreshed. GUY GATE before prod-promote: enable the judge model (Vertex Model Garden) or supply a key, then `npm run eval:judge -- coach-core-v1`."
   },
   "rubric": {
     "dimensions": {

@@ -46,7 +46,7 @@ export const en: Record<string, string> = {
   // ── The consent toggle (default OFF, per child)
   "elev.coachcontract.toggle": "Let the coach see this week's moments",
   "elev.coachcontract.toggleHint":
-    'Off by default. When on, the coach sees counts only — for example "4 moments, top trigger: transitions" — never your notes.',
+    'Off by default. When on, the coach sees counts only — for example "4 moments this week, 2 milestones observed" — never your notes.',
 };
 
 export const he: Record<string, string> = {
@@ -67,7 +67,7 @@ export const he: Record<string, string> = {
 
   "elev.coachcontract.toggle": "לאפשר למאמן לראות את הרגעים מהשבוע",
   "elev.coachcontract.toggleHint":
-    'כבוי כברירת מחדל. כשהוא פועל, המאמן רואה מספרים בלבד — למשל "4 רגעים, הטריגר הנפוץ: מעברים" — אף פעם לא את ההערות שלכם.',
+    'כבוי כברירת מחדל. כשהוא פועל, המאמן רואה מספרים בלבד — למשל "4 רגעים השבוע, 2 אבני דרך שנצפו" — אף פעם לא את ההערות שלכם.',
 };
 
 /**

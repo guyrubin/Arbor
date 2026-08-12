@@ -6,8 +6,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useCheckout } from "../../hooks/useCheckout";
 import { PlanPrices } from "./PlanPrices";
 import { PlanBadge } from "../ui/PlanBadge";
-// Direct module import (3.6): planclarity isn't registered in i18nElevation/index.ts
-// yet (index is owned elsewhere this wave), so we read its records directly.
+// Direct module import (3.6): planclarity IS registered in i18nElevation/index.ts;
+// the direct read is kept so this modal renders the split even if t() overrides drift.
 import * as planclarity from "../../lib/i18nElevation/planclarity";
 
 /**

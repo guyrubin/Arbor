@@ -605,7 +605,9 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   // IA-1: keep the URL hash in sync with the active view, and respond to
   // back/forward by reading the hash.
   useEffect(() => {
-    const onHash = () => { const t = tabFromHash(); if (t) setActiveTabState(t); };
+    // LEAK-3 companion: browser back/forward must not rotate parent tab state
+    // while the kid overlay is up (same wall as the gated setActiveTab).
+    const onHash = () => { if (isKidModeActive()) return; const t = tabFromHash(); if (t) setActiveTabState(t); };
     if (typeof window !== "undefined") {
       if (!window.location.hash) { try { window.history.replaceState(null, "", `#/${activeTab}`); } catch { /* noop */ } }
       window.addEventListener("hashchange", onHash);

@@ -2667,8 +2667,28 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
             tryThisWeek: { type: Type.STRING }
           }
         }
-      }) as Record<string, unknown>);
-      res.json({ ...(narrative as Record<string, unknown>), stats, generated: "ai" });
+      }) as Record<string, unknown>) as Record<string, unknown>;
+      // Output safety screen — same wall as /chat, /voice and behavior-analysis.
+      // The recap is auto-generated on week-open and its title rides an external
+      // share card (W2.1), so digest free text must never bypass the screen: on a
+      // flagged verdict we serve the deterministic counts-only fallback verbatim.
+      const digestScreenable = [
+        narrative.title, narrative.subject, narrative.preheader, narrative.summary,
+        ...(Array.isArray(narrative.highlights) ? narrative.highlights : []),
+        ...(Array.isArray(narrative.watchFor) ? narrative.watchFor : []),
+        narrative.tryThisWeek,
+      ].filter((s: unknown): s is string => typeof s === "string" && s.length > 0).join("\n");
+      const digestVerdict = await screenModelOutput(modelProvider, digestScreenable);
+      if (digestVerdict.flagged) {
+        logger.warn("Digest narrative blocked by output safety screen — serving deterministic fallback", {
+          requestId: requestIdOf(req),
+          category: digestVerdict.category,
+          reason: digestVerdict.reason,
+        });
+        res.json({ ...fallback, stats, generated: "fallback", outputBlocked: true });
+        return;
+      }
+      res.json({ ...narrative, stats, generated: "ai" });
     } catch (error: any) {
       logger.warn("Digest AI narrative unavailable — serving deterministic fallback", {
         requestId: requestIdOf(req),

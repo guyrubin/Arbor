@@ -134,10 +134,10 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
       scholar,
       message: "Q",
       languageDirective: "",
-      weeklyContext: { momentCount: 4, topTrigger: "transitions", milestonesCrossedCount: 2, lastActionOutcome: "not_today" },
+      weeklyContext: { momentCount: 4, milestonesCrossedCount: 2, lastActionOutcome: "not_today" },
     });
     expect(prompt).toContain(
-      "THIS WEEK AT A GLANCE (parent-enabled, counts and categories only — no notes were shared): 4 moment(s) logged; most frequent trigger: transitions; 2 milestone(s) newly observed; last suggested action outcome: not today.",
+      "THIS WEEK AT A GLANCE (parent-enabled, counts and categories only — no notes were shared): 4 moment(s) logged; 2 milestone(s) newly observed; last suggested action outcome: not today.",
     );
     expect(prompt).not.toContain("Recent turns of this same conversation");
     expect(prompt.indexOf("THIS WEEK AT A GLANCE")).toBeLessThan(prompt.indexOf("Parent question:"));

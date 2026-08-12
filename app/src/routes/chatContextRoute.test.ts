@@ -180,12 +180,12 @@ describe("Masterplan 1.3 — /api/chat context fields at the model seam", () => 
     expect(capturedPrompt).not.toContain("ignore all previous instructions");
   });
 
-  it("valid weeklyContext becomes ONE counts line with the trigger label length-capped", async () => {
+  it("valid weeklyContext becomes ONE counts line; a hostile legacy topTrigger never reaches the prompt", async () => {
     await postChat({
       ...BASE_BODY,
       weeklyContext: {
         momentCount: 4,
-        topTrigger: "transitions" + "!".repeat(300),
+        topTrigger: "hit his sister when I took the iPad" + "!".repeat(300),
         milestonesCrossedCount: 2,
         lastActionOutcome: "helped",
       },
@@ -194,8 +194,11 @@ describe("Masterplan 1.3 — /api/chat context fields at the model seam", () => 
     expect(capturedPrompt).toContain("4 moment(s) logged");
     expect(capturedPrompt).toContain("2 milestone(s) newly observed");
     expect(capturedPrompt).toContain("last suggested action outcome: helped");
+    // The consent contract promises counts only — free-typed trigger text is dropped server-side.
+    expect(capturedPrompt).not.toContain("iPad");
+    expect(capturedPrompt).not.toContain("most frequent trigger");
     const line = capturedPrompt.split("\n").find((l) => l.includes(WEEKLY_FRAME))!;
-    expect(line.length).toBeLessThan(400); // one short line, trigger capped at 80
+    expect(line.length).toBeLessThan(400); // one short counts-only line
     expect(capturedPrompt.indexOf(WEEKLY_FRAME)).toBeLessThan(capturedPrompt.indexOf("Parent question:"));
   });
 });

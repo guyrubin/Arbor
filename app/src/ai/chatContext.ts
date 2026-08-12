@@ -35,9 +35,6 @@ export type WeeklyContextOutcome = "helped" | "somewhat" | "not_today";
 export type WeeklyContext = {
   /** Behavior moments logged in the trailing 7 days — an integer, never text. */
   momentCount: number;
-  /** Most frequent trigger LABEL among this week's moments (short category
-   *  string the parent chose/typed on the log form), length-capped. */
-  topTrigger?: string;
   /** Milestones newly observed ("yes") in the trailing 7 days. */
   milestonesCrossedCount: number;
   /** Outcome of the most recent completed suggested action this week. */
@@ -49,7 +46,8 @@ export type WeeklyContext = {
 export const RECENT_TURNS_MAX = 6;
 export const RECENT_TURN_CHAR_CAP = 800;
 export const RECENT_TURNS_TOTAL_CHAR_CAP = 4000;
-export const TOP_TRIGGER_CHAR_CAP = 80;
+// (The former TOP_TRIGGER_CHAR_CAP is gone with the field itself — the weekly
+// context is counts + closed enums only; no free text crosses this seam.)
 const COUNT_MAX = 999;
 
 const VALID_ROLES: ReadonlySet<string> = new Set(["parent", "coach"]);
@@ -96,8 +94,10 @@ const clampCount = (value: unknown): number | null => {
 /**
  * Server-defensive normalization of the weeklyContext body field. Returns
  * null (⇒ NO prompt line, byte-identical path) unless the shape is a valid
- * counts-and-categories object. Free text is confined to `topTrigger`,
- * length-capped hard; the outcome must be one of the three enum values.
+ * counts-and-categories object. NO free text survives sanitation (a legacy
+ * `topTrigger` field is dropped — the trigger box is parent free-typed text,
+ * and the consent contract promises "never your written notes"); the outcome
+ * must be one of the three enum values.
  */
 export const sanitizeWeeklyContext = (raw: unknown): WeeklyContext | null => {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -106,9 +106,6 @@ export const sanitizeWeeklyContext = (raw: unknown): WeeklyContext | null => {
   const milestonesCrossedCount = clampCount(wc.milestonesCrossedCount);
   if (momentCount === null || milestonesCrossedCount === null) return null;
   const out: WeeklyContext = { momentCount, milestonesCrossedCount };
-  if (typeof wc.topTrigger === "string" && wc.topTrigger.trim()) {
-    out.topTrigger = wc.topTrigger.trim().slice(0, TOP_TRIGGER_CHAR_CAP);
-  }
   if (typeof wc.lastActionOutcome === "string" && VALID_OUTCOMES.has(wc.lastActionOutcome)) {
     out.lastActionOutcome = wc.lastActionOutcome as WeeklyContextOutcome;
   }
@@ -165,24 +162,12 @@ const withinWeek = (iso: string | undefined, now: number): boolean => {
 
 /**
  * Compute the counts-only weekly digest from data the client ALREADY holds.
- * No raw log text ever enters the result: `topTrigger` is the single most
- * frequent trigger label among the week's moments (first-seen wins ties).
+ * No raw log text ever enters the result — counts and closed enums ONLY (the
+ * trigger box is free-typed parent text, so it never leaves the device here).
  */
 export const computeWeeklyContext = (sources: WeeklyContextSources, now: Date = new Date()): WeeklyContext => {
   const nowMs = now.getTime();
   const weekLogs = sources.behaviorLogs.filter((l) => withinWeek(l.timestamp, nowMs));
-
-  const triggerCounts = new Map<string, number>();
-  for (const log of weekLogs) {
-    const trigger = (log.trigger || "").trim();
-    if (!trigger) continue;
-    triggerCounts.set(trigger, (triggerCounts.get(trigger) ?? 0) + 1);
-  }
-  let topTrigger: string | undefined;
-  let best = 0;
-  for (const [trigger, count] of triggerCounts) {
-    if (count > best) { best = count; topTrigger = trigger; }
-  }
 
   const milestonesCrossedCount = sources.milestones.filter(
     (m) => m.checked && withinWeek(m.observationUpdatedAt, nowMs),
@@ -200,7 +185,6 @@ export const computeWeeklyContext = (sources: WeeklyContextSources, now: Date = 
   }
 
   const out: WeeklyContext = { momentCount: weekLogs.length, milestonesCrossedCount };
-  if (topTrigger) out.topTrigger = topTrigger.slice(0, TOP_TRIGGER_CHAR_CAP);
   if (lastActionOutcome) out.lastActionOutcome = lastActionOutcome;
   return out;
 };

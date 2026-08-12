@@ -10,7 +10,6 @@ import {
   RECENT_TURNS_MAX,
   RECENT_TURNS_TOTAL_CHAR_CAP,
   RECENT_TURN_CHAR_CAP,
-  TOP_TRIGGER_CHAR_CAP,
   buildChatContext,
   computeWeeklyContext,
   readWeeklyContextConsent,
@@ -80,22 +79,19 @@ describe("sanitizeWeeklyContext — counts and categories only", () => {
     ).toEqual({ momentCount: 0, milestonesCrossedCount: 999 });
   });
 
-  it("length-caps the trigger label and keeps a valid outcome", () => {
+  it("strips a legacy topTrigger field entirely (free-typed text never survives) and keeps a valid outcome", () => {
     const out = sanitizeWeeklyContext({
       momentCount: 4,
       milestonesCrossedCount: 1,
-      topTrigger: "  " + "transitions ".repeat(30),
+      topTrigger: "hit his sister when I took the iPad",
       lastActionOutcome: "not_today",
     });
-    expect(out?.topTrigger).toHaveLength(TOP_TRIGGER_CHAR_CAP);
-    expect(out?.lastActionOutcome).toBe("not_today");
-  });
-
-  it("drops empty/non-string triggers instead of sending them", () => {
-    expect(sanitizeWeeklyContext({ momentCount: 1, milestonesCrossedCount: 0, topTrigger: "   " })).toEqual({
-      momentCount: 1,
-      milestonesCrossedCount: 0,
+    expect(out).toEqual({
+      momentCount: 4,
+      milestonesCrossedCount: 1,
+      lastActionOutcome: "not_today",
     });
+    expect(JSON.stringify(out)).not.toContain("iPad");
   });
 });
 
@@ -119,10 +115,9 @@ describe("computeWeeklyContext — derived from data the client already holds", 
     ],
   };
 
-  it("counts the 7-day window and picks the most frequent trigger label", () => {
+  it("counts the 7-day window — counts and closed enums only, no trigger text", () => {
     expect(computeWeeklyContext(sources, NOW)).toEqual({
       momentCount: 3,
-      topTrigger: "transitions",
       milestonesCrossedCount: 1,
       lastActionOutcome: "somewhat",
     });
@@ -171,7 +166,7 @@ describe("buildChatContext — the one call ArborContext.sendMessage makes", () 
       weeklyContextEnabled: true,
       now: NOW,
     });
-    expect(out.weeklyContext).toEqual({ momentCount: 1, topTrigger: "transitions", milestonesCrossedCount: 0 });
+    expect(out.weeklyContext).toEqual({ momentCount: 1, milestonesCrossedCount: 0 });
   });
 });
 
