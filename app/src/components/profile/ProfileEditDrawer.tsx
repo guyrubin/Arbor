@@ -11,6 +11,7 @@ import { ChildProfile } from "../../types";
 import { Avatar } from "../ui/Avatar";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
+import { sanitizeInterestToken } from "../../playbank/select";
 import AvatarCreator from "./AvatarCreator";
 import RewardsCard from "./RewardsCard";
 
@@ -132,10 +133,14 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   };
 
   // CI-29: Add a custom free-text interest (trim, dedup, max 40 chars).
+  // sanitizeInterestToken runs the CONDITIONS + banned-clinical-noun lexicon here,
+  // at the point of entry, so a clinical word ("autism", "fixation") is never held
+  // in state and never reaches the persist path below. A token that sanitizes away
+  // is silently dropped — surfacing "that word is banned" would itself be a verdict.
   const addCustomInterest = () => {
-    const trimmed = interestInput.trim().slice(0, 40);
-    if (!trimmed || activeInterests.includes(trimmed)) { setInterestInput(""); return; }
-    setActiveInterests((prev) => [...prev, trimmed]);
+    const safe = sanitizeInterestToken(interestInput.slice(0, 40));
+    if (!safe || activeInterests.includes(safe)) { setInterestInput(""); return; }
+    setActiveInterests((prev) => [...prev, safe]);
     setInterestInput("");
   };
 
@@ -160,7 +165,11 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         photoUrl: photoUrl || "",
         ...(avatarMeta ? { avatar: avatarMeta } : {}),
         // CI-29: persist interests[] + ISO timestamp (parent-written only, COPPA-gated).
-        interests: activeInterests,
+        // Defensive re-sanitize at the write boundary: entry-time filtering above
+        // only covers tokens typed in this session. State is seeded from the stored
+        // profile, so a token written before the guard existed — or through any
+        // future code path — would otherwise persist, and land in the GDPR export.
+        interests: activeInterests.map(sanitizeInterestToken).filter(Boolean),
         interestsUpdatedAt: new Date().toISOString(),
       });
       onClose();
