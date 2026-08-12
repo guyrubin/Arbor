@@ -29,6 +29,9 @@ const baseRhythm = (over: Partial<RhythmPrediction> = {}): RhythmPrediction => (
   ...over,
 });
 
+// P1-C: "overdue" means the parent ANSWERED "not yet" and the skill is past the
+// band. A milestone with no observation record at all is merely unanswered and
+// (correctly) produces no watch signal — see monitoring.test.ts.
 const overdueMilestone = (domain: Milestone["domain"]): Milestone => ({
   id: `m-${domain}`,
   domain,
@@ -36,6 +39,8 @@ const overdueMilestone = (domain: Milestone["domain"]): Milestone => ({
   title: "Test skill",
   description: "desc",
   checked: false,
+  observationStatus: "not_yet",
+  observationUpdatedAt: new Date(NOW - 3 * 24 * 60 * 60 * 1000).toISOString(),
 });
 
 // ── Monitoring note verbatim tests ────────────────────────────────────────────

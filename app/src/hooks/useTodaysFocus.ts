@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
-import { authHeaders, getAiLanguage } from "../lib/api";
+import { useLanguage, type AiLang } from "../context/LanguageContext";
+import { authHeaders } from "../lib/api";
 import { ChildProfile } from "../types";
 
 export type FocusSignals = {
@@ -23,21 +24,44 @@ export type FocusSignals = {
   lastActionOutcome?: "helped" | "somewhat" | "not_today";
 };
 
-type Focus = { text: string; generatedAt: string; dateKey: string };
+/** `lang` is part of the cache IDENTITY — a Hebrew sentence must never render
+ *  inside an English Today (and vice versa). Absent on pre-fix records, which
+ *  therefore read as stale and regenerate once in the active language. */
+type Focus = { text: string; generatedAt: string; dateKey: string; lang?: AiLang };
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * Cache-validity decision (pure, unit-tested): a cached focus survives only
+ * while BOTH the day and the language still match the live session.
+ */
+export function isFocusStale(
+  cached: { dateKey?: string; lang?: string } | null | undefined,
+  day: string,
+  lang: string
+): boolean {
+  return !cached || cached.dateKey !== day || cached.lang !== lang;
+}
 
 /**
  * AI "Today's Focus" for the Overview tab. Generates a short, warm,
  * non-diagnostic focus for the day from recent signals, and caches it for 24h
  * (Firestore doc when authenticated, localStorage in sandbox). Auto-generates
  * once per day when the cache is stale and there is data to summarize.
+ *
+ * LANGUAGE (P1 fix 2026-08-12): the AI language is read from LanguageContext —
+ * the same value the render uses — not from lib/api's module-level
+ * getAiLanguage(), which a cold load can read before LanguageProvider's sync
+ * effect has run. The language is stored on the record AND carried in the
+ * localStorage key, so a language switch can never surface stale
+ * cross-language text.
  */
 export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
   const { user } = useAuth();
+  const { aiLang } = useLanguage();
   const remote = firebaseEnabled && !!user && user.uid !== "local-sandbox" && !!db;
   const uid = user?.uid;
-  const lsKey = `arbor.todaysFocus.${child.id}`;
+  const lsKey = `arbor.todaysFocus.${child.id}.${aiLang}`;
 
   const [focus, setFocus] = useState<Focus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,7 +93,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
             lastActionRecommendation: signals.lastActionRecommendation,
             lastActionOutcome: signals.lastActionOutcome,
           },
-          language: getAiLanguage(),
+          language: aiLang,
         }),
       });
       if (!res.ok) throw new Error("focus generation failed");
@@ -83,6 +107,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
         text,
         generatedAt: new Date().toISOString(),
         dateKey: todayKey(),
+        lang: aiLang,
       };
       setFocus(next);
       const r = ref();
@@ -100,9 +125,9 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [child, signals, remote, uid]);
+  }, [child, signals, remote, uid, aiLang]);
 
-  // Load cache when the active child changes.
+  // Load cache when the active child — or the language — changes.
   useEffect(() => {
     let cancelled = false;
     triedAuto.current = false;
@@ -124,24 +149,26 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
           /* ignore */
         }
       }
-      if (!cancelled) setFocus(cached);
+      // A cached record from another language is NOT a cache hit: drop it so
+      // the card never renders cross-language text while the rewrite runs.
+      if (!cancelled) setFocus(isFocusStale(cached, todayKey(), aiLang) ? null : cached);
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [child.id, remote, uid]);
+  }, [child.id, remote, uid, aiLang]);
 
-  // Auto-generate once per child/day when stale and there is data.
+  // Auto-generate once per child/day/language when stale and there is data.
   useEffect(() => {
     if (triedAuto.current || loading) return;
-    const stale = !focus || focus.dateKey !== todayKey();
+    const stale = isFocusStale(focus, todayKey(), aiLang);
     if (stale && signals.count > 0) {
       triedAuto.current = true;
       void generate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focus, signals.count, loading]);
+  }, [focus, signals.count, loading, aiLang]);
 
   return { focus, loading, regenerate: generate };
 }

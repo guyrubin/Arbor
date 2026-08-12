@@ -45,11 +45,21 @@ export default function ProgressNarrative({
   // count vs last week's, phrased as bare counts. No trend adjective, %, or
   // score may ever join this template (pinned by the wave-3-style token scan).
   const weekCompare = t("today.narrative.weekCompare", { thisWeek: recentBehaviors.length, lastWeek: momentsLastWeek });
+  // Pluralization: each count in changedBody resolves its own .one/.many
+  // fragment (the shared convention — cf. elev.sincevisit.row.moment.one/.many)
+  // before the composite template stitches them, so "1 activities" can't render
+  // in either language. n === 1 is the ONLY singular case; 0 takes .many in both
+  // EN and HE.
+  const plural = (base: string, n: number) => t(`${base}.${n === 1 ? "one" : "many"}`, { n });
   const copy = {
     eyebrow: t("today.narrative.eyebrow"), title: t("today.narrative.title", { name: childName }), changed: t("today.narrative.changed"),
     evidence: t("today.narrative.evidence"), next: t("today.narrative.next"), open: t("today.narrative.open"),
     noChange: t("today.narrative.noChange"),
-    changedBody: t("today.narrative.changedBody", { moments: recentBehaviors.length, plays: recentPlay.length, milestones: noticedMilestones }),
+    changedBody: t("today.narrative.changedBody", {
+      moments: plural("today.narrative.changedBody.moments", recentBehaviors.length),
+      plays: plural("today.narrative.changedBody.plays", recentPlay.length),
+      milestones: plural("today.narrative.changedBody.milestones", noticedMilestones),
+    }),
     nextBody: latestOutcome?.outcome === "not_today" ? t("today.narrative.nextNotToday") : latestOutcome ? t("today.narrative.nextOutcome") : t("today.narrative.nextNone"),
     parentOnly: t("today.narrative.parentOnly"),
   };

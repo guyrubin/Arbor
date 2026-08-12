@@ -47,7 +47,9 @@ export interface DomainSignal {
   level: WatchLevel;
   /** The contributing reasons, present only when level === "monitor". */
   reasons: MonitoringReason[];
-  /** Milestones expected by the child's age that have not yet been observed.
+  /** Milestones expected by the child's age that the parent has ANSWERED and
+   *  not yet observed. Never-answered milestones are absent by construction
+   *  (P1-C — see `isMilestoneAnswered`).
    *  UND-4: the parent's actual response survives — `status` distinguishes
    *  "parent is not sure" from "parent has not seen it", and `observedAt`
    *  carries when the parent recorded that response (absent on legacy items). */
@@ -88,6 +90,32 @@ const PATTERN_COUNT_MIN = 3;
 /** Grace period: only flag a milestone "overdue" once the child is clearly past
  *  the band (development varies — we never flag at the edge of a window). */
 const OVERDUE_GRACE_MONTHS = 2;
+
+/**
+ * Has the parent actually ANSWERED this milestone?
+ *
+ * FIREWALL-ADJACENT, LOAD-BEARING (P1-C, 2026-08-12 audit — do not "simplify"
+ * this back to `!m.checked`). Milestones are seeded unanswered: the whole CDC
+ * catalogue arrives with `checked: false` and no observation record. Scoring
+ * that identically to "the parent looked and has not seen it yet" turned pure
+ * ABSENCE OF DATA into a deficit claim — a brand-new account with zero logs was
+ * told "One language & communication skill that's typically seen by now hasn't
+ * been noted yet for <child>. Worth mentioning to your pediatrician."
+ *
+ * Only a recorded parent response counts:
+ *   - an explicit "not_yet" / "not_sure" observationStatus, or
+ *   - a legacy row that carries an observation timestamp but no status (written
+ *     before observationStatus existed — a real response either way).
+ * "yes" never reaches here (those rows are `checked` and skipped upstream).
+ * Everything else is UNANSWERED and can never produce a watch signal.
+ */
+export function isMilestoneAnswered(
+  m: Pick<Milestone, "observationStatus" | "observationUpdatedAt">,
+): boolean {
+  if (m.observationStatus === "not_yet" || m.observationStatus === "not_sure") return true;
+  if (m.observationStatus != null) return false; // "yes" — handled by `checked`
+  return typeof m.observationUpdatedAt === "string" && m.observationUpdatedAt.trim().length > 0;
+}
 
 /**
  * Parse the human milestone `ageGroup` label (e.g. "2 months", "18 months",
@@ -182,8 +210,10 @@ function buildNote(
  * Derive calm, non-diagnostic monitoring signals from the child's own data.
  *
  * A domain enters the "monitor" zone when EITHER:
- *  - a milestone clearly past the child's age band is still unobserved
- *    (with a 2-month grace so we never flag at the edge of a window), OR
+ *  - a milestone the parent has ANSWERED "not yet" / "not sure" is clearly past
+ *    the child's age band (with a 2-month grace so we never flag at the edge of
+ *    a window). Milestones the parent has never responded to are excluded —
+ *    see `isMilestoneAnswered`; no answer is not a negative answer — OR
  *  - there is a recent cluster of intense, unresolved everyday moments.
  *
  * Pure: no I/O, no Date.now() unless `now` is omitted.
@@ -194,10 +224,13 @@ export function deriveMonitoring(input: MonitoringInput, childFirstName = ""): M
   const milestones = input.milestones ?? [];
   const logs = input.behaviorLogs ?? [];
 
-  // 1) Overdue (past-band, unobserved) milestones grouped by domain.
+  // 1) Overdue (past-band, ANSWERED-but-unobserved) milestones grouped by
+  //    domain. `isMilestoneAnswered` is the gate that keeps "never asked" out
+  //    of the watch signal (P1-C) — absence of an answer is not evidence.
   const overdueByDomain = new Map<MonitoredDomainId, DomainSignal["overdueMilestones"]>();
   for (const m of milestones) {
     if (m.checked) continue;
+    if (!isMilestoneAnswered(m)) continue;
     if (m.domain === "ecosystem_stressors") continue;
     const due = ageGroupToMonths(m.ageGroup);
     if (due == null) continue;

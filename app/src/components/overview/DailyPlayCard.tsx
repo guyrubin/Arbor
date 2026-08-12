@@ -7,6 +7,7 @@ import { ShareButton } from "../ui/ShareButton";
 import type { ShareCardOpts } from "../../lib/shareCard";
 import SessionLengthChips from "../practice/SessionLengthChips";
 import { continueText } from "../../lib/i18nElevation/continue";
+import { TrustLink } from "../trust/TrustLink";
 
 /* Daily Play — one stage-appropriate, household-item activity for today,
    matched to what the child has been working through. "Did this" writes a
@@ -269,7 +270,13 @@ export default function DailyPlayCard({
           </button>
         </div>
 
-        <p className="text-[12px] mt-3.5" style={{ color: "var(--arbor-faint)" }}>{why}</p>
+        {/* Why-line + its Trust-Center chain (masterplan 3.1). The chip sits
+            AFTER the why text on the same wrapping row, below the action row,
+            so it never competes with "Did this" (the card's primary). */}
+        <div className="mt-3.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]" style={{ color: "var(--arbor-faint)" }}>
+          <span dir="auto">{why}</span>
+          <TrustLink surface="daily-play" />
+        </div>
 
         {/* Honest, optional share moment — only after a genuine completion. No
             auto-prompt, no streak, no nag; it simply appears and can be ignored. */}

@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
+import { TrustLink } from "../trust/TrustLink";
 
 /**
  * PromptCaptureCard — W1 1.2, the guaranteed-action fallback when no AI focus
@@ -64,11 +65,20 @@ export default function PromptCaptureCard({
           {t("today.capture.aria", { name: childName })}
         </span>
       </div>
-      {/* W1 1.2 why-line: the authored "Why this fits" strings, mounted. */}
-      <p className="mt-3 text-[11.5px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>
-        <span className="font-extrabold" style={{ color: "var(--arbor-muted)" }}>{t("today.intent.why")}</span>{" "}
-        {t("today.intent.whySimple")}
-      </p>
+      {/* W1 1.2 why-line: the authored "Why this fits" strings, mounted.
+          Masterplan 3.1: the TrustLink chip closes the why → Trust Center
+          chain, on the same wrapping row, AFTER the why text and visually
+          quieter than the gradient capture CTA above. */}
+      <div
+        className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] leading-relaxed"
+        style={{ color: "var(--arbor-faint)" }}
+      >
+        <span dir="auto">
+          <span className="font-extrabold" style={{ color: "var(--arbor-muted)" }}>{t("today.intent.why")}</span>{" "}
+          {t("today.intent.whySimple")}
+        </span>
+        <TrustLink surface="today-prompt" />
+      </div>
     </section>
   );
 }

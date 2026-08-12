@@ -121,51 +121,67 @@ export default function DevelopmentCopilot() {
     return { practiceMoments: moments, skillAreas: domains.size };
   }, [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items]);
 
-  const clinicianSummary = useMemo(() => {
-    const lines: string[] = [
-      `ARBOR PRACTICE SUMMARY — ${childProfile.name}, age ${childProfile.age}`,
-      `Generated ${data.today} · Parent-collected observational data · NOT a diagnostic assessment`,
-      ``,
-      `Domain picture (milestone checklist + home practice signal):`,
-      ...bands.map((b) => {
-        const c = domainCounts.get(b.domain);
-        const reached = c?.reached ?? 0;
-        const total = c?.total ?? 0;
-        return `  • ${DOMAIN_META[b.domain].label}: ${reached} of ${total} milestones noticed by parent (home-practice signal; basis: ${b.basis.join(", ")})`;
-      }),
-      ``,
-      `Home practice, last 7 days: ${data.week.sessions} interactions on ${data.week.activeDays} day(s) across ${data.week.domainsTouched.length} domain(s). Streak: ${data.streak} day(s).`,
-    ];
-    if (data.stats.length > 0) {
-      lines.push(``, `Articulation practice (parent/auto-scored at home):`);
-      for (const s of data.stats.slice(0, 8)) {
-        // Counts, never percentages (IA W4.5): this summary is a clinician export.
-        const recentWindow = Math.min(s.attempts, 10);
-        const landed = Math.round((s.recentAccuracy / 100) * recentWindow);
-        lines.push(`  • /${s.sound}/ — ${s.attempts} attempts, about ${landed} of the last ${recentWindow} landed (parent/auto-scored, not a normed measure), highest level: ${s.levelReached}`);
+  /* Masterplan 2.3 — a RESETTABLE continuity counter is banned from PARENT
+     surfaces (computeStreak().current zeroes on any lapse, so it renders as
+     guilt, not information). The summary is therefore built TWICE from one
+     builder:
+       • clinicianSummary — the EXPORT (copy-to-clipboard). Keeps the streak
+         clause: adherence over the last week is what a clinician reading the
+         sheet asked for, and the export never renders on a parent surface.
+       • previewSummary  — what the <pre> below actually SHOWS the parent.
+         Identical text minus the streak clause.
+     Both go through assertClinicianExportCeiling independently and both fail
+     closed. Every other line is shared, so preview and export can never drift. */
+  const { clinicianSummary, previewSummary } = useMemo(() => {
+    const homePractice = `Home practice, last 7 days: ${data.week.sessions} interactions on ${data.week.activeDays} day(s) across ${data.week.domainsTouched.length} domain(s).`;
+    const streakClause = ` Streak: ${data.streak} day(s).`;
+    const build = (withStreak: boolean): string | null => {
+      const lines: string[] = [
+        `ARBOR PRACTICE SUMMARY — ${childProfile.name}, age ${childProfile.age}`,
+        `Generated ${data.today} · Parent-collected observational data · NOT a diagnostic assessment`,
+        ``,
+        `Domain picture (milestone checklist + home practice signal):`,
+        ...bands.map((b) => {
+          const c = domainCounts.get(b.domain);
+          const reached = c?.reached ?? 0;
+          const total = c?.total ?? 0;
+          return `  • ${DOMAIN_META[b.domain].label}: ${reached} of ${total} milestones noticed by parent (home-practice signal; basis: ${b.basis.join(", ")})`;
+        }),
+        ``,
+        withStreak ? `${homePractice}${streakClause}` : homePractice,
+      ];
+      if (data.stats.length > 0) {
+        lines.push(``, `Articulation practice (parent/auto-scored at home):`);
+        for (const s of data.stats.slice(0, 8)) {
+          // Counts, never percentages (IA W4.5): this summary is a clinician export.
+          const recentWindow = Math.min(s.attempts, 10);
+          const landed = Math.round((s.recentAccuracy / 100) * recentWindow);
+          lines.push(`  • /${s.sound}/ — ${s.attempts} attempts, about ${landed} of the last ${recentWindow} landed (parent/auto-scored, not a normed measure), highest level: ${s.levelReached}`);
+        }
       }
-    }
-    if (advCount > 0) {
-      lines.push(``, `Comprehension play: ${advCorrect}/${advCount} first-try correct across logic, sequencing, vocabulary and instruction scenes.`);
-    }
-    if (watch.length > 0) {
-      // Masterplan 1.7: observational register — the pattern plus its count of
-      // contributing observations, never a graded level tag.
-      lines.push(``, `Non-diagnostic patterns worth a conversation:`);
-      watch.forEach((w) => {
-        const evidence = parentSafeEvidence(w.evidence);
-        const n = Math.max(evidence.length, 1);
-        lines.push(`  • ${w.area}: ${n} contributing observation${n === 1 ? "" : "s"}${evidence.length > 0 ? `; evidence: ${evidence.join("; ")}` : ""}`);
-      });
-    }
-    lines.push(``, `Current focus suggested to the family: ${recommendation.headline}.`);
-    const text = lines.join("\n");
-    // IA W4.5: the practice summary is a clinician-facing EXPORT — bound to the
-    // same clinician ceiling as the consult presets (forbidden tokens, counts-
-    // never-percentages). Fail closed: a violating summary neither renders nor
-    // copies — a blocked export exports NOTHING.
-    try { assertClinicianExportCeiling(text); } catch { return null; }
-    return text;
+      if (advCount > 0) {
+        lines.push(``, `Comprehension play: ${advCorrect}/${advCount} first-try correct across logic, sequencing, vocabulary and instruction scenes.`);
+      }
+      if (watch.length > 0) {
+        // Masterplan 1.7: observational register — the pattern plus its count of
+        // contributing observations, never a graded level tag.
+        lines.push(``, `Non-diagnostic patterns worth a conversation:`);
+        watch.forEach((w) => {
+          const evidence = parentSafeEvidence(w.evidence);
+          const n = Math.max(evidence.length, 1);
+          lines.push(`  • ${w.area}: ${n} contributing observation${n === 1 ? "" : "s"}${evidence.length > 0 ? `; evidence: ${evidence.join("; ")}` : ""}`);
+        });
+      }
+      lines.push(``, `Current focus suggested to the family: ${recommendation.headline}.`);
+      const text = lines.join("\n");
+      // IA W4.5: the practice summary is a clinician-facing EXPORT — bound to the
+      // same clinician ceiling as the consult presets (forbidden tokens, counts-
+      // never-percentages). Fail closed: a violating summary neither renders nor
+      // copies — a blocked export exports NOTHING.
+      try { assertClinicianExportCeiling(text); } catch { return null; }
+      return text;
+    };
+    return { clinicianSummary: build(true), previewSummary: build(false) };
   }, [bands, domainCounts, childProfile, data.today, data.week, data.streak, data.stats, advCount, advCorrect, watch, recommendation]);
 
   const copySummary = async () => {
@@ -233,13 +249,12 @@ export default function DevelopmentCopilot() {
             );
           })}
         </ul>
-        {/* sr-only count summary for assistive tech — count-only, no verdict. */}
-        <div className="sr-only">
-          {bands.map((b) => {
-            const c = domainCounts.get(b.domain) ?? { reached: 0, total: 0 };
-            return <span key={b.domain}>{DOMAIN_META[b.domain].label}: {c.reached} of {c.total} milestones noticed by you. </span>;
-          })}
-        </div>
+        {/* The sr-only mirror of this same list was removed (2026-08-12): the
+            visible <ul> above is already plain text in the accessibility tree,
+            so the duplicate made every domain row announce twice and made
+            "Speech sounds — 0 of 0 milestones noticed" appear three times on
+            one screen. One rendered row per domain; the clinician export below
+            is a separate artifact, not a third copy of this list. */}
         <p className="text-[11px] mt-4 rounded-xl p-3 leading-relaxed" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
           We show counts of what you&apos;ve noticed — not a score or a &ldquo;developmental age.&rdquo; Home observation can&apos;t honestly support either. A professional assessment is what turns this into conclusions.
         </p>
@@ -384,8 +399,11 @@ export default function DevelopmentCopilot() {
         <p className="text-[11px] mb-3" style={{ color: "var(--arbor-muted)" }}>
           A speech-language professional, psychologist or pediatrician gets months of between-session data in one paragraph — the thing the single-skill practice apps never close the loop on.
         </p>
+        {/* Masterplan 2.3: the PARENT-facing preview renders previewSummary —
+            the streak clause is stripped here and lives only in the copied
+            export. Never swap this back to clinicianSummary. */}
         <pre className="text-[11px] leading-relaxed whitespace-pre-wrap rounded-xl p-4 select-text" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", fontFamily: "ui-monospace, monospace" }}>
-          {clinicianSummary ?? "This summary did not pass Arbor's export safety check, so nothing was exported. Please try again after your next practice session."}
+          {previewSummary ?? "This summary did not pass Arbor's export safety check, so nothing was exported. Please try again after your next practice session."}
         </pre>
       </SectionCard>
     </motion.div>
