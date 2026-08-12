@@ -19,8 +19,10 @@ import { en, he } from "../../lib/i18n";
  *      journal-signal-<id> element id, and scrolls the cited row into view,
  *   4. the deep-link payload is the bare signal id — no derived score rides
  *      along (clinical-firewall CONDITION on TODAY-6),
- *   5. the "What changed" cell gains ONE comparative sentence built from the
- *      counts-only weekCompare template, present in EN + HE.
+ *   5. the "What changed" cell carries ONE NON-COMPARATIVE current-week count
+ *      built from the weekCount template, present in EN + HE (the original
+ *      week-vs-week sentence was retired as a firewall breach — see the
+ *      describe block below and ProgressNarrative.firewall.test.ts).
  * (The banned-token scan over the template lives with its wave-3 siblings in
  * lib/clinicalFirewall.wave3.test.ts.)
  */
@@ -81,26 +83,35 @@ describe("TODAY-6 — evidence rows deep-link to their source entries", () => {
   });
 });
 
-describe("TODAY-6 — 'What changed' carries the ONE counts-only comparative sentence", () => {
-  it("ProgressNarrative renders the weekCompare template alongside changedBody", () => {
-    expect(narrative).toMatch(/t\("today\.narrative\.weekCompare",\s*\{\s*thisWeek:\s*recentBehaviors\.length,\s*lastWeek:\s*momentsLastWeek\s*\}\)/);
-    expect(narrative).toMatch(/\$\{copy\.changedBody\}\s*\$\{weekCompare\}/);
+describe("TODAY-6 — 'What changed' carries ONE non-comparative week count", () => {
+  // AR-UI 2026-08-12: the original TODAY-6 sentence was a week-vs-week
+  // comparative ("N moments this week vs M last week") inside a cell titled
+  // "What changed for <name>" — a trend delta about the CHILD on a child-data
+  // parent surface, which the standing firewall bans. The cell keeps the
+  // parent's capture momentum as a single current-week count; the prior-window
+  // number is no longer rendered (guard: ProgressNarrative.firewall.test.ts).
+  it("ProgressNarrative renders the weekCount template alongside changedBody", () => {
+    expect(narrative).toMatch(/t\("today\.narrative\.weekCount",\s*\{[\s\S]*?moments:\s*plural\("today\.narrative\.changedBody\.moments",\s*recentBehaviors\.length\)[\s\S]*?\}\)/);
+    expect(narrative).toMatch(/\$\{copy\.changedBody\}\s*\$\{weekCount\}/);
   });
 
-  it("last week's count is derived in OverviewTab (days 8-14 window) where behaviorLogs are in scope", () => {
-    expect(overview).toMatch(/momentsLastWeek/);
-    expect(overview).toMatch(/at\s*>=\s*now\s*-\s*14\s*\*\s*DAY\s*&&\s*at\s*<\s*now\s*-\s*7\s*\*\s*DAY/);
+  it("no prior-window count is interpolated into the rendered copy", () => {
+    expect(narrative).not.toMatch(/\blastWeek\s*:/);
+    expect(narrative).not.toMatch(/t\(\s*["'][^"']*["'][^)]*momentsLastWeek/);
   });
 
-  it("weekCompare + openItem exist in BOTH dictionaries (HE/EN parity)", () => {
-    for (const key of ["today.narrative.weekCompare", "today.narrative.openItem"]) {
+  it("weekCount + openItem exist in BOTH dictionaries (HE/EN parity)", () => {
+    for (const key of ["today.narrative.weekCount", "today.narrative.openItem"]) {
       expect(en[key], `en missing ${key}`).toBeTruthy();
       expect(he[key], `he missing ${key}`).toBeTruthy();
     }
     for (const dict of [en, he]) {
-      expect(dict["today.narrative.weekCompare"]).toContain("{thisWeek}");
-      expect(dict["today.narrative.weekCompare"]).toContain("{lastWeek}");
+      expect(dict["today.narrative.weekCount"]).toContain("{moments}");
+      expect(dict["today.narrative.weekCount"]).not.toContain("{lastWeek}");
     }
+    // the retired comparative key is gone from both dictionaries
+    expect(en["today.narrative.weekCompare"]).toBeUndefined();
+    expect(he["today.narrative.weekCompare"]).toBeUndefined();
   });
 
   it("the narrative component emits no verdict primitive (wave-3 token classes)", () => {

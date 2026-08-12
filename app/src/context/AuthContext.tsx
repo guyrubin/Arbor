@@ -143,7 +143,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Epic A / AI-V4: activate the neural-voice engine when the server reports
     // /api/tts configured (TTS_PROVIDER — single server env flip, no client
     // build flag). No-op otherwise (browser floor).
-    void initNaturalVoice();
+    // Only probe once there IS a user: /api/tts requires auth, so calling it
+    // signed-out produced a red 401 on every cold load and (before the latch
+    // fix in naturalVoice.ts) permanently disabled the neural engine.
+    if (user?.uid) void initNaturalVoice();
   }, [user?.uid]);
 
   const value: AuthContextValue = {

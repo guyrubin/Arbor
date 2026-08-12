@@ -56,7 +56,13 @@ describe("composeChildStory (T4)", () => {
     });
     const text = s.paragraphs.join(" ");
     expect(text).toContain("5 moments");
-    expect(text).toContain("more than the 3");
+    // CLINICAL FIREWALL (2026-08-12): this assertion used to REQUIRE the
+    // week-over-week clause ("more than the 3"), pinning a breach in place —
+    // comparing the child's own windows is a trend delta, and the losing branch
+    // ("a quieter week than…") was an intensity verdict in prose. Both are gone;
+    // the flat count of what the PARENT noticed stays. Guarded in both
+    // directions so neither phrasing can return.
+    expect(text).not.toMatch(/more than the|quieter week|the week before|last week/i);
     // Wave-3: the intensity-trend prose ("calmer" / "bigger lately") is gone.
     expect(text).not.toMatch(/calmer|bigger lately/i);
     expect(text).toContain("4 of 10 milestones");

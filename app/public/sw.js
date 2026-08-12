@@ -9,7 +9,28 @@
    tabs once — so users always get the latest build instead of a stale shell. */
 const CACHE = "arbor-shell-__BUILD_ID__";
 
-self.addEventListener("install", () => {
+/* Install-time precache. The runtime cache-first branch below only ever holds
+   what a previous ONLINE paint happened to request, which is not good enough
+   for two assets:
+
+   · the self-hosted Material Symbols subset — it IS the app's entire
+     iconography (index.html), it has no CDN to fall back to any more, and
+     Material Symbols icons are ligatures, so a missing font means literal
+     English words where icons belong;
+   · the app shell itself, so a cold offline start has something to render.
+
+   Kept deliberately tiny: everything else stays lazily cached on first use. */
+const PRECACHE = ["/index.html", "/fonts/material-symbols-rounded-subset.woff2"];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((c) => c.addAll(PRECACHE))
+      // A precache miss (offline install, asset renamed) must never block
+      // activation — the worker still works, just without the head start.
+      .catch(() => undefined),
+  );
   self.skipWaiting();
 });
 
@@ -35,14 +56,21 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE).then((c) => c.put("/index.html", copy));
           return res;
         })
-        .catch(() => caches.match("/index.html"))
+        .catch(() => caches.match("/index.html", { ignoreVary: true }))
     );
     return;
   }
 
-  // Static assets: cache-first, then network.
+  /* Static assets: cache-first, then network.
+
+     ignoreVary is load-bearing, not a nicety. Hosts commonly answer with
+     `Vary: Origin`, and a font is ALWAYS requested in CORS mode (the
+     `crossorigin` preload + @font-face rule in index.html), so its request
+     carries an Origin header while the install-time addAll() request did not.
+     Honouring Vary therefore missed the precached icon font offline — verified:
+     the entry was in the cache and the app still rendered no icons. */
   event.respondWith(
-    caches.match(req).then(
+    caches.match(req, { ignoreVary: true }).then(
       (cached) =>
         cached ||
         fetch(req)

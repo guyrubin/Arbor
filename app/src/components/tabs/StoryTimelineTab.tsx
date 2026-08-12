@@ -225,7 +225,10 @@ export default function StoryTimelineTab() {
       milestonesObserved: momentum.milestones.observed,
       milestonesTotal: momentum.milestones.total,
       momentsThisWeek: momentum.momentsThisWeek,
-      momentsPrevWeek: momentum.momentsPrevWeek,
+      // momentsPrevWeek is deliberately NOT passed: composeChildStory no longer
+      // renders a week-over-week clause (firewall), so feeding it the prior
+      // window would only invite the comparison back.
+      momentsPrevWeek: 0,
       // Wave-3 clinical subtraction: never pass the intensity trend into the
       // story narrative (a behavior-intensity verdict rendered as prose is the
       // same firewall leak as a chart). The story now stays observational-only.
@@ -339,9 +342,12 @@ export default function StoryTimelineTab() {
         <StatTile
           tone="coral" icon={<Icon name="bolt" size={20} fill={1} />}
           value={momentum.momentsThisWeek} label="Moments this week"
-          foot={<span style={{ color: "var(--arbor-muted)" }}>
-            {momentum.momentsPrevWeek > 0 ? `vs ${momentum.momentsPrevWeek} last week` : "first week"}
-          </span>}
+          // CLINICAL FIREWALL: this foot used to render `vs {n} last week` — two
+          // week counts side by side is a trend delta on a child-data parent
+          // surface, which §2 bans (it also shipped hard-coded in English on an
+          // otherwise fully translated screen). The tile's own value already
+          // carries the week's count; no prior window is shown.
+          foot={undefined}
         />
         <StatTile
           tone="sky" icon={<Icon name="eco" size={20} fill={1} />}

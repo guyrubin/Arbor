@@ -253,10 +253,14 @@ describe("Wave-3 clinical firewall — i18n keys are non-diagnostic", () => {
     }
   });
 
-  it("TODAY-6 — the narrative comparative template stays counts-only (no trend adjective, %, or x/5)", () => {
-    // The wave-3 demotions banned the easing/rising intensity-verdict class;
-    // the TODAY-6 firewall ruling extends that ban to the week-vs-week
-    // sentence ("N moments this week vs M last week") in BOTH locales.
+  it("TODAY-6 — the narrative week template stays counts-only (no trend adjective, %, or x/5)", () => {
+    // The wave-3 demotions banned the easing/rising intensity-verdict class.
+    // AR-UI 2026-08-12 went further: the week-vs-week sentence itself ("N
+    // moments this week vs M last week") was a trend DELTA about the child on a
+    // child-data parent surface, so it was replaced by a single current-week
+    // count (today.narrative.weekCount). Both locales are scanned here; the
+    // comparative-phrasing scan lives in
+    // components/overview/ProgressNarrative.firewall.test.ts.
     const trendBanned = /\b(easing|rising|intensifying|improving|worsening|declining|trending|calmer|stormier)\b/i;
     const heTrendBanned = /(מגמה|משתפר|מחמיר|נרגע|מסלים)/;
     const lines = i18n.split(/\r?\n/);
@@ -268,13 +272,17 @@ describe("Wave-3 clinical firewall — i18n keys are non-diagnostic", () => {
       expect(l, `percentage in narrative line: ${l}`).not.toMatch(/%/);
       expect(l, `x/5 denominator in narrative line: ${l}`).not.toMatch(/\/\s*5\b/);
     }
-    // The comparative template itself exists in both dictionaries and carries
-    // only the two count placeholders.
-    const compareLines = narrativeLines.filter((l) => l.includes('"today.narrative.weekCompare"'));
-    expect(compareLines.length, "weekCompare must exist in EN + HE").toBe(2);
-    for (const l of compareLines) {
-      expect(l).toContain("{thisWeek}");
-      expect(l).toContain("{lastWeek}");
+    // The week template exists in both dictionaries and carries ONE count
+    // placeholder — a second week's count would restore the banned delta.
+    const countLines = narrativeLines.filter((l) => l.includes('"today.narrative.weekCount"'));
+    expect(countLines.length, "weekCount must exist in EN + HE").toBe(2);
+    for (const l of countLines) {
+      expect(l).toContain("{moments}");
+      expect(l, "a prior-window placeholder is a trend delta").not.toContain("{lastWeek}");
     }
+    // The retired comparative key must not come back anywhere in i18n.
+    expect(i18n, "today.narrative.weekCompare was retired as a firewall breach").not.toContain(
+      '"today.narrative.weekCompare"',
+    );
   });
 });

@@ -13,7 +13,6 @@ export default function ProgressNarrative({
   behaviorLogs,
   playLogs,
   noticedMilestones,
-  momentsLastWeek,
   actions,
   onOpenEvidence,
 }: {
@@ -21,10 +20,16 @@ export default function ProgressNarrative({
   behaviorLogs: EvidenceItem[];
   playLogs: EvidenceItem[];
   noticedMilestones: number;
-  /** Logged-moment count for the PREVIOUS 7-day window (days 8–14), derived in
-   *  OverviewTab where behaviorLogs are in scope (TODAY-6). A count, never a
-   *  trend verdict. */
-  momentsLastWeek: number;
+  /** @deprecated NOT RENDERED. Logged-moment count for the PREVIOUS 7-day
+   *  window (days 8–14), derived in OverviewTab. It used to feed a
+   *  week-vs-week sentence in the "What changed" cell — a COMPARATIVE trend
+   *  delta about the CHILD on a child-data parent surface, which the standing
+   *  clinical firewall bans (IA masterplan §2; UI masterplan §1: the continuity
+   *  surfaces are event language only, never comparative). The prop is retained
+   *  only so the existing OverviewTab call site keeps compiling; nothing here
+   *  may read it, and ProgressNarrative.firewall.test.ts fails the build if a
+   *  prior-window count is ever interpolated into rendered copy again. */
+  momentsLastWeek?: number;
   actions: ActionLoopEntry[];
   /** Open the journal: with a signal id → deep-link to that exact entry;
    *  without → the whole journal feed. The id is the only payload (firewall:
@@ -41,16 +46,23 @@ export default function ProgressNarrative({
   const evidence = [...recentBehaviors, ...recentPlay]
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
     .slice(0, 3);
-  // TODAY-6: ONE firewall-safe comparative sentence — this week's logged-moment
-  // count vs last week's, phrased as bare counts. No trend adjective, %, or
-  // score may ever join this template (pinned by the wave-3-style token scan).
-  const weekCompare = t("today.narrative.weekCompare", { thisWeek: recentBehaviors.length, lastWeek: momentsLastWeek });
   // Pluralization: each count in changedBody resolves its own .one/.many
   // fragment (the shared convention — cf. elev.sincevisit.row.moment.one/.many)
   // before the composite template stitches them, so "1 activities" can't render
   // in either language. n === 1 is the ONLY singular case; 0 takes .many in both
   // EN and HE.
   const plural = (base: string, n: number) => t(`${base}.${n === 1 ? "one" : "many"}`, { n });
+  // AR-UI (2026-08-12) firewall fix: this cell used to close with a week-vs-week
+  // sentence ("3 moments this week vs 0 last week"). Two week counts side by
+  // side ARE a trend delta, and this cell is titled "What changed for <name>" —
+  // the comparison read as the CHILD's progress, which the clinical firewall
+  // bans on child-data parent surfaces (counts only; the since-visit strip
+  // directly above is scrupulously event-only). The prior-window count is gone;
+  // what remains is the PARENT's own capture momentum for the current week,
+  // stated as one bare count with no prior window to measure it against.
+  const weekCount = t("today.narrative.weekCount", {
+    moments: plural("today.narrative.changedBody.moments", recentBehaviors.length),
+  });
   const copy = {
     eyebrow: t("today.narrative.eyebrow"), title: t("today.narrative.title", { name: childName }), changed: t("today.narrative.changed"),
     evidence: t("today.narrative.evidence"), next: t("today.narrative.next"), open: t("today.narrative.open"),
@@ -76,7 +88,7 @@ export default function ProgressNarrative({
         <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}><Icon name="timeline" size={19} /></span>
       </div>
       <div className="mt-5 grid gap-3 lg:grid-cols-3">
-        <NarrativeCell icon="moving" title={copy.changed} body={hasEvidence ? `${copy.changedBody} ${weekCompare}` : copy.noChange} />
+        <NarrativeCell icon="moving" title={copy.changed} body={hasEvidence ? `${copy.changedBody} ${weekCount}` : copy.noChange} />
         <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center gap-2"><Icon name="fact_check" size={17} style={{ color: "var(--arbor-green-ink)" }} /><h3 className="text-xs font-extrabold" style={{ color: "var(--arbor-ink)" }}>{copy.evidence}</h3></div>
           {/* TODAY-6 / AR-CAP-03: every cited row is TAPPABLE and deep-links to
