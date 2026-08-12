@@ -1,9 +1,14 @@
 # Arbor — Parenting AI Platform PRD
 
-**Version:** 1.2 (2026-06-03 — Information Architecture v2: six-capability model; see "Information Architecture v2" below)
+**Version:** 1.3 (2026-06-29 — Evidence-base enrichment: added "Developmental Frameworks (Evidence Base)", a "Capability Depth" pass on under-specified modules, and a "Sibling product: Arbor Third Age" cross-reference. Additive only — no prior content removed. See changelog below.)
 **Product type:** AI-powered child-development, parenting, co-therapy, and school-support platform
 **Age range:** Birth to 12
 **Markets:** Israel, Netherlands, Belgium, later broader EU
+
+### Changelog
+
+- **1.3 (2026-06-29)** — Enrichment pass closing the thin-PRD gaps identified in the cross-product investigation. Added three new sections without deleting or rewriting existing content: (1) **Developmental Frameworks (Evidence Base)** — grounds each capability in child-development science (attachment, Piaget/Vygotsky, emotional co-regulation, executive-function development, milestone evidence, red-flag screening rigor) with a per-framework evidence base, age-band content, and decision logic; (2) **Capability Depth** — specifies the under-specified modules (medical guardrail evidence base, screening-instrument strategy, engagement/avatar surface, consent/capacity model, eval gate, age-band engine, life-stage abstraction layer); (3) **Sibling product: Arbor Third Age** — cross-reference to `PAI/projects/arbor-third-age/SPEC.md`. Version history below preserved verbatim.
+- **1.2 (2026-06-03)** — Information Architecture v2: six-capability model (see "Information Architecture v2" below).
 
 ## Executive Summary
 
@@ -357,6 +362,329 @@ Arbor's MVP should route every concern through one or more of these domains: att
 The same issue should produce different guidance for different ages. A toddler refusing a transition, a five-year-old refusing school entry, and a ten-year-old avoiding schoolwork require different explanations, scripts, responsibility levels, and escalation thresholds.
 
 The detailed implementation model lives in `docs/developmental-ai-operating-model.md`.
+
+---
+
+## Developmental Frameworks (Evidence Base)
+
+> **Added 2026-06-29 (v1.3).** This section converts the 15-scholar × one-line mapping
+> table above from a name-drop into a *build- and eval-able clinical operating manual*.
+> For each framework it specifies the evidence base (what is known and how strongly),
+> the age-band content (what changes by age and why), the decision logic (how it routes
+> an actual concern), the firewall rule (what is shown vs. hidden), and the escalation
+> source. The discipline is deliberate: a longitudinal child-development OS that asserts
+> theory without grounding it cannot be evaluated, defended to a clinician, or extended
+> to an adjacent population. **No existing capability is removed — this deepens the
+> Scholar-Inspired Capability Layer and the Six Frames, it does not replace them.**
+
+### The firewall the whole product hangs on (formation framing)
+
+Child-Arbor's load-bearing dignity rule is that **milestone *deficit* scores are never
+shown to a parent as a verdict, percentile, or "your child is behind" number.** Bars are
+milestone *counts* and *what-to-observe* prompts, never a normed deficit. A parent must
+never be able to reduce a child to a falling number. This is the formation-side analogue
+of the sibling product's decline firewall (see "Sibling product: Arbor Third Age"). Every
+framework below is specified so its *signal* can inform guidance while its *score* stays
+on the clinician/observation side.
+
+### F1 — Attachment & co-regulation (Bowlby · Ainsworth · Harvard Serve & Return)
+
+- **Evidence base.** Attachment theory (Bowlby/Ainsworth Strange Situation) is among the
+  most replicated constructs in developmental psychology; security predicts later
+  emotional regulation and relationship quality. Harvard Center on the Developing Child's
+  "serve and return" operationalizes it into coachable contingent interaction. *Strong,
+  multi-decade evidence; load-bearing.*
+- **Age-band content.** 0–18mo: contingent responsiveness, soothing, predictable
+  caregiving (builds the secure base). 18mo–3y: secure base for autonomy/exploration;
+  rupture-and-repair around boundary testing. 3–7y: co-regulation → emerging
+  self-regulation, naming feelings. 7–12y: relationship as the channel for harder truths
+  and felt-safety under stress.
+- **Decision logic.** A regulation concern routes to: validate the emotion → restore
+  felt-safety BEFORE correction → repair after rupture (Bowlby Repair Coach) →
+  observe contingency quality, not "compliance." Never "ignore the tantrum to extinguish
+  it" as a first move; co-regulate first.
+- **Firewall / escalation.** Never label a child "insecurely attached" to a parent.
+  Persistent dysregulation + a stressor cluster (loss, fear, withdrawal) → "worth a
+  professional conversation," routed via the safety classifier, never a diagnosis.
+
+### F2 — Cognitive stage & the learning edge (Piaget · Vygotsky)
+
+- **Evidence base.** Piaget's stage sequence (sensorimotor → preoperational → concrete
+  operational) is directionally robust even where exact ages are now seen as softer than
+  Piaget claimed; Vygotsky's Zone of Proximal Development + scaffolding is one of the
+  best-supported instructional principles in education research. *Strong as direction;
+  use stages as soft bands, not hard gates.*
+- **Age-band content.** Sensorimotor (0–2): object permanence, cause-effect. Preoperational
+  (2–7): symbolic play, egocentrism, magical thinking — explains why a 4-year-old "lies"
+  without intent to deceive. Concrete operational (7–11): logic about concrete things,
+  conservation, rule-fairness. The Next-Best-Challenge engine targets the ZPD: just beyond
+  current independent capacity, scaffolded then faded.
+- **Decision logic.** A "won't / can't" concern routes to: is the expectation
+  stage-appropriate? → set the task at the learning edge → scaffold → fade support.
+  Reframes "defiance" that is actually a developmentally-impossible demand.
+- **Firewall / escalation.** No IQ-style scoring shown to parents. A sustained gap below
+  the soft band across domains → observation prompt + professional-conversation route.
+
+### F3 — Psychosocial formation (Erikson · the Developmental Arc)
+
+- **Evidence base.** Erikson's psychosocial stages are a *framing* model (high construct
+  validity, lower measurement rigor) — used here exactly as the PRD already uses them: as
+  the formation telos behind the milestone ladder, not as a score. *Canonical framing,
+  not an instrument.*
+- **Age-band content (the Developmental Arc, already in Frame 1).** Trust vs mistrust
+  (0–1) · autonomy vs shame (1–3) · initiative vs guilt (3–6) · industry vs inferiority
+  (6–12). Each band carries the developmental task and "what the parent's response
+  shapes." This is the spine the milestone checklist serves, not replaces.
+- **Decision logic.** Calibrate guidance to the band's task: protect autonomy at 2,
+  protect initiative at 4, protect competence/industry at 8. The Family Charter (Frame 1)
+  is the per-family overlay on this universal arc.
+- **Firewall / escalation.** Formation framing is never a "life-coherence score." This is
+  the formation-side hinge that the sibling product inverts to integrity-vs-despair.
+
+### F4 — Emotional co-regulation → self-regulation (affective neuroscience · trauma-informed)
+
+- **Evidence base.** The shift from external co-regulation to internal self-regulation is
+  well-supported; trauma-informed development (felt-safety, window-of-tolerance, the
+  stress-response) has strong clinical grounding for stabilizing routines under stress.
+  *Strong for the mechanism; "dose" of any single technique is softer.*
+- **Age-band content.** Toddler: borrowed regulation (the parent IS the regulator).
+  Preschool: naming/labeling affect, simple strategies. School-age: independent strategies,
+  perspective-taking, recovery time. Across all: a meltdown is a stress-response, not
+  manipulation.
+- **Decision logic.** Routes the Behavior & Emotion tracker: log trigger → intensity →
+  recovery, and read "parent-response effectiveness" as *did co-regulation shorten
+  recovery*, not "did the child comply." The Family Stress & Resilience monitor watches
+  the stressor load, not just the child's behavior.
+- **Firewall / escalation.** Acute self-harm language, regression after a trauma trigger,
+  or a sharp stressor spike → safety-classifier red-flag path, never a soothing platitude.
+
+### F5 — Executive-function development (Self-Regulation Builder)
+
+- **Evidence base.** EF (working memory, inhibitory control, cognitive flexibility) has a
+  well-mapped developmental trajectory (prefrontal maturation into the 20s) and is a strong
+  predictor of school and life outcomes; targeted scaffolding has evidence, generic
+  "brain-training" far-transfer claims do **not**. *Strong for the developmental model;
+  use scaffolds, not commercial brain-training claims.*
+- **Age-band content.** 3–5: emerging inhibition (waiting, turn-taking), 1–2 step
+  instructions. 6–8: working memory for multi-step tasks, planning with support. 9–12:
+  flexible problem-solving, self-monitoring, initiating without prompts. The Responsibility
+  Ladder (Frame 2) is EF scaffolding operationalized: hand over what the child's EF can now
+  carry.
+- **Decision logic.** "Won't follow instructions / forgets / can't switch" routes to: is
+  this an EF-load mismatch? → reduce steps, externalize memory (visual routines), build the
+  skill one rung at a time. Reframes EF-immaturity as not-yet, not won't.
+- **Firewall / escalation.** EF profile is observation, never an ADHD label. A persistent,
+  cross-setting EF gap with functional impact → structured-observation export +
+  professional route (see Capability Depth: screening-instrument strategy).
+
+### F6 — Milestone evidence & red-flag screening rigor (the clinical hard edge)
+
+- **Evidence base.** Milestone content is anchored to recognized public-health references
+  (CDC "Learn the Signs. Act Early." 2022 revision; WHO motor milestones) and validated
+  screeners (ASQ-3 general development; M-CHAT-R/F autism 16–30mo; Vanderbilt ADHD;
+  CSHQ sleep). These are **published, validated, and (critically) licensed instruments** —
+  their use is a clinical and licensing decision, not a UI default (see Capability Depth).
+  *Guideline-grade where the instrument is used as validated; misuse (re-norming, partial
+  administration, scoring outside license) is both a safety and a regulatory risk.*
+- **Age-band content.** Milestones are read as *windows*, not pass/fail dates; "not yet"
+  inside the window is monitoring, "not yet" past the window is a watch/seek-advice signal.
+  Bands follow the CDC age checkpoints (2, 4, 6, 9, 12, 15, 18mo; 2, 3, 4, 5y) with the
+  4-year checkpoint added in the 2022 revision.
+- **Decision logic (the `escalateIf` boundary).** Each red flag carries: a documented
+  clinical source, a watch-vs-seek-advice threshold, and a "worth a professional
+  conversation" copy that never diagnoses. The boundary is asserted in the PRD today; the
+  governance to make it defensible (source, reviewer sign-off, threshold validation) is
+  specified in Capability Depth → "Safety-threshold governance."
+- **Firewall / escalation.** **Months matter** for early-childhood neurodevelopment — the
+  bias is toward an earlier professional conversation, never toward false reassurance — but
+  the product **screens and routes; it never diagnoses.** Adult-grade cognitive screening
+  (the sibling product) crosses the medical-device line more clearly; resolving the
+  child-side instrument strategy now de-risks both.
+
+### Strongest-evidence "build/eval first"
+
+Attachment/serve-and-return, Piaget/Vygotsky ZPD scaffolding, executive-function
+scaffolding (NOT brain-training), and CDC/WHO-anchored milestone windows are the
+best-evidenced spine — build and eval these to a demonstrated bar first. Erikson and the
+Six Frames are the *framing* layer (use as telos, never as a score). Any framework used as
+a lens rather than an instrument must be labeled as such and never over-claimed to a parent.
+
+---
+
+## Capability Depth (under-specified modules, specified)
+
+> **Added 2026-06-29 (v1.3).** The original Core Product Modules and AI architecture are
+> correct but several modules are specified only to a one-paragraph "what it does" level —
+> too thin to build, eval, or defend. This pass deepens the specific modules the
+> investigation flagged as under-specified. **Each subsection extends an existing module;
+> none replaces it.**
+
+### CD-1 — Medical Guidance Guardrail Layer (clinical-evidence base + reviewer model)
+
+Extends Core Module 6. The guardrail must move from "never give unsafe advice" (a
+principle) to an enforceable, sourced layer:
+
+- **Two firewalls, kept distinct** (ported pattern, child-tuned): (a) a **real-time
+  red-flag router** — deterministic, pre-generation, fail-closed — for the acute path
+  (child self-harm language, high fever in an infant, dehydration, suspected abuse
+  disclosure, ingestion/poisoning, breathing difficulty) that bypasses the LLM and emits
+  locale-correct emergency copy + escalation; and (b) a **hardened no-diagnosis/no-dosage
+  output screen** applied server-side before any output reaches the user, regardless of
+  phrasing — no dosing numbers, no drug-interaction verdicts, no diagnostic labels.
+- **Grounding requirement.** Health-adjacent answers draw from a vetted source-card layer
+  (the AI-Wiki), not free generation, and always carry "this isn't medical advice — check
+  with your pediatrician" + one-tap professional handoff.
+- **Reviewer model.** A clinical reviewer (pediatric advisor) signs off the red-flag item
+  set and thresholds; high-risk outputs are human-reviewed during beta. This is the
+  child-side instance of the Advisory-Board clinical-governance artifact below.
+
+### CD-2 — Screening-instrument strategy (Autism/ADHD/Special-Needs + Milestones)
+
+Extends Core Modules 3 and 7. The PRD names ASQ-3 / M-CHAT-R/F / Vanderbilt / CSHQ but
+defers the hard questions. Resolve them explicitly:
+
+- **License-aware use.** Each instrument is used only as licensed and as validated —
+  correct age window, full administration, scoring inside the license. Where a license or
+  full administration is not in place, Arbor does **structured observation** mapped to the
+  instrument's *domains* and routes to a professional who can administer the validated
+  tool — it does not present a re-normed or partial score as if it were the instrument.
+- **Non-diagnostic boundary.** Output is always "these observations are worth a
+  professional conversation," never "your child has autism/ADHD." Screening positivity
+  routes to the Care Network handoff, not to a label.
+- **Regulatory note.** Developmental screening sits near the EU MDR line; the classification
+  decision (Class I vs IIa) and the validated-instrument strategy are a named legal/clinical
+  gate, not an engineering default (see CD-5).
+
+### CD-3 — Engagement / child-facing surface (the avatar & kid-mode surface, documented in-PRD)
+
+The deepest-built engagement surface (MimicStudio, HeroArcade, WorldScene, FeelingsLab,
+Cognitive Adventures, Child-ASR, and the viral gamified redesign) is currently documented
+in the AI spec and a separate redesign plan but **not in this PRD**. Documented here so the
+PRD is complete:
+
+- **What it is.** A parent-mediated, avatar-led child surface (classic-comic worlds, hero
+  journeys, feelings labs, themed cognitive adventures) plus a Child-ASR phoneme-scoring
+  seam for pronunciation/language practice. Engagement is gamified (themes, hero arcs) but
+  governed by the clinical firewall: no deficit scores, no dark-pattern streaks that shame
+  (the "🔥 7 days in a row" streak title is a flagged dark-pattern to remove).
+- **Register/aesthetic abstraction.** The engagement engine is specified as a *re-skinnable
+  register*, not hard-wired to comic worlds and streaks — so the same engine can present a
+  different aesthetic for a different population, and the **Child-ASR seam (`server/childAsr.ts`
+  + `lib/speechScorer.ts`, pluggable Gemini/Whisper) is documented as a reusable
+  pronunciation/speech-rehab seam**, not a child-only feature. This abstraction is what lets
+  the engagement surface and the ASR seam port to the sibling product without a rewrite.
+- **Consent.** All child-facing AI is parent-mediated; no unsupervised child chat in MVP
+  (unchanged).
+
+### CD-4 — Consent & capacity model (capacity-state machine + "subject-is-also-a-user")
+
+Extends the Child Memory moat and the Compliance section. Today the whole memory/sharing
+model assumes a single mode: **guardian-consents-for-a-non-agentic-child** (COPPA-shaped).
+Generalize it without weakening the child default:
+
+- **Capacity-state machine.** Model consent as a state machine, not a fixed binary. For the
+  child product the default state is `guardian-over-minor` (parent is root of consent,
+  parent-approved memory, pending-review queue — all unchanged). Add a **`subject-is-also-a-user`**
+  mode and a **proxy/delegation path** as first-class states the architecture can represent.
+- **Why now.** This future-proofs the **teen / young-adult transition** inside the child
+  product (a 12→16 year old gains agency over their own record) and is the exact primitive
+  the sibling senior product needs (a self-sovereign adult with a capacity-aware proxy/POA
+  path). Building the abstraction once, here, avoids a later rewrite of the moat.
+- **Invariant.** For minors, the parent remains the root of consent and nothing is shared
+  about the child without it; the new states extend the model, they do not loosen the
+  child-protection default.
+
+### CD-5 — Safety-threshold governance (advisory-board clinical-governance artifact)
+
+Extends the AI Enhancement Architecture and the red-flag layer. Every `escalateIf`
+threshold, red-flag trigger, and "worth a professional conversation" boundary must carry:
+
+- a **documented clinical source** (which guideline/instrument/evidence the threshold comes
+  from);
+- a **named reviewer + sign-off** (pediatric/clinical advisor approves the item set and the
+  thresholds before ship);
+- **threshold validation** (the red-flag set is tested against a labeled corpus and
+  red-team scenarios; false-negatives on acute items are the binding failure mode).
+
+This artifact is the answer to the open question "who signs off on the item set and
+thresholds?" and is a **ship-blocker** for any change to the safety layer.
+
+### CD-6 — Eval gate (from asserted-safe to demonstrated-safe)
+
+Extends the AI quality acceptance criteria. Today safety/age-fit/non-diagnostic behavior is
+*asserted*. Wire the existing `ai-eval-harness` to live routes and make it a ship gate:
+
+- **Test corpus + pass-rate baselines** per safety-critical route (coach, red-flag router,
+  milestone guidance, handoff generator), with documented pass-rate floors.
+- **Red-team scenario suite** (jailbreak attempts to extract a diagnosis/dose; phrasing that
+  tries to bypass the output screen; ambiguous acute clusters that must escalate).
+- **Ship-blocker.** No prompt/model change to a safety-critical route ships below its
+  pass-rate floor. (Mandatory; the same gate becomes non-negotiable for the higher-stakes
+  sibling product.)
+
+### CD-7 — Age-band engine (parameterized, with an extension mechanism)
+
+Extends "Age-Band Operating Logic." Today "same issue, different guidance by age" is stated
+with a small table but the band content is asserted, the bands are a closed pediatric set,
+and there is no extension mechanism. Specify the engine:
+
+- **Parameterized bands.** Each band carries documented per-band content (what changes, why,
+  with what evidence) keyed to the framework that governs it (Piaget stage, Erikson task, EF
+  trajectory, milestone window).
+- **Extension mechanism.** The band set is a registry, not a hard-coded pediatric list, so
+  new bands (e.g. teen, or — in the sibling product — young-old / old-old / oldest-old) plug
+  in without a rewrite. This is the concrete realization of the life-stage abstraction layer
+  below.
+
+### CD-8 — Life-stage abstraction layer (formation / maintenance / decline)
+
+The deepest enrichment, and the one that makes the product a platform rather than a single
+app. Today every framework is hard-wired ascending-development ("Birth to 12", milestone
+ladder up). Introduce a parameterized **developmental/functional-arc interface**:
+
+- **The interface.** An arc has a *direction* (`formation` | `maintenance` | `decline`), a
+  pluggable *staging model* (milestone ladder · steady-state maintenance · decline staging),
+  and a firewall rule (which scores are hidden from the subject). Child-Arbor is the
+  `formation` instance with the milestone-ladder staging model and the deficit-score
+  firewall.
+- **Why it matters.** Milestone theory becomes *one instance* of the staging interface, not
+  the hard-wired spine — which is precisely what lets an adjacent population (Arbor Third
+  Age, `decline`/`maintenance`) reuse the longitudinal-memory engine, the governed safety
+  spine, and the firewall pattern without rebuilding them. It also strengthens the child
+  product itself by forcing the formation assumptions to be explicit and parameterized
+  rather than implicit.
+
+---
+
+## Sibling product: Arbor Third Age
+
+> **Added 2026-06-29 (v1.3). Cross-reference note — not a scope change to this PRD.**
+
+**Arbor Third Age** is a senior-wellbeing OS (ages 65+, B2B2C via Israeli HMOs) that is the
+**structural inversion of child-Arbor across a single hinge: the firewall.** Child-Arbor
+rests on developmental psychology — a child growing *into* capacity, scaffolded by milestone
+theory — and hides milestone *deficit* scores so a parent never reduces a child to a
+percentile. Third Age rests on geropsychology/geriatrics — an adult *sustaining* capacity
+through continuity and loss — and hides *decline* scores so a senior is never reduced to a
+falling number. The same longitudinal-memory engine, the same governed safety/privacy spine,
+and the same expert-veto governance port directly; every primitive is re-rooted from
+*guardian-over-minor* to *self-sovereign-adult-with-possible-proxy*, and every signal flips
+from *skill gained* to *function at risk*.
+
+Several enrichments in v1.3 exist precisely because they make both products possible and
+stronger: the **life-stage abstraction layer (CD-8)** turns milestone theory into one
+instance of a formation/maintenance/decline interface; the **consent capacity-state machine
+(CD-4)** generalizes parent-over-minor consent into a model that also covers a self-sovereign
+adult with a capacity-aware proxy; the **register/aesthetic abstraction and Child-ASR seam
+(CD-3)** are what let the engagement engine and the speech seam re-skin for a dignified-adult
+register and aphasia/dysarthria rehab; and the **mandatory eval gate (CD-6)** and
+**safety-threshold governance (CD-5)** become non-negotiable for the higher-stakes senior
+cohort.
+
+**Canonical spec:** `PAI/projects/arbor-third-age/SPEC.md` (capability crosswalk,
+geropsych/geriatric capability sets, re-targeted AI layer, HMO care-network spec, and the
+consolidated dignity-firewall & safety-escalation rules). This PRD remains scoped to the
+child product (Birth to 12); the senior product is tracked as a separate sibling under PAI.
 
 ---
 
