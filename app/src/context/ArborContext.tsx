@@ -17,7 +17,7 @@ import {
   ActionOutcome,
 } from "../types";
 import type { ScoredActivity } from "../playbank/select";
-import { ROUTE_IDS, type ActiveTab } from "../lib/routes";
+import { ROUTE_IDS, resolveRouteId, type ActiveTab } from "../lib/routes";
 import {
   sampleBehaviorLogs,
   initialMilestones,
@@ -88,10 +88,15 @@ export type CaptureMode = "voice" | "photo" | "text" | "ai-draft";
  *  canonical tab list without re-deriving it. Zero behavior change: this
  *  array is derived from VALID_TABS and is never read by any render path. */
 export const ALL_TABS: ActiveTab[] = [...VALID_TABS] as ActiveTab[];
+/** Resolve the current hash to a route id. Real route ids match exactly (as they
+ *  always have); label/hub ALIASES (`#/today` → overview, `#/growth` →
+ *  development…) resolve through lib/routes HASH_ALIASES so a link that follows
+ *  the visible nav label is no longer a dead deep link that silently falls back
+ *  to the stored tab. Unknown hashes still return null → unchanged fallback. */
 function tabFromHash(): ActiveTab | null {
   try {
     const h = window.location.hash.replace(/^#\/?/, "").trim();
-    return VALID_TABS.has(h) ? (h as ActiveTab) : null;
+    return resolveRouteId(h);
   } catch {
     return null;
   }

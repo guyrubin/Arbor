@@ -171,15 +171,27 @@ export function resetNaturalVoiceForTest(): void {
  *  Safe to call once at app init; no-op when the server reports off. */
 export async function initNaturalVoice(): Promise<void> {
   if (initialized) return;
-  initialized = true;
+  // The latch must NOT be set before the probe. AuthContext calls this on mount
+  // — i.e. while signed OUT — and /api/tts answers 401 there. Latching first
+  // meant that one guaranteed-to-fail pre-auth call permanently blocked the
+  // retry after sign-in, so the neural engine never activated for the whole
+  // session and every parent stayed on the browser-floor voice (plus a red 401
+  // in the console on every load). Only a probe that actually ANSWERED is
+  // allowed to be final.
+  let answered = false;
   try {
     const res = await fetch("/api/tts", { headers: await authHeaders() });
+    // 401/403 = "not signed in yet", never a verdict about TTS being off.
+    if (res.status === 401 || res.status === 403) return;
+    answered = true;
     if (!res.ok) return;
     const { configured } = (await res.json()) as { configured?: boolean };
     if (!configured) return;
     setNaturalSynth(naturalSynth);
     setVoiceEngine("natural");
   } catch {
-    /* leave the browser floor as the default */
+    /* network error: leave the browser floor AND allow a later retry */
+  } finally {
+    if (answered) initialized = true;
   }
 }

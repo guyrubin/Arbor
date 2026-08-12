@@ -2161,7 +2161,7 @@ export const en: Dict = {
   "today.narrative.changedBody.milestones.many": "{n} milestones have been noticed so far.",
   // TODAY-6 — the ONE comparative sentence: bare counts, week vs week. No trend
   // adjective, %, or score may ever join this template (banned-token scan).
-  "today.narrative.weekCompare": "{thisWeek} moments this week vs {lastWeek} last week.",
+  "today.narrative.weekCount": "You captured {moments} this week.",
   "today.narrative.openItem": "Open this moment in the journal: {label}",
   "today.narrative.nextNotToday": "The last step did not fit today. Arbor will offer a smaller or different version next time.",
   "today.narrative.nextOutcome": "Your latest outcome will help Arbor shape the next step.",
@@ -4479,7 +4479,7 @@ export const he: Dict = {
   "today.narrative.changedBody.milestones.one": "אבן דרך אחת סומנה עד כה.",
   "today.narrative.changedBody.milestones.many": "{n} אבני דרך סומנו עד כה.",
   // TODAY-6 — משפט השוואה אחד: ספירות בלבד, שבוע מול שבוע.
-  "today.narrative.weekCompare": "{thisWeek} רגעים השבוע לעומת {lastWeek} בשבוע שעבר.",
+  "today.narrative.weekCount": "תיעדתם {moments} השבוע.",
   "today.narrative.openItem": "פתיחת הרגע הזה ביומן: {label}",
   "today.narrative.nextNotToday": "הצעד האחרון לא התאים היום. ארבור תציע בפעם הבאה גרסה קלה או אחרת.",
   "today.narrative.nextOutcome": "התוצאה האחרונה תעזור לארבור לדייק את הצעד הבא.",

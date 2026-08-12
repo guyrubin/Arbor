@@ -320,8 +320,21 @@ export default function Shell() {
             <div
               role="tablist"
               aria-label={`${section.label} sections`}
-              className="sticky top-0 z-20 flex gap-2 overflow-x-auto mb-6 -mx-1 px-1 py-2 no-scrollbar"
-              style={{ background: "var(--arbor-paper)" }}
+              className="sticky z-20 flex gap-2 overflow-x-auto mb-6 -mx-1 px-1 pb-2 no-scrollbar"
+              style={{
+                background: "var(--arbor-paper)",
+                /* <main> is the scrollport and carries a top padding, so a plain
+                   `top: 0` parked this band one padding-height below the
+                   scrollport edge — leaving a live 32px sliver where content
+                   scrolled through and got clipped by the opaque band. Pulling
+                   the sticky inset (and the box) up by that padding makes the
+                   stuck band flush with the scrollport top; the matching
+                   padding-block-start keeps the pills exactly where they were
+                   at rest. See --arbor-main-pt in index.css. */
+                top: "calc(-1 * var(--arbor-main-pt))",
+                marginBlockStart: "calc(-1 * var(--arbor-main-pt))",
+                paddingBlockStart: "calc(var(--arbor-main-pt) + 0.5rem)",
+              }}
             >
               {hubTabsForSection(section).map((it) => {
                 const on = it.tab === activeTab;

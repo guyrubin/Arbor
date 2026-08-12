@@ -879,3 +879,29 @@ html[lang="he"] .arbor-parent {
   --font-sans: "Heebo", "Assistant", -apple-system, system-ui, sans-serif;
   --font-display: "Frank Ruhl Libre", "Heebo", Georgia, serif;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SCROLLPORT TOP INSET — --arbor-main-pt
+   ════════════════════════════════════════════════════════════════════════════
+   Mirrors the top padding of the scrolling <main> in Shell.tsx
+   (`py-5 … md:py-8` → 1.25rem / 2rem). <main> is the scroll container, so a
+   `position: sticky; top: 0` child parks at the container's CONTENT-box top —
+   i.e. one padding-height BELOW the scrollport edge. That gap is not empty:
+   content keeps scrolling through it and is then clipped by the opaque sticky
+   band, so card eyebrows and headline fragments slide past above the sub-tab
+   row. The sub-tab row cancels the inset with this token
+   (top / margin-block-start / padding-block-start), which keeps its resting
+   position identical while making the stuck position flush with the scrollport.
+   Declared on .arbor-app as well as .arbor-parent so layout chrome can resolve
+   it (see layoutTokens.test.ts). Guarded by chromeLayout.test.ts — this value
+   and <main>'s padding classes must move together. */
+.arbor-app,
+.arbor-parent {
+  --arbor-main-pt: 1.25rem;
+}
+@media (min-width: 768px) {
+  .arbor-app,
+  .arbor-parent {
+    --arbor-main-pt: 2rem;
+  }
+}

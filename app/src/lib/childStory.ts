@@ -88,15 +88,14 @@ export function composeChildStory(i: ChildStoryInput): ChildStory {
   // "some moments have felt bigger lately") was a behavior-intensity verdict on
   // a child metric rendered as narrative. Removed. The flat parent-log moment
   // count stays — it emits nothing about the child as a verdict.
+  // The week-over-week clause that used to hang off this sentence (" — even more
+  // than the N the week before" / " — a quieter week than the N before") was the
+  // same Wave-3 mistake one line up, in prose: a comparison of the child's own
+  // windows, and "a quieter week" reads as an intensity verdict on top of it.
+  // Removed. The flat count of what the PARENT noticed stays.
   const rhythmBits: string[] = [];
   if (i.momentsThisWeek > 0) {
-    const vsLast =
-      i.momentsPrevWeek > 0
-        ? i.momentsThisWeek >= i.momentsPrevWeek
-          ? ` — even more than the ${i.momentsPrevWeek} the week before`
-          : ` — a quieter week than the ${i.momentsPrevWeek} before`
-        : "";
-    rhythmBits.push(`This week you noticed ${i.momentsThisWeek} moment${i.momentsThisWeek === 1 ? "" : "s"} worth keeping${vsLast}`);
+    rhythmBits.push(`This week you noticed ${i.momentsThisWeek} moment${i.momentsThisWeek === 1 ? "" : "s"} worth keeping`);
   }
   if (rhythmBits.length) paragraphs.push(rhythmBits.join(" ") + ".");
 
