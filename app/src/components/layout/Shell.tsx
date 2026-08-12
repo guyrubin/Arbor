@@ -27,8 +27,8 @@ import KidModeOverlay from "../kidmode/KidModeOverlay";
 // KID-LOCK (W0.9): Shell's own hooks run OUTSIDE the KidModeProvider it
 // renders, so the lock state comes from the module gate singleton instead.
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
-// E11: first-steps rail for new accounts (parent register only, dismissible)
-import FirstStepsRail from "../onboarding/FirstStepsRail";
+// E11: the first-steps rail is mounted by OverviewTab (inside Today's own
+// module order, below the primary action) — Shell no longer owns it.
 // E0: hero-comic wow onboarding — fires exactly once, right after OnboardingFlow
 // completes (journey.wow === "pending" in lib/onboardingJourney); self-gating,
 // legacy devices migrate to done and never see it.
@@ -368,10 +368,13 @@ export default function Shell() {
             </div>
           )}
 
-          {/* E11: first-steps rail — Today/home only (F10: it was bleeding onto every
-              hub, incl. Ask Arbor). Parent register only (inside .arbor-parent <main>);
-              self-hides when done/dismissed. */}
-          {activeTab === "overview" && <FirstStepsRail />}
+          {/* E11: the first-steps rail is NO LONGER mounted here. Shell rendered
+              it ABOVE the tab content, so on Today it outranked the day's action
+              and pushed the single primary CTA below the fold (Rule A violation,
+              masterplan §1). It now lives inside OverviewTab's own module order,
+              BELOW the primary-action anchor row, where it counts against the
+              ≤5-module budget like every other Today module. Parent register
+              only (inside .arbor-parent <main>); self-hides when done/dismissed. */}
 
           <Suspense fallback={<TabSkeleton />}>
             <AnimatePresence mode="wait">

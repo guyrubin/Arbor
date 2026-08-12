@@ -79,14 +79,17 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(overview).not.toMatch(/today-recent-context/);
   });
 
-  it("section order: capture → since-strip → day anchor → noticed → narrative → tools", () => {
-    // W1 Rule A: SinceLastVisit sits between the capture chrome and the
-    // primary-action slot; the Daily Play section is a single JSX instance
-    // (playSection const, placed by the budget logic) so it is order-exempt.
+  it("section order: capture → day anchor → since-strip → rail → noticed → narrative → tools", () => {
+    // W1 Rule A, as corrected by P1-A (2026-08-12): the primary-action anchor
+    // comes FIRST so the one CTA clears the fold; the since-strip and the
+    // first-steps rail follow it. The Daily Play section is a single JSX
+    // instance (playSection const, placed by the budget logic) so it is
+    // order-exempt.
     const order = [
       overview.indexOf("<QuickCaptureBar"),
-      overview.indexOf("<SinceLastVisit"),
       overview.indexOf("<TodayActionLoop"),
+      overview.indexOf("<SinceLastVisit"),
+      overview.indexOf("<FirstStepsRail"),
       overview.indexOf("<ArborNoticedCard"),
       overview.indexOf("<ProgressNarrative"),
       overview.indexOf("<DailyCheckinCard"),

@@ -150,16 +150,22 @@ function stripComments(code: string): string {
   return code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
-describe("OverviewTab wiring — the strip precedes the primary action (Rule A order)", () => {
+describe("OverviewTab wiring — the primary action precedes the strip (Rule A fold)", () => {
   const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
   const strip = stripComments(read("components/overview/SinceLastVisit.tsx"));
 
-  it("SinceLastVisit renders BEFORE the primary-action slot", () => {
+  // P1-A (2026-08-12 audit) INVERTED this assertion. The strip used to render
+  // BEFORE the anchor row ("greeting → what's new → resume"), but at ~430px on
+  // desktop and ~450px on mobile it pushed the day's single primary CTA to
+  // y≈1224 / y≈1697 against an 826 / 812px fold. Rule A is one primary action
+  // ABOVE THE FOLD, so continuity now follows the action instead of preceding
+  // it; the "continuing where we left off" framing stays on the anchor itself.
+  it("SinceLastVisit renders AFTER the primary-action slot", () => {
     const stripIdx = overview.indexOf("<SinceLastVisit");
     const primaryIdx = overview.indexOf("<TodayActionLoop");
     expect(stripIdx).toBeGreaterThan(-1);
     expect(primaryIdx).toBeGreaterThan(-1);
-    expect(stripIdx).toBeLessThan(primaryIdx);
+    expect(stripIdx).toBeGreaterThan(primaryIdx);
   });
 
   it("the strip is gated on the returning-parent state (useLastVisit two-slot)", () => {
@@ -187,13 +193,22 @@ describe("OverviewTab wiring — the strip precedes the primary action (Rule A o
     expect(strip).not.toMatch(BANNED_HE);
   });
 
-  it("day-0 keeps the lean shape: narrative and disclosure are dayZero-gated", () => {
-    expect(overview).toMatch(/\{!dayZero\s*&&\s*\(\s*<ProgressNarrative/);
+  it("day-0 keeps the lean shape: narrative, watch card and disclosure are dayZero-gated", () => {
     expect(overview).toMatch(/dayZero\s*=/);
+    // The narrative and the watch card render off the budget plan, whose
+    // `narrative`/`noticed` wants are themselves `!dayZero &&` …
+    expect(overview).toMatch(/modulePlan\.visible\.has\("narrative"\)\s*&&\s*\(\s*<ProgressNarrative/);
+    expect(overview).toMatch(/narrative:\s*!dayZero/);
+    // P1-C: the watch card is inside the day-0 guard too — a parent who has
+    // answered nothing has produced nothing for Arbor to have "noticed".
+    expect(overview).toMatch(/noticed:\s*!dayZero\s*&&\s*noticedWould/);
+    expect(overview).toMatch(/modulePlan\.visible\.has\("noticed"\)\s*&&\s*<ArborNoticedCard/);
+    // …and the More disclosure stays dayZero-gated directly.
+    expect(overview).toMatch(/\{!dayZero\s*&&\s*\(\s*<section/);
   });
 
   it("Rule A fold: ArborNoticedCard collapses into a strip row when Today is full", () => {
-    expect(overview).toMatch(/\{!foldNoticed\s*&&\s*<ArborNoticedCard\s*\/>\}/);
-    expect(overview).toMatch(/includeNoticedRow:\s*foldNoticed/);
+    expect(overview).toMatch(/foldNoticed\s*=\s*modulePlan\.demoted\.includes\("noticed"\)/);
+    expect(overview).toMatch(/includeNoticedRow:\s*true/);
   });
 });

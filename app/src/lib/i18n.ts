@@ -2145,7 +2145,20 @@ export const en: Dict = {
   "today.narrative.next": "What comes next",
   "today.narrative.open": "Open source moments",
   "today.narrative.noChange": "There are not enough confirmed moments to describe change yet. One real moment is enough to begin.",
-  "today.narrative.changedBody": "{moments} moments and {plays} activities were saved this week. {milestones} milestones have been noticed so far.",
+  // Pluralized per the codebase's .one/.many convention (cf.
+  // elev.sincevisit.row.moment.one/.many). Three independent counts can't share
+  // one .one/.many pair, so each count resolves its OWN fragment and the
+  // composite template stitches them — placeholders unchanged. The conjunction
+  // lives in the EN template but INSIDE the HE `.plays.*` fragment, because
+  // Hebrew "ו" attaches to a word ("ופעילות") and takes a maqaf before a
+  // numeral ("ו-3") — a single template can't spell both.
+  "today.narrative.changedBody": "{moments} and {plays} were saved this week. {milestones}",
+  "today.narrative.changedBody.moments.one": "1 moment",
+  "today.narrative.changedBody.moments.many": "{n} moments",
+  "today.narrative.changedBody.plays.one": "1 activity",
+  "today.narrative.changedBody.plays.many": "{n} activities",
+  "today.narrative.changedBody.milestones.one": "1 milestone has been noticed so far.",
+  "today.narrative.changedBody.milestones.many": "{n} milestones have been noticed so far.",
   // TODAY-6 — the ONE comparative sentence: bare counts, week vs week. No trend
   // adjective, %, or score may ever join this template (banned-token scan).
   "today.narrative.weekCompare": "{thisWeek} moments this week vs {lastWeek} last week.",
@@ -2439,7 +2452,7 @@ export const he: Dict = {
   "attr.empty.title": "אין עדיין אירועים",
   "attr.empty.body": "שתפו קישור מתויג כדי להתחיל למדוד. תייגו קישורים יוצאים לפי סכמת ה-UTM, למשל",
   "attr.locked.title": "לוח פנימי",
-  "attr.locked.body": "לוח המשפך הזה זמין למפעילי Arbor בלבד.",
+  "attr.locked.body": "לוח המשפך הזה זמין למפעילי ארבור בלבד.",
   "attr.stage.install": "התקנה",
   "attr.stage.activation": "הפעלה",
   "attr.stage.paid": "תשלום",
@@ -2608,7 +2621,7 @@ export const he: Dict = {
   "aria.activeChildSwitch": "ילד/ה פעיל/ה: {name}. החלפת ילד/ה",
   "aria.applicationTopbar": "סרגל עליון של האפליקציה",
   "aria.arborMark": "Arbor",
-  "aria.sproutMascot": "ספראוט, המדריך של Arbor",
+  "aria.sproutMascot": "ספראוט, המדריך של ארבור",
   "aria.storyIllustration": "איור לסיפור",
   "aria.saveComicPage": "שמירת דף הקומיקס",
   "aria.hidePanel": "הסתרת הפאנל",
@@ -2754,8 +2767,8 @@ export const he: Dict = {
   "consult.exportError": "לא הצלחנו לבנות את הדוח — נסו שוב.",
   // AIX-S3(a) — פתק ה־Vision ממלא מראש את חלון הייעוץ (ניתן לעריכה על ידי ההורה).
   "consult.visionNote.title": "פתק מ־Arbor Vision",
-  "consult.visionNote.hint": "נוסח על ידי Arbor מתוך המסמך שלכם — בדקו וערכו אותו. הוא משותף רק כשאתם מייצאים או שולחים.",
-  "consult.visionNote.heading": "הערת הורה (נוסחה עם Arbor, נבדקה על ידי ההורה)",
+  "consult.visionNote.hint": "נוסח על ידי ארבור מתוך המסמך שלכם — בדקו וערכו אותו. הוא משותף רק כשאתם מייצאים או שולחים.",
+  "consult.visionNote.heading": "הערת הורה (נוסחה עם ארבור, נבדקה על ידי ההורה)",
   "consult.visionNote.remove": "הסרה",
   "consult.empty.title": "אין עדיין מה לסכם",
   "consult.empty.body": "תעדו רגע או סמנו אבן דרך, וארבור יבנה כאן סיכום לשיתוף.",
@@ -2823,7 +2836,7 @@ export const he: Dict = {
   // UC-1 ask — persistent coach identity strip (he)
   // Honest-AI disclosure (he) — doctor honorific + live-presence removed. FLAG: native-Hebrew
   // review before publish, per the transcreation gate.
-  "coach.coachName": "מאמן Arbor",
+  "coach.coachName": "מאמן ארבור",
   "coach.coachStatus": "עוזר בינה מלאכותית · תמיד כאן",
   "coach.send.aria": "שליחת הודעה",
   // EU AI Act Art. 50 — persistent AI-interaction transparency line (he).
@@ -3166,11 +3179,11 @@ export const he: Dict = {
   "ms.discussCoach": "המשיכו עם המאמן",
   "ms.watchPoints": "נקודות תשומת לב עדינות",
   // UND-3 — כרטיס נקודות תשומת לב נגזר: שמות תחומים וספירות בלבד.
-  "ms.watch.corrected": "בגלל ש{name} נולד/ה מוקדם, Arbor משווה אבני דרך מול גיל מתוקן של כ-{corrected} חודשים במקום {chrono} — פגים מתקדמים בקצב משלהם.",
+  "ms.watch.corrected": "בגלל ש{name} נולד/ה מוקדם, ארבור משווה אבני דרך מול גיל מתוקן של כ-{corrected} חודשים במקום {chrono} — פגים מתקדמים בקצב משלהם.",
   "ms.watch.area.one": "מיומנות אחת בתחום {area} שנראית בדרך כלל עד גיל זה טרם סומנה.",
   "ms.watch.area.many": "{n} מיומנויות בתחום {area} שנראות בדרך כלל עד גיל זה טרם סומנו.",
   "ms.watch.none": "שום דבר לא בולט כרגע. המשיכו לשים לב לרגעים יום-יומיים וחזרו לבדוק בעוד כמה שבועות.",
-  "ms.watch.close": "זה נפוץ ולרוב אינו סיבה לדאגה בפני עצמו. אם משהו מרגיש מתמשך, או שפשוט תרצו ביטחון, אפשר לשאול את Arbor או לשתף תמונת התפתחות עם רופא הילדים או הצוות החינוכי.",
+  "ms.watch.close": "זה נפוץ ולרוב אינו סיבה לדאגה בפני עצמו. אם משהו מרגיש מתמשך, או שפשוט תרצו ביטחון, אפשר לשאול את ארבור או לשתף תמונת התפתחות עם רופא הילדים או הצוות החינוכי.",
   "ms.watch.childFallback": "הילד/ה שלכם",
   // UND-8 — שינוי שם/מחיקה בתוך המסך (במקום דיאלוגים של הדפדפן).
   "ms.renameSave": "שמירה",
@@ -3303,7 +3316,7 @@ export const he: Dict = {
   "sec.screen.sub": "בדיקה קצרה ולא־אבחנתית של מצב {name} על פני תחומי ההתפתחות, וצעד הבא רגוע אם משהו ראוי לשיחה עם איש מקצוע.",
   "monitor.title": "מה עולה מתוך התיעוד שלכם",
   "monitor.sub": "מתוך אבני הדרך והרגעים שכבר תיעדתם — אף פעם לא מבחן, אף פעם לא אבחנה.",
-  "monitor.calm": "כרגע שום דבר לא בולט. המשיכו לתעד — Arbor יודיע לכם אם משהו ראוי להעלאה.",
+  "monitor.calm": "כרגע שום דבר לא בולט. המשיכו לתעד — ארבור יודיע לכם אם משהו ראוי להעלאה.",
   "monitor.export": "הכנת סיכום לאיש המקצוע",
   // UND-2 — תזכורת אמיתית לבדיקה חוזרת (סימון בתוך האפליקציה בלבד).
   "screen.recheck.btn": "תזכורת לבדיקה חוזרת",
@@ -3313,7 +3326,7 @@ export const he: Dict = {
   /* ══ UND-1 — לוקליזציה של בדיקת ההתפתחות. תרגומי הפריטים הקליניים וניסוח
      התוצאה הם טיוטה ראשונה בהמתנה לסוקר/ת קליני/ת (GD-10). ══ */
   "screen.eyebrow": "צמיחה",
-  "screen.trustNote": "Arbor אינו מכשיר רפואי ואינו מאבחן. זוהי בדיקת מודעות להורים — שיחה עם איש מקצוע אף פעם לא מזיקה.",
+  "screen.trustNote": "ארבור אינו מכשיר רפואי ואינו מאבחן. זוהי בדיקת מודעות להורים — שיחה עם איש מקצוע אף פעם לא מזיקה.",
   "screen.introTitle": "בדיקה עבור {name} · {band}",
   "screen.intro.body": "תענו על {n} שאלות קצרות על דברים יום-יומיים שאפשר להבחין בהם. זה לוקח פחות מ-4 דקות. אין ציון ואין תוויות — רק האם יש תחום ששווה לשים לב אליו. ילדים מתפתחים בקצב שלהם.",
   "screen.intro.basis": "מבוסס על הנחיות התפתחות מקובלות (בסגנון אבני הדרך של CDC / AAP). לא אבחנתי.",
@@ -3342,7 +3355,7 @@ export const he: Dict = {
   "screen.toast.handoff": "בנו מסמך מסירה כדי לשתף זאת עם איש מקצוע",
   "screen.safetyNote": "אם אתם מבחינים באובדן מיומנויות שכבר היו לילד/ה, או מרגישים שמשהו לא בסדר — פנו ישירות לאיש מקצוע, אל תחכו לבדיקה חוזרת.",
   "screen.monitor.exportOpen": "פותחים סיכום מוכן לאיש מקצוע להדפסה או לשמירה כ-PDF",
-  "screen.monitor.exportBlocked": "לא ניתן היה לייצא את הסיכום — הוא לא עבר את בדיקת הבטיחות של Arbor.",
+  "screen.monitor.exportBlocked": "לא ניתן היה לייצא את הסיכום — הוא לא עבר את בדיקת הבטיחות של ארבור.",
   "screen.monitor.headline.one": "תחום אחד שווה אזכור אצל איש המקצוע שלכם",
   "screen.monitor.headline.many": "{n} תחומים שווים אזכור אצל איש המקצוע שלכם",
   "screen.monitor.note.milestone.one": "מיומנות {area} אחת שנצפית בדרך כלל עד עכשיו עדיין לא צוינה עבור {name}.",
@@ -3411,7 +3424,7 @@ export const he: Dict = {
   "sec.sharing.form.review": "סקירה לפני שיתוף",
   "sec.sharing.review.recipient": "נמען/ת",
   "sec.sharing.review.canSee": "מה יוכלו לראות",
-  "sec.sharing.review.note": "Arbor ישתף רק את הסיכום הזה. ניתן לבטל את הגישה בכל עת. בדקו היטב את הנמען/ת ואת החלקים לפני האישור.",
+  "sec.sharing.review.note": "ארבור ישתף רק את הסיכום הזה. ניתן לבטל את הגישה בכל עת. בדקו היטב את הנמען/ת ואת החלקים לפני האישור.",
   "sec.sharing.review.back": "חזרה לעריכה",
   "sec.sharing.review.approve": "אישור ושיתוף",
   "sec.sharing.review.working": "משתף…",
@@ -3428,7 +3441,7 @@ export const he: Dict = {
   "sec.sharing.viewer.open": "צפייה במה ששותף",
   "sec.sharing.viewer.title": "שותף איתכם — {name}",
   "sec.sharing.viewer.loading": "טוען את התצוגה המשותפת…",
-  "sec.sharing.viewer.readOnly": "תצוגה לקריאה בלבד שהוכנה על ידי {owner} דרך Arbor. רק הקטעים שאושרו — תצפיות וספירות, לעולם לא אבחנה.",
+  "sec.sharing.viewer.readOnly": "תצוגה לקריאה בלבד שהוכנה על ידי {owner} דרך ארבור. רק הקטעים שאושרו — תצפיות וספירות, לעולם לא אבחנה.",
   "sec.sharing.viewer.empty": "אין כאן עדיין כלום — בקטעים ששותפו אין רשומות בינתיים.",
   "sec.sharing.viewer.ended": "השיתוף הזה הסתיים — הוא בוטל או שפג תוקפו.",
   "sec.sharing.viewer.blocked": "לא ניתן להציג את השיתוף הזה כרגע.",
@@ -3436,7 +3449,7 @@ export const he: Dict = {
   "sec.sharing.viewer.close": "סגירה",
   "sec.sharing.data.title": "הנתונים שלכם",
   "sec.sharing.data.export": "ייצוא כל הנתונים",
-  "sec.sharing.data.exportNote": "ייצוא נתוני Arbor ביוזמת ההורה. לא אבחוני.",
+  "sec.sharing.data.exportNote": "ייצוא נתוני ארבור ביוזמת ההורה. לא אבחוני.",
   "sec.sharing.history.title": "היסטוריית שיתוף",
   "sec.sharing.history.empty": "אין עדיין שיתופים קודמים. כששיתוף מסתיים או מבוטל, הוא נשאר רשום כאן עם התאריכים.",
   "sec.sharing.history.createdOn": "שותף ב-{date}",
@@ -3556,7 +3569,7 @@ export const he: Dict = {
   "auth.requestingAccess": "שולחים…",
   "auth.accessNeedEmail": "הזינו דוא״ל למעלה ולחצו שוב על בקשת גישה.",
   "auth.accessInvalidEmail": "הזינו כתובת דוא״ל תקינה תחילה.",
-  "auth.accessPrivacy": "נשתמש בדוא״ל הזה רק לניהול בקשת הגישה לבטא של Arbor.",
+  "auth.accessPrivacy": "נשתמש בדוא״ל הזה רק לניהול בקשת הגישה לבטא של ארבור.",
   "auth.accessReceived": "בקשת הגישה התקבלה — נחזור אליכם בדוא״ל.",
   "auth.accessFail": "לא הצלחנו לשמור את הבקשה. אפשר לכתוב אל hello@arbor.app.",
   "ob.title": "ספרו לנו על ילדכם",
@@ -3676,7 +3689,7 @@ export const he: Dict = {
   "set.data.open": "פתחו פרופיל",
   // mk-p0-2 referral loop
   "set.referral.title": "הזמינו הורה — שניכם תקבלו חודש חינם",
-  "set.referral.sub": "שתפו את Arbor. כשהם יוצרים את התוכנית הראשונה לילד, שניכם מקבלים חודש Plus.",
+  "set.referral.sub": "שתפו את ארבור. כשהם יוצרים את התוכנית הראשונה לילד, שניכם מקבלים חודש Plus.",
   "set.referral.copy": "העתקת קישור",
   "set.referral.share": "שיתוף",
   "set.referral.copied": "הקישור הועתק",
@@ -3686,7 +3699,7 @@ export const he: Dict = {
   "set.referral.signin": "התחברו כדי לקבל קישור הזמנה",
   "set.referral.error": "לא הצלחנו לטעון את קישור ההזמנה — נסו שוב.",
   "set.referral.retry": "נסו שוב",
-  "set.referral.shareText": "אני משתמש ב-Arbor כדי להבין את ההתפתחות של הילד שלי. הנה חודש Plus חינם 🌱",
+  "set.referral.shareText": "אני משתמש בארבור כדי להבין את ההתפתחות של הילד שלי. הנה חודש Plus חינם 🌱",
   "set.signedIn": "מחובר",
   "set.signOut": "התנתקות",
   // AP-052 accent theme
@@ -3813,10 +3826,10 @@ export const he: Dict = {
   "today.greeting.afternoon": "צהריים טובים, {name}",
   "today.greeting.evening": "ערב טוב, {name}",
   "today.header.prompt": "מה יעזור היום?",
-  "today.header.sub": "שתפו תצפית, שאלה או רגע — Arbor ינחה את הצעד הבא.",
+  "today.header.sub": "שתפו תצפית, שאלה או רגע — ארבור ינחה את הצעד הבא.",
   // Today action loop empty state (TODAY-1: no accept CTA without a real focus)
   "today.loop.empty": "תעדו רגע אחד כדי לפתוח את הצעד של היום.",
-  "today.loop.emptySub": "תעדו רגע למעלה — Arbor יהפוך אותו לצעד אחד קטן ואפשרי להיום.",
+  "today.loop.emptySub": "תעדו רגע למעלה — ארבור יהפוך אותו לצעד אחד קטן ואפשרי להיום.",
   "today.action.make": "בחירת הצעד",
   "today.action.length": "משך הצעד",
   "today.action.min": "דק׳",
@@ -3830,7 +3843,7 @@ export const he: Dict = {
   "today.action.somewhat": "קצת",
   "today.action.notToday": "לא היום",
   "today.action.receipt": "נרשם לפי הדיווח שלכם",
-  "today.action.adapt": "Arbor ישתמש בתוצאה כדי לדייק את הצעד הבא — בלי לתת ציון לילד.",
+  "today.action.adapt": "ארבור ישתמש בתוצאה כדי לדייק את הצעד הבא — בלי לתת ציון לילד.",
   "today.action.remove": "הסרה",
   "today.memory.evening.title": "מבט אחורה על היום",
   "today.memory.evening.body": "{n} דברים חדשים שארבור שם לב אליהם — סקרו לפני השמירה.",
@@ -3893,7 +3906,7 @@ export const he: Dict = {
   "ov.focus.regenerate": "הציעו מיקוד אחר",
   "ov.toast.focusSet": "המיקוד נקבע. המשחק היומי כעת מותאם למה שאתם עובדים עליו.",
   "ov.toast.playDone": "יופי. נוסף ליום של {name}.",
-  "coach.title": "מאמן Arbor",
+  "coach.title": "מאמן ארבור",
   "ov.safety.title": "לא בטוחים שמשהו תקין? אנחנו כאן.",
   "ov.safety.body": "ארבור אינו כלי אבחון. לכל דבר דחוף, או כזה שדורש מומחה, נעזור לכם לפנות לאיש מקצוע.",
   "ov.safety.cta": "פנו לאיש מקצוע",
@@ -3932,10 +3945,10 @@ export const he: Dict = {
   "share.cta.growth": "שתפו התקדמות",
   "share.preparing": "מכינים…",
   "share.error": "לא הצלחנו להכין — נסו שוב.",
-  "share.caption.avatar": "הכירו את {name}, גיבור/ת Arbor. {url}",
-  "share.caption.answer": "מה ש‑Arbor אמרה לי על {name}: {url}",
-  "share.caption.story": "הסיפור של {name}, נוצר עם Arbor. {url}",
-  "share.caption.growth": "ההתקדמות של {name} החודש — Arbor. {url}",
+  "share.caption.avatar": "הכירו את {name}, גיבור/ת ארבור. {url}",
+  "share.caption.answer": "מה שארבור אמרה לי על {name}: {url}",
+  "share.caption.story": "הסיפור של {name}, נוצר עם ארבור. {url}",
+  "share.caption.growth": "ההתקדמות של {name} החודש — ארבור. {url}",
   // Weekly Report Tab (wk.*)
   "wk.weekOf": "שבוע של",
   "wk.backStory": "הסיפור של {first}",
@@ -4033,7 +4046,7 @@ export const he: Dict = {
   "pride.dismiss": "סגירה",
   "pride.reducedMotion.title": "הושגה אבן דרך חדשה",
   "pride.reducedMotion.body": "{name} הגיע/ה לאבן דרך חדשה. ממשיכים.",
-  "pride.shareCaption": "{name} הגיע/ה לאבן דרך חדשה — מתועד עם Arbor. {url}",
+  "pride.shareCaption": "{name} הגיע/ה לאבן דרך חדשה — מתועד עם ארבור. {url}",
   "push.optin.label": "תזכורות לרגעים",
   "push.optin.sublabel": "תזכורת ממוקדת כשארבור מזהה רגע טוב — ללא רעש, אתם שולטים.",
   // AP-055 — Scholar Hub (Hebrew chrome strings — flagged for native review before wide release)
@@ -4245,8 +4258,8 @@ export const he: Dict = {
   "ob.demo.relaunch": "הפעלה מחדש של הדגמת ה-onboarding",
   // Design wave-5 — hardcoded-English sweep (Behaviors export · Plans · ChildProfile · SpeechCoach).
   "beh.eyebrow": "הילד שלי",
-  "beh.pdf.title": "סיכום התנהגויות — Arbor",
-  "beh.pdf.heading": "Arbor — סיכום התנהגויות ורגשות",
+  "beh.pdf.title": "סיכום התנהגויות — ארבור",
+  "beh.pdf.heading": "ארבור — סיכום התנהגויות ורגשות",
   "beh.pdf.generated": "הופק ב-{date} · {n} רשומות",
   "beh.pdf.col.when": "מתי",
   "beh.pdf.col.type": "סוג",
@@ -4455,12 +4468,21 @@ export const he: Dict = {
   "today.narrative.next": "מה הלאה",
   "today.narrative.open": "פתיחת המקורות",
   "today.narrative.noChange": "עוד אין מספיק רגעים מאושרים כדי לתאר שינוי. רגע אחד אמיתי מספיק כדי להתחיל.",
-  "today.narrative.changedBody": "{moments} רגעים ו-{plays} פעילויות נשמרו השבוע. {milestones} אבני דרך סומנו עד כה.",
+  // Pluralized per the .one/.many convention — see the EN note. The conjunction
+  // rides the `.plays.*` fragment here so both "ופעילות אחת" and "ו-3 פעילויות"
+  // spell correctly; the composite template carries no conjunction of its own.
+  "today.narrative.changedBody": "{moments} {plays} נשמרו השבוע. {milestones}",
+  "today.narrative.changedBody.moments.one": "רגע אחד",
+  "today.narrative.changedBody.moments.many": "{n} רגעים",
+  "today.narrative.changedBody.plays.one": "ופעילות אחת",
+  "today.narrative.changedBody.plays.many": "ו-{n} פעילויות",
+  "today.narrative.changedBody.milestones.one": "אבן דרך אחת סומנה עד כה.",
+  "today.narrative.changedBody.milestones.many": "{n} אבני דרך סומנו עד כה.",
   // TODAY-6 — משפט השוואה אחד: ספירות בלבד, שבוע מול שבוע.
   "today.narrative.weekCompare": "{thisWeek} רגעים השבוע לעומת {lastWeek} בשבוע שעבר.",
   "today.narrative.openItem": "פתיחת הרגע הזה ביומן: {label}",
-  "today.narrative.nextNotToday": "הצעד האחרון לא התאים היום. Arbor תציע בפעם הבאה גרסה קלה או אחרת.",
-  "today.narrative.nextOutcome": "התוצאה האחרונה תעזור ל-Arbor לדייק את הצעד הבא.",
+  "today.narrative.nextNotToday": "הצעד האחרון לא התאים היום. ארבור תציע בפעם הבאה גרסה קלה או אחרת.",
+  "today.narrative.nextOutcome": "התוצאה האחרונה תעזור לארבור לדייק את הצעד הבא.",
   "today.narrative.nextNone": "בחרו צעד אחד קטן ודווחו מה קרה כדי שההמלצה הבאה תהיה מדויקת יותר.",
   "today.narrative.parentOnly": "מבוסס רק על מה שתיעדתם — ללא ציון, אחוזון או אבחנה.",
   "nav.tab.routines": "שגרות",

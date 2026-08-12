@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { Skeleton } from "../ui/Skeleton";
 import { capacityMinutes, type ActionCapacity } from "../../actionLoop/model";
+import { ContentWhyLine } from "../ui/ContentActionBar";
+import { TrustLink } from "../trust/TrustLink";
 
 /**
  * TODAY-2/CODEX-1 consolidation: the pre-accept half of the old TodayActionLoop
@@ -13,7 +15,7 @@ import { capacityMinutes, type ActionCapacity } from "../../actionLoop/model";
  * guard upstream) "Begin" stays the lone primary and acceptTodayAction is
  * unreachable, so fallback copy can never be persisted into actionLoops.
  */
-export default function TodayRecommendation({ eyebrow, headline, meta, action, loading, onBegin, accept }: {
+export default function TodayRecommendation({ eyebrow, headline, meta, action, loading, onBegin, accept, why }: {
   eyebrow: string;
   headline: string;
   meta: string;
@@ -22,6 +24,11 @@ export default function TodayRecommendation({ eyebrow, headline, meta, action, l
   onBegin: () => void;
   /** Pre-accept action row (TODAY-2): present ONLY with a real AI focus headline. */
   accept?: { label: string; lengthAria: string; minUnit: string; onAccept: (capacity: ActionCapacity) => void };
+  /** Masterplan 3.1 why-line text. When the caller owns the why copy it renders
+   *  INSIDE the card through the shared ContentWhyLine slot; when it is omitted
+   *  the TrustLink still mounts on its own so the why → Trust Center chain is
+   *  never missing from this surface. */
+  why?: string;
 }) {
   const [capacity, setCapacity] = useState<ActionCapacity>("standard");
   // Exactly one gradient-primary CTA per state: accept when offered, Begin otherwise.
@@ -53,6 +60,15 @@ export default function TodayRecommendation({ eyebrow, headline, meta, action, l
               <button onClick={onBegin} data-testid="today-guidance-cta" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-extrabold transition active:scale-[0.98]" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)", background: "transparent" }}>{action}</button>
             )}
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--arbor-faint)" }}><Icon name="schedule" size={15} />{meta}</span>
+          </div>
+          {/* Masterplan 3.1: the why-line's Trust-Center chain. Deliberately its
+              OWN row BELOW the action row — a quiet lav chip that never sits
+              beside (and so never competes with) Today's single gradient
+              primary CTA (Rule A: one primary action above the fold). */}
+          <div className="mt-3">
+            {why
+              ? <ContentWhyLine why={why} trustLink surface="today-focus" />
+              : <TrustLink surface="today-focus" />}
           </div>
         </div>
       </div>

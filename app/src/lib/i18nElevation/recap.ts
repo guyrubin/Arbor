@@ -52,6 +52,12 @@ export const en: Record<string, string> = {
   "elev.recap.try.eyebrow": "One thing for the coming week",
   "elev.recap.try.title": "Try this week",
 
+  // Deterministic fallback narrative (AI off / request failed). Localized like
+  // every other string here: an English apology inside a Hebrew card is the
+  // same language defect as an English AI paragraph.
+  "elev.recap.insight.unavailable":
+    "Live weekly insight isn't available right now — the summary below still reflects this week as you logged it.",
+
   // Email opt-in row (2.2 — honest fail-closed copy, Guy decision).
   "elev.recap.email.title": "Get this as a weekly email",
   "elev.recap.email.desc": "One short email when {name}'s week is ready.",
@@ -86,6 +92,9 @@ export const he: Record<string, string> = {
 
   "elev.recap.try.eyebrow": "דבר אחד לשבוע הקרוב",
   "elev.recap.try.title": "שווה לנסות השבוע",
+
+  "elev.recap.insight.unavailable":
+    "התובנה השבועית החיה אינה זמינה כרגע — הסיכום למטה עדיין משקף את השבוע כפי שתיעדתם.",
 
   "elev.recap.email.title": "לקבל את הסיכום גם במייל שבועי",
   "elev.recap.email.desc": "מייל קצר אחד כשהשבוע של {name} מוכן.",

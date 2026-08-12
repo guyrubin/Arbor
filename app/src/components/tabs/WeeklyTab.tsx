@@ -37,7 +37,7 @@ export default function WeeklyTab() {
   const rc = (key: string, vars?: Record<string, string | number>) => rcString(t, uiLang, key, vars);
 
   const recap = useWeeklyRecap();
-  const { reports, generating, generate, currentId, currentLabel } = recap;
+  const { reports, generating, generate, currentId, currentLabel, labelFor } = recap;
 
   // LL-A4: "This week's read" — the same explainable ranking the Library uses
   // (age window + focus-domain nurture), surfaced as one pick in the report.
@@ -59,9 +59,16 @@ export default function WeeklyTab() {
   const selectedWins = selected ? selected.summary.resolved ?? selected.digest?.stats.resolvedCount : undefined;
   const first = childProfile.name.split(" ")[0];
 
+  // P1 language fix: this week's stored narrative is in another language and a
+  // language-correct regeneration is expected — hold the AI text rather than
+  // render an English paragraph inside a Hebrew card (and vice versa). History
+  // weeks are frozen documents: they keep their narrative, and only their
+  // LABEL re-derives.
+  const awaitingLanguage = selected?.id === currentId && recap.languageRefreshPending;
+
   // W2 2.1: the CURRENT week renders as the story-card ritual when its digest
   // exists; history weeks keep the classic layout below.
-  const showRecap = !!selected?.digest && selected.id === currentId;
+  const showRecap = !!selected?.digest && selected.id === currentId && !awaitingLanguage;
   useEffect(() => {
     if (showRecap && recap.recapUnopened) recap.markRecapOpened();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,7 +115,10 @@ export default function WeeklyTab() {
           </p>
           <PageHeader
             title={t("wk.title", { first })}
-            subtitle={selected ? `${selected.weekLabel} · ${selected.id}` : `${currentLabel} · ${currentId}`}
+            /* The week label is LOCALIZED HERE, from the report's stored date
+               anchor — never read back as a frozen English string (P1 language
+               fix): labelFor honors a stored label only in its own language. */
+            subtitle={selected ? `${labelFor(selected)} · ${selected.id}` : `${currentLabel} · ${currentId}`}
             action={
               <button
                 onClick={() => void generate()}
@@ -186,9 +196,17 @@ export default function WeeklyTab() {
             </div>
           </div>
 
+          {/* The week's narrative is being rewritten in the active language —
+              the truthful counts above still stand. */}
+          {awaitingLanguage && (
+            <div className={`${cardCls} p-6 flex items-center gap-2 text-sm`} style={{ color: "var(--arbor-muted)" }} role="status">
+              <Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}
+            </div>
+          )}
+
           {/* Classic insight card — history weeks (and digest-less reports);
               the current week's digest already leads as the story cards. */}
-          {!showRecap && (
+          {!showRecap && !awaitingLanguage && (
           <div className="rounded-[22px] p-6 space-y-3" style={{ background: "var(--arbor-green-soft)" }}>
             <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
               <Icon name="auto_awesome" size={14} /> {selected.digest ? selected.digest.title : t("wk.aiInsight")}

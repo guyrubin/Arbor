@@ -24,6 +24,21 @@
    mid-history would fork every existing week id and re-generate duplicate
    reports. Stability wins; the id only needs to be monotonic + season-unique.
 
+   LANGUAGE IDENTITY (P1 fix 2026-08-12): a weekly report is a PERSISTED
+   per-week document whose narrative (`insight` + `digest`) is frozen at
+   generation time — so the language it was written in is part of its
+   identity, not a render-time detail. Two rules follow:
+     · the generation language is STORED on the record (`lang`), and the
+       week's report is regenerated when the active AI language differs
+       (week ids never fork — the id algorithm is pinned by tests), and
+     · the week LABEL is never trusted from the payload across a language
+       change: it is re-derived at render time from the stored date anchor
+       (`weekStart`, falling back to digest.stats.weekOf / generatedAt).
+   The active language is read from the LanguageContext value the render
+   already uses — NOT from lib/api's module-level getAiLanguage(), which a
+   cold load can read before LanguageProvider's sync effect has run (that
+   race is exactly how a Hebrew session generated an English report).
+
    CLINICAL FIREWALL: the digest payload is counts-only (server/digest.ts
    JRNL-1 header); nothing here derives scores or trends. The resettable
    streak value from lib/streak is BANNED on every recap/strip surface —
@@ -32,9 +47,10 @@
    ════════════════════════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useState } from "react";
 import { useArbor } from "../context/ArborContext";
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage, type AiLang } from "../context/LanguageContext";
 import { useChildCollection } from "./useChildCollection";
-import { api, getAiLanguage, type WeeklyDigest } from "../lib/api";
+import { api, type WeeklyDigest } from "../lib/api";
+import { rcString } from "../components/weekly/recapStrings";
 import { scholarsInfo } from "../initialData";
 
 const DAY = 86_400_000;
@@ -48,7 +64,16 @@ export function recapWeekId(d = new Date()): string {
 
 export type WeeklyReport = {
   id: string; // = recapWeekId
-  weekLabel: string;
+  /** Legacy/back-compat display label, frozen in `lang` at generation time.
+   *  NEVER rendered when `lang` differs from the active language — the label
+   *  is re-derived from `weekStart` instead (see resolveWeekLabel). Optional:
+   *  reports stored before the language fix may not carry a usable one. */
+  weekLabel?: string;
+  /** AI language this report's narrative was written in ("en" | "he").
+   *  Absent on pre-fix documents → treated as unknown, i.e. stale. */
+  lang?: AiLang;
+  /** yyyy-mm-dd anchor the week label is derived from at RENDER time. */
+  weekStart?: string;
   generatedAt: string;
   /** Counts only (clinical firewall): no derived intensity score is stored or
    *  rendered — parent surfaces show counts, never scores. Legacy docs may
@@ -65,8 +90,9 @@ export type WeeklyReport = {
 /**
  * Pure auto-generate decision (unit-tested in useWeeklyRecap.test.ts):
  * generate exactly when the collection has loaded, the week's report does not
- * exist yet, there is at least one logged moment to summarize (day-0 with an
- * empty log has nothing truthful to say), and this session has not tried yet.
+ * exist yet (OR exists in the WRONG language), there is at least one logged
+ * moment to summarize (day-0 with an empty log has nothing truthful to say),
+ * and this session has not tried yet for this child/week/language.
  */
 export function shouldAutoGenerateRecap(input: {
   loaded: boolean;
@@ -74,14 +100,75 @@ export function shouldAutoGenerateRecap(input: {
   weekMomentCount: number;
   alreadyTried: boolean;
   generating: boolean;
+  /** The stored report is in a different AI language than the live session. */
+  languageStale?: boolean;
 }): boolean {
   return (
     input.loaded &&
-    !input.hasCurrentWeek &&
+    (!input.hasCurrentWeek || !!input.languageStale) &&
     !input.alreadyTried &&
     !input.generating &&
     input.weekMomentCount > 0
   );
+}
+
+/**
+ * A stored report is language-stale when its generation language is not the
+ * language we are rendering in. Pre-fix documents carry no `lang` at all —
+ * their narrative language is unknowable, so they count as stale and get
+ * rewritten once (per session) in the active language.
+ */
+export function isReportLanguageStale(
+  report: { lang?: string } | null | undefined,
+  activeLang: string
+): boolean {
+  return !!report && report.lang !== activeLang;
+}
+
+/** The date a week label is derived from, most specific source first. */
+export function weekAnchorDate(
+  report: { weekStart?: string; generatedAt?: string; digest?: { stats?: { weekOf?: string } } } | null | undefined
+): Date | null {
+  const raw = report?.weekStart || report?.digest?.stats?.weekOf || report?.generatedAt;
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** yyyy-mm-dd (local) — the stored anchor written at generation time. */
+export function weekStartKey(d = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Localized week label, built at RENDER time. The locale is the app's active
+ * language (not the browser's): an English UI on a Hebrew machine must still
+ * read "Week of August 12".
+ */
+export function formatWeekLabel(date: Date, lang: string, weekOf: string): string {
+  const locale = lang === "he" ? "he-IL" : "en-US";
+  let day: string;
+  try {
+    day = date.toLocaleDateString(locale, { month: "long", day: "numeric" });
+  } catch {
+    day = date.toLocaleDateString(undefined, { month: "long", day: "numeric" });
+  }
+  return `${weekOf} ${day}`;
+}
+
+/**
+ * Back-compat label resolution: a stored label is displayed ONLY when it was
+ * written in the language we are rendering in; otherwise it is re-derived
+ * from the stored date anchor (never translated, never shown as-is).
+ */
+export function resolveWeekLabel(
+  report: (Parameters<typeof weekAnchorDate>[0] & { weekLabel?: string; lang?: string }) | null | undefined,
+  opts: { lang: string; weekOf: string; fallbackDate?: Date }
+): string {
+  if (report?.weekLabel && report.lang === opts.lang) return report.weekLabel;
+  const anchor = weekAnchorDate(report) ?? opts.fallbackDate ?? new Date();
+  return formatWeekLabel(anchor, opts.lang, opts.weekOf);
 }
 
 /** Pure "new recap waiting" decision for the Since-strip entry line. */
@@ -111,8 +198,11 @@ const autoAttempted = new Set<string>();
 
 export function useWeeklyRecap() {
   const { behaviorLogs, milestones, actionPlans, childProfile } = useArbor();
-  const { t } = useLanguage();
+  // The SAME language value the render uses — settled synchronously by the
+  // provider's state initializer, so there is no cold-load race here.
+  const { t, aiLang, uiLang } = useLanguage();
   const reportsCol = useChildCollection<WeeklyReport>(childProfile.id, "weeklyReports");
+  const rc = (key: string, vars?: Record<string, string | number>) => rcString(t, uiLang, key, vars);
 
   const [generating, setGenerating] = useState(false);
   const [openedWeek, setOpenedWeek] = useState<string | null>(() => readOpenedWeek(childProfile.id));
@@ -123,7 +213,10 @@ export function useWeeklyRecap() {
   }, [childProfile.id]);
 
   const currentId = recapWeekId();
-  const currentLabel = `${t("wk.weekOf")} ${new Date().toLocaleDateString(undefined, { month: "long", day: "numeric" })}`;
+  const currentLabel = formatWeekLabel(new Date(), uiLang, t("wk.weekOf"));
+  /** Render-time label for ANY report (history included) — see resolveWeekLabel. */
+  const labelFor = (report: WeeklyReport | null | undefined) =>
+    resolveWeekLabel(report, { lang: uiLang, weekOf: t("wk.weekOf"), fallbackDate: new Date() });
 
   const reports = useMemo(
     () => [...reportsCol.items].sort((a, b) => (a.id < b.id ? 1 : -1)),
@@ -173,17 +266,24 @@ export function useWeeklyRecap() {
           childProfile,
           logs: behaviorLogs,
           milestones,
-          language: getAiLanguage(),
+          language: aiLang,
         });
       } catch {
         digest = undefined;
       }
       const insight = digest
-        ? [digest.summary, digest.tryThisWeek && `**Try this week:** ${digest.tryThisWeek}`].filter(Boolean).join("\n\n")
-        : "AI insight unavailable right now — the structured summary below still reflects this week. Add your model key/credentials to enable live weekly insights.";
+        ? [digest.summary, digest.tryThisWeek && `**${rc("elev.recap.try.title")}:** ${digest.tryThisWeek}`].filter(Boolean).join("\n\n")
+        // The deterministic fallback narrative is UI copy, so it localizes too
+        // — an English apology inside a Hebrew card is the same defect.
+        : rc("elev.recap.insight.unavailable");
       const report: WeeklyReport = {
         id: currentId,
-        weekLabel: currentLabel,
+        // Written for older clients that still read the payload label, and
+        // ONLY when the label's language IS the record's language; live
+        // rendering re-derives from weekStart whenever `lang` differs.
+        ...(aiLang === uiLang ? { weekLabel: currentLabel } : {}),
+        lang: aiLang,
+        weekStart: weekStartKey(),
         generatedAt: new Date().toISOString(),
         ...snapshot,
         insight,
@@ -197,25 +297,39 @@ export function useWeeklyRecap() {
     }
   };
 
+  const currentReport = reports.find((r) => r.id === currentId) ?? null;
+  /** This week's stored narrative was written in another language. */
+  const languageStale = isReportLanguageStale(currentReport, aiLang);
+  // One attempt per child/week/LANGUAGE: a language switch earns exactly one
+  // regeneration, and a failed attempt never spins forever.
+  const attemptKey = `${childProfile.id}:${currentId}:${aiLang}`;
+  /**
+   * A language-correct narrative is on its way (or has not been tried yet):
+   * consumers hide the cross-language text instead of rendering it. Once the
+   * attempt is spent this flips false and the stored text is shown again —
+   * honest degradation beats a permanent spinner.
+   */
+  const languageRefreshPending = languageStale && (generating || !autoAttempted.has(attemptKey));
+
   // Auto-generate the week's report on the FIRST app-open of a new week —
-  // moved from WeeklyTab's tab-entry effect to this app-level hook (W2 2.1).
+  // moved from WeeklyTab's tab-entry effect to this app-level hook (W2 2.1) —
+  // and re-generate when the live AI language no longer matches the stored one.
   useEffect(() => {
-    const attemptKey = `${childProfile.id}:${currentId}`;
     const decision = shouldAutoGenerateRecap({
       loaded: reportsCol.loaded,
       hasCurrentWeek: reportsCol.items.some((r) => r.id === currentId),
       weekMomentCount: snapshot.summary.count,
       alreadyTried: autoAttempted.has(attemptKey),
       generating,
+      languageStale,
     });
     if (decision) {
       autoAttempted.add(attemptKey);
       void generate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportsCol.loaded, reportsCol.items, snapshot.summary.count, childProfile.id]);
+  }, [reportsCol.loaded, reportsCol.items, snapshot.summary.count, childProfile.id, aiLang, languageStale]);
 
-  const currentReport = reports.find((r) => r.id === currentId) ?? null;
   const recapUnopened = isRecapUnopened(!!currentReport, currentId, openedWeek);
 
   const markRecapOpened = () => {
@@ -235,8 +349,14 @@ export function useWeeklyRecap() {
     generate,
     currentId,
     currentLabel,
+    /** Localized week label for any report, derived at render time. */
+    labelFor,
     /** This week's report, if it exists yet. */
     currentReport,
+    /** This week's stored narrative is in a different language than the session. */
+    languageStale,
+    /** …and a language-correct regeneration is still expected. */
+    languageRefreshPending,
     /** True when a report exists for this week and it has not been opened. */
     recapUnopened,
     markRecapOpened,

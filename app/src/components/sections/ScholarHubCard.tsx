@@ -21,6 +21,7 @@ import { selectWeeklyArticle } from "../../growth/scholarHub";
 import { LEARN_CATEGORIES } from "../../learn/learnLibrary";
 import framework from "../../framework.json";
 import { cardCls } from "../ui/kit";
+import { TrustLink } from "../trust/TrustLink";
 
 // Domain id → human label (same lookup used in DevScoreCard)
 const DOMAIN_LABEL: Record<string, string> = Object.fromEntries(
@@ -142,10 +143,13 @@ export default function ScholarHubCard() {
             {body}
           </p>
 
-          {/* Provenance hedge — editorial, not diagnostic */}
-          <p className="text-[11.5px]" style={{ color: "var(--arbor-faint)" }}>
-            {t("hub.scholar.provenance")}
-          </p>
+          {/* Provenance hedge — editorial, not diagnostic. Masterplan 3.1:
+              the TrustLink chip closes the why → Trust Center chain, after the
+              provenance text on the same wrapping row. */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]" style={{ color: "var(--arbor-faint)" }}>
+            <span dir="auto">{t("hub.scholar.provenance")}</span>
+            <TrustLink surface="scholar-hub-reader" />
+          </div>
         </motion.div>
       </AnimatePresence>
     );
@@ -254,10 +258,13 @@ export default function ScholarHubCard() {
         </button>
       </div>
 
-      {/* Provenance (compact) */}
-      <p className="text-[11px] mt-3" style={{ color: "var(--arbor-faint)" }}>
-        {t("hub.scholar.provenance")}
-      </p>
+      {/* Provenance (compact) + its Trust-Center chain (masterplan 3.1). The
+          chip sits AFTER the provenance text, below the two door buttons, so
+          "Read this week's piece" stays the card's primary affordance. */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--arbor-faint)" }}>
+        <span dir="auto">{t("hub.scholar.provenance")}</span>
+        <TrustLink surface="scholar-hub" />
+      </div>
     </motion.div>
   );
 }

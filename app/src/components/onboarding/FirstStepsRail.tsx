@@ -1,6 +1,15 @@
 /**
  * E11: FirstStepsRail — a dismissible 4-step start path for new accounts,
- * mounted once in Shell above the tab content (PARENT register only).
+ * mounted once by OverviewTab, BELOW Today's primary-action anchor row
+ * (PARENT register only).
+ *
+ * It used to be mounted by Shell ABOVE the tab content, which made it outrank
+ * the day's action: on a returning desktop open the guaranteed CTA rendered at
+ * y≈1224 against an 826px fold (Rule A, masterplan 2026-08-11 §1 — Today shows
+ * MAX 5 modules and EXACTLY ONE primary action above the fold). The rail is now
+ * an ordinary Today module: it renders after the anchor row and counts against
+ * the ≤5 budget via `useFirstStepsRail()` below, so it can never displace the
+ * primary action again.
  *
  * Steps: create the hero avatar → meet the coach → capture a moment → create
  * the first comic. Each step deep-links via setActiveTab; completion is
@@ -50,10 +59,24 @@ const STEPS: ReadonlyArray<{
   { id: "comic", labelKey: "elev.rail.step.comic", tab: "comics", tone: "pink", Glyph: BookOpen },
 ];
 
-export function FirstStepsRail() {
-  const { setActiveTab, behaviorLogs, playLogs, conversations } = useArbor();
+export interface FirstStepsRailState {
+  /** True when the rail would render — the ONE answer Today's budget counts. */
+  visible: boolean;
+  done: Record<StepId, boolean>;
+  doneCount: number;
+  name: string;
+}
+
+/**
+ * The rail's render decision, extracted so Today's Rule-A module budget can ask
+ * "does this module actually render?" instead of guessing. Pure reads
+ * (context + the journey store) plus the pre-existing auto-dismiss effect for
+ * established accounts, which is idempotent — mounting this hook twice (the
+ * budget in OverviewTab and the rail itself) is safe.
+ */
+export function useFirstStepsRail(): FirstStepsRailState {
+  const { behaviorLogs, playLogs, conversations } = useArbor();
   const { hasHero, name } = useHeroAvatar();
-  const { t } = useLanguage();
 
   // The journey store owns rail state; subscribe so writes from elsewhere
   // (the wow flow checking the comic step) reflect without a remount.
@@ -84,6 +107,19 @@ export function FirstStepsRail() {
   const doneCount = STEPS.filter((s) => done[s.id]).length;
   const allDone = doneCount === STEPS.length;
 
+  return {
+    visible: !(state.dismissed || allDone || established),
+    done,
+    doneCount,
+    name,
+  };
+}
+
+export function FirstStepsRail() {
+  const { setActiveTab } = useArbor();
+  const { t } = useLanguage();
+  const { visible, done, doneCount, name } = useFirstStepsRail();
+
   // Entrance rise-fade — collapses to an instant render under reduced motion.
   const [entered, setEntered] = useState(() => prefersReducedMotion());
   useEffect(() => {
@@ -106,12 +142,12 @@ export function FirstStepsRail() {
     [setActiveTab]
   );
 
-  if (state.dismissed || allDone || established) return null;
+  if (!visible) return null;
 
   return (
     <section
       aria-labelledby="first-steps-title"
-      className="rounded-[22px] p-4 md:p-5 mb-6 text-start"
+      className="rounded-[22px] p-4 md:p-5 text-start"
       style={{
         background: "var(--arbor-paper-elevated)",
         border: "1px solid var(--arbor-rule)",

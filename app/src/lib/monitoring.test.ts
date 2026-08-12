@@ -14,15 +14,38 @@ import type { BehaviorLog, Milestone } from "../types";
 const NOW = new Date("2026-06-06T12:00:00.000Z").getTime();
 const daysAgo = (n: number) => new Date(NOW - n * 24 * 60 * 60 * 1000).toISOString();
 
-const milestone = (over: Partial<Milestone> = {}): Milestone => ({
-  id: Math.random().toString(36).slice(2),
-  domain: "language_communication",
-  ageGroup: "18 months",
-  title: "Uses several single words",
-  description: "Says a handful of words",
-  checked: false,
-  ...over,
-});
+/**
+ * A milestone the parent HAS answered. Default response = "not yet" (or "yes"
+ * when the fixture is `checked`), because every surveillance test below is
+ * about what a real parent response produces.
+ *
+ * P1-C: an ANSWER is what the monitoring layer scores. The raw catalogue shape
+ * — `checked: false` with no observation record at all — is a DIFFERENT thing
+ * ("never asked") and has its own fixture, `unansweredMilestone`, below.
+ */
+const milestone = (over: Partial<Milestone> = {}): Milestone => {
+  const merged: Milestone = {
+    id: Math.random().toString(36).slice(2),
+    domain: "language_communication",
+    ageGroup: "18 months",
+    title: "Uses several single words",
+    description: "Says a handful of words",
+    checked: false,
+    ...over,
+  };
+  if (merged.observationStatus === undefined) {
+    merged.observationStatus = merged.checked ? "yes" : "not_yet";
+  }
+  return merged;
+};
+
+/** The seeded-catalogue shape: the parent has never responded to this item. */
+const unansweredMilestone = (over: Partial<Milestone> = {}): Milestone => {
+  const m = milestone(over);
+  delete m.observationStatus;
+  delete m.observationUpdatedAt;
+  return m;
+};
 
 const log = (over: Partial<BehaviorLog> = {}): BehaviorLog => ({
   id: Math.random().toString(36).slice(2),
@@ -114,6 +137,68 @@ describe("deriveMonitoring — milestone surveillance", () => {
       "Mila",
     );
     expect(res.elevated).toBe(false);
+  });
+
+  // ── P1-C (2026-08-12 audit) — "never asked" is not "asked and not seen". ──
+  // The milestone catalogue is SEEDED unanswered (133 rows, `checked: false`,
+  // no observation record). Scoring absence as a deficit told a brand-new
+  // parent that a skill "typically seen by now hasn't been noted yet" for their
+  // child, complete with a pediatrician nudge — manufactured from no data at
+  // all. These tests are firewall-adjacent: they may not be relaxed.
+  it("does NOT flag a past-band milestone the parent has NEVER answered", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 5, // 60 months, far past an 18-month milestone
+        milestones: [unansweredMilestone({ ageGroup: "18 months" })],
+        now: NOW,
+      },
+      "Mila",
+    );
+    expect(res.elevated).toBe(false);
+    expect(res.watchAreas).toEqual([]);
+    const lang = res.domains.find((d) => d.domain === "language_communication")!;
+    expect(lang.level).toBe("on_track");
+    expect(lang.overdueMilestones).toEqual([]);
+  });
+
+  it("a brand-new account (whole catalogue unanswered) produces NO watch signal", () => {
+    const catalogue = (["language_communication", "social_development", "cognition_executive_function"] as const)
+      .flatMap((domain) => ["2 months", "9 months", "18 months", "2 years"].map((ageGroup) =>
+        unansweredMilestone({ domain, ageGroup })));
+    const res = deriveMonitoring({ ageYears: 5, milestones: catalogue, now: NOW }, "Mila");
+    expect(res.elevated).toBe(false);
+    expect(pickHighestWatchSignal(res)!.level).toBe("on_track");
+    expect(watchPointsSummary(res)).toEqual([]);
+  });
+
+  it("scores 'not yet' and 'not sure' — the parent's real answers — identically to before", () => {
+    for (const status of ["not_yet", "not_sure"] as const) {
+      const res = deriveMonitoring(
+        {
+          ageYears: 5,
+          milestones: [milestone({ ageGroup: "18 months", observationStatus: status })],
+          now: NOW,
+        },
+        "Mila",
+      );
+      expect(res.elevated, `${status} must still flag`).toBe(true);
+      expect(res.watchAreas[0].overdueMilestones[0].status).toBe(status);
+    }
+  });
+
+  it("a legacy row with an observation timestamp but no status still counts as answered", () => {
+    const res = deriveMonitoring(
+      {
+        ageYears: 5,
+        milestones: [{
+          ...unansweredMilestone({ ageGroup: "18 months" }),
+          observationUpdatedAt: "2026-06-01T10:00:00.000Z",
+        }],
+        now: NOW,
+      },
+      "Mila",
+    );
+    expect(res.elevated).toBe(true);
   });
 
   it("ignores ecosystem milestones and unparseable age groups", () => {

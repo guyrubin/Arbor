@@ -32,6 +32,7 @@ import { MASTERCLASSES, FRAME_LABELS } from "../../lib/masterclasses";
 import type { FrameId } from "../../lib/masterclasses";
 import framework from "../../framework.json";
 import { cardCls, ProgressBar, RadialProgress, domainVisual, PASTEL } from "../ui/kit";
+import { TrustLink } from "../trust/TrustLink";
 
 // ── Domain label lookup (mirrors DevScoreCard + ScholarHubCard) ───────────────
 
@@ -231,8 +232,12 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
           {t("foryou.recLine", { domain: focusLabel })}
         </p>
 
-        {/* "Here's why" expansion — LOAD-BEARING verbatim copy */}
-        <div>
+        {/* "Here's why" expansion — LOAD-BEARING verbatim copy.
+            Masterplan 3.1: the TrustLink chip rides the SAME row as the why
+            toggle (not inside the collapsed body) so the why → Trust Center
+            chain is reachable without expanding. It stays a quiet lav chip —
+            the "Explore the Academy" CTA below remains this card's primary. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <button
             className="inline-flex items-center gap-1.5 text-[13px] font-bold min-h-[44px] rounded-xl px-3 py-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
             style={{
@@ -249,6 +254,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
               ? <Icon name="expand_less" size={16} />
               : <Icon name="expand_more" size={16} />}
           </button>
+          <TrustLink surface="academy-foryou" />
 
           <AnimatePresence>
             {whyOpen && (
@@ -257,7 +263,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
+                className="overflow-hidden w-full"
               >
                 <p
                   className="text-[13.5px] leading-relaxed mt-3 rounded-xl px-4 py-3"

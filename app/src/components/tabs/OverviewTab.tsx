@@ -25,15 +25,15 @@ import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivit
 import { useDevScore } from "../../hooks/useDevScore";
 import { useMonitoring } from "../../hooks/useMonitoring";
 import { pickHighestWatchSignal } from "../../lib/monitoring";
-import { todayHardMomentOffer } from "../../content/hardMomentSurface";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
 import { focusHeadlineFrom } from "../../lib/todayFocus";
-import { ageMonthsFromProfile } from "../../lib/childAge";
 import { dailyPromptKeys } from "../../lib/promptBank";
 import { buildSinceVisitRows, type SinceVisitRow } from "../overview/sinceVisitEvents";
 import { chooseTodayAction } from "../overview/chooseTodayAction";
+import { resolveTodayModules } from "../overview/todayModules";
+import FirstStepsRail, { useFirstStepsRail } from "../onboarding/FirstStepsRail";
 import { track } from "../../lib/analytics";
 
 const DAY = 86_400_000;
@@ -50,23 +50,38 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
  * What renders now (top → bottom):
  *   Quick Capture bar (W6.2/TODAY-4): ambient capture chrome — first in the
  *       DOM, pinned bottom on phones, inline on lg+.
- *   SinceLastVisit (W1 1.1): returning parents only — warm greeting + ≤3
- *       tappable EVENT rows since the previous visit (+N more in Journal),
- *       with the "Arbor remembers" count line as its footer. Continuity lines
- *       collapse INTO this strip (Rule A), incl. the ArborNoticed fold below.
- *   Row 1 (1.85fr / 0.85fr): the GUARANTEED action in the left slot — the
- *       chooseTodayAction chain picks exactly one of:
+ *   Row 1 (1.85fr / 0.85fr) — FIRST, so the day's action clears the fold: the
+ *       GUARANTEED action in the left slot — the chooseTodayAction chain picks
+ *       exactly one of:
  *         loop (accepted action) → focus hero (+why-line) → promptBank capture
  *         card (+why-line) → Daily Play promotion → bare capture card.
  *       · Development-Map count card (→ Growth) on the right.
- *   Arbor Noticed (DUX-011): conditional; when Today would exceed the budget
- *       (strip + hard-moment + noticed all present) it FOLDS into a
- *       SinceLastVisit row instead of rendering as a sibling card.
+ *   SinceLastVisit (W1 1.1): returning parents only — warm greeting + ≤3
+ *       tappable EVENT rows since the previous visit (+N more in Journal),
+ *       with the "Arbor remembers" count line as its footer. Continuity lines
+ *       collapse INTO this strip (Rule A), incl. the ArborNoticed fold.
+ *   FirstStepsRail (E11): the 4-step start path for genuinely new accounts.
+ *   Arbor Noticed (DUX-011): the highest watch signal; never on day-0, and it
+ *       FOLDS into a SinceLastVisit row when the budget is spent.
  *   Progress narrative: retrospective picture + the ONE evidence surface.
  *   More (collapsed disclosure): the activity feed, the Daily Play section
- *       when displaced by the hard-moment offer, and the wellness check-in.
- *   Day-0 (no data, first visit): header + capture bar + primary action ONLY
- *       (the wow/FirstSteps rail stays Shell-owned).
+ *       when the budget displaces it, and the wellness check-in.
+ *   Day-0 (no data, first visit): header + capture bar + primary action + the
+ *       first-steps rail ONLY — no picture, no play, no watch signal.
+ *
+ * FOLD ORDER (P1-A, 2026-08-12 audit). The since-strip and the first-steps rail
+ * both used to sit ABOVE the anchor row (the rail was even mounted by Shell,
+ * outside this file's budget), which pushed the single primary CTA to y≈1224 on
+ * a 1280×900 desktop open and y≈1697 on a 375×812 phone. Rule A is not "one
+ * primary action somewhere on the page" — it is one primary action ABOVE THE
+ * FOLD. Nothing may outrank the day's action, so continuity and onboarding both
+ * moved below it. The "continuing where we left off" framing survives as the
+ * anchor's own eyebrow.
+ *
+ * MODULE BUDGET: overview/todayModules.ts resolves which modules render from
+ * their REAL render conditions. It must never be fed a content-governance gate
+ * (see P1-B in that file) — a governed array going empty may change what a
+ * module says, never how many modules Today shows.
  *
  * CLINICAL FIREWALL: every child-data surface here shows COUNTS ONLY — never a
  * %, 0–100 score, verdict/status tag, percentile or deficit pointer. The
@@ -326,13 +341,13 @@ export default function OverviewTab() {
     return { focus: focusCount, domains: domainsWithProgress, week: weekActivity };
   }, [activeGoals.length, milestones, behaviorLogs, playLogs]);
 
-  // ── Rule A budget inputs: would the two conditional cards render? ──
-  // Mirrors HardMomentTodayOffer's own render condition (same inputs, same
-  // selector) so the budget math and the card can never disagree.
-  const hardMomentWould = useMemo(
-    () => !activeTodayAction && !!todayHardMomentOffer(behaviorLogs, undefined, new Date(), ageMonthsFromProfile(childProfile)),
-    [activeTodayAction, behaviorLogs, childProfile]
-  );
+  // ── Rule A budget inputs: which conditional modules would ACTUALLY render? ──
+  // P1-B: the previous implementation asked `todayHardMomentOffer(...)` here.
+  // That resolves through publishedHardMomentCards, which governance (GD-10)
+  // keeps empty, so the budget could never engage AND the hard-moment offer is
+  // not even a sibling module — it renders inside the anchor's left column.
+  // Every input below is now the module's own render condition.
+  //
   // Mirrors ArborNoticedCard's render gate (monitor-level signal, not dismissed).
   const monitoring = useMonitoring();
   const noticedWould = useMemo(() => {
@@ -347,24 +362,66 @@ export default function OverviewTab() {
     }
   }, [monitoring, childProfile.id]);
 
-  // Rule A fold: with the strip + a primary + hard-moment + dev-map + narrative
-  // all present, a sibling ArborNoticed card would be module #6 — it collapses
-  // into a SinceLastVisit row ("Arbor noticed something — look") instead.
-  const foldNoticed = isReturning && noticedWould && hardMomentWould;
+  // Would the first-steps rail render? The rail owns that answer (dismissed /
+  // all-done / established account) — the budget asks it rather than guessing.
+  const railWould = useFirstStepsRail().visible;
 
-  // ── W1 1.1: the since-visit EVENT rows (strictly newer than the previous visit) ──
-  const sinceVisit = useMemo(
+  // ── Day-0 (first visit, zero data): header + capture bar + primary action +
+  //    the first-steps rail ONLY (Rule A day-0 shape). P1-C: the watch card is
+  //    inside this guard too — a parent who has answered nothing has produced
+  //    no signal, so Today has nothing to have "noticed". ──
+  const dayZero =
+    !isReturning && behaviorLogs.length === 0 && playLogs.length === 0 && checkedMilestones === 0;
+
+  // ── W1 1.1: the since-visit EVENT rows (strictly newer than the previous
+  //    visit). Built WITHOUT the fold row first, because whether the strip has
+  //    anything to say is what decides if there is a fold target at all. ──
+  const sinceBase = useMemo(
     () => buildSinceVisitRows({
       previousVisitAt: isReturning ? previousVisitAt : null,
       behaviorLogs,
       playLogs,
       milestones,
       conversations,
-      includeNoticedRow: foldNoticed,
+      includeNoticedRow: false,
     }),
-    [isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations, foldNoticed]
+    [isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations]
   );
-  const showSinceStrip = isReturning && sinceVisit.rows.length > 0;
+
+  // ── Rule A: resolve the ≤5-module budget from the REAL render conditions. ──
+  const modulePlan = useMemo(
+    () => resolveTodayModules(
+      {
+        since: isReturning && sinceBase.rows.length > 0,
+        rail: railWould,
+        noticed: !dayZero && noticedWould,
+        narrative: !dayZero,
+        play: !dayZero && todayChoice.kind !== "play",
+      },
+      { noticedCanFold: isReturning && sinceBase.rows.length > 0 },
+    ),
+    [isReturning, sinceBase.rows.length, railWould, dayZero, noticedWould, todayChoice.kind]
+  );
+
+  // The watch signal degrades by FOLDING into a since-strip row ("Arbor noticed
+  // something — look"), never by vanishing (todayModules.ts guarantees it is
+  // only demotable while the strip is there to receive it).
+  const foldNoticed = modulePlan.demoted.includes("noticed");
+  const showSinceStrip = modulePlan.visible.has("since");
+
+  const sinceVisit = useMemo(
+    () => (foldNoticed
+      ? buildSinceVisitRows({
+        previousVisitAt: isReturning ? previousVisitAt : null,
+        behaviorLogs,
+        playLogs,
+        milestones,
+        conversations,
+        includeNoticedRow: true,
+      })
+      : sinceBase),
+    [foldNoticed, sinceBase, isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations]
+  );
 
   const onSinceRowTap = (row: SinceVisitRow) => {
     if (row.kind === "milestone" || row.kind === "noticed") {
@@ -391,14 +448,9 @@ export default function OverviewTab() {
     return { capturedToday, week: devStats.week, story: behaviorLogs.length + playLogs.length };
   }, [behaviorLogs, playLogs, devStats.week]);
 
-  // ── Day-0 (first visit, zero data): header + capture bar + primary ONLY —
-  //    the wow/FirstSteps rail stays Shell-owned (Rule A day-0 shape). ──
-  const dayZero =
-    !isReturning && behaviorLogs.length === 0 && playLogs.length === 0 && checkedMilestones === 0;
-
   // The Daily Play "Try together" section — ONE JSX instance, placed either as
-  // the visible 5th module, in the left slot when it IS the primary action, or
-  // inside the More disclosure when the hard-moment offer displaces it.
+  // a visible module, in the left slot when it IS the primary action, or inside
+  // the More disclosure when the module budget displaces it.
   const playSection = (
     <section className="border-y py-5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("today.feed.title", { name: firstName })}>
       <div className="mb-3 flex items-center justify-between gap-3 px-1">
@@ -416,9 +468,9 @@ export default function OverviewTab() {
       <button onClick={() => seedCoach({ prompt: focus ? t("seed.todayFocus", { focus: focus.text, name: firstName }) : undefined, source: "today-coach-row" })} className="mt-3 inline-flex min-h-[44px] items-center gap-2 px-1 text-[12px] font-extrabold" style={{ color: "var(--arbor-clay)" }}><Icon name="forum" size={18} />{t("today.coach.reply")}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
     </section>
   );
-  // Visible only while it fits the ≤5 budget: not day-0, not already the
-  // primary action, not displaced by the hard-moment offer.
-  const showPlayInline = !dayZero && todayChoice.kind !== "play" && !hardMomentWould;
+  // Visible only while it holds a slot in the ≤5 budget; otherwise it drops
+  // into the More drawer below (never off the screen).
+  const showPlayInline = modulePlan.visible.has("play");
 
   return (
     <motion.div
@@ -431,12 +483,22 @@ export default function OverviewTab() {
     >
       <header className="flex items-start justify-between gap-4 px-1">
         <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("today.guidance.tag")}</p>
-          <h1 className="mt-1 text-[30px] sm:text-[38px] leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
+          {/* P1-A headroom: the "TODAY'S GUIDANCE" eyebrow used to be repeated
+              here AND ~90px below as the hero card's own eyebrow. On a 375px
+              phone that duplicate cost 21px of the ~360px the greeting block
+              leaves the primary CTA before the 812px fold. One eyebrow, on the
+              card it labels. */}
+          <h1 className="text-[30px] sm:text-[38px] leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
             {t(greetingKey, { name: parentFirstName })}
           </h1>
           <p className="mt-2 text-[19px] font-bold" style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-display)" }}>{t("today.header.prompt")}</p>
-          <p className="mt-1 text-[14px]" style={{ color: "var(--arbor-muted)" }}>{t("today.header.sub")}</p>
+          {/* P1-A headroom, phones only: this two-line explainer duplicates the
+              pinned QuickCaptureBar's own label ("Capture a moment in …'s
+              story" + mic/photo/text), which is permanently visible on < md.
+              Dropping it below sm buys 47px, which is what makes the fold hold
+              for ANY headline the 150-char focus clamp can produce — with it,
+              a maximally long AI first sentence pushed the CTA past 812px. */}
+          <p className="mt-1 text-[14px] hidden sm:block" style={{ color: "var(--arbor-muted)" }}>{t("today.header.sub")}</p>
         </div>
         <button onClick={() => setShowAiRail(true)} className="hidden sm:inline-flex items-center gap-2 min-h-[44px] rounded-2xl px-4 text-[12px] font-extrabold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)", background: "var(--arbor-green-soft)" }}>
           <Icon name="verified_user" size={17} /> {t("airail.title")}
@@ -464,21 +526,9 @@ export default function OverviewTab() {
         />
       </div>
 
-      {/* ── W1 1.1: "Since your last visit" — returning parents only, BEFORE the
-             primary action (Maytal Row-1 #1: greeting → what's new → resume). ── */}
-      {showSinceStrip && (
-        <SinceLastVisit
-          rows={sinceVisit.rows}
-          hiddenCount={sinceVisit.hiddenCount}
-          capturedToday={memoryCounts.capturedToday}
-          weekCount={memoryCounts.week}
-          storyCount={memoryCounts.story}
-          onRowTap={onSinceRowTap}
-          onMore={() => setActiveTab("journal")}
-        />
-      )}
-
-      {/* ── Row 1 (1.85fr / 0.85fr): guaranteed action · Development-Map card ── */}
+      {/* ── Row 1 (1.85fr / 0.85fr): guaranteed action · Development-Map card.
+             P1-A: this row is FIRST in the column — the day's action clears the
+             fold before anything else competes for the viewport. ── */}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_0.85fr] gap-5">
         {/* ── Day anchor (left slot) — W1 1.2 guaranteed action. ONE slot, one
@@ -500,27 +550,24 @@ export default function OverviewTab() {
           {activeTodayAction ? (
             <TodayActionLoop />
           ) : todayChoice.kind === "focus" ? (
-            <>
-              <TodayRecommendation
-                eyebrow={t("today.guidance.tag")}
-                headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })}
-                meta={t("today.meta")}
-                action={t("today.begin")}
-                loading={focusLoading && !focus}
-                onBegin={beginGuidance}
-                accept={focusHeadline ? {
-                  label: t("today.action.make"),
-                  lengthAria: t("today.action.length"),
-                  minUnit: t("today.action.min"),
-                  onAccept: (capacity) => acceptTodayAction(focusHeadline, capacity),
-                } : undefined}
-              />
-              {/* W1 1.2 why-line under the AI focus (authored, previously dead). */}
-              <p className="mt-2 px-1 text-[11.5px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>
-                <span className="font-extrabold" style={{ color: "var(--arbor-muted)" }}>{t("today.intent.why")}</span>{" "}
-                {t("today.intent.whyRhythm")}
-              </p>
-            </>
+            <TodayRecommendation
+              eyebrow={t("today.guidance.tag")}
+              headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })}
+              meta={t("today.meta")}
+              action={t("today.begin")}
+              loading={focusLoading && !focus}
+              onBegin={beginGuidance}
+              accept={focusHeadline ? {
+                label: t("today.action.make"),
+                lengthAria: t("today.action.length"),
+                minUnit: t("today.action.min"),
+                onAccept: (capacity) => acceptTodayAction(focusHeadline, capacity),
+              } : undefined}
+              // W1 1.2 why-line + masterplan 3.1 chain: the copy rides the card's
+              // own ContentWhyLine slot so the TrustLink lands AFTER the why text
+              // (it used to sit between the CTA and a sibling <p>).
+              why={t("today.intent.whyRhythm")}
+            />
           ) : todayChoice.kind === "play" ? (
             playSection
           ) : (
@@ -598,13 +645,39 @@ export default function OverviewTab() {
         })()}
       </div>
 
+      {/* ── W1 1.1: "Since your last visit" — returning parents only. It sits
+             BELOW the anchor row (P1-A): continuity is warm, but it is not the
+             day's action, and above the fold it was costing ~450px and burying
+             the one CTA. The "continuing where we left off" framing stays on the
+             anchor itself, so the narrative order still reads greeting → resume
+             → what's new. ── */}
+      {showSinceStrip && (
+        <SinceLastVisit
+          rows={sinceVisit.rows}
+          hiddenCount={sinceVisit.hiddenCount}
+          capturedToday={memoryCounts.capturedToday}
+          weekCount={memoryCounts.week}
+          storyCount={memoryCounts.story}
+          onRowTap={onSinceRowTap}
+          onMore={() => setActiveTab("journal")}
+        />
+      )}
+
+      {/* ── E11 first-steps rail — a Today module now, not Shell chrome. It is
+             the day-0 start path, so it renders in every state where it still
+             has steps left, but it can never outrank the day's action again. ── */}
+      {modulePlan.visible.has("rail") && <FirstStepsRail />}
+
       {/* ── "Arbor Noticed" (DUX-011) — the single highest watch signal from the
              child's own logged data, below the anchor row. Renders NOTHING with
              zero detections and self-hides per-detection once dismissed; copy is
              counts/patterns only (non-diagnostic, monitoring.ts framing).
-             Rule A: when the since-strip + hard-moment offer are both up it
-             FOLDS into a SinceLastVisit row instead (foldNoticed above). ── */}
-      {!foldNoticed && <ArborNoticedCard />}
+             P1-C: it is inside the day-0 guard — a parent who has answered
+             nothing has produced no signal, so a "worth keeping an eye on" card
+             on a brand-new account would be manufactured from ABSENT data.
+             Rule A: when the budget is spent it FOLDS into a SinceLastVisit row
+             instead of rendering as a sibling card (foldNoticed above). ── */}
+      {modulePlan.visible.has("noticed") && <ArborNoticedCard />}
 
       {/* ── Progress narrative — retrospective picture. Its "Your evidence" cell
              is the ONE recent-moments surface on Today (CODEX-1). Skipped on
@@ -613,7 +686,7 @@ export default function OverviewTab() {
              `moment-`/`play-` prefixes buildTimeline assigns), so a tapped row
              deep-links to exactly that entry via the requestJournalFocus seam.
              The deep-link carries only the id — never a derived score. */}
-      {!dayZero && (
+      {modulePlan.visible.has("narrative") && (
         <ProgressNarrative
           childName={firstName}
           behaviorLogs={behaviorLogs.map((item) => ({ id: `moment-${item.id}`, timestamp: item.timestamp, label: item.context || item.notes || t("today.feed.logged") }))}
@@ -627,13 +700,17 @@ export default function OverviewTab() {
         />
       )}
 
-      {/* ── Daily Play "Try together" — visible as the 5th module only while the
-             budget allows; the primary-slot chain renders it when it IS the
-             action; the hard-moment offer displaces it into the disclosure. ── */}
+      {/* ── Daily Play "Try together" — visible only while it holds a budget
+             slot; the primary-slot chain renders it when it IS the action;
+             otherwise the budget displaces it into the disclosure below. ── */}
       {showPlayInline && playSection}
 
       {/* ── More (secondary, collapsed — Rule A): the activity feed, the Daily
-             Play section when displaced, and the wellness check-in. ── */}
+             Play section when displaced, and the wellness check-in. This
+             disclosure is the drawer that RECEIVES demoted modules, so it is
+             deliberately NOT counted by the budget (todayModules.ts) — counting
+             the overflow container against its own overflow is incoherent. It
+             is a 34px collapsed row, not a module. ── */}
       {!dayZero && (
         <section className="pt-1">
           <button
