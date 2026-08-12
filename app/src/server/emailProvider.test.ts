@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveEmailProvider, sendWeeklyDigestEmail } from "./emailProvider.js";
@@ -35,6 +35,57 @@ describe("resolveEmailProvider — fail-closed configuration", () => {
 
   it("empty/whitespace values are treated as unset", () => {
     expect(resolveEmailProvider({ EMAIL_PROVIDER: "   " }).enabled).toBe(false);
+  });
+
+  // The Resend adapter is implemented, so "configured" now has a credentials
+  // axis too: naming a real provider without its own env must NOT half-enable
+  // the channel and then throw at send time, in front of a parent.
+  it("a REAL provider name without its credentials stays DISABLED", () => {
+    expect(resolveEmailProvider({ EMAIL_PROVIDER: "resend" }).enabled).toBe(false);
+    expect(resolveEmailProvider({ EMAIL_PROVIDER: "resend", RESEND_API_KEY: "re_x" }).enabled).toBe(false);
+    expect(resolveEmailProvider({ EMAIL_PROVIDER: "resend", EMAIL_FROM: "a@b.co" }).enabled).toBe(false);
+    expect(resolveEmailProvider({ EMAIL_PROVIDER: "resend", RESEND_API_KEY: " ", EMAIL_FROM: " " }).enabled).toBe(false);
+  });
+
+  it("a real provider WITH full credentials enables — and only then", () => {
+    const r = resolveEmailProvider({ EMAIL_PROVIDER: "resend", RESEND_API_KEY: "re_x", EMAIL_FROM: "Arbor <hi@a.co>" });
+    expect(r.enabled).toBe(true);
+    expect(r.provider).toBe("resend");
+    expect(typeof r.send).toBe("function");
+  });
+});
+
+describe("resend adapter — request shape and secret hygiene", () => {
+  const ENV = { EMAIL_PROVIDER: "resend", RESEND_API_KEY: "re_secret_key", EMAIL_FROM: "Arbor <hi@a.co>" };
+  const MSG = { to: "parent@example.com", subject: "נושא", preheader: "p", bodyText: "counts only" };
+
+  it("posts to Resend with the bearer token and the digest body as text", async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return { ok: true, status: 200, json: async () => ({ id: "msg_1" }) } as unknown as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await sendWeeklyDigestEmail(MSG, ENV);
+    expect(res).toEqual({ sent: true, id: "msg_1" });
+    expect(calls[0].url).toBe("https://api.resend.com/emails");
+    const headers = calls[0].init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer re_secret_key");
+    const body = JSON.parse(String(calls[0].init.body));
+    expect(body.from).toBe("Arbor <hi@a.co>");
+    expect(body.to).toEqual(["parent@example.com"]);
+    expect(body.subject).toBe("נושא");
+    expect(body.text).toBe("counts only");
+    // Plain text only — no HTML part that could smuggle unscreened markup.
+    expect(body.html).toBeUndefined();
+    vi.unstubAllGlobals();
+  });
+
+  it("a provider failure throws WITHOUT leaking the message body or the key", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 422, json: async () => ({}) }) as unknown as Response));
+    await expect(sendWeeklyDigestEmail(MSG, ENV)).rejects.toThrow(/HTTP 422/);
+    await expect(sendWeeklyDigestEmail(MSG, ENV)).rejects.not.toThrow(/counts only|re_secret_key|parent@example\.com/);
+    vi.unstubAllGlobals();
   });
 });
 
