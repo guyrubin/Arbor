@@ -94,8 +94,11 @@ describe("W0.9 kid-lock guard survives the search wave (source pins)", () => {
 
 /* ── 3. Nav weighting: emphasis only, zero regression ────────────────────── */
 describe("W2.7 nav de-overload — emphasis only", () => {
-  it("primary section ids are UNCHANGED (no removal, no reorder)", () => {
-    expect(mobileNav).toContain('const PRIMARY_SECTION_IDS = ["today", "growth", "ask", "journal"] as const;');
+  // Heartwood D5 ratified the W2.7 canon follow-up: the slot ORDER now matches
+  // the emphasis set (Today · Journal · Ask lead, Growth fourth). Still four
+  // tabs + More — no section is removed from the bar.
+  it("primary section ids are the Heartwood D5 slots (no removal)", () => {
+    expect(mobileNav).toContain('const PRIMARY_SECTION_IDS = ["today", "journal", "ask", "growth"] as const;');
   });
 
   it("emphasis set is the three primary jobs (today/ask/journal)", () => {

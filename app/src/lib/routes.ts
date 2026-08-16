@@ -69,9 +69,13 @@ export const HASH_ALIASES: Readonly<Record<string, ActiveTab>> = {
   // Nav SECTION ids whose hub leaf carries a different route id.
   today: "overview",
   growth: "development",
-  academy: "masterclasses",
   ask: "coach",
   care: "consult",
+  // LEGACY section id: Academy split into Stories + Learn (Heartwood D2);
+  // #/academy deep links baked into old docs/emails keep landing on the
+  // Masterclasses hub. The new section ids (practice/stories/learn) are
+  // themselves route ids, so they need no alias.
+  academy: "masterclasses",
   // Slugified nav LABELS that differ from their route id.
   home: "overview",
   "ask-arbor": "coach",
