@@ -11,6 +11,7 @@ import {
   Mic, Camera, Smile, Footprints, Compass,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
+import type { HubId } from "./surfaceContract";
 
 export type NavItem = {
   tab: ActiveTab;
@@ -27,7 +28,10 @@ export type NavItem = {
  *  the Sidebar (never hardcoded). */
 export type NavBadge = "milestone" | "plans" | { kind: "count" } | { kind: "dot" };
 export type NavSection = {
-  id: string;
+  /** One of the ten Heartwood hub ids (surfaceContract HUB_IDS) — typed so the
+   *  sections, the surface contracts, and usePulses() can never drift apart
+   *  (the pulse map is a Record<HubId, …> consumed by section id). */
+  id: HubId;
   label: string;
   icon: LucideIcon;
   /** Material Symbols Rounded ligature for the section rail glyph (UC-2
@@ -194,8 +198,13 @@ export const SECTIONS: NavSection[] = [
     // #/practice hosts the parent-register Practice Studio LAUNCHER (the door
     // into the ten practice worlds); the kid-register Hero Arcade lives only
     // inside Kid Mode. The standalone drill routes (speech/mimic/feelings/
-    // journey/adventures) are the hub's tools — valid deep links resolving here
-    // via TAB_SECTION_FALLBACK, reached through the launcher's tiles.
+    // journey/adventures) are the hub's tools: listing them here renders them
+    // as always-visible one-click pills in the hub's contextual pill row
+    // (hubTabsForSection) IN ADDITION to the launcher's tiles — they were
+    // already reachable as deep links pre-D3, but the pill row widens the
+    // register seam (kid-register worlds one click from parent chrome).
+    // OPEN DESIGN CALL (Guy): keep the pills, or empty `tools` so entry is
+    // launcher-mediated only (routes stay valid via TAB_SECTION_FALLBACK).
     items: [
       { tab: "practice", label: "Practice Studio", icon: Target },
     ],

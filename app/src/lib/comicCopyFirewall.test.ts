@@ -36,24 +36,21 @@ const KIDMODE_FILES = readdirSync(KIDMODE_DIR)
   .filter((f) => /\.(ts|tsx)$/.test(f) && !f.includes(".test."))
   .map((f) => path.join(KIDMODE_DIR, f));
 
-// The kid-register practice worlds: HeroArcade and every world it mounts,
-// plus the shared kid-facing scene/sub-game components.
-const KID_REGISTER_WORLDS = [
-  "HeroArcade.tsx",
-  "SpeechCoachTab.tsx",
-  "FeelingsLabTab.tsx",
-  "AdventuresTab.tsx",
-  "MimicStudioTab.tsx",
-  "MindVaultWorld.tsx",
-  "SpellForgeWorld.tsx",
-  "BeatKeeperWorld.tsx",
-  "HeroPoseWorld.tsx",
-  "PatternPowerWorld.tsx",
-  "WordWorldTab.tsx",
-  "MemoryMatch.tsx",
-  "MimicMatch.tsx",
-  "WorldScene.tsx",
-].map((f) => path.join(COMPONENTS, "practice", f));
+// The practice directory holds BOTH registers. Scan the WHOLE directory and
+// exclude the parent-register surfaces by NAME — an allowlist-of-parent-files
+// fails SAFE: a new kid-register world lands in the scan automatically, while
+// the old enumerated kid list failed OPEN (PracticeHubTab, WeeklyMissionsStrip,
+// EarlyReadingTrack and JourneyTab were child-facing yet unscanned).
+const PRACTICE_DIR = path.join(COMPONENTS, "practice");
+const PARENT_REGISTER_PRACTICE = new Set([
+  "PracticeStudioTab.tsx", // parent-register launcher (its own header says so)
+  "DevelopmentCopilot.tsx", // parent clinical surface (own firewall test)
+  "GoalBuilderModal.tsx", // parent goal picker (CI-28, clinical-gate copy)
+  "SessionLengthChips.tsx", // parent time-budget selector (CI-31)
+]);
+const KID_REGISTER_WORLDS = readdirSync(PRACTICE_DIR)
+  .filter((f) => /\.(ts|tsx)$/.test(f) && !f.includes(".test.") && !PARENT_REGISTER_PRACTICE.has(f))
+  .map((f) => path.join(PRACTICE_DIR, f));
 
 const SCAN_FILES = [...KIDMODE_FILES, ...KID_REGISTER_WORLDS];
 
@@ -93,7 +90,22 @@ describe("findBannedKidCopy — positive controls (the scanner can see violation
     ["You failed this level", "en-fail"],
     ["Last chance to play today!", "en-last-chance"],
     ["Only 2 left!", "en-scarcity"],
+    ["Only a few left!", "en-scarcity"],
     ["No time left!", "en-time-left"],
+    ["Time's almost up!", "en-time-left"],
+    ["Beat the clock!", "en-timer"],
+    ["Race the timer before it ends!", "en-timer"],
+    ["Do it before the timer runs out", "en-timer"],
+    ["5...4...3...2...1", "en-countdown-digits"],
+    ["3, 2, 1, go!", "en-countdown-digits"],
+    ["Quickly! Tap now", "en-hurry"],
+    ["Ends tonight!", "en-expiry"],
+    ["Last day to play!", "en-expiry"],
+    ["Don't miss out!", "en-fomo"],
+    ["Come back tomorrow or your stars go away", "en-loss-threat"],
+    ["Say goodbye to your stars", "en-loss-threat"],
+    ["You got 5 right, everyone else got more", "en-social-compare"],
+    ["Other kids finished faster", "en-social-compare"],
     ["רצף של 3 ימים", "he-streak"],
     ["ספירה לאחור התחילה", "he-countdown"],
     ["מהרו! נגמר הזמן", "he-hurry"],
@@ -101,6 +113,11 @@ describe("findBannedKidCopy — positive controls (the scanner can see violation
     ["נכשלת בשלב הזה", "he-fail"],
     ["הזדמנות אחרונה לשחק", "he-last-chance"],
     ["נשארו רק 2", "he-scarcity"],
+    ["מהר! עכשיו", "he-hurry"],
+    ["רק היום!", "he-expiry"],
+    ["אל תפספסו!", "he-fomo"],
+    ["הכוכבים שלך ייעלמו מחר", "he-loss-threat"],
+    ["ילדים אחרים קיבלו יותר", "he-social-compare"],
   ];
 
   it.each(VIOLATIONS)("flags %j (%s)", (text, expectedId) => {
@@ -143,10 +160,14 @@ describe("CELEBRATION_WHITELIST — internally consistent", () => {
 /* ── (a) kid.* i18n values, both dictionaries ───────────────────────────── */
 
 describe("kid.* i18n values carry no pressure mechanics (EN + HE)", () => {
-  const kidKeys = Object.keys(en).filter((k) => k.startsWith("kid."));
+  // "strip." is the kid-facing WeeklyMissionsStrip's namespace (its only
+  // consumer) — kid-surface copy routed through a non-kid.* namespace must
+  // not escape the scan.
+  const kidKeys = Object.keys(en).filter((k) => k.startsWith("kid.") || k.startsWith("strip."));
 
   it("finds the kid namespace (sanity)", () => {
     expect(kidKeys.length).toBeGreaterThanOrEqual(20);
+    expect(kidKeys.some((k) => k.startsWith("strip."))).toBe(true);
   });
 
   it("every kid.* value in BOTH maps is clean", () => {
@@ -168,8 +189,13 @@ describe("kid.* i18n values carry no pressure mechanics (EN + HE)", () => {
 describe("kid-register source files carry no pressure-mechanic copy", () => {
   it("the scan scope actually exists on disk (a rename must not silently empty the scan)", () => {
     expect(KIDMODE_FILES.length).toBeGreaterThanOrEqual(8);
-    for (const file of KID_REGISTER_WORLDS) {
-      expect(() => readFileSync(file), `missing kid-register world file: ${file}`).not.toThrow();
+    expect(KID_REGISTER_WORLDS.length).toBeGreaterThanOrEqual(14);
+    const names = KID_REGISTER_WORLDS.map((f) => path.basename(f));
+    // Anchors: the arcade home + the child-facing files the old enumerated
+    // list missed. If one moves, this fails loudly instead of silently
+    // shrinking the scan.
+    for (const anchor of ["HeroArcade.tsx", "PracticeHubTab.tsx", "WeeklyMissionsStrip.tsx", "EarlyReadingTrack.tsx", "JourneyTab.tsx"]) {
+      expect(names, `expected ${anchor} in the kid-register scan scope`).toContain(anchor);
     }
   });
 

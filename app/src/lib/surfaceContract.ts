@@ -101,11 +101,13 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     job: "Help me right now.",
     primaryMove: "ask", moduleBudget: 3, demotionTarget: "disclosure",
     // Budget 3 per plan §4: composer · answer · history-as-record-rows.
-    // Law 3 exception: coach turns are private by default; "Keep this" on an
-    // answer writes a Journal row with provenance. CAUTION: buildTimeline
-    // still ingests "conversations" automatically today — the consent gate is
-    // the declared target this contract encodes.
-    threadWrite: "consented",
+    // SHIPPED behavior, honestly: buildTimeline ingests "conversations"
+    // automatically today (signalTimeline.ts has no consent filter on that
+    // source). The M1.3 TARGET is "consented" — coach turns private by
+    // default, "Keep this" writes a Journal row with provenance. Flip this
+    // declaration to "consented" ONLY when the consent gate actually ships;
+    // the manifest is read as fact by later waves and must not front-run it.
+    threadWrite: "conversations",
   },
   {
     route: "scholar", hub: "ask", depth: 1,

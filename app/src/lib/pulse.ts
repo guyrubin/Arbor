@@ -15,16 +15,13 @@ import { useArbor } from "../context/ArborContext";
 import { useLanguage } from "../context/LanguageContext";
 import { predictRhythm, hourLabel } from "../rhythm/predict";
 import type { UiLang } from "./i18n";
+import type { HubId } from "./surfaceContract";
 
-export type HubId =
-  | "today"
-  | "journal"
-  | "behaviors"
-  | "growth"
-  | "academy"
-  | "ask"
-  | "care"
-  | "profile";
+// HubId comes from surfaceContract's HUB_IDS — the ten Heartwood hub ids that
+// SC-1 asserts mirror navigation.ts SECTIONS exactly. usePulses() returns a
+// Record over that SAME union, so a hub added to (or renamed in) the IA is a
+// compile error here until it gets a pulse — no more silent pulse gaps.
+export type { HubId };
 
 export interface HubPulse {
   /** i18n key (always "elev.pulse.*"); render with t(key, params). */
@@ -135,8 +132,14 @@ export function usePulses(): HubPulses {
         ? { key: "elev.pulse.growth.noticed", params: { count: noticed, total: milestones.length }, count: noticed }
         : { key: "elev.pulse.growth.empty" };
 
-    // ── Academy: no per-course state in context yet — honest standing line.
-    const academy: HubPulse = { key: "elev.pulse.academy.empty" };
+    // ── Practice / Stories / Learn (Heartwood D2+D3 hubs): no per-hub state
+    //    in ArborContext yet (practice logs live in usePracticeData; course/
+    //    story progress is surface-local) — honest standing lines, like Care.
+    //    Learn inherits the former Academy line (the parent-learning half of
+    //    the D2 Academy split).
+    const practice: HubPulse = { key: "elev.pulse.practice.empty" };
+    const stories: HubPulse = { key: "elev.pulse.stories.empty", params: { name } };
+    const learn: HubPulse = { key: "elev.pulse.learn.empty" };
 
     // ── Ask Arbor: review queue → last conversation → open invitation. ─────
     const lastConv = conversations[0]; // already sorted by updatedAt desc
@@ -159,7 +162,7 @@ export function usePulses(): HubPulses {
         ? { key: pickCountKey("elev.pulse.profile.album", albumTotal), params: { count: albumTotal }, count: albumTotal }
         : { key: "elev.pulse.profile.empty", params: { name } };
 
-    return { today, journal, behaviors, growth, academy, ask, care, profile };
+    return { today, journal, behaviors, growth, practice, stories, learn, ask, care, profile };
   }, [
     childProfile.name,
     childProfile.age,

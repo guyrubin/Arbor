@@ -4,7 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
 import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
-import { usePulses, type HubId } from "../../lib/pulse";
+import { usePulses } from "../../lib/pulse";
 import { requestOpenSearch } from "../search/SearchModal";
 
 /**
@@ -133,7 +133,9 @@ export default function MobileNav() {
                 const on = sec.id === activeSectionId;
                 // E1 living pulse — informational line under the label (counts/
                 // activity only; firewall lives in usePulses). Hidden when empty.
-                const pulse = pulses[sec.id as HubId];
+                // No cast: NavSection.id IS HubId, so a hub without a pulse
+                // entry is a compile error, not a silently empty row.
+                const pulse = pulses[sec.id];
                 const pulseText = pulse ? t(pulse.key, pulse.params) : "";
                 return (
                   <button

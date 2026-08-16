@@ -36,6 +36,16 @@ const SCAN_DIRS = [
   path.join(SRC, "components", "practice"),
 ];
 
+// Child-facing primitives that live OUTSIDE the kid directories: PlayKit is
+// the self-declared "child-facing primitive set for Practice Studio", and the
+// mascot/avatar components render inside kid surfaces. A purchasable-cosmetic
+// string planted here would previously have passed CI.
+const EXTRA_SCAN_FILES = [
+  path.join(SRC, "components", "ui", "playkit.tsx"),
+  path.join(SRC, "components", "ui", "ArborMascot.tsx"),
+  path.join(SRC, "components", "ui", "HeroAvatar.tsx"),
+];
+
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     const full = path.join(dir, name);
@@ -45,7 +55,7 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const SCAN_FILES = SCAN_DIRS.flatMap((d) => walk(d));
+const SCAN_FILES = [...SCAN_DIRS.flatMap((d) => walk(d)), ...EXTRA_SCAN_FILES];
 
 function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
@@ -79,8 +89,15 @@ const ECONOMY_PATTERNS: EconomyPattern[] = [
   { id: "gacha", re: /\bgachas?\b/i },
   { id: "loot", re: /\bloot\b/i },
   { id: "expiry", re: /\bexpir(?:e|es|ed|ing|y|ation)\b/i },
-  { id: "unlock-with-currency", re: /unlock(?:ed|s)? (?:with|using|for) (?:coins?|gems?|stars?|tokens?|points?)/i },
-  { id: "spend-currency", re: /spend (?:your )?(?:coins?|gems?|stars?|tokens?|points?)/i },
+  // Optional quantity/quantifier gap ("Unlock with 100 stars", "Spend 50 of
+  // your stars") — the bare-noun-only forms missed the dominant real-world
+  // purchase phrasing.
+  { id: "unlock-with-currency", re: /unlock(?:ed|s)? (?:it |this )?(?:with|using|for) (?:\d+ |a few |some |more )?(?:of your )?(?:coins?|gems?|stars?|tokens?|points?)/i },
+  { id: "spend-currency", re: /spend (?:your |\d+ |a few |some )*(?:of your )?(?:coins?|gems?|stars?|tokens?|points?)/i },
+  // Cost phrasing had no pattern at all ("This cape costs 30 stars").
+  { id: "costs-currency", re: /\bcosts? (?:\d+ |a few |some )?(?:coins?|gems?|stars?|tokens?|points?)\b/i },
+  // "Get it for 50 stars" — acquisition-for-currency phrasing.
+  { id: "get-for-currency", re: /\b(?:get|grab|claim) (?:it|this|one|them)? ?for (?:\d+ |a few |some )?(?:coins?|gems?|stars?|tokens?|points?)\b/i },
   { id: "currency-shop", re: /\b(?:coin|gem|star|token) shop\b|\bstore credits?\b/i },
   { id: "roll-for-reward", re: /\broll(?:s|ed|ing)? for (?:a |the )?(?:prize|reward|loot|rare|drop)/i },
   { id: "mystery-box", re: /\bmystery (?:box|chest)\b/i },
@@ -97,7 +114,11 @@ describe("economy patterns — positive controls (the scanner can see violations
     ["Special price today only", "price"],
     ["Purchase this outfit", "purchase"],
     ["Unlock with coins", "unlock-with-currency"],
+    ["Unlock with 100 stars", "unlock-with-currency"],
     ["Spend your stars in the shop", "spend-currency"],
+    ["Spend 50 stars to get it", "spend-currency"],
+    ["This cape costs 30 stars", "costs-currency"],
+    ["Get it for 50 stars", "get-for-currency"],
     ["Visit the coin shop", "currency-shop"],
     ["Gacha time!", "gacha"],
     ["Open the loot box", "loot"],
@@ -134,7 +155,7 @@ describe("no economy vocabulary in kid surfaces (kidmode + playbank + practice)"
   it("the scan scope actually exists (a move must not silently empty the scan)", () => {
     expect(SCAN_FILES.length).toBeGreaterThanOrEqual(30);
     const names = SCAN_FILES.map((f) => path.basename(f));
-    for (const anchor of ["KidDashboard.tsx", "content.ts", "HeroArcade.tsx"]) {
+    for (const anchor of ["KidDashboard.tsx", "content.ts", "HeroArcade.tsx", "playkit.tsx", "ArborMascot.tsx", "HeroAvatar.tsx"]) {
       expect(names, `expected ${anchor} in scan scope`).toContain(anchor);
     }
   });

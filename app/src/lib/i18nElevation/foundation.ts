@@ -32,8 +32,12 @@ export const en: Record<string, string> = {
   "elev.pulse.growth.noticed": "{count} of {total} milestones noticed",
   "elev.pulse.growth.empty": "The first milestone is waiting",
 
-  // ── Academy (no live per-course state in context yet — honest standing line)
-  "elev.pulse.academy.empty": "Short, practical guidance — ready when you are",
+  // ── Practice / Stories / Learn (Heartwood D2+D3 hubs — no per-hub state in
+  //    context yet; honest standing lines. Learn inherits the former Academy
+  //    line: the parent-learning half of the D2 Academy split.)
+  "elev.pulse.practice.empty": "Short, playful practice — a few minutes counts",
+  "elev.pulse.stories.empty": "Stories with {name} as the hero",
+  "elev.pulse.learn.empty": "Short, practical guidance — ready when you are",
 
   // ── Ask Arbor
   "elev.pulse.ask.review": "{count} notes awaiting your review",
@@ -72,7 +76,9 @@ export const he: Record<string, string> = {
   "elev.pulse.growth.noticed": "שמתם לב ל‑{count} מתוך {total} אבני דרך",
   "elev.pulse.growth.empty": "אבן הדרך הראשונה מחכה לכם",
 
-  "elev.pulse.academy.empty": "ידע קצר ומעשי — מוכן כשנוח לכם",
+  "elev.pulse.practice.empty": "תרגול משחקי קצר — גם כמה דקות שוות",
+  "elev.pulse.stories.empty": "סיפורים שבהם {name} הגיבור",
+  "elev.pulse.learn.empty": "ידע קצר ומעשי — מוכן כשנוח לכם",
 
   "elev.pulse.ask.review": "{count} עדכונים ממתינים לאישור שלכם",
   "elev.pulse.ask.reviewOne": "עדכון אחד ממתין לאישור שלכם",
