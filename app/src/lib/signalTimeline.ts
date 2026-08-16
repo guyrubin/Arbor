@@ -181,6 +181,34 @@ export interface TimelineSources {
   heroRuns?: HeroJourneyRun[];
 }
 
+/**
+ * Heartwood Law 3 — the runtime registry of buildTimeline ingest sources.
+ * `SignalSource` is exactly `keyof TimelineSources`; the mapped-object shape
+ * below forces the runtime array to list EVERY source key (add a source to the
+ * interface and this object fails to compile until it is registered here).
+ * surfaceContract.ts SC-4 imports this so a contract's `threadWrite` resolves
+ * against the REAL ingest list, never a strings-only copy. Pure addition —
+ * nothing in this module reads it.
+ */
+export type SignalSource = keyof TimelineSources;
+
+const TIMELINE_SOURCE_ID_MAP: { [K in keyof Required<TimelineSources>]: true } = {
+  behaviorLogs: true,
+  milestones: true,
+  plans: true,
+  memory: true,
+  conversations: true,
+  play: true,
+  practiceEvents: true,
+  speechAttempts: true,
+  mimicSessions: true,
+  adventureResults: true,
+  missionRecords: true,
+  heroRuns: true,
+};
+
+export const TIMELINE_SOURCE_IDS = Object.keys(TIMELINE_SOURCE_ID_MAP) as readonly SignalSource[];
+
 const DAY = 24 * 60 * 60 * 1000;
 
 const planStepDone = (s: { completed: boolean; status?: string }) => s.completed || s.status === "done";
