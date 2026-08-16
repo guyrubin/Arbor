@@ -347,6 +347,7 @@ describe("KID-1 register separation: kid.* i18n keys never referenced outside ki
   const ALLOWED = [
     path.join(SRC_ROOT, "components", "kidmode") + path.sep, // the kid register itself
     path.join(SRC_ROOT, "lib", "i18n.ts"), // the dictionaries
+    path.join(SRC_ROOT, "lib", "comicCopyFirewall.test.ts"), // the kid-copy firewall scanner — must name the kid.* namespace to scan it
   ];
 
   function walk(dir: string, out: string[] = []): string[] {
