@@ -2,16 +2,18 @@ import { describe, it, expect } from "vitest";
 import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection } from "./navigation";
 import { ALL_TABS } from "../context/ArborContext";
 
-/** Structural guard for the UC-1 EIGHT-category information architecture —
- *  aligned to the "Arbor Web App" prototype: Today / Behaviors / Growth /
- *  Journal / Academy / Ask Arbor / Care Network / Profile. Catches accidental
- *  drift: wrong section count, duplicate/colliding tabs, empty sections, a
- *  primary tab that doesn't belong, or a leaf that no longer resolves. */
+/** Structural guard for the Heartwood D2+D3 TEN-hub information architecture —
+ *  Today / Journal / Ask Arbor / Behaviors / Growth / Practice / Stories /
+ *  Learn / Care Network / Profile. (D2 split the former Academy into Stories +
+ *  Learn along the register seam; D3 promoted Practice to a depth-0 hub and
+ *  re-homed the Weekly Report to Today.) Catches accidental drift: wrong
+ *  section count, duplicate/colliding tabs, empty sections, a primary tab that
+ *  doesn't belong, or a leaf that no longer resolves. */
 describe("navigation IA", () => {
-  it("exposes exactly eight task-based categories", () => {
-    expect(SECTIONS).toHaveLength(8);
+  it("exposes exactly ten task-based categories in the Heartwood order", () => {
+    expect(SECTIONS).toHaveLength(10);
     expect(SECTIONS.map((s) => s.id)).toEqual([
-      "today", "behaviors", "growth", "journal", "academy", "ask", "care", "profile",
+      "today", "journal", "ask", "behaviors", "growth", "practice", "stories", "learn", "care", "profile",
     ]);
   });
 
@@ -19,6 +21,37 @@ describe("navigation IA", () => {
     const growth = SECTIONS.find((s) => s.id === "growth");
     const tabs = growth?.items.map((i) => i.tab) ?? [];
     expect(tabs).toEqual(["development", "milestones", "language", "daily-play"]);
+  });
+
+  // Heartwood D3: Practice is its own depth-0 hub — the launcher leads and the
+  // five standalone drill routes are its tools. The Practice pill must be GONE
+  // from Growth's tools (promoted, not duplicated); Copilot stays Growth canon.
+  it("Practice is a depth-0 hub owning the drill suite; Growth no longer carries the pill", () => {
+    const practice = SECTIONS.find((s) => s.id === "practice");
+    expect(practice?.items.map((i) => i.tab)).toEqual(["practice"]);
+    expect(practice?.tools.map((i) => i.tab)).toEqual(
+      ["speech", "mimic", "feelings", "journey", "adventures"],
+    );
+    const growth = SECTIONS.find((s) => s.id === "growth");
+    expect(growth?.tools.some((i) => i.tab === "practice")).toBe(false);
+    expect(sectionForTab("copilot").id).toBe("growth"); // canon: copilot stays Growth
+  });
+
+  // Heartwood D2: the Academy split along the register seam — Stories is the
+  // child-starring half, Learn the parent-learning half (hub = Masterclasses).
+  it("Stories hub leads with Story Journeys and carries bedtime + comics", () => {
+    const stories = SECTIONS.find((s) => s.id === "stories");
+    expect(stories && primaryTabOf(stories)).toBe("stories");
+    expect(stories?.tools.map((i) => i.tab)).toEqual(["bedtime-stories", "comics"]);
+    expect(sectionForTab("comics").id).toBe("stories");
+  });
+
+  it("Learn hub leads with Masterclasses, keeps the Library, carries Family Formation", () => {
+    const learn = SECTIONS.find((s) => s.id === "learn");
+    expect(learn && primaryTabOf(learn)).toBe("masterclasses");
+    expect(learn?.items.map((i) => i.tab)).toEqual(["masterclasses", "learn"]);
+    expect(learn?.tools.map((i) => i.tab)).toEqual(["family"]);
+    expect(sectionForTab("family").id).toBe("learn");
   });
 
   // Journal + Story render the SAME buildTimeline stream, so they are two
@@ -158,12 +191,16 @@ describe("navigation IA", () => {
 
   it("demoted leaves still resolve to a section via fallback (nothing deleted)", () => {
     expect(sectionForTab("copilot").id).toBe("growth");   // → Development hub
-    expect(sectionForTab("journey").id).toBe("growth");
     expect(sectionForTab("screening").id).toBe("growth");
     expect(sectionForTab("strengths").id).toBe("growth");
-    expect(sectionForTab("speech").id).toBe("growth");      // → Practice hub
-    expect(sectionForTab("adventures").id).toBe("growth");
-    expect(sectionForTab("weekly").id).toBe("profile");
+    // Heartwood D3: the drill routes resolve to the promoted Practice hub.
+    expect(sectionForTab("journey").id).toBe("practice");
+    expect(sectionForTab("speech").id).toBe("practice");
+    expect(sectionForTab("mimic").id).toBe("practice");
+    expect(sectionForTab("feelings").id).toBe("practice");
+    expect(sectionForTab("adventures").id).toBe("practice");
+    // Heartwood D3: Weekly Report re-homed from Profile to Today.
+    expect(sectionForTab("weekly").id).toBe("today");
     expect(sectionForTab("scholar").id).toBe("ask");
     expect(sectionForTab("reports").id).toBe("care");       // → Consult
     expect(sectionForTab("find-pro").id).toBe("care");
@@ -175,7 +212,7 @@ describe("navigation IA", () => {
 
   // UC-1 capability-floor enforcer: EVERY ActiveTab value (the full route
   // registry) must resolve to a section so the sidebar always highlights and no
-  // leaf is orphaned. This is the 45-route floor guard.
+  // leaf is orphaned. This is the 43-route floor guard.
   it("sectionForTab resolves for EVERY ActiveTab value (no orphaned route)", () => {
     for (const tab of ALL_TABS) {
       const sec = sectionForTab(tab);

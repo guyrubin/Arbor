@@ -58,8 +58,19 @@ describe("hash aliases", () => {
     for (const s of SECTIONS) {
       const resolved = resolveRouteId(s.id);
       expect(resolved, `section hub "${s.id}" is not reachable by hash`).toBeTruthy();
-      // and it lands on that hub's own primary surface
-      expect(resolved).toBe(primaryTabOf(s));
+      if ((ROUTE_IDS as readonly string[]).includes(s.id)) {
+        // Route ids are canon and always win over aliases, so a section whose
+        // id IS a route (journal, behaviors, profile, practice, stories, learn)
+        // resolves to that route — which must be one of the section's OWN
+        // surfaces (Heartwood D2: #/learn is the Learn hub's Library leaf even
+        // though the hub button opens Masterclasses).
+        expect(resolved).toBe(s.id);
+        const owned = new Set([...s.items, ...s.tools].map((i) => i.tab));
+        expect(owned.has(resolved!), `route "${resolved}" is not owned by section "${s.id}"`).toBe(true);
+      } else {
+        // and an aliased section id lands on that hub's own primary surface
+        expect(resolved).toBe(primaryTabOf(s));
+      }
     }
   });
 

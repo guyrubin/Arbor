@@ -4,23 +4,26 @@ import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
 import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
-import { usePulses, type HubId } from "../../lib/pulse";
+import { usePulses } from "../../lib/pulse";
 import { requestOpenSearch } from "../search/SearchModal";
 
 /**
- * Bottom tab bar shown on mobile and tablet (< lg). The UC-1 IA has EIGHT categories, which
- * don't fit a mobile bar — so the first four show as tabs and a fifth "More"
- * entry opens a sheet exposing EVERY remaining category (no route is lost).
+ * Bottom tab bar shown on mobile and tablet (< lg). The Heartwood IA has TEN
+ * categories, which don't fit a mobile bar — so the first four show as tabs and
+ * a fifth "More" entry opens a sheet exposing EVERY remaining category as
+ * NAVIGATION rows (no route is lost; never a tools grid).
  */
 // Mobile is job-prioritized rather than a slice of the desktop IA. Ask Arbor is
-// a frequent in-the-moment parent action; Behaviors remains one tap away in More.
-const PRIMARY_SECTION_IDS = ["today", "growth", "ask", "journal"] as const;
+// a frequent in-the-moment parent action; Behaviors remains one tap away in
+// More. Heartwood D5 slot order: the three primary jobs lead (Today · Journal ·
+// Ask), Growth fourth, More last.
+const PRIMARY_SECTION_IDS = ["today", "journal", "ask", "growth"] as const;
 
-// W2.7 nav de-overload (anti-overload, EMPHASIS ONLY — zero regression): the
-// three primary jobs (Today / Ask / Journal) carry more visual weight; the
-// remaining tab (Growth) and More render quieter via size/opacity tokens.
-// NO tab is removed and NO order changes — full IA reduction stays with the
-// IA canon (recorded as a canon follow-up in the 2026-08-11 masterplan §2.7).
+// W2.7 nav de-overload (anti-overload, EMPHASIS ONLY): the three primary jobs
+// (Today / Journal / Ask) carry more visual weight; the remaining tab (Growth)
+// and More render quieter via size/opacity tokens. NO tab is removed — the
+// Heartwood D5 pass reordered the slots to match the emphasis set (the W2.7
+// canon follow-up from the 2026-08-11 masterplan §2.7, now ratified).
 const EMPHASIZED_SECTION_IDS = new Set<string>(["today", "ask", "journal"]);
 
 export default function MobileNav() {
@@ -130,7 +133,9 @@ export default function MobileNav() {
                 const on = sec.id === activeSectionId;
                 // E1 living pulse — informational line under the label (counts/
                 // activity only; firewall lives in usePulses). Hidden when empty.
-                const pulse = pulses[sec.id as HubId];
+                // No cast: NavSection.id IS HubId, so a hub without a pulse
+                // entry is a compile error, not a silently empty row.
+                const pulse = pulses[sec.id];
                 const pulseText = pulse ? t(pulse.key, pulse.params) : "";
                 return (
                   <button
