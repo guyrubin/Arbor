@@ -46,6 +46,13 @@ export type ArborConfig = {
   memoryPromptMaxFacts: number;
   /** MON-2: shared secret RevenueCat sends as the webhook Authorization header. */
   revenueCatWebhookAuth?: string;
+  /** STORE-4: RevenueCat SECRET API key (server-only) used to delete the
+   *  subscriber record on account deletion. When unset, that deletion class is
+   *  honestly reported as skipped — never silently claimed done. */
+  revenuecatSecretApiKey?: string;
+  /** STORE-4: Firebase Storage bucket holding user uploads
+   *  (users/{uid}/children/{childId}/photos/*) — swept on account deletion. */
+  storageBucket?: string;
   /** MON-2: RevenueCat Web Purchase Link base (`https://pay.rev.cat/<token>`). When
    *  set, the uid is appended as a path segment and the plan via `?package_id`. */
   billingWebPurchaseLink?: string;
@@ -153,6 +160,12 @@ export const loadConfig = (): ArborConfig => {
     maxOutputTokens: Number(process.env.MAX_OUTPUT_TOKENS || 8192),
     memoryPromptMaxFacts: Number(process.env.MEMORY_PROMPT_MAX_FACTS || 40),
     revenueCatWebhookAuth: process.env.REVENUECAT_WEBHOOK_AUTH,
+    revenuecatSecretApiKey: process.env.REVENUECAT_SECRET_API_KEY,
+    storageBucket:
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      ((process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT_ID)
+        ? `${process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT_ID}.firebasestorage.app`
+        : undefined),
     billingWebPurchaseLink: process.env.BILLING_WEB_PURCHASE_LINK,
     billingCheckoutUrls: {
       ...(process.env.BILLING_URL_PLUS_MONTHLY ? { plus_monthly: process.env.BILLING_URL_PLUS_MONTHLY } : {}),
