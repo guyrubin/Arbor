@@ -14,7 +14,9 @@ name: iOS build
 on:
   workflow_dispatch:
   push:
-    branches: [ main, exec-blueprint-wave0 ]
+    # claude/store-2-native-iap: branch verification for the native IAP work —
+    # drop from this list once STORE-2 merges.
+    branches: [ main, exec-blueprint-wave0, claude/store-2-native-iap ]
     paths:
       - 'app/**'
       - '.github/workflows/ios.yml'
@@ -37,6 +39,10 @@ jobs:
       VITE_FIREBASE_STORAGE_BUCKET: arborprd-westeu.firebasestorage.app
       VITE_FIREBASE_MESSAGING_SENDER_ID: '628681500167'
       VITE_FIREBASE_APP_ID: '1:628681500167:web:f78b93f5f692e174d2aca2'
+      # STORE-2: RevenueCat PUBLIC (publishable) SDK key for StoreKit.
+      # Set the repo VARIABLE RC_API_KEY_IOS to enable native purchases;
+      # while empty, purchase surfaces show the neutral "coming soon" copy.
+      VITE_RC_API_KEY_IOS: ${{ vars.RC_API_KEY_IOS || '' }}
       # Apple App Store Connect API key (set as repo secrets to enable signed upload)
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -58,6 +64,8 @@ jobs:
       - run: npm ci
       - name: Build web bundle
         run: npm run build
+      - name: Native checkout scan (STORE-2 G3 — no hosted-checkout URLs in the bundle)
+        run: node scripts/native-checkout-scan.mjs
       - name: Sync Capacitor (iOS)
         run: npx cap sync ios
       - name: Set unique build number (CFBundleVersion)

@@ -82,6 +82,26 @@ Both build the web bundle, `npx cap sync`, then the native build. The Firebase `
 
   **One-time Apple setup you do (account actions I can't):** enroll in the **Apple Developer Program** ($99/yr) → in **App Store Connect → Users and Access → Integrations**, create an **API key** (App Manager role) and download the `.p8` → create the **app record** (with the bundle id above). Once the secrets are set, every push (or a manual "iOS build" run) ships a new TestFlight build; promote to the App Store from App Store Connect. Until the secrets exist, the workflow still does an unsigned compile so the project stays verified green.
 
+## Native in-app purchases (STORE-2)
+
+Native builds sell subscriptions through **StoreKit / Play Billing via the
+RevenueCat Capacitor SDK** — the web checkout and Stripe portal are unreachable
+inside the binaries (Apple 3.1.1 / Play Payments; enforced by
+`src/lib/storeCheckoutGuard.test.ts` + `scripts/native-checkout-scan.mjs` in CI).
+All purchase surfaces route through `useCheckout` → `src/lib/checkoutActions.ts`
+(the ONE platform gate) → `src/lib/nativeBilling.ts`.
+
+To enable purchases in native builds, set repo **variables** (public,
+publishable keys — not secrets): `RC_API_KEY_IOS`, `RC_API_KEY_ANDROID`
+(RevenueCat project `arbor` → platform apps). While unset, purchase CTAs show
+the neutral "checkout isn't live yet" copy. The store products must carry the
+same four package ids as the web offering: `plus_monthly`, `plus_annual`,
+`family_monthly`, `family_annual` (offering `default`). Native purchase events
+land on the SAME RevenueCat webhook → `entitlements/{uid}`; the RC App User ID
+is kept equal to the Firebase uid by `syncNativeBillingUser` (AuthContext).
+Restore Purchases (Apple-required) renders on native only, in the Settings plan
+panel and the paywall footer.
+
 ## Native runtime config
 
 - `capacitor.config.ts` — app id/name, splash, status bar (dark icons on the light
