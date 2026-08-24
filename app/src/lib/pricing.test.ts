@@ -72,11 +72,15 @@ describe("both upgrade surfaces show the price before checkout (CARE-5)", () => 
     expect(planPrices.match(/#[0-9a-fA-F]{3,6}\b/g) ?? []).toEqual([]);
   });
 
-  it("the checkout-unavailable toast is info, never success (both call sites)", () => {
+  it("the checkout-unavailable toast is info, never success (single gate since STORE-2)", () => {
+    // STORE-2 consolidated the Settings plan panel's duplicate inline checkout
+    // into the ONE platform-gated hook, so the CARE-5 toast now has exactly one
+    // home. Both surfaces must reach it through the hook — no inline re-impl.
     expect(checkout).toMatch(/t\("set\.plan\.checkoutSoon"\), "info"\)/);
     expect(checkout).not.toMatch(/checkoutSoon"\), "success"/);
-    expect(settings).toMatch(/t\("set\.plan\.checkoutSoon"\), "info"\)/);
+    expect(settings).toMatch(/useCheckout\(\)/);
     expect(settings).not.toMatch(/checkoutSoon"\), "success"/);
+    expect(paywall).toMatch(/useCheckout\(\)/);
   });
 });
 

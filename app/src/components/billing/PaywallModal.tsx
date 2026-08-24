@@ -20,7 +20,7 @@ export default function PaywallModal() {
   const { t, uiLang } = useLanguage();
   // 3.6 free-vs-Plus clarity strings (see import note above).
   const pc = (k: string) => (uiLang === "he" ? planclarity.he : planclarity.en)[`elev.plan.${k}`] ?? "";
-  const { busy, startCheckout } = useCheckout();
+  const { busy, startCheckout, restorePurchases, isNative } = useCheckout();
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
 
   // Feature-specific body copy keeps the pitch relevant to what they just hit.
@@ -87,9 +87,17 @@ export default function PaywallModal() {
           </button>
         </div>
 
-        <button onClick={closePaywall} className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
-          {t("pw.maybeLater")}
-        </button>
+        <div className="flex items-center gap-4">
+          <button onClick={closePaywall} className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
+            {t("pw.maybeLater")}
+          </button>
+          {/* STORE-2: Apple-required Restore Purchases — native builds ONLY. */}
+          {isNative && (
+            <button onClick={() => void restorePurchases()} disabled={busy} className="text-xs font-semibold disabled:opacity-50" style={{ color: "var(--arbor-muted)" }}>
+              {t("set.plan.restore")}
+            </button>
+          )}
+        </div>
       </div>
     </Modal>
   );

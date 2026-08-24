@@ -1,28 +1,43 @@
 import { useState } from "react";
-import { api } from "../lib/api";
 import { useToast } from "../context/ToastContext";
 import { useLanguage } from "../context/LanguageContext";
+import { isNativePlatform } from "../lib/runtime";
+import {
+  defaultDeps,
+  performCheckout,
+  performOpenPortal,
+  performRestore,
+  type PaidPlan,
+  type Cadence,
+} from "../lib/checkoutActions";
 
 /**
- * MON-2: shared checkout/manage actions used by both the Account panel and the
- * paywall. Starts a hosted checkout (RevenueCat Web Billing / Stripe link) or
- * opens the self-service portal; falls back to a friendly toast when billing
- * links aren't configured yet (pre-launch).
+ * MON-2 / STORE-2: shared checkout/manage/restore actions used by both the
+ * Account panel and the paywall — the ONLY React entry to billing actions.
+ * The platform gate lives in lib/checkoutActions.ts: web → hosted checkout /
+ * self-service portal; native → RevenueCat StoreKit/Play purchase sheet and
+ * the platform's own subscription management (the web checkout is unreachable
+ * inside the native binary — Apple 3.1.1 / Play Payments).
+ *
+ * Any new purchase surface MUST call this hook; storeCheckoutGuard.test.ts
+ * fails the build on any other caller of the billing checkout/portal API.
  */
 export function useCheckout() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const [busy, setBusy] = useState(false);
 
-  const startCheckout = async (plan: "plus" | "family", cadence: "monthly" | "annual") => {
+  const startCheckout = async (plan: PaidPlan, cadence: Cadence) => {
     if (busy) return;
     setBusy(true);
     try {
-      const { url } = await api.billingCheckout(plan, cadence);
-      window.location.href = url;
-    } catch {
-      // CARE-5: checkout being unavailable is information, not a success.
-      toast(t("set.plan.checkoutSoon"), "info");
+      const result = await performCheckout(defaultDeps(), plan, cadence);
+      // "redirected"/"purchased" need no toast (page navigates / plan updates);
+      // "cancelled" is the parent closing the native sheet — silent by design.
+      if (result === "unavailable" || result === "error") {
+        // CARE-5: checkout being unavailable is information, not a success.
+        toast(t("set.plan.checkoutSoon"), "info");
+      }
     } finally {
       setBusy(false);
     }
@@ -32,15 +47,26 @@ export function useCheckout() {
     if (busy) return;
     setBusy(true);
     try {
-      const { url } = await api.billingPortal();
-      if (url) window.location.href = url;
-      else toast(t("set.plan.manageStore"), "success");
-    } catch {
-      toast(t("set.plan.manageStore"), "success");
+      const result = await performOpenPortal(defaultDeps());
+      if (result === "unavailable") toast(t("set.plan.manageStore"), "success");
     } finally {
       setBusy(false);
     }
   };
 
-  return { busy, startCheckout, openPortal };
+  /** Apple-required Restore Purchases — render its control on native only
+   *  (`isNative` below); performRestore is a no-op on web. */
+  const restorePurchases = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await performRestore(defaultDeps());
+      if (result === "restored") toast(t("set.plan.restoreDone"), "success");
+      else toast(t("set.plan.checkoutSoon"), "info");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return { busy, startCheckout, openPortal, restorePurchases, isNative: isNativePlatform };
 }
