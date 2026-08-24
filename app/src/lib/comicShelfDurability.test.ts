@@ -181,6 +181,7 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
       "lib/heroComics.ts", // read/write-through for page art
       "lib/childData.ts", // GDPR erase purge
       "context/AuthContext.tsx", // sign-out purge
+      "components/layout/DeleteAccountModal.tsx", // STORE-4 account-deletion purge (erase path, not upload)
       "components/tabs/ComicsTab.tsx", // doc comment only (consumes via heroComics)
     ]);
     const offenders: string[] = [];

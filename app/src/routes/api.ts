@@ -20,6 +20,7 @@ import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type } from "@google/genai";
 import { createRedaction, REDACTION_DIRECTIVE, type RedactionContext } from "../server/redaction.js";
+import { runAccountDeletion, createFirestoreDeletionOps } from "../server/accountDeletion.js";
 import { screenModelOutput, screenModelOutputLexical, renderBlockedOutputMarkdown, outputClassifierEnabled, type OutputScreenVerdict } from "../safety/outputScreen.js";
 import { SENTENCE_BOUNDARY_SCAN } from "../lib/sentenceStream.js";
 import { createJsonTextFieldExtractor } from "../server/jsonTextStream.js";
@@ -2768,6 +2769,45 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
     } catch (error: any) {
       logger.error("Arbor Privacy Erasure Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to erase server-side data", details: error.message });
+    }
+  });
+
+  // STORE-4 (Apple 5.1.1(v) / Play account-deletion / GDPR Art. 17): FULL account
+  // deletion — every server-held record keyed to the uid (entitlements, referral,
+  // push tokens, quota windows, consult requests, waitlist, shares, per-child
+  // data, families, the users/{uid} tree, Storage uploads, the RevenueCat
+  // subscriber) and finally the Firebase Auth user. The receipt is honest:
+  // per-class counts + failures; any failure ⇒ complete:false and the Auth user
+  // survives so the parent can retry (never an orphaned, unreachable dataset).
+  router.post("/account/delete", async (req, res) => {
+    const { uid, email } = actorOf(req);
+    if (req.body?.confirm !== "DELETE") {
+      res.status(400).json({ error: "confirm: \"DELETE\" is required" });
+      return;
+    }
+    // Sandbox/local mode holds no server data — the client wipes local stores.
+    if (config.memoryAdapter !== "firestore" || uid === "local-sandbox") {
+      res.json({ uid, complete: true, authDeleted: false, receiptAt: new Date().toISOString(), classes: [], mode: "local" });
+      return;
+    }
+    try {
+      const ops = createFirestoreDeletionOps(config, {
+        memoryEraseChild: (childId) => memoryStore.eraseChild(childId),
+        consentEraseByChild: (childId) => consentStore.eraseByChild(childId),
+        shareEraseByChild: (ownerUid, childId) => shareStore.eraseByChild(ownerUid, childId),
+        pushTokensRemove: (u) => pushTokenStore.remove(u),
+      });
+      const receipt = await runAccountDeletion(ops, uid, email);
+      logger.info("Account deletion executed", {
+        requestId: requestIdOf(req),
+        complete: receipt.complete,
+        authDeleted: receipt.authDeleted,
+        failedClasses: receipt.classes.filter((c) => c.failed > 0).map((c) => c.class),
+      });
+      res.json(receipt);
+    } catch (error: any) {
+      logger.error("Arbor Account Deletion Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Account deletion failed", details: error.message });
     }
   });
 

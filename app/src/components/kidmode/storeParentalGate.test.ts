@@ -92,6 +92,11 @@ describe("source contracts — no purchase reachable via the math-fallback path"
     expect(portalBody).toMatch(/commerceAllowed\(\)/);
   });
 
+  it("account deletion (destructive) is behind the same math-exit gate", () => {
+    const modal = src("components", "layout", "DeleteAccountModal.tsx");
+    expect(modal).toMatch(/commerceAllowed\(\)/);
+  });
+
   it("the challenge card marks a math exit and verifies PIN via the gate module", () => {
     const card = src("components", "kidmode", "ParentChallenge.tsx");
     expect(card).toMatch(/markMathExit\(\)/);

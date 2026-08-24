@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
 import ParentalGatePanel from "./ParentalGatePanel";
+import DeleteAccountModal from "./DeleteAccountModal";
 import InviteCard from "../referral/InviteCard";
 import { PlanPrices } from "../billing/PlanPrices";
 import { PlanBadge } from "../ui/PlanBadge";
@@ -29,6 +30,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const coachLimit = entitlement.limits.coachMessagesPerDay;
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
   const [adminOpen, setAdminOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   // STORE-2: all checkout/manage/restore actions go through the ONE platform-
   // gated hook — no inline `/api/billing/*` calls in this file (guard-tested).
   const { busy, startCheckout, openPortal, restorePurchases, isNative } = useCheckout();
@@ -369,11 +371,17 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 <Icon name="logout" size={16} /> {t("set.signOut")}
               </button>
             </div>
+            {/* STORE-4: full account deletion (Apple 5.1.1(v) / Play / GDPR
+                Art. 17) — quiet entry, heavy type-to-confirm inside the modal. */}
+            <button onClick={() => setDeleteOpen(true)} className="mt-3 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
+              {t("set.acctDel.open")}
+            </button>
           </div>
         )}
       </div>
     </Modal>
     {entitlement.isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} />}
+    <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} />
     </>
   );
 }

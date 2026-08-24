@@ -303,6 +303,10 @@ export const api = {
     get<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`),
   privacyErase: (childId: string) =>
     post<{ erased: { memoryEvents: number; shares: number; consents?: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
+  // STORE-4: FULL account deletion (Apple 5.1.1(v) / Play / GDPR Art. 17) — the
+  // per-class receipt is honest: any failure ⇒ complete:false, account survives
+  // for retry. Client wipes device-local stores only after a complete receipt.
+  accountDelete: () => post<AccountDeletionReceipt>("/api/account/delete", { confirm: "DELETE" }),
   // MON-3 v1: durable consultation request (email-based transaction).
   requestConsult: (payload: { professionalId: string; childId?: string; note?: string; preferredMode?: string }) =>
     post<{ request: { id: string; professionalName: string; status: string; createdAt: string }; mailto: string | null }>("/api/consult-requests", payload),
@@ -318,6 +322,16 @@ export const api = {
 };
 
 /** mk-p0-2: GET /api/referral/code response. `code`/`link` are null when anon. */
+// STORE-4: honest per-class account-deletion receipt (see server/accountDeletion.ts).
+export type AccountDeletionReceipt = {
+  uid: string;
+  complete: boolean;
+  authDeleted: boolean;
+  receiptAt: string;
+  classes: Array<{ class: string; attempted: boolean; deleted: number; failed: number; error?: string; note?: string }>;
+  mode?: "local";
+};
+
 export type ReferralCodeInfo = {
   code: string | null;
   link: string | null;
