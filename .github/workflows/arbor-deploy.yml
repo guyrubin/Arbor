@@ -131,7 +131,12 @@ jobs:
   promote:
     needs: deploy-candidate
     runs-on: ubuntu-latest
-    # environment: production   # ← uncomment this line for manual-approve mode
+    # WS-0.0 DEPLOY-GATE (armed 2026-08-24): every merge to main is a 100% prod
+    # deploy, so promotion now pauses for a human approval in the Actions tab.
+    # Requires a Required Reviewer on the `production` Environment in repo
+    # Settings → Environments (Guy) — without one, the environment reference
+    # alone does not pause.
+    environment: production
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
     steps:
