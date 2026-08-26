@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
-import { ContentActionBar } from "../ui/ContentActionBar";
+import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
+import { TrustLink } from "../trust/TrustLink";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity, type PlayActivity } from "../../playbank/content";
 import { localizeCourse, courseActivities, courseProgress, type PlayCourse } from "../../playbank/courses";
@@ -22,12 +23,20 @@ export default function CourseCard({
   completedIds,
   onToggle,
   onCoach,
+  why,
 }: {
   course: PlayCourse;
   childName: string;
   completedIds: string[];
   onToggle: (activityId: string) => void;
   onCoach: (activity: PlayActivity) => void;
+  /** Masterplan 3.1 why-line (honesty gate): the caller passes `why` ONLY when
+   *  an honest per-child rationale exists — i.e. the course's domain is among
+   *  the child's logged concern domains. Parent-chosen readiness tracks and the
+   *  no-signal fallback omit it, and the card then mounts the bare TrustLink so
+   *  the why → Trust Center chain is still present without a fabricated
+   *  rationale. */
+  why?: string;
 }) {
   const { t, uiLang } = useLanguage();
   const loc = localizeCourse(course, uiLang);
@@ -56,6 +65,16 @@ export default function CourseCard({
           <span className="text-[12px] font-bold flex-shrink-0" style={{ color: MUTED }}>
             {t("course.progress", { done: progress.done, total: progress.total })}
           </span>
+        </div>
+
+        {/* Masterplan 3.1: the why-line's Trust-Center chain, below the bar on
+            its own quiet row (never competing with the per-activity actions).
+            With an honest per-child `why` it renders through the shared slot
+            (trustLink ON); without one, the bare TrustLink keeps the chain. */}
+        <div className="mt-3">
+          {why
+            ? <ContentWhyLine why={why} trustLink surface="course-card" />
+            : <TrustLink surface="course-card" />}
         </div>
 
         {progress.complete && (

@@ -74,6 +74,9 @@ const SURFACES: [string, RegExp, string][] = [
   // Coach answer cards — the highest-trust-stakes surface; the chip rides the
   // attribution row, beside the "why this might be happening" disclosure.
   ["components/coach/CoachAnswerCards.tsx", /t\("coach\.cards\.why"\)/, "coach-answer"],
+  // N3: CourseCard — TodayRecommendation pattern: optional caller-owned `why`
+  // (honesty gate lives in DailyPlayTab), bare TrustLink when it is omitted.
+  ["components/overview/CourseCard.tsx", /\bwhy\?:\s*string/, "course-card"],
 ];
 
 describe("3.1 — every recommendation why-line reaches the Trust Center", () => {
@@ -101,6 +104,31 @@ describe("3.1 — every recommendation why-line reaches the Trust Center", () =>
 
   it("ScholarHub's reader overlay carries the chain too", () => {
     expect(read("components/sections/ScholarHubCard.tsx")).toMatch(mount("scholar-hub-reader"));
+  });
+});
+
+/* ── N3: CourseCard honesty gate ────────────────────────────────────────────
+   A course why-line may render ONLY where an honest per-child rationale exists:
+   the course's domain came from the child's logged concern domains. Parent-
+   chosen readiness tracks and the no-signal fallback get the bare TrustLink —
+   a fabricated rationale must never appear. */
+describe("N3 — CourseCard why-line is honesty-gated", () => {
+  it("CourseCard routes a caller-supplied why through the shared slot with trustLink ON", () => {
+    expect(read("components/overview/CourseCard.tsx")).toMatch(WHY_SLOT_WITH_TRUST);
+  });
+
+  it("DailyPlayTab gates the recommended course's why on the logged concern domains", () => {
+    const src = read("components/tabs/DailyPlayTab.tsx");
+    // The why prop must be conditioned on concernDomains.includes(course.domain)
+    // and resolve through the course.why i18n key (plain observed factors).
+    expect(src).toMatch(/why=\{concernDomains\.includes\(course\.domain\)[\s\S]{0,200}?t\("course\.why"/);
+  });
+
+  it("the parent-chosen readiness course mounts NO why (bare TrustLink chain only)", () => {
+    const src = read("components/tabs/DailyPlayTab.tsx");
+    const readinessMount = src.match(/<CourseCard\s+course=\{readinessCourse\}[\s\S]*?\/>/);
+    expect(readinessMount).not.toBeNull();
+    expect(readinessMount![0]).not.toMatch(/\bwhy=/);
   });
 });
 

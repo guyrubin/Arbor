@@ -300,6 +300,13 @@ export default function DailyPlayTab() {
           completedIds={doneFor(course.id)}
           onToggle={toggleFor(course.id)}
           onCoach={coachActivity}
+          // Honesty gate (masterplan 3.1): a per-child rationale exists ONLY
+          // when the course's domain actually came from the child's logged
+          // concern domains — recommendCourse's no-signal fallback fails this
+          // check and the card then mounts the bare TrustLink instead.
+          why={concernDomains.includes(course.domain)
+            ? t("course.why", { area: playDomainLabel(course.domain, uiLang), name: firstName })
+            : undefined}
         />
       </div>
 

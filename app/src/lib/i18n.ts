@@ -285,6 +285,7 @@ export const en: Dict = {
   "course.progress": "{done} of {total} done",
   "course.next": "Up next",
   "course.complete": "Course complete — nicely done.",
+  "course.why": "Picked because {area} has come up for {name} lately.",
   // hub facet labels
   "hub.now": "Now",
   "hub.milestones": "Milestones",
@@ -2757,6 +2758,7 @@ export const he: Dict = {
   "course.progress": "{done} מתוך {total} הושלמו",
   "course.next": "הבא בתור",
   "course.complete": "המסלול הושלם — כל הכבוד.",
+  "course.why": "נבחר כי {area} עלה אצל {name} לאחרונה.",
   // hub facet labels
   "hub.now": "עכשיו",
   "hub.milestones": "אבני דרך",
