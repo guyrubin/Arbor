@@ -16,6 +16,7 @@ import ScreeningSheet from "../sections/ScreeningSheet";
 import { SpineRibbon } from "../ui/SpineRibbon";
 import { DOMAIN_META } from "../../practice/content";
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
+import { fmtDay } from "../../lib/formatDate";
 
 /** Masterplan 1.7 — module-local string resolution for the Full Picture entry
  *  card (same recipe as Screening.tsx × screeningcalm: i18nElevation/index.ts
@@ -116,18 +117,18 @@ export default function DevelopmentTab() {
         at: new Date(log.timestamp).getTime(),
         icon: "chat_bubble",
         title: log.behaviorType,
-        meta: [log.context, new Date(log.timestamp).toLocaleDateString()].filter(Boolean).join(" · "),
+        meta: [log.context, fmtDay(log.timestamp, uiLang)].filter(Boolean).join(" · "),
       })),
       ...playLogs.map((log) => ({
         id: `play-${log.id}`,
         at: new Date(log.timestamp).getTime(),
         icon: "toys",
         title: log.title,
-        meta: new Date(log.timestamp).toLocaleDateString(),
+        meta: fmtDay(log.timestamp, uiLang),
       })),
     ];
     return moments.sort((a, b) => b.at - a.at).slice(0, 3);
-  }, [behaviorLogs, playLogs]);
+  }, [behaviorLogs, playLogs, uiLang]);
 
   // E2 hero stat trio — CLINICAL FIREWALL: counts and plain activity facts
   // only ("x of y noticed", active-domain count, moments-this-week count).

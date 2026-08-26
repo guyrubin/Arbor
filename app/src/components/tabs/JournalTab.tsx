@@ -7,7 +7,7 @@ import { statesText } from "../../lib/i18nElevation/states";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
-  groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle,
+  groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle, weekWindow,
   type SignalKind, type SignalProvenance, type TimelineSignal,
 } from "../../lib/signalTimeline";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
@@ -98,8 +98,6 @@ const KIND_MS: Record<SignalKind, string> = {
   play: "toys",
   practice: "rocket_launch",
 };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function JournalRow({
   signal,
@@ -288,22 +286,20 @@ export default function JournalTab() {
     [signals, locale, t],
   );
 
-  // JRNL-7: the header stat is labeled "This week in the story", so count the
-  // dated signals inside the trailing 7-day window — not the all-time total.
-  const weekCount = useMemo(() => {
-    const now = Date.now();
-    return signals.filter((s) => {
-      if (!s.at) return false;
-      const at = new Date(s.at).getTime();
-      return at > now - 7 * DAY_MS && at <= now;
-    }).length;
-  }, [signals]);
+  // JRNL-7 + F-09: ONE counting source of truth — the shared weekWindow
+  // selector. The header stat ("This week in the story") AND the story-copy
+  // slice both derive from the SAME trailing-7-day list, so "connecting N
+  // moments" can never exceed the adjacent week count (previously the slice
+  // came from the all-time stream while the stat counted the week).
+  const weekSignals = useMemo(() => weekWindow(signals, Date.now()), [signals]);
+  const weekCount = weekSignals.length;
 
   const autoLabel = t("journal.auto");
   const manualLabel = t("journal.manual");
-  const recentSignals = signals.slice(0, 3);
+  const recentSignals = weekSignals.slice(0, 3);
   // JRNL-2: all header/compose copy lives in lib/i18n.ts (journal.* keys) so the
   // EN/HE parity guard covers it — no inline he-ternary strings on this surface.
+  // Empty week → journal.story.empty ("One small moment is enough to begin…").
   const storyCopy = recentSignals.length
     ? t("journal.story.body", { count: recentSignals.length })
     : t("journal.story.empty");

@@ -386,6 +386,21 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
   });
 };
 
+/**
+ * F-09 — the ONE trailing-7-day selector for "this week" surfaces.
+ * Returns the dated signals whose timestamp falls in (now − 7d, now],
+ * preserving the input order (newest-first from buildTimeline). JournalTab
+ * derives BOTH the week-stat count (length) AND the "connecting N recent
+ * moments" story slice from THIS list, so the story count can never exceed
+ * the adjacent stat. Undated and future-dated signals are excluded.
+ */
+export const weekWindow = (signals: TimelineSignal[], now: number = Date.now()): TimelineSignal[] =>
+  signals.filter((s) => {
+    if (!s.at) return false;
+    const t = new Date(s.at).getTime();
+    return Number.isFinite(t) && t > now - 7 * DAY && t <= now;
+  });
+
 export type Trend = "up" | "down" | "flat";
 
 export interface Momentum {

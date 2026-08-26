@@ -42,6 +42,7 @@ import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import WorldScene from "../practice/WorldScene";
 import { T, METRIC_VARS } from "../../lib/tokens";
+import { fmtDay } from "../../lib/formatDate";
 
 /** Comic-world skin per pack — bg + ink token + bilingual label (matches the
  *  Hero Arcade design layer so the Academy reads as the same comic universe). */
@@ -89,7 +90,7 @@ const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
 
 export default function HeroJourneyTab() {
   const { childProfile, setActiveTab } = useArbor();
-  const { aiLang, t } = useLanguage();
+  const { aiLang, t, uiLang } = useLanguage();
   const { toast } = useToast();
 
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
@@ -588,7 +589,7 @@ export default function HeroJourneyTab() {
                     <div className="p-2.5">
                       <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{run.title}</span>
                       <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                        {run.completedAt ? new Date(run.completedAt).toLocaleDateString() : he ? "בתהליך" : "In progress"}
+                        {run.completedAt ? fmtDay(run.completedAt, uiLang) : he ? "בתהליך" : "In progress"}
                       </span>
                     </div>
                   </button>

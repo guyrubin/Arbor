@@ -14,6 +14,7 @@ import { buildMonitoringReportDoc, type DomainSignal } from "../../lib/monitorin
 import { useMonitoring } from "../../hooks/useMonitoring";
 import { openPrintableReport } from "../../lib/reportExport";
 import { en as screenCalmEn, he as screenCalmHe } from "../../lib/i18nElevation/screeningcalm";
+import { fmtDay } from "../../lib/formatDate";
 
 /** W0.3 — module-local string resolution for the calm-result reframe.
  *  i18nElevation/index.ts registration is that file's own recipe (one line per
@@ -234,7 +235,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>
                   {t("screen.last.line", {
-                    date: new Date(last.answeredAt).toLocaleDateString(),
+                    date: fmtDay(last.answeredAt, uiLang),
                     status: last.elevated ? t("screen.last.flagged", { n: last.watchAreas.length }) : t("screen.last.calm"),
                   })}
                 </span>
@@ -252,7 +253,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                   <Icon name="notifications" size={14} />
                   {isRecheckDue(last.recheckDueAt)
                     ? t("screen.recheck.dueNow")
-                    : t("screen.recheck.dueOn", { date: new Date(last.recheckDueAt).toLocaleDateString() })}
+                    : t("screen.recheck.dueOn", { date: fmtDay(last.recheckDueAt, uiLang) })}
                 </span>
               )}
             </div>
@@ -377,7 +378,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                 >
                   <Icon name={reminderDueAt ? "check" : "notifications"} size={16} />
                   {reminderDueAt
-                    ? t("screen.recheck.dueOn", { date: new Date(reminderDueAt).toLocaleDateString() })
+                    ? t("screen.recheck.dueOn", { date: fmtDay(reminderDueAt, uiLang) })
                     : t("screen.recheck.btn")}
                 </button>
                 <button onClick={restart} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>

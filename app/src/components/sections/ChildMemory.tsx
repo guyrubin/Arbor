@@ -8,6 +8,7 @@ import { PageHeader, SectionCard, Chip, cardCls, TrustSafetyBar } from "../ui/ki
 import { ErrorState } from "../ui/ErrorState";
 import { learnCardById } from "../../learn/learnCards";
 import { learnCategoryById, type LearnCard } from "../../learn/learnLibrary";
+import { fmtDay } from "../../lib/formatDate";
 import { PASTEL } from "../../lib/tokens";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
@@ -158,7 +159,8 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget }: {
   onReject?: () => void;
   onForget?: () => void;
 }) {
-  const dated = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : null;
+  const { uiLang } = useLanguage();
+  const dated = m.createdAt ? fmtDay(m.createdAt, uiLang) : null;
   const timeBoxed = m.retention && !/permanent|indefinite/i.test(m.retention);
   return (
     <div className={`${cardCls} p-4 ${busy ? "opacity-60" : ""}`}>

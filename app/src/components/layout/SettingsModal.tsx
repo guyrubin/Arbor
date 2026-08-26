@@ -14,6 +14,7 @@ import { api } from "../../lib/api";
 import { T } from "../../lib/tokens";
 import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
 import type { UiLang } from "../../lib/i18n";
+import { fmtDay } from "../../lib/formatDate";
 
 /** Lightweight app settings — wired to real app state (app language, trust panels,
  *  notifications, billing, and account). */
@@ -72,11 +73,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
       ? t("set.plan.plusDesc")
       : t("set.plan.freeDesc");
 
-  const fmtDate = (iso?: string | null) => {
-    if (!iso) return "";
-    const ms = Date.parse(iso);
-    return Number.isFinite(ms) ? new Date(ms).toLocaleDateString() : "";
-  };
+  // F-09: explicit-month app-locale date, never the browser's numeric default.
+  const fmtDate = (iso?: string | null) => fmtDay(iso, uiLang);
   // The status line under a paid plan: trial / renews / ends / payment issue.
   const statusLine = (() => {
     if (!isPaid || isBeta) return null;

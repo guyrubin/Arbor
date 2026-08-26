@@ -14,6 +14,7 @@ import { ErrorState } from "../ui/ErrorState";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
 import { REPORT_SCOPE_BY_TYPE, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
+import { fmtDay } from "../../lib/formatDate";
 
 // IA W4.5 + CARE-3: the professional share scopes mirror the W4.1 preset
 // audiences one-to-one — derived from the single REPORTS definition
@@ -35,14 +36,14 @@ export default function TrustedSharing() {
   const { childProfile, behaviorLogs, actionPlans, openPaywall, setActiveTab } = useArbor();
   const { deleteChild } = useProfile();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   // CARE-3: display resolvers — stable IDs → localized labels, at render only.
   const roleLabel = (r: ShareRole) => t(`share.role.${ROLES.includes(r) ? r : "viewer"}`);
   const scopesLabel = (scopes: string[]) => scopeDisplayLabels(scopes, t).join(", ");
   const expiryLabel = (g: ShareGrant) =>
-    g.expiresAt ? t("sec.sharing.expires", { date: new Date(g.expiresAt).toLocaleDateString() }) : t("share.duration.until_revoked");
+    g.expiresAt ? t("sec.sharing.expires", { date: fmtDay(g.expiresAt, uiLang) }) : t("share.duration.until_revoked");
 
   const [shares, setShares] = useState<ShareGrant[]>([]);
   const [inbound, setInbound] = useState<ShareGrant[]>([]);
@@ -85,7 +86,8 @@ export default function TrustedSharing() {
   const isLiveGrant = (g: ShareGrant) => !g.revokedAt && (!g.expiresAt || Date.parse(g.expiresAt) > Date.now());
   const team = shares.filter(isLiveGrant);
   const history = shares.filter((g) => !isLiveGrant(g));
-  const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : "");
+  // F-09: explicit-month app-locale date, never the browser's numeric default.
+  const fmtDate = (iso: string | null) => fmtDay(iso, uiLang);
 
   const setScope = (f: ShareScopeId) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
 
@@ -501,7 +503,7 @@ export default function TrustedSharing() {
         ) : (
           <div className="space-y-4" data-testid="delete-receipt" aria-live="polite">
             <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-              {t("sec.sharing.receipt.body", { name: deletedName, date: new Date(receipt.erasedAt).toLocaleDateString() })}
+              {t("sec.sharing.receipt.body", { name: deletedName, date: fmtDay(receipt.erasedAt, uiLang) })}
             </p>
             <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
               <div className="flex items-center justify-between gap-3 text-sm">
