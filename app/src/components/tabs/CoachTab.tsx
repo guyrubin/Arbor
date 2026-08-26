@@ -208,6 +208,33 @@ export default function CoachTab() {
     [chatMessages],
   );
 
+  // F-08: text for the ALWAYS-mounted polite chat-status live region (twin:
+  // VoiceOverlay's caption block — "always mounted so aria-live announces
+  // reliably"). A conditionally-mounted aria-live node is frequently never
+  // announced by screen readers, so the node below the thread stays in the
+  // tree and only its TEXT cycles: empty → thinking/streaming → ready → empty.
+  const [chatLiveStatus, setChatLiveStatus] = useState("");
+  const wasChatLoadingRef = useRef(false);
+  useEffect(() => {
+    const wasLoading = wasChatLoadingRef.current;
+    wasChatLoadingRef.current = isChatLoading;
+    if (isChatLoading) {
+      setChatLiveStatus(chatStreamStatus || t("coach.loading"));
+      return;
+    }
+    if (!wasLoading) return;
+    // Settled. Failures already announce through the error card's alert role
+    // — a "ready" line on top would be a false announcement.
+    if (apiError) {
+      setChatLiveStatus("");
+      return;
+    }
+    setChatLiveStatus(t("coach.status.ready"));
+    const timer = window.setTimeout(() => setChatLiveStatus(""), 4000);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isChatLoading, chatStreamStatus, apiError]);
+
   // Arbor Vision (photo / document capture)
   const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
 
@@ -1203,13 +1230,26 @@ export default function CoachTab() {
             );
           })()}
 
+          {/* F-08: the chat-status live region — ALWAYS mounted (twin:
+              VoiceOverlay's captions, "always mounted so aria-live announces
+              reliably"); only its text changes. The visible spinner row below
+              mirrors the same status aria-hidden, so it is spoken exactly
+              once, from here. */}
+          <span className="sr-only" role="status" aria-live="polite">
+            {chatLiveStatus}
+          </span>
+
           {isChatLoading && (
             <div className="flex gap-3 max-w-[85%] me-auto">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold animate-spin" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach)" }} aria-hidden>
                 <Icon name="sync" size={16} />
               </div>
               <div className="p-4 rounded-2xl text-xs flex items-center gap-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                <span className="animate-pulse" aria-live="polite">{chatStreamStatus || t("coach.loading")}</span>
+                {/* aria-hidden, NOT aria-live: the always-mounted region above
+                    owns the announcement (the Stop button beside it stays in
+                    the accessibility tree — hiding a focusable control would
+                    orphan keyboard/AT users). */}
+                <span className="animate-pulse" aria-hidden>{chatStreamStatus || t("coach.loading")}</span>
                 <button
                   type="button"
                   onClick={handleCancelChat}

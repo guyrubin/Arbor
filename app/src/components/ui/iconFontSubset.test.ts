@@ -64,6 +64,24 @@ describe("icon font is self-hosted", () => {
     expect(indexHtml).toContain("msr-ready");
     expect(indexHtml).toContain("document.fonts");
   });
+
+  it("neutralizes inherited text styling on .msr (uppercase parents mangle ligatures into English)", () => {
+    // An .msr inside uppercase/tracked chrome inherits text-transform +
+    // letter-spacing, turning "child_care" into "CHILD_CARE" — which matches
+    // NO ligature, so the English word paints even WITH the font loaded.
+    expect(indexHtml).toMatch(/\.msr\s*\{[^}]*text-transform:\s*none/s);
+    expect(indexHtml).toMatch(/\.msr\s*\{[^}]*letter-spacing:\s*normal/s);
+    // An icon is never selectable text either.
+    expect(indexHtml).toMatch(/\.msr\s*\{[^}]*user-select:\s*none/s);
+  });
+
+  it("the gate NEVER reveals glyph slots without the font (no-API and throw paths stay hidden)", () => {
+    // Blank slots beat English words — the file's own doctrine. Revealing when
+    // the Font Loading API is absent (or throws) shows unresolved ligature
+    // text in whatever face the browser falls back to.
+    expect(indexHtml).not.toMatch(/\{\s*reveal\(\);\s*return;?\s*\}/);
+    expect(indexHtml).not.toMatch(/catch\s*\([^)]*\)\s*\{\s*reveal\(\)/);
+  });
 });
 
 describe("icon font survives offline", () => {

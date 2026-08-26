@@ -438,6 +438,9 @@ export const en: Dict = {
   "coach.status.plan": "Shaping today's plan…",
   "coach.status.stopping": "Stopping…",
   "coach.status.council": "Convening the scholar council…",
+  // F-08: the ALWAYS-mounted polite live region announces when the answer
+  // has settled (empty → thinking/streaming → ready → empty).
+  "coach.status.ready": "The response is ready.",
   "coach.ack": "On it — reading what you shared.",
   "coach.memReview": "Memory Review",
   "coach.memQueue": "Parent approval queue",
@@ -1636,6 +1639,9 @@ export const en: Dict = {
   "wk.emptyThisWeek": "Nothing captured yet this week — log a moment and this week's report will build itself.",
   "wk.behaviorEvents": "Behavior events",
   "wk.topTrigger": "Top trigger",
+  // F-11: parent free-typed trigger words render QUOTED — visibly the
+  // parent's own words, never a computed-looking stat.
+  "wk.triggerQuote": "“{text}”",
   "wk.actionSteps": "Action steps",
   "wk.momentsResolved": "{n} moments · {wins} resolved",
   "wk.stepsComplete": "steps complete",
@@ -2841,6 +2847,8 @@ export const he: Dict = {
   "coach.status.plan": "מגבש את הצעד להיום…",
   "coach.status.stopping": "עוצר…",
   "coach.status.council": "מכנס את מועצת המומחים…",
+  // F-08: אזור ההכרזה החי (aria-live) מודיע כשהתשובה מוכנה.
+  "coach.status.ready": "התשובה מוכנה.",
   "coach.ack": "ארבור כאן — קורא את מה ששיתפת.",
   "coach.memReview": "סקירת זיכרון",
   "coach.memQueue": "תור אישור הורה",
@@ -3985,6 +3993,9 @@ export const he: Dict = {
   "wk.emptyThisWeek": "עוד לא נקלט כלום השבוע — תעדו רגע אחד, והדוח של השבוע ייבנה מעצמו.",
   "wk.behaviorEvents": "אירועי התנהגות",
   "wk.topTrigger": "טריגר מוביל",
+  // F-11: מילים שההורה הקליד מוצגות במירכאות — מילות ההורה נראות כמילות
+  // ההורה, אף פעם לא כנתון מחושב.
+  "wk.triggerQuote": "\"{text}\"",
   "wk.actionSteps": "צעדי פעולה",
   "wk.momentsResolved": "{n} רגעים · {wins} טופלו",
   "wk.stepsComplete": "צעדים הושלמו",

@@ -51,6 +51,7 @@ import { useLanguage, type AiLang } from "../context/LanguageContext";
 import { useChildCollection } from "./useChildCollection";
 import { api, type WeeklyDigest } from "../lib/api";
 import { rcString } from "../components/weekly/recapStrings";
+import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy";
 import { scholarsInfo } from "../initialData";
 
 const DAY = 86_400_000;
@@ -77,8 +78,16 @@ export type WeeklyReport = {
   generatedAt: string;
   /** Counts only (clinical firewall): no derived intensity score is stored or
    *  rendered — parent surfaces show counts, never scores. Legacy docs may
-   *  still carry an `avg` field in Firestore; it is never read. */
-  summary: { count: number; resolved?: number; topTrigger: string };
+   *  still carry an `avg` field in Firestore; it is never read.
+   *
+   *  F-11: `topTrigger` is the parent's own free-typed trigger words, stored
+   *  verbatim — renderers must present it visibly AS parent words (quoted +
+   *  truncated via topMomentDisplay), never as a computed-looking stat.
+   *  `topBehaviorType` is the schema axis (canonical taxonomy / legacy select
+   *  value), localized through behaviorTypeLabel at render time. Legacy docs
+   *  stored `trigger || behaviorType` conflated into topTrigger and carry no
+   *  topBehaviorType — topMomentDisplay untangles them. */
+  summary: { count: number; resolved?: number; topTrigger: string; topBehaviorType?: string };
   milestoneWins: string[];
   planProgress: { done: number; total: number };
   spotlight: { name: string; concept: string; value: string };
@@ -171,6 +180,37 @@ export function resolveWeekLabel(
   return formatWeekLabel(anchor, opts.lang, opts.weekOf);
 }
 
+/** Max characters of parent free text promoted into the top-trigger stat card. */
+export const TRIGGER_QUOTE_MAX = 40;
+
+/**
+ * F-11 render model for the "Top trigger" stat card (pure, unit-tested).
+ * The two axes never blur:
+ *   · `type`  — a behaviorType (schema vocabulary) — safe to render as a
+ *     computed stat, localized through behaviorTypeLabel;
+ *   · `quote` — the parent's free-typed trigger words — rendered quoted and
+ *     truncated (~40 chars), so parent words are VISIBLY parent words and
+ *     never dress up as an analytics headline.
+ * Legacy reports stored `trigger || behaviorType` conflated into topTrigger;
+ * a canonical taxonomy value found there still renders as a type, anything
+ * else is treated as the parent's words.
+ */
+export function topMomentDisplay(
+  summary: { topTrigger?: string; topBehaviorType?: string } | null | undefined
+): { type: string | null; quote: string | null } {
+  const storedType = (summary?.topBehaviorType || "").trim();
+  const raw = (summary?.topTrigger || "").trim();
+  const rawIsType = !storedType && (CANONICAL_BEHAVIOR_TYPES as string[]).includes(raw);
+  const type = storedType || (rawIsType ? raw : "") || null;
+  const free = rawIsType || raw === "—" ? "" : raw;
+  const quote = free
+    ? free.length > TRIGGER_QUOTE_MAX
+      ? `${free.slice(0, TRIGGER_QUOTE_MAX).trimEnd()}…`
+      : free
+    : null;
+  return { type, quote };
+}
+
 /** Pure "new recap waiting" decision for the Since-strip entry line. */
 export function isRecapUnopened(
   hasCurrentReport: boolean,
@@ -229,16 +269,32 @@ export function useWeeklyRecap() {
     const cutoff = Date.now() - 7 * DAY;
     const recent = behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= cutoff);
     const resolved = recent.filter((l) => l.resolved).length;
-    const counts = new Map<string, number>();
-    recent.forEach((l) => counts.set(l.trigger || l.behaviorType, (counts.get(l.trigger || l.behaviorType) || 0) + 1));
-    let topTrigger = "—";
-    let max = 0;
-    counts.forEach((v, k) => {
-      if (v > max) {
-        max = v;
-        topTrigger = k;
-      }
+    // F-11: two separate axes, never conflated. behaviorType is schema
+    // vocabulary (localized through the taxonomy label map at render time);
+    // the trigger box is parent free-typed text and is stored verbatim so
+    // renderers can show it quoted AS the parent's words — raw free text is
+    // never promoted into a computed-looking analytics headline.
+    const typeCounts = new Map<string, number>();
+    const triggerCounts = new Map<string, number>();
+    recent.forEach((l) => {
+      const type = (l.behaviorType || "").trim();
+      if (type) typeCounts.set(type, (typeCounts.get(type) || 0) + 1);
+      const trig = (l.trigger || "").trim();
+      if (trig) triggerCounts.set(trig, (triggerCounts.get(trig) || 0) + 1);
     });
+    const modeOf = (m: Map<string, number>) => {
+      let top = "";
+      let max = 0;
+      m.forEach((v, k) => {
+        if (v > max) {
+          max = v;
+          top = k;
+        }
+      });
+      return top;
+    };
+    const topBehaviorType = modeOf(typeCounts);
+    const topTrigger = modeOf(triggerCounts) || "—";
     const wins = milestones.filter((m) => m.checked).map((m) => m.title);
     let done = 0;
     let total = 0;
@@ -248,7 +304,13 @@ export function useWeeklyRecap() {
     })));
     const spotlight = scholarsInfo[new Date().getDate() % scholarsInfo.length];
     return {
-      summary: { count: recent.length, resolved, topTrigger },
+      summary: {
+        count: recent.length,
+        resolved,
+        topTrigger,
+        // Firestore rejects undefined fields — omit the key on an empty week.
+        ...(topBehaviorType ? { topBehaviorType } : {}),
+      },
       milestoneWins: wins,
       planProgress: { done, total },
       spotlight: { name: spotlight.name, concept: spotlight.concept, value: spotlight.value },

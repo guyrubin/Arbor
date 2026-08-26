@@ -9,7 +9,8 @@ import { Skeleton } from "../ui/Skeleton";
 import { PageHeader, SectionCard, cardCls, IconBadge } from "../ui/kit";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { useDevScore } from "../../hooks/useDevScore";
-import { useWeeklyRecap, type WeeklyReport } from "../../hooks/useWeeklyRecap";
+import { useWeeklyRecap, topMomentDisplay, type WeeklyReport } from "../../hooks/useWeeklyRecap";
+import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { rankLearnCards } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
 import { ageYearsFromProfile } from "../../lib/childAge";
@@ -201,7 +202,30 @@ export default function WeeklyTab() {
             </div>
             <div className={`${cardCls} p-5`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.topTrigger")}</span>
-              <div className="text-sm font-bold mt-2 leading-snug" style={{ color: "var(--arbor-ink)" }}>{selected.summary.topTrigger}</div>
+              {/* F-11: schema behaviorTypes render as the stat (label map);
+                  the parent's free-typed trigger renders QUOTED + truncated —
+                  parent words stay visibly parent words, never a
+                  computed-looking value (topMomentDisplay untangles legacy
+                  docs that conflated the two). */}
+              {(() => {
+                const top = topMomentDisplay(selected.summary);
+                return (
+                  <>
+                    <div className="text-sm font-bold mt-2 leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                      {top.type
+                        ? behaviorTypeLabel(top.type, t, "full")
+                        : top.quote
+                          ? t("wk.triggerQuote", { text: top.quote })
+                          : "—"}
+                    </div>
+                    {top.type && top.quote && (
+                      <p className="text-[11px] mt-1" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+                        {t("wk.triggerQuote", { text: top.quote })}
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div className={`${cardCls} p-5`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.actionSteps")}</span>
