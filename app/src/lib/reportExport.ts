@@ -6,6 +6,7 @@
  */
 import type { ChildProfile, BehaviorLog, ActionPlan } from "../types";
 import { fmtDay } from "./formatDate";
+import { topMomentDisplay } from "../hooks/useWeeklyRecap";
 
 export type ReportSection = { heading: string; body: string | string[] };
 export type ReportDoc = {
@@ -54,12 +55,40 @@ function recentLogs(logs: BehaviorLog[], days: number) {
 function resolvedCount(logs: BehaviorLog[]) {
   return logs.filter((l) => l.resolved).length;
 }
-function topTrigger(logs: BehaviorLog[]) {
-  const c = new Map<string, number>();
-  logs.forEach((l) => c.set(l.behaviorType, (c.get(l.behaviorType) || 0) + 1));
-  let top = "—", max = 0;
-  c.forEach((v, k) => { if (v > max) { max = v; top = k; } });
+/* F-11 quarantine (E7 parity with WeeklyTab, via the SHARED topMomentDisplay
+ * from hooks/useWeeklyRecap — imported, never duplicated): this document
+ * leaves the app, so the two axes must never blur here either.
+ *   · behaviorType (schema vocabulary) may print as a computed stat line;
+ *   · the parent's free-typed trigger prints QUOTED + truncated
+ *     (TRIGGER_QUOTE_MAX), visibly parent words — never a computed stat. */
+function modeOf(m: Map<string, number>) {
+  let top = "", max = 0;
+  m.forEach((v, k) => { if (v > max) { max = v; top = k; } });
   return top;
+}
+function topMomentLines(logs: BehaviorLog[]): string[] {
+  const typeCounts = new Map<string, number>();
+  const triggerCounts = new Map<string, number>();
+  logs.forEach((l) => {
+    const type = (l.behaviorType || "").trim();
+    if (type) typeCounts.set(type, (typeCounts.get(type) || 0) + 1);
+    const trig = (l.trigger || "").trim();
+    if (trig) triggerCounts.set(trig, (triggerCounts.get(trig) || 0) + 1);
+  });
+  const topBehaviorType = modeOf(typeCounts);
+  const top = topMomentDisplay({
+    topTrigger: modeOf(triggerCounts),
+    ...(topBehaviorType ? { topBehaviorType } : {}),
+  });
+  const lines = [`Most-logged: ${top.type || "—"}`];
+  if (top.quote) lines.push(`Often-noted trigger, in the parent's words: “${top.quote}”`);
+  return lines;
+}
+/** One event line: behaviorType as the label, the parent's free-typed trigger
+ *  quoted + truncated through the same shared quarantine helper. */
+function eventLine(l: BehaviorLog): string {
+  const m = topMomentDisplay({ topTrigger: l.trigger || "", topBehaviorType: l.behaviorType });
+  return `${fmtDay(l.timestamp, "en")} — ${m.type || l.behaviorType}${m.quote ? ` — parent noted: “${m.quote}”` : ""}`;
 }
 
 export function buildReport(type: ParentReportType, ctx: ReportContext): ReportDoc {
@@ -75,7 +104,7 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
   switch (type) {
     case "weekly":
       return { title: "Weekly Insight", subtitle: common, sections: [
-        { heading: "This week", body: [`${wk.length} moments logged`, `${resolvedCount(wk)} marked resolved`, `Most-logged: ${topTrigger(wk)}`] },
+        { heading: "This week", body: [`${wk.length} moments logged`, `${resolvedCount(wk)} marked resolved`, ...topMomentLines(wk)] },
         { heading: "Development", body: [`${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
         { heading: "Suggested focus", body: child.challenges.slice(0, 2) },
       ]};
@@ -88,8 +117,8 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
       ]};
     case "behavior":
       return { title: "Behavior Pattern Report", subtitle: common, sections: [
-        { heading: "Summary (28 days)", body: [`${mo.length} moments`, `${resolvedCount(mo)} marked resolved`, `Most-logged: ${topTrigger(mo)}`] },
-        { heading: "Recent events", body: mo.slice(0, 8).map((l) => `${fmtDay(l.timestamp, "en")} — ${l.behaviorType}${l.trigger ? `, trigger: ${l.trigger}` : ""}`) },
+        { heading: "Summary (28 days)", body: [`${mo.length} moments`, `${resolvedCount(mo)} marked resolved`, ...topMomentLines(mo)] },
+        { heading: "Recent events", body: mo.slice(0, 8).map(eventLine) },
         { heading: "What helped", body: mo.map((l) => l.response).filter(Boolean).slice(0, 5) },
       ]};
     case "language":
