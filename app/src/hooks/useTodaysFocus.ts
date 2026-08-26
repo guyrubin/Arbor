@@ -65,12 +65,18 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
 
   const [focus, setFocus] = useState<Focus | null>(null);
   const [loading, setLoading] = useState(false);
+  // N2-errfocus: a failed generation used to be swallowed silently — the Today
+  // overview then showed only the guaranteed-action fallback with no signal
+  // that the AI focus was ever attempted. The flag lets the surface render an
+  // inline error + retry ALONGSIDE the fallback (never instead of it).
+  const [error, setError] = useState(false);
   const triedAuto = useRef(false);
 
   const ref = () => (remote && db && uid ? doc(db, `users/${uid}/children/${child.id}/insights/todaysFocus`) : null);
 
   const generate = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       // AIR-5: dedicated lightweight endpoint (analysis route, 2-field schema,
       // server-side output screen + daily cache). The old path POSTed /api/chat —
@@ -120,7 +126,9 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
         }
       }
     } catch {
-      /* keep prior focus */
+      // Keep any prior focus, but surface the failure — the Today surface
+      // renders an inline retry next to the guaranteed-action fallback.
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -131,6 +139,8 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
   useEffect(() => {
     let cancelled = false;
     triedAuto.current = false;
+    // A child/language switch is a fresh context: drop any stale error banner.
+    setError(false);
     (async () => {
       let cached: Focus | null = null;
       const r = ref();
@@ -170,5 +180,5 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, signals.count, loading, aiLang]);
 
-  return { focus, loading, regenerate: generate };
+  return { focus, loading, error, regenerate: generate };
 }

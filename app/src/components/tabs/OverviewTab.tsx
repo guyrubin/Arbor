@@ -15,6 +15,7 @@ import ProgressNarrative from "../overview/ProgressNarrative";
 import QuickLogModal from "../overview/QuickLogModal";
 import SinceLastVisit, { svString } from "../overview/SinceLastVisit";
 import PromptCaptureCard from "../overview/PromptCaptureCard";
+import { ErrorState } from "../ui/ErrorState";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
 import type { CaptureMode } from "../../context/ArborContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
@@ -215,7 +216,7 @@ export default function OverviewTab() {
     return top;
   }, [behaviorLogs]);
 
-  const { focus, loading: focusLoading } = useTodaysFocus(childProfile, {
+  const { focus, loading: focusLoading, error: focusError, regenerate: regenerateFocus } = useTodaysFocus(childProfile, {
     count: recentCount,
     avg: weekAvg,
     topTrigger,
@@ -575,6 +576,22 @@ export default function OverviewTab() {
               promptKey={todayChoice.kind === "prompt" ? todayChoice.promptKey : null}
               childName={firstName}
               onCapture={() => setQuickLogOpen(true)}
+            />
+          )}
+          {/* N2-errfocus: a failed focus fetch used to degrade SILENTLY to the
+              guaranteed-action fallback. The inline error renders ALONGSIDE the
+              fallback (never instead of it — the anchor above always renders),
+              so the day still has its action AND the parent can retry the AI
+              focus. Hidden while a focus exists (cached text beats a banner)
+              and while an accepted action owns the slot. */}
+          {focusError && !focus && !activeTodayAction && (
+            <ErrorState
+              className="mt-2"
+              headline={t("err.focus.title")}
+              body={t("err.focus.body")}
+              onRetry={() => void regenerateFocus()}
+              retryLabel={t("err.retry")}
+              retrying={focusLoading}
             />
           )}
           {/* CONT-2 — hard-moment offer (AR-CONT-01). Fail-closed on
