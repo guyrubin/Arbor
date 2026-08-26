@@ -12,6 +12,7 @@ import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { ShareButton } from "../ui/ShareButton";
 import { TrustPanel } from "../ui/TrustPanel";
 import { runAvatarGeneration } from "./avatarGate";
+import { isolate } from "../../lib/i18n";
 
 /**
  * AVA-1 / AVA-2 — the Avatar Creator. Turns descriptors (default, no face) or an
@@ -137,7 +138,7 @@ export default function AvatarCreator({
           >
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-extrabold tracking-tight flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} /> Create {childName}&apos;s avatar
+                <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} /> Create {isolate(childName)}&apos;s avatar
               </h3>
               <button onClick={close} className="p-1.5 rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
                 <X className="w-4 h-4" />

@@ -10,6 +10,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { useKidMode } from "../kidmode/KidModeContext";
 import { ROUTINES, routineById, localized } from "../../lib/routines";
+import { isolate } from "../../lib/i18n";
 
 /* ════════════════════════════════════════════════════════════════════════════
    Ready-made Routines — a library of seven research-backed, parent-run daily
@@ -218,7 +219,7 @@ export default function RoutinesTab() {
               </span>
             </div>
             <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-              {localized(selected.why, uiLang).replace(/\{name\}/g, firstName)}
+              {localized(selected.why, uiLang).replace(/\{name\}/g, isolate(firstName))}
             </p>
           </div>
           {/* Count block — the ONLY progress readout (never a %). */}

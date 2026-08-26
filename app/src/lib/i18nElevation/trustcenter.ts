@@ -24,6 +24,8 @@
  * DIRECTLY via trustText() below — same keys, same {var} interpolation as
  * t(), so an eventual index.ts registration is a pure no-op for callers. */
 
+import { isolate } from "../bidi";
+
 export const en: Record<string, string> = {
   // ── Page header + spine
   "elev.trust.title": "How Arbor works",
@@ -224,6 +226,6 @@ export function trustText(
   const raw = (uiLang === "he" ? he[key] : undefined) ?? en[key] ?? key;
   if (!vars) return raw;
   return raw.replace(/\{(\w+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match,
+    Object.prototype.hasOwnProperty.call(vars, name) ? isolate(String(vars[name])) : match,
   );
 }

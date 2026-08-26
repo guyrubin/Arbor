@@ -242,7 +242,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
           </div>
         ) : (
           <p className="text-[13px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-            Play a world to earn {hero.name}&apos;s first gear.
+            Play a world to earn {heroPossessive} first gear.
           </p>
         )}
       </div>

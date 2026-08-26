@@ -360,7 +360,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                 <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>Data & privacy</span>
                 <button onClick={handleExport} disabled={busy} className="w-full py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60 bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}>
-                  <Download className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> Export {activeChild.name}&apos;s data (JSON)
+                  <Download className="w-3.5 h-3.5" style={{ color: "var(--arbor-green-ink)" }} /> Export {isolate(activeChild.name)}&apos;s data (JSON)
                 </button>
                 <button onClick={handleDelete} disabled={busy} className="w-full py-2.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete this child & all data

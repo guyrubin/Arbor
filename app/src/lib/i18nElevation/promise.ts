@@ -18,6 +18,8 @@
  * same keys, same {var} interpolation as t(), so an eventual index.ts
  * registration is a pure no-op for callers that migrate to t(). */
 
+import { isolate } from "../bidi";
+
 export const en: Record<string, string> = {
   // ── Card header (quiet eyebrow above the promise sentence).
   "elev.promise.eyebrow": "What happens next",
@@ -70,6 +72,6 @@ export function promiseText(
   const raw = dict[key] ?? en[key] ?? key;
   if (!vars) return raw;
   return raw.replace(/\{(\w+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match,
+    Object.prototype.hasOwnProperty.call(vars, name) ? isolate(String(vars[name])) : match,
   );
 }

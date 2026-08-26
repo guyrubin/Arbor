@@ -10,6 +10,7 @@ import type { AdventureResult } from "../../types";
 import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
+import { isolate } from "../../lib/i18n";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
 
 const SKILL_LABEL: Record<string, string> = {
@@ -231,10 +232,10 @@ export default function AdventuresTab() {
       {scenario && finished && (
         <PlayPanel>
           <Celebrate
-            title={`${first} finished “${scenario.title}”!`}
+            title={`${isolate(first)} finished “${scenario.title}”!`}
             stars={sessionCorrect}
             starsTotal={scenario.scenes.length}
-            subtitle={`${sessionCorrect} of ${scenario.scenes.length} first-try answers — and every answer taught us something for ${first}'s development picture.`}
+            subtitle={`${sessionCorrect} of ${scenario.scenes.length} first-try answers — and every answer taught us something for ${isolate(first)}'s development picture.`}
           >
             <PlayButton variant="soft" tone="lav" onClick={() => openScenario(scenario.id)}>
               <Icon name="replay" size={16} /> Play again

@@ -7,6 +7,7 @@
  * NOTE: Hebrew strings are a solid first draft; a native review is recommended
  * before wide release (child-health product).
  */
+import { isolate } from "./bidi";
 import { elevationEn, elevationHe } from "./i18nElevation";
 
 export type UiLang = "en" | "he";
@@ -4543,21 +4544,14 @@ const DICTS: Record<UiLang, Dict> = {
   he: { ...elevationHe, ...he },
 };
 
-// Bidi isolation (F7 / AR-UX-IDN-01): when an interpolated value carries strong-RTL
-// characters (Hebrew/Arabic) — e.g. a child's name "נועה" dropped into an English
-// template, or an English word inside a Hebrew one — wrap it in Unicode isolates
-// FSI…PDI so the substituted run's direction can't reorder the surrounding text.
-// Applied ONLY to RTL-bearing values, so pure-LTR/numeric interpolation is untouched.
-//
-// Exported (E8 / F-10) so raw template-literal copy that bypasses t() — e.g.
-// `${name}'s story` — can route the interpolated name through the same isolation.
-// DISPLAY-TIME ONLY: never persist an isolated name (Firestore, filenames, seeds,
-// equality checks) — isolate at the moment the string is rendered/composed for a
-// human, and keep the raw name everywhere else.
-const RTL_CHARS = /[֐-׿؀-ۿ܀-ݏ]/;
-export function isolate(value: string): string {
-  return RTL_CHARS.test(value) ? `⁨${value}⁩` : value;
-}
+// Bidi isolation (F7 / AR-UX-IDN-01): definition + full contract live in
+// lib/bidi.ts (extracted in N5 so i18nElevation/* leaf accessors can use it
+// without a cycle through this file). Re-exported here (E8 / F-10) so raw
+// template-literal / JSX copy that bypasses t() — e.g. `${name}'s story`,
+// `{name}&apos;s` — keeps routing the interpolated name through the same
+// isolation via the established `import { isolate } from "lib/i18n"` path.
+// DISPLAY-TIME ONLY: never persist an isolated name.
+export { isolate } from "./bidi";
 
 export function translate(lang: UiLang, key: string, vars?: Record<string, string | number>): string {
   let s = DICTS[lang][key] ?? DICTS.en[key] ?? key;
