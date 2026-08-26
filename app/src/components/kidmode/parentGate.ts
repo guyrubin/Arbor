@@ -31,6 +31,27 @@ export function holdComplete(elapsedMs: number): boolean {
   return elapsedMs >= HOLD_MS;
 }
 
+/** A press released under this many ms reads as a tap → show the hold hint. */
+export const TAP_HINT_MS = 400;
+
+/** What a pointer release means, resolved from wall-clock time (F-07). */
+export type HoldOutcome = "complete" | "tap" | "cancelled";
+
+/**
+ * F-07: frame-independent release resolution. rAF ticks can freeze (hidden
+ * tab, throttled frame loop), so completion is judged on wall-clock elapsed
+ * time at release — never on how many frames rendered:
+ *  - held ≥ HOLD_MS      → "complete" (summon the parent challenge)
+ *  - released < TAP_HINT_MS → "tap" (show the hold-to-exit hint)
+ *  - anything between     → "cancelled" (reset quietly)
+ */
+export function resolveHoldOutcome(startMs: number, nowMs: number): HoldOutcome {
+  const elapsed = nowMs - startMs;
+  if (holdComplete(elapsed)) return "complete";
+  if (elapsed < TAP_HINT_MS) return "tap";
+  return "cancelled";
+}
+
 /* ── E10: parent challenge (math question + optional device-local PIN) ─────── */
 
 /** localStorage key for the optional 4-digit parent PIN (device-local only). */

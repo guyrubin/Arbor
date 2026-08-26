@@ -9,7 +9,7 @@
  * Node harness (vitest environment: "node") — no DOM, no React rendering.
  */
 import { describe, it, expect } from "vitest";
-import { holdProgress, holdComplete, HOLD_MS } from "./parentGate";
+import { holdProgress, holdComplete, resolveHoldOutcome, HOLD_MS, TAP_HINT_MS } from "./parentGate";
 
 // ── holdProgress ──────────────────────────────────────────────────────────────
 describe("holdProgress", () => {
@@ -53,6 +53,36 @@ describe("holdComplete", () => {
 
   it("returns true after HOLD_MS", () => {
     expect(holdComplete(HOLD_MS + 500)).toBe(true);
+  });
+});
+
+// ── F-07: resolveHoldOutcome — frame-independent release resolution ──────────
+describe("resolveHoldOutcome", () => {
+  const T0 = 1_000_000;
+
+  it("resolves 'tap' for a press released just under TAP_HINT_MS", () => {
+    expect(resolveHoldOutcome(T0, T0)).toBe("tap");
+    expect(resolveHoldOutcome(T0, T0 + TAP_HINT_MS - 1)).toBe("tap");
+  });
+
+  it("resolves 'cancelled' between TAP_HINT_MS and HOLD_MS", () => {
+    expect(resolveHoldOutcome(T0, T0 + TAP_HINT_MS)).toBe("cancelled");
+    expect(resolveHoldOutcome(T0, T0 + HOLD_MS - 1)).toBe("cancelled");
+  });
+
+  it("resolves 'complete' at and beyond HOLD_MS — even if no frame ever rendered", () => {
+    expect(resolveHoldOutcome(T0, T0 + HOLD_MS)).toBe("complete");
+    expect(resolveHoldOutcome(T0, T0 + HOLD_MS + 5000)).toBe("complete");
+  });
+
+  it("agrees with holdComplete on the boundary", () => {
+    const boundary = resolveHoldOutcome(T0, T0 + HOLD_MS) === "complete";
+    expect(boundary).toBe(holdComplete(HOLD_MS));
+  });
+
+  it("TAP_HINT_MS sits strictly inside (0, HOLD_MS) so the three bands exist", () => {
+    expect(TAP_HINT_MS).toBeGreaterThan(0);
+    expect(TAP_HINT_MS).toBeLessThan(HOLD_MS);
   });
 });
 
@@ -135,6 +165,44 @@ describe("Kid Mode overlay — no child-data write contract", () => {
     const src = readSelf("parentGate.ts");
     const hexMatches = src.match(/#[0-9a-fA-F]{3,6}\b/g) ?? [];
     expect(hexMatches, `unexpected hex literals: ${hexMatches.join(", ")}`).toHaveLength(0);
+  });
+});
+
+// ── F-07: hold-to-exit input model — Pointer Events + wall-clock completion ──
+// Source-level pins (same convention as the write-contract tests above): the
+// hold gesture must ride the Pointer Events model with capture, and its
+// completion must never depend on rAF ticking (hidden tabs freeze rAF).
+describe("F-07: HoldExitButton pointer + frame-independent hold", () => {
+  const src = readSelf("HoldExitButton.tsx");
+
+  it("uses Pointer Events with pointer capture (EarlyReadingTrack pattern)", () => {
+    expect(src).toContain("onPointerDown");
+    expect(src).toContain("onPointerUp");
+    expect(src).toContain("onPointerCancel");
+    expect(src).toContain("setPointerCapture");
+  });
+
+  it("declares touchAction and suppresses the long-press context menu", () => {
+    expect(src).toContain("touchAction");
+    expect(src).toContain("onContextMenu");
+  });
+
+  it("has NO legacy mouse/touch handlers (single input model)", () => {
+    for (const h of ["onTouchStart", "onTouchEnd", "onTouchCancel", "onMouseDown", "onMouseUp", "onMouseLeave"]) {
+      expect(src, `HoldExitButton must not use ${h}`).not.toContain(h);
+    }
+  });
+
+  it("arms a wall-clock setTimeout completion path and re-checks on release", () => {
+    expect(src).toContain("setTimeout(completeHold, HOLD_MS)");
+    expect(src).toContain("resolveHoldOutcome(");
+  });
+
+  it("ParentChallenge entrance never depends on rAF (card cannot mount invisible)", () => {
+    const challenge = readSelf("ParentChallenge.tsx");
+    expect(challenge).not.toContain("requestAnimationFrame");
+    expect(challenge).toContain("document.hidden");
+    expect(challenge).toContain("setTimeout");
   });
 });
 
