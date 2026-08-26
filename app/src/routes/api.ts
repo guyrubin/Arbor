@@ -11,7 +11,7 @@ import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExt
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
-import { appendMemoryProposals, foldMemoryEvents, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
+import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 import { resolveScholar } from "../services/scholars.js";
 import { selectCouncil, runScholarTakes, renderCouncilForSynthesis } from "../services/council.js";
@@ -246,7 +246,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
 
   router.get("/memory/:childId", requireOwnership, async (req, res) => {
     try {
-      let items = foldMemoryEvents(await memoryStore.listEvents(req.params.childId), req.params.childId);
+      // SPC2 enforce-on-read: approved facts past their retention window are
+      // excluded from the parent-visible list and tombstoned as "expired".
+      let items = await enforceMemoryRetention(
+        memoryStore,
+        foldMemoryEvents(await memoryStore.listEvents(req.params.childId), req.params.childId)
+      );
       const status = req.query.status ? String(req.query.status) : undefined;
       if (status) items = items.filter((item) => item.status === status);
       res.json({ items });
@@ -270,7 +275,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const items = await appendMemoryProposals(
         memoryStore,
         req.params.childId,
-        [{ fact: fact.trim(), source: source || "rhythm", retention: retention || "3 months" }],
+        [{ fact: fact.trim(), source: source || "rhythm", retention: retention || DEFAULT_MEMORY_RETENTION }],
         // OWN-1: uid-derived family in prod; the body's familyId is only the
         // single-tenant/local fallback (via toFamilyId inside resolveFamilyId).
         { familyId: await resolveFamilyId(req, { familyId }), prompt: prompt || "rhythm:pattern", frameRouting: null }

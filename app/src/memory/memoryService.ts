@@ -38,13 +38,19 @@ export const foldMemoryEvents = (events: MemoryLedgerEvent[], childId?: string):
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 };
 
-// SAFE-3 / G10: enforce memory time-boxing. The model-generated `retention`
-// string is parsed to a TTL; approved memory past its retention is treated as
-// expired and is NOT fed back to the AI. Unparseable/permanent retention never
-// expires (conservative — we don't silently drop memory we can't interpret).
+// SAFE-3 / G10 + SPC2: enforce memory time-boxing. The model-generated
+// `retention` string is parsed to a TTL; approved memory past its retention is
+// treated as expired and is NOT fed back to the AI. Only an EXPLICIT permanent
+// retention never expires; missing/unparseable retention falls back to the
+// app's stated default (the propose flow's "3 months") so child data cannot
+// outlive its retention promise just because the wording didn't parse.
 const DAY_MS = 86_400_000;
-export const retentionToMs = (retention?: string): number => {
-  if (!retention) return Infinity;
+
+/** SPC2: the app-wide default retention window — the same default the propose
+ *  flow stamps on facts proposed without one (see POST /memory/:childId/propose). */
+export const DEFAULT_MEMORY_RETENTION = "3 months";
+
+const parseRetentionMs = (retention: string): number | null => {
   const r = retention.toLowerCase();
   if (/permanent|indefinite|ongoing|long[-\s]?term/.test(r)) return Infinity;
   const m = r.match(/(\d+)\s*(day|week|month|year)/);
@@ -55,13 +61,58 @@ export const retentionToMs = (retention?: string): number => {
     return n * per;
   }
   if (/session|today|24\s*h/.test(r)) return DAY_MS;
-  return Infinity;
+  return null;
+};
+
+const DEFAULT_RETENTION_MS = parseRetentionMs(DEFAULT_MEMORY_RETENTION) as number;
+
+export const retentionToMs = (retention?: string): number => {
+  if (!retention) return DEFAULT_RETENTION_MS;
+  return parseRetentionMs(retention) ?? DEFAULT_RETENTION_MS;
 };
 
 export const isMemoryExpired = (item: { retention?: string; createdAt: string }, now: number = Date.now()): boolean => {
   const ms = retentionToMs(item.retention);
   if (!isFinite(ms)) return false;
   return now - new Date(item.createdAt).getTime() > ms;
+};
+
+/**
+ * SPC2 enforce-on-read: drop APPROVED facts older than their retention window
+ * from every read surface (coach prompts + the parent-visible list), and
+ * tombstone each one through the existing ledger transition machinery — an
+ * append-only "expired" event, actor "system" — never a delete. There is no
+ * background scheduler; the read paths ARE the enforcement point, so a failed
+ * tombstone write must never fail the read (the item is still filtered out).
+ */
+export const enforceMemoryRetention = async (
+  store: MemoryStore,
+  items: MemoryReviewItem[],
+  now: number = Date.now()
+): Promise<MemoryReviewItem[]> => {
+  const expired = items.filter((item) => item.status === "approved" && isMemoryExpired(item, now));
+  for (const item of expired) {
+    try {
+      await store.appendEvent({
+        eventId: randomUUID(),
+        memoryId: item.memoryId,
+        familyId: item.familyId,
+        childId: item.childId,
+        eventType: "expired",
+        status: "expired",
+        fact: item.fact,
+        source: item.source,
+        retention: item.retention,
+        createdAt: new Date(now).toISOString(),
+        actor: "system",
+        prompt: item.prompt,
+        frameRouting: item.frameRouting
+      });
+    } catch {
+      // Best-effort tombstone: the filter below still excludes the fact.
+    }
+  }
+  return items.filter((item) => !(item.status === "approved" && isMemoryExpired(item, now)));
 };
 
 /**
@@ -78,9 +129,10 @@ export const getApprovedMemoryContextDetail = async (
   const events = await store.listEvents(childId);
   // foldMemoryEvents returns newest-first, so the slice keeps the most recent facts —
   // bounding prompt token growth as a child's memory ledger accumulates over time.
-  const approved = foldMemoryEvents(events, childId).filter(
-    (item) => item.status === "approved" && !isMemoryExpired(item)
-  );
+  // SPC2: enforceMemoryRetention both excludes retention-expired facts from the
+  // prompt AND tombstones them in the ledger, so this read is the enforcement point.
+  const live = await enforceMemoryRetention(store, foldMemoryEvents(events, childId));
+  const approved = live.filter((item) => item.status === "approved" && !isMemoryExpired(item));
   const windowed = approved.slice(0, Math.max(1, maxFacts));
   const lines = windowed.map((item) => `- ${item.fact} (${item.source}; retention: ${item.retention})`);
   if (approved.length > windowed.length) {
