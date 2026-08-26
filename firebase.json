@@ -17,6 +17,13 @@
           "region": "europe-west4"
         }
       },
+      {
+        "source": "/webhooks/**",
+        "run": {
+          "serviceId": "arbor-api",
+          "region": "europe-west4"
+        }
+      },
       { "source": "/privacy", "destination": "/privacy.html" },
       { "source": "/terms", "destination": "/terms.html" },
       { "source": "/support", "destination": "/support.html" },
