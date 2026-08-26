@@ -61,7 +61,10 @@ export class FirestorePushTokenStore implements PushTokenStore {
     if (!getApps().length) {
       initializeApp({ credential: applicationDefault(), projectId: config.firebaseProjectId });
     }
-    this.db = getFirestore();
+    // STORE-4 fix in passing: every other store passes the configured database
+    // id — the bare getFirestore() read/wrote "(default)" and silently used a
+    // different database whenever FIRESTORE_DATABASE_ID is set.
+    this.db = getFirestore(config.firestoreDatabaseId);
   }
 
   async upsert(uid: string, rawToken: string): Promise<void> {
