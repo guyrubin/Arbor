@@ -84,6 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u ? toAuthUser(u) : null);
       setLoading(false);
+      // STORE-2: RevenueCat keys native purchases on its App User ID, and the
+      // billing webhook writes entitlements/{uid} — so the RC identity must
+      // track Firebase auth exactly. No-op on web (dynamic import, inert
+      // module); never allowed to break auth.
+      void import("../lib/nativeBilling")
+        .then((m) => m.syncNativeBillingUser(u ? u.uid : null))
+        .catch(() => undefined);
     });
     return unsubscribe;
   }, []);

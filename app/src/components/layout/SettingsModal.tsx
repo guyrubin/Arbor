@@ -10,7 +10,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
-import { api } from "../../lib/api";
+import { useCheckout } from "../../hooks/useCheckout";
 import { T } from "../../lib/tokens";
 import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
 import type { UiLang } from "../../lib/i18n";
@@ -29,7 +29,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const coachLimit = entitlement.limits.coachMessagesPerDay;
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
   const [adminOpen, setAdminOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  // STORE-2: all checkout/manage/restore actions go through the ONE platform-
+  // gated hook — no inline `/api/billing/*` calls in this file (guard-tested).
+  const { busy, startCheckout, openPortal, restorePurchases, isNative } = useCheckout();
   const [accentTheme, setAccentTheme] = useState<AccentTheme>(getSavedTheme);
   const [draftUiLang, setDraftUiLang] = useState<UiLang>(uiLang);
   // LANG-ADV-OVERRIDE: bilingual parents (e.g. Hebrew interface, English clinical
@@ -89,33 +91,6 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const handleThemeChange = (theme: AccentTheme) => {
     setTheme(theme);
     setAccentTheme(theme);
-  };
-
-  const startCheckout = async (plan: "plus" | "family") => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const { url } = await api.billingCheckout(plan, cadence);
-      window.location.href = url;
-    } catch {
-      // CARE-5: checkout being unavailable is information, not a success.
-      toast(t("set.plan.checkoutSoon"), "info");
-    } finally {
-      setBusy(false);
-    }
-  };
-  const openPortal = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const { url } = await api.billingPortal();
-      if (url) window.location.href = url;
-      else toast(t("set.plan.manageStore"), "success");
-    } catch {
-      toast(t("set.plan.manageStore"), "success");
-    } finally {
-      setBusy(false);
-    }
   };
 
   return (
@@ -188,19 +163,27 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   labeled BEFORE any tap toward checkout. */}
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
                 <span className="inline-flex items-center gap-1.5">
-                  <button onClick={() => void startCheckout("plus")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+                  <button onClick={() => void startCheckout("plus", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                     {t("set.plan.upgradePlus")}
                   </button>
                   <PlanBadge plan="plus" />
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <button onClick={() => void startCheckout("family")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
+                  <button onClick={() => void startCheckout("family", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
                     {t("set.plan.upgradeFamily")}
                   </button>
                   <PlanBadge plan="family" />
                 </span>
               </div>
             </>
+          )}
+
+          {/* STORE-2: Apple-required Restore Purchases — native builds ONLY
+              (StoreKit/Play re-links past purchases to this account). */}
+          {isNative && (
+            <button onClick={() => void restorePurchases()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+              {t("set.plan.restore")}
+            </button>
           )}
         </div>
 

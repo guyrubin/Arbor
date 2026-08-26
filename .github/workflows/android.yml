@@ -13,7 +13,9 @@ name: Android build
 on:
   workflow_dispatch:
   push:
-    branches: [ main, exec-blueprint-wave0 ]
+    # claude/store-2-native-iap: branch verification for the native IAP work —
+    # drop from this list once STORE-2 merges.
+    branches: [ main, exec-blueprint-wave0, claude/store-2-native-iap ]
     paths:
       - 'app/**'
       - '.github/workflows/android.yml'
@@ -32,6 +34,10 @@ jobs:
       VITE_FIREBASE_STORAGE_BUCKET: arborprd-westeu.firebasestorage.app
       VITE_FIREBASE_MESSAGING_SENDER_ID: '628681500167'
       VITE_FIREBASE_APP_ID: '1:628681500167:web:f78b93f5f692e174d2aca2'
+      # STORE-2: RevenueCat PUBLIC (publishable) SDK key for Play Billing.
+      # Set the repo VARIABLE RC_API_KEY_ANDROID to enable native purchases;
+      # while empty, purchase surfaces show the neutral "coming soon" copy.
+      VITE_RC_API_KEY_ANDROID: ${{ vars.RC_API_KEY_ANDROID || '' }}
       # Upload-keystore secrets (set these to produce a SIGNED, Play-submittable AAB).
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -54,6 +60,8 @@ jobs:
       - run: npm ci
       - name: Build web bundle
         run: npm run build
+      - name: Native checkout scan (STORE-2 G3 — no hosted-checkout URLs in the bundle)
+        run: node scripts/native-checkout-scan.mjs
       - name: Sync Capacitor (Android)
         run: npx cap sync android
       - name: Decode upload keystore (only when the secret is set)

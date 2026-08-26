@@ -37,6 +37,15 @@ export async function initNativeShell(): Promise<void> {
     /* splash plugin unavailable — non-fatal */
   }
 
+  // STORE-2: configure RevenueCat native billing (StoreKit / Play Billing).
+  // No-op when the platform SDK key isn't shipped (pre-launch builds).
+  try {
+    const { configureNativeBilling } = await import("./nativeBilling");
+    await configureNativeBilling();
+  } catch {
+    /* billing unavailable — purchase surfaces fall back to "coming soon" */
+  }
+
   // Android hardware/gesture back → previous tab (hash history), exit at root.
   // iOS interactive edge-swipe-back is the webview system default and is left
   // unblocked (no left-edge gesture handlers anywhere). Non-fatal if absent.
