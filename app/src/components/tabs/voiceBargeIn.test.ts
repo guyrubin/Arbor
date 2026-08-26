@@ -59,6 +59,42 @@ describe("AI-V2(a) — chip tap = interrupt while speaking (fallback loop)", () 
   });
 });
 
+describe("F-01 — the voice chip can never wedge into a dead button", () => {
+  it("clearLiveRefs is the single Live-terminal cleanup (controller + render mirror)", () => {
+    const clear = /const clearLiveRefs = \(\) => \{[\s\S]*?\n  \};/.exec(coach)?.[0] ?? "";
+    expect(clear).toContain("liveCtlRef.current = null");
+    expect(clear).toContain("setLiveSession(false)");
+  });
+
+  it("the onPhase 'closed' path clears the Live refs (the previously-missing terminal cleanup)", () => {
+    const onPhase = /onPhase: \(p\) => \{[\s\S]*?\n              \},/.exec(coach)?.[0] ?? "";
+    expect(onPhase).toMatch(/p === "closed"/);
+    expect(onPhase).toContain("clearLiveRefs()");
+    expect(onPhase).toContain('setVoicePhase("off")');
+    // Late 'closed' reports — controller already cleared, or the browser
+    // fallback loop running — must never stomp the fallback's phase.
+    expect(onPhase).toMatch(/if \(!liveCtlRef\.current \|\| voiceOnRef\.current\) return;/);
+  });
+
+  it("toggleVoice from visual-idle clears stale refs and FALLS THROUGH to starting", () => {
+    expect(toggle).toMatch(/if \(action !== "start"\) \{ stopVoice\(\); return; \}/);
+    // The stale-ref branch clears but does NOT return — the tap keeps going…
+    // The stale-ref clear flows STRAIGHT into the Live-availability branch.
+    expect(toggle).toMatch(/if \(voiceOnRef\.current \|\| liveCtlRef\.current\) stopVoice\(\);\s*if \(liveAvail\)/);
+    // …so every idle-looking tap reaches the token mint or the browser loop.
+    expect(toggle).toContain("api.liveToken(");
+    expect(toggle).toMatch(/startBrowserVoice\(\);\s*\};\s*$/);
+  });
+
+  it("no bare catch on the Live start path — Paywall opens the paywall, everything else toasts", () => {
+    expect(toggle).not.toMatch(/catch\s*\{/);
+    expect(toggle).toContain("catch (err)");
+    expect(toggle).toMatch(/err instanceof PaywallError[\s\S]{0,200}openPaywall\(/);
+    expect(toggle).toContain('toast(t("coach.toast.voiceFallback"), "info")');
+    expect(toggle).toContain("console.warn");
+  });
+});
+
 describe("AI-V7 — the overlay is a surface, never an entry point", () => {
   it("VoiceOverlay renders ONLY while voicePhase !== 'off' (owned by the phase)", () => {
     expect(coach).toMatch(/\{voicePhase !== "off" && \(\s*<VoiceOverlay/);

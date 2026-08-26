@@ -25,7 +25,7 @@ import CoachAnswerCards from "../coach/CoachAnswerCards";
 import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
-import { api, streamVoice, getAiLanguage, EscalationRequiredError } from "../../lib/api";
+import { api, streamVoice, getAiLanguage, EscalationRequiredError, PaywallError } from "../../lib/api";
 import { normalizeExtractedLog } from "../../content/behaviorTaxonomy";
 import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { BehaviorContext } from "../../types";
@@ -146,6 +146,7 @@ export default function CoachTab() {
     behaviorLogs,
     conversationChanges,
     commitConversationProposal,
+    openPaywall,
   } = useArbor();
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
@@ -427,6 +428,14 @@ export default function CoachTab() {
     loop.start();
   };
 
+  // F-01: the ONE place every Live-terminal path clears the controller + its
+  // render mirror — a stale liveCtlRef otherwise wedges the chip into a dead
+  // button (voiceChipAction keeps returning "stop" for an idle-looking chip).
+  const clearLiveRefs = () => {
+    liveCtlRef.current = null;
+    setLiveSession(false);
+  };
+
   const stopVoice = () => {
     voiceOnRef.current = false;
     streamDoneRef.current = false;
@@ -437,8 +446,7 @@ export default function CoachTab() {
     dictationLoopRef.current = null;
     stopSpeaking();
     liveCtlRef.current?.stop();
-    liveCtlRef.current = null;
-    setLiveSession(false);
+    clearLiveRefs();
     setVoiceInterim("");
     // COACH-2: settle (and keep) any partial caption when the parent stops.
     finalizeVoiceAiTurn();
@@ -469,7 +477,12 @@ export default function CoachTab() {
   const toggleVoice = async () => {
     const action = voiceChipAction(voicePhase, Boolean(liveCtlRef.current));
     if (action === "interrupt" && voiceOnRef.current) { bargeInVoice(); return; }
-    if (action !== "start" || voiceOnRef.current || liveCtlRef.current) { stopVoice(); return; }
+    if (action !== "start") { stopVoice(); return; }
+    // F-01: a chip that LOOKS idle must always start (or visibly say why not).
+    // Stale refs — a wedged Live controller or a dangling hands-free flag with
+    // the phase already "off" — are cleared first; the tap then FALLS THROUGH
+    // to a fresh start instead of dead-ending on stopVoice.
+    if (voiceOnRef.current || liveCtlRef.current) stopVoice();
 
     // Prefer true Gemini Live when the server says it's provisioned.
     if (liveAvail) {
@@ -495,8 +508,22 @@ export default function CoachTab() {
               speechConfig: fresh.speechConfig,
             },
             {
-              onPhase: (p) => setVoicePhase(p === "closed" ? "off" : p === "connecting" ? "thinking" : p),
-              onError: () => { liveCtlRef.current = null; setLiveSession(false); toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
+              // F-01: 'closed' is a Live-terminal phase — clear the refs so
+              // the chip can start again (previously the ONLY terminal path
+              // with no cleanup: a server-side close wedged the chip). Late
+              // 'closed' reports — the controller already cleared, or the
+              // browser fallback loop running (voiceOnRef) — are ignored so
+              // socket teardown can never stomp the fallback's phase.
+              onPhase: (p) => {
+                if (p === "closed") {
+                  if (!liveCtlRef.current || voiceOnRef.current) return;
+                  clearLiveRefs();
+                  setVoicePhase("off");
+                  return;
+                }
+                setVoicePhase(p === "connecting" ? "thinking" : p);
+              },
+              onError: () => { clearLiveRefs(); toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
               screenTurn: (role, text) =>
                 api.liveTurn({ role, text, language: getAiLanguage(), childId: childProfile.id }),
               // COACH-2 / VC-3: Live turns persist through the SAME reducers the
@@ -510,8 +537,7 @@ export default function CoachTab() {
               onModelTurn: (text) => { appendVoiceAiDelta(text); finalizeVoiceAiTurn(); },
               onCrisis: (v) => {
                 // Session is ALREADY stopped (guard halts before rendering).
-                liveCtlRef.current = null;
-                setLiveSession(false);
+                clearLiveRefs();
                 voiceOnRef.current = false;
                 // VC-8: the guard's client-side lexical crisis stop carries no
                 // server resourcesMarkdown — render the matching escalation
@@ -524,8 +550,7 @@ export default function CoachTab() {
                 setVoicePhase("off");
               },
               onBlocked: (v) => {
-                liveCtlRef.current = null;
-                setLiveSession(false);
+                clearLiveRefs();
                 voiceOnRef.current = false;
                 if (v.blockedMarkdown) appendVoiceAiDelta(v.blockedMarkdown);
                 finalizeVoiceAiTurn();
@@ -535,8 +560,7 @@ export default function CoachTab() {
               // VC-5: screening unavailability degrades VISIBLY to the screened
               // browser voice loop (/voice screens every turn server-side).
               onFailClosed: () => {
-                liveCtlRef.current = null;
-                setLiveSession(false);
+                clearLiveRefs();
                 toast(t("coach.toast.voiceStandardMode"), "info");
                 startBrowserVoice();
               },
@@ -545,9 +569,20 @@ export default function CoachTab() {
           setLiveSession(true);
           return;
         }
-      } catch {
-        liveCtlRef.current = null; // fall through to the browser loop
-        setLiveSession(false);
+      } catch (err) {
+        // F-01: NEVER swallow the Live start failure silently — the tap must
+        // end in voice running or a visible reason why not.
+        clearLiveRefs();
+        if (err instanceof PaywallError) {
+          // Twin of the ArborContext PaywallError handlers: a 402 is a
+          // conversion moment, not an error toast.
+          setVoicePhase("off");
+          openPaywall(err.feature || "coach_unlimited", err.plan);
+          return;
+        }
+        console.warn("Live voice start failed — falling back to browser voice", err);
+        toast(t("coach.toast.voiceFallback"), "info");
+        // fall through to the screened browser loop
       }
     }
     startBrowserVoice();
