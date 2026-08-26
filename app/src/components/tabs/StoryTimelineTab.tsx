@@ -14,6 +14,7 @@ import { PageHeader, PASTEL, IconBadge, Chip, SectionCard, cardCls, type PastelK
 import { MemoryRow } from "../sections/ChildMemory";
 import ScreeningSheet from "../sections/ScreeningSheet";
 import { composeChildStory, childStoryToText } from "../../lib/childStory";
+import { isolate } from "../../lib/i18n";
 import { track } from "../../lib/analytics";
 
 /** Per-kind Material Symbols ligature — mirrors JournalTab's domain glyphs so the
@@ -275,7 +276,7 @@ export default function StoryTimelineTab() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <PageHeader
         eyebrow="My Child"
-        title={`${firstName}'s Story`}
+        title={`${isolate(firstName)}'s Story`}
         subtitle="Every moment, milestone, plan and insight — one living timeline. Each entry feeds the next step Arbor suggests."
         action={
           <div className="flex items-center gap-2 flex-wrap">
@@ -444,7 +445,7 @@ export default function StoryTimelineTab() {
         <div className={`${cardCls} p-10 text-center`}>
           <IconBadge tone="coral" size={52}><Icon name="photo_camera" size={24} fill={1} /></IconBadge>
           <h3 className="text-lg font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {firstName}'s story starts here
+            {`${isolate(firstName)}'s story starts here`}
           </h3>
           <p className="text-sm mt-1.5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }}>
             Capture a moment, ask Arbor a question, or track a milestone — everything you do flows into one living timeline.

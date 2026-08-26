@@ -4796,8 +4796,14 @@ const DICTS: Record<UiLang, Dict> = {
 // template, or an English word inside a Hebrew one — wrap it in Unicode isolates
 // FSI…PDI so the substituted run's direction can't reorder the surrounding text.
 // Applied ONLY to RTL-bearing values, so pure-LTR/numeric interpolation is untouched.
+//
+// Exported (E8 / F-10) so raw template-literal copy that bypasses t() — e.g.
+// `${name}'s story` — can route the interpolated name through the same isolation.
+// DISPLAY-TIME ONLY: never persist an isolated name (Firestore, filenames, seeds,
+// equality checks) — isolate at the moment the string is rendered/composed for a
+// human, and keep the raw name everywhere else.
 const RTL_CHARS = /[֐-׿؀-ۿ܀-ݏ]/;
-function isolate(value: string): string {
+export function isolate(value: string): string {
   return RTL_CHARS.test(value) ? `⁨${value}⁩` : value;
 }
 

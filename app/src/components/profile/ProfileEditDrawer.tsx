@@ -12,6 +12,7 @@ import { Avatar } from "../ui/Avatar";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import { sanitizeInterestToken } from "../../playbank/select";
+import { isolate } from "../../lib/i18n";
 import AvatarCreator from "./AvatarCreator";
 import RewardsCard from "./RewardsCard";
 
@@ -118,7 +119,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setBusy(true);
     try {
       await deleteChild(activeChild.id);
-      toast(`${activeChild.name}'s data was deleted`, "success");
+      toast(`${isolate(activeChild.name)}'s data was deleted`, "success");
       onClose();
     } finally {
       setBusy(false);

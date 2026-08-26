@@ -12,6 +12,7 @@
  * compat shim that delegates here.
  */
 import type { LoopArtifact } from "./loopEvents";
+import { isolate } from "./i18n";
 
 const W = 1080;
 const H = 1350;
@@ -306,7 +307,7 @@ function renderAnswerCard(opts: ShareCardOpts): Promise<RenderedCard> {
 function renderStoryCard(opts: ShareCardOpts): Promise<RenderedCard> {
   return renderQuoteCard({
     eyebrow: "An Arbor story",
-    primary: opts.title || (opts.name ? `${opts.name}'s story` : "A story"),
+    primary: opts.title || (opts.name ? `${isolate(opts.name)}'s story` : "A story"),
     secondary: opts.takeaway,
     imageUrl: opts.imageUrl,
     name: opts.name,
@@ -317,7 +318,7 @@ function renderStoryCard(opts: ShareCardOpts): Promise<RenderedCard> {
 function renderGrowthCard(opts: ShareCardOpts): Promise<RenderedCard> {
   return renderQuoteCard({
     eyebrow: "Progress",
-    primary: opts.headline || (opts.name ? `${opts.name}'s progress` : "Progress this month"),
+    primary: opts.headline || (opts.name ? `${isolate(opts.name)}'s progress` : "Progress this month"),
     secondary: opts.sub,
     imageUrl: opts.imageUrl,
     name: opts.name,

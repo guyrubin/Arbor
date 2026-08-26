@@ -4,6 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import type { RhythmPrediction, RhythmTone } from "../../rhythm/predict";
 import { hourLabel } from "../../rhythm/predict";
+import { isolate } from "../../lib/i18n";
 
 /* Today's Rhythm — a calm horizontal read of the day ahead, learned from the
    family's own log. Honest about uncertainty: shows a "still learning" state
@@ -96,7 +97,7 @@ export default function RhythmStrip({
     if (frictionPeak) parts.push(`hardest around ${hourLabel(frictionPeak.hour)}`);
     if (calmWindow) parts.push(`calmest ${hourLabel(calmWindow.startHour)} to ${hourLabel(calmWindow.endHour)}`);
     if (windDownHour != null) parts.push(`wind-down near ${hourLabel(windDownHour)}`);
-    return `${childName}'s predicted rhythm today: ${parts.join(", ")}.`;
+    return `${isolate(childName)}'s predicted rhythm today: ${parts.join(", ")}.`;
   }, [learning, childName, frictionPeak, calmWindow, windDownHour, t]);
 
   return (

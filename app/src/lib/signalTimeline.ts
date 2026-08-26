@@ -11,6 +11,7 @@ import type {
   PracticeEvent,
   SpeechAttempt,
 } from "../types";
+import { isolate } from "./i18n";
 
 /**
  * The Signal Timeline — Arbor's unified developmental activity stream.
@@ -470,11 +471,14 @@ export interface NextStep {
  * is the timeline visibly feeding the coach.
  */
 export const deriveNextStep = (momentum: Momentum, childName: string): NextStep | null => {
+  // E8/F-10: the messages below are display-time copy (message + chat seed) —
+  // each interpolation of the name is bidi-isolated so a Hebrew name can't
+  // reorder the surrounding English sentence.
   const name = childName || "your child";
 
   if (momentum.momentsThisWeek === 0 && momentum.planSteps.total === 0) {
     return {
-      message: `${name}'s story starts with a single moment. Capture what happened today and Arbor takes it from there.`,
+      message: `${isolate(name)}'s story starts with a single moment. Capture what happened today and Arbor takes it from there.`,
       cta: { label: "Capture a moment", prompt: "" },
     };
   }
@@ -487,10 +491,10 @@ export const deriveNextStep = (momentum: Momentum, childName: string): NextStep 
     // remain — they emit nothing about the child as a verdict.
     const where = momentum.topContext ? `, usually at ${momentum.topContext.toLowerCase()}` : "";
     return {
-      message: `You logged ${momentum.momentsThisWeek} moments for ${name} this week — most often "${momentum.topPattern}"${where}.`,
+      message: `You logged ${momentum.momentsThisWeek} moments for ${isolate(name)} this week — most often "${momentum.topPattern}"${where}.`,
       cta: {
         label: `Ask Arbor about ${momentum.topPattern.toLowerCase()}`,
-        prompt: `This week ${name} had several "${momentum.topPattern}" moments${
+        prompt: `This week ${isolate(name)} had several "${momentum.topPattern}" moments${
           momentum.topContext ? ` (mostly at ${momentum.topContext.toLowerCase()})` : ""
         }. What may be happening and what's one thing to try this week?`,
       },
@@ -499,7 +503,7 @@ export const deriveNextStep = (momentum: Momentum, childName: string): NextStep 
 
   if (momentum.milestones.total > 0 && momentum.milestones.observed > 0) {
     return {
-      message: `You've observed ${momentum.milestones.observed} of ${momentum.milestones.total} milestones for ${name}. Keep noticing — small wins compound.`,
+      message: `You've observed ${momentum.milestones.observed} of ${momentum.milestones.total} milestones for ${isolate(name)}. Keep noticing — small wins compound.`,
     };
   }
 

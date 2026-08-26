@@ -20,6 +20,7 @@ import {
   type SavedComicMeta,
 } from "../../lib/heroComics";
 import { getScene } from "../../lib/sceneCache";
+import { isolate } from "../../lib/i18n";
 // W0.7 — age-fit filtering (shared helper; windows come from the canon
 // HeroStorySpec ageRange each adventure is built from)
 import { classifyAgeFit, loadShowAllAges, saveShowAllAges, windowFromRange } from "../../lib/ageFilter";
@@ -161,7 +162,7 @@ export default function ComicsTab() {
         />
         <PlayPanel tone="lav" className="text-center">
           <p className="text-[1.3rem] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-            {he ? `קודם כול, צרו את הגיבור של ${name}` : `First, create ${name}'s hero`}
+            {he ? `קודם כול, צרו את הגיבור של ${isolate(name)}` : `First, create ${isolate(name)}'s hero`}
           </p>
           <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
             {he
@@ -169,7 +170,7 @@ export default function ComicsTab() {
               : `Make ${name} into their own comic superhero — then they star in every Academy story, comic and adventure across Arbor.`}
           </p>
           <PlayButton tone="clay" onClick={() => setActiveTab("profile")}>
-            <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${name}` : `Create ${name}'s hero`}
+            <Icon name="auto_awesome" size={16} /> {he ? `צרו את הגיבור של ${isolate(name)}` : `Create ${isolate(name)}'s hero`}
           </PlayButton>
         </PlayPanel>
       </PlayShell>
@@ -246,7 +247,7 @@ export default function ComicsTab() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <div className="min-w-0">
             <p className="text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-              {he ? `מדף הקומיקס של ${name}` : `${name}'s comic bookshelf`}
+              {he ? `מדף הקומיקס של ${isolate(name)}` : `${isolate(name)}'s comic bookshelf`}
             </p>
             <p className="text-[12.5px] mt-0.5" style={{ color: "var(--arbor-muted)" }} dir="auto">
               {he ? `${savedCount} מתוך ${ADVENTURES.length} ספרים על המדף` : `${savedCount} of ${ADVENTURES.length} books on the shelf`}
@@ -428,8 +429,8 @@ export default function ComicsTab() {
         </span>
         <span style={{ color: "var(--arbor-muted)" }} dir="auto">
           {he
-            ? `הקומיקס משתמש בדמות הגיבור המצוירת השמורה של ${name} — לעולם לא בתמונה אמיתית. התמונות נוצרות בבינה מלאכותית ומסומנות בסימן מים של מקור.`
-            : `Comics use ${name}'s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.`}
+            ? `הקומיקס משתמש בדמות הגיבור המצוירת השמורה של ${isolate(name)} — לעולם לא בתמונה אמיתית. התמונות נוצרות בבינה מלאכותית ומסומנות בסימן מים של מקור.`
+            : `Comics use ${isolate(name)}'s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.`}
         </span>
       </div>
     </PlayShell>

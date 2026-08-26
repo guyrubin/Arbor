@@ -8,6 +8,8 @@
  * infrastructure exists (subject/preheader fields included for that).
  */
 
+import { isolate } from "../lib/i18n.js";
+
 type DigestLog = {
   timestamp: string;
   behaviorType: string;
@@ -114,10 +116,12 @@ export const buildDigestEmail = (input: {
   const he = input.language === "he";
   const { narrative: n, stats: s, childName } = input;
 
-  // Notification voice (Maytal frame 6) for the subject line.
+  // Notification voice (Maytal frame 6) for the subject line. E8/F-10: the name
+  // is bidi-isolated at render time so a Hebrew name can't reorder the English
+  // sentence (and vice versa) in email clients.
   const subject = he
-    ? `יש תובנה חדשה על ${childName} 💚`
-    : `A new insight about ${childName} is waiting 💚`;
+    ? `יש תובנה חדשה על ${isolate(childName)} 💚`
+    : `A new insight about ${isolate(childName)} is waiting 💚`;
   const preheader = n.preheader.trim() || (he ? "פתחו את Arbor ותגלו מה חדש" : "Open Arbor to see what's new");
 
   const L = he
@@ -159,10 +163,12 @@ export const fallbackDigestNarrative = (childName: string, stats: WeeklyDigestSt
   }
   if (stats.resolvedCount > 0) highlights.push(`${stats.resolvedCount} logged moment${stats.resolvedCount === 1 ? " was" : "s were"} marked resolved.`);
   if (stats.milestonesTotal > 0) highlights.push(`Milestones: ${stats.milestonesDone} of ${stats.milestonesTotal} reached.`);
-  if (highlights.length === 0) highlights.push(`A quiet week in the log — even one quick note a day keeps ${childName}'s story sharp.`);
+  // E8/F-10: display-time bidi isolation — a Hebrew name in these English
+  // sentences must not pull the possessive "'s" to its right-hand side.
+  if (highlights.length === 0) highlights.push(`A quiet week in the log — even one quick note a day keeps ${isolate(childName)}'s story sharp.`);
   return {
-    title: `${childName}'s week`,
-    subject: `${childName}'s week in review`,
+    title: `${isolate(childName)}'s week`,
+    subject: `${isolate(childName)}'s week in review`,
     preheader: highlights[0],
     summary: highlights.join(" "),
     highlights,

@@ -28,6 +28,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { api, EscalationRequiredError } from "../../lib/api";
+import { isolate } from "../../lib/i18n";
 import type { BedtimeStory } from "../../types";
 import { cardCls } from "../ui/kit";
 
@@ -131,6 +132,9 @@ export default function BedtimeStoriesTab() {
     setPageIndex(0);
   };
 
+  // E8/F-10: display copy below bidi-isolates each interpolation of the name
+  // so a Hebrew name can't reorder the English copy (e.g. the possessive in
+  // `${name}'s bedtime story`). The API call above sends the raw name.
   const name = childProfile.name?.split(" ")[0] || (he ? "הילד" : "your child");
 
   // ── Escalation wall (non-diagnostic) ──────────────────────────────────────
@@ -218,8 +222,8 @@ export default function BedtimeStoriesTab() {
           </div>
           <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
             {he
-              ? `${name}'s ·  סיפור לילה · ${pageIndex + 1} מתוך ${pages.length}`
-              : `${name}'s bedtime story · ${pageIndex + 1} of ${pages.length}`}
+              ? `${isolate(name)}'s ·  סיפור לילה · ${pageIndex + 1} מתוך ${pages.length}`
+              : `${isolate(name)}'s bedtime story · ${pageIndex + 1} of ${pages.length}`}
           </p>
         </div>
 
@@ -363,7 +367,7 @@ export default function BedtimeStoriesTab() {
               className="text-[16px] font-extrabold leading-snug"
               style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}
             >
-              {he ? `סיפור הלילה של ${name}` : `${name}'s Bedtime Story`}
+              {he ? `סיפור הלילה של ${isolate(name)}` : `${isolate(name)}'s Bedtime Story`}
             </h1>
             <p className="text-[12px] mt-0.5" style={{ color: "var(--arbor-muted)" }} dir="auto">
               {he
@@ -374,8 +378,8 @@ export default function BedtimeStoriesTab() {
         </div>
         <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
           {he
-            ? `ספרו ל-Arbor מה קרה היום, ו-Arbor ייצור סיפור לילה חמים שבו ${name} הוא הגיבור.`
-            : `Tell Arbor what happened today, and Arbor will create a warm bedtime story where ${name} is the hero.`}
+            ? `ספרו ל-Arbor מה קרה היום, ו-Arbor ייצור סיפור לילה חמים שבו ${isolate(name)} הוא הגיבור.`
+            : `Tell Arbor what happened today, and Arbor will create a warm bedtime story where ${isolate(name)} is the hero.`}
         </p>
       </div>
 
@@ -388,7 +392,7 @@ export default function BedtimeStoriesTab() {
           className="text-[12px] uppercase tracking-widest font-bold"
           style={{ color: "var(--arbor-muted)" }}
         >
-          {he ? `מה קרה היום עם ${name}?` : `What happened today with ${name}?`}
+          {he ? `מה קרה היום עם ${isolate(name)}?` : `What happened today with ${isolate(name)}?`}
         </p>
 
         <div className="space-y-3" data-testid="bedtime-events-list">
@@ -455,7 +459,7 @@ export default function BedtimeStoriesTab() {
         ) : (
           <>
             <Icon name="auto_awesome" size={20} />
-            {he ? `צרו את הסיפור של ${name}` : `Create ${name}'s story`}
+            {he ? `צרו את הסיפור של ${isolate(name)}` : `Create ${isolate(name)}'s story`}
           </>
         )}
       </button>

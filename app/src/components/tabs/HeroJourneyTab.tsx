@@ -7,6 +7,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { api, type AvatarStyle } from "../../lib/api";
+import { isolate } from "../../lib/i18n";
 import {
   HERO_STORIES,
   PACKS,
@@ -279,6 +280,9 @@ export default function HeroJourneyTab() {
   // ── Catalog view (comic "story worlds" — the child is the hero of each) ──────
   if (!activeStory || !render) {
     const he = aiLang === "he";
+    // E8/F-10: the display copy below bidi-isolates each interpolation of the
+    // name so a Hebrew name can't reorder the English headline copy (e.g.
+    // `${name}'s Story Quests`).
     const name = childProfile.name?.split(" ")[0] || (he ? "הגיבור" : "your hero");
     // "Aim at the highest good": the family's Charter values steer which stories
     // surface first, and the aim is made visible to the child + parent.
@@ -323,11 +327,11 @@ export default function HeroJourneyTab() {
               {he ? `${runs.length} סיפורים הושלמו` : `${runs.length} stories done`}
             </span>
             <h1 className="font-black leading-none truncate" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(22px,5vw,38px)" }} dir="auto">
-              {he ? `מסעות הגיבור של ${name}` : `${name}'s Story Quests`}
+              {he ? `מסעות הגיבור של ${isolate(name)}` : `${isolate(name)}'s Story Quests`}
             </h1>
             {charter.length > 0 && (
               <p className="text-[12.5px] font-bold mt-1.5" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
-                {he ? `מגדלים את ${name} לקראת: ${charter.join(" · ")}` : `Raising ${name} toward: ${charter.join(" · ")}`}
+                {he ? `מגדלים את ${isolate(name)} לקראת: ${charter.join(" · ")}` : `Raising ${isolate(name)} toward: ${charter.join(" · ")}`}
               </p>
             )}
             <div className="flex flex-wrap gap-1.5 mt-3">
@@ -350,7 +354,7 @@ export default function HeroJourneyTab() {
         <div className="flex items-end gap-3">
           <ArborMascot size={50} mood="wave" animate className="flex-shrink-0" />
           <div className="comic-panel px-4 py-3 text-[14px] font-extrabold" dir="auto">
-            {he ? `${name}, הפכו לגיבור של כל סיפור!` : `Pick a story, hero — ${name} stars in every one!`}
+            {he ? `${isolate(name)}, הפכו לגיבור של כל סיפור!` : `Pick a story, hero — ${isolate(name)} stars in every one!`}
           </div>
         </div>
 
@@ -371,7 +375,7 @@ export default function HeroJourneyTab() {
                 {he ? "קומיקס גיבור" : "Hero Comics"}
               </p>
               <p className="text-[12.5px] font-bold mt-1" style={{ color: "var(--arbor-ink-soft)" }} dir="auto">
-                {he ? `${name} כוכב הקומיקס של כל סיפור` : `${name} stars in every story's comic`}
+                {he ? `${isolate(name)} כוכב הקומיקס של כל סיפור` : `${isolate(name)} stars in every story's comic`}
               </p>
             </div>
           </button>
@@ -674,11 +678,11 @@ export default function HeroJourneyTab() {
               className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
               style={{ background: T.gradientCta }}
             >
-              <Icon name="emoji_events" size={16} /> {aiLang === "he" ? `סיימו ושמרו את ההתפתחות של ${childProfile.name}` : `Finish & save ${childProfile.name}'s development`}
+              <Icon name="emoji_events" size={16} /> {aiLang === "he" ? `סיימו ושמרו את ההתפתחות של ${isolate(childProfile.name)}` : `Finish & save ${isolate(childProfile.name)}'s development`}
             </button>
           ) : (
             <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
-              <Icon name="check" size={16} /> {aiLang === "he" ? `נשמר להתפתחות של ${childProfile.name}` : `Saved to ${childProfile.name}'s development`}
+              <Icon name="check" size={16} /> {aiLang === "he" ? `נשמר להתפתחות של ${isolate(childProfile.name)}` : `Saved to ${isolate(childProfile.name)}'s development`}
             </div>
           )}
         </div>
