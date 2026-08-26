@@ -78,7 +78,8 @@ describe("UC-8b — the sticky sub-tab row is flush with the scrollport", () => 
   });
 
   it("--arbor-main-pt matches <main>'s actual Tailwind top padding", () => {
-    const mainClass = shell.match(/<main className="(arbor-parent[^"]+)"/)?.[1];
+    // F-02 added ref={mainRef} before className — match the tag, not an exact prop order.
+    const mainClass = shell.match(/<main [^>]*className="(arbor-parent[^"]+)"/)?.[1];
     expect(mainClass, "<main> className not found — update this guard").toBeTruthy();
 
     // Tailwind spacing scale: n → n * 0.25rem.
