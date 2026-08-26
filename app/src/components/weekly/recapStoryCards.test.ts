@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { buildRecapCards, type RecapCard } from "./RecapStoryCards";
+import { weeklyChipIds, isEmptyCurrentWeek } from "./weeklySelection";
 import { en as rcEn, he as rcHe } from "../../lib/i18nElevation/recap";
 import type { WeeklyReport } from "../../hooks/useWeeklyRecap";
 import type { WeeklyDigest } from "../../lib/api";
@@ -231,6 +232,49 @@ describe("WeeklyTab integration — recap as the current week's primary view + e
     expect(code).toContain('rc("elev.recap.email.soon")');
     expect(code).toContain('track("recap_email_optin"');
   });
+
+  it("F-06: the tab lands on the CURRENT week, never a stale reports[0]", () => {
+    expect(code).toContain("setSelectedId(currentId)");
+    expect(code).not.toContain("reports[0]?.id");
+    // No fallback to a past week when the selection has no stored report.
+    expect(code).not.toMatch(/\|\|\s*reports\[0\]/);
+  });
+
+  it("F-06: chips come from weeklyChipIds (current week leads) + honest empty state", () => {
+    expect(code).toContain("weeklyChipIds(");
+    expect(code).toContain("isEmptyCurrentWeek(");
+    expect(code).toContain('t("wk.emptyThisWeek")');
+  });
+
+  it("F-06: the raw week id (a storage key) never renders in the header subtitle", () => {
+    expect(code).not.toContain("${labelFor(selected)} · ${selected.id}");
+    expect(code).not.toContain("${currentLabel} · ${currentId}");
+  });
+});
+
+/* ── 3b. F-06 pure landing/chip logic (weeklySelection.ts) ────────────────── */
+
+describe("weeklySelection — the weekly tab never lands in the past", () => {
+  // The F-06 repro: two stored June weeks, live week = late August.
+  const stored = ["2026-W25", "2026-W24"];
+  const CURRENT = "2026-W35";
+
+  it("stored June weeks + current W35 → landing is W35, empty state, chip[0] = current", () => {
+    // Landing: WeeklyTab defaults selection to currentId (pinned by the
+    // source scan above); with nothing stored for it, the week is empty.
+    expect(isEmptyCurrentWeek(null, CURRENT, stored.includes(CURRENT))).toBe(true);
+    expect(isEmptyCurrentWeek(CURRENT, CURRENT, stored.includes(CURRENT))).toBe(true);
+    expect(weeklyChipIds(stored, CURRENT)).toEqual(["2026-W35", "2026-W25", "2026-W24"]);
+  });
+
+  it("a stored current week gets no synthetic duplicate and no empty state", () => {
+    expect(weeklyChipIds([CURRENT, ...stored], CURRENT)).toEqual([CURRENT, ...stored]);
+    expect(isEmptyCurrentWeek(CURRENT, CURRENT, true)).toBe(false);
+  });
+
+  it("selecting a history week never triggers the current-week empty state", () => {
+    expect(isEmptyCurrentWeek("2026-W25", CURRENT, false)).toBe(false);
+  });
 });
 
 /* ── 4. the lib/streak resettable-value ban (masterplan 2.3) ──────────────── */
@@ -244,6 +288,7 @@ describe("streak ban — no strip/recap file touches the resettable member", () 
     "components/weekly/RecapStoryCards.tsx",
     "components/weekly/recapStrings.ts",
     "components/weekly/recapEmail.ts",
+    "components/weekly/weeklySelection.ts",
     "components/tabs/WeeklyTab.tsx",
     "hooks/useWeeklyRecap.ts",
     "lib/i18nElevation/recap.ts",

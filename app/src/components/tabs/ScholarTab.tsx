@@ -4,6 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { scholarsInfo } from "../../initialData";
+import { isolate } from "../../lib/i18n";
 import { PageHeader, cardCls, PASTEL, PastelKey } from "../ui/kit";
 
 const TONES: PastelKey[] = ["mint", "sky", "lav", "coral", "yellow", "pink"];
@@ -58,7 +59,7 @@ export default function ScholarTab() {
                   onClick={() => seedCoach({
                     // AI-input seed (sent to the model in aiLang) — intentionally English; the
                     // model localizes its reply via getAiLanguage(). Do not translate.
-                    prompt: `Using ${sch.name}'s ${sch.concept} lens, give me practical, non-diagnostic guidance for ${childProfile.name} (age ${childProfile.age}) — what to notice and two things to try this week.`,
+                    prompt: `Using ${isolate(sch.name)}'s ${sch.concept} lens, give me practical, non-diagnostic guidance for ${isolate(childProfile.name)} (age ${childProfile.age}) — what to notice and two things to try this week.`,
                     lens: sch.name,
                     source: "scholar-apply",
                   })}

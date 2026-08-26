@@ -15,6 +15,7 @@ import { type PlayActivity, bandForAge, playDomainLabel } from "../../playbank/c
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { buildDailyPlan, buildGoalObservation, estimateLoggedDayCount, type DailyPlan } from "../../practice/dailyPlan";
 import { useChildCollection } from "../../hooks/useChildCollection";
+import { isolate } from "../../lib/i18n";
 import type { GoalObservation } from "../../practice/dailyPlan";
 
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
@@ -117,7 +118,7 @@ export default function DailyPlayTab() {
     const updated = { ...courseProg, [courseId]: adding ? [...cur, activityId] : cur.filter((x) => x !== activityId) };
     setCourseProg(updated);
     try { localStorage.setItem(`arbor.course.${childProfile.id}`, JSON.stringify(updated)); } catch { /* ignore */ }
-    if (adding) toast(`Nice. Added to ${firstName}'s day.`, "success");
+    if (adding) toast(`Nice. Added to ${isolate(firstName)}'s day.`, "success");
   };
 
   // Readiness tracks — parent-chosen goal courses (school / sibling / sleep).
@@ -140,7 +141,7 @@ export default function DailyPlayTab() {
         localStorage.setItem(`arbor.play.done.${childProfile.id}`, JSON.stringify([...cur, p.activity.id]));
       }
     } catch { /* ignore */ }
-    toast(`Nice. Added to ${firstName}'s day.`, "success");
+    toast(`Nice. Added to ${isolate(firstName)}'s day.`, "success");
   };
   const coach = (p: ScoredActivity) => {
     seedCoach({ prompt: t("seed.play", { title: p.activity.title, name: firstName, domain: p.activity.domain }), source: "daily-play" });
@@ -198,7 +199,7 @@ export default function DailyPlayTab() {
         JSON.stringify({ date: new Date().toISOString().slice(0, 10), activityId: plan.scoredActivity.activity.id })
       );
     } catch { /* ignore */ }
-    toast(`Nice. Added to ${firstName}'s day.`, "success");
+    toast(`Nice. Added to ${isolate(firstName)}'s day.`, "success");
   };
 
   const handlePlanCoach = (plan: DailyPlan) => {
@@ -217,7 +218,7 @@ export default function DailyPlayTab() {
     // arbor-safety review gates prod (requiredFix #4).
     const obs = buildGoalObservation({ plan: dailyPlan, observationText: text });
     await goalObservationsCol.upsert(obs);
-    toast(`Nice — added to ${firstName}'s record.`, "success");
+    toast(`Nice — added to ${isolate(firstName)}'s record.`, "success");
   };
 
   // CI-31: DailyPlanCard carries its own session length derived from the plan's

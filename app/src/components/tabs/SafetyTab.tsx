@@ -6,6 +6,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { track } from "../../lib/analytics";
+import { fmtDay } from "../../lib/formatDate";
 import {
   FIND_A_HELPLINE_URL,
   HELPLINE_DIRECTORY,
@@ -31,7 +32,7 @@ const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)",
 
 export default function SafetyTab() {
   const { childProfile, approvedMemoryItems, handleMemoryDecision, isMemoryUpdating } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
   const reviewedKey = useMemo(() => `arbor.safetyReviewed.${childProfile.id}`, [childProfile.id]);
@@ -151,7 +152,7 @@ export default function SafetyTab() {
           }
         >
           <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
-            {t("elev.safety.review.last")} <strong>{lastReviewed ? new Date(lastReviewed).toLocaleDateString() : t("elev.safety.review.never")}</strong>
+            {t("elev.safety.review.last")} <strong>{lastReviewed ? fmtDay(lastReviewed, uiLang) : t("elev.safety.review.never")}</strong>
           </p>
           {reviewStale && (
             <div className="text-xs rounded-xl px-3 py-2 mt-3" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>

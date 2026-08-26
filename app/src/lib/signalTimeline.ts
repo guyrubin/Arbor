@@ -11,6 +11,7 @@ import type {
   PracticeEvent,
   SpeechAttempt,
 } from "../types";
+import { isolate } from "./i18n";
 
 /**
  * The Signal Timeline — Arbor's unified developmental activity stream.
@@ -385,6 +386,21 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
   });
 };
 
+/**
+ * F-09 — the ONE trailing-7-day selector for "this week" surfaces.
+ * Returns the dated signals whose timestamp falls in (now − 7d, now],
+ * preserving the input order (newest-first from buildTimeline). JournalTab
+ * derives BOTH the week-stat count (length) AND the "connecting N recent
+ * moments" story slice from THIS list, so the story count can never exceed
+ * the adjacent stat. Undated and future-dated signals are excluded.
+ */
+export const weekWindow = (signals: TimelineSignal[], now: number = Date.now()): TimelineSignal[] =>
+  signals.filter((s) => {
+    if (!s.at) return false;
+    const t = new Date(s.at).getTime();
+    return Number.isFinite(t) && t > now - 7 * DAY && t <= now;
+  });
+
 export type Trend = "up" | "down" | "flat";
 
 export interface Momentum {
@@ -470,11 +486,14 @@ export interface NextStep {
  * is the timeline visibly feeding the coach.
  */
 export const deriveNextStep = (momentum: Momentum, childName: string): NextStep | null => {
+  // E8/F-10: the messages below are display-time copy (message + chat seed) —
+  // each interpolation of the name is bidi-isolated so a Hebrew name can't
+  // reorder the surrounding English sentence.
   const name = childName || "your child";
 
   if (momentum.momentsThisWeek === 0 && momentum.planSteps.total === 0) {
     return {
-      message: `${name}'s story starts with a single moment. Capture what happened today and Arbor takes it from there.`,
+      message: `${isolate(name)}'s story starts with a single moment. Capture what happened today and Arbor takes it from there.`,
       cta: { label: "Capture a moment", prompt: "" },
     };
   }
@@ -487,10 +506,10 @@ export const deriveNextStep = (momentum: Momentum, childName: string): NextStep 
     // remain — they emit nothing about the child as a verdict.
     const where = momentum.topContext ? `, usually at ${momentum.topContext.toLowerCase()}` : "";
     return {
-      message: `You logged ${momentum.momentsThisWeek} moments for ${name} this week — most often "${momentum.topPattern}"${where}.`,
+      message: `You logged ${momentum.momentsThisWeek} moments for ${isolate(name)} this week — most often "${momentum.topPattern}"${where}.`,
       cta: {
         label: `Ask Arbor about ${momentum.topPattern.toLowerCase()}`,
-        prompt: `This week ${name} had several "${momentum.topPattern}" moments${
+        prompt: `This week ${isolate(name)} had several "${momentum.topPattern}" moments${
           momentum.topContext ? ` (mostly at ${momentum.topContext.toLowerCase()})` : ""
         }. What may be happening and what's one thing to try this week?`,
       },
@@ -499,7 +518,7 @@ export const deriveNextStep = (momentum: Momentum, childName: string): NextStep 
 
   if (momentum.milestones.total > 0 && momentum.milestones.observed > 0) {
     return {
-      message: `You've observed ${momentum.milestones.observed} of ${momentum.milestones.total} milestones for ${name}. Keep noticing — small wins compound.`,
+      message: `You've observed ${momentum.milestones.observed} of ${momentum.milestones.total} milestones for ${isolate(name)}. Keep noticing — small wins compound.`,
     };
   }
 

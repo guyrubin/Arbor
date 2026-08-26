@@ -87,6 +87,22 @@ describe("VC-1 condition 1 — transcription always on, absence handled by the g
   });
 });
 
+describe("F-01 — connect failure is deterministic (deadline + deferred reject + cleanup)", () => {
+  it("the connect races the failedBeforeOpen deferred inside a hard deadline", () => {
+    expect(client).toContain("withConnectDeadline(Promise.race([connecting, failedBeforeOpen]))");
+    expect(client).toMatch(/CONNECT_TIMEOUT_MS = 10_000/);
+  });
+
+  it("onerror/onclose BEFORE open reject the start promise instead of dangling", () => {
+    expect(client).toMatch(/onerror:[\s\S]{0,200}if \(!opened\) \{ rejectBeforeOpen\(/);
+    expect(client).toMatch(/onclose:[\s\S]{0,200}if \(!opened\) \{ rejectBeforeOpen\(/);
+  });
+
+  it("a rejected connect releases everything via stopAll before rethrowing", () => {
+    expect(client).toMatch(/catch \(err\) \{[\s\S]{0,500}stopAll\(\);[\s\S]{0,500}throw err;/);
+  });
+});
+
 describe("VC-3 / COACH-2 — CoachTab persists Live turns via the existing reducers only", () => {
   it("Live handlers use appendVoiceUserTurn / appendVoiceAiDelta / finalizeVoiceAiTurn", () => {
     const live = /startGeminiLive\(([\s\S]*?)\n          \);/.exec(coach)?.[1] ?? "";

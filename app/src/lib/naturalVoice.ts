@@ -99,7 +99,23 @@ export function prefetchNaturalAudio(text: string): void {
 /* ── The synth ─────────────────────────────────────────────────────────────── */
 
 export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers): NaturalSynthHandle => {
-  let audio: HTMLAudioElement | null = null;
+  // F-03: the HTMLAudioElement MUST be created SYNCHRONOUSLY, inside the user
+  // gesture that triggered this utterance — before ANY await. Creating it only
+  // after the /api/tts fetch resolved put the first play() outside the gesture,
+  // so autoplay policy blocked it: POST /api/tts returned 200, nothing played,
+  // and the rejection was swallowed. The src-less bless-play below "unlocks"
+  // this element while the gesture is still live; its rejection (no source yet)
+  // is expected and swallowed. onplay is attached only AFTER src is set, so the
+  // bless-play can never fire onStart.
+  const audio = new Audio();
+  try {
+    audio.play().catch(() => {
+      /* expected: no src yet — the bless is best-effort */
+    });
+  } catch {
+    /* some engines throw synchronously on a src-less play() */
+  }
+
   let url: string | null = null;
   let cancelled = false;
 
@@ -108,7 +124,6 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers): Natur
       URL.revokeObjectURL(url);
       url = null;
     }
-    audio = null;
   };
 
   // Consume a prefetched fetch when one exists (single-owner: the entry is
@@ -125,7 +140,7 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers): Natur
         return;
       }
       url = URL.createObjectURL(base64ToBlob(fetched.b64, fetched.mime));
-      audio = new Audio(url);
+      audio.src = url;
       audio.onplay = () => handlers.onStart?.();
       audio.onended = () => {
         cleanup();
@@ -136,7 +151,14 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers): Natur
         handlers.onError?.();
       };
       await audio.play();
-    } catch {
+    } catch (err) {
+      // F-03: never swallow a blocked play. NotAllowedError = the browser
+      // refused playback (gesture expired / bless failed) — warn so it is
+      // diagnosable, and surface onError so the controller can fall back to
+      // the browser floor and the UI can tell the parent.
+      if ((err as { name?: string } | null)?.name === "NotAllowedError") {
+        console.warn("[voice] audio playback blocked by the browser (NotAllowedError)", err);
+      }
       if (!cancelled) handlers.onError?.();
     }
   })();
@@ -145,12 +167,15 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers): Natur
     prefetched: !!prefetched,
     stop: () => {
       cancelled = true;
-      if (audio) {
-        try {
-          audio.pause();
-        } catch {
-          /* ignore */
-        }
+      // Detach before pausing so a late media event can never fire handlers
+      // for an utterance the controller already released.
+      audio.onplay = null;
+      audio.onended = null;
+      audio.onerror = null;
+      try {
+        audio.pause();
+      } catch {
+        /* ignore */
       }
       cleanup();
     },

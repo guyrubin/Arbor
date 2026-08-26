@@ -171,6 +171,14 @@ export default function Shell() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // F-02: <main> is the desktop scrollport (overflow-y-auto below), so a tab
+  // switch kept the previous tab's scroll offset and showed the new tab
+  // mid-page (plus a ghost frame of clipped old content during the exit).
+  // The reset lives on AnimatePresence onExitComplete — exactly the tab-swap
+  // moment, after the old tab has faded out and before the new one enters —
+  // NOT in ArborContext.setActiveTab (which would also fire for non-visual
+  // state churn and would scroll-jump under the still-visible outgoing tab).
+  const mainRef = useRef<HTMLElement>(null);
   // W2.4 analytics: mirror of searchOpen for the deps-free hotkey listener,
   // so search_open fires only on the closed→open transition.
   const searchOpenRef = useRef(false);
@@ -258,7 +266,7 @@ export default function Shell() {
             dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
             as a sibling of the grid — it carries its own .arbor-play scope and does
             NOT inherit from this <main>. See index.css .arbor-parent block. */}
-        <main className="arbor-parent w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 lg:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
+        <main ref={mainRef} className="arbor-parent w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 lg:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
           {/* Compact header (sidebar is hidden below lg, so the logo lives here) */}
           <div className="flex lg:hidden items-center gap-2.5 mb-5">
             <ArborMark size={34} />
@@ -390,7 +398,16 @@ export default function Shell() {
               only (inside .arbor-parent <main>); self-hides when done/dismissed. */}
 
           <Suspense fallback={<TabSkeleton />}>
-            <AnimatePresence mode="wait">
+            <AnimatePresence
+              mode="wait"
+              /* F-02: reset BOTH scroll owners at the tab-swap moment — the
+                 desktop <main> scrollport and the mobile window scroll (below
+                 lg the page itself scrolls). Guarded by shellScrollReset.test.ts. */
+              onExitComplete={() => {
+                mainRef.current?.scrollTo({ top: 0, left: 0 });
+                window.scrollTo(0, 0);
+              }}
+            >
               {/* W4.5: THE single tab entrance — the redundant CSS nth-child
                   stagger in index.css was removed (it double-fired with this
                   and capped at 6 children). Respects MotionConfig

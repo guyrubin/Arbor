@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { collection, doc, getDocs, setDoc, updateDoc } from "firebase/firestore";
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "./AuthContext";
 import { ChildProfile, DeletionReceipt } from "../types";
 import { defaultChildProfile } from "../initialData";
 import { eraseEverything } from "../lib/childData";
+import { authHeaders } from "../lib/api";
 import { trackProfileCreated } from "../lib/loopEvents";
 import { bandForAge } from "../lib/screening";
 import { computeNeedsOnboarding } from "../lib/onboardingGate";
@@ -53,6 +54,31 @@ const writeLocalProfiles = (profiles: ChildProfile[]) => {
   }
 };
 
+/**
+ * OWN-1: server-side ownership provisioning. The families/{familyId}/members
+ * docs that the server's requireChildOwnership authorizes against are created
+ * ONLY by this endpoint — without it every child-scoped route (memory review,
+ * privacy export/erase) 403s in production. Identity is SERVER-derived: only
+ * the childId + profile travel; familyId/userId come from the authenticated
+ * uid on the server (client-supplied values are ignored there). Idempotent —
+ * calling it per loaded profile backfills accounts created before it was wired.
+ * Best-effort: a failure is retried on the next session (the sessionStorage
+ * guard is only set on success).
+ */
+const OWNERSHIP_GUARD_PREFIX = "arbor.ownershipProvisioned.";
+async function provisionOwnership(childId: string, childProfile?: Partial<ChildProfile>): Promise<boolean> {
+  try {
+    const res = await fetch("/api/onboarding/family-child", {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify({ childId, childProfile }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const { user, firebaseEnabled: authEnabled } = useAuth();
   const useFirestore = firebaseEnabled && authEnabled && !!user && user.uid !== "local-sandbox";
@@ -66,6 +92,33 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     }
   });
   const [loading, setLoading] = useState<boolean>(true);
+
+  // OWN-1: once-per-session-per-child guard for the ownership backfill —
+  // in-memory ref first, sessionStorage second (survives remounts, resets on a
+  // new session so a transient failure retries on the next sign-in).
+  const provisionedChildren = useRef<Set<string>>(new Set());
+  const ensureOwnership = useCallback(
+    async (child: Pick<ChildProfile, "id"> & Partial<ChildProfile>) => {
+      if (provisionedChildren.current.has(child.id)) return;
+      try {
+        if (sessionStorage.getItem(`${OWNERSHIP_GUARD_PREFIX}${child.id}`)) {
+          provisionedChildren.current.add(child.id);
+          return;
+        }
+      } catch {
+        /* storage blocked — the in-memory ref still guards this session */
+      }
+      provisionedChildren.current.add(child.id);
+      const ok = await provisionOwnership(child.id, child);
+      if (ok) {
+        try { sessionStorage.setItem(`${OWNERSHIP_GUARD_PREFIX}${child.id}`, new Date().toISOString()); } catch { /* ignore */ }
+      } else {
+        // Let a later trigger in this session retry (e.g. addChild after a load failure).
+        provisionedChildren.current.delete(child.id);
+      }
+    },
+    []
+  );
 
   const profilesPath = user ? `users/${user.uid}/children` : "";
 
@@ -82,6 +135,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           // user is new and onboarding will create their first child.
           const loaded = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChildProfile, "id">) }));
           if (!cancelled) setProfiles(loaded);
+          // OWN-1: backfill server ownership docs for every existing child on
+          // sign-in (idempotent + session-guarded). Fire-and-forget — profile
+          // loading never blocks on it.
+          for (const child of loaded) void ensureOwnership(child);
         } catch {
           if (!cancelled) setProfiles(readLocalProfiles());
         }
@@ -127,6 +184,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         } catch {
           /* fall through to local state update */
         }
+        // OWN-1: provision the server-side ownership docs right after the
+        // child doc write so the new child's memory/privacy routes work
+        // immediately (fire-and-forget; the load-time backfill is the net).
+        void ensureOwnership(newChild);
       }
       let count = 0;
       setProfiles((prev) => {
@@ -140,7 +201,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       try { trackProfileCreated(count, bandForAge(newChild.age).id); } catch { /* noop */ }
       return newChild;
     },
-    [useFirestore, profilesPath]
+    [useFirestore, profilesPath, ensureOwnership]
   );
 
   const updateChild = useCallback(

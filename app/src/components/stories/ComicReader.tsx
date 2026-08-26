@@ -8,6 +8,7 @@ import { PaywallError } from "../../lib/api";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { downloadHeroAvatarCanvas, renderComicCanvas } from "../../lib/heroAvatarCanvas";
 import { getStorySpec } from "../../lib/heroJourneys";
+import { isolate } from "../../lib/i18n";
 import {
   type Adventure,
   type ComicLang,
@@ -260,7 +261,7 @@ export function ComicReader({
       if (shareUrl && nav.share) {
         const blob = card?.blob ?? (await (await fetch(shareUrl)).blob());
         const file = new File([blob], `${heroName.toLowerCase()}-comic.png`, { type: blob.type || "image/png" });
-        const data: ShareData = { files: [file], title, text: `${heroName}'s comic!` };
+        const data: ShareData = { files: [file], title, text: `${isolate(heroName)}'s comic!` };
         if (!nav.canShare || nav.canShare(data)) {
           await nav.share(data);
           trackShareCompleted("story", "web-share");
@@ -314,7 +315,7 @@ export function ComicReader({
     <section
       role="region"
       aria-roledescription="comic book"
-      aria-label={`${heroName}'s comic`}
+      aria-label={`${isolate(heroName)}'s comic`}
       dir={rtl ? "rtl" : "ltr"}
       className="space-y-4"
     >

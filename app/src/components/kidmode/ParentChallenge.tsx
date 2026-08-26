@@ -63,12 +63,17 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
   const cardRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Entrance rise-fade — collapses to an instant render under reduced motion.
-  const [entered, setEntered] = useState(() => prefersReducedMotion());
+  // Entrance rise-fade — collapses to an instant render under reduced motion
+  // or in a hidden document (F-07: rAF never ticks there, and a timer-driven
+  // entrance is pointless when nothing paints). The 50ms wall-clock fallback
+  // means the card can NEVER mount invisible, whatever the frame loop does.
+  const [entered, setEntered] = useState(
+    () => prefersReducedMotion() || (typeof document !== "undefined" && document.hidden)
+  );
   useEffect(() => {
     if (entered) return;
-    const id = requestAnimationFrame(() => setEntered(true));
-    return () => cancelAnimationFrame(id);
+    const id = window.setTimeout(() => setEntered(true), 50);
+    return () => window.clearTimeout(id);
   }, [entered]);
 
   // Focus the answer field on mount and whenever the mode flips.

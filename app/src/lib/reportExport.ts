@@ -5,6 +5,7 @@
  * data. Every report carries Arbor's non-diagnostic framing.
  */
 import type { ChildProfile, BehaviorLog, ActionPlan } from "../types";
+import { fmtDay } from "./formatDate";
 
 export type ReportSection = { heading: string; body: string | string[] };
 export type ReportDoc = {
@@ -88,7 +89,7 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
     case "behavior":
       return { title: "Behavior Pattern Report", subtitle: common, sections: [
         { heading: "Summary (28 days)", body: [`${mo.length} moments`, `${resolvedCount(mo)} marked resolved`, `Most-logged: ${topTrigger(mo)}`] },
-        { heading: "Recent events", body: mo.slice(0, 8).map((l) => `${new Date(l.timestamp).toLocaleDateString()} — ${l.behaviorType}${l.trigger ? `, trigger: ${l.trigger}` : ""}`) },
+        { heading: "Recent events", body: mo.slice(0, 8).map((l) => `${fmtDay(l.timestamp, "en")} — ${l.behaviorType}${l.trigger ? `, trigger: ${l.trigger}` : ""}`) },
         { heading: "What helped", body: mo.map((l) => l.response).filter(Boolean).slice(0, 5) },
       ]};
     case "language":
@@ -149,7 +150,7 @@ export function openPrintableReport(doc: ReportDoc, childName: string) {
     : `<span class="dot">A</span>`}<b>Arbor — Development Fieldbook</b></div>
   <h1>${esc(doc.title)}</h1>
   ${doc.subtitle ? `<p class="sub">${esc(doc.subtitle)}</p>` : ""}
-  <p class="meta">Generated ${new Date().toLocaleDateString()} · Parent-prepared · Non-diagnostic</p>
+  <p class="meta">Generated ${fmtDay(new Date(), "en")} · Parent-prepared · Non-diagnostic</p>
   ${sectionsHtml}
   <div class="footer">Arbor is non-diagnostic and does not replace professional advice. This report reflects parent observations and is shared with the parent's consent.</div>
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>

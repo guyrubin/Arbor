@@ -12,6 +12,8 @@ import { Avatar } from "../ui/Avatar";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import { sanitizeInterestToken } from "../../playbank/select";
+import { isolate } from "../../lib/i18n";
+import { fmtDay } from "../../lib/formatDate";
 import AvatarCreator from "./AvatarCreator";
 import RewardsCard from "./RewardsCard";
 
@@ -36,7 +38,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const { activeChild, updateChild, deleteChild, profiles } = useProfile();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(activeChild.name);
   const [age, setAge] = useState(activeChild.age);
@@ -118,7 +120,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setBusy(true);
     try {
       await deleteChild(activeChild.id);
-      toast(`${activeChild.name}'s data was deleted`, "success");
+      toast(`${isolate(activeChild.name)}'s data was deleted`, "success");
       onClose();
     } finally {
       setBusy(false);
@@ -326,7 +328,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                 {activeChild.interestsUpdatedAt && (
                   <p className="text-[11px] mt-1" style={{ color: "var(--arbor-faint)" }}>
                     {t("profile.interests.updated", {
-                      when: new Date(activeChild.interestsUpdatedAt).toLocaleDateString(),
+                      when: fmtDay(activeChild.interestsUpdatedAt, uiLang),
                     })}
                   </p>
                 )}

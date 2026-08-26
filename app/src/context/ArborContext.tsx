@@ -425,6 +425,11 @@ function useArborState() {
 
   const [memoryReviewItems, setMemoryReviewItems] = useState<MemoryReviewItem[]>([]);
   const [isMemoryUpdating, setIsMemoryUpdating] = useState<string | null>(null);
+  // OWN-1: true while the last memory-review ledger read failed. Surfaces the
+  // failure (Child Memory renders an error + retry card, the coach footer's
+  // review invite degrades) instead of the old console.warn swallow, which
+  // left the surface silently empty — indistinguishable from "no memory yet".
+  const [memoryReviewError, setMemoryReviewError] = useState<boolean>(false);
 
   // Embedded Interactive AI States and Helpers
   const [milestoneAnalysisOfGaps, setMilestoneAnalysisOfGaps] = useState<string>("");
@@ -655,9 +660,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       if (!res.ok) throw new Error("Memory review fetch failed");
       const data = await res.json();
       setMemoryReviewItems(data.items || []);
+      setMemoryReviewError(false);
     } catch (err) {
       console.warn("Could not load memory review items", err);
+      setMemoryReviewError(true);
     }
+  };
+  // OWN-1: parent-visible retry for a failed ledger read (Child Memory error card).
+  const retryMemoryReview = () => {
+    void refreshMemoryReview();
   };
 
   useEffect(() => {
@@ -1294,6 +1305,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     isAnalyzingBehavior,
     memoryReviewItems,
     isMemoryUpdating,
+    memoryReviewError,
+    retryMemoryReview,
     milestoneAnalysisOfGaps,
     isAnalyzingMilestones,
     inlineCoRegulationScripts,

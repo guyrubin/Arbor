@@ -9,13 +9,15 @@ import { Skeleton } from "../ui/Skeleton";
 import { PageHeader, SectionCard, cardCls, IconBadge } from "../ui/kit";
 import { HeroAvatar } from "../ui/HeroAvatar";
 import { useDevScore } from "../../hooks/useDevScore";
-import { useWeeklyRecap, type WeeklyReport } from "../../hooks/useWeeklyRecap";
+import { useWeeklyRecap, topMomentDisplay, type WeeklyReport } from "../../hooks/useWeeklyRecap";
+import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { rankLearnCards } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import RecapStoryCards from "../weekly/RecapStoryCards";
 import { rcString } from "../weekly/recapStrings";
+import { weeklyChipIds, isEmptyCurrentWeek } from "../weekly/weeklySelection";
 import { fetchDigestEmailStatus, readEmailOptIn, writeEmailOptIn, type DigestEmailStatus } from "../weekly/recapEmail";
 import type { WeeklyDigest } from "../../lib/api";
 
@@ -47,12 +49,20 @@ export default function WeeklyTab() {
     [childProfile, devScore.focusDomain]
   );
 
+  // F-06: the tab ALWAYS lands on the CURRENT week — never a stored
+  // reports[0], which after a quiet stretch is a week months in the past
+  // dressed as now. Pure landing/chip rules live in weekly/weeklySelection.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   useEffect(() => {
-    if (!selectedId) setSelectedId(reports[0]?.id ?? currentId);
-  }, [reports, selectedId, currentId]);
+    if (!selectedId) setSelectedId(currentId);
+  }, [selectedId, currentId]);
 
-  const selected = reports.find((r) => r.id === selectedId) || reports[0] || null;
+  const selected = reports.find((r) => r.id === selectedId) ?? null;
+  const hasStoredCurrentWeek = reports.some((r) => r.id === currentId);
+  // Current week selected with no stored report yet → honest empty state.
+  const emptyCurrentWeek = isEmptyCurrentWeek(selectedId, currentId, hasStoredCurrentWeek);
+  // Chip strip: the current week always leads (synthetic when unstored).
+  const chipIds = weeklyChipIds(reports.map((r) => r.id), currentId);
   // Counts only under the moments stat (clinical firewall — never a derived
   // score). Legacy reports without a resolved count fall back to the digest's
   // resolvedCount; when neither exists the line is simply omitted.
@@ -117,8 +127,9 @@ export default function WeeklyTab() {
             title={t("wk.title", { first })}
             /* The week label is LOCALIZED HERE, from the report's stored date
                anchor — never read back as a frozen English string (P1 language
-               fix): labelFor honors a stored label only in its own language. */
-            subtitle={selected ? `${labelFor(selected)} · ${selected.id}` : `${currentLabel} · ${currentId}`}
+               fix): labelFor honors a stored label only in its own language.
+               F-06: the raw week id (a storage key) never renders here. */
+            subtitle={selected ? labelFor(selected) : currentLabel}
             action={
               <button
                 onClick={() => void generate()}
@@ -126,27 +137,29 @@ export default function WeeklyTab() {
                 className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
                 style={{ background: "var(--arbor-gradient-primary)" }}
               >
-                {generating ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>) : (<><Icon name="auto_awesome" size={16} /> {reports.some((r) => r.id === currentId) ? t("wk.regenerate") : t("wk.generate")}</>)}
+                {generating ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>) : (<><Icon name="auto_awesome" size={16} /> {hasStoredCurrentWeek ? t("wk.regenerate") : t("wk.generate")}</>)}
               </button>
             }
           />
         </div>
       </div>
 
-      {/* History strip */}
+      {/* History strip — F-06: chipIds always leads with the current week
+          (synthetic when no report is stored for it yet), so the newest chip
+          is never a week in the past. */}
       {reports.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
           <Icon name="history" size={14} className="flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
-          {reports.map((r) => {
-            const on = r.id === selected?.id;
+          {chipIds.map((id) => {
+            const on = id === (selectedId ?? currentId);
             return (
               <button
-                key={r.id}
-                onClick={() => setSelectedId(r.id)}
+                key={id}
+                onClick={() => setSelectedId(id)}
                 className="text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition flex-shrink-0"
                 style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
-                {r.id}
+                {id}
               </button>
             );
           })}
@@ -158,8 +171,10 @@ export default function WeeklyTab() {
           <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
         </div>
       ) : !selected ? (
+        /* F-06: the current week with nothing stored yet says so honestly —
+           it never falls back to rendering a past week as if it were now. */
         <div className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
-          {t("wk.noReports")}
+          {emptyCurrentWeek ? t("wk.emptyThisWeek") : t("wk.noReports")}
         </div>
       ) : (
         <>
@@ -187,7 +202,30 @@ export default function WeeklyTab() {
             </div>
             <div className={`${cardCls} p-5`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.topTrigger")}</span>
-              <div className="text-sm font-bold mt-2 leading-snug" style={{ color: "var(--arbor-ink)" }}>{selected.summary.topTrigger}</div>
+              {/* F-11: schema behaviorTypes render as the stat (label map);
+                  the parent's free-typed trigger renders QUOTED + truncated —
+                  parent words stay visibly parent words, never a
+                  computed-looking value (topMomentDisplay untangles legacy
+                  docs that conflated the two). */}
+              {(() => {
+                const top = topMomentDisplay(selected.summary);
+                return (
+                  <>
+                    <div className="text-sm font-bold mt-2 leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                      {top.type
+                        ? behaviorTypeLabel(top.type, t, "full")
+                        : top.quote
+                          ? t("wk.triggerQuote", { text: top.quote })
+                          : "—"}
+                    </div>
+                    {top.type && top.quote && (
+                      <p className="text-[11px] mt-1" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+                        {t("wk.triggerQuote", { text: top.quote })}
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div className={`${cardCls} p-5`}>
               <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("wk.actionSteps")}</span>

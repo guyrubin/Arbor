@@ -397,6 +397,8 @@ export const en: Dict = {
   "err.retry": "Try again",
   "err.careTeam.title": "We couldn't load your care team",
   "err.careTeam.body": "Something interrupted the connection. {name}'s data is safe — give it another try.",
+  "err.memory.title": "We couldn't load {name}'s memory",
+  "err.memory.body": "Something interrupted the connection. Approved facts and pending reviews are safe — give it another try.",
   "err.focus.title": "Today's focus didn't load",
   "err.focus.body": "That was a connection hiccup, not your data. Try again in a moment.",
   // coach
@@ -436,6 +438,9 @@ export const en: Dict = {
   "coach.status.plan": "Shaping today's plan…",
   "coach.status.stopping": "Stopping…",
   "coach.status.council": "Convening the scholar council…",
+  // F-08: the ALWAYS-mounted polite live region announces when the answer
+  // has settled (empty → thinking/streaming → ready → empty).
+  "coach.status.ready": "The response is ready.",
   "coach.ack": "On it — reading what you shared.",
   "coach.memReview": "Memory Review",
   "coach.memQueue": "Parent approval queue",
@@ -485,6 +490,8 @@ export const en: Dict = {
   "coach.voice.end": "End voice conversation",
   "coach.voice.proposalSaved": "Saved after your confirmation",
   "coach.voice.proposalSaveError": "Could not save. The proposal is still a draft.",
+  // F-03 — read-aloud playback failure is surfaced, never silent.
+  "voice.toast.blocked": "Tap again to enable audio",
   "coach.councilHint": "Convene 3 scholars — each weighs in, then Arbor brings it together for you",
   // ASK-4 — honest disabled hint: the council convenes on the latest question.
   "coach.councilHint.empty": "Ask a question first — the council convenes on your latest question",
@@ -1629,8 +1636,12 @@ export const en: Dict = {
   "wk.regenerate": "Retell this week",
   "wk.generate": "Create this week's story",
   "wk.noReports": "No reports yet. Log a few moments this week, then create your first report.",
+  "wk.emptyThisWeek": "Nothing captured yet this week — log a moment and this week's report will build itself.",
   "wk.behaviorEvents": "Behavior events",
   "wk.topTrigger": "Top trigger",
+  // F-11: parent free-typed trigger words render QUOTED — visibly the
+  // parent's own words, never a computed-looking stat.
+  "wk.triggerQuote": "“{text}”",
   "wk.actionSteps": "Action steps",
   "wk.momentsResolved": "{n} moments · {wins} resolved",
   "wk.stepsComplete": "steps complete",
@@ -2799,6 +2810,8 @@ export const he: Dict = {
   "err.retry": "נסו שוב",
   "err.careTeam.title": "לא הצלחנו לטעון את צוות הטיפול",
   "err.careTeam.body": "משהו הפריע לחיבור. הנתונים של {name} בטוחים — נסו שוב.",
+  "err.memory.title": "לא הצלחנו לטעון את הזיכרון של {name}",
+  "err.memory.body": "משהו הפריע לחיבור. העובדות שאושרו והפריטים לבדיקה בטוחים — נסו שוב.",
   "err.focus.title": "המיקוד של היום לא נטען",
   "err.focus.body": "זו הייתה תקלת חיבור, לא הנתונים שלכם. נסו שוב עוד רגע.",
   "coach.subtitle": "ספרו לארבור מה קורה. תקבלו צעד הבא רגוע ומותאם לגיל ואת המילים המדויקות לומר, וארבור יזכור זאת לפעם הבאה.",
@@ -2834,6 +2847,8 @@ export const he: Dict = {
   "coach.status.plan": "מגבש את הצעד להיום…",
   "coach.status.stopping": "עוצר…",
   "coach.status.council": "מכנס את מועצת המומחים…",
+  // F-08: אזור ההכרזה החי (aria-live) מודיע כשהתשובה מוכנה.
+  "coach.status.ready": "התשובה מוכנה.",
   "coach.ack": "ארבור כאן — קורא את מה ששיתפת.",
   "coach.memReview": "סקירת זיכרון",
   "coach.memQueue": "תור אישור הורה",
@@ -2883,6 +2898,8 @@ export const he: Dict = {
   "coach.voice.end": "סיום השיחה הקולית",
   "coach.voice.proposalSaved": "נשמר לאחר האישור שלכם",
   "coach.voice.proposalSaveError": "לא הצלחנו לשמור. המידע נשאר בטיוטה.",
+  // F-03 — read-aloud playback failure is surfaced, never silent.
+  "voice.toast.blocked": "הקישו שוב כדי להפעיל את השמע",
   "coach.councilHint": "כינוס 3 מומחים — כל אחד מחווה דעה, וארבור מחברת הכול לתשובה אחת בשבילכם",
   // ASK-4 — רמז כן כשאין עדיין שאלה שהמועצה יכולה להתכנס סביבה.
   "coach.councilHint.empty": "שאלו שאלה קודם — המועצה מתכנסת סביב השאלה האחרונה שלכם",
@@ -3973,8 +3990,12 @@ export const he: Dict = {
   "wk.regenerate": "לספר את השבוע מחדש",
   "wk.generate": "צרו את סיפור השבוע",
   "wk.noReports": "אין דוחות עדיין. תעדו כמה רגעים השבוע, ואז צרו את הדוח הראשון.",
+  "wk.emptyThisWeek": "עוד לא נקלט כלום השבוע — תעדו רגע אחד, והדוח של השבוע ייבנה מעצמו.",
   "wk.behaviorEvents": "אירועי התנהגות",
   "wk.topTrigger": "טריגר מוביל",
+  // F-11: מילים שההורה הקליד מוצגות במירכאות — מילות ההורה נראות כמילות
+  // ההורה, אף פעם לא כנתון מחושב.
+  "wk.triggerQuote": "\"{text}\"",
   "wk.actionSteps": "צעדי פעולה",
   "wk.momentsResolved": "{n} רגעים · {wins} טופלו",
   "wk.stepsComplete": "צעדים הושלמו",
@@ -4775,8 +4796,14 @@ const DICTS: Record<UiLang, Dict> = {
 // template, or an English word inside a Hebrew one — wrap it in Unicode isolates
 // FSI…PDI so the substituted run's direction can't reorder the surrounding text.
 // Applied ONLY to RTL-bearing values, so pure-LTR/numeric interpolation is untouched.
+//
+// Exported (E8 / F-10) so raw template-literal copy that bypasses t() — e.g.
+// `${name}'s story` — can route the interpolated name through the same isolation.
+// DISPLAY-TIME ONLY: never persist an isolated name (Firestore, filenames, seeds,
+// equality checks) — isolate at the moment the string is rendered/composed for a
+// human, and keep the raw name everywhere else.
 const RTL_CHARS = /[֐-׿؀-ۿ܀-ݏ]/;
-function isolate(value: string): string {
+export function isolate(value: string): string {
   return RTL_CHARS.test(value) ? `⁨${value}⁩` : value;
 }
 

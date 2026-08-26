@@ -94,6 +94,15 @@
         -webkit-font-feature-settings: 'liga';
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
+        /* An .msr nested in uppercase-styled chrome (text-transform +
+           tracking) mangles the ligature name ("child_care" → "CHILD_CARE" /
+           "C H I L D…"), which matches NO ligature — so the English word
+           paints even with the font loaded. Neutralize inherited text
+           styling here; an icon is never selectable text either. */
+        text-transform: none;
+        letter-spacing: normal;
+        -webkit-user-select: none;
+        user-select: none;
         /* Terminal safety net. font-display:block still gives up after ~3s and
            falls back — and any fallback face renders the ligature as English.
            Glyphs stay hidden (layout box preserved, so nothing shifts) until
@@ -114,19 +123,22 @@
       }
     </style>
     <script>
-      // Icon-font readiness gate (see .msr above). Reveals glyphs only once the
-      // face is actually usable. No timeout-based reveal on purpose: a timeout
-      // would re-introduce the raw-ligature-text failure it exists to prevent.
+      // Icon-font readiness gate (see .msr above). Reveals glyphs ONLY once
+      // the face is confirmed usable — there is no reveal path without that
+      // confirmation. No timeout-based reveal, no reveal when the Font Loading
+      // API is missing or throws: any unconfirmed reveal re-introduces the
+      // raw-ligature-text failure this gate exists to prevent (blank slots
+      // beat English words).
       (function () {
         var html = document.documentElement;
         function reveal() { html.classList.add('msr-ready'); }
         try {
-          if (!document.fonts || !document.fonts.load) { reveal(); return; }
+          if (!document.fonts || !document.fonts.load) { return; }
           document.fonts
             .load("24px 'Material Symbols Rounded'", 'home')
             .then(function (faces) { if (faces && faces.length) reveal(); })
             .catch(function () { /* blank slots beat English words */ });
-        } catch (e) { reveal(); }
+        } catch (e) { /* same doctrine: never reveal without the font */ }
       })();
     </script>
   </head>

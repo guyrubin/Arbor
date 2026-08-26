@@ -64,14 +64,25 @@ class FakeAudioContext {
   createScriptProcessor() {
     return { connect() {}, disconnect() {}, onaudioprocess: null as unknown };
   }
+  closed = false;
   close() {
+    this.closed = true;
     return Promise.resolve();
   }
 }
 
+/** F-01: minted mic tracks are retained so tests can prove they were stopped. */
+const micTracks: { stopped: boolean; stop(): void }[] = [];
+
 vi.stubGlobal("AudioContext", FakeAudioContext);
 vi.stubGlobal("navigator", {
-  mediaDevices: { getUserMedia: async () => ({ getTracks: () => [] as { stop(): void }[] }) },
+  mediaDevices: {
+    getUserMedia: async () => {
+      const track = { stopped: false, stop() { this.stopped = true; } };
+      micTracks.push(track);
+      return { getTracks: () => [track] };
+    },
+  },
 });
 
 afterAll(() => {
@@ -165,6 +176,54 @@ describe("AI-V2(b) — {data…, interrupted} stops retained sources and resets 
     cb.onmessage({ serverContent: { interrupted: true } });
     expect(phases[phases.length - 1]).toBe("listening");
     expect(phases).not.toContain("closed");
+    ctl.stop();
+  });
+});
+
+describe("F-01 — a connect that dies before open REJECTS instead of wedging", () => {
+  function hangingConnect() {
+    FakeAudioContext.instances = [];
+    micTracks.length = 0;
+    let callbacks: Callbacks | null = null;
+    connectMock.mockImplementation((args: { callbacks: Callbacks }) => {
+      callbacks = args.callbacks;
+      // The SDK promise never settles — the deferred reject must win the race.
+      return new Promise<never>(() => {});
+    });
+    const phases: string[] = [];
+    const promise = startGeminiLive(
+      { token: "tok", model: "m", systemInstruction: "pinned" },
+      { screenTurn: async () => ({ action: "continue" as const }), onPhase: (p) => phases.push(p) },
+    );
+    return { promise, phases, cb: () => callbacks };
+  }
+
+  it("a socket close BEFORE open rejects startGeminiLive and releases mic + audio contexts", async () => {
+    const { promise, phases, cb } = hangingConnect();
+    await vi.waitFor(() => expect(cb()).toBeTruthy());
+    cb()!.onclose();
+    await expect(promise).rejects.toThrow("live-closed-before-open");
+    // stopAll ran: both audio contexts closed, the mic track stopped, and the
+    // caller saw the terminal phase (nothing left holding the microphone).
+    expect(FakeAudioContext.instances.map((c) => c.closed)).toEqual([true, true]);
+    expect(micTracks.length).toBe(1);
+    expect(micTracks[0].stopped).toBe(true);
+    expect(phases[phases.length - 1]).toBe("closed");
+  });
+
+  it("a socket error BEFORE open rejects with the socket's message", async () => {
+    const { promise, cb } = hangingConnect();
+    await vi.waitFor(() => expect(cb()).toBeTruthy());
+    cb()!.onerror({ message: "handshake refused" });
+    await expect(promise).rejects.toThrow("handshake refused");
+    expect(FakeAudioContext.instances.every((c) => c.closed)).toBe(true);
+    expect(micTracks[0].stopped).toBe(true);
+  });
+
+  it("a close AFTER a successful connect reports 'closed' through onPhase (no rejection)", async () => {
+    const { ctl, cb, phases } = await openSession();
+    cb.onclose();
+    expect(phases[phases.length - 1]).toBe("closed"); // reported, not rejected
     ctl.stop();
   });
 });

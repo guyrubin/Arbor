@@ -38,6 +38,12 @@ export class FirestoreMemoryStore implements MemoryStore {
       .set(event);
   }
 
+  /** OWN-1: uid → familyId (created on first touch). Requires the
+   *  collection-group index on members.userId (firestore.indexes.json). */
+  ensureFamilyForUser(uid: string): Promise<{ familyId: string }> {
+    return this.families.ensureFamilyForUser(uid);
+  }
+
   async ensureFamilyChild(input: {
     familyId: string;
     childId: string;

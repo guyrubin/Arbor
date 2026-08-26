@@ -10,6 +10,8 @@ import {
   weekStartKey,
   formatWeekLabel,
   resolveWeekLabel,
+  topMomentDisplay,
+  TRIGGER_QUOTE_MAX,
 } from "./useWeeklyRecap";
 
 /**
@@ -205,6 +207,48 @@ describe("cold-load race — language comes from the render's own source", () =>
     const tab = read("components/tabs/WeeklyTab.tsx");
     expect(tab).toContain("labelFor(selected)");
     expect(tab).not.toContain("selected.weekLabel");
+  });
+});
+
+/* ── F-11: parent free text never dresses up as an analytics headline.
+      The snapshot separates the schema axis (behaviorType → label map) from
+      the parent's free-typed trigger; the render model quotes + truncates the
+      parent's words so they are VISIBLY parent words. ───────────────────── */
+
+describe("topMomentDisplay — parent words stay visibly parent words", () => {
+  it("separates the schema type (stat) from the free-typed trigger (quote)", () => {
+    const top = topMomentDisplay({ topBehaviorType: "Sibling Conflict", topTrigger: "took the iPad away" });
+    expect(top.type).toBe("Sibling Conflict");
+    expect(top.quote).toBe("took the iPad away");
+  });
+
+  it("truncates a long free-typed trigger to ~40 chars with an ellipsis", () => {
+    const raw = "hit his sister when I took the iPad away at dinner time again";
+    const top = topMomentDisplay({ topTrigger: raw });
+    expect(top.quote!.length).toBeLessThanOrEqual(TRIGGER_QUOTE_MAX + 1); // +1 = the ellipsis
+    expect(top.quote!.endsWith("…")).toBe(true);
+    expect(raw.startsWith(top.quote!.slice(0, -1))).toBe(true);
+  });
+
+  it("a short free-typed trigger passes through verbatim (still a quote, no type)", () => {
+    expect(topMomentDisplay({ topTrigger: "loud noises" })).toEqual({ type: null, quote: "loud noises" });
+  });
+
+  it("LEGACY: a canonical behaviorType stored in topTrigger still renders as a type, never a quote", () => {
+    // Old reports stored `trigger || behaviorType` conflated into topTrigger.
+    expect(topMomentDisplay({ topTrigger: "Transition Refusal" })).toEqual({ type: "Transition Refusal", quote: null });
+  });
+
+  it("empty week ('—' or nothing stored) renders neither axis", () => {
+    expect(topMomentDisplay({ topTrigger: "—" })).toEqual({ type: null, quote: null });
+    expect(topMomentDisplay({})).toEqual({ type: null, quote: null });
+    expect(topMomentDisplay(null)).toEqual({ type: null, quote: null });
+  });
+
+  it("SOURCE SCAN: the snapshot never conflates trigger and behaviorType again", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "useWeeklyRecap.ts"), "utf8");
+    expect(src, "l.trigger || l.behaviorType is the F-11 defect — keep the two axes separate")
+      .not.toMatch(/l\.trigger\s*\|\|\s*l\.behaviorType/);
   });
 });
 

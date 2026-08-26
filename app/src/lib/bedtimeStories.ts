@@ -14,6 +14,8 @@
  *      training pipeline unless an active ai_training ConsentGrant exists.
  */
 
+import { isolate } from "./i18n";
+
 /** A single logged day event passed as seed data for the story. */
 export interface DayEvent {
   /** Human-readable description of the event, e.g. "Refused to put on shoes at 8 am". */
@@ -82,10 +84,10 @@ BEDTIME STORY FRAMING CONTRACT:
 - Parent-mediated: this is read aloud by a caring parent — keep it sweet, unhurried, and connective.
 ${heroDesc}
 
-Today in ${childName}'s world (age ${age}):
+Today in ${isolate(childName)}'s world (age ${age}):
 ${momentsSummary}
 
-Create a gentle 4-page bedtime story starring ${childName} as the hero.
+Create a gentle 4-page bedtime story starring ${isolate(childName)} as the hero.
 
 Return JSON with:
 - title: warm story title (e.g. "[Child]'s Big Day")

@@ -54,6 +54,19 @@ export type LiveSessionOptions = {
 };
 export type LiveController = { stop: () => void };
 
+/** F-01: a connect that cannot succeed must fail fast instead of wedging the
+ *  chip — the SDK promise races a hard deadline (same race pattern as the
+ *  guard's screenWithDeadline in lib/liveTurnGuard.ts). */
+const CONNECT_TIMEOUT_MS = 10_000;
+const withConnectDeadline = <T,>(p: Promise<T>): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("live-connect-timeout")), CONNECT_TIMEOUT_MS);
+    p.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+
 const floatTo16BitB64 = (input: Float32Array): string => {
   const buf = new ArrayBuffer(input.length * 2);
   const view = new DataView(buf);
@@ -124,14 +137,21 @@ export async function startGeminiLive(
     playHead = 0;
   };
 
+  // F-01: declared nullable so stopAll is safe to run when the connect itself
+  // fails — the mic and both audio contexts must release even though the
+  // session/processor graph never came up.
+  let session: Awaited<ReturnType<GoogleGenAI["live"]["connect"]>> | null = null;
+  let source: MediaStreamAudioSourceNode | null = null;
+  let processor: ScriptProcessorNode | null = null;
+
   let stopped = false;
   const stopAll = () => {
     if (stopped) return;
     stopped = true;
     guard.dispose();
-    try { processor.disconnect(); source.disconnect(); } catch { /* ignore */ }
+    try { processor?.disconnect(); source?.disconnect(); } catch { /* ignore */ }
     stream.getTracks().forEach((t) => t.stop());
-    try { session.close(); } catch { /* ignore */ }
+    try { session?.close(); } catch { /* ignore */ }
     void inCtx.close().catch(() => {});
     void outCtx.close().catch(() => {});
     handlers.onPhase?.("closed");
@@ -152,7 +172,15 @@ export async function startGeminiLive(
     onFailClosed: handlers.onFailClosed,
   });
 
-  const session = await ai.live.connect({
+  // F-01 (deferred pattern): the SDK's connect promise can hang, or resolve a
+  // session whose socket already died. Track whether onopen ever fired; when
+  // onerror/onclose beats it, reject startGeminiLive deterministically so the
+  // caller's catch (not a wedged ref) owns the failure.
+  let opened = false;
+  let rejectBeforeOpen: (e: Error) => void = () => {};
+  const failedBeforeOpen = new Promise<never>((_, reject) => { rejectBeforeOpen = reject; });
+
+  const connecting = ai.live.connect({
     model: opts.model,
     config: {
       responseModalities: [Modality.AUDIO],
@@ -165,7 +193,7 @@ export async function startGeminiLive(
       ...(opts.speechConfig ? { speechConfig: opts.speechConfig as never } : {}),
     },
     callbacks: {
-      onopen: () => handlers.onPhase?.("listening"),
+      onopen: () => { opened = true; handlers.onPhase?.("listening"); },
       onmessage: (msg: any) => {
         // ALL playback routes through the guard — buffered, screened, released.
         if (msg?.data) guard.pushAudio(msg.data);
@@ -191,18 +219,40 @@ export async function startGeminiLive(
           });
         }
       },
-      onerror: (e: any) => handlers.onError?.(e?.message || "Gemini Live error"),
-      onclose: () => handlers.onPhase?.("closed"),
+      // F-01: before open, error/close reject the start promise (the caller
+      // surfaces it); after open, they report through the live handlers.
+      onerror: (e: any) => {
+        if (!opened) { rejectBeforeOpen(new Error(e?.message || "Gemini Live error")); return; }
+        handlers.onError?.(e?.message || "Gemini Live error");
+      },
+      onclose: () => {
+        if (!opened) { rejectBeforeOpen(new Error("live-closed-before-open")); return; }
+        handlers.onPhase?.("closed");
+      },
     },
   });
 
-  const source = inCtx.createMediaStreamSource(stream);
-  const processor = inCtx.createScriptProcessor(4096, 1, 1);
+  try {
+    session = await withConnectDeadline(Promise.race([connecting, failedBeforeOpen]));
+    // A resolved connect counts as opened even if the SDK never fires onopen —
+    // from here error/close must report through the live handlers, not reject.
+    opened = true;
+  } catch (err) {
+    // F-01: a failed connect must not leave the mic or audio contexts held —
+    // release everything, then let the caller's catch decide the fallback.
+    stopAll();
+    // A late SDK resolution after the race lost still gets its socket closed.
+    void connecting.then((s) => { try { s.close(); } catch { /* ignore */ } }).catch(() => {});
+    throw err;
+  }
+
+  source = inCtx.createMediaStreamSource(stream);
+  processor = inCtx.createScriptProcessor(4096, 1, 1);
   source.connect(processor);
   processor.connect(inCtx.destination);
   processor.onaudioprocess = (e) => {
     const data = floatTo16BitB64(e.inputBuffer.getChannelData(0));
-    try { session.sendRealtimeInput({ media: { data, mimeType: "audio/pcm;rate=16000" } }); } catch { /* closed */ }
+    try { session?.sendRealtimeInput({ media: { data, mimeType: "audio/pcm;rate=16000" } }); } catch { /* closed */ }
   };
 
   return { stop: stopAll };

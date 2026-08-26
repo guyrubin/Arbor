@@ -5,6 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { evaluateCosmetics, type CosmeticStats } from "../../practice/cosmetics";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
+import { isolate } from "../../lib/i18n";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import { TabSkeleton } from "../ui/Skeleton";
@@ -83,6 +84,10 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const hero = useHeroAvatar();
+  // E8/F-10: display-time possessive for the comic CTA — bidi-isolated so a
+  // Hebrew hero name can't pull the "'s" to its right-hand side. hero.name
+  // itself stays raw (it is compared against the "your child" sentinel).
+  const heroPossessive = hero.name === "your child" ? "your child's" : `${isolate(hero.name)}'s`;
   // KID-4: a kid-dashboard game tile named after a world opens the arcade with
   // that world pre-selected (only ids that resolve to a playable world count).
   const [openId, setOpenId] = useState<string | null>(
@@ -245,12 +250,12 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
       {/* VIRAL COMIC CTA (share loop wired in a later wave) */}
       <section className="comic-panel p-5 sm:p-6 text-center" style={{ background: "var(--arbor-lav)", color: "#fff" }}>
         <h3 className="font-black mb-1.5" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,4vw,30px)" }}>
-          Make {hero.name === "your child" ? "your" : `${hero.name}'s`} comic!
+          Make {hero.name === "your child" ? "your" : heroPossessive} comic!
         </h3>
         <p className="font-bold text-[14px] mb-4 opacity-95 max-w-[44ch] mx-auto">
           {hero.hasHero
             ? "Turn your hero into a comic page, ready to share with the family."
-            : `Create ${hero.name === "your child" ? "your child's" : `${hero.name}'s`} hero, then star them in a shareable comic.`}
+            : `Create ${heroPossessive} hero, then star them in a shareable comic.`}
         </p>
         <button onClick={() => setActiveTab("comics")}
           className="play-pressable inline-flex items-center gap-2 rounded-full px-6 py-3 font-black text-[16px]"
