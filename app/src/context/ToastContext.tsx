@@ -96,3 +96,10 @@ export function useToast(): ToastContextValue {
   if (!ctx) throw new Error("useToast must be used within a ToastProvider");
   return ctx;
 }
+
+/** Optional variant for controls that must stay renderable OUTSIDE the
+ *  provider (e.g. `SpeakButton`, which is context-free by design): returns
+ *  null instead of throwing, so callers degrade gracefully in tests. */
+export function useToastOptional(): ToastContextValue | null {
+  return useContext(ToastContext);
+}

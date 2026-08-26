@@ -23,15 +23,20 @@ import { setNaturalSynth, setVoiceEngine, voiceState } from "./voice";
 
 class FakeAudio {
   static instances: FakeAudio[] = [];
-  src: string;
+  /** When set, every play() rejects with this error (autoplay-block variant). */
+  static rejectPlayWith: Error | null = null;
+  src = "";
+  playCalls = 0;
   onplay: null | (() => void) = null;
   onended: null | (() => void) = null;
   onerror: null | (() => void) = null;
-  constructor(src: string) {
-    this.src = src;
+  constructor(src?: string) {
+    if (src) this.src = src;
     FakeAudio.instances.push(this);
   }
   play() {
+    this.playCalls += 1;
+    if (FakeAudio.rejectPlayWith) return Promise.reject(FakeAudio.rejectPlayWith);
     this.onplay?.();
     return Promise.resolve();
   }
@@ -50,6 +55,7 @@ const okAudioResponse = () => ({
 beforeEach(() => {
   resetNaturalVoiceForTest();
   FakeAudio.instances = [];
+  FakeAudio.rejectPlayWith = null;
   fetchMock = vi.fn(async () => okAudioResponse());
   vi.stubGlobal("fetch", fetchMock);
   vi.stubGlobal("Audio", FakeAudio);
@@ -171,6 +177,45 @@ describe("sentence prefetch — AI-V5", () => {
     resolveFetch(okAudioResponse());
     await flush();
     expect(onStart).not.toHaveBeenCalled();
-    expect(FakeAudio.instances).toHaveLength(0);
+    // F-03: the in-gesture element exists (constructed synchronously), but the
+    // fetched audio was never loaded into it — nothing can have played.
+    expect(FakeAudio.instances).toHaveLength(1);
+    expect(FakeAudio.instances[0].src).toBe("");
+  });
+});
+
+describe("gesture-bound playback — F-03", () => {
+  it("constructs the HTMLAudioElement SYNCHRONOUSLY (before any microtask), blessed with an in-gesture play()", () => {
+    naturalSynth("In the gesture.", {});
+    // No await/flush: the element must already exist and have been play()-blessed,
+    // otherwise the real play lands outside the user gesture and autoplay blocks it.
+    expect(FakeAudio.instances).toHaveLength(1);
+    expect(FakeAudio.instances[0].playCalls).toBeGreaterThanOrEqual(1);
+  });
+
+  it("the src-less bless-play never fires onStart — onplay is attached only after src is set", async () => {
+    const onStart = vi.fn();
+    naturalSynth("Blessed.", { onStart });
+    expect(onStart).not.toHaveBeenCalled(); // bless-play fired nothing
+    await flush();
+    expect(FakeAudio.instances[0].src).not.toBe("");
+    expect(onStart).toHaveBeenCalledTimes(1); // exactly the real playback
+  });
+
+  it("a play() blocked by autoplay policy (NotAllowedError) surfaces onError + a console.warn — never a silent 200", async () => {
+    FakeAudio.rejectPlayWith = new DOMException("play() blocked", "NotAllowedError");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const onError = vi.fn();
+      naturalSynth("Blocked.", { onError });
+      await flush();
+      expect(onError).toHaveBeenCalledTimes(1); // controller falls back to the floor
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("NotAllowedError"),
+        expect.objectContaining({ name: "NotAllowedError" }),
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

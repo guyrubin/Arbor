@@ -1,5 +1,7 @@
 import { Volume2, VolumeX } from "lucide-react";
 import { useArborVoice } from "../../hooks/useArborVoice";
+import { useToastOptional } from "../../context/ToastContext";
+import { translate, type UiLang } from "../../lib/i18n";
 
 /**
  * The one read-aloud control. Wraps `useArborVoice` so every spoken-output button
@@ -7,7 +9,11 @@ import { useArborVoice } from "../../hooks/useArborVoice";
  * indicator. Renders nothing when the device has no speech support (no dead
  * control). The neural-TTS upgrade flips the engine label to "Natural" with no
  * change here. Localized via an explicit `lang` prop (no context dependency, so
- * it is safe to render anywhere, including tests).
+ * it is safe to render anywhere, including tests — the toast context is
+ * consumed optionally for the same reason).
+ *
+ * F-03: playback failures (e.g. autoplay-blocked audio after both engines
+ * fail) surface as an error toast — never a silent no-op button.
  */
 export function SpeakButton({
   text,
@@ -25,18 +31,26 @@ export function SpeakButton({
   className?: string;
 }) {
   const { supported, speaking, engine, toggle } = useArborVoice();
+  const toastCtx = useToastOptional();
   if (!supported || !text.trim()) return null;
 
   const he = lang === "he";
+  const uiLang: UiLang = he ? "he" : "en";
   const idle = label ?? (he ? "הקראה" : "Read aloud");
   const stopLabel = he ? "עצירה" : "Stop";
   const engineNote = engine === "natural" ? (he ? "קול טבעי" : "Natural voice") : he ? "קול בסיסי" : "Basic voice";
   const dim = size === "md" ? "w-4 h-4" : "w-3.5 h-3.5";
 
+  const onError = () => {
+    const message = translate(uiLang, "voice.toast.blocked");
+    if (toastCtx) toastCtx.toast(message, "error");
+    else console.warn(`[voice] ${message}`);
+  };
+
   return (
     <button
       type="button"
-      onClick={() => toggle(text)}
+      onClick={() => toggle(text, { onError })}
       aria-pressed={speaking}
       aria-label={speaking ? stopLabel : `${idle} — ${engineNote}`}
       title={engineNote}

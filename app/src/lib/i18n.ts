@@ -485,6 +485,8 @@ export const en: Dict = {
   "coach.voice.end": "End voice conversation",
   "coach.voice.proposalSaved": "Saved after your confirmation",
   "coach.voice.proposalSaveError": "Could not save. The proposal is still a draft.",
+  // F-03 — read-aloud playback failure is surfaced, never silent.
+  "voice.toast.blocked": "Tap again to enable audio",
   "coach.councilHint": "Convene 3 scholars — each weighs in, then Arbor brings it together for you",
   // ASK-4 — honest disabled hint: the council convenes on the latest question.
   "coach.councilHint.empty": "Ask a question first — the council convenes on your latest question",
@@ -2884,6 +2886,8 @@ export const he: Dict = {
   "coach.voice.end": "סיום השיחה הקולית",
   "coach.voice.proposalSaved": "נשמר לאחר האישור שלכם",
   "coach.voice.proposalSaveError": "לא הצלחנו לשמור. המידע נשאר בטיוטה.",
+  // F-03 — read-aloud playback failure is surfaced, never silent.
+  "voice.toast.blocked": "הקישו שוב כדי להפעיל את השמע",
   "coach.councilHint": "כינוס 3 מומחים — כל אחד מחווה דעה, וארבור מחברת הכול לתשובה אחת בשבילכם",
   // ASK-4 — רמז כן כשאין עדיין שאלה שהמועצה יכולה להתכנס סביבה.
   "coach.councilHint.empty": "שאלו שאלה קודם — המועצה מתכנסת סביב השאלה האחרונה שלכם",

@@ -131,6 +131,31 @@ describe("voice controller — natural engine + browser-floor fallback", () => {
     expect(calls[0].stop).toHaveBeenCalled();
     expect(voiceState().speaking).toBe(false);
   });
+
+  // F-03 pins: failure paths PROPAGATE to the caller's onError — never a
+  // state-reset-only swallow (the SpeakButton toast depends on this).
+  it("F-03: the floor's utterance.onerror propagates to the caller's onError and clears state", () => {
+    const onError = vi.fn();
+    const id = speakText("floor speech", { onError });
+    expect(id).toBeGreaterThan(0);
+    expect(spoken).toHaveLength(1);
+    spoken[0].onerror?.();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(voiceState().speaking).toBe(false);
+    expect(isActive(id)).toBe(false);
+  });
+
+  it("F-03: a natural failure with NO floor available propagates through fallback to the caller's onError", () => {
+    const { synth, calls } = makeNatural();
+    setNaturalSynth(synth);
+    setVoiceEngine("natural");
+    const onError = vi.fn();
+    speakText("no floor left", { onError });
+    delete (globalThis as any).window; // the browser floor vanishes before the fallback
+    calls[0].handlers.onError?.(); // never started → fallback tries the floor → unsupported
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(voiceState().speaking).toBe(false);
+  });
 });
 
 describe("voice controller", () => {
