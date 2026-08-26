@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { Skeleton } from "../ui/Skeleton";
 import { capacityMinutes, type ActionCapacity } from "../../actionLoop/model";
+import { trackActionOffered } from "../../lib/loopEvents";
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import { TrustLink } from "../trust/TrustLink";
 
@@ -31,6 +32,17 @@ export default function TodayRecommendation({ eyebrow, headline, meta, action, l
   why?: string;
 }) {
   const [capacity, setCapacity] = useState<ActionCapacity>("standard");
+  // N8 KPI 3a: the offer moment — the accept row actually rendered (real AI
+  // focus, TODAY-1 guard upstream). Once per hero instance; the headline text
+  // itself never rides on the event (surface id only).
+  const offeredTracked = useRef(false);
+  const offered = !!accept;
+  useEffect(() => {
+    if (offered && !offeredTracked.current) {
+      offeredTracked.current = true;
+      trackActionOffered("today-hero");
+    }
+  }, [offered]);
   // Exactly one gradient-primary CTA per state: accept when offered, Begin otherwise.
   const primary = accept
     ? { label: accept.label, onClick: () => accept.onAccept(capacity), testid: "today-accept-cta" }

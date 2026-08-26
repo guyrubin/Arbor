@@ -12,6 +12,7 @@ import { auth, firebaseEnabled } from "../lib/firebase";
 import { setAuthTokenProvider } from "../lib/api";
 import { initNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
+import { trackSessionOpen } from "../lib/loopEvents";
 import { purgeAllComicPages } from "../lib/comicPageStore";
 import { clearMathExit } from "../components/kidmode/parentGate";
 
@@ -160,6 +161,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // signed-out produced a red 401 on every cold load and (before the latch
     // fix in naturalVoice.ts) permanently disabled the neural engine.
     if (user?.uid) void initNaturalVoice();
+    // N8 KPI 1: session_open — auth is ready and setAnalyticsUser (above) can
+    // resolve a uid, so this event actually lands in prod (unlike the boot-time
+    // app_open). Once per browser session, guarded inside the helper.
+    if (user?.uid) trackSessionOpen();
   }, [user?.uid]);
 
   const value: AuthContextValue = {

@@ -243,6 +243,7 @@ export default function TrustedSharing() {
 
       {error && (
         <ErrorState
+          surface="care-team"
           headline={t("err.careTeam.title")}
           body={t("err.careTeam.body", { name: first })}
           onRetry={() => void load()}

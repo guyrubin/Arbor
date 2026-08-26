@@ -587,6 +587,7 @@ export default function OverviewTab() {
           {focusError && !focus && !activeTodayAction && (
             <ErrorState
               className="mt-2"
+              surface="today-focus"
               headline={t("err.focus.title")}
               body={t("err.focus.body")}
               onRetry={() => void regenerateFocus()}
