@@ -41,6 +41,11 @@ export class FamilyService {
     return memberSnap.exists;
   }
 
+  /** OWN-1 backfill contract: the merge below SETS `familyId` on every call, so
+   *  a child doc previously stamped with the legacy 'default-family' id is
+   *  re-parented to the caller's real family on the next write — flipping
+   *  `ownsChild` to true. Memory ledger events fold by childId (listEvents),
+   *  so existing events survive the re-parenting untouched. */
   async ensureChild(familyId: string, childId: string, profileSeed: Record<string, unknown> = {}) {
     const now = new Date().toISOString();
     await this.db.runTransaction(async (transaction) => {

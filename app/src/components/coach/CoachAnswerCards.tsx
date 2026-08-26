@@ -99,7 +99,7 @@ function Panel({ icon, title, tint, children, action }: {
   );
 }
 
-export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff, onManageMemory }: {
+export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff, onManageMemory, reviewUnavailable = false }: {
   contract: CoachContract;
   lens?: string;
   council?: CouncilTake[];
@@ -109,6 +109,9 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   onAddToHandoff: (note: string) => void;
   /** ASK-6: deep link to Profile › Child Memory (route "memory"). */
   onManageMemory?: () => void;
+  /** OWN-1: true while the memory review ledger is unreadable — suppresses the
+   *  review-invite chip so the footer never deep-links into a broken queue. */
+  reviewUnavailable?: boolean;
 }) {
   const [done, setDone] = useState<Record<number, boolean>>({});
   const [copied, setCopied] = useState<string | null>(null);
@@ -376,7 +379,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           percentage/confidence wording) and the review chip names THAT
           something is pending, never WHAT — zero memory content in-thread.
           Queue mechanics live untouched in Profile › Child Memory. */}
-      {(memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" || (contract.memoryProposals?.length ?? 0) > 0) && (
+      {(memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" || (!reviewUnavailable && (contract.memoryProposals?.length ?? 0) > 0)) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
           {memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" && (
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
@@ -393,7 +396,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
               </button>
             </span>
           )}
-          {(contract.memoryProposals?.length ?? 0) > 0 && (
+          {!reviewUnavailable && (contract.memoryProposals?.length ?? 0) > 0 && (
             <button
               type="button"
               onClick={onManageMemory}

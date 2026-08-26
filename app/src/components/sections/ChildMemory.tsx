@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import type { MemoryReviewItem } from "../../types";
 import { PageHeader, SectionCard, Chip, cardCls, TrustSafetyBar } from "../ui/kit";
+import { ErrorState } from "../ui/ErrorState";
 import { learnCardById } from "../../learn/learnCards";
 import { learnCategoryById, type LearnCard } from "../../learn/learnLibrary";
 import { PASTEL } from "../../lib/tokens";
@@ -15,7 +16,7 @@ const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : tx
  *  append-only memory service (/api/memory). A core moat: source-linked,
  *  time-stamped, editable via approve/forget, time-boxed when sensitive. */
 export default function ChildMemory() {
-  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, savedLearnIds, requestLearnRead } = useArbor();
+  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, retryMemoryReview, savedLearnIds, requestLearnRead } = useArbor();
   const { t, aiLang } = useLanguage();
   const he = aiLang === "he";
   const first = childProfile.name.split(" ")[0];
@@ -30,8 +31,20 @@ export default function ChildMemory() {
 
       <TrustSafetyBar note="You control everything here. Nothing is shared without your approval." />
 
+      {/* OWN-1: a failed ledger read renders an honest error + retry card (the
+          TrustedSharing twin) INSTEAD of the pending/approved lists — an
+          unreadable ledger must never masquerade as "No memory yet". */}
+      {memoryReviewError && (
+        <ErrorState
+          headline={t("err.memory.title", { name: first })}
+          body={t("err.memory.body")}
+          onRetry={retryMemoryReview}
+          retryLabel={t("err.retry")}
+        />
+      )}
+
       {/* Pending review first — this is the parent's action queue */}
-      {pendingMemoryItems.length > 0 && (
+      {!memoryReviewError && pendingMemoryItems.length > 0 && (
         <SectionCard title={`Pending your review (${pendingMemoryItems.length})`} icon={<Icon name="verified_user" size={20} />} tone="yellow">
           <div className="space-y-3">
             {pendingMemoryItems.map((m: MemoryReviewItem) => (
@@ -47,6 +60,7 @@ export default function ChildMemory() {
         </SectionCard>
       )}
 
+      {!memoryReviewError && (
       <SectionCard title="Approved memory" icon={<Icon name="bookmark" size={20} />} tone="lav">
         {approvedMemoryItems.length > 0 ? (
           <div className="space-y-3">
@@ -71,6 +85,7 @@ export default function ChildMemory() {
           </div>
         )}
       </SectionCard>
+      )}
 
       {/* Learning trail — the parent's saved Learn Library reads, part of the
           child's longitudinal picture. Renders only when something is saved;

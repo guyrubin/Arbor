@@ -200,6 +200,25 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
 
+  /**
+   * OWN-1: the familyId that reaches ownership-bearing ledger writes is derived
+   * from the AUTHENTICATED uid (families collection-group lookup, creating the
+   * family on first touch) — NEVER from client-supplied childProfile.familyId.
+   * The old toFamilyId fallback stamped 'default-family' onto child docs, so
+   * ownsChild could never return true and every requireOwnership route
+   * (memory review, privacy export/erase) 403'd in production.
+   * Fails CLOSED: a resolution error propagates to the route's error handler
+   * rather than silently re-stamping 'default-family' over a good familyId.
+   * toFamilyId remains only for single-tenant/local stores (no ensureFamilyForUser).
+   */
+  const resolveFamilyId = async (req: express.Request, childProfile: unknown): Promise<string> => {
+    const { uid } = actorOf(req);
+    if (memoryStore.ensureFamilyForUser && uid !== "local-sandbox") {
+      return (await memoryStore.ensureFamilyForUser(uid)).familyId;
+    }
+    return toFamilyId(childProfile);
+  };
+
   // ── COPPA-2026 consent ledger ──────────────────────────────────────────────
   const VALID_PURPOSES: ConsentPurpose[] = ["face_processing", "voice_processing", "ai_training"];
   // Grant / update a purpose-scoped consent for a child (parent-owner only).
@@ -251,7 +270,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         memoryStore,
         req.params.childId,
         [{ fact: fact.trim(), source: source || "rhythm", retention: retention || "3 months" }],
-        { familyId: familyId || "default-family", prompt: prompt || "rhythm:pattern", frameRouting: null }
+        // OWN-1: uid-derived family in prod; the body's familyId is only the
+        // single-tenant/local fallback (via toFamilyId inside resolveFamilyId).
+        { familyId: await resolveFamilyId(req, { familyId }), prompt: prompt || "rhythm:pattern", frameRouting: null }
       );
       res.json({ items });
     } catch (error: any) {
@@ -266,6 +287,28 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       if (!["pending", "approved", "rejected", "deleted", "expired"].includes(status)) {
         res.status(400).json({ error: "Invalid Arbor memory status" });
         return;
+      }
+
+      // OWN-1: per-child authorization for transitions. The route addresses a
+      // memoryId, so resolve it to its childId from the ledger FIRST, then
+      // apply the same fail-closed ownership rule as requireChildOwnership
+      // (same single-tenant / local-sandbox no-ops as the middleware).
+      if (memoryStore.ownsChild) {
+        const { uid } = actorOf(req);
+        if (uid !== "local-sandbox") {
+          const target = foldMemoryEvents(await memoryStore.listEvents()).find(
+            (item) => item.memoryId === req.params.memoryId
+          );
+          if (!target) {
+            res.status(404).json({ error: "Arbor memory item not found" });
+            return;
+          }
+          const owned = await memoryStore.ownsChild(uid, target.childId).catch(() => false);
+          if (!owned) {
+            res.status(403).json({ error: "Not authorized for this child." });
+            return;
+          }
+        }
       }
 
       const result = await transitionMemory(memoryStore, req.params.memoryId, status, { fact, retention, source });
@@ -404,19 +447,26 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     }
   });
 
+  // OWN-1: provisions the families/{familyId}/members/{uid} + children/{childId}
+  // docs that requireChildOwnership authorizes against. Identity is SERVER-derived:
+  // client-supplied familyId/userId are ignored entirely — honoring them let a
+  // caller graft a child into an arbitrary family (IDOR). Idempotent, so the
+  // client also calls it per loaded profile to backfill pre-existing accounts.
   router.post("/onboarding/family-child", async (req, res) => {
     try {
-      const { familyId, childId, userId, childProfile } = req.body;
-      if (!familyId || !childId || !userId) {
-        res.status(400).json({ error: "familyId, childId, and userId are required" });
+      const { childId, childProfile } = req.body ?? {};
+      if (!childId || typeof childId !== "string") {
+        res.status(400).json({ error: "childId is required" });
         return;
       }
-      if (!memoryStore.ensureFamilyChild) {
-        res.json({ familyId, childId, userId, adapter: "local", created: false });
+      const { uid } = actorOf(req);
+      if (!memoryStore.ensureFamilyChild || !memoryStore.ensureFamilyForUser) {
+        res.json({ familyId: toFamilyId(childProfile), childId, userId: uid, adapter: "local", created: false });
         return;
       }
-      await memoryStore.ensureFamilyChild({ familyId, childId, userId, childProfile });
-      res.json({ familyId, childId, userId, adapter: "firestore", created: true });
+      const { familyId } = await memoryStore.ensureFamilyForUser(uid);
+      await memoryStore.ensureFamilyChild({ familyId, childId, userId: uid, childProfile });
+      res.json({ familyId, childId, userId: uid, adapter: "firestore", created: true });
     } catch (error: any) {
       logger.error("Arbor Onboarding Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to create Arbor family/child documents", details: error.message });
@@ -489,7 +539,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }
 
       const childId = toChildId(childProfile);
-      const familyId = toFamilyId(childProfile);
+      // OWN-1: uid-derived family — never the client-supplied childProfile.familyId.
+      const familyId = await resolveFamilyId(req, childProfile);
       // ASK-6: keep the fact COUNT alongside the prompt context — the count
       // (an integer only, never content) is backfilled onto the contract so
       // the parent can SEE the answer was grounded in facts they approved.
@@ -717,7 +768,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     const budget = createRouteBudget(res, "coach");
     try {
       const childId = toChildId(childProfile);
-      const familyId = toFamilyId(childProfile);
+      // OWN-1: uid-derived family — never the client-supplied childProfile.familyId.
+      const familyId = await resolveFamilyId(req, childProfile);
       // ASK-6: same count-only memory visibility as /chat.
       const { context: approvedMemory, factsUsed: approvedMemoryFactsUsed } =
         await getApprovedMemoryContextDetail(memoryStore, childId, config.memoryPromptMaxFacts);

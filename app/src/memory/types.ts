@@ -25,6 +25,11 @@ export type MemoryReviewItem = Omit<MemoryLedgerEvent, "eventId" | "eventType" |
 export type MemoryStore = {
   listEvents(childId?: string): Promise<MemoryLedgerEvent[]>;
   appendEvent(event: MemoryLedgerEvent): Promise<void>;
+  /** OWN-1: resolve (creating on first touch) the family owned by the
+   *  AUTHENTICATED uid. The ONLY legitimate source of a familyId for
+   *  ownership-bearing writes — client-supplied familyIds are never trusted.
+   *  Optional — single-tenant (local) stores omit it. */
+  ensureFamilyForUser?(uid: string): Promise<{ familyId: string }>;
   ensureFamilyChild?(input: {
     familyId: string;
     childId: string;

@@ -397,6 +397,8 @@ export const en: Dict = {
   "err.retry": "Try again",
   "err.careTeam.title": "We couldn't load your care team",
   "err.careTeam.body": "Something interrupted the connection. {name}'s data is safe — give it another try.",
+  "err.memory.title": "We couldn't load {name}'s memory",
+  "err.memory.body": "Something interrupted the connection. Approved facts and pending reviews are safe — give it another try.",
   "err.focus.title": "Today's focus didn't load",
   "err.focus.body": "That was a connection hiccup, not your data. Try again in a moment.",
   // coach
@@ -2802,6 +2804,8 @@ export const he: Dict = {
   "err.retry": "נסו שוב",
   "err.careTeam.title": "לא הצלחנו לטעון את צוות הטיפול",
   "err.careTeam.body": "משהו הפריע לחיבור. הנתונים של {name} בטוחים — נסו שוב.",
+  "err.memory.title": "לא הצלחנו לטעון את הזיכרון של {name}",
+  "err.memory.body": "משהו הפריע לחיבור. העובדות שאושרו והפריטים לבדיקה בטוחים — נסו שוב.",
   "err.focus.title": "המיקוד של היום לא נטען",
   "err.focus.body": "זו הייתה תקלת חיבור, לא הנתונים שלכם. נסו שוב עוד רגע.",
   "coach.subtitle": "ספרו לארבור מה קורה. תקבלו צעד הבא רגוע ומותאם לגיל ואת המילים המדויקות לומר, וארבור יזכור זאת לפעם הבאה.",

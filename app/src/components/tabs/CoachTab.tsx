@@ -142,6 +142,7 @@ export default function CoachTab() {
     requestConsultPrefill,
     requestLearnRead,
     proposeMemory,
+    memoryReviewError,
     milestones,
     behaviorLogs,
     conversationChanges,
@@ -1003,6 +1004,8 @@ export default function CoachTab() {
                       lang={uiLang}
                       // ASK-6: memory footer deep link — Profile › Child Memory.
                       onManageMemory={() => setActiveTab("memory")}
+                      // OWN-1: no review invite while the ledger is unreadable.
+                      reviewUnavailable={memoryReviewError}
                       onSaveToPlan={(topic) => {
                         setPlanChallengeTopic((topic || msg.text).replace(/[#*]/g, "").slice(0, 140));
                         setActiveTab("plans");
