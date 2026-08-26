@@ -67,6 +67,13 @@ const SURFACES: [string, RegExp, string][] = [
   ["components/overview/DailyPlayCard.tsx", /<span dir="auto">\{why\}<\/span>/, "daily-play"],
   ["components/sections/AcademyForYou.tsx", /t\("foryou\.whyToggle"\)/, "academy-foryou"],
   ["components/sections/ScholarHubCard.tsx", /t\("hub\.scholar\.provenance"\)/, "scholar-hub"],
+  // UI-WIRE inventory 2026-08-20: the two missing mounts, now pinned.
+  // Learn reader — provenance hedge + chip on the same wrapping row
+  // (scholar-hub-reader pattern).
+  ["components/sections/LearnLibrary.tsx", /t\("learn\.provenance"\)/, "learn-reader"],
+  // Coach answer cards — the highest-trust-stakes surface; the chip rides the
+  // attribution row, beside the "why this might be happening" disclosure.
+  ["components/coach/CoachAnswerCards.tsx", /t\("coach\.cards\.why"\)/, "coach-answer"],
 ];
 
 describe("3.1 — every recommendation why-line reaches the Trust Center", () => {
