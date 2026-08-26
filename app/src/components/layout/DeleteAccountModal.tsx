@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { api, type AccountDeletionReceipt } from "../../lib/api";
 import { purgeAllComicPages } from "../../lib/comicPageStore";
+import { commerceAllowed } from "../kidmode/parentGate";
 
 /**
  * STORE-4 — full account deletion (Apple 5.1.1(v) / Play account-deletion /
@@ -43,6 +44,12 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
 
   const runDeletion = async () => {
     if (busy) return;
+    // STORE-3: account deletion is destructive — a session whose parent area
+    // was reached via the kid-exit math question cannot trigger it.
+    if (!commerceAllowed()) {
+      toast(t("elev.gate.blocked"), "info");
+      return;
+    }
     setBusy(true);
     try {
       const receipt = await api.accountDelete();

@@ -20,10 +20,20 @@ export const en: Record<string, string> = {
   "elev.gate.pinSub": "Enter your 4-digit PIN to go back to the parent area.",
   "elev.gate.pinAria": "4-digit parent PIN",
   "elev.gate.pinWrong": "That PIN doesn't match.",
-  "elev.gate.useMath": "Answer a question instead",
-  "elev.gate.setPinToggle": "Set a parent PIN for next time (optional)",
   "elev.gate.setPinAria": "New 4-digit parent PIN",
   "elev.gate.setPinHint": "Saved on this device only — never with your child's data.",
+
+  // ── STORE-3 · Age-hard commerce gate (math exit ≠ verified parent)
+  "elev.gate.blocked": "Locked after Kid Mode — enter your parent PIN in Settings to unlock purchases and account changes.",
+  "elev.gate.set.title": "Parental gate",
+  "elev.gate.set.sub": "A 4-digit PIN protects the exit from Kid Mode, purchases, and account changes.",
+  "elev.gate.set.cta": "Set PIN",
+  "elev.gate.set.change": "Change PIN",
+  "elev.gate.set.currentAria": "Current 4-digit PIN",
+  "elev.gate.set.saved": "Parent PIN saved.",
+  "elev.gate.set.blockedSetup": "PIN setup is locked right now. Sign in again to set a parent PIN.",
+  "elev.gate.unlock": "Unlock with PIN",
+  "elev.gate.unlocked": "Unlocked — purchases and account changes are available again.",
 
   // ── E10 · Parent-side launcher safety line (ships true with the gate)
   "elev.kidmode.locked": "Parent-locked — your child can't exit or delete",
@@ -54,10 +64,19 @@ export const he: Record<string, string> = {
   "elev.gate.pinSub": "הקלידו את הקוד בן 4 הספרות כדי לחזור לאזור ההורים.",
   "elev.gate.pinAria": "קוד הורים בן 4 ספרות",
   "elev.gate.pinWrong": "הקוד לא תואם.",
-  "elev.gate.useMath": "אפשר גם לענות על שאלה",
-  "elev.gate.setPinToggle": "רוצים קוד הורים לפעם הבאה? (לא חובה)",
   "elev.gate.setPinAria": "קוד הורים חדש בן 4 ספרות",
   "elev.gate.setPinHint": "נשמר במכשיר הזה בלבד — אף פעם לא עם המידע של הילד.",
+
+  "elev.gate.blocked": "נעול אחרי מצב ילדים — הקלידו את קוד ההורים בהגדרות כדי לפתוח רכישות ושינויי חשבון.",
+  "elev.gate.set.title": "שער הורים",
+  "elev.gate.set.sub": "קוד בן 4 ספרות מגן על היציאה ממצב ילדים, על רכישות ועל שינויי חשבון.",
+  "elev.gate.set.cta": "הגדרת קוד",
+  "elev.gate.set.change": "החלפת קוד",
+  "elev.gate.set.currentAria": "הקוד הנוכחי בן 4 הספרות",
+  "elev.gate.set.saved": "קוד ההורים נשמר.",
+  "elev.gate.set.blockedSetup": "הגדרת הקוד נעולה כרגע. התחברו מחדש כדי להגדיר קוד הורים.",
+  "elev.gate.unlock": "פתיחה עם קוד",
+  "elev.gate.unlocked": "נפתח — רכישות ושינויי חשבון זמינים שוב.",
 
   "elev.kidmode.locked": "נעול להורים — הילד לא יכול לצאת או למחוק",
 

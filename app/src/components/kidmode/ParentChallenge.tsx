@@ -1,10 +1,12 @@
 /**
  * E10: ParentChallenge — the parent verification card summoned by the 3s hold.
  *
- * Flow: hold-to-exit completes → this card appears → the parent answers a
- * 2-digit addition question (deterministic from today's date; a wrong answer
- * regenerates it) OR enters the optional 4-digit parent PIN (device-local,
- * localStorage "arbor.parentPin", settable on first use) → exit fires.
+ * Flow (STORE-3 hardened): hold-to-exit completes → this card appears →
+ * with a parent PIN set (from the authenticated Settings surface — never from
+ * this card): PIN entry ONLY, no math fallback. With no PIN: the 2-digit
+ * addition question (deterministic from today's date; a wrong answer
+ * regenerates it) — but a math-earned exit marks the session
+ * commerce-restricted (see parentGate.ts) → exit fires.
  *
  * Safety contract (unchanged from AP-048): NO child data, NO Firestore, NO
  * network. Escape is already blocked at the overlay level; this card also
@@ -23,9 +25,9 @@ import {
   challengeFor,
   dateSeedKey,
   isChallengeAnswer,
-  isPinShape,
+  markMathExit,
   readParentPin,
-  saveParentPin,
+  verifyParentPin,
 } from "./parentGate";
 
 interface ParentChallengeProps {
@@ -50,12 +52,13 @@ const fieldStyle: React.CSSProperties = {
 export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) {
   const { t } = useLanguage();
   const storedPin = useMemo(() => readParentPin(), []);
-  const [mode, setMode] = useState<"pin" | "math">(storedPin ? "pin" : "math");
+  // STORE-3: once a PIN exists, the exit gate is PIN-ONLY — no math fallback
+  // (a school-age child can add). With no PIN, the math question remains the
+  // exit UX, but that exit marks the session math-restricted (see parentGate).
+  const mode: "pin" | "math" = storedPin ? "pin" : "math";
   const [attempt, setAttempt] = useState(0);
   const [input, setInput] = useState("");
   const [wrong, setWrong] = useState(false);
-  const [setPinOpen, setSetPinOpen] = useState(false);
-  const [newPin, setNewPin] = useState("");
 
   const seed = useMemo(() => dateSeedKey(), []);
   const challenge = useMemo(() => challengeFor(seed, attempt), [seed, attempt]);
@@ -112,7 +115,8 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
     (e?: React.FormEvent) => {
       e?.preventDefault();
       if (mode === "pin") {
-        if (storedPin !== null && input === storedPin) {
+        // verifyParentPin also lifts any math-exit restriction on success.
+        if (verifyParentPin(input)) {
           onSuccess();
         } else {
           setWrong(true);
@@ -122,8 +126,9 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
         return;
       }
       if (isChallengeAnswer(challenge, input)) {
-        // Optional first-use PIN: persist only when the parent typed a valid one.
-        if (setPinOpen && isPinShape(newPin)) saveParentPin(newPin);
+        // STORE-3: a math-earned exit restricts commerce/PIN-setup for this
+        // session (age-hard gate) — PIN setup lives in the parent Settings.
+        markMathExit();
         onSuccess();
       } else {
         setAttempt((a) => a + 1); // deterministic regeneration
@@ -132,7 +137,7 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
         inputRef.current?.focus();
       }
     },
-    [mode, storedPin, input, challenge, setPinOpen, newPin, onSuccess]
+    [mode, input, challenge, onSuccess]
   );
 
   const isPin = mode === "pin";
@@ -273,69 +278,9 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
             {wrong ? (isPin ? t("elev.gate.pinWrong") : t("elev.gate.wrong")) : ""}
           </p>
 
-          {/* Optional first-use PIN (math mode only, nothing stored until valid). */}
-          {!isPin && !storedPin && (
-            <div style={{ marginBlockStart: "4px" }}>
-              {setPinOpen ? (
-                <>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    maxLength={4}
-                    value={newPin}
-                    onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-                    aria-label={t("elev.gate.setPinAria")}
-                    style={{ ...fieldStyle, width: "100%", letterSpacing: "0.4em", fontSize: "var(--t-md)" }}
-                  />
-                  <p style={{ marginBlockStart: "6px", fontSize: "var(--t-xs)", color: "var(--arbor-muted)" }}>
-                    {t("elev.gate.setPinHint")}
-                  </p>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setSetPinOpen(true)}
-                  style={{
-                    minHeight: "44px",
-                    padding: 0,
-                    border: "none",
-                    background: "transparent",
-                    color: "var(--arbor-muted)",
-                    fontSize: "var(--t-xs)",
-                    fontWeight: 700,
-                    textDecoration: "underline",
-                    cursor: "pointer",
-                    textAlign: "start",
-                  }}
-                >
-                  {t("elev.gate.setPinToggle")}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* PIN mode always keeps the math question as a fallback. */}
-          {isPin && (
-            <button
-              type="button"
-              onClick={() => { setMode("math"); setInput(""); setWrong(false); }}
-              style={{
-                minHeight: "44px",
-                padding: 0,
-                border: "none",
-                background: "transparent",
-                color: "var(--arbor-muted)",
-                fontSize: "var(--t-xs)",
-                fontWeight: 700,
-                textDecoration: "underline",
-                cursor: "pointer",
-                textAlign: "start",
-              }}
-            >
-              {t("elev.gate.useMath")}
-            </button>
-          )}
+          {/* STORE-3: no in-card PIN setup (PIN is set from the authenticated
+              parent Settings surface) and NO math fallback once a PIN exists —
+              the math path marks the session commerce-restricted instead. */}
 
           <button
             type="submit"

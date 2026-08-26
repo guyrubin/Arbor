@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import AdminDashboard from "./AdminDashboard";
+import ParentalGatePanel from "./ParentalGatePanel";
 import DeleteAccountModal from "./DeleteAccountModal";
 import InviteCard from "../referral/InviteCard";
 import { PlanPrices } from "../billing/PlanPrices";
@@ -292,6 +293,14 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "end-[22px]" : "start-0.5"}`} />
           </button>
         </Row>
+        {/* STORE-3: parent PIN management — the ONLY setup surface (the kid-mode
+            challenge card can no longer mint the PIN). */}
+        <div className="pt-1">
+          <Row icon={<Icon name="lock" size={18} />} title={t("elev.gate.set.title")} sub={t("elev.gate.set.sub")}>
+            <span />
+          </Row>
+          <ParentalGatePanel />
+        </div>
         </Section>
 
         <Section title={t("set.section.notifications")} sub={t("set.section.notificationsSub")}>

@@ -13,6 +13,7 @@ import { setAuthTokenProvider } from "../lib/api";
 import { initNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
 import { purgeAllComicPages } from "../lib/comicPageStore";
+import { clearMathExit } from "../components/kidmode/parentGate";
 
 export type AuthUser = {
   uid: string;
@@ -100,6 +101,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
+      // STORE-3: a credentialed sign-in IS parent verification — lift any
+      // math-exit commerce restriction. (Never done in onAuthStateChanged,
+      // which also fires for the persisted session on every reload.)
+      clearMathExit();
     } catch (err: any) {
       if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") return;
       setError(friendlyAuthError(err));
@@ -112,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      clearMathExit(); // STORE-3: credentialed sign-in = parent verification
     } catch (err: any) {
       setError(friendlyAuthError(err));
       throw err;

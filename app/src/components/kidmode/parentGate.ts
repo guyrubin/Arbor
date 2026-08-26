@@ -117,3 +117,86 @@ export function saveParentPin(pin: string): boolean {
     return false;
   }
 }
+
+/* ── STORE-3: age-hard commerce gating ─────────────────────────────────────
+ *
+ * The 2-digit math question is kid-exit UX, not a security boundary — a
+ * school-age child can add. So an exit earned through the MATH path (no PIN
+ * set on this device) marks the browsing session "math-exit": purchases,
+ * subscription management, and PIN setup stay LOCKED until the parent PIN is
+ * verified or a fresh session starts. A PIN-verified exit carries no
+ * restriction, and once a PIN exists the exit gate offers NO math fallback.
+ *
+ * PIN setup lives ONLY in the authenticated parent Settings surface (never
+ * inside the kid-mode challenge card), and changing an existing PIN requires
+ * the current one. sessionStorage scoping: a closed tab drops the flag, but a
+ * reopened tab rehydrates INTO Kid Mode (kidModeGate LEAK-1 persistence), so
+ * the child never lands on an unrestricted parent surface.
+ *
+ * Storage is injectable (node tests, same pattern as kidModeGate). Emergency
+ * `tel:` safety links are deliberately NOT gated — never put friction in
+ * front of a crisis number.
+ */
+
+/** sessionStorage key marking a math-fallback exit (this browsing session). */
+export const MATH_EXIT_KEY = "arbor.gate.mathExit";
+
+export interface GateSessionStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+const sessionStore = (): GateSessionStorage | null => {
+  try {
+    if (typeof window === "undefined" || !window.sessionStorage) return null;
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
+/** Record that the parent area was reached via the math question (no PIN). */
+export function markMathExit(storage: GateSessionStorage | null = sessionStore()): void {
+  try {
+    storage?.setItem(MATH_EXIT_KEY, "1");
+  } catch {
+    /* storage unavailable — fail toward unrestricted is wrong; callers treat
+       readback truthfully via isMathExitSession */
+  }
+}
+
+/** Clear the restriction (PIN verified, or a fresh authenticated session). */
+export function clearMathExit(storage: GateSessionStorage | null = sessionStore()): void {
+  try {
+    storage?.removeItem(MATH_EXIT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** True while this session's parent area was reached via the math fallback. */
+export function isMathExitSession(storage: GateSessionStorage | null = sessionStore()): boolean {
+  try {
+    return storage?.getItem(MATH_EXIT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Commerce / subscription / PIN-setup actions allowed in this session? */
+export function commerceAllowed(storage: GateSessionStorage | null = sessionStore()): boolean {
+  return !isMathExitSession(storage);
+}
+
+/** Verify a PIN attempt against the stored PIN; success lifts the math-exit
+ *  restriction for this session. */
+export function verifyParentPin(
+  input: string,
+  storage: GateSessionStorage | null = sessionStore(),
+): boolean {
+  const stored = readParentPin();
+  if (stored === null || input !== stored) return false;
+  clearMathExit(storage);
+  return true;
+}

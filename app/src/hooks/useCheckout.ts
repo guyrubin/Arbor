@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useToast } from "../context/ToastContext";
 import { useLanguage } from "../context/LanguageContext";
 import { isNativePlatform } from "../lib/runtime";
+import { commerceAllowed } from "../components/kidmode/parentGate";
 import {
   defaultDeps,
   performCheckout,
@@ -29,6 +30,12 @@ export function useCheckout() {
 
   const startCheckout = async (plan: PaidPlan, cadence: Cadence) => {
     if (busy) return;
+    // STORE-3 age-hard gate: a session whose parent area was reached via the
+    // kid-exit MATH question (no PIN on this device) cannot start a purchase.
+    if (!commerceAllowed()) {
+      toast(t("elev.gate.blocked"), "info");
+      return;
+    }
     setBusy(true);
     try {
       const result = await performCheckout(defaultDeps(), plan, cadence);
@@ -45,6 +52,11 @@ export function useCheckout() {
 
   const openPortal = async () => {
     if (busy) return;
+    // STORE-3: subscription management is commerce — same math-exit gate.
+    if (!commerceAllowed()) {
+      toast(t("elev.gate.blocked"), "info");
+      return;
+    }
     setBusy(true);
     try {
       const result = await performOpenPortal(defaultDeps());
