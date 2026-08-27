@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-mediapipe-wasm.mjs",
     "dev": "tsx server.ts",
-    "build": "vite build && node scripts/stamp-sw.mjs && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "node scripts/copy-mediapipe-wasm.mjs && vite build && node scripts/stamp-sw.mjs && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "build:hosting:prod": "node scripts/check-hosting-env.mjs && npm run build",
     "build:icon-font": "node scripts/build-icon-font.mjs",
     "start": "node dist/server.cjs",
