@@ -12,6 +12,7 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import MimicMatch from "./MimicMatch";
 import type { MimicSession } from "../../types";
 import { track } from "../../lib/analytics";
+import { isolate } from "../../lib/i18n";
 // AP-050: practice_stamp surface — download a branded hero card on pack completion.
 import { downloadPracticeStampCanvas } from "../../lib/heroAvatarCanvas";
 
@@ -192,7 +193,7 @@ export default function MimicStudioTab() {
 
         {/* Rating */}
         <div className="flex flex-wrap items-center gap-2.5 mt-5">
-          <span className="text-[13px] font-bold w-full sm:w-auto" style={{ color: "var(--arbor-muted)" }}>How did {first}&apos;s copy go?</span>
+          <span className="text-[13px] font-bold w-full sm:w-auto" style={{ color: "var(--arbor-muted)" }}>How did {isolate(first)}&apos;s copy go?</span>
           {([
             { r: 1 as const, label: "Tried it!", tone: "pink" as const },
             { r: 2 as const, label: "So close", tone: "yellow" as const },

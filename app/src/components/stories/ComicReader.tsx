@@ -361,7 +361,7 @@ export function ComicReader({
                 <p className="text-[1.4rem] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                   {adventureTitle(adventure, lang)}
                 </p>
-                <p className="text-[13px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{heroName}&apos;s Comic</p>
+                <p className="text-[13px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{isolate(heroName)}&apos;s Comic</p>
               </>
             )}
           </div>
@@ -387,7 +387,7 @@ export function ComicReader({
           {rtl ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />} Back
         </PlayButton>
         {current?.cover ? (
-          <PlayButton tone="clay" onClick={advance}>Read {heroName}&apos;s comic</PlayButton>
+          <PlayButton tone="clay" onClick={advance}>Read {isolate(heroName)}&apos;s comic</PlayButton>
         ) : (
           <PlayButton tone="clay" onClick={advance}>
             {onLastPage ? "Finish" : "Next"} {rtl ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}

@@ -62,6 +62,7 @@ const contractFor = (text: string, extra: Record<string, unknown> = {}) => ({
 let providerDocument = "";
 let providerChunkSize = 8;
 let providerDelayMs = 0;
+let providerFailAfterChunks: number | null = null;
 let modelInvocations = 0;
 let classifierVerdict: { safe: boolean; reason: string } = { safe: true, reason: "" };
 let timeline: string[] = [];
@@ -72,7 +73,12 @@ const stubModelProvider = {
     modelInvocations += 1;
     for (let i = 0; i < providerDocument.length; i += providerChunkSize) {
       if (providerDelayMs) await sleep(providerDelayMs);
-      timeline.push(`provider:yield:${Math.floor(i / providerChunkSize) + 1}`);
+      const chunkNo = Math.floor(i / providerChunkSize) + 1;
+      if (providerFailAfterChunks !== null && chunkNo > providerFailAfterChunks) {
+        timeline.push("provider:fail");
+        throw new Error("upstream stream failed (stub 500)");
+      }
+      timeline.push(`provider:yield:${chunkNo}`);
       yield providerDocument.slice(i, i + providerChunkSize);
     }
     timeline.push("provider:done");
@@ -122,6 +128,7 @@ beforeEach(() => {
   providerDocument = "";
   providerChunkSize = 8;
   providerDelayMs = 0;
+  providerFailAfterChunks = null;
   modelInvocations = 0;
   classifierVerdict = { safe: true, reason: "" };
   timeline = [];
@@ -245,6 +252,33 @@ describe("/api/chat real streaming (ASK-1 Phase 2 + AIR-1)", () => {
     expect(done?.contract).toBeUndefined(); // structured panels never ship on a flag
     // Generation stopped at the flag: the provider never finished the document.
     expect(timeline.indexOf("provider:done")).toBe(-1);
+  });
+
+  it("N9 FAIL-CLOSED (voice parity): an upstream 500 mid-stream drops the turn — screened sentence 1 stands, the unscreened tail reaches NO SSE frame, `error` replaces `done`", async () => {
+    // The provider dies mid-way through the SECOND sentence: everything past
+    // the first boundary is still unscreened `pending` and must never leave
+    // the server — the same 500/timeout=drop invariant /voice ships with.
+    const prose = "The first calm sentence arrives whole and screened. UNSCREENED-TAIL-NEVER-DELIVERED because the provider dies mid-sentence.";
+    providerDocument = JSON.stringify(contractFor(prose));
+    providerChunkSize = 8;
+    providerFailAfterChunks = 9; // sentence 1 fully yielded; tail partially buffered, no boundary yet
+    const { events, raw } = await postChatStreamed({ message: "Why does she keep doing this?", childProfile: { id: "c1", name: "Mia" } });
+
+    // The screened first sentence was released before the failure…
+    expect(deltas(events)).toHaveLength(1);
+    expect(deltas(events)[0]?.data.text).toBe("The first calm sentence arrives whole and screened. ");
+    // …the unscreened tail appears in NO SSE frame…
+    expect(raw).not.toContain("UNSCREENED-TAIL");
+    // …and the turn is DROPPED: no done payload (no text, no contract, no
+    // structured panels) — the stream ends with the calm `error` event the
+    // client maps to the single retry card.
+    expect(doneOf(events)).toBeUndefined();
+    const errorEvent = events.find((e) => e.event === "error");
+    expect(errorEvent).toBeTruthy();
+    expect(errorEvent?.data.error).toBeTruthy();
+    // The provider really did fail mid-document (never finished).
+    expect(timeline.indexOf("provider:done")).toBe(-1);
+    expect(timeline.indexOf("provider:fail")).toBeGreaterThan(-1);
   });
 
   it("classifier ON (ENABLE_OUTPUT_SAFETY_CLASSIFIER=true): deltas still stream, and a done-time semantic flag returns the blocked payload for the client to retract to", async () => {

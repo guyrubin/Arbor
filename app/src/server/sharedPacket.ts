@@ -21,7 +21,7 @@ import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
 import type { MemoryStore } from "../memory/types.js";
-import { foldMemoryEvents } from "../memory/memoryService.js";
+import { foldMemoryEvents, isMemoryExpired } from "../memory/memoryService.js";
 import { grantScopes, isShareActive, type ShareRole, type ShareStore } from "../sharing/shares.js";
 import { buildSharedScopePacket, type BuildPacketInput, type ConsultPacket } from "../consult/packet.js";
 import { ClinicalLanguageError } from "../lib/clinicalScan.js";
@@ -191,7 +191,11 @@ export class FirestoreSharedChildSource implements SharedChildRecordSource {
         const p = d.data() as Record<string, unknown>;
         return { title: str(p.title), issue: str(p.issue) || undefined };
       }),
-      memory: foldMemoryEvents(memoryEvents, childId).map((m) => ({ fact: m.fact, status: m.status })),
+      // SPC2: retention-expired approved facts never reach a share recipient.
+      // Pure filter (no store handle here); the owning read paths tombstone.
+      memory: foldMemoryEvents(memoryEvents, childId)
+        .filter((m) => !(m.status === "approved" && isMemoryExpired(m)))
+        .map((m) => ({ fact: m.fact, status: m.status })),
     };
   }
 }

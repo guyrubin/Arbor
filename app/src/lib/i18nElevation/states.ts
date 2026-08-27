@@ -22,6 +22,8 @@
  * eventual index.ts registration is a pure no-op for callers that migrate
  * to t(). */
 
+import { isolate } from "../bidi";
+
 export const en: Record<string, string> = {
   // ── SectionSkeleton slow path (~10s): compact inline row + retry.
   "elev.states.slow": "Still loading — this is taking longer than usual",
@@ -67,8 +69,9 @@ export const he: Record<string, string> = {
   "elev.states.plans.cta": "להתחיל את התוכנית הראשונה",
 };
 
-/** Structural mirror of the app's t() — kept local so this module stays free
- *  of imports (same convention as i18nElevation/childsignals.ts). */
+/** Structural mirror of the app's t() — kept local so this module depends
+ *  only on the lib/bidi leaf (never lib/i18n itself — that would be a cycle;
+ *  same convention as i18nElevation/childsignals.ts). */
 type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
 /**
@@ -86,7 +89,7 @@ export function statesText(
   const raw = dict[key] ?? en[key] ?? key;
   if (!vars) return raw;
   return raw.replace(/\{(\w+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match,
+    Object.prototype.hasOwnProperty.call(vars, name) ? isolate(String(vars[name])) : match,
   );
 }
 

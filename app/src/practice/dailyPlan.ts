@@ -37,6 +37,7 @@
  */
 
 import { screenModelOutputLexical } from "../safety/outputScreen";
+import { isolate } from "../lib/bidi";
 import type { ActiveGoal } from "./goalBuilder";
 import type { ScoredActivity, SessionLength } from "../playbank/select";
 
@@ -134,7 +135,11 @@ export function assembleWhyLine(opts: {
   isWeekend: boolean;
   sparse: boolean;
 }): { whyLine: string; wasFlagged: boolean } {
-  const { goalLabel, childName, matchedInterest, isWeekend, sparse } = opts;
+  const { goalLabel, matchedInterest, isWeekend, sparse } = opts;
+  // N5/RES-BIDI: the why-line is display prose (rendered by DailyPlanCard,
+  // never a key/seed) — bidi-isolate the name at interpolation so an RTL name
+  // can't reorder the English template (no-op for LTR names).
+  const childName = isolate(opts.childName);
 
   if (sparse) {
     return { whyLine: WHY_LINE_TEMPLATES.sparse, wasFlagged: false };

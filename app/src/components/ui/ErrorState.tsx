@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { trackErrorBannerShown } from "../../lib/loopEvents";
 
 /** Inline error + retry. Sibling of EmptyState/Skeleton. Use whenever an async
  *  read fails so the surface never silently degrades to an empty state. */
@@ -10,6 +11,7 @@ export function ErrorState({
   retryLabel = "Try again",
   retrying = false,
   className = "",
+  surface,
 }: {
   headline?: string;
   body?: string;
@@ -17,7 +19,15 @@ export function ErrorState({
   retryLabel?: string;
   retrying?: boolean;
   className?: string;
+  /** N8 KPI 6: short analytics id for the degraded surface ("today-focus",
+   *  "care-team", …). Id only — the headline/body copy never reaches analytics. */
+  surface?: string;
 }) {
+  // N8 KPI 6: every rendered error banner counts once per mount.
+  useEffect(() => {
+    trackErrorBannerShown(surface);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div
       role="alert"

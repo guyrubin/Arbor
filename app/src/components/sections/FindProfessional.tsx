@@ -10,6 +10,7 @@ import { track } from "../../lib/analytics";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { isolate } from "../../lib/i18n";
 
 const SPECIALTIES = [
   "Child Psychologist", "Speech Therapist", "Occupational Therapist", "Parenting Coach",
@@ -278,7 +279,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
               </div>
             </div>
             <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-              Nothing from {first}'s profile is shared automatically — only the note above. You stay in control of any reports you choose to share.
+              Nothing from {isolate(first)}'s profile is shared automatically — only the note above. You stay in control of any reports you choose to share.
             </p>
             <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
               {consultBusy ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> Sending…</>) : (<><Icon name="send" size={18} /> Send the request</>)}

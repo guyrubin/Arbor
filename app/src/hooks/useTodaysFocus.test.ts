@@ -70,3 +70,63 @@ describe("useTodaysFocus source — language in the key, the record, and the req
     expect(src).toContain("count: signals.count");
   });
 });
+
+/**
+ * N2-errfocus (2026-08-26): a failed /api/todays-focus fetch was swallowed
+ * silently — the Today overview degraded to the guaranteed-action fallback
+ * with no error signal and no way to retry. The hook now surfaces an `error`
+ * flag + `regenerate`, and OverviewTab renders the shared ErrorState in the
+ * day-anchor slot ALONGSIDE the fallback (never instead of it).
+ */
+describe("N2-errfocus — focus fetch failure surfaces an inline error + retry", () => {
+  const hookSrc = read("hooks/useTodaysFocus.ts");
+  const overviewSrc = read("components/tabs/OverviewTab.tsx");
+  const i18nSrc = read("lib/i18n.ts");
+
+  it("the hook exposes the error flag and the retry alongside the focus", () => {
+    expect(hookSrc).toContain("return { focus, loading, error, regenerate: generate }");
+  });
+
+  it("a generation failure SETS the flag; a new attempt clears it first", () => {
+    // catch → setError(true): the failure is no longer swallowed.
+    expect(hookSrc).toMatch(/catch\s*\{\s*[\s\S]{0,120}setError\(true\)/);
+    // generate() opens by clearing the flag, so retry → in-flight → clean.
+    expect(hookSrc).toMatch(/setLoading\(true\);\s*setError\(false\);/);
+  });
+
+  it("a child/language switch drops the stale banner", () => {
+    expect(hookSrc).toMatch(/triedAuto\.current = false;\s*setError\(false\);/);
+  });
+
+  it("OverviewTab renders ErrorState on failure — gated, not always-on", () => {
+    expect(overviewSrc).toContain('import { ErrorState } from "../ui/ErrorState"');
+    expect(overviewSrc).toMatch(/\{focusError && !focus && !activeTodayAction && \(\s*<ErrorState/);
+  });
+
+  it("the banner sits ALONGSIDE the guaranteed-action fallback, never instead of it", () => {
+    // The chooseTodayAction anchor chain is intact: every fallback renderer is
+    // still present, and ErrorState is NOT a branch of that ternary (the
+    // ternary still closes into the plain PromptCaptureCard floor).
+    for (const renderer of ["<TodayActionLoop", "<TodayRecommendation", "<PromptCaptureCard"]) {
+      expect(overviewSrc).toContain(renderer);
+    }
+    // ErrorState renders AFTER the ternary's close — additive, not a branch.
+    const ternaryFloor = overviewSrc.indexOf("<PromptCaptureCard");
+    const banner = overviewSrc.indexOf("<ErrorState");
+    expect(ternaryFloor).toBeGreaterThan(-1);
+    expect(banner).toBeGreaterThan(ternaryFloor);
+  });
+
+  it("retry refetches through the hook's regenerate", () => {
+    expect(overviewSrc).toContain("regenerate: regenerateFocus");
+    expect(overviewSrc).toContain("onRetry={() => void regenerateFocus()}");
+  });
+
+  it("copy rides err.* i18n keys present in BOTH language maps", () => {
+    for (const key of ["err.focus.title", "err.focus.body", "err.retry"]) {
+      expect(overviewSrc).toContain(`t("${key}")`);
+      const hits = i18nSrc.split(`"${key}":`).length - 1;
+      expect(hits).toBeGreaterThanOrEqual(2); // en + he
+    }
+  });
+});

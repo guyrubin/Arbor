@@ -42,6 +42,7 @@ import {
 import { continueText } from "../../lib/i18nElevation/continue";
 import { LEARN_CARDS, learnCardById } from "../../learn/learnCards";
 import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
+import { TrustLink } from "../trust/TrustLink";
 
 type Filter = "all" | "saved" | LearnCategoryId;
 
@@ -721,9 +722,14 @@ function LearnReader({
         </button>
       </div>
 
-      <p className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>
-        {t("learn.provenance")}
-      </p>
+      {/* Provenance hedge — editorial, not diagnostic. Masterplan 3.1: the
+          TrustLink chip closes the why → Trust Center chain, after the
+          provenance text on the same wrapping row (scholar-hub-reader parity;
+          UI-WIRE 2026-08-20 inventory gap). */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--arbor-faint)" }}>
+        <span dir="auto">{t("learn.provenance")}</span>
+        <TrustLink surface="learn-reader" />
+      </div>
     </motion.article>
   );
 }

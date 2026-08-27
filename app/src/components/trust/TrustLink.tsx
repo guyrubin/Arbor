@@ -2,7 +2,7 @@ import React from "react";
 import Icon from "../ui/Icon";
 import { PASTEL } from "../../lib/tokens";
 import { useLanguage } from "../../context/LanguageContext";
-import { useArbor } from "../../context/ArborContext";
+import { useArborOptional } from "../../context/ArborContext";
 import { track } from "../../lib/analytics";
 import { trustText } from "../../lib/i18nElevation/trustcenter";
 
@@ -24,6 +24,16 @@ import { trustText } from "../../lib/i18nElevation/trustcenter";
    inject copy, so no verdict/graded language can ride on this surface.
    ════════════════════════════════════════════════════════════════════════════ */
 
+/** Resolve uiLang without requiring a LanguageProvider (the ContentActionBar
+ *  useHeMode recipe) — provider-less render harnesses default to en. */
+function useUiLang(): string {
+  try {
+    return useLanguage().uiLang;
+  } catch {
+    return "en";
+  }
+}
+
 export function TrustLink({
   surface,
   className = "",
@@ -32,8 +42,10 @@ export function TrustLink({
   surface?: string;
   className?: string;
 }) {
-  const { uiLang } = useLanguage();
-  const { setActiveTab } = useArbor();
+  const uiLang = useUiLang();
+  // Tolerant context read: coach answer cards render in provider-less static
+  // harnesses; in-app the provider is always present.
+  const arbor = useArborOptional();
   const p = PASTEL.lav;
 
   return (
@@ -41,7 +53,8 @@ export function TrustLink({
       type="button"
       onClick={() => {
         track("trustlink_tap", surface ? { surface } : {});
-        setActiveTab("science");
+        if (arbor) arbor.setActiveTab("science");
+        else window.location.hash = "/science"; // canonical hash the provider would write
       }}
       aria-label={trustText(uiLang, "elev.trust.link.aria")}
       data-testid="trust-link"

@@ -4,6 +4,7 @@ import type { CoachContract, CouncilTake } from "../../types";
 import type { UiLang } from "../../lib/i18n";
 import { translate } from "../../lib/i18n";
 import { SpeakButton } from "../ui/SpeakButton";
+import { TrustLink } from "../trust/TrustLink";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 
 /**
@@ -151,6 +152,11 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
         {contract.domains?.slice(0, 3).map((d) => (
           <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{d.replace(/_/g, " ")}</span>
         ))}
+        {/* Masterplan 3.1: the why → Trust Center chain on the highest-trust
+            surface — the fixed "How Arbor decides →" chip rides the attribution
+            row (UI-WIRE 2026-08-20 inventory gap; label is fixed, callers
+            inject no copy). */}
+        <TrustLink surface="coach-answer" />
       </div>
 
       {/* ASK-3: a stressed parent wants the exact words and the 1-3 steps

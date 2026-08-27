@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { evaluateCosmetics, type CosmeticStats } from "../../practice/cosmetics";
+import { isolate } from "../../lib/i18n";
 
 /**
  * RewardsCard (A5) — gentle, earned-through-play rewards for the child. Pure
@@ -26,7 +27,7 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
   return (
     <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
       <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>
-        {name}&apos;s rewards
+        {isolate(name)}&apos;s rewards
       </span>
 
       {unlocked.length > 0 ? (
@@ -44,7 +45,7 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
         </div>
       ) : (
         <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
-          Play an activity to earn {name}&apos;s first reward 🌱
+          Play an activity to earn {isolate(name)}&apos;s first reward 🌱
         </p>
       )}
 

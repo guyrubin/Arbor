@@ -89,3 +89,43 @@ export const trackPaid = (tier: string): void => track(LoopEvent.Paid, { tier })
 // activity per day (the caller dedupes via the idempotent PlayLog id).
 export const trackPlayCompleted = (domain: string, reason: string, source: string): void =>
   track(LoopEvent.PlayCompleted, { domain, reason, source });
+
+/* ── M0.8 KPI instrumentation (N8) ─────────────────────────────────────────
+ * The six launch-KPI event families. Three were already live at their call
+ * sites (raw track() — names pinned, do not rename):
+ *   2. since-strip     → "sincevisit_shown" / "sincevisit_row_tap"  (SinceLastVisit)
+ *   3b. action accept  → "today_action_accepted" / "today_action_outcome" (ArborContext)
+ *   4. recap           → "recap_opened" (RecapStoryCards) + share via
+ *                        trackShareInitiated/Completed above (lib/share ← ShareButton)
+ *   5. tel: taps       → "safety_helpline_tel_tap" / "safety_contact_tel_tap" (SafetyTab)
+ * The helpers below add the missing three. Metadata is ids/counts ONLY —
+ * analytics is an external sink: NO child content, no free text, no copy.
+ * All six names are source-scan pinned by lib/kpiEvents.test.ts. */
+
+const SS_SESSION_OPEN = "arbor.sessionOpen";
+
+/** KPI 1 — session open. Fired at auth-ready (AuthContext), once per browser
+ * session: `app_open` above fires at module load, BEFORE setAnalyticsUser has
+ * a uid, so in prod it is dropped by track()'s uid gate — this one lands. */
+export function trackSessionOpen(): void {
+  try {
+    if (sessionStorage.getItem(SS_SESSION_OPEN)) return;
+    sessionStorage.setItem(SS_SESSION_OPEN, new Date().toISOString());
+  } catch {
+    /* storage blocked → don't suppress the event */
+  }
+  track("session_open");
+}
+
+// wired by: TodayRecommendation — fires once per mount when the accept row is
+// actually rendered (a real AI focus exists). Pairs with ArborContext's
+// "today_action_accepted"/"today_action_outcome" to complete offered→accepted→
+// outcome. `surface` is a short id, never the recommendation text.
+export const trackActionOffered = (surface: string): void =>
+  track("today_action_offered", { surface });
+
+// wired by: ui/ErrorState on mount — every degraded-surface banner (incl. the
+// N2 Today-focus banner) counts once. `surface` is a short id; the banner's
+// headline/body copy must never ride along.
+export const trackErrorBannerShown = (surface?: string): void =>
+  track("error_banner_shown", surface ? { surface } : {});

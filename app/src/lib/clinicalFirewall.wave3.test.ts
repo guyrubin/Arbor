@@ -28,7 +28,8 @@ function read(rel: string): string {
 // The surfaces demoted in Wave-3. None may render a verdict primitive anymore.
 const DEMOTED_SURFACES = [
   // TrendsChart.tsx was deleted in the IA W6.3 dead-code sweep (zero importers).
-  "components/overview/DevScoreStrip.tsx",
+  // DevScoreStrip.tsx was deleted in the N4 dead-weight sweep (2026-08-26,
+  // zero importers after two demotions — rejected options stay rejected).
   "components/sections/DevScoreCard.tsx",
   // 2026-07-04 release audit: the sidebar milestone badge rendered
   // `milestonesPercent%` — parent-facing chrome is firewall scope too.

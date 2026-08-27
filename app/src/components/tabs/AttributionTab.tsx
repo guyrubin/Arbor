@@ -168,6 +168,7 @@ export default function AttributionTab() {
 
       {error && (
         <ErrorState
+          surface="attribution"
           headline={t("attr.error.title") || "Couldn't load analytics"}
           body={t("attr.error.body") || "We couldn't read your event stream. Your data is safe — try again."}
           onRetry={() => void load()}

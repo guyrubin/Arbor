@@ -12,6 +12,8 @@
  * "proven"), no clinical claim, no invented fact.
  */
 
+import { isolate } from "./bidi";
+
 export interface ChildStoryInput {
   name: string;
   ageYears?: number;
@@ -36,6 +38,9 @@ export interface ChildStory {
   empty: boolean;
 }
 
+// N5/RES-BIDI: the story is display prose (rendered + shared as text, never a
+// key/seed) — possessive interpolations below route through isolate() so a
+// Hebrew name can't pull the "'s" out of order (no-op for LTR names).
 const firstNameOf = (name: string): string => (name?.trim().split(/\s+/)[0] || "Your child");
 
 /** Trim a fact to a clean clause and strip a trailing period so it can be joined. */
@@ -59,7 +64,7 @@ export function composeChildStory(i: ChildStoryInput): ChildStory {
       empty: true,
       factCount: 0,
       paragraphs: [
-        `${first}'s story hasn't started yet. As you log moments, talk with Arbor, and approve what it learns, this becomes a living story — built only from what you choose to keep.`,
+        `${isolate(first)}'s story hasn't started yet. As you log moments, talk with Arbor, and approve what it learns, this becomes a living story — built only from what you choose to keep.`,
       ],
     };
   }
@@ -67,8 +72,8 @@ export function composeChildStory(i: ChildStoryInput): ChildStory {
   // Opening — frame the provenance (parent owns + approved everything here).
   paragraphs.push(
     i.ageYears != null
-      ? `Here's ${first}'s story so far, at ${i.ageYears}${i.ageYears === 1 ? " year" : " years"} old — built only from what you've approved.`
-      : `Here's ${first}'s story so far — built only from what you've approved.`,
+      ? `Here's ${isolate(first)}'s story so far, at ${i.ageYears}${i.ageYears === 1 ? " year" : " years"} old — built only from what you've approved.`
+      : `Here's ${isolate(first)}'s story so far — built only from what you've approved.`,
   );
 
   // What Arbor has learned (the approved facts — the moat itself).

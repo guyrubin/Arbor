@@ -37,6 +37,7 @@ export default function ChildMemory() {
           unreadable ledger must never masquerade as "No memory yet". */}
       {memoryReviewError && (
         <ErrorState
+          surface="child-memory"
           headline={t("err.memory.title", { name: first })}
           body={t("err.memory.body")}
           onRetry={retryMemoryReview}

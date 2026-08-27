@@ -18,6 +18,8 @@
  * interpolation as t(), so the eventual index.ts registration is a pure
  * no-op for callers that migrate to t(). */
 
+import { isolate } from "../bidi";
+
 export const en: Record<string, string> = {
   // ── Kind + filter labels for the "practice" signal kind.
   "elev.childsignals.kind": "Practice",
@@ -72,8 +74,9 @@ export const he: Record<string, string> = {
   "elev.childsignals.months.hideEarlier": "להציג רק את החודשים האחרונים",
 };
 
-/** Structural mirror of the app's t() — kept local so this module stays free
- *  of imports (same convention as i18nElevation/agefilter.ts). */
+/** Structural mirror of the app's t() — kept local so this module depends
+ *  only on the lib/bidi leaf (never lib/i18n itself — that would be a cycle;
+ *  same convention as i18nElevation/agefilter.ts). */
 type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
 /**
@@ -91,7 +94,7 @@ export function childsignalsText(
   const raw = dict[key] ?? en[key] ?? key;
   if (!vars) return raw;
   return raw.replace(/\{(\w+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match,
+    Object.prototype.hasOwnProperty.call(vars, name) ? isolate(String(vars[name])) : match,
   );
 }
 
