@@ -10,9 +10,11 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * `src/lib/runtime.ts` (`VITE_API_BASE`). The prod backend must allow the
  * native origins in `CORS_ORIGINS` (see `cloudbuild.prod.yaml`).
  *
- * NOTE: `appId` is a placeholder reverse-DNS bundle id. Set it to the id you
- * register in App Store Connect / Google Play before first submission — it
- * cannot be changed after a store listing exists.
+ * `appId` is the ratified bundle id (2026-08-27), tied to the owned domain. It
+ * is NOT yet registered on either store, so it can still be changed here (then
+ * `npx cap sync` + the `IOS_BUNDLE_ID` repo variable). Once a listing exists it
+ * is permanent — register whatever this line says, never a value copied from
+ * prose elsewhere.
  */
 const config: CapacitorConfig = {
   appId: "com.arborparenting.app",
