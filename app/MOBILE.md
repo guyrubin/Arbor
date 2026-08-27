@@ -14,14 +14,14 @@ so the web app's relative `/api/*` calls are rewritten to an absolute base:
 
 - `src/lib/runtime.ts` installs a `fetch` shim that re-points `/api/*` at `API_BASE`.
 - `API_BASE` = `VITE_API_BASE` (build-time override) → else the prod hosting origin
-  (`https://arborprd-westeu.web.app`) when running natively → else `""` (web, same-origin).
+  (`https://arborparentingapp.com`) when running natively → else `""` (web, same-origin).
 - The backend allows the native origins in CORS automatically (`src/config/env.ts`
   always includes `capacitor://localhost` and `https://localhost`). **This needs a
   backend redeploy to take effect** (Cloud Run `arbor-api`), see below.
 
 ## One-time setup
 
-1. **Bundle id.** `capacitor.config.ts` uses the placeholder `app.arbor.family`. Set it
+1. **Bundle id.** `capacitor.config.ts` uses the placeholder `com.arborparenting.app`. Set it
    to the id you register in App Store Connect / Google Play **before first submission**
    (it can't change once a listing exists), then re-run `npx cap sync`.
 2. **Backend CORS redeploy** so native calls are accepted:
@@ -34,7 +34,7 @@ so the web app's relative `/api/*` calls are rewritten to an absolute base:
 ```bash
 # from PPPPtherapy-/PPPPtherapy-/app
 # Build the web app pointed at the prod API, then copy into the native projects:
-VITE_API_BASE=https://arborprd-westeu.web.app npm run build
+VITE_API_BASE=https://arborparentingapp.com npm run build
 npx cap sync                 # copies dist/ + plugins into ios/ and android/
 
 npx cap open android         # opens Android Studio  (works on Windows/macOS/Linux)
@@ -78,7 +78,7 @@ Both build the web bundle, `npx cap sync`, then the native build. The Firebase `
   - `ASC_KEY_ID` — the App Store Connect API key id.
   - `ASC_ISSUER_ID` — the API key issuer id.
   - `ASC_KEY_CONTENT` — the `.p8` key, base64-encoded.
-  - repo **variable** `IOS_BUNDLE_ID` — your registered bundle id (must match `capacitor.config.ts`; defaults to `app.arbor.family`).
+  - repo **variable** `IOS_BUNDLE_ID` — your registered bundle id (must match `capacitor.config.ts`; defaults to `com.arborparenting.app`).
 
   **One-time Apple setup you do (account actions I can't):** enroll in the **Apple Developer Program** ($99/yr) → in **App Store Connect → Users and Access → Integrations**, create an **API key** (App Manager role) and download the `.p8` → create the **app record** (with the bundle id above). Once the secrets are set, every push (or a manual "iOS build" run) ships a new TestFlight build; promote to the App Store from App Store Connect. Until the secrets exist, the workflow still does an unsigned compile so the project stays verified green.
 

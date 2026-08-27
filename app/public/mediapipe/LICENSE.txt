@@ -1,0 +1,13 @@
+The files in this directory are redistributed from Google's MediaPipe
+(google-ai-edge/mediapipe) and are licensed under the Apache License, Version 2.0:
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+  face_landmarker.task   — MediaPipe face-landmarker model bundle (committed;
+                           has no npm distribution).
+  wasm/*                 — Tasks-Vision WASM runtime, copied at build time from
+                           the pinned @mediapipe/tasks-vision package
+                           (scripts/copy-mediapipe-wasm.mjs); gitignored.
+
+They are served from this app's own origin so that the face-match game, which is
+reachable from the child-operated surface, makes no third-party request.

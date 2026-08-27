@@ -15,7 +15,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * cannot be changed after a store listing exists.
  */
 const config: CapacitorConfig = {
-  appId: "app.arbor.family",
+  appId: "com.arborparenting.app",
   appName: "Arbor",
   webDir: "dist",
   backgroundColor: "#eef2efff",

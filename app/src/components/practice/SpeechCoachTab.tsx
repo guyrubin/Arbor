@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
+import { TrustPanel } from "../ui/TrustPanel";
 import { PlayShell, PlayHeader, PlayButton, ChoiceTile, ProgressPips, Celebrate } from "../ui/playkit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
@@ -11,6 +12,9 @@ import { scoreUtterance, recognitionLangFor, autoListenSupported } from "../../l
 import { usePracticeData } from "../../practice/usePracticeData";
 import type { PracticeEvent, SpeechAttempt, SpeechLevel } from "../../types";
 import { track } from "../../lib/analytics";
+import { api } from "../../lib/api";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { platformAsrAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE, type VoiceConsentState } from "./speechConsentGate";
 import EarlyReadingTrack from "./EarlyReadingTrack";
 
 /* Minimal typing for the (vendor-prefixed) Web Speech API. */
@@ -100,6 +104,43 @@ export default function SpeechCoachTab() {
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const recognitionAvailable = useMemo(() => getRecognitionCtor() !== null, []);
 
+  // ---- STORE-K2: voice_processing consent gate for the PLATFORM recognizer ----
+  // The browser SpeechRecognition API is not on-device (Android WebView routes
+  // the utterance to the platform speech service), so it must sit behind the
+  // SAME parental grant the cloud scoring endpoint enforces (451 fail-closed).
+  // "unknown" = grants not read yet or the read failed → no recognizer.
+  const [voiceConsent, setVoiceConsent] = useState<VoiceConsentState>("unknown");
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [consentBusy, setConsentBusy] = useState(false);
+  const [consentError, setConsentError] = useState(false);
+  // Consent is a PARENT decision: the invite is never offered to a child, so in
+  // Kid Mode the tab simply runs the parent-scoring floor with no recognizer.
+  const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive);
+
+  useEffect(() => {
+    let alive = true;
+    setVoiceConsent("unknown");
+    setConsentChecked(false);
+    setConsentError(false);
+    api.listConsent(childProfile.id)
+      .then((r) => { if (alive) setVoiceConsent(voiceConsentState(r.grants)); })
+      .catch(() => { if (alive) setVoiceConsent("absent"); }); // fail closed
+    return () => { alive = false; };
+  }, [childProfile.id]);
+
+  const allowVoiceConsent = async () => {
+    setConsentBusy(true);
+    setConsentError(false);
+    try {
+      await api.grantConsent({ childId: childProfile.id, purpose: VOICE_CONSENT_PURPOSE });
+      setVoiceConsent("granted");
+    } catch {
+      setConsentError(true);
+    } finally {
+      setConsentBusy(false);
+    }
+  };
+
   const cleanupAudio = () => {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
@@ -148,7 +189,12 @@ export default function SpeechCoachTab() {
       rec.start();
       setRecState("recording");
 
-      const Ctor = getRecognitionCtor();
+      // STORE-K2 (WS-4.0 SDK audit, finding 2): the platform recognizer sends the
+      // child's audio to the device's speech service, so it may be constructed
+      // ONLY under an active voice_processing grant — the same purpose that gates
+      // /api/score-utterance (451 fail-closed). No grant, or not read yet → Ctor
+      // is null, nothing starts, and the parent-scoring floor carries the session.
+      const Ctor = platformAsrAllowed(voiceConsent) ? getRecognitionCtor() : null;
       // AIX-S2: never render an en-US mis-transcript verdict about an HE child —
       // the whole auto-listen path is suppressed for non-EN sessions.
       if (Ctor && level !== "story" && autoVerdictOk) {
@@ -405,6 +451,42 @@ export default function SpeechCoachTab() {
           )}
         </div>
         {micError && <p className="text-[11px] mb-3" style={{ color: "var(--arbor-pink-ink)" }}>{micError}</p>}
+
+        {/* STORE-K2 consent invite — parent surface only. Instant listening stays
+            off until the grown-up allows it; practice works fully without it. */}
+        {!kidMode && voiceConsent === "absent" && recognitionAvailable && autoVerdictOk && (
+          <div className="rounded-2xl p-3 mb-3 space-y-2.5" style={{ background: "#fff", border: "1px solid var(--arbor-rule)" }}>
+            <p className="text-xs font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
+              <Icon name="hearing" size={14} style={{ color: "var(--arbor-green-ink)" }} />
+              {t("prac.speech.voiceConsent.title")}
+            </p>
+            <p className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
+              {t("prac.speech.voiceConsent.body", { name: first })}
+            </p>
+            <TrustPanel
+              tone="panel"
+              uses={[t("prac.speech.voiceConsent.uses")]}
+              stores={[t("prac.speech.voiceConsent.stores")]}
+              controls={[t("prac.speech.voiceConsent.controls")]}
+            />
+            <label className="flex items-start gap-2 text-[11px] leading-snug cursor-pointer" style={{ color: "var(--arbor-ink)" }}>
+              <input type="checkbox" checked={consentChecked} onChange={(e) => setConsentChecked(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-clay)" }} />
+              <span>{t("prac.speech.voiceConsent.checkbox", { name: first })}</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => void allowVoiceConsent()}
+              disabled={!consentChecked || consentBusy}
+              className="text-xs font-extrabold px-3.5 py-2 rounded-xl text-white transition disabled:opacity-40"
+              style={{ background: "var(--arbor-clay)" }}
+            >
+              {t("prac.speech.voiceConsent.cta")}
+            </button>
+            {consentError && (
+              <p className="text-[11px]" style={{ color: "var(--arbor-pink-ink)" }}>{t("prac.speech.voiceConsent.error")}</p>
+            )}
+          </div>
+        )}
 
         {heard && (
           <div className="rounded-xl p-3 mb-3 text-xs flex items-center gap-2" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>

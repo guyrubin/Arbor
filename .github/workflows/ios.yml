@@ -47,7 +47,7 @@ jobs:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
-      IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'app.arbor.family' }}
+      IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'com.arborparenting.app' }}
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode 26 (Swift 6.2 — required by Capacitor 8)

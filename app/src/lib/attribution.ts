@@ -37,6 +37,16 @@ const LS_ATTRIBUTION = "arbor.attribution";
 export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
 export type UtmKey = (typeof UTM_KEYS)[number];
 
+/**
+ * STORE-K1: every prop key `attributionProps()` can emit — the marketing
+ * attribution surface of an analytics event. Single source of truth for the Kid
+ * Mode strip in lib/analytics.ts: campaign attribution must never ride on an
+ * event a CHILD generated. A pin test asserts attributionProps() emits nothing
+ * outside this list, so adding a key there without adding it here fails CI.
+ */
+export const ATTRIBUTION_PROP_KEYS = ["market", "source", "referral_code", ...UTM_KEYS] as const;
+export type AttributionPropKey = (typeof ATTRIBUTION_PROP_KEYS)[number];
+
 const MARKET_PATHS: Record<string, Market> = { il: "il", nl: "nl", be: "be", ie: "ie", uk: "uk" };
 
 /** Market from the URL path prefix (/il, /nl, …), falling back to UI language, then "intl". */

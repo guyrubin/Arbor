@@ -11,19 +11,26 @@ owns the Apple/Google accounts.
 
 | Piece | State |
 | :-- | :-- |
-| Web app + backend (prod) | ✅ Live, auto-deploys `main` → `arborprd-westeu.web.app` + Cloud Run `arbor-api` |
+| Web app + backend (prod) | ✅ Live, auto-deploys `main` → `arborparentingapp.com` + Cloud Run `arbor-api` |
 | Android release AAB | ✅ Builds green (`.github/workflows/android.yml`) |
 | iOS archive (compile) | ✅ Builds green on Xcode 26 / macos-26 (`.github/workflows/ios.yml`) |
 | iOS signed IPA → TestFlight | ⛔ Needs Apple secrets (below) |
 | Android signed AAB | ⛔ Needs upload-keystore secrets (below) |
-| Privacy Policy / Terms URLs | ✅ `https://arborprd-westeu.web.app/privacy.html` · `/terms.html` |
+| Privacy Policy / Terms URLs | ✅ `https://arborparentingapp.com/privacy.html` · `/terms.html` |
 | App icons + splash | ✅ Both platforms |
-| Bundle id | ✅ `app.arbor.family` (consistent across iOS/Android/Capacitor) |
+| Bundle id | ✅ `com.arborparenting.app` (consistent across iOS/Android/Capacitor) |
 | Version | 1.0 (build 1) both platforms |
 
-**Bundle id is locked to `app.arbor.family`.** It cannot change after a store
-listing exists — register exactly this on both stores. (To change it, do so before
-first submission and re-run `npx cap sync`.)
+**Bundle id: `com.arborparenting.app`** — ratified 2026-08-27, tied to the owned
+domain, and wired through `capacitor.config.ts`, the iOS workflow default, and this
+checklist. It is **not yet registered on either store**, and the string in the repo
+is still changeable up to that moment: to change it, edit `capacitor.config.ts`,
+re-run `npx cap sync`, and update the `IOS_BUNDLE_ID` repo variable.
+
+Registering it **is** the one-way door — a bundle id cannot change once a listing
+exists. Read the value out of `capacitor.config.ts` at registration time rather than
+trusting any prose (this file previously told an account owner to permanently
+register a placeholder).
 
 ---
 
@@ -34,13 +41,13 @@ first submission and re-run `npx cap sync`.)
    create an **API key** with **App Manager** role and download the `.p8` (you only get
    it once).
 3. **App Store Connect → Apps → +** → create the app record with bundle id
-   `app.arbor.family`, primary language English, name **Arbor**.
+   `com.arborparenting.app`, primary language English, name **Arbor**.
 4. Add these repo **secrets** (GitHub → repo → Settings → Secrets and variables → Actions):
    - `ASC_KEY_ID` — the API key's Key ID
    - `ASC_ISSUER_ID` — the Issuer ID (top of the API keys page)
    - `ASC_KEY_CONTENT` — the `.p8` file **base64-encoded**
      (`base64 -i AuthKey_XXXX.p8 | pbcopy` on a Mac, or `certutil -encode` on Windows)
-   - (optional var) `IOS_BUNDLE_ID` — only if you registered something other than `app.arbor.family`
+   - (optional var) `IOS_BUNDLE_ID` — only if you registered something other than `com.arborparenting.app`
 5. Push to `main` (or Actions → "iOS build" → Run workflow). Fastlane builds a **signed
    IPA** and uploads it to **TestFlight** — no Mac needed. Promote to the App Store from
    App Store Connect once the build finishes processing.
@@ -88,8 +95,8 @@ first submission and re-run `npx cap sync`.)
 
 **Keywords (Apple, ≤100 chars):** parenting,child development,milestones,toddler,speech,early learning,kids,family
 
-**Support URL:** https://arborprd-westeu.web.app   **Marketing URL:** same
-**Privacy Policy URL:** https://arborprd-westeu.web.app/privacy.html
+**Support URL:** https://arborparentingapp.com   **Marketing URL:** same
+**Privacy Policy URL:** https://arborparentingapp.com/privacy.html
 
 **Screenshots (you must provide):** 6.7" iPhone + 5.5" iPhone + 12.9" iPad (Apple);
 phone + 7"/10" tablet (Play). Capture Today, Practice & Play, a hero comic, Academy.
@@ -134,7 +141,7 @@ Both stores make you declare data practices. Use these (consistent with `/privac
 ---
 
 ## 5. Pre-submit checklist
-- [ ] Apple + Google accounts created; app records made with id `app.arbor.family`
+- [ ] Apple + Google accounts created; app records made with id `com.arborparenting.app`
 - [ ] Secrets added (Apple ×3, Android ×4); workflows run → TestFlight build + signed AAB
 - [ ] Screenshots captured and uploaded
 - [ ] Listing copy + privacy URL + data-safety form filled (sections 3–4)
