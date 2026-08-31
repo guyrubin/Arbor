@@ -37,8 +37,8 @@ if (firebaseConfig.apiKey) {
     // _payload deliberately unused for display — generic message only.
     self.registration.showNotification("Arbor has a moment for you", {
       body: "Open Arbor to see what's ready for today.",
-      icon: "/arbor-icon-192.png",
-      badge: "/arbor-icon-96.png",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-96.png",
       data: { url: "/" },
       tag: "arbor-nudge",
     });
