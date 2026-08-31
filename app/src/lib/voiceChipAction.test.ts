@@ -32,4 +32,9 @@ describe("voiceChipAction", () => {
     expect(voiceChipAction("thinking", false)).toBe("stop");
     expect(voiceChipAction("thinking", true)).toBe("stop");
   });
+
+  it("S5: connecting → stop (a tap during the visible connect window cancels it)", () => {
+    expect(voiceChipAction("connecting", false)).toBe("stop");
+    expect(voiceChipAction("connecting", true)).toBe("stop");
+  });
 });

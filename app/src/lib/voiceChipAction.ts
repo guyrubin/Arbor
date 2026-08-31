@@ -10,11 +10,13 @@
  *  - phase "speaking" on a Gemini LIVE session → STOP (Live barge-in is
  *    voice-driven — the server VAD interrupts when the parent talks over the
  *    model; a tap remains the hard off switch);
- *  - any other phase ("listening", "thinking") → STOP — which is exactly the
- *    "second tap during listening turns voice off" double-tap parity.
+ *  - any other phase ("connecting", "listening", "thinking") → STOP — which
+ *    covers both the "second tap during listening turns voice off" double-tap
+ *    parity AND cancelling a still-connecting Live start (S5: the connecting
+ *    state is painted synchronously, so the tap-to-cancel affordance is real).
  */
 
-export type VoicePhase = "off" | "listening" | "thinking" | "speaking";
+export type VoicePhase = "off" | "connecting" | "listening" | "thinking" | "speaking";
 
 export type VoiceChipAction = "start" | "interrupt" | "stop";
 

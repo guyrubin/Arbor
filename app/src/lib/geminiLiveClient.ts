@@ -58,14 +58,22 @@ export type LiveController = { stop: () => void };
  *  chip — the SDK promise races a hard deadline (same race pattern as the
  *  guard's screenWithDeadline in lib/liveTurnGuard.ts). */
 const CONNECT_TIMEOUT_MS = 10_000;
-const withConnectDeadline = <T,>(p: Promise<T>): Promise<T> =>
+/** S5: getUserMedia can pend indefinitely (a stuck permission prompt, a
+ *  webview with no mic plumbing) — BEFORE the connect deadline ever starts.
+ *  Slightly longer than the connect deadline so a parent reading the
+ *  permission dialog isn't yanked mid-decision; on expiry the caller falls
+ *  back to the screened browser loop with a visible toast. */
+const MIC_TIMEOUT_MS = 15_000;
+const withDeadline = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
   new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("live-connect-timeout")), CONNECT_TIMEOUT_MS);
+    const timer = setTimeout(() => reject(new Error(label)), ms);
     p.then(
       (v) => { clearTimeout(timer); resolve(v); },
       (e) => { clearTimeout(timer); reject(e); },
     );
   });
+const withConnectDeadline = <T,>(p: Promise<T>): Promise<T> =>
+  withDeadline(p, CONNECT_TIMEOUT_MS, "live-connect-timeout");
 
 const floatTo16BitB64 = (input: Float32Array): string => {
   const buf = new ArrayBuffer(input.length * 2);
@@ -97,7 +105,15 @@ export async function startGeminiLive(
   handlers.onPhase?.("connecting");
   const ai = new GoogleGenAI({ apiKey: opts.token, httpOptions: { apiVersion: "v1alpha" } });
 
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  // S5: mic acquisition is deadline-bounded — a hanging prompt/driver must
+  // reject (the caller shows the fallback toast) instead of freezing the tap
+  // with no visible outcome. A grant that lands AFTER the deadline lost the
+  // race: stop its tracks immediately so no hot mic outlives the failure.
+  const micRequest = navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  const stream = await withDeadline(micRequest, MIC_TIMEOUT_MS, "live-mic-timeout").catch((err) => {
+    void micRequest.then((s) => s.getTracks().forEach((t) => t.stop())).catch(() => {});
+    throw err;
+  });
   const inCtx = new AudioContext({ sampleRate: 16000 });
   const outCtx = new AudioContext({ sampleRate: 24000 });
   let playHead = 0;

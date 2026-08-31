@@ -250,7 +250,10 @@ export default function CoachTab() {
   // Realtime voice coach: prefers Gemini Live (true bidirectional audio) when the
   // server reports it's available, and falls back to a hands-free browser loop —
   // listen (STT) → ask → speak (TTS) → listen again.
-  const [voicePhase, setVoicePhase] = useState<"off" | "listening" | "thinking" | "speaking">("off");
+  // S5: "connecting" is a first-class phase — it paints SYNCHRONOUSLY on the
+  // chip tap (before any await), so the token mint / SDK chunk fetch / mic
+  // prompt / socket connect window is never a silent 10s+ hole.
+  const [voicePhase, setVoicePhase] = useState<"off" | "connecting" | "listening" | "thinking" | "speaking">("off");
   const [liveAvail, setLiveAvail] = useState(false);
   // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
   // browser-STT partials / Live input transcription — never model output).
@@ -261,6 +264,11 @@ export default function CoachTab() {
   const [liveSession, setLiveSession] = useState(false);
   const liveCtlRef = useRef<null | { stop: () => void }>(null);
   const voiceOnRef = useRef(false);
+  // S5: monotonically increasing voice attempt id. stopVoice bumps it, and a
+  // new tap claims its own — so an in-flight Live start that lost the race
+  // (the parent hit X during connect, or re-tapped) can NEVER re-open the
+  // overlay, restart the browser loop, or leave a zombie session running.
+  const voiceEpochRef = useRef(0);
   const dictationLoopRef = useRef<DictationLoop | null>(null);
   // Streaming-voice TTS queue (speak each sentence as it streams in).
   const ttsQueueRef = useRef<string[]>([]);
@@ -465,6 +473,7 @@ export default function CoachTab() {
   };
 
   const stopVoice = () => {
+    voiceEpochRef.current++;
     voiceOnRef.current = false;
     streamDoneRef.current = false;
     ttsQueueRef.current = [];
@@ -511,6 +520,13 @@ export default function CoachTab() {
     // the phase already "off" — are cleared first; the tap then FALLS THROUGH
     // to a fresh start instead of dead-ending on stopVoice.
     if (voiceOnRef.current || liveCtlRef.current) stopVoice();
+    // S5: paint BEFORE any await. The overlay opens (connecting state) in the
+    // same tick as the tap — the token mint, dynamic import, mic prompt and
+    // socket connect all happen behind a visible, cancellable surface instead
+    // of a dead-looking chip. X during this window = stopVoice, which bumps
+    // the epoch below so the in-flight start aborts itself.
+    setVoicePhase("connecting");
+    const epoch = ++voiceEpochRef.current;
 
     // Prefer true Gemini Live when the server says it's provisioned.
     if (liveAvail) {
@@ -518,14 +534,15 @@ export default function CoachTab() {
         // AI-V9: the session language picks the server-pinned persona + voice;
         // childId scopes the per-turn screen (requireChildOwnership).
         const fresh = await api.liveToken({ language: getAiLanguage(), childId: childProfile.id });
+        if (epoch !== voiceEpochRef.current) return;
         if (fresh.available && fresh.token && fresh.model) {
           const { startGeminiLive } = await import("../../lib/geminiLiveClient");
-          setVoicePhase("thinking");
+          if (epoch !== voiceEpochRef.current) return;
           // VC-1/2/3/5: every Live turn routes through the liveTurnGuard —
           // audio buffers per turn and releases only after the shared lexical
           // floor AND the server verdict from /api/live/turn both pass. The
           // guard closes the session BEFORE any crisis/blocked/degrade render.
-          liveCtlRef.current = await startGeminiLive(
+          const ctl = await startGeminiLive(
             {
               token: fresh.token,
               model: fresh.model,
@@ -549,9 +566,23 @@ export default function CoachTab() {
                   setVoicePhase("off");
                   return;
                 }
-                setVoicePhase(p === "connecting" ? "thinking" : p);
+                // S5: a start the parent already cancelled (epoch moved on)
+                // must never re-open the overlay from a late socket event.
+                if (epoch !== voiceEpochRef.current) return;
+                setVoicePhase(p);
               },
-              onError: () => { clearLiveRefs(); toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
+              // S5: stop the session BEFORE degrading — a post-open socket
+              // error used to only clear the refs, leaving the mic + audio
+              // contexts hot with no controller left to stop them. The stale-
+              // epoch guard keeps a late error on an already-stopped session
+              // from zombie-restarting the browser loop.
+              onError: () => {
+                liveCtlRef.current?.stop();
+                clearLiveRefs();
+                if (epoch !== voiceEpochRef.current) return;
+                toast(t("coach.toast.voiceFallback"), "info");
+                startBrowserVoice();
+              },
               screenTurn: (role, text) =>
                 api.liveTurn({ role, text, language: getAiLanguage(), childId: childProfile.id }),
               // COACH-2 / VC-3: Live turns persist through the SAME reducers the
@@ -589,11 +620,20 @@ export default function CoachTab() {
               // browser voice loop (/voice screens every turn server-side).
               onFailClosed: () => {
                 clearLiveRefs();
+                // The guard already halted the session (fail-closed holds);
+                // only the DEGRADE side is epoch-gated so a cancelled voice
+                // session can't restart the browser loop behind the parent.
+                if (epoch !== voiceEpochRef.current) return;
                 toast(t("coach.toast.voiceStandardMode"), "info");
                 startBrowserVoice();
               },
             },
           );
+          // S5: the parent ended voice while the socket was connecting — the
+          // resolved session is already unwanted. Stop it (mic + contexts
+          // release) and leave the phase exactly where stopVoice put it.
+          if (epoch !== voiceEpochRef.current) { ctl.stop(); return; }
+          liveCtlRef.current = ctl;
           setLiveSession(true);
           return;
         }
@@ -601,6 +641,9 @@ export default function CoachTab() {
         // F-01: NEVER swallow the Live start failure silently — the tap must
         // end in voice running or a visible reason why not.
         clearLiveRefs();
+        // S5: a cancelled attempt's failure is not news — the parent already
+        // ended voice; no toast, no fallback loop, no paywall.
+        if (epoch !== voiceEpochRef.current) return;
         if (err instanceof PaywallError) {
           // Twin of the ArborContext PaywallError handlers: a 402 is a
           // conversion moment, not an error toast.
@@ -619,7 +662,7 @@ export default function CoachTab() {
   // Stop any audio/recognition on unmount.
   useEffect(() => () => { dictationLoopRef.current?.stop(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
 
-  const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
+  const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
   // COACH-2: live caption text on the voicePhase chip while the answer streams
   // in / is spoken (the same screened text that fills the thread bubble).
   const liveVoiceText =
