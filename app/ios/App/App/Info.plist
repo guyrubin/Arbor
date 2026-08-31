@@ -37,8 +37,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
@@ -56,6 +54,6 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Arbor saves your child's hero card to your photos only when you tap Save.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Arbor uses the microphone only during speech practice activities to give your child gentle pronunciation feedback. Audio is processed for scoring and not stored.</string>
+	<string>The microphone is used only during speech practice and voice chats, to give gentle pronunciation feedback. Audio is not kept.</string>
 </dict>
 </plist>
