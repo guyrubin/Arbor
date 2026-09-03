@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
@@ -6,6 +6,8 @@ import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
 import { usePulses } from "../../lib/pulse";
 import { requestOpenSearch } from "../search/SearchModal";
+import { createPortal } from "react-dom";
+import { useDialog } from "../../hooks/useDialog";
 import SafetyRing from "./SafetyRing"; // IA-01: Safety life-ring in the More-sheet header row
 
 /**
@@ -33,6 +35,8 @@ export default function MobileNav() {
   const pulses = usePulses(); // E1 living pulses — shown on the More-sheet rows
   const activeSectionId = sectionForTab(activeTab).id;
   const [moreOpen, setMoreOpen] = useState(false);
+  const moreTriggerRef = useRef<HTMLButtonElement>(null);
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open: moreOpen, onClose: () => setMoreOpen(false), returnFocusRef: moreTriggerRef });
 
   const primary = PRIMARY_SECTION_IDS
     .map((id) => SECTIONS.find((section) => section.id === id))
@@ -40,11 +44,14 @@ export default function MobileNav() {
   const overflow = SECTIONS.filter((section) => !PRIMARY_SECTION_IDS.includes(section.id as (typeof PRIMARY_SECTION_IDS)[number]));
   const overflowActive = overflow.some((s) => s.id === activeSectionId);
 
+  // The sheet is hidden at lg; it must not retain focus/scroll ownership there.
   useEffect(() => {
-    if (!moreOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMoreOpen(false); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    if (!moreOpen || !window.matchMedia) return;
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const closeWhenWide = () => { if (wide.matches) setMoreOpen(false); };
+    closeWhenWide();
+    wide.addEventListener("change", closeWhenWide);
+    return () => wide.removeEventListener("change", closeWhenWide);
   }, [moreOpen]);
 
   const go = (sectionId: string) => {
@@ -84,6 +91,7 @@ export default function MobileNav() {
         {/* More — opens the overflow sheet exposing every remaining category.
             W2.7: renders quieter (same treatment as the non-primary tab). */}
         <button
+          ref={moreTriggerRef}
           onClick={() => setMoreOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
@@ -98,14 +106,18 @@ export default function MobileNav() {
         </button>
       </nav>
 
-      {moreOpen && (
+      {moreOpen && createPortal(
+        <div className="arbor-app" style={{ display: "contents" }}>
         <div
+          ref={dialogRef}
+          tabIndex={-1}
+          data-arbor-dialog-layer
           role="dialog"
           aria-modal="true"
           aria-label={t("nav.popover.more")}
           className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end"
           style={{ background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}
-          onClick={() => setMoreOpen(false)}
+          onClick={onBackdropClick}
         >
           <div
             className="rounded-t-3xl p-4 pb-8 bg-white"
@@ -117,7 +129,7 @@ export default function MobileNav() {
               <div className="flex items-center gap-2">
                 {/* IA-01: Safety is one tap from the sheet too — closes it on navigate. */}
                 <SafetyRing onNavigate={() => setMoreOpen(false)} />
-                <button aria-label={t("aria.close")} onClick={() => setMoreOpen(false)} className="w-11 h-11 flex items-center justify-center rounded-full" style={{ color: "var(--arbor-muted)" }}>
+                <button aria-label={t("aria.close")} onClick={requestClose} className="w-11 h-11 flex items-center justify-center rounded-full" style={{ color: "var(--arbor-muted)" }}>
                   <Icon name="close" size={18} />
                 </button>
               </div>
@@ -169,6 +181,7 @@ export default function MobileNav() {
             </div>
           </div>
         </div>
+        </div>, document.body
       )}
     </>
   );

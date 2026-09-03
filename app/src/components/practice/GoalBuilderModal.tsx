@@ -21,6 +21,7 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
+import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { AnimatePresence } from "motion/react";
 import {
@@ -117,6 +118,7 @@ export default function GoalBuilderModal({
   behaviorLogs = [],
 }: GoalBuilderModalProps) {
   const { t } = useLanguage();
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose });
   const firstName = (childName || "your child").split(" ")[0];
   const hasGoals = activeGoals.length > 0;
 
@@ -183,9 +185,11 @@ export default function GoalBuilderModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={onBackdropClick}
+          data-arbor-dialog-layer
         >
           <motion.div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-label={hasGoals ? "Goal status" : `Pick a focus for ${firstName}`}
@@ -222,10 +226,10 @@ export default function GoalBuilderModal({
                 )}
               </div>
               <button
-                onClick={onClose}
+                onClick={requestClose}
                 aria-label={t("aria.close")}
                 className="flex-shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg ms-3 transition"
-                style={{ border: `1px solid ${RULE}`, color: MUTED }}
+                style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: `1px solid ${RULE}`, color: MUTED }}
               >
                 <Icon name="close" size={16} />
               </button>

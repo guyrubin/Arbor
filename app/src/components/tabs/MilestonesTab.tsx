@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useDialog } from "../../hooks/useDialog";
 import { motion, AnimatePresence } from "motion/react";
 import { celebrate as fireCelebration } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
@@ -75,15 +77,7 @@ export default function MilestonesTab() {
   // W5 — the milestone whose CelebrationMoment overlay is currently layered.
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
 
-  // Escape dismisses the celebration overlay (the card's X stays the ≥44px target).
-  useEffect(() => {
-    if (!celebratingId) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setCelebratingId(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [celebratingId]);
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open: Boolean(celebratingId), onClose: () => setCelebratingId(null) });
 
   /** One place decides what a mark does. Celebration fires ONLY on a fresh
    *  "yes" (never on uncheck / not_yet / not_sure): confetti stays the light
@@ -791,24 +785,29 @@ export default function MilestonesTab() {
           parent-mediated ShareButton, reduced-motion handled internally); the
           scrim click and Escape both dismiss. Dedupe: once per milestone id
           ever + ≤1/session, both enforced in observeMilestone before opening. */}
-      {celebratingId && (
+      {celebratingId && createPortal(
+        <div className="arbor-app arbor-parent" style={{ display: "contents" }}>
         <div
+          ref={dialogRef}
+          tabIndex={-1}
+          data-arbor-dialog-layer
           role="dialog"
           aria-modal="true"
           aria-label={t("elev.celebrate.titleGeneric")}
           data-testid="milestone-celebration-overlay"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-5"
-          onClick={() => setCelebratingId(null)}
+          onClick={onBackdropClick}
         >
           <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <CelebrationMoment
               firstName={firstName || undefined}
               surface="milestones"
-              onDismiss={() => setCelebratingId(null)}
+              onDismiss={requestClose}
               testId="milestone-celebration"
             />
           </div>
         </div>
+        </div>, document.body
       )}
     </motion.div>
   );

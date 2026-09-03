@@ -1,4 +1,6 @@
-import React, { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useDialog } from "../../hooks/useDialog";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
@@ -130,6 +132,17 @@ export default function HeroJourneyTab() {
   const [choiceId, setChoiceId] = useState<string | undefined>(undefined);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [immersive, setImmersive] = useState(false);
+  const immersiveTriggerRef = useRef<HTMLButtonElement>(null);
+  const wasImmersive = useRef(false);
+  useLayoutEffect(() => {
+    // Child immersion stays in Kid Mode's existing focus boundary. Restore its
+    // invoking control after removal without registering a second parent trap.
+    if (!kidNav && wasImmersive.current && !immersive) {
+      immersiveTriggerRef.current?.focus({ preventScroll: true });
+    }
+    wasImmersive.current = immersive;
+  }, [immersive, kidNav]);
+  const { ref: dialogRef, requestClose } = useDialog({ open: Boolean(kidNav) && immersive && Boolean(activeStory && render), onClose: () => setImmersive(false), returnFocusRef: immersiveTriggerRef });
   const [questionsChecked, setQuestionsChecked] = useState<Record<number, boolean>>({});
   const [saved, setSaved] = useState(false);
   const startedAtRef = useRef<string>("");
@@ -260,7 +273,7 @@ export default function HeroJourneyTab() {
       <button
         onClick={() => setSceneIndex((i) => Math.max(0, i - 1))}
         disabled={sceneIndex === 0}
-        className="disabled:opacity-30 flex items-center gap-1 text-sm"
+        className="touch-target disabled:opacity-30 flex items-center gap-1 text-sm"
         style={{ color: "var(--arbor-muted)" }}
       >
         <Icon name="chevron_left" size={16} /> Back
@@ -272,7 +285,7 @@ export default function HeroJourneyTab() {
         <button
           onClick={() => canAdvance && setSceneIndex((i) => Math.min(scenes.length - 1, i + 1))}
           disabled={!canAdvance}
-          className="disabled:opacity-30 flex items-center gap-1 text-sm font-bold"
+          className="touch-target disabled:opacity-30 flex items-center gap-1 text-sm font-bold"
           style={{ color: "var(--arbor-green-ink)" }}
         >
           Next <Icon name="chevron_right" size={16} />
@@ -702,6 +715,23 @@ export default function HeroJourneyTab() {
     </div>
   );
 
+  // Kid Mode owns its own trap and Escape gate. Keep the child view inside
+  // that subtree; only the parent view portals out of the transformed tab.
+  const immersiveDialog = (
+        <div ref={dialogRef} tabIndex={-1} data-arbor-dialog-layer role="dialog" aria-modal="true" aria-label={render.title} className="fixed inset-0 z-[60] flex flex-col" style={{ background: "var(--arbor-paper)" }}>
+          <div className="flex items-center justify-between px-6 py-4">
+            <span className="text-xs font-bold tracking-wider uppercase" style={{ color: "var(--arbor-muted)" }}>{render.title}</span>
+            <button onClick={kidNav ? requestClose : () => setImmersive(false)} className="touch-target" aria-label={t("aria.exitImmersive")} style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", color: "var(--arbor-muted)" }}>
+              <Icon name="close" size={20} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto flex items-center justify-center px-6 py-8">
+            <div className="max-w-3xl w-full">{playerBody(true)}</div>
+          </div>
+          <div className="px-6 py-5">{renderNav()}</div>
+        </div>
+  );
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <div className="flex items-center justify-between">
@@ -710,6 +740,7 @@ export default function HeroJourneyTab() {
         </button>
         <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>
         <button
+          ref={immersiveTriggerRef}
           onClick={() => setImmersive(true)}
           className="flex items-center gap-1.5 text-sm font-bold"
           style={{ color: "var(--arbor-muted)" }}
@@ -723,20 +754,9 @@ export default function HeroJourneyTab() {
       </div>
 
       {/* Immersive fullscreen overlay */}
-      {immersive && (
-        <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "var(--arbor-paper)" }}>
-          <div className="flex items-center justify-between px-6 py-4">
-            <span className="text-xs font-bold tracking-wider uppercase" style={{ color: "var(--arbor-muted)" }}>{render.title}</span>
-            <button onClick={() => setImmersive(false)} aria-label={t("aria.exitImmersive")} style={{ color: "var(--arbor-muted)" }}>
-              <Icon name="close" size={20} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto flex items-center justify-center px-6 py-8">
-            <div className="max-w-3xl w-full">{playerBody(true)}</div>
-          </div>
-          <div className="px-6 py-5">{renderNav()}</div>
-        </div>
-      )}
+      {immersive && (kidNav ? createPortal(
+        <div className="arbor-app arbor-parent" style={{ display: "contents" }}>{immersiveDialog}</div>, document.body,
+      ) : immersiveDialog)}
     </motion.div>
   );
 }
