@@ -133,7 +133,7 @@ function bindings(scope: ts.Node): Map<string, ts.Node[]> {
         if (clause.name) add(clause.name, clause);
         const named = clause.namedBindings;
         if (named && ts.isNamedImports(named)) named.elements.forEach(element => add(element.name, element));
-        else if (named) add(named.name, named);
+        else if (named && ts.isNamespaceImport(named)) add(named.name, named);
       }
     }
   }
@@ -208,7 +208,7 @@ function imported(node: ts.Node, name: string, module: string): boolean {
   // auditClassInputs; a same-named parameter/local never identifies an import.
   if (exported !== name && !(exported === "default" && CLASS_INPUTS.some(spec =>
     spec.file === module && spec.name === name && spec.defaultExport))) return false;
-  return importsModule(node.getSourceFile(), clause.parent, module);
+  return ts.isImportDeclaration(clause.parent) && importsModule(node.getSourceFile(), clause.parent, module);
 }
 
 // This value is inspected and mutation-tested against its real declaration below.
