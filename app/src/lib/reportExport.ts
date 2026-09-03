@@ -1,10 +1,20 @@
 /**
- * Client-side report export (no external deps). Opens a clean, branded,
- * print-styled document in a new tab and triggers the print dialog, where the
- * parent can "Save as PDF" or print. Content is generated from the child's real
- * data. Every report carries Arbor's non-diagnostic framing.
+ * Client-side report export (no external deps). Renders a clean, branded,
+ * print-styled HTML document from the child's real data and hands it to the
+ * parent through the ONE egress seam (`deliverDocument` → lib/share.ts
+ * `deliverFile`): the native share sheet inside the iOS/Android shells
+ * (Files / Print → PDF / Mail), `navigator.share({ files })` on the web where
+ * available, else a download. Every report carries Arbor's non-diagnostic
+ * framing.
+ *
+ * MOB-06 / LC-10: this used to `window.open` a blank tab, `document.write`
+ * the shell and inject `window.print()` — dead inside WKWebView / the Android
+ * webview (pop-up returns null → a browser-jargon `alert`). Pinned by
+ * lib/nativeEgress.test.ts: no `alert(` / `window.print` / `window.open("",`
+ * anywhere under src/.
  */
 import { ageLabel } from "./childAge";
+import { deliverFile, type ShareResult } from "./share";
 import type { ChildProfile, BehaviorLog, ActionPlan } from "../types";
 import type { LangObservation } from "../growth/vocabAgg";
 import { fmtDay } from "./formatDate";
@@ -168,12 +178,25 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
   }
 }
 
-export function openPrintableReport(doc: ReportDoc, childName: string) {
-  const w = window.open("", "_blank", "noopener,noreferrer");
-  if (!w) {
-    alert("Please allow pop-ups to export the report, then try again.");
-    return;
-  }
+export type DeliverResult = ShareResult;
+
+/** File-safe slug for report filenames (ASCII letters/digits; Hebrew names fall back to "report"). */
+function slugify(s: string): string {
+  const out = s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return out || "report";
+}
+
+/** `weekly-insight-noa-2026-09-03.html` — stable, human-readable, share-sheet friendly. */
+export function reportFilename(doc: ReportDoc, childName: string, now: Date = new Date()): string {
+  return `${slugify(doc.title)}-${slugify(childName)}-${now.toISOString().slice(0, 10)}.html`;
+}
+
+/**
+ * Pure: the branded print shell as a self-contained HTML string. No script —
+ * the parent prints/saves from wherever the file lands (Files, Mail, a browser
+ * tab), never from an injected `window.print()`.
+ */
+export function renderReportHtml(doc: ReportDoc, childName: string, now: Date = new Date()): string {
   const sectionsHtml = doc.sections.map((s) => {
     const items = Array.isArray(s.body) ? s.body.filter(Boolean) : [s.body];
     const body = items.length
@@ -184,7 +207,7 @@ export function openPrintableReport(doc: ReportDoc, childName: string) {
     return `<section><h2>${esc(s.heading)}</h2>${body}</section>`;
   }).join("");
 
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(doc.title)} — ${esc(childName)}</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(doc.title)} — ${esc(childName)}</title>
   <style>
     @page { margin: 24mm 18mm; }
     * { box-sizing: border-box; }
@@ -209,10 +232,30 @@ export function openPrintableReport(doc: ReportDoc, childName: string) {
     : `<span class="dot">A</span>`}<b>Arbor — Development Fieldbook</b></div>
   <h1>${esc(doc.title)}</h1>
   ${doc.subtitle ? `<p class="sub">${esc(doc.subtitle)}</p>` : ""}
-  <p class="meta">Generated ${fmtDay(new Date(), "en")} · Parent-prepared · Non-diagnostic</p>
+  <p class="meta">Generated ${fmtDay(now, "en")} · Parent-prepared · Non-diagnostic</p>
   ${sectionsHtml}
   <div class="footer">Arbor is non-diagnostic and does not replace professional advice. This report reflects parent observations and is shared with the parent's consent.</div>
-  <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
-  </body></html>`);
-  w.document.close();
+  </body></html>`;
+}
+
+/**
+ * THE document egress seam: HTML string in → share sheet / web share /
+ * download out (lib/share.ts `deliverFile`). Never throws; user cancel is
+ * `{ ok: false, cancelled: true }`. `deps` is the test injection point.
+ */
+export async function deliverDocument(args: {
+  html: string;
+  filename: string;
+  /** Optional caption for the share sheet (never the document body). */
+  text?: string;
+  deps?: Parameters<typeof deliverFile>[3];
+}): Promise<DeliverResult> {
+  const blob = new Blob([args.html], { type: "text/html" });
+  return deliverFile(blob, args.filename, { mime: "text/html", text: args.text }, args.deps);
+}
+
+/** Render a ReportDoc and hand it to the parent. Kept under its historical name — the
+ *  Wave-4 seam guard (clinicalFirewall.wave4.test.ts) allow-lists its two callers. */
+export function openPrintableReport(doc: ReportDoc, childName: string): Promise<DeliverResult> {
+  return deliverDocument({ html: renderReportHtml(doc, childName), filename: reportFilename(doc, childName) });
 }

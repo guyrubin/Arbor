@@ -5,13 +5,24 @@ import { useLanguage } from "./LanguageContext";
 import { isKidModeActive, subscribeKidMode } from "../lib/kidModeGate";
 
 type ToastType = "success" | "error" | "info";
-type Toast = { id: number; type: ToastType; message: string };
+
+/** CR-09 / TJB-13: an optional single action on a toast — the Undo slot for
+ *  destructive-but-reversible moves (delete a journal entry). Tapping runs the
+ *  handler and dismisses the toast. */
+export type ToastAction = { label: string; onClick: () => void };
+export type ToastOptions = { action?: ToastAction; durationMs?: number };
+
+type Toast = { id: number; type: ToastType; message: string; action?: ToastAction };
 
 type ToastContextValue = {
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: string, type?: ToastType, opts?: ToastOptions) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
+
+const DEFAULT_MS = 4000;
+/** An actionable toast stays longer — the parent needs time to read AND tap Undo. */
+const ACTION_MS = 7000;
 
 // TODO(m5): gate toast motion on prefers-reduced-motion
 const STYLES: Record<ToastType, { border: string; icon: React.ReactNode }> = {
@@ -37,14 +48,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const remove = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
   const toast = useCallback(
-    (message: string, type: ToastType = "info") => {
+    (message: string, type: ToastType = "info", opts?: ToastOptions) => {
       const id = Date.now() + Math.random();
+      const item: Toast = { id, type, message, ...(opts?.action ? { action: opts.action } : {}) };
       if (isKidModeActive()) {
-        queueRef.current.push({ id, type, message });
+        queueRef.current.push(item);
         return;
       }
-      setToasts((t) => [...t, { id, type, message }]);
-      setTimeout(() => remove(id), 4000);
+      setToasts((t) => [...t, item]);
+      setTimeout(() => remove(id), opts?.durationMs ?? (opts?.action ? ACTION_MS : DEFAULT_MS));
     },
     [remove]
   );
@@ -55,7 +67,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const queued = queueRef.current;
     queueRef.current = [];
     setToasts((t) => [...t, ...queued]);
-    for (const q of queued) setTimeout(() => remove(q.id), 4000);
+    for (const q of queued) setTimeout(() => remove(q.id), q.action ? ACTION_MS : DEFAULT_MS);
   }, [kidLocked, remove]);
 
   return (
@@ -79,6 +91,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             >
               {STYLES[tc.type].icon}
               <span className="flex-1 leading-snug" style={{ color: "var(--arbor-ink)" }}>{tc.message}</span>
+              {tc.action && (
+                <button
+                  type="button"
+                  onClick={() => { tc.action?.onClick(); remove(tc.id); }}
+                  className="min-h-9 flex-shrink-0 rounded-lg px-2.5 text-xs font-extrabold"
+                  style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)" }}
+                  data-testid="toast-action"
+                >
+                  {tc.action.label}
+                </button>
+              )}
               <button onClick={() => remove(tc.id)} className="arbor-toast-dismiss" aria-label={t("aria.dismiss")}>
                 <X className="w-3.5 h-3.5" />
               </button>

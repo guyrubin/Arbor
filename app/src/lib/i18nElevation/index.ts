@@ -35,6 +35,7 @@ import * as growth from "./growth";
 import * as growthTruth from "./growthTruth";
 import * as journal from "./journal";
 import * as kidRegister from "./kidRegister";
+import * as nativeShell from "./nativeShell";
 import * as personal from "./personal";
 import * as planclarity from "./planclarity";
 import * as promise from "./promise";
@@ -42,6 +43,7 @@ import * as recap from "./recap";
 import * as safety from "./safety";
 import * as screeningcalm from "./screeningcalm";
 import * as searchnav from "./searchnav";
+import * as settingsWave from "./settingsWave";
 import * as sidebar from "./sidebar";
 import * as sincevisit from "./sincevisit";
 import * as spine from "./spine";
@@ -71,6 +73,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   growthTruth,
   journal,
   kidRegister,
+  nativeShell,
   personal,
   planclarity,
   promise,
@@ -78,6 +81,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   safety,
   screeningcalm,
   searchnav,
+  settingsWave,
   sidebar,
   sincevisit,
   spine,

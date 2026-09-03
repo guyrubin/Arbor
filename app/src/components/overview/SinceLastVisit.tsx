@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Icon } from "../ui/Icon";
+import { Skeleton } from "../ui/Skeleton";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
@@ -8,6 +9,7 @@ import { rcString } from "../weekly/recapStrings";
 import { useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { computeStreak } from "../../lib/streak";
 import { collectMomentTimestamps, type SinceVisitRow } from "./sinceVisitEvents";
+import type { ActionOutcome } from "../../actionLoop/model";
 
 /**
  * SinceLastVisit — W1 1.1 (Maytal Row-1 #1, Oura "Top Stories" pattern).
@@ -22,10 +24,14 @@ import { collectMomentTimestamps, type SinceVisitRow } from "./sinceVisitEvents"
  * the first open of a new week (with data) the weekly digest auto-generates
  * here, on Today, instead of waiting for the buried Weekly pill. When the
  * fresh recap is still unopened, the strip's FIRST line is the recap entry
- * ("Your week with {name} is ready") deep-linking to #/weekly. Known v1
- * limitation: this mount renders for RETURNING parents with since-visit
- * events; day-0 parents (and event-less opens) still generate on WeeklyTab
- * entry — exactly today's behavior, no regression.
+ * ("Your week with {name} is ready") deep-linking to #/weekly. TJB-26: while
+ * the digest is still generating the line's slot is RESERVED (a skeleton row
+ * of the same height) so it never pops in under the parent's thumb.
+ *
+ * TJB-05 / ENG-12 — the action row: "You planned: …" (today's accepted step),
+ * "Yesterday you tried: … — did it help?" with the three outcome chips INLINE
+ * (the same recordTodayOutcome seam, yesterday's id — the outcome is
+ * recordable the next day), or "You tried: … — helped" once reported.
  *
  * W2 2.3 — the footer carries the cumulative continuity counter: "{n} days of
  * moments together" from computeStreak(...).totalDays. The resettable value
@@ -41,7 +47,8 @@ import { collectMomentTimestamps, type SinceVisitRow } from "./sinceVisitEvents"
  * inspection). Pinned by sinceLastVisit.test.ts.
  *
  * i18n: keys live in lib/i18nElevation/sincevisit.ts (+ recap.ts for the
- * recap/counter lines). The modules are not yet registered in
+ * recap/counter lines); the action-row strings live in lib/i18n.ts
+ * (today.since.action.*). The elevation modules are not yet registered in
  * i18nElevation/index.ts (integration-lane file), so `sv()`/`rc()` resolve
  * through t() FIRST and fall back to the module records — identical behavior
  * before and after registration.
@@ -50,6 +57,7 @@ import { collectMomentTimestamps, type SinceVisitRow } from "./sinceVisitEvents"
 const ROW_ICON: Record<SinceVisitRow["kind"], string> = {
   milestone: "workspace_premium",
   noticed: "visibility",
+  action: "task_alt",
   moments: "edit_note",
   plays: "sports_esports",
   conversations: "forum",
@@ -94,13 +102,16 @@ export default function SinceLastVisit({
   onMore: () => void;
 }) {
   const { t, uiLang } = useLanguage();
-  const { behaviorLogs, playLogs, childProfile, setActiveTab } = useArbor();
+  const { behaviorLogs, playLogs, childProfile, setActiveTab, recordTodayOutcome } = useArbor();
 
   // W2 2.1: app-open recap mount — auto-generates this week's digest for
   // returning parents (the hook's module-level guard keeps WeeklyTab and this
   // mount from double-firing in one session).
   const recap = useWeeklyRecap();
   const recapLine = !!recap.currentReport && recap.recapUnopened;
+  // TJB-26: the slot is reserved while the first digest of the week is being
+  // written — same min-height as the line it becomes, so nothing shifts.
+  const recapReserved = !recap.currentReport && recap.generating;
 
   const sv = (key: string, vars?: Record<string, string | number>): string => svString(t, uiLang, key, vars);
   const rc = (key: string, vars?: Record<string, string | number>): string => rcString(t, uiLang, key, vars);
@@ -117,6 +128,13 @@ export default function SinceLastVisit({
         return sv("elev.sincevisit.row.milestone", { title: row.title });
       case "noticed":
         return sv("elev.sincevisit.row.noticed");
+      case "action":
+        // TJB-05 / ENG-12: the parent's own step, in event language.
+        return row.state === "done"
+          ? t("today.since.action.done", { step: row.recommendation, outcome: t(`today.since.action.outcome.${row.outcome ?? "helped"}`) })
+          : row.state === "ask"
+            ? t("today.since.action.ask", { step: row.recommendation })
+            : t("today.since.action.planned", { step: row.recommendation });
       case "moments":
         return row.count === 1 ? sv("elev.sincevisit.row.moment.one") : sv("elev.sincevisit.row.moment.many", { n: row.count });
       case "plays":
@@ -125,6 +143,12 @@ export default function SinceLastVisit({
         return row.count === 1 ? sv("elev.sincevisit.row.convo.one") : sv("elev.sincevisit.row.convo.many", { n: row.count });
     }
   };
+
+  const outcomes: { value: ActionOutcome; label: string }[] = [
+    { value: "helped", label: t("today.action.helped") },
+    { value: "somewhat", label: t("today.action.somewhat") },
+    { value: "not_today", label: t("today.action.notToday") },
+  ];
 
   // Instrument once per mount (KPI 0.8: % opens showing a since-visit delta).
   // Mount-once is exact here: OverviewTab renders the strip only when rows
@@ -151,7 +175,14 @@ export default function SinceLastVisit({
       </h2>
 
       {/* W2 2.1: recap entry — the strip's FIRST line while this week's fresh
-          recap is unopened; tap deep-links to the Weekly recap (#/weekly). */}
+          recap is unopened; tap deep-links to the Weekly recap (#/weekly).
+          TJB-26: reserved (skeleton) while the digest is still generating. */}
+      {recapReserved && (
+        <div className="mt-3 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2" aria-hidden data-testid="since-recap-reserved">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-4 flex-1" />
+        </div>
+      )}
       {recapLine && (
         <button
           type="button"
@@ -188,6 +219,7 @@ export default function SinceLastVisit({
               }}
               className="flex w-full min-h-[44px] items-center gap-3 rounded-xl px-3 py-2 text-start transition active:scale-[0.99]"
               style={{ background: "var(--arbor-paper-deep)" }}
+              data-testid={row.kind === "action" ? `since-action-${row.state}` : undefined}
             >
               <span
                 className="flex h-8 w-8 flex-none items-center justify-center rounded-full"
@@ -198,11 +230,29 @@ export default function SinceLastVisit({
               >
                 <Icon name={ROW_ICON[row.kind]} size={17} fill={row.kind === "milestone" ? 1 : 0} />
               </span>
-              <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>
+              <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }} dir="auto">
                 {rowLabel(row)}
               </span>
               <Icon name="chevron_right" size={17} className="flex-none rtl:-scale-x-100" style={{ color: "var(--arbor-faint)" }} />
             </button>
+            {/* ENG-12: yesterday's open step asks ONCE, chips inline — the
+                same recordTodayOutcome seam, yesterday's id. No answer is a
+                fine answer; the row expires on its own after 48h. */}
+            {row.kind === "action" && row.state === "ask" && (
+              <div className="mt-1.5 grid grid-cols-3 gap-2 px-1" data-testid="since-action-outcomes">
+                {outcomes.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => recordTodayOutcome(row.actionId, value)}
+                    className="min-h-11 rounded-xl px-2 text-xs font-bold transition active:scale-[0.98]"
+                    style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </li>
         ))}
       </ul>

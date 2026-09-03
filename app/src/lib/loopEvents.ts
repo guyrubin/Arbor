@@ -129,3 +129,20 @@ export const trackActionOffered = (surface: string): void =>
 // headline/body copy must never ride along.
 export const trackErrorBannerShown = (surface?: string): void =>
   track("error_banner_shown", surface ? { surface } : {});
+
+/* ── ENG-11 — KPI family 7: the JITAI nudge is measured where it is seen ────
+ * The nudge used to be invisible on Today and unmeasured everywhere. `kind` is
+ * the engine's NudgeKind id ("prep" | "calm" | "log" | "practice") — never the
+ * resolved copy, never the child's name or the predicted hour. `unread` is a
+ * count. All three names are source-scan pinned by lib/kpiEvents.test.ts. */
+
+// wired by: OverviewTab — once per mount per kind, when the PREP/CALM cue
+// renders as the eyebrow of the guaranteed action (a line, never a module).
+export const trackNudgeShown = (kind: string): void => track("nudge_shown", { kind });
+
+// wired by: OverviewTab — the eyebrow tap that follows the cue to its route.
+export const trackNudgeTap = (kind: string): void => track("nudge_tap", { kind });
+
+// wired by: layout/TopbarBell on open (bell owner lane) — the unread COUNT
+// only; item text never rides along.
+export const trackBellOpen = (unread: number): void => track("bell_open", { unread });

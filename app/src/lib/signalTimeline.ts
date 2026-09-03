@@ -11,6 +11,7 @@ import type {
   PracticeEvent,
   SpeechAttempt,
 } from "../types";
+import type { ActionLoopEntry, ActionOutcome } from "../actionLoop/model";
 import { isolate } from "./i18n";
 
 /**
@@ -25,7 +26,9 @@ import { isolate } from "./i18n";
  * Soft-Daylight PASTEL keys in `ui/kit` without importing React.
  */
 
-export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach" | "play" | "practice";
+/** TJB-05: `action` = a Today step the parent accepted (and, once reported,
+ *  its outcome) — the Golden-Thread write of Today's primary move. */
+export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach" | "play" | "practice" | "action";
 export type SignalTone = "mint" | "coral" | "lav" | "yellow" | "pink" | "sky";
 
 /**
@@ -72,6 +75,11 @@ export interface TimelineSignal {
    * FIREWALL: a flat event count, never a rate or a period-vs-period delta.
    */
   count?: number;
+  /** kind:"action" only — the parent's OWN report on the step ("helped" /
+   *  "somewhat" / "not_today"), or undefined while the step is still open.
+   *  FIREWALL: rendered as the parent's words about the attempt, never a
+   *  verdict about the child. */
+  actionOutcome?: ActionOutcome;
 }
 
 /**
@@ -94,6 +102,8 @@ export const SIGNAL_PROVENANCE: Record<SignalKind, SignalProvenance> = {
   memory: "auto",
   coach: "auto",
   practice: "child",
+  // TJB-05: the parent accepted the step and reported the outcome — theirs.
+  action: "manual",
 };
 
 export const isAutoSignal = (kind: SignalKind): boolean => SIGNAL_PROVENANCE[kind] === "auto";
@@ -124,6 +134,9 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
       const type = s.practiceType ?? "practice";
       return t(`elev.childsignals.title.${type}.${n === 1 ? "one" : "many"}`, { count: n });
     }
+    case "action":
+      // TJB-05: "You tried: …" once reported, "You planned: …" while open.
+      return t(s.actionOutcome ? "timeline.title.action.tried" : "timeline.title.action.planned", { step: s.refTitle ?? "" });
   }
 };
 
@@ -135,6 +148,8 @@ export const signalDetail = (s: TimelineSignal, t: TranslateFn): string => {
       : "";
   }
   if (s.kind === "coach") return s.refTitle ?? "";
+  // TJB-05: the parent's own report on the attempt (their words, counts-free).
+  if (s.kind === "action") return s.actionOutcome ? t(`timeline.detail.action.${s.actionOutcome}`) : t("timeline.detail.action.open");
   return s.detail || "";
 };
 
@@ -161,6 +176,8 @@ export const signalMeta = (s: TimelineSignal, t: TranslateFn): string | undefine
     case "practice":
       // The title already carries the count; no extra meta chip.
       return undefined;
+    case "action":
+      return undefined;
   }
 };
 
@@ -171,6 +188,10 @@ export interface TimelineSources {
   memory?: MemoryReviewItem[];
   conversations?: { id: string; title: string; updatedAt: string }[];
   play?: PlayLog[];
+  // TJB-05 — the accepted Today steps + parent-reported outcomes (the
+  // per-child `actionLoops` sink, CHILD_SUBCOLLECTIONS). Folded as kind
+  // "action", provenance "manual", dated at the outcome (else the accept).
+  actionLoops?: ActionLoopEntry[];
   // Masterplan 1.4 — the six child-activity ledgers (all registered in
   // CHILD_SUBCOLLECTIONS; read directly via useChildCollection, no derived
   // sink). Folded as kind "practice", provenance "child".
@@ -200,6 +221,7 @@ const TIMELINE_SOURCE_ID_MAP: { [K in keyof Required<TimelineSources>]: true } =
   memory: true,
   conversations: true,
   play: true,
+  actionLoops: true,
   practiceEvents: true,
   speechAttempts: true,
   mimicSessions: true,
@@ -365,6 +387,22 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       tone: "mint",
       playDomain: p.domain,
       concernMatch: p.reason === "concern-match",
+    });
+  }
+
+  // TJB-05 — the Golden-Thread write of Today's primary move. One row per
+  // accepted step; dated at the parent's report when there is one, else at
+  // the accept. The recommendation text is model-generated focus text (the
+  // TODAY-1 guard upstream keeps fallback copy out of actionLoops).
+  for (const a of sources.actionLoops || []) {
+    if (!a.recommendation?.trim()) continue;
+    signals.push({
+      id: `action-${a.id}`,
+      kind: "action",
+      at: a.outcomeAt || a.acceptedAt || null,
+      refTitle: a.recommendation,
+      tone: "mint",
+      ...(a.outcome ? { actionOutcome: a.outcome } : {}),
     });
   }
 

@@ -29,9 +29,12 @@ describe("navigation IA", () => {
   it("Practice is a depth-0 hub owning the drill suite; Growth no longer carries the pill", () => {
     const practice = SECTIONS.find((s) => s.id === "practice");
     expect(practice?.items.map((i) => i.tab)).toEqual(["practice"]);
-    expect(practice?.tools.map((i) => i.tab)).toEqual(
-      ["speech", "mimic", "feelings", "journey", "adventures"],
-    );
+    // DECIDED 2026-09-03 (IA-08): the drills are launcher-mediated only — no
+    // kid-register pills in parent chrome. Deep links stay valid via fallback.
+    expect(practice?.tools.map((i) => i.tab)).toEqual([]);
+    for (const tab of ["speech", "mimic", "feelings", "journey", "adventures"] as const) {
+      expect(sectionForTab(tab).id).toBe("practice");
+    }
     const growth = SECTIONS.find((s) => s.id === "growth");
     expect(growth?.tools.some((i) => i.tab === "practice")).toBe(false);
     expect(sectionForTab("copilot").id).toBe("growth"); // canon: copilot stays Growth

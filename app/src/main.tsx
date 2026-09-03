@@ -9,8 +9,8 @@ import {installApiBaseShim} from './lib/runtime';
 import {initNativeShell} from './lib/native';
 import {restoreTheme} from './lib/theme';
 
-// AP-052: restore accent-theme preference before first render so there is no
-// flash-of-wrong-theme on load. Runs synchronously — no await needed.
+// CR-19: the accent picker is gone — this is now a boot-time migration that
+// clears the legacy preference + attribute. Runs synchronously — no await needed.
 restoreTheme();
 
 // Native shells (iOS/Android) load the bundle from a local origin, so re-point

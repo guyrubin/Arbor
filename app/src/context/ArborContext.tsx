@@ -182,8 +182,18 @@ function useArborState() {
    * decoys — a bare setActiveTab("behaviors") that ignored the chosen mode.
    */
   const [pendingCaptureMode, setPendingCaptureMode] = useState<CaptureMode | null>(null);
-  const requestCapture = (mode: CaptureMode) => setPendingCaptureMode(mode);
-  const consumeCaptureRequest = () => setPendingCaptureMode(null);
+  // TJB-12: the promptBank cue the parent tapped rides WITH the request, so
+  // the capture surface can keep the question visible above the form. It is
+  // a display cue only — never injected into the draft body (W1 pattern).
+  const [pendingCapturePromptKey, setPendingCapturePromptKey] = useState<string | null>(null);
+  const requestCapture = (mode: CaptureMode, opts?: { promptKey?: string | null }) => {
+    setPendingCaptureMode(mode);
+    setPendingCapturePromptKey(opts?.promptKey ?? null);
+  };
+  const consumeCaptureRequest = () => {
+    setPendingCaptureMode(null);
+    setPendingCapturePromptKey(null);
+  };
 
   /**
    * Evidence deep-link hand-off (TODAY-6 / AR-CAP-03): a surface that cites a
@@ -363,8 +373,14 @@ function useArborState() {
   const recordTodayOutcome = (id: string, outcome: ActionOutcome) => {
     const item = actionLoop.find((entry) => entry.id === id);
     if (!item) return;
-    void actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString() });
-    try { track("today_action_outcome", { outcome, capacity: item.capacity }); } catch { /* noop */ }
+    const now = Date.now();
+    void actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date(now).toISOString() });
+    // ENG-12: the outcome is recordable the NEXT day too (the since-strip's
+    // "Yesterday you tried … did it help?" row); `daysLate` = whole days
+    // since the accept, a count only.
+    const acceptedMs = Date.parse(item.acceptedAt);
+    const daysLate = Number.isFinite(acceptedMs) ? Math.max(0, Math.floor((now - acceptedMs) / 86_400_000)) : 0;
+    try { track("today_action_outcome", { outcome, capacity: item.capacity, daysLate }); } catch { /* noop */ }
   };
   const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
   const logPlayCompletion = (a: ScoredActivity, source: PlayLog["source"]) => {
@@ -1191,6 +1207,15 @@ function useArborState() {
     if (log) void logsCol.upsert({ ...log, resolved: !log.resolved });
   };
 
+  // TJB-13: correct a journal entry in place (the parent's own words) and put
+  // a deleted one back (the toast's Undo slot). Same sink, no new write path.
+  const patchLog = (id: string, patch: Partial<Omit<BehaviorLog, "id">>) => {
+    const log = behaviorLogs.find((l) => l.id === id);
+    if (!log) return;
+    void logsCol.upsert({ ...log, ...patch, id });
+  };
+  const restoreLog = (log: BehaviorLog) => void logsCol.upsert(log);
+
   // Deletions (data correction)
   const deleteLog = (id: string) => void logsCol.remove(id);
   const deletePlan = (id: string) => void plansCol.remove(id);
@@ -1339,6 +1364,7 @@ function useArborState() {
     dismissPostCaptureCoach,
     acceptPostCaptureCoach,
     pendingCaptureMode,
+    pendingCapturePromptKey,
     requestCapture,
     consumeCaptureRequest,
     pendingJournalFocusId,
@@ -1382,6 +1408,8 @@ function useArborState() {
     updatePlanStepText,
     toggleLogResolved,
     deleteLog,
+    patchLog,
+    restoreLog,
     deletePlan,
     deleteMilestone,
     planChallengeTopic,

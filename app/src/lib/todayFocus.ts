@@ -105,6 +105,20 @@ export function whyLineParts(inp: WhyLineInputs): { key: string; vars: Record<st
   return { key: "today.intent.why.list", vars: { list: parts.join("|") } };
 }
 
+/**
+ * Wave S+L residue (a): the running app's why-line said "goals, interests"
+ * for a child with no interests — the caller counted `interests.length`,
+ * and a profile written as `[""]` (an empty onboarding chip) or `[" "]`
+ * counts as 1. An input is NAMED only when a non-blank entry exists. Use this
+ * for every list-shaped why-line input (interests, goal labels).
+ */
+export function countNamed(list: ReadonlyArray<string | null | undefined> | null | undefined): number {
+  if (!list) return 0;
+  let n = 0;
+  for (const item of list) if (typeof item === "string" && item.trim().length > 0) n += 1;
+  return n;
+}
+
 /** Render the why-line through the caller's translator. */
 export function whyLineFor(
   inp: WhyLineInputs,

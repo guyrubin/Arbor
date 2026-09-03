@@ -31,6 +31,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import Icon from "../ui/Icon";
 import ShareButton from "../ui/ShareButton";
+import { ErrorState } from "../ui/ErrorState";
 import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
 import { rcString } from "./recapStrings";
@@ -86,6 +87,8 @@ export default function RecapStoryCards({
   canAccept,
   accepted,
   onAccept,
+  onRetry,
+  retrying = false,
 }: {
   report: WeeklyReport & { digest: WeeklyDigest };
   childName: string;
@@ -94,6 +97,12 @@ export default function RecapStoryCards({
   /** Today's step already IS this recommendation (honest done-state). */
   accepted: boolean;
   onAccept: () => void;
+  /** TJB-11: when the digest is the deterministic fallback the last card
+   *  cannot be accepted (TODAY-1) — instead of a silent empty slot it says so
+   *  and offers ONE retry (the hook's generate). The fallback text stays
+   *  visible as the honest summary. */
+  onRetry?: () => void;
+  retrying?: boolean;
 }) {
   const { t, uiLang } = useLanguage();
   const rtl = uiLang === "he";
@@ -248,7 +257,19 @@ export default function RecapStoryCards({
                   <Icon name="task_alt" size={16} /> {t("today.action.make")}
                   <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
                 </button>
-              ) : null}
+              ) : (
+                /* TJB-11: the fallback digest has no acceptable step — say so,
+                   with a retry, never an empty slot. */
+                <ErrorState
+                  className="!px-0 !py-2 items-start text-start"
+                  surface="weekly-recap-step"
+                  headline={t("wk.recap.stepUnavailable")}
+                  body={t("wk.recap.stepUnavailableBody")}
+                  onRetry={onRetry}
+                  retryLabel={t("err.retry")}
+                  retrying={retrying}
+                />
+              )}
               {/* Parent-mediated share — the FINAL card only. */}
               <ShareButton
                 artifact="growth_card"

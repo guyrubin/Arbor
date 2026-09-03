@@ -6,7 +6,7 @@ import ParentalGatePanel from "./ParentalGatePanel";
 import DeleteAccountModal from "./DeleteAccountModal";
 import InviteCard from "../referral/InviteCard";
 import { PlanPrices } from "../billing/PlanPrices";
-import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
+import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support — the About section's legal row
 import { Skeleton } from "../ui/Skeleton";
 import { PlanBadge } from "../ui/PlanBadge";
 import { useLanguage, type AiLang } from "../../context/LanguageContext";
@@ -16,15 +16,18 @@ import { useToast } from "../../context/ToastContext";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import { useCheckout } from "../../hooks/useCheckout";
 import { T } from "../../lib/tokens";
-import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
-import type { UiLang } from "../../lib/i18n";
 import { fmtDay } from "../../lib/formatDate";
+import { readBuildInfo, webBuildInfo, type BuildInfo } from "../../lib/appInfo";
+import { isNativePlatform } from "../../lib/runtime";
+import { SUPPORT_EMAIL, mailtoHref } from "../../lib/supportContacts";
+import { openLegalLink } from "../../lib/legalLinks";
+import { exportChildData, downloadJson } from "../../lib/childData";
 
 /** Lightweight app settings — wired to real app state (app language, trust panels,
- *  notifications, billing, and account). */
+ *  notifications, billing, account, and MOB-20 the store-expected About basics). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { uiLang, aiLang, setUiLang, setAiLang, t } = useLanguage();
-  const { showAiRail, setShowAiRail, setActiveTab } = useArbor();
+  const { showAiRail, setShowAiRail, setActiveTab, childProfile } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
   // MOB-08: `loading` → skeleton row (never "Free" while unsure); `isFallback`
@@ -36,37 +39,58 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
   const [adminOpen, setAdminOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   // STORE-2: all checkout/manage/restore actions go through the ONE platform-
   // gated hook — no inline `/api/billing/*` calls in this file (guard-tested).
   const { busy, startCheckout, openPortal, restorePurchases, isNative } = useCheckout();
-  const [accentTheme, setAccentTheme] = useState<AccentTheme>(getSavedTheme);
-  const [draftUiLang, setDraftUiLang] = useState<UiLang>(uiLang);
-  // LANG-ADV-OVERRIDE: bilingual parents (e.g. Hebrew interface, English clinical
-  // guidance) can opt the AI response language away from the app language. When the
-  // toggle is off, the AI language follows the app language (the default cascade).
-  const [draftAiDifferent, setDraftAiDifferent] = useState<boolean>(aiLang !== uiLang);
-  const [draftAiLang, setDraftAiLang] = useState<AiLang>(aiLang);
-  const effectiveAiLang: AiLang = draftAiDifferent ? draftAiLang : draftUiLang;
-  const languageDirty = draftUiLang !== uiLang || effectiveAiLang !== aiLang;
 
+  // RUN-17: language applies on tap (no Save/Cancel pair). LANG-ADV-OVERRIDE:
+  // bilingual parents (e.g. Hebrew interface, English clinical guidance) can
+  // opt the AI response language away from the app language — the only
+  // deliberate toggle left. Off → the AI follows the app language.
+  const [aiOverride, setAiOverride] = useState<boolean>(aiLang !== uiLang);
   useEffect(() => {
-    if (open) {
-      setDraftUiLang(uiLang);
-      setDraftAiDifferent(aiLang !== uiLang);
-      setDraftAiLang(aiLang);
-    }
+    if (open) setAiOverride(aiLang !== uiLang);
   }, [open, uiLang, aiLang]);
 
-  const handleSaveLanguage = () => {
-    setUiLang(draftUiLang); // sets uiLang AND aiLang := draftUiLang (whole-app cascade)
-    if (effectiveAiLang !== draftUiLang) setAiLang(effectiveAiLang); // override AI only when it should differ
-    toast(t("set.language.saved"), "success");
+  const tapUiLang = (k: "en" | "he") => {
+    if (k === uiLang) return;
+    setUiLang(k); // cascades aiLang := k
+    if (aiOverride) setAiLang(aiLang); // keep the deliberate override
+  };
+  const toggleAiOverride = () => {
+    const next = !aiOverride;
+    setAiOverride(next);
+    if (!next) setAiLang(uiLang);
   };
 
-  const handleCancelLanguage = () => {
-    setDraftUiLang(uiLang);
-    setDraftAiDifferent(aiLang !== uiLang);
-    setDraftAiLang(aiLang);
+  // MOB-20: version + native build number (the plugin answers after mount).
+  const [buildInfo, setBuildInfo] = useState<BuildInfo>(webBuildInfo);
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    void readBuildInfo({ isNative: isNativePlatform }).then((info) => {
+      if (alive) setBuildInfo(info);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [open]);
+
+  // MOB-20: "Export my data" — the existing GDPR export path (lib/childData),
+  // one tap from Settings instead of two hops via the profile drawer.
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const data = await exportChildData(user?.uid, childProfile);
+      downloadJson(`arbor-${childProfile.name.toLowerCase().replace(/\s+/g, "-")}-export.json`, data);
+      toast(t("elev.settingsWave.about.exported"), "success");
+    } catch {
+      toast(t("elev.settingsWave.about.exportFail"), "error");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const planLabel = isBeta
@@ -95,10 +119,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     return null;
   })();
 
-  const handleThemeChange = (theme: AccentTheme) => {
-    setTheme(theme);
-    setAccentTheme(theme);
-  };
+  const versionLine = buildInfo.native && buildInfo.build
+    ? t("elev.settingsWave.about.version.native", { version: buildInfo.version, build: buildInfo.build })
+    : t("elev.settingsWave.about.version.web", { version: buildInfo.version });
+
+  const chipBtn: React.CSSProperties = { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" };
+  const childFirstName = (childProfile.name || "").split(" ")[0] || t("elev.settingsWave.age.childFallback");
 
   return (
     <>
@@ -159,7 +185,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   {t("set.plan.viaStore", { provider: entitlement.provider })}
                 </p>
               )}
-              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
+              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] disabled:opacity-50" style={chipBtn}>
                 {t("set.plan.manage")}
               </button>
             </>
@@ -178,7 +204,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               </p>
               <div className="flex items-center gap-1 rounded-xl p-1 mt-3 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 {(["monthly", "annual"] as const).map((c) => (
-                  <button key={c} onClick={() => setCadence(c)} className="px-3 py-1 rounded-lg text-xs font-bold transition"
+                  <button key={c} onClick={() => setCadence(c)} className="px-3 py-1 rounded-lg text-xs font-bold transition min-h-[44px]"
                     style={cadence === c ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}>
                     {t(c === "monthly" ? "set.plan.monthly" : "set.plan.annual")}
                   </button>
@@ -192,13 +218,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   labeled BEFORE any tap toward checkout. */}
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
                 <span className="inline-flex items-center gap-1.5">
-                  <button onClick={() => void startCheckout("plus", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+                  <button onClick={() => void startCheckout("plus", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                     {t("set.plan.upgradePlus")}
                   </button>
                   <PlanBadge plan="plus" />
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <button onClick={() => void startCheckout("family", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
+                  <button onClick={() => void startCheckout("family", cadence)} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] disabled:opacity-50" style={{ background: "var(--arbor-clay-deep)", color: T.onAccent }}>
                     {t("set.plan.upgradeFamily")}
                   </button>
                   <PlanBadge plan="family" />
@@ -210,7 +236,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           {/* STORE-2: Apple-required Restore Purchases — native builds ONLY
               (StoreKit/Play re-links past purchases to this account). */}
           {isNative && (
-            <button onClick={() => void restorePurchases()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-50" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+            <button onClick={() => void restorePurchases()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] disabled:opacity-50" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
               {t("set.plan.restore")}
             </button>
           )}
@@ -226,40 +252,23 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         </Section>
 
         <Section title={t("set.section.languageAppearance")} sub={t("set.section.languageAppearanceSub")}>
-        {/* App language */}
+        {/* App language — RUN-17: one tap applies it (no Save/Cancel). */}
         <Row icon={<Icon name="language" size={18} />} title={t("set.language.title")} sub={t("set.language.sub")}>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} data-testid="settings-ui-lang">
               {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
                 <button
                   key={k}
-                  onClick={() => setDraftUiLang(k)}
-                  aria-pressed={draftUiLang === k}
+                  onClick={() => tapUiLang(k)}
+                  aria-pressed={uiLang === k}
                   className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
-                  style={draftUiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+                  style={uiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
                 >
                   {label}
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleCancelLanguage}
-                disabled={!languageDirty}
-                className="text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-40"
-                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-              >
-                {t("set.language.cancel")}
-              </button>
-              <button
-                onClick={handleSaveLanguage}
-                disabled={!languageDirty}
-                className="text-xs font-bold rounded-xl px-3 py-2 disabled:opacity-40"
-                style={{ background: "var(--arbor-clay)", color: T.onAccent }}
-              >
-                {t("set.language.save")}
-              </button>
-            </div>
+            <span className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("elev.settingsWave.language.applied")}</span>
           </div>
         </Row>
 
@@ -267,23 +276,23 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Row icon={<Icon name="language" size={18} />} title={t("set.aiLang.title")} sub={t("set.aiLang.sub")}>
           <div className="flex flex-col items-end gap-2">
             <button
-              onClick={() => setDraftAiDifferent((v) => !v)}
-              aria-pressed={draftAiDifferent}
+              onClick={toggleAiOverride}
+              aria-pressed={aiOverride}
               aria-label={t("set.aiLang.toggle")}
               className="w-11 h-6 rounded-full transition relative"
-              style={{ background: draftAiDifferent ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
+              style={{ background: aiOverride ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}
             >
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${draftAiDifferent ? "end-[22px]" : "start-0.5"}`} />
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${aiOverride ? "end-[22px]" : "start-0.5"}`} style={{ background: T.paperElevated }} />
             </button>
-            {draftAiDifferent && (
-              <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+            {aiOverride && (
+              <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }} data-testid="settings-ai-lang">
                 {([["en", "EN"], ["he", "עב"]] as const).map(([k, label]) => (
                   <button
                     key={k}
-                    onClick={() => setDraftAiLang(k)}
-                    aria-pressed={draftAiLang === k}
+                    onClick={() => setAiLang(k as AiLang)}
+                    aria-pressed={aiLang === k}
                     className="min-h-[44px] min-w-[44px] px-3 rounded-lg text-xs font-bold transition"
-                    style={draftAiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
+                    style={aiLang === k ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
                   >
                     {label}
                   </button>
@@ -292,23 +301,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             )}
           </div>
         </Row>
-
-        {/* AP-052: Accent theme picker */}
-        <Row icon={<Icon name="palette" size={18} />} title={t("set.theme.title")} sub={t("set.theme.sub")}>
-          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-            {(ACCENT_THEMES as readonly AccentTheme[]).map((theme) => (
-              <button
-                key={theme}
-                onClick={() => handleThemeChange(theme)}
-                aria-pressed={accentTheme === theme}
-                className="px-3 py-1 rounded-lg text-xs font-bold transition"
-                style={accentTheme === theme ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}
-              >
-                {t(`set.theme.${theme}`)}
-              </button>
-            ))}
-          </div>
-        </Row>
+        {/* CR-19: the accent-theme picker is gone — three options resolved to one palette. */}
         </Section>
 
         <Section title={t("set.section.privacyTrust")} sub={t("set.section.privacyTrustSub")}>
@@ -316,7 +309,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         {/* AI Engines panel */}
         <Row icon={<Icon name="auto_awesome" size={18} />} title={t("set.rail.title")} sub={t("set.rail.sub")}>
           <button onClick={() => setShowAiRail(!showAiRail)} aria-pressed={showAiRail} className="w-11 h-6 rounded-full transition relative" style={{ background: showAiRail ? "var(--arbor-clay)" : "var(--arbor-rule-strong)" }}>
-            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${showAiRail ? "end-[22px]" : "start-0.5"}`} />
+            <span className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${showAiRail ? "end-[22px]" : "start-0.5"}`} style={{ background: T.paperElevated }} />
           </button>
         </Row>
         {/* STORE-3: parent PIN management — the ONLY setup surface (the kid-mode
@@ -331,15 +324,16 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         <Section title={t("set.section.notifications")} sub={t("set.section.notificationsSub")}>
 
-        {/* AP-058: Smart Reminders — parent nudge preferences over existing JITAI */}
+        {/* AP-058: Gentle Reminders — parent nudge preferences over existing JITAI
+            (MOB-19/ENG-23: the phone-push toggle lives there, under Delivery). */}
         <Row icon={<Icon name="notifications" size={18} />} title={t("sr.title")} sub={t("sr.subtitle")}>
           <button
             onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
-            className="text-xs font-bold rounded-xl px-3 py-2"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            className="text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]"
+            style={chipBtn}
             data-testid="settings-open-smart-reminders"
           >
-            {t("set.data.open")}
+            {t("elev.settingsWave.notif.open")}
           </button>
         </Row>
         </Section>
@@ -350,20 +344,88 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Row icon={<Icon name="science" size={18} />} title={t("sci.settings.title")} sub={t("sci.settings.sub")}>
           <button
             onClick={() => { onClose(); setActiveTab("science"); }}
-            className="text-xs font-bold rounded-xl px-3 py-2"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            className="text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]"
+            style={chipBtn}
             data-testid="settings-open-science"
           >
             {t("sci.settings.open")}
           </button>
         </Row>
 
-        {/* Data & privacy → profile editor (export / delete live there) */}
+        {/* Data & privacy → profile editor (edit / per-child delete live there) */}
         <Row icon={<Icon name="verified_user" size={18} />} title={t("set.data.title")} sub={t("set.data.sub")}>
-          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
+          <button onClick={() => { onClose(); setActiveTab("profile"); }} className="text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]" style={chipBtn}>
             {t("set.data.open")}
           </button>
         </Row>
+        </Section>
+
+        {/* MOB-20 / CR-19 / RUN-17: the store-expected basics — version, support,
+            legal, export, delete — in ONE visible section (settingsAbout.test.ts). */}
+        <Section title={t("elev.settingsWave.about.title")} sub={t("elev.settingsWave.about.sub")}>
+          <Row icon={<Icon name="info" size={18} />} title={t("elev.settingsWave.about.version")} sub={versionLine}>
+            <span data-testid="settings-about-version" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
+              {buildInfo.version}
+            </span>
+          </Row>
+
+          <Row icon={<Icon name="mail" size={18} />} title={t("elev.settingsWave.about.support")} sub={t("elev.settingsWave.about.support.sub")}>
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={mailtoHref(SUPPORT_EMAIL)}
+                className="inline-flex items-center text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]"
+                style={chipBtn}
+                data-testid="settings-support-email"
+              >
+                {t("elev.settingsWave.about.support.email")}
+              </a>
+              <button
+                type="button"
+                onClick={() => void openLegalLink("support", { isNative: isNativePlatform })}
+                className="inline-flex items-center text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]"
+                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+                data-testid="settings-support-page"
+              >
+                {t("elev.settingsWave.about.support.page")}
+              </button>
+            </div>
+          </Row>
+
+          {/* MOB-01: Privacy · Terms · Support — reachable in-app (Apple 5.1.1(i),
+              Play Data Safety). */}
+          <Row icon={<Icon name="policy" size={18} />} title={t("elev.settingsWave.about.legal")} sub={t("elev.settingsWave.about.legal.sub")}>
+            <div data-testid="settings-legal-links">
+              <LegalLinks />
+            </div>
+          </Row>
+
+          <Row icon={<Icon name="download" size={18} />} title={t("elev.settingsWave.about.export")} sub={t("elev.settingsWave.about.export.sub", { name: childFirstName })}>
+            <button
+              type="button"
+              onClick={() => void handleExport()}
+              disabled={exporting}
+              aria-busy={exporting}
+              className="text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] disabled:opacity-60"
+              style={chipBtn}
+              data-testid="settings-export-data"
+            >
+              {t("elev.settingsWave.about.export.cta")}
+            </button>
+          </Row>
+
+          {/* STORE-4: full account deletion (Apple 5.1.1(v) / Play / GDPR
+              Art. 17) — a visible row; the heavy type-to-confirm lives in the modal. */}
+          <Row icon={<Icon name="delete" size={18} />} title={t("elev.settingsWave.about.delete")} sub={t("elev.settingsWave.about.delete.sub")}>
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(true)}
+              className="text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]"
+              style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
+              data-testid="settings-delete-account"
+            >
+              {t("elev.settingsWave.about.delete.cta")}
+            </button>
+          </Row>
         </Section>
 
         {/* P0.2 (SET-ADMIN): operator-only tools isolated in their own section */}
@@ -371,13 +433,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <Section title={t("set.section.admin")} sub={t("set.section.adminSub")}>
             {/* ADM-1: founder-only single-pane dashboard (users, paying, token spend) */}
             <Row icon={<Icon name="bar_chart" size={18} />} title={t("set.admin.founder.title")} sub={t("set.admin.founder.sub")}>
-              <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+              <button onClick={() => setAdminOpen(true)} className="text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                 {t("set.admin.open")}
               </button>
             </Row>
             {/* P0-5: attribution + UTM funnel dashboard (operator-only) */}
             <Row icon={<Icon name="bar_chart" size={18} />} title={t("set.admin.attribution.title")} sub={t("set.admin.attribution.sub")}>
-              <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+              <button onClick={() => { onClose(); setActiveTab("attribution"); }} className="text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                 {t("set.admin.open")}
               </button>
             </Row>
@@ -391,23 +453,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 <p className="text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user.displayName || t("set.signedIn")}</p>
                 {user.email && <p className="text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
               </div>
-              <button onClick={() => void signOut()} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+              <button onClick={() => void signOut()} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
                 <Icon name="logout" size={16} /> {t("set.signOut")}
               </button>
             </div>
-            {/* STORE-4: full account deletion (Apple 5.1.1(v) / Play / GDPR
-                Art. 17) — quiet entry, heavy type-to-confirm inside the modal. */}
-            <button onClick={() => setDeleteOpen(true)} className="mt-3 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
-              {t("set.acctDel.open")}
-            </button>
           </div>
         )}
-
-        {/* MOB-01: Privacy · Terms · Support — reachable in-app (Apple 5.1.1(i),
-            Play Data Safety), next to the account controls. */}
-        <div className="pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-          <LegalLinks />
-        </div>
       </div>
     </Modal>
     {entitlement.isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} />}
@@ -418,7 +469,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
 function Section({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl p-3 space-y-3" style={{ background: "rgba(255,255,255,0.62)", border: "1px solid var(--arbor-rule)" }}>
+    <section className="rounded-2xl p-3 space-y-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
       <div>
         {/* GREEN-DRIFT-SETTINGS: neutral eyebrow, not emerald, in the sapphire 2035 chrome */}
         <h3 className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{title}</h3>

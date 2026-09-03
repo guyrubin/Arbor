@@ -23,12 +23,18 @@ export default function PromptCaptureCard({
   promptKey,
   childName,
   onCapture,
+  eyebrow,
+  onEyebrowTap,
 }: {
   /** Today's promptBank i18n key (elev.prompt.<band>.<n>), or null for the bare floor. */
   promptKey: string | null;
   childName: string;
   /** Opens the existing QuickLogModal (no new capture path). */
   onCapture: () => void;
+  /** ENG-11: the JITAI PREP/CALM cue as this card's eyebrow (a line, never a
+   *  sibling module); taps follow the cue to its route. */
+  eyebrow?: string;
+  onEyebrowTap?: () => void;
 }) {
   const { t } = useLanguage();
 
@@ -38,9 +44,21 @@ export default function PromptCaptureCard({
       style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
       data-testid="today-prompt-card"
     >
-      <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>
-        {t("today.intent.doNow")}
-      </span>
+      {eyebrow && onEyebrowTap ? (
+        <button
+          type="button"
+          onClick={onEyebrowTap}
+          data-testid="today-nudge-eyebrow"
+          className="inline-flex min-h-[32px] items-center gap-1 text-start text-[10px] font-extrabold uppercase tracking-[0.13em]"
+          style={{ color: "var(--arbor-clay)" }}
+        >
+          <Icon name="bolt" size={13} fill={1} /> {eyebrow}
+        </button>
+      ) : (
+        <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>
+          {t("today.intent.doNow")}
+        </span>
+      )}
       <p className="mt-1 text-[12px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
         {t("elev.prompt.lead")}
       </p>

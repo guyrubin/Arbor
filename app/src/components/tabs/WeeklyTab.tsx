@@ -17,7 +17,7 @@ import { ageYearsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import RecapStoryCards from "../weekly/RecapStoryCards";
 import { rcString } from "../weekly/recapStrings";
-import { weeklyChipIds, isEmptyCurrentWeek } from "../weekly/weeklySelection";
+import { weeklyChipIds, weeklyChipLabel, isEmptyCurrentWeek } from "../weekly/weeklySelection";
 import { fetchDigestEmailStatus, readEmailOptIn, writeEmailOptIn, type DigestEmailStatus } from "../weekly/recapEmail";
 import type { WeeklyDigest } from "../../lib/api";
 
@@ -30,6 +30,16 @@ import type { WeeklyDigest } from "../../lib/api";
  * keep the classic report layout. W2 2.2 adds the weekly-email opt-in row —
  * fail-closed: the opt-in is real, the channel ships when a provider is
  * configured (server/emailProvider.ts).
+ *
+ * TJB-10 (One Move): the surface's single primary move is ACCEPTING the
+ * recap's recommendation — the gradient primary lives on the last story card
+ * only. Regenerate ("Retell this week") is a text link; the first-ever
+ * "Create this week's story" is an outline button (nothing else exists to do
+ * yet); the Consult brief is an outline door. This file carries ZERO gradient
+ * primaries (pinned by recapStoryCards.test.ts).
+ * TJB-19: history chips render the localized week label, never "2026-W36".
+ * TJB-20: "Worth watching" renders in the neutral ink, never a warning tone.
+ * Back link → Today (the route is homed there, navigation.ts).
  */
 export default function WeeklyTab() {
   const { childProfile, setActiveTab, acceptTodayAction, activeTodayAction, requestLearnRead } = useArbor();
@@ -107,10 +117,35 @@ export default function WeeklyTab() {
     track("recap_email_optin", { on: next, channelEnabled: emailStatus.enabled });
   };
 
+  // TJB-10: generate/regenerate is DEMOTED — a text link once a story exists,
+  // an outline button before the first one. Never the page's primary.
+  const regenerateControl = (
+    <button
+      type="button"
+      onClick={() => void generate()}
+      disabled={generating}
+      data-testid="weekly-regenerate"
+      className={
+        hasStoredCurrentWeek
+          ? "inline-flex min-h-[44px] items-center gap-1.5 px-1 text-[12.5px] font-extrabold disabled:opacity-60"
+          : "inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-5 text-sm font-bold disabled:opacity-60"
+      }
+      style={
+        hasStoredCurrentWeek
+          ? { color: "var(--arbor-muted)" }
+          : { color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }
+      }
+    >
+      {generating
+        ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>)
+        : (<><Icon name={hasStoredCurrentWeek ? "refresh" : "auto_awesome"} size={16} /> {hasStoredCurrentWeek ? t("wk.regenerate") : t("wk.generate")}</>)}
+    </button>
+  );
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <button onClick={() => setActiveTab("timeline")} className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
-        <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" /> {t("wk.backStory", { first })}
+      <button onClick={() => setActiveTab("overview")} className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
+        <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" /> {t("wk.backToday")}
       </button>
       {/* E6a — the child fronts their own week: small portrait through the ONE
           shared HeroAvatar engine (identity resolution + Sprout fallback live
@@ -130,23 +165,17 @@ export default function WeeklyTab() {
                fix): labelFor honors a stored label only in its own language.
                F-06: the raw week id (a storage key) never renders here. */
             subtitle={selected ? labelFor(selected) : currentLabel}
-            action={
-              <button
-                onClick={() => void generate()}
-                disabled={generating}
-                className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
-                style={{ background: "var(--arbor-gradient-primary)" }}
-              >
-                {generating ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>) : (<><Icon name="auto_awesome" size={16} /> {hasStoredCurrentWeek ? t("wk.regenerate") : t("wk.generate")}</>)}
-              </button>
-            }
+            /* TJB-10: before the first story the (outline) create control sits
+               here; once a story exists the regenerate text link moves under
+               the cards' footer, so nothing outranks the recap's one move. */
+            action={hasStoredCurrentWeek ? undefined : regenerateControl}
           />
         </div>
       </div>
 
       {/* History strip — F-06: chipIds always leads with the current week
           (synthetic when no report is stored for it yet), so the newest chip
-          is never a week in the past. */}
+          is never a week in the past. TJB-19: labels are human week labels. */}
       {reports.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
           <Icon name="history" size={14} className="flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
@@ -156,10 +185,11 @@ export default function WeeklyTab() {
               <button
                 key={id}
                 onClick={() => setSelectedId(id)}
-                className="text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition flex-shrink-0"
+                className="text-[11px] font-bold px-3 py-1.5 min-h-[36px] rounded-full whitespace-nowrap transition flex-shrink-0"
                 style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
+                data-testid="weekly-chip"
               >
-                {id}
+                {weeklyChipLabel(id, reports, labelFor, currentLabel)}
               </button>
             );
           })}
@@ -181,7 +211,8 @@ export default function WeeklyTab() {
           {/* ── W2 2.1: the recap ritual — the PRIMARY view of this week's
                  report. Story cards, one stat per card, last card = the single
                  recommendation (CTA through the acceptTodayAction seam inside,
-                 TODAY-1: AI digests only). ── */}
+                 TODAY-1: AI digests only; TJB-11: a fallback digest says so
+                 and offers a retry instead of an empty slot). ── */}
           {showRecap && selected.digest && (
             <RecapStoryCards
               report={selected as WeeklyReport & { digest: WeeklyDigest }}
@@ -189,7 +220,15 @@ export default function WeeklyTab() {
               canAccept={selected.digest.generated === "ai"}
               accepted={activeTodayAction?.recommendation === selected.digest.tryThisWeek.trim()}
               onAccept={() => acceptTodayAction(selected.digest!.tryThisWeek, "standard", "digest")}
+              onRetry={() => void generate()}
+              retrying={generating}
             />
+          )}
+
+          {/* TJB-10: the demoted regenerate link — under the ritual, in the
+              muted ink, never competing with the last card's one move. */}
+          {hasStoredCurrentWeek && selected.id === currentId && (
+            <div className="flex justify-end px-1">{regenerateControl}</div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -259,13 +298,16 @@ export default function WeeklyTab() {
                     ))}
                   </ul>
                 )}
+                {/* TJB-20: the attention block is a conversation opener in the
+                    neutral ink — the same tone the recap cards use, never a
+                    warm "warning" colour about the child. */}
                 {selected.digest.watchFor.length > 0 && (
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-peach-ink)" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }} data-testid="weekly-watch-for">
                     <strong>{t("wk.watchFor")}</strong> {selected.digest.watchFor.join(" ")}
                   </p>
                 )}
                 {selected.digest.tryThisWeek && (
-                  <div className="rounded-xl p-3 text-sm bg-white" style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}>
+                  <div className="rounded-xl p-3 text-sm" style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)" }}>
                     <strong style={{ color: "var(--arbor-green-ink)" }}>{t("wk.tryThisWeek")}</strong> {selected.digest.tryThisWeek}
                     {/* AIX-S6: feed the action loop from the digest's next-step —
                         through the EXISTING acceptTodayAction seam, with digest
@@ -310,7 +352,7 @@ export default function WeeklyTab() {
               ) : (
                 <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("wk.noMilestones")}</p>
               )}
-              <button onClick={() => setActiveTab("milestones")} className="text-[11px] font-bold flex items-center gap-1 mt-3" style={{ color: "var(--arbor-green-ink)" }}>
+              <button onClick={() => setActiveTab("milestones")} className="text-[11px] font-bold flex items-center gap-1 mt-3 min-h-[44px]" style={{ color: "var(--arbor-green-ink)" }}>
                 <Icon name="checklist" size={12} /> {t("wk.reviewMilestones")}
               </button>
             </SectionCard>
@@ -321,7 +363,7 @@ export default function WeeklyTab() {
                 <span className="text-[10px] uppercase font-bold" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.concept}</span>
               </div>
               <p className="text-xs leading-relaxed mt-2" style={{ color: "var(--arbor-muted)" }}>{selected.spotlight.value}</p>
-              <button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3" style={{ color: "var(--arbor-lav-ink)" }}>{t("wk.scholarExplore")}</button>
+              <button onClick={() => setActiveTab("scholar")} className="text-[11px] font-bold mt-3 min-h-[44px]" style={{ color: "var(--arbor-lav-ink)" }}>{t("wk.scholarExplore")}</button>
             </SectionCard>
 
             {/* LL-A4: this week's read — one Library pick ranked by age window +
@@ -339,7 +381,7 @@ export default function WeeklyTab() {
                 </span>
                 <button
                   onClick={() => requestLearnRead({ cardId: weeklyRead.id, source: "weekly-report" })}
-                  className="text-[11px] font-bold flex items-center gap-1 mt-3"
+                  className="text-[11px] font-bold flex items-center gap-1 mt-3 min-h-[44px]"
                   style={{ color: "var(--arbor-sky-ink)" }}
                 >
                   <Icon name="menu_book" size={12} /> {t("learn.readCard")}
@@ -375,12 +417,13 @@ export default function WeeklyTab() {
             >
               <span
                 aria-hidden
-                className="inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ltr:translate-x-1 rtl:-translate-x-1"
-                style={{ transform: emailOptIn ? (uiLang === "he" ? "translateX(-28px)" : "translateX(28px)") : undefined }}
+                className="inline-block h-6 w-6 rounded-full shadow transition-transform ltr:translate-x-1 rtl:-translate-x-1"
+                style={{ background: "var(--arbor-paper-elevated)", transform: emailOptIn ? (uiLang === "he" ? "translateX(-28px)" : "translateX(28px)") : undefined }}
               />
             </button>
           </div>
 
+          {/* TJB-10: the Consult brief is a door, not a primary — outline. */}
           <div className={`${cardCls} p-6 flex flex-col sm:flex-row items-center justify-between gap-4`}>
             <div className="flex items-center gap-3">
               <IconBadge tone="sky"><Icon name="send" size={20} /></IconBadge>
@@ -391,8 +434,8 @@ export default function WeeklyTab() {
             </div>
             <button
               onClick={() => setActiveTab("consult")}
-              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
-              style={{ background: "var(--arbor-gradient-primary)" }}
+              className="inline-flex min-h-[44px] items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98] flex-shrink-0"
+              style={{ color: "var(--arbor-sky-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
             >
               <Icon name="send" size={16} /> {t("wk.brief", { first })}
             </button>

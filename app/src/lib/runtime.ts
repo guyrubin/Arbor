@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { PUBLIC_ORIGIN } from "./publicOrigin";
 
 /**
  * Runtime platform + API-base resolution.
@@ -17,7 +18,10 @@ import { Capacitor } from "@capacitor/core";
 export const isNativePlatform = Capacitor.isNativePlatform();
 export const nativePlatform = Capacitor.getPlatform(); // "ios" | "android" | "web"
 
-const PROD_API_ORIGIN = "https://arborprd-westeu.web.app";
+// MOB-17: the native default is the ONE public origin (lib/publicOrigin.ts) —
+// the brand domain the store metadata and the universal links claim, never
+// the raw hosting origin.
+const PROD_API_ORIGIN = PUBLIC_ORIGIN;
 
 export const API_BASE = (
   (import.meta.env.VITE_API_BASE as string | undefined) ??

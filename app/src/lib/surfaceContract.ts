@@ -65,11 +65,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     job: "One thing to do now — and what changed since you left.",
     primaryMove: "do-today-action", moduleBudget: 5, demotionTarget: "disclosure",
     // Budget 5 = todayModules.ts TODAY_MODULE_BUDGET (Rule A, already law);
-    // demoted modules land in the collapsed "More" drawer. threadWrite: the
-    // plan wants an "action-outcome" source but NO such source exists in
-    // buildTimeline; the nearest is "play" (only when the offered action is a
-    // Daily Play pick) — "none" until a real source is added, honestly.
-    threadWrite: "none",
+    // demoted modules land in the collapsed "More" drawer. threadWrite (TJB-05):
+    // the accepted Today step + its parent-reported outcome persist to the
+    // per-child `actionLoops` sink, which buildTimeline now ingests as kind
+    // "action" (signalTimeline.ts) — the primary move writes the thread.
+    threadWrite: "actionLoops",
   },
   {
     route: "day-windows", hub: "today", depth: 1,

@@ -30,7 +30,10 @@ import type {
  * memory-approval logic.
  */
 export function useTimeline(): TimelineSignal[] {
-  const { behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs, childProfile } = useArbor();
+  // TJB-05: `actionLoop` — the accepted Today steps + parent-reported outcomes
+  // (CHILD_SUBCOLLECTIONS "actionLoops") — folds in as kind "action", so the
+  // hub's primary move finally writes the Golden Thread.
+  const { behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs, actionLoop, childProfile } = useArbor();
   const childId = childProfile.id;
 
   // Child-activity ledgers — limits mirror practice/usePracticeData.ts so the
@@ -62,6 +65,7 @@ export function useTimeline(): TimelineSignal[] {
       memory: memoryReviewItems,
       conversations,
       play: playLogs,
+      actionLoops: actionLoop,
       practiceEvents: practiceEvents.items,
       speechAttempts: speechAttempts.items,
       mimicSessions: mimicSessions.items,
@@ -70,7 +74,7 @@ export function useTimeline(): TimelineSignal[] {
       heroRuns: heroRuns.items,
     }),
     [
-      behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs,
+      behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs, actionLoop,
       practiceEvents.items, speechAttempts.items, mimicSessions.items,
       adventureResults.items, missionRecords.items, heroRuns.items,
     ],

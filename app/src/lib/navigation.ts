@@ -8,7 +8,6 @@ import {
   MessageCircle, NotebookPen, UserCircle,
   Clock, ListChecks, BarChart3, Bell, BadgeCheck,
   Sparkles, Heart, Library,
-  Mic, Camera, Smile, Footprints, Compass,
 } from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 import type { HubId } from "./surfaceContract";
@@ -211,13 +210,11 @@ export const SECTIONS: NavSection[] = [
     primaryTabs: [
       { tab: "practice", label: "Practice Studio", icon: Target },
     ],
-    tools: [
-      { tab: "speech", label: "Speech Coach", icon: Mic, msIcon: "mic" },
-      { tab: "mimic", label: "Mimic Studio", icon: Camera, msIcon: "photo_camera" },
-      { tab: "feelings", label: "Feelings Lab", icon: Smile, msIcon: "mood" },
-      { tab: "journey", label: "Development Journey", icon: Footprints, msIcon: "route" },
-      { tab: "adventures", label: "Adventures", icon: Compass, msIcon: "explore" },
-    ],
+    // DECIDED 2026-09-03 (Guy's full mandate, IA-08): entry is launcher-mediated
+    // only — the kid-register drills are never one-click pills in parent
+    // chrome. The routes stay valid deep links via TAB_SECTION_FALLBACK and are
+    // reached from the launcher's world tiles (routeReachability guard).
+    tools: [],
   },
   {
     id: "stories",

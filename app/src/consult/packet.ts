@@ -13,6 +13,11 @@ import { DOMAIN_LABEL } from "../lib/screening";
 import { bandForAgeMonths, milestoneAgeWindow } from "../lib/milestoneData";
 import { ageLabel } from "../lib/childAge";
 
+/** "Hebrew (Native)" → "Hebrew": the parenthetical role never leaves the app. */
+export function exportLanguageName(language: string): string {
+  return language.replace(/\s*\([^)]*\)\s*$/u, "").trim();
+}
+
 export interface PacketInputProfile {
   name: string;
   age: number;
@@ -136,7 +141,10 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
 
   // 1) Who the child is.
   const aboutItems: PacketItem[] = [
-    { id: "about-basics", text: `${profile.name}, ${ageLabel(profile)}${profile.languages.length ? `, speaks ${profile.languages.join(" and ")}` : ""}.` },
+    // Wave S+L: profile language ROLES ("(Native)", "(Transition)") stay in the
+    // profile — on an export a teacher reads them as status labels, so only
+    // the language names leave.
+    { id: "about-basics", text: `${profile.name}, ${ageLabel(profile)}${profile.languages.length ? `, speaks ${profile.languages.map(exportLanguageName).join(" and ")}` : ""}.` },
   ];
   if (profile.schoolContext) aboutItems.push({ id: "about-school", text: `Setting: ${profile.schoolContext}.` });
   if (profile.strengths?.length) aboutItems.push({ id: "about-strengths", text: `Strengths: ${profile.strengths.join(", ")}.` });

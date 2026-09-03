@@ -16,8 +16,12 @@ import { TrustLink } from "../trust/TrustLink";
  * guard upstream) "Begin" stays the lone primary and acceptTodayAction is
  * unreachable, so fallback copy can never be persisted into actionLoops.
  */
-export default function TodayRecommendation({ eyebrow, headline, body, meta, action, loading, onBegin, accept, why }: {
+export default function TodayRecommendation({ eyebrow, onEyebrowTap, headline, body, meta, action, loading, onBegin, accept, why }: {
   eyebrow: string;
+  /** ENG-11: when the JITAI PREP/CALM cue fires, it IS the day's framing —
+   *  the eyebrow becomes the cue ("Get ahead of 5pm") and taps follow it to
+   *  its route. A line inside the anchor, never a sibling module. */
+  onEyebrowTap?: () => void;
   /** TJB-02: the model's ONE doable step (`tryToday`) — what the capacity
    *  chips + accept attach to and what acceptTodayAction persists. */
   headline: string;
@@ -60,7 +64,19 @@ export default function TodayRecommendation({ eyebrow, headline, body, meta, act
             (crisp at 2x in the 180px column; ffmpeg libwebp q82). */}
         <div aria-hidden="true" className="min-h-[132px] bg-cover bg-center" style={{ backgroundImage: "url('/assets/today/calm-transition-activity.webp')" }} />
         <div className="flex min-w-0 flex-col justify-center p-5 sm:px-6">
-          <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</span>
+          {onEyebrowTap ? (
+            <button
+              type="button"
+              onClick={onEyebrowTap}
+              data-testid="today-nudge-eyebrow"
+              className="inline-flex min-h-[32px] items-center gap-1 self-start text-start text-[10px] font-extrabold uppercase tracking-[0.13em]"
+              style={{ color: "var(--arbor-clay)" }}
+            >
+              <Icon name="bolt" size={13} fill={1} /> {eyebrow}
+            </button>
+          ) : (
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</span>
+          )}
           {loading ? <div className="mt-2 space-y-2"><Skeleton className="h-6 w-4/5" /><Skeleton className="h-5 w-1/2" /></div> : <h2 className="mt-1.5 text-[21px] font-extrabold leading-[1.12] sm:text-[23px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}>{headline}</h2>}
           {!loading && body && (
             <p dir="auto" data-testid="today-focus-observation" className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{body}</p>

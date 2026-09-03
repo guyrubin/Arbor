@@ -6,14 +6,20 @@
    Deterministic chain, pure function (all branches unit-tested):
 
      1. loop    — an accepted action is already active → TodayActionLoop card.
-     2. focus   — a real AI focus headline exists (or is still being fetched
+     2. recap   — ENG-24: the first open of a NEW WEEK with an unopened weekly
+                  recap → the recap is the day's anchor (one CTA into the
+                  3–5 story cards; the last card's step is what gets accepted).
+                  It outranks the AI focus, the prompt and play, but never an
+                  action the parent already accepted; once the recap is opened
+                  it drops out and the chain resumes below.
+     3. focus   — a real AI focus headline exists (or is still being fetched
                   for a child WITH data: `focusPending` keeps the hero+skeleton
                   so the slot never flickers prompt→focus mid-load).
-     3. prompt  — no AI focus → the promptBank capture prompt of the day
+     4. prompt  — no AI focus → the promptBank capture prompt of the day
                   ("What made her laugh today?") with a capture CTA.
-     4. play    — no band prompts (defensively unreachable: bandForAge always
+     5. play    — no band prompts (defensively unreachable: bandForAge always
                   resolves a band) → evergreen Daily Play pick as primary.
-     5. capture — absolute floor: a bare capture-one-moment card.
+     6. capture — absolute floor: a bare capture-one-moment card.
 
    Exactly one of these renders in Today's left slot (Rule A: one primary
    action above the fold) — enforced by todayConsolidation.test.ts.
@@ -21,6 +27,7 @@
 
 export type TodayActionChoice =
   | { kind: "loop" }
+  | { kind: "recap" }
   | { kind: "focus" }
   | { kind: "prompt"; promptKey: string }
   | { kind: "play" }
@@ -29,6 +36,8 @@ export type TodayActionChoice =
 export function chooseTodayAction(input: {
   /** An accepted today-action already exists (actionLoop owns the slot). */
   hasActiveAction: boolean;
+  /** ENG-24: this week's recap exists and has not been opened yet. */
+  recapReady?: boolean;
   /** The scrubbed AI focus headline (focusHeadlineFrom), or null. */
   focusHeadline: string | null;
   /** True while a focus fetch is in flight for a child with signals. */
@@ -39,6 +48,7 @@ export function chooseTodayAction(input: {
   hasDailyPlay: boolean;
 }): TodayActionChoice {
   if (input.hasActiveAction) return { kind: "loop" };
+  if (input.recapReady === true) return { kind: "recap" };
   if (input.focusHeadline || input.focusPending) return { kind: "focus" };
   if (input.promptKeys.length > 0) return { kind: "prompt", promptKey: input.promptKeys[0] };
   if (input.hasDailyPlay) return { kind: "play" };

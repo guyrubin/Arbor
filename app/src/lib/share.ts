@@ -7,19 +7,24 @@
  * resolved transport channel. User-cancel of the OS sheet is honored silently
  * (no ShareCompleted), per the no-dark-patterns rule.
  *
+ * MOB-06 / LC-10: the native → web-share → download ladder is exported as
+ * `deliverFile` so EVERY egress (report HTML, care packets) rides the one
+ * pipeline that actually works inside the Capacitor webviews, instead of
+ * `window.open` + `window.print` (dead in WKWebView).
+ *
  * The caption/URL builders are pure and unit-tested in share.test.ts.
  */
 import { renderShareCard, type ShareCardOpts } from "./shareCard";
 import { trackShareInitiated, trackShareCompleted, type LoopArtifact } from "./loopEvents";
 import type { Market } from "./attribution";
+import { PUBLIC_ORIGIN } from "./publicOrigin";
 
 /**
- * Canonical share/landing origin. Soft dep on mk-p0-1-domain: until the final
- * domain lands, point at the prod hosting origin. Centralized here so mk-p0-1
- * swaps it in one place. Mirrors lib/runtime.ts PROD_API_ORIGIN (kept local to
- * avoid importing the Capacitor runtime into the pure URL builder).
+ * Canonical share/landing origin = the ONE public origin (lib/publicOrigin.ts,
+ * MOB-17). Kept as a named export because the URL builders and their tests
+ * address it by this name.
  */
-export const SHARE_URL = "https://arborprd-westeu.web.app";
+export const SHARE_URL = PUBLIC_ORIGIN;
 
 export type ShareChannel = "native" | "web_share" | "download";
 
@@ -62,16 +67,15 @@ function isNativeShareAvailable(): boolean {
   }
 }
 
-/** Native share via @capacitor/share (writes the PNG to cache, then opens the sheet). */
-async function shareNative(blob: Blob, filename: string, caption: string): Promise<boolean> {
+/** Native share via @capacitor/share (writes the file to cache, then opens the sheet). */
+async function shareNative(blob: Blob, filename: string, text: string | undefined): Promise<void> {
   const [{ Share }, { Filesystem, Directory }] = await Promise.all([
     import("@capacitor/share"),
     import("@capacitor/filesystem"),
   ]);
   const base64 = await blobToBase64(blob);
   const written = await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache });
-  await Share.share({ text: caption, files: [written.uri] });
-  return true;
+  await Share.share({ ...(text ? { text } : {}), files: [written.uri] });
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -81,20 +85,20 @@ function blobToBase64(blob: Blob): Promise<string> {
       const res = String(reader.result || "");
       resolve(res.includes(",") ? res.split(",")[1] : res);
     };
-    reader.onerror = () => reject(new Error("Could not read the image"));
+    reader.onerror = () => reject(new Error("Could not read the file"));
     reader.readAsDataURL(blob);
   });
 }
 
 /** Web share with a file, when the browser supports sharing files. */
-async function shareWebFile(blob: Blob, filename: string, caption: string): Promise<boolean> {
+async function shareWebFile(blob: Blob, filename: string, mime: string, text: string | undefined): Promise<boolean> {
   const nav = navigator as Navigator & {
     canShare?: (data?: ShareData) => boolean;
     share?: (data?: ShareData) => Promise<void>;
   };
   if (typeof nav.share !== "function") return false;
-  const file = new File([blob], filename, { type: "image/png" });
-  const data: ShareData & { files?: File[] } = { text: caption, files: [file] };
+  const file = new File([blob], filename, { type: mime });
+  const data: ShareData & { files?: File[] } = { ...(text ? { text } : {}), files: [file] };
   if (typeof nav.canShare === "function" && !nav.canShare(data)) return false;
   await nav.share(data);
   return true;
@@ -117,6 +121,65 @@ function isAbort(err: unknown): boolean {
   return name === "AbortError" || /abort|cancel/i.test(msg);
 }
 
+export type ShareResult =
+  | { ok: true; channel: ShareChannel }
+  | { ok: false; cancelled: true }
+  | { ok: false; error: true };
+
+/** The transport seams `deliverFile` rides — injectable so the ladder is unit-tested without a device. */
+export type DeliverDeps = {
+  isNative: () => boolean;
+  native: (blob: Blob, filename: string, text: string | undefined) => Promise<void>;
+  webShare: (blob: Blob, filename: string, mime: string, text: string | undefined) => Promise<boolean>;
+  download: (blob: Blob, filename: string) => void;
+};
+
+const DEFAULT_DELIVER_DEPS: DeliverDeps = {
+  isNative: isNativeShareAvailable,
+  native: shareNative,
+  webShare: shareWebFile,
+  download: downloadBlob,
+};
+
+/**
+ * Hand a file to the parent: native share sheet → web share → download.
+ * Never throws; a user cancel is reported as `{ ok: false, cancelled: true }`.
+ * This is THE egress seam for every artifact that leaves the app.
+ */
+export async function deliverFile(
+  blob: Blob,
+  filename: string,
+  opts: { mime: string; text?: string } ,
+  deps: DeliverDeps = DEFAULT_DELIVER_DEPS,
+): Promise<ShareResult> {
+  // 1) Native share sheet.
+  if (deps.isNative()) {
+    try {
+      await deps.native(blob, filename, opts.text);
+      return { ok: true, channel: "native" };
+    } catch (err) {
+      if (isAbort(err)) return { ok: false, cancelled: true };
+      // fall through to web/download
+    }
+  }
+
+  // 2) Web share with file.
+  try {
+    if (await deps.webShare(blob, filename, opts.mime, opts.text)) return { ok: true, channel: "web_share" };
+  } catch (err) {
+    if (isAbort(err)) return { ok: false, cancelled: true };
+    // fall through to download
+  }
+
+  // 3) Download fallback.
+  try {
+    deps.download(blob, filename);
+    return { ok: true, channel: "download" };
+  } catch {
+    return { ok: false, error: true };
+  }
+}
+
 export type ShareArgs = {
   artifact: LoopArtifact;
   surface: string;
@@ -126,11 +189,6 @@ export type ShareArgs = {
   refCode?: string;
   market?: Market;
 };
-
-export type ShareResult =
-  | { ok: true; channel: ShareChannel }
-  | { ok: false; cancelled: true }
-  | { ok: false; error: true };
 
 /**
  * Render → caption → native/web-share/download, with loop instrumentation.
@@ -151,35 +209,7 @@ export async function shareCard(args: ShareArgs): Promise<ShareResult> {
   const caption = buildShareCaption({ template: args.captionTemplate, name: args.opts.name || "", url });
   const filename = `${args.artifact}-arbor.png`;
 
-  // 1) Native share sheet.
-  if (isNativeShareAvailable()) {
-    try {
-      await shareNative(blob, filename, caption);
-      trackShareCompleted(args.artifact, "native");
-      return { ok: true, channel: "native" };
-    } catch (err) {
-      if (isAbort(err)) return { ok: false, cancelled: true };
-      // fall through to web/download
-    }
-  }
-
-  // 2) Web share with file.
-  try {
-    if (await shareWebFile(blob, filename, caption)) {
-      trackShareCompleted(args.artifact, "web_share");
-      return { ok: true, channel: "web_share" };
-    }
-  } catch (err) {
-    if (isAbort(err)) return { ok: false, cancelled: true };
-    // fall through to download
-  }
-
-  // 3) Download fallback.
-  try {
-    downloadBlob(blob, filename);
-    trackShareCompleted(args.artifact, "download");
-    return { ok: true, channel: "download" };
-  } catch {
-    return { ok: false, error: true };
-  }
+  const result = await deliverFile(blob, filename, { mime: "image/png", text: caption });
+  if (result.ok) trackShareCompleted(args.artifact, result.channel);
+  return result;
 }
