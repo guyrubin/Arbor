@@ -28,6 +28,8 @@ Rendered checks complement the source guard: compare the same Overview, Settings
 
 Practice Studio uses `--arbor-coach-grad` behind its small heading/caption and retains the primary CTA gradient. Timeline filter counts inherit their opaque label ink; reducing count opacity can fail contrast even when the underlying tokens pass. The guard covers paper/tinted surfaces and primary CTAs; arbitrary consumer backgrounds, opacity/filter effects, artwork and other gradient families require rendered review.
 
+`src/lib/whiteLabelContrast.test.ts` scans production source for white-label consumers. Direct opaque approved fills pass; dynamic/inherited/alpha cases remain an explicit sealed legacy inventory. New or changed unresolved cases fail. The current inventory is 86 sites: 67 approved direct fills and 19 unverified legacy cases. This ratchet prevents regression; it does not certify the remaining cases. Sandbox help uses peach ink (7.09:1 against white); Original story badges use pink ink (7.88:1). Story badge positions and corner radii follow logical directions so Hebrew age pills do not cover them.
+
 ## Typography
 
 - Display `--font-display` Fraunces (HE: Frank Ruhl Libre) — h1–h3 automatic
