@@ -55,6 +55,8 @@ jobs:
   # Stages 3–6: full green-gate, build, deploy a 0%-traffic CANDIDATE, smoke it.
   # No live traffic changes happen here — safe to run automatically on every push.
   deploy-candidate:
+    outputs:
+      revision: ${{ steps.candidate.outputs.revision }}
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -111,14 +113,17 @@ jobs:
 
       # OPS-A2: smoke the candidate tag URL; fail the run (and block promote) if unhealthy.
       - name: Smoke candidate
+        id: candidate
         working-directory: app
         run: |
-          CANDIDATE_URL=$(gcloud run services describe arbor-api \
+          CANDIDATE=$(gcloud run services describe arbor-api \
             --region europe-west4 --project "$PROJECT_ID" --format=json \
-            | jq -r '.status.traffic[] | select(.tag=="candidate") | .url' | head -n1)
+            | jq -ce '.status.traffic | map(select(.tag=="candidate")) | if length == 1 then .[0] else error("Expected exactly one candidate") end')
+          CANDIDATE_URL=$(jq -er '.url' <<< "$CANDIDATE")
+          CANDIDATE_REVISION=$(jq -er '.revisionName' <<< "$CANDIDATE")
           echo "candidate URL: $CANDIDATE_URL"
-          test -n "$CANDIDATE_URL"
           node scripts/post-deploy-smoke.mjs "$CANDIDATE_URL" "$GITHUB_SHA"
+          echo "revision=$CANDIDATE_REVISION" >> "$GITHUB_OUTPUT"
 
   # Stage 7: GUY-GATED prod promotion. The `production` Environment is where the human
   # AUTO-PROMOTE by default: after canary+smoke pass, traffic shifts to 100% with NO manual
@@ -166,13 +171,16 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      # OPS-A3 promote: shift 100% traffic to the smoke-proven candidate (= latest revision).
+      # OPS-A3 promote: shift 100% traffic to the exact revision recorded by the successful smoke job.
       # Rollback = re-run `update-traffic --to-revisions=<prev>=100` (prior revision held
       # 100% until this step, so it is the live rollback target).
       - name: Promote candidate to 100%
+        env:
+          CANDIDATE_REVISION: ${{ needs.deploy-candidate.outputs.revision }}
         run: |
+          test -n "$CANDIDATE_REVISION"
           gcloud run services update-traffic arbor-api \
-            --region europe-west4 --project "$PROJECT_ID" --to-latest
+            --region europe-west4 --project "$PROJECT_ID" --to-revisions="$CANDIDATE_REVISION=100"
 
       # Build + deploy hosting in the SAME gated job (avoids new-client / old-API split-brain).
       - name: Build client

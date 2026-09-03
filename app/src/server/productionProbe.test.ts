@@ -66,6 +66,12 @@ describe("candidate exact revision gate", () => {
     expect(workflow).toContain('node scripts/post-deploy-smoke.mjs "$CANDIDATE_URL" "$GITHUB_SHA"');
     expect(build).toContain("|GITHUB_SHA=${_REVISION}|");
     expect(workflow).toMatch(/promote:\s+needs: deploy-candidate/);
+    expect(workflow).toContain('revision: ${{ steps.candidate.outputs.revision }}');
+    expect(workflow).toContain('CANDIDATE_REVISION: ${{ needs.deploy-candidate.outputs.revision }}');
+    expect(workflow).toContain('--to-revisions="$CANDIDATE_REVISION=100"');
+    expect(workflow).not.toContain('--to-latest');
+    expect(workflow.indexOf('echo "revision=$CANDIDATE_REVISION"')).toBeGreaterThan(workflow.indexOf('node scripts/post-deploy-smoke.mjs'));
+    expect(build).not.toMatch(/^\s+_REVISION:/m);
   });
 });
 

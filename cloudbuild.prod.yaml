@@ -2,7 +2,7 @@
 #
 # Usage:
 #   gcloud builds submit --config cloudbuild.prod.yaml \
-#     --substitutions=_REGION=europe-west4 \
+#     --substitutions=_REGION=europe-west4,_TAG=<short-sha>,_REVISION=<full-commit-sha> \
 #     --project <PROD_PROJECT_ID>
 #
 # Notes:
@@ -88,7 +88,7 @@ substitutions:
   # _TAG is supplied at submit time (git short SHA). Defaults to "latest" so the
   # config is valid for manual `gcloud builds submit` runs where $SHORT_SHA is unset.
   _TAG: latest
-  # Full commit identity supplied by the gated deploy workflow.
-  _REVISION: dev
+  # _REVISION has no default: every production submission must supply its full
+  # commit identity, or Cloud Build rejects the unresolved substitution.
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:${_TAG}
