@@ -1,5 +1,5 @@
 /* i18nElevation/states — masterplan 4.3 (one state triad): strings for the
- * shared empty/loading states — the SectionSkeleton slow-path row and the
+ * shared empty/loading/error states — the SectionSkeleton slow-path row and the
  * teach-empty copy on Journal / Comics / Plans + the Hero Journey start
  * feedback that previously shipped as a hardcoded "Loading…"/"טוען…" literal.
  *
@@ -29,6 +29,14 @@ export const en: Record<string, string> = {
   "elev.states.slow": "Still loading — this is taking longer than usual",
   "elev.states.retry": "Try again",
 
+  // Shared parent recovery: describe the next step without assuming a cause
+  // or promising that an interrupted action saved any data.
+  "elev.states.error.head": "We couldn't load this section",
+  "elev.states.error.body": "Try again in a moment. If it still doesn't load, come back later.",
+  "elev.states.retrying": "Trying again…",
+  "elev.states.error.today": "Back to Today",
+  "elev.states.error.escapeNote": "Returning to Today reloads Arbor. Unsaved changes may be lost.",
+
   // ── Hero Journey: in-card feedback while a chosen story is being prepared
   //    (replaces the hardcoded "Loading…" literal — an i18n violation).
   "elev.states.hero.opening": "Opening the story…",
@@ -53,6 +61,11 @@ export const en: Record<string, string> = {
 export const he: Record<string, string> = {
   "elev.states.slow": "עדיין טוען — זה לוקח יותר זמן מהרגיל",
   "elev.states.retry": "לנסות שוב",
+  "elev.states.error.head": "לא הצלחנו לטעון את החלק הזה",
+  "elev.states.error.body": "נסו שוב בעוד רגע. אם זה עדיין לא נטען, אפשר לחזור מאוחר יותר.",
+  "elev.states.retrying": "מנסים שוב…",
+  "elev.states.error.today": "חזרה להיום",
+  "elev.states.error.escapeNote": "החזרה להיום טוענת את ארבור מחדש. שינויים שלא נשמרו עלולים להימחק.",
 
   "elev.states.hero.opening": "פותחים את הסיפור…",
 
