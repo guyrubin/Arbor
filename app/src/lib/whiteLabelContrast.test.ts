@@ -3,8 +3,11 @@
  *
  * Scan every production TS/TSX/JS/JSX string/template (including standalone
  * literals), grouping JSX occurrences by their owning opening tag. Only a
- * static intrinsic element with a direct approved opaque fill is proved here.
- * Dynamic classes/styles, inherited fills, components, alpha and other tokens
+ * static intrinsic element with a direct approved opaque fill is accepted,
+ * subject to explicit ancestor effects in the enabled, settled state.
+ * Arbitrary CSS, runtime class inputs, portals and caller ancestry across
+ * component boundaries still require external/rendered verification.
+ * Dynamic own classes/styles, inherited fills, components, alpha and other tokens
  * are debt, never implicit passes. Token luminance/theme coverage belongs to
  * tokens.contrast.test.ts; browser/CSS cascade and cross-module runtime values
  * still need consumer verification. disabled:opacity is an inactive-state
@@ -27,13 +30,14 @@ import { describe, expect, it } from "vitest";
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SAFE_FILLS = new Set([
   "--arbor-clay", "--arbor-clay-deep", "--arbor-ink",
-  "--arbor-subtab-active", "--arbor-gradient-primary", "--gradient-cta",
+  "--arbor-gradient-primary", "--gradient-cta",
   // tokens.contrast.test.ts checks FUNCTIONAL ink against opaque white
   // --arbor-paper-elevated in root, theme and flat scopes at >= 4.5:1.
   // Contrast is symmetric for these opaque colours: white-on-ink has the
   // same ratio. This approval does NOT extend to peach/pink accent fills.
   "--arbor-peach-ink", "--arbor-pink-ink",
 ]);
+// --arbor-subtab-active is scope-dependent; it has no global white-label proof.
 const WHITE = /\btext-white\b/;
 type Opening = ts.JsxOpeningElement | ts.JsxSelfClosingElement;
 type Case = { file: string; line: number; fingerprint: string; reason: string };
@@ -92,6 +96,185 @@ function safeFill(value: string, property = "background"): boolean {
   if (!token || !SAFE_FILLS.has(token)) return false;
   const gradient = token === "--arbor-gradient-primary" || token === "--gradient-cta";
   return property === "backgroundImage" ? gradient : property === "backgroundColor" ? !gradient : true;
+}
+
+// Unique local consts and conditional branches only: no execution/type checker.
+const localConstants = new WeakMap<ts.SourceFile, Map<string, ts.Node[]>>();
+function alternatives(input: ts.Node, depth = 0): ts.Node[] {
+  const node = unwrap(input);
+  if (depth > 8) return [];
+  if (ts.isConditionalExpression(node)) return [...alternatives(node.whenTrue, depth + 1), ...alternatives(node.whenFalse, depth + 1)];
+  if (ts.isIdentifier(node)) {
+    const source = node.getSourceFile();
+    let constants = localConstants.get(source);
+    if (!constants) {
+      constants = new Map();
+      const visit = (n: ts.Node) => {
+        if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer &&
+            ts.isVariableDeclarationList(n.parent) && (n.parent.flags & ts.NodeFlags.Const)) {
+          constants!.set(n.name.text, [...(constants!.get(n.name.text) ?? []), n.initializer]);
+        }
+        ts.forEachChild(n, visit);
+      };
+      visit(source);
+      localConstants.set(source, constants);
+    }
+    const definitions = constants.get(node.text);
+    if (definitions?.length === 1) return alternatives(definitions[0], depth + 1);
+  }
+  return [node];
+}
+function allValues(node: ts.Node, allowed: string[]): boolean {
+  const values = alternatives(node).map(value => ts.isStringLiteral(value) ? value.text : value.getText());
+  return values.length > 0 && values.every(value => allowed.includes(value));
+}
+function properties(input: ts.Node): { name: string; value: ts.Node }[] | undefined {
+  const entries: { name: string; value: ts.Node }[] = [];
+  const branches = alternatives(input);
+  if (!branches.length) return undefined;
+  for (const branch of branches) {
+    if (branch.getText() === "undefined" || branch.kind === ts.SyntaxKind.FalseKeyword) continue;
+    if (!ts.isObjectLiteralExpression(branch)) return undefined;
+    for (const prop of branch.properties) {
+      if (!ts.isPropertyAssignment(prop)) return undefined;
+      const names = staticNames(prop.name);
+      if (!names) return undefined;
+      entries.push(...names.map(name => ({ name, value: prop.initializer })));
+    }
+  }
+  return entries;
+}
+
+const WRAPPERS = [
+  { name: "SectionCard", file: "components/ui/kit.tsx", slots: ["children", "action"], params: ["title", "icon", "tone", "children", "action"] },
+  { name: "Modal", file: "components/ui/Modal.tsx", slots: ["children"], params: ["open", "onClose", "title", "children", "maxWidth"] },
+  { name: "PlayShell", file: "components/ui/playkit.tsx", slots: ["children"], params: ["children", "className"] },
+  { name: "KidModeProvider", file: "components/kidmode/KidModeContext.tsx", slots: ["children"], params: ["children"] },
+] as const;
+function imported(source: ts.SourceFile, local: string, name: string, module: string): boolean {
+  return source.statements.some(statement => {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) return false;
+    const specifier = statement.moduleSpecifier.text;
+    const matchesModule = specifier === module || (specifier.startsWith(".") &&
+      path.resolve(SRC, path.dirname(source.fileName), specifier).replace(/\.[jt]sx?$/, "") === path.resolve(SRC, module).replace(/\.[jt]sx?$/, ""));
+    const clause = statement.importClause, bindings = clause?.namedBindings;
+    return matchesModule && (!!(clause?.name?.text === local && name === "Modal") ||
+      !!(bindings && ts.isNamedImports(bindings) && bindings.elements.some(binding => binding.name.text === local && (binding.propertyName ?? binding.name).text === name)));
+  });
+}
+
+// This value is inspected and mutation-tested against its real declaration below.
+const CARD_CLASSES = "bg-white rounded-[18px] border border-[var(--arbor-rule)] shadow-[var(--shadow-xs)]";
+function classFragments(input: ts.Node, depth = 0): string[] {
+  if (depth > 8) return [];
+  const resolved = strings(input);
+  if (resolved) return resolved;
+  const result: string[] = [];
+  for (const node of alternatives(input)) {
+    if (ts.isIdentifier(node)) {
+      if (["lib/tokens.ts", "components/ui/kit.tsx"].some(file => imported(node.getSourceFile(), node.text, "cardCls", file))) result.push(CARD_CLASSES);
+      // Unresolved caller/runtime class inputs and arbitrary external CSS remain
+      // explicit rendered-review limits. Inspect every literal branch/fragment.
+    } else if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) ||
+        node.kind === ts.SyntaxKind.TemplateHead || node.kind === ts.SyntaxKind.TemplateMiddle || node.kind === ts.SyntaxKind.TemplateTail) {
+      result.push((node as ts.StringLiteral).text);
+    } else ts.forEachChild(node, child => { result.push(...classFragments(child, depth + 1)); });
+  }
+  return result;
+}
+function classEffect(values: string[]): string {
+  for (const value of values) for (const token of value.split(/\s+/)) {
+    if (token === "opacity-100") continue;
+    if (/(?:^|:)!?(?:opacity-|text-opacity-|blur|brightness-|contrast-|grayscale|invert|sepia|saturate-|hue-rotate-|filter|mix-blend-|mask-|animate-)/.test(token) ||
+        /\[(?:opacity|filter|mix-blend-mode|mask|animation|--)/.test(token)) return "opacity/filter/token class";
+  }
+  return "";
+}
+
+// Enabled, settled state only. Initial/exit fades are excluded from this source
+// contrast contract. Keyframes, loops, unknown variants and reduced interactive
+// states never pass merely because one target happens to contain opacity: 1.
+function motionReason(entries: { name: string; value: ts.Node }[]): string {
+  const targets = entries.filter(entry => entry.name === "animate");
+  const initial = entries.filter(entry => entry.name === "initial");
+  if (entries.some(entry => ["variants", "whileHover", "whileTap", "whileFocus", "whileInView", "whileDrag"].includes(entry.name))) return "unverified motion state/variants";
+  if (initial.length && !targets.length) return "motion initial state has no settled target";
+  for (const { value } of [...initial, ...targets]) {
+    const props = properties(value);
+    if (!props) return "unresolved motion target";
+    const settled = targets.some(target => target.value === value);
+    for (const prop of props) {
+      if (prop.name === "opacity") {
+        if (!allValues(prop.value, settled ? ["1"] : ["0", "1"])) return "motion opacity is not settled neutral";
+      } else if (/^(?:x|y|z|rotate|rotateX|rotateY|rotateZ|scale|scaleX|scaleY|height|width)$/.test(prop.name)) {
+        if (settled && !allValues(prop.value, prop.name.startsWith("scale") ? ["1"] : ["height", "width"].includes(prop.name) ? ["0", "auto"] : ["0"])) return "motion transform is not settled neutral";
+      } else return "unverified motion property: " + prop.name;
+    }
+  }
+  if (initial.some(entry => properties(entry.value)?.some(prop => prop.name === "opacity")) &&
+      targets.some(entry => !alternatives(entry.value).every(branch => properties(branch)?.some(prop => prop.name === "opacity" && allValues(prop.value, ["1"]))))) return "motion target does not restore opacity";
+  for (const entry of entries.filter(entry => entry.name === "transition")) {
+    const props = properties(entry.value);
+    if (!props) return "unresolved motion transition";
+    if (props.some(prop => prop.name === "repeat" && !allValues(prop.value, ["0"]))) return "repeating motion has no settled proof";
+    if (props.some(prop => !["duration", "delay", "ease", "type", "damping", "stiffness", "mass", "bounce", "repeat"].includes(prop.name))) return "unverified motion transition";
+    if (props.some(prop => ["duration", "delay"].includes(prop.name) && alternatives(prop.value).some(value => !Number.isFinite(Number(value.getText())) || Number(value.getText()) < 0))) return "non-finite motion transition";
+  }
+  return "";
+}
+
+/** Explicit ancestor effects, not a complete CSS/caller-ancestry proof.
+ * Backgrounds, borders, shadows, layout and backdrop-only filters cannot alter
+ * an opaque child's fill. Known wrappers are guarded at their actual content
+ * slots below. Portal ancestry, arbitrary CSS and runtime classes need review.
+ */
+function ancestorPresentationReason(node: Opening): string {
+  const tag = node.tagName.getText(), source = node.getSourceFile();
+  const isMotion = /^\w+\.[a-z]+$/.test(tag) && imported(source, tag.split(".")[0], "motion", "motion/react");
+  const wrapper = WRAPPERS.find(item => imported(source, tag, item.name, item.file));
+  const presence = imported(source, tag, "AnimatePresence", "motion/react");
+  const contextProvider = tag === "KidModeContext.Provider" && source.fileName === "components/kidmode/KidModeContext.tsx";
+  if (!/^[a-z][a-z0-9-]*$/.test(tag) && !isMotion && !wrapper && !presence && !contextProvider) return "component presentation is unverified";
+  const entries: { name: string; value: ts.Node }[] = [];
+  for (const attribute of node.attributes.properties) {
+    if (ts.isJsxSpreadAttribute(attribute)) {
+      const spread = isMotion ? properties(attribute.expression) : undefined;
+      if (!spread) return "JSX spread may override presentation";
+      entries.push(...spread);
+    } else if (attribute.initializer) entries.push({ name: attribute.name.getText(), value: attribute.initializer });
+  }
+  for (const entry of entries) {
+    if (entry.name === "className") {
+      const reason = classEffect(classFragments(entry.value));
+      if (reason) return reason;
+    }
+    if (wrapper?.name === "Modal" && entry.name === "maxWidth") {
+      const values = alternatives(entry.value).flatMap(value => strings(value) ?? []);
+      if (!values.length || alternatives(entry.value).some(value => !strings(value))) return "Modal maxWidth must have literal class branches";
+      const reason = classEffect(values);
+      if (reason) return "Modal maxWidth: " + reason;
+      if (values.some(value => value.split(/\s+/).some(token => !/^(?:(?:sm|md|lg|xl|2xl):)*max-w-(?:[\w.-]+|\[[\w.%]+\])$/.test(token)))) return "Modal maxWidth must contain only width utilities";
+    }
+    if (entry.name === "style") {
+      const props = properties(entry.value);
+      if (!props) return "dynamic style/spread/computed key";
+      for (const prop of props) {
+        if (prop.name.startsWith("--")) return "token override: " + prop.name;
+        if (prop.name === "opacity") {
+          if (!allValues(prop.value, ["1"])) return "opacity is not neutral";
+        } else if (/^(?:(?:Webkit|Moz)?(?:filter|mask|mixBlendMode)|animation|all)/i.test(prop.name) && !allValues(prop.value, ["none", "normal"])) return "filter/compositing/animation: " + prop.name;
+      }
+    }
+  }
+  return isMotion ? motionReason(entries) : "";
+}
+function ancestorReason(node: ts.Node): string {
+  for (let parent = node.parent; parent; parent = parent.parent) {
+    if (!ts.isJsxElement(parent) || parent.openingElement === node) continue;
+    const reason = ancestorPresentationReason(parent.openingElement);
+    if (reason) return "ancestor <" + parent.openingElement.tagName.getText() + ">: " + reason;
+  }
+  return "";
 }
 
 function classify(node: ts.Node): string {
@@ -153,7 +336,109 @@ function classify(node: ts.Node): string {
     }
     if (!baseFill) return "no direct approved background (inheritance unverified)";
   }
-  return "";
+  return ancestorReason(node);
+}
+
+/** Small audited-source checks, not a component renderer or CSS cascade engine. */
+function wrapperProblems(text: string, spec: typeof WRAPPERS[number]): string[] {
+  const source = ts.createSourceFile(spec.file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const fn = source.statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === spec.name);
+  if (!fn) return ["missing wrapper declaration"];
+  const binding = fn.parameters[0]?.name;
+  if (!binding || !ts.isObjectBindingPattern(binding) || binding.elements.some(element => element.dotDotDotToken) ||
+      binding.elements.map(element => element.name.getText()).sort().join() !== [...spec.params].sort().join()) return ["wrapper prop/forwarding contract changed"];
+  const problems: string[] = [];
+  // Modal's unrestricted string becomes a className. Both its default and every
+  // white-label call site's argument must be width-only literal branches.
+  for (const element of binding.elements) {
+    if (!["maxWidth", "className"].includes(element.name.getText())) continue;
+    const defaults = element.initializer && strings(element.initializer);
+    if (!defaults || classEffect(defaults)) problems.push("unsafe wrapper class default");
+    if (element.name.getText() === "maxWidth" && defaults?.some(value => !/^max-w-[\w.-]+$/.test(value))) problems.push("unverified Modal width default");
+  }
+  const seen = new Set<string>();
+  const classInputKnown = (input: ts.Node, depth = 0): boolean => {
+    if (depth > 8) return false;
+    for (const node of alternatives(input)) {
+      if (ts.isIdentifier(node)) {
+        if (imported(source, node.text, "cardCls", "lib/tokens.ts")) continue;
+        if (spec.name === "Modal" && node.text === "maxWidth") continue;
+        if (spec.name === "PlayShell" && node.text === "className") continue;
+        return false;
+      }
+      let valid = true;
+      ts.forEachChild(node, child => { if (!classInputKnown(child, depth + 1)) valid = false; });
+      if (!valid) return false;
+    }
+    return true;
+  };
+  const visit = (node: ts.Node) => {
+    if (ts.isJsxExpression(node) && node.expression && ts.isIdentifier(node.expression) && (spec.slots as readonly string[]).includes(node.expression.text)) {
+      seen.add(node.expression.text);
+      const reason = ancestorReason(node);
+      if (reason) problems.push(reason);
+      for (let parent = node.parent; parent && parent !== fn; parent = parent.parent) {
+        if (!ts.isJsxElement(parent)) continue;
+        const classes = attr(parent.openingElement, "className")?.initializer;
+        if (classes && !classInputKnown(classes)) problems.push("wrapper forwards unverified class input");
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(fn);
+  if (spec.slots.some(slot => !seen.has(slot))) problems.push("rendered slot contract changed");
+  // Modal portals to body, so its own token scope must survive independently
+  // of the caller. Its maxWidth input is checked at every imported call site.
+  if (spec.name === "Modal" && (!text.includes("return createPortal(") || !text.includes("document.body") || !text.includes('className="arbor-app fixed'))) problems.push("Modal portal/token scope changed");
+  return problems;
+}
+
+// Examine only the reviewed classes' own rules/state selectors and two named
+// keyframes. Arbitrary CSS/cascade remains outside this deliberately small audit.
+const AUDITED_CLASSES = ["arbor-app", "arbor-parent", "arbor-play", "comic-panel", "world-tile", "play-pop-in", "sprout-bob"];
+function cssProblems(input: string): string[] {
+  const css = input.replace(/\/\*[\s\S]*?\*\//g, "");
+  const problems: string[] = [];
+  const seen = new Set<string>();
+  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selectors = match[1].trim().split(",").map(selector => selector.trim());
+    for (const selector of selectors) {
+      const name = AUDITED_CLASSES.find(name => new RegExp("(?:^|[ >+~])\\." + name + "(?:[.#[:][^ >+~]*)?$").test(selector));
+      if (!name) continue;
+      seen.add(name);
+      const inactive = selector === '.world-tile[aria-disabled="true"]';
+      for (const declaration of match[2].split(";")) {
+        const colon = declaration.indexOf(":");
+        if (colon < 0) continue;
+        const property = declaration.slice(0, colon).trim(), value = declaration.slice(colon + 1).trim();
+        if (inactive && ((property === "opacity" && value === "0.62") || (property === "filter" && value === "grayscale(0.35)"))) continue;
+        if (property === "opacity" && value !== "1") problems.push(selector + ": opacity");
+        if (/^(?:-(?:webkit|moz)-)?(?:filter|mix-blend-mode|mask|animation)/.test(property) && !["none", "normal"].includes(value)) {
+          if (property === "animation" && selector === ".play-pop-in" && value === "play-pop-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both") continue;
+          if (property === "animation" && selector === ".sprout-bob" && value === "sprout-bob 3s ease-in-out infinite") continue;
+          problems.push(selector + ": " + property);
+        }
+        // Root/theme/flat approved colour scopes are covered by tokens.contrast;
+        // a different reviewed class must never override a label's colour token.
+        if (property.startsWith("--arbor-") && ![".arbor-app", ".arbor-parent"].includes(selector)) problems.push(selector + ": token override");
+      }
+    }
+  }
+  for (const name of AUDITED_CLASSES) if (!seen.has(name)) problems.push("missing CSS class: " + name);
+  for (const name of ["play-pop-in", "sprout-bob"]) {
+    const start = css.indexOf("@keyframes " + name);
+    const open = css.indexOf("{", start);
+    let end = open + 1, depth = 1;
+    for (; open >= 0 && end < css.length && depth; end++) {
+      if (css[end] === "{") depth++;
+      if (css[end] === "}") depth--;
+    }
+    const frames = css.slice(open + 1, end - 1);
+    if (start < 0 || depth || /(?:filter|mask|mix-blend-mode|--[\w-]+)\s*:/.test(frames)) problems.push(name + ": unverified keyframes");
+    if (name === "sprout-bob" && /opacity\s*:/.test(frames)) problems.push("sprout-bob: opacity loop");
+    if (name === "play-pop-in" && !/100%\s*\{\s*opacity:\s*1;\s*transform:\s*scale\(1\) translateY\(0\);\s*\}/.test(frames)) problems.push("play-pop-in: non-neutral settled state");
+  }
+  return problems;
 }
 
 const printer = ts.createPrinter({ removeComments: true });
@@ -486,7 +771,7 @@ describe("CR-01 white-label source ratchet — future regressions, not legacy co
     const debt = FROZEN_DEBT.filter(item => !RETIRED_DEBT.includes(keyOf(item)));
     const result = ratchet(cases, debt);
     const report = result.introduced.map(item => item.file + ":" + item.line + " — " + item.reason + " [" + item.fingerprint + "]");
-    expect(report, "Use a direct approved fill or resolve the consumer; never grow/reset frozen debt.").toEqual([]);
+    expect(report, "Prove the fill and ancestor presentation or resolve the consumer; never grow/reset frozen debt.").toEqual([]);
     expect(result.stale, "Resolved/removed case: add its exact key to RETIRED_DEBT.").toEqual([]);
   }, 20_000);
 });
@@ -537,6 +822,136 @@ describe("CR-01 white-label negative controls", () => {
     const cases = scan(source);
     expect(cases.length).toBeGreaterThan(0);
     expect(ratchet(cases, []).introduced.length).toBeGreaterThan(0);
+  });
+
+  it("rejects scope-dependent subtab fills even with a static app/parent class", () => {
+    for (const source of [
+      label("var(--arbor-subtab-active)"),
+      '<div className="arbor-app arbor-parent">' + label("var(--arbor-subtab-active)") + '</div>',
+    ]) expect(ratchet(scan(source), []).introduced).toHaveLength(1);
+  });
+
+  it.each([
+    'style={{ opacity: .5 }}',
+    'className="opacity-50"',
+    'className="disabled:opacity-50"',
+    'style={{ "--arbor-clay": "white" }}',
+    'className="[--arbor-clay:white]"',
+    'className="hover:opacity-50"',
+    'style={{ filter: "opacity(.5)" }}',
+    'style={{ WebkitMaskImage: "linear-gradient(transparent, white)" }}',
+    'style={{ animation: "fade 1s" }}',
+    'style={parentStyle}',
+    'style={{ ...parentStyle }}',
+    'style={{ [property]: value }}',
+
+    '{...parentProps}',
+  ])("rejects an otherwise safe child under unresolved ancestor %s", attributes => {
+    // Include a neutral intermediate element: every ancestor must be checked.
+    const source = '<section ' + attributes + '><div className="p-4">' + label("var(--arbor-clay)") + '</div></section>';
+    const cases = scan(source);
+    expect(cases).toHaveLength(1);
+    expect(cases[0].reason).toMatch(/^ancestor /);
+    expect(ratchet(cases, []).introduced).toHaveLength(1);
+  });
+
+  it("rejects component ancestors whose presentation cannot be proved locally", () => {
+    for (const tag of ["Panel", "motion.div"]) {
+      const source = '<' + tag + '>' + label("var(--arbor-clay)") + '</' + tag + '>';
+      expect(scan(source)[0].reason).toContain("ancestor <" + tag + ">");
+    }
+  });
+
+  it("accepts neutral static ancestry and full opacity with an opaque child fill", () => {
+    const source = '<section className="flex gap-4 bg-white" style={{ opacity: 1, padding: 16 }}><div className="opacity-100">' + label("var(--arbor-clay)") + '</div></section>';
+    expect(scan(source)).toHaveLength(1);
+    expect(scan(source)[0].reason).toBe("");
+  });
+
+  it("guards the actual shared wrapper slots and fixed card chrome", () => {
+    for (const spec of WRAPPERS) {
+      const source = readFileSync(path.join(SRC, spec.file), "utf8");
+      expect(wrapperProblems(source, spec), spec.name).toEqual([]);
+      const start = source.indexOf("export function " + spec.name);
+      const mutateSlot = (replacement: string) => source.slice(0, start) + source.slice(start).replace("{children}", replacement);
+      const changed = mutateSlot( '<div style={{ opacity: .5 }}>{children}</div>');
+      expect(wrapperProblems(changed, spec), spec.name + " injected opacity").not.toEqual([]);
+      const override = mutateSlot( '<div style={{ "--arbor-clay": "white" }}>{children}</div>');
+      expect(wrapperProblems(override, spec), spec.name + " injected token").not.toEqual([]);
+      if (spec.name === "SectionCard") {
+        expect(wrapperProblems(source.replace('className={`${cardCls} p-6`}', 'className={`${cardCls} p-6 opacity-50`}'), spec)).not.toEqual([]);
+        expect(wrapperProblems(source.replace('children, action }:', 'children, action, ...rest }:').replace('className={`${cardCls} p-6`}', 'className={`${cardCls} p-6`} {...rest}'), spec)).not.toEqual([]);
+      }
+      if (spec.name === "Modal") {
+        expect(wrapperProblems(source.replace('maxWidth = "max-w-lg"', 'maxWidth = "max-w-lg opacity-50"'), spec)).not.toEqual([]);
+        // Both portal layers must settle neutral, not just the dialog itself.
+        expect(wrapperProblems(source.replace('animate={{ opacity: 1 }}', 'animate={{ opacity: .5 }}'), spec)).not.toEqual([]);
+        expect(wrapperProblems(source.replace('animate={{ opacity: 1, scale: 1', 'animate={{ opacity: .5, scale: 1'), spec)).not.toEqual([]);
+      }
+    }
+    const tokens = ts.createSourceFile("lib/tokens.ts", readFileSync(path.join(SRC, "lib/tokens.ts"), "utf8"), ts.ScriptTarget.Latest, true);
+    let found: string[] | undefined;
+    const visit = (node: ts.Node) => {
+      if (ts.isVariableDeclaration(node) && node.name.getText() === "cardCls") found = strings(node.initializer);
+      ts.forEachChild(node, visit);
+    };
+    visit(tokens);
+    expect(found).toEqual([CARD_CLASSES]);
+    expect(classEffect([CARD_CLASSES])).toBe("");
+    expect(classEffect([CARD_CLASSES + " opacity-50"])).not.toBe("");
+  });
+
+  it("guards audited CSS/state rules, settled pop-in and transform-only bob", () => {
+    const css = readFileSync(path.join(SRC, "index.css"), "utf8");
+    expect(cssProblems(css)).toEqual([]);
+    for (const changed of [
+      css.replace(".comic-panel {", ".comic-panel { opacity: .5;"),
+      css.replace(".comic-panel {", ".comic-panel { --arbor-clay: white;"),
+      css + "\n.world-tile:hover { opacity: .5; }",
+      css.replace('.world-tile[aria-disabled="true"] {', '.world-tile {'),
+      css.replace(".comic-panel {", ".comic-panel { -webkit-filter: opacity(.5);"),
+      css + "\n.arbor-app:hover { --arbor-clay: white; }",
+      css.replace("100% { opacity: 1; transform: scale(1)", "100% { opacity: .5; transform: scale(1)"),
+      css.replace("50%      { transform: translateY(-6px)", "50%      { opacity: .5; transform: translateY(-6px)"),
+    ]) expect(cssProblems(changed)).not.toEqual([]);
+  });
+
+  it("inspects all class branches and literals while keeping runtime/CSS limits explicit", () => {
+    for (const extra of ['const outer = "opacity-50";', 'const outer = enabled ? "p-4" : "opacity-50";', 'const outer = "[--arbor-clay:white]";']) {
+      expect(scan(extra + '<div className={outer}>' + label("var(--arbor-clay)") + '</div>')[0].reason).not.toBe("");
+    }
+    expect(scan('<div className={`p-4 ${runtimeClass} opacity-50`}>' + label("var(--arbor-clay)") + '</div>')[0].reason).not.toBe("");
+    // No claim about the runtimeClass value or arbitrary external CSS here.
+    expect(scan('<div className={`p-4 ${runtimeClass}`}>' + label("var(--arbor-clay)") + '</div>')[0].reason).toBe("");
+  });
+
+  it("validates every literal Modal maxWidth branch and actual import provenance", () => {
+    const prefix = 'import { Modal } from "./components/ui/Modal"; ';
+    for (const arg of ['"max-w-lg opacity-50"', 'wide ? "max-w-xl" : "opacity-50"', '"[--arbor-clay:white]"', 'runtimeWidth']) {
+      expect(scan(prefix + '<Modal maxWidth={' + arg + '}>' + label("var(--arbor-clay)") + '</Modal>')[0].reason).not.toBe("");
+    }
+    expect(scan(prefix + '<Modal maxWidth={wide ? "max-w-xl" : "max-w-lg"}>' + label("var(--arbor-clay)") + '</Modal>')[0].reason).toBe("");
+    expect(scan('import { SectionCard } from "./unreviewed"; <SectionCard>' + label("var(--arbor-clay)") + '</SectionCard>')[0].reason).not.toBe("");
+    expect(scan('import { SectionCard } from "./components/ui/kit"; <SectionCard>' + label("var(--arbor-clay)") + '</SectionCard>')[0].reason).toBe("");
+  });
+
+  it("accepts only known neutral settled motion, including local branch props", () => {
+    const prefix = 'import { motion } from "motion/react"; ';
+    const wrap = (props: string, locals = "") => scan(prefix + locals + '<motion.div ' + props + '>' + label("var(--arbor-clay)") + '</motion.div>')[0].reason;
+    expect(wrap('initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}')).toBe("");
+    expect(wrap('{...props}', 'const props = reduce ? { initial: {opacity: 0}, animate: {opacity: 1} } : { initial: {opacity: 0, y: 12}, animate: {opacity: 1, y: 0} };')).toBe("");
+    for (const props of [
+      'initial={{ opacity: 0 }} animate={{ opacity: .5 }}',
+      'initial={{ opacity: 0 }} animate={{ x: 0 }}',
+      'initial={{ opacity: 0 }}',
+      'animate={{ opacity: [0, 1] }}',
+      'animate={{ opacity: 1 }} transition={{ repeat: Infinity }}',
+      'animate="visible" variants={variants}',
+      'animate={{ opacity: 1 }} whileHover={{ opacity: .5 }}',
+      'animate={{ opacity: 1 }} whileTap={{ opacity: .5 }}',
+      'animate={{ opacity: 1, "--arbor-clay": "white" }}',
+      'animate={{ opacity: 1 }} style={{ opacity: .5 }}',
+    ]) expect(wrap(props), props).not.toBe("");
   });
 
   it("invalidates an exemption when an unsafe background changes, without line-number churn", () => {
