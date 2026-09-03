@@ -60,7 +60,7 @@
       "operatingSystem": "Web",
       "url": "https://arborparentingapp.com/marketing/",
       "image": "https://arborparentingapp.com/brand/arbor-mark-transparent.png",
-      "description": "Arbor היא מערכת הפעלה להתפתחות הילד: זיכרון חי, הכוונה ממומחים, משחק יומי, סיפורים אישיים וסיכום מקצועי מאושר להורה.",
+      "description": "Arbor היא מערכת הפעלה להתפתחות הילד: זיכרון חי, הכוונה מבוססת ידע מומחים, משחק יומי, סיפורים אישיים וסיכום מקצועי מאושר להורה.",
       "publisher": {
         "@id": "https://arborparentingapp.com/#organization"
       },
@@ -294,8 +294,6 @@ section{position:relative}
 .ans-row:last-child{border-bottom:none}
 .ans-k{font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--green-700);display:flex;align-items:center;justify-content:space-between;gap:.5rem}
 .ans-v{font-size:.88rem;line-height:1.5;color:var(--ink);margin-top:.25rem}
-.risk-pill{font-size:.66rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:.16rem .5rem;border-radius:var(--r-pill)}
-.risk-low{color:var(--green-700);background:var(--green-50);border:1px solid var(--green-100)}
 .todo{display:flex;gap:.5rem;font-size:.85rem;color:var(--ink-2);margin-top:.3rem;line-height:1.4}
 .todo .tick{flex:none;width:16px;height:16px;border-radius:5px;background:var(--green-50);border:1px solid var(--green-200);display:grid;place-items:center;color:var(--green);margin-top:.1rem}
 .todo .tick svg{width:10px;height:10px}
@@ -571,7 +569,6 @@ footer{padding:3.5rem 0 2.5rem;border-top:1px solid var(--line);margin-top:clamp
 .mock-badge span{font-family:var(--mono);color:var(--coral-brand);font-size:.72rem}
 .bubble-ask{background:linear-gradient(135deg,var(--blue-brand),var(--cyan-brand));box-shadow:0 18px 40px -26px var(--blue-brand)}
 .ans-k{color:var(--blue-brand)}
-.risk-low{color:var(--blue-brand);background:oklch(0.95 0.04 235);border-color:oklch(0.84 0.08 230)}
 .todo .tick,.cap-points .tick,.aud-list .tick,.tier ul .tick{background:transparent;border:0;color:var(--blue-brand);font-family:var(--mono)}
 .todo .tick::before,.cap-points .tick::before,.aud-list .tick::before,.tier ul .tick::before{content:"+"}
 .proof{background:var(--navy);padding:0}
@@ -865,7 +862,7 @@ h1,h2,h3,h4{font-family:var(--sans);font-weight:850;color:var(--ds-ink);letter-s
 .mock-badge{animation:none !important;background:oklch(1 0 0 / .94);border:1px solid var(--ds-line);color:var(--ds-blue);box-shadow:var(--ds-shadow-sm);backdrop-filter:none}
 .mock-badge span{color:var(--ds-blue)}
 .mock-head{background:oklch(0.985 0.008 220);border-color:var(--ds-line)}
-.mock-chip,.risk-low{background:var(--ds-mint);border-color:oklch(0.84 0.06 188);color:var(--ds-blue)}
+.mock-chip{background:var(--ds-mint);border-color:oklch(0.84 0.06 188);color:var(--ds-blue)}
 .bubble-ask{background:var(--ds-blue);box-shadow:none}
 .answer{background:oklch(0.978 0.010 224);border-color:var(--ds-line);border-radius:16px 16px 16px 6px}
 .ans-k{color:var(--ds-blue)}
@@ -1048,8 +1045,8 @@ footer{background:var(--ds-bg);margin-top:0}
               <div class="ans-v">זה נראה כמו עומס של עייפות יחד עם קושי במעבר. Arbor בדק את הבקרים האחרונים של מאיה, את הגיל, סימני בטיחות ואת השגרה הפעילה לפני שענה.</div>
             </div>
             <div class="ans-row">
-              <div class="ans-k">רמת דחיפות <span class="risk-pill risk-low">נמוכה</span></div>
-              <div class="ans-v">זה שכיח בגיל הזה. כדאי להתחיל בהתאמה של השגרה, ולפנות לעזרה אם הדפוס נמשך או מתחזק.</div>
+              <div class="ans-k">מה תועד</div>
+              <div class="ans-v">3 בקרים דומים בשבועיים האחרונים. שכיח בגיל הזה — כדאי להתחיל בהתאמה של השגרה, ולפנות לעזרה אם הדפוס נמשך או מתחזק.</div>
             </div>
             <div class="ans-row">
               <div class="ans-k">לנסות הערב</div>
@@ -1191,7 +1188,7 @@ footer{background:var(--ds-bg);margin-top:0}
                 <rect x="216" y="110" width="190" height="34" rx="9" fill="var(--card-2)" stroke="var(--line-2)"/>
                 <circle cx="234" cy="127" r="5" fill="var(--green)"/><text x="248" y="131" class="dlabel">הבנה</text>
                 <rect x="216" y="150" width="190" height="34" rx="9" fill="var(--card-2)" stroke="var(--line-2)"/>
-                <circle cx="234" cy="167" r="5" fill="var(--amber)"/><text x="248" y="171" class="dlabel">דחיפות</text>
+                <circle cx="234" cy="167" r="5" fill="var(--green-400)"/><text x="248" y="171" class="dlabel">מה תועד</text>
                 <rect x="216" y="190" width="190" height="34" rx="9" fill="var(--card-2)" stroke="var(--line-2)"/>
                 <circle cx="234" cy="207" r="5" fill="var(--blue)"/><text x="248" y="211" class="dlabel">הערב</text>
               </g>
@@ -1483,7 +1480,7 @@ footer{background:var(--ds-bg);margin-top:0}
       <div class="prom-card">
         <div class="pi"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="11" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
         <h4>הסיפור שלכם, בשליטה שלכם</h4>
-        <p>אתם מאשרים מה נשמר, בוחרים מה לשתף, ויכולים לייצא או למחוק. הסיפור של הילד שייך למשפחה.</p>
+        <p>אתם מאשרים מה נשמר ובוחרים מה לשתף. הסיפור של הילד שייך למשפחה.</p>
       </div>
       <div class="prom-card">
         <div class="pi"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13c3-1 5 1 7 0s4-2 7-1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5 17c3-1 5 1 7 0s4-2 7-1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="7" r="2.6" stroke="currentColor" stroke-width="1.6"/></svg></div>
@@ -1517,9 +1514,9 @@ footer{background:var(--ds-bg);margin-top:0}
       <div class="tier feat">
         <div class="tname">Arbor פלוס</div>
         <div class="price"><b>&euro;12.99</b><span>/ חודש</span></div>
-        <div class="for">למשפחות שרוצות את Arbor כמערכת יומיומית: הכוונה, משחקים, אקדמיה, תרגול, תוכניות וסיכומים. &euro;119 בשנה.</div>
+        <div class="for">למשפחות שרוצות את Arbor כמערכת יומיומית: הכוונה, משחקים, אקדמיה, תרגול, תוכניות וסיכומים.</div>
         <ul>
-          <li><span class="tick"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>הכוונה ממומחים עם ההקשר של הילד</li>
+          <li><span class="tick"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>הכוונה מבוססת ידע מומחים עם ההקשר של הילד</li>
           <li><span class="tick"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>משחק יומי, תרגול ואקדמיה ללא הגבלה</li>
           <li><span class="tick"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>תוכניות גדילה וסיכומים לאנשי מקצוע</li>
         </ul>
@@ -1528,7 +1525,7 @@ footer{background:var(--ds-bg);margin-top:0}
       <div class="tier">
         <div class="tname">Arbor משפחתי</div>
         <div class="price"><b>&euro;19.99</b><span>/ חודש</span></div>
-        <div class="for">למשפחות שבהן יותר מילד אחד, או יותר ממבוגר אחד, צריכים לחלוק תמונה אחת ברורה. &euro;179 בשנה.</div>
+        <div class="for">למשפחות שבהן יותר מילד אחד, או יותר ממבוגר אחד, צריכים לחלוק תמונה אחת ברורה.</div>
         <ul>
           <li><span class="tick"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>כל מה שבפלוס, לכל המשפחה</li>
           <li><span class="tick"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>הקשר משותף להורים</li>
@@ -1568,7 +1565,7 @@ footer{background:var(--ds-bg);margin-top:0}
           <span class="leafmark" aria-hidden="true"><img src="../brand/arbor-mark-transparent.png" alt="" /></span>
           Arbor
         </a>
-        <p>מערכת הפעלה להתפתחות הילד: הכוונה ממומחים, זיכרון חי, משחקים מותאמים, סיפורים אישיים ותמיכה מקצועית כשצריך.</p>
+        <p>מערכת הפעלה להתפתחות הילד: הכוונה מבוססת ידע מומחים, זיכרון חי, משחקים מותאמים, סיפורים אישיים ותמיכה מקצועית כשצריך.</p>
       </div>
       <div class="foot-cols">
         <div class="foot-col">

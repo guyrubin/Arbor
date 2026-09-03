@@ -24,6 +24,7 @@ jobs:
       - run: npm test
       - run: npm run check:framework
       - run: npm run check:floors
+      - run: npm run check:marketing
       - run: npm run eval:safety
       - run: npm run check:acceptance
       - run: npm run build
