@@ -17,7 +17,7 @@ import {
  * CONT-2 / CODEX-5(surfaces) — acceptance tests for the AR-CONT-01 consuming
  * surfaces built dark (2026-07-23 next-level wave 3).
  *
- * Both acceptance states are asserted:
+ * Historical review-only acceptance states (NOW predates the pilot) are asserted:
  *   1. REAL all-draft pack  → zero UI (selectors return nothing; components
  *      source-scanned to gate on the published list).
  *   2. APPROVED fixture     → the surfaces get content, escalation text
@@ -56,9 +56,9 @@ const log = (behaviorType: string, daysAgo = 1) => ({
 
 // ─── State 1: the REAL all-draft pack → zero UI ────────────────────────────
 
-describe("CONT-2 — with the real all-draft pack, every surface input is empty", () => {
+describe("CONT-2 — before the pilot release, the all-draft pack is unavailable", () => {
   it("Today offer derivation returns null even on a strong behavior match", () => {
-    expect(todayHardMomentOffer([log("Sibling Conflict"), log("Hitting")], hardMomentCards, NOW)).toBeNull();
+    expect(todayHardMomentOffer([log("Sibling Conflict"), log("Hitting")], hardMomentCards, NOW, 36)).toBeNull();
   });
 
   it("the authoring pack still publishes nothing (governance is the switch)", async () => {
@@ -68,7 +68,7 @@ describe("CONT-2 — with the real all-draft pack, every surface input is empty"
 
   it("BehaviorsTab section hides itself when the published list is empty", () => {
     const code = stripComments(read("components/behaviors/HardMomentsSection.tsx"));
-    expect(code).toMatch(/if\s*\(publishedHardMomentCards\.length\s*===\s*0\)\s*return null/);
+    expect(code).toMatch(/if\s*\(cards\.length\s*===\s*0\)\s*return null/);
   });
 
   it("CoachTab chips are gated on a non-empty published list", () => {
@@ -87,11 +87,11 @@ describe("CONT-2 — with the real all-draft pack, every surface input is empty"
 describe("CONT-2 — with an approved fixture the surfaces get content", () => {
   it("Today offer matches recent behavior-log categories via selectCards", () => {
     const fixtures = [approve(find("hitting")), approve(find("bedtime")), find("tantrum")];
-    const offer = todayHardMomentOffer([log("Hitting"), log("Sleep Meltdown", 3)], fixtures, NOW);
+    const offer = todayHardMomentOffer([log("Hitting"), log("Sleep Meltdown", 3)], fixtures, NOW, 36);
     expect(offer).not.toBeNull();
     expect(["hitting", "bedtime"]).toContain(offer!.card.id);
     // A draft never wins, regardless of match strength.
-    const draftOnly = todayHardMomentOffer([log("Tantrum")], [find("tantrum")], NOW);
+    const draftOnly = todayHardMomentOffer([log("Tantrum")], [find("tantrum")], NOW, 36);
     expect(draftOnly).toBeNull();
   });
 
@@ -121,7 +121,7 @@ describe("CONT-2 firewall — escalation rendered VERBATIM, never paraphrased", 
 
   it("the safety band reads through escalationText with zero transformation", () => {
     const code = stripComments(read("components/behaviors/HardMomentsSection.tsx"));
-    expect(code).toContain("{escalationText(openCard, locale)}");
+    expect(code).toContain("{escalationText(card, locale)}");
     // No string surgery anywhere near the escalation read path.
     expect(code).not.toMatch(/escalationText\([^)]*\)\s*\.\s*(replace|slice|trim|toLowerCase|toUpperCase|split|concat)/);
   });
@@ -164,7 +164,7 @@ describe("coach-hardmoment-seed-v1 — deterministic seed contract on the fixtur
   it("the seed embeds the governed escalation byte-identical for every scenario", () => {
     for (const scenario of suite.scenarios) {
       const card = approve(find(scenario.cardId));
-      const seed = buildHardMomentSeedPrompt(card, scenario.locale, "Noa");
+      const seed = buildHardMomentSeedPrompt(card, scenario.locale, "Noa", { now: NOW, ageMonths: Number(card.ageBands[0].split("-")[0]) * 12 });
       const escalation = scenario.locale === "he" ? card.escalation.he : card.escalation.en;
       expect(seed.includes(escalation), `${scenario.id}: escalation not byte-identical in seed`).toBe(true);
       expect(seed).toContain("never paraphrased");
@@ -175,7 +175,7 @@ describe("coach-hardmoment-seed-v1 — deterministic seed contract on the fixtur
 
   it("the seed carries the card scope (all four coaching sections)", () => {
     const card = approve(find("hitting"));
-    const seed = buildHardMomentSeedPrompt(card, "en");
+    const seed = buildHardMomentSeedPrompt(card, "en", undefined, { now: NOW, ageMonths: 36 });
     for (const text of [card.doNow.en, card.avoid.en, card.observe.en]) expect(seed).toContain(text);
     expect(seed).toContain(card.title.en);
     expect(seed).toContain("within the scope of this guide");
@@ -184,7 +184,7 @@ describe("coach-hardmoment-seed-v1 — deterministic seed contract on the fixtur
 
 // ─── Structural guards: fail-closed wiring + existing seams only ────────────
 
-describe("CONT-2/CODEX-5 — surfaces consume ONLY the published export and existing seams", () => {
+describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams", () => {
   const SURFACES = [
     "components/behaviors/HardMomentsSection.tsx",
     "components/overview/HardMomentTodayOffer.tsx",
@@ -200,14 +200,14 @@ describe("CONT-2/CODEX-5 — surfaces consume ONLY the published export and exis
     });
   }
 
-  it("BehaviorsTab renders the section; the section reads publishedHardMomentCards", () => {
+  it("BehaviorsTab renders the section; the section selects at call time", () => {
     expect(stripComments(read("components/tabs/BehaviorsTab.tsx"))).toContain("<HardMomentsSection />");
-    expect(stripComments(read("components/behaviors/HardMomentsSection.tsx"))).toContain("publishedHardMomentCards");
+    expect(stripComments(read("components/behaviors/HardMomentsSection.tsx"))).toContain("availableHardMomentCards(context)");
   });
 
   it("Today offer goes through the EXISTING acceptTodayAction seam — no new capture path", () => {
     const code = stripComments(read("components/overview/HardMomentTodayOffer.tsx"));
-    expect(code).toMatch(/acceptTodayAction\(doNow,\s*"standard"\)/);
+    expect(code).toContain('acceptTodayAction(locText(current.doNow, locale), "standard")');
     expect(code).not.toMatch(/handleAddLog|upsert|firestore|setDoc/i);
     // OverviewTab mounts it inside the day-anchor column.
     expect(stripComments(read("components/tabs/OverviewTab.tsx"))).toContain("<HardMomentTodayOffer />");
@@ -216,7 +216,8 @@ describe("CONT-2/CODEX-5 — surfaces consume ONLY the published export and exis
   it("coach entry uses the EXISTING seedCoach seam with provenance", () => {
     for (const rel of ["components/tabs/CoachTab.tsx", "components/behaviors/HardMomentsSection.tsx"]) {
       const code = stripComments(read(rel));
-      expect(code, `${rel} misses the seedCoach seam`).toMatch(/seedCoach\(\{\s*prompt:\s*buildHardMomentSeedPrompt\(/);
+      expect(code, `${rel} misses the seedCoach seam`).toContain("seedCoach({");
+      expect(code).toContain("buildHardMomentSeedPrompt(");
       expect(code, `${rel} misses seed provenance`).toContain('source: "hard-moment-card"');
     }
   });

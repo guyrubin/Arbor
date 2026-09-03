@@ -7,19 +7,9 @@ import {
   type HardMomentCategory,
 } from "./hardMomentCards";
 import { matchToRecentBehaviors } from "./selectCards";
+import { hardMomentPublication, type HardMomentContext, type PilotRelease } from "./pilotRelease";
 
-/**
- * CONT-2 / CODEX-5(surfaces) — the PURE presentation layer for the AR-CONT-01
- * hard-moment surfaces (Behaviors / Today / Ask Arbor). Every function here is
- * side-effect free so both acceptance states are unit-testable:
- *   - with an approved fixture card the surfaces get content, and
- *   - with the real all-draft pack every selector returns nothing (zero UI).
- *
- * FAIL-CLOSED: all card input flows through selectCards, whose selectors
- * filter via isPublishableContent at call time — a draft or retired record
- * NEVER reaches a component. Components import ONLY this module +
- * publishedHardMomentCards, never the raw authoring list.
- */
+/** Pure presentation helpers; selectors and action seeds share the release policy. */
 
 /** Stable chip order for the Behaviors "Hard moments" section. */
 export const HARD_MOMENT_CATEGORIES: HardMomentCategory[] = [
@@ -40,7 +30,7 @@ export function locText(text: LocalizedText, locale: ContentLocale): string {
  * CONT-2 firewall CONDITION — the escalation band renders VERBATIM from the
  * governed record. This helper is the single read path: a bare field access
  * with zero transformation, so the rendered string is byte-identical to what
- * the named clinical reviewer stamped (asserted in hardMomentSurfaces.test.ts).
+ * the released record contains (asserted in hardMomentSurfaces.test.ts).
  */
 export function escalationText(card: HardMomentCard, locale: ContentLocale): string {
   return locale === "he" ? card.escalation.he : card.escalation.en;
@@ -70,7 +60,7 @@ export interface HardMomentTodayOffer {
  * Today surface derivation: the single best PUBLISHED card matching the
  * parent's recent behavior-log categories (selectCards.matchToRecentBehaviors
  * ranks by concern overlap). Null = render nothing — day-0 users, no matching
- * moments, or (today) the all-draft pack. The offer's doNow is handed to the
+ * moments, or no currently available guide for this age and locale. The offer's doNow is handed to the
  * EXISTING acceptTodayAction seam — no new capture path.
  */
 export function todayHardMomentOffer(
@@ -78,10 +68,12 @@ export function todayHardMomentOffer(
   cards: HardMomentCard[] = hardMomentCards,
   now: Date = new Date(),
   ageMonths?: number | null,
+  locale: ContentLocale = "en",
+  release?: PilotRelease,
 ): HardMomentTodayOffer | null {
   const types = recentBehaviorTypes(logs, now);
   if (types.length === 0) return null;
-  const matched = matchToRecentBehaviors(types, cards, now, ageMonths);
+  const matched = matchToRecentBehaviors(types, cards, now, ageMonths, locale, release);
   return matched.length > 0 ? { card: matched[0] } : null;
 }
 
@@ -99,16 +91,22 @@ export function buildHardMomentSeedPrompt(
   card: HardMomentCard,
   locale: ContentLocale,
   childName?: string,
+  context?: Omit<HardMomentContext, "locale">,
 ): string {
+  const publication = hardMomentPublication(card, { ...context, ageMonths: context?.ageMonths, locale });
+  if (!publication) return "";
   const sayThis = locText(renderSayThis(card, childName), locale);
   const escalation = escalationText(card, locale);
   return [
     `I want to talk through a hard moment: "${locText(card.title, locale)}".`,
-    "Here is the reviewed Arbor guide I am following:",
+    publication === "editorial-pilot"
+      ? "Here is an Arbor editorial pilot guide. It has not had individual clinical review; do not describe it as clinician-approved."
+      : "Here is the reviewed Arbor guide I am following:",
     `- Do now: ${locText(card.doNow, locale)}`,
     `- Say this: ${sayThis}`,
     `- Avoid: ${locText(card.avoid, locale)}`,
     `- What to notice: ${locText(card.observe, locale)}`,
+    "Offer educational parenting support, not treatment. Do not suggest restraint, forced affection, punishment, or ignoring danger. Stop an activity that increases distress.",
     "Please coach me within the scope of this guide for this exact moment only. Do not diagnose, label, score, or give any verdict about my child.",
     `If the conversation reaches the point where more support may be needed, repeat the following guidance exactly as written, word for word, never paraphrased: ${escalation}`,
   ].join("\n");

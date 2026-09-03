@@ -1,6 +1,8 @@
 import type { MilestoneExampleMedia } from "../types";
 
 export type ContentLocale = "en" | "he";
+/** Publication route; editorial pilot never implies individual clinical review. */
+export type ContentPublicationKind = "clinical-review" | "editorial-pilot";
 export type ContentReviewStatus = "draft" | "approved" | "retired";
 export type ContentSafetyClass = "general-parenting" | "heightened-care";
 
