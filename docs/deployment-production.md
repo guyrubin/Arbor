@@ -47,10 +47,21 @@ sets `ENFORCE_ENTITLEMENTS=true` and `FREE_COACH_MESSAGES_PER_DAY=10` explicitly
 
 ## 2. Deploy the API (Cloud Run)
 
+Normal releases use the `Arbor Deploy` workflow from `main`. It builds a zero-traffic
+candidate, requires the app shell and `/api/health` to identify the exact full
+GitHub commit, then promotes that recorded revision explicitly. A later deployment
+cannot silently substitute a different latest revision at promotion time.
+
+For a diagnostic manual candidate build, use a clean checkout of the intended
+commit and supply both its short tag and full 40-character SHA below. `_REVISION`
+has no default; omitting it fails Cloud Build validation. This command creates a
+zero-traffic candidate, not a complete production release. Use the normal workflow
+for promotion and the matching Hosting build.
+
 ```bash
 gcloud builds submit \
   --config cloudbuild.prod.yaml \
-  --substitutions=_REGION=europe-west4 \
+  --substitutions=_REGION=europe-west4,_TAG=<short-sha>,_REVISION=<full-commit-sha> \
   --project <PROD_PROJECT_ID>
 ```
 
