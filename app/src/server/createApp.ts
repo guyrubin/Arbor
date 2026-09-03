@@ -143,7 +143,7 @@ export const createApp = (config: ArborConfig) => {
 
   // OPS-A1: unauthenticated liveness + version probe, mounted before the /api auth
   // chain so deploys can be verified from outside (CI smoke / uptime / curl).
-  app.get("/healthz", healthzHandler);
+  app.get(["/api/health", "/healthz"], healthzHandler);
 
   app.use(helmet({
     contentSecurityPolicy: config.arborEnv === "local" ? false : { directives: cspDirectives() },
