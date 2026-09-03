@@ -45,6 +45,17 @@ const base: BuildPacketInput = {
 };
 
 describe("buildConsultPacket", () => {
+  it("formats infant and mixed-year ages from a minimal export profile", () => {
+    for (const [ageMonths, label] of [[9, "9 months"], [15, "1 year 3 months"], [60, "5 years"]] as const) {
+      const packet = buildConsultPacket({
+        ...base,
+        profile: { name: "Tali", age: Math.floor(ageMonths / 12), ageMonths, languages: [] },
+      });
+      expect(packet.sections.find((section) => section.id === "about")?.items[0].text)
+        .toBe(`Tali, ${label}.`);
+    }
+  });
+
   it("assembles the expected sections from the record", () => {
     const p = buildConsultPacket(base);
     expect(p.childLabel).toBe("Dylan");
