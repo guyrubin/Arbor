@@ -73,6 +73,20 @@ describe("candidate exact revision gate", () => {
     expect(workflow.indexOf('echo "revision=$CANDIDATE_REVISION"')).toBeGreaterThan(workflow.indexOf('node scripts/post-deploy-smoke.mjs'));
     expect(build).not.toMatch(/^\s+_REVISION:/m);
   });
+
+  /**
+   * Regression guard. A `#!` line at the top of the gate module cannot be
+   * parsed by the test transform, and the failure mode is the dangerous one:
+   * this entire file dies with "Invalid or unexpected token", so every
+   * assertion above stops running while the promotion gate still looks
+   * covered. The workflow always calls it as `node scripts/…`, so the
+   * hashbang is not needed. Keep it out.
+   */
+  it("the gate module stays importable — no hashbang", () => {
+    const source = readFileSync(new URL("../../scripts/post-deploy-smoke.mjs", import.meta.url), "utf8");
+    expect(source.startsWith("#!")).toBe(false);
+    expect(source).not.toMatch(/^#!/m);
+  });
 });
 
 describe("real app public version route with auth enforced", () => {

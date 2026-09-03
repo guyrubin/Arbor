@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * OPS-A2 / REL-ARBOR-002 — candidate liveness AND exact revision gate.
  *
@@ -8,6 +7,13 @@
  * Neither missing identity nor a stale or malformed response can pass the gate.
  *
  * Usage: node scripts/post-deploy-smoke.mjs <candidate-url> <full-commit-sha>
+ *
+ * Deliberately NO `#!` hashbang line. This module is imported by
+ * src/server/productionProbe.test.ts, and the test transform cannot parse a
+ * hashbang here — it fails the whole file with "Invalid or unexpected token",
+ * which silently takes all 29 promotion-gate tests out of the run. The gate is
+ * always invoked as `node scripts/post-deploy-smoke.mjs`, never executed
+ * directly, so the hashbang bought nothing. See the guard in that test file.
  */
 import { pathToFileURL } from "node:url";
 
