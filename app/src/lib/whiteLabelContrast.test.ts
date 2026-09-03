@@ -191,16 +191,24 @@ const WRAPPERS = [
   { name: "PlayShell", file: "components/ui/playkit.tsx", slots: ["children"], params: ["children", "className"] },
   { name: "KidModeProvider", file: "components/kidmode/KidModeContext.tsx", slots: ["children"], params: ["children"] },
 ] as const;
-function imported(source: ts.SourceFile, local: string, name: string, module: string): boolean {
-  return source.statements.some(statement => {
-    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) return false;
-    const specifier = statement.moduleSpecifier.text;
-    const matchesModule = specifier === module || (specifier.startsWith(".") &&
-      path.resolve(SRC, path.dirname(source.fileName), specifier).replace(/\.[jt]sx?$/, "") === path.resolve(SRC, module).replace(/\.[jt]sx?$/, ""));
-    const clause = statement.importClause, bindings = clause?.namedBindings;
-    return matchesModule && (!!(clause?.name?.text === local && name === "Modal") ||
-      !!(bindings && ts.isNamedImports(bindings) && bindings.elements.some(binding => binding.name.text === local && (binding.propertyName ?? binding.name).text === name)));
-  });
+function importsModule(source: ts.SourceFile, statement: ts.ImportDeclaration, module: string): boolean {
+  if (!ts.isStringLiteral(statement.moduleSpecifier)) return false;
+  const specifier = statement.moduleSpecifier.text;
+  return specifier === module || (specifier.startsWith(".") &&
+    path.resolve(SRC, path.dirname(source.fileName), specifier).replace(/\.[jt]sx?$/, "") === path.resolve(SRC, module).replace(/\.[jt]sx?$/, ""));
+}
+function imported(node: ts.Node, name: string, module: string): boolean {
+  if (!ts.isIdentifier(node)) return false;
+  const binding = lexicalBinding(node);
+  if (!binding || (!ts.isImportSpecifier(binding) && !ts.isImportClause(binding))) return false;
+  const clause = ts.isImportSpecifier(binding) ? binding.parent.parent : binding;
+  if (clause.isTypeOnly || (ts.isImportSpecifier(binding) && binding.isTypeOnly)) return false;
+  const exported = ts.isImportSpecifier(binding) ? (binding.propertyName ?? binding.name).text : "default";
+  // These default aliases are checked against their actual declarations by
+  // auditClassInputs; a same-named parameter/local never identifies an import.
+  if (exported !== name && !(exported === "default" && CLASS_INPUTS.some(spec =>
+    spec.file === module && spec.name === name && spec.defaultExport))) return false;
+  return importsModule(node.getSourceFile(), clause.parent, module);
 }
 
 // This value is inspected and mutation-tested against its real declaration below.
@@ -221,7 +229,7 @@ function classValues(input: ts.Node, depth = 0): string[] | undefined {
     const binding = lexicalBinding(node);
     const local = constValue(node);
     if (local) return classValues(local, depth + 1);
-    if (binding && ts.isImportSpecifier(binding) && ["lib/tokens.ts", "components/ui/kit.tsx"].some(file => imported(node.getSourceFile(), node.text, "cardCls", file))) return [CARD_CLASSES];
+    if (["lib/tokens.ts", "components/ui/kit.tsx"].some(file => imported(node, "cardCls", file))) return [CARD_CLASSES];
     // Only the exact declared prop of one of the three audited components may
     // use a caller proof. A shadowing parameter/local is never interchangeable.
     if (binding && ts.isBindingElement(binding) && ts.isObjectBindingPattern(binding.parent) && ts.isParameter(binding.parent.parent)) {
@@ -250,9 +258,9 @@ function classValues(input: ts.Node, depth = 0): string[] | undefined {
 // import-proven JSX callers. Unknown args, spreads and reference escapes fail;
 // this is not permission to substitute arbitrary runtime props with empty text.
 const CLASS_INPUTS = [
-  { file: "components/ui/HeroAvatar.tsx", name: "HeroAvatar", prop: "className" },
-  { file: "components/ui/playkit.tsx", name: "PlayShell", prop: "className" },
-  { file: "components/ui/Modal.tsx", name: "Modal", prop: "maxWidth" },
+  { file: "components/ui/HeroAvatar.tsx", name: "HeroAvatar", prop: "className", defaultExport: true },
+  { file: "components/ui/playkit.tsx", name: "PlayShell", prop: "className", defaultExport: false },
+  { file: "components/ui/Modal.tsx", name: "Modal", prop: "maxWidth", defaultExport: true },
 ] as const;
 type ClassInput = typeof CLASS_INPUTS[number];
 type SourceInput = { file: string; text: string };
@@ -282,6 +290,11 @@ function auditClassInputs(inputs: Iterable<SourceInput>): ClassInputProof {
     for (const spec of CLASS_INPUTS) {
       if (spec.file === input.file) {
         const fn = source.statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === spec.name);
+        if (spec.defaultExport) {
+          const exports = source.statements.filter(ts.isExportAssignment);
+          if (exports.length !== 1 || exports[0].isExportEquals || !ts.isIdentifier(exports[0].expression) ||
+              !fn || lexicalBinding(exports[0].expression) !== fn) fail(spec, input.file, "default export must identify the audited declaration");
+        }
         const binding = fn?.parameters[0]?.name;
         const element = binding && ts.isObjectBindingPattern(binding) ? binding.elements.find(element => (element.propertyName ?? element.name).getText() === spec.prop) : undefined;
         const values = element?.initializer && classValues(element.initializer);
@@ -303,8 +316,10 @@ function auditClassInputs(inputs: Iterable<SourceInput>): ClassInputProof {
       for (const statement of source.statements) {
         if (!ts.isImportDeclaration(statement) || !statement.importClause) continue;
         const clause = statement.importClause, named = clause.namedBindings;
-        const locals = [...(clause.name ? [clause.name.text] : []), ...(named && ts.isNamedImports(named) ? named.elements.map(element => element.name.text) : [])];
-        for (const local of locals) if (imported(source, local, spec.name, spec.file)) imports.set(local, spec);
+        const locals = [...(clause.name ? [clause.name] : []), ...(named && ts.isNamedImports(named) ? named.elements.map(element => element.name) : [])];
+        for (const local of locals) if (imported(local, spec.name, spec.file)) imports.set(local.text, spec);
+        if (importsModule(source, statement, spec.file) && !spec.defaultExport &&
+            (clause.name || (named && ts.isNamedImports(named) && named.elements.some(element => (element.propertyName ?? element.name).text === "default")))) fail(spec, input.file, "unsupported default component import requires explicit audit");
         if (named && ts.isNamespaceImport(named) && ts.isStringLiteral(statement.moduleSpecifier) &&
             path.resolve(SRC, path.dirname(input.file), statement.moduleSpecifier.text).replace(/\.[jt]sx?$/, "") === path.resolve(SRC, spec.file).replace(/\.[jt]sx?$/, "")) fail(spec, input.file, "namespace component reference requires explicit audit");
       }
@@ -312,8 +327,7 @@ function auditClassInputs(inputs: Iterable<SourceInput>): ClassInputProof {
     const visit = (node: ts.Node) => {
       if (ts.isIdentifier(node) && imports.has(node.text)) {
         const spec = imports.get(node.text)!;
-        const binding = lexicalBinding(node);
-        const isReference = binding && (ts.isImportSpecifier(binding) || ts.isImportClause(binding));
+        const isReference = imported(node, spec.name, spec.file);
         const parent = node.parent;
         const tag = (opening(parent) || ts.isJsxClosingElement(parent)) && parent.tagName === node;
         if (isReference && !tag && !ts.isImportSpecifier(parent) && !ts.isImportClause(parent)) fail(spec, input.file, "component reference escapes direct JSX");
@@ -331,7 +345,7 @@ function auditClassInputs(inputs: Iterable<SourceInput>): ClassInputProof {
         for (const spec of CLASS_INPUTS) {
           const module = path.resolve(SRC, path.dirname(input.file), node.moduleSpecifier.text).replace(/\.[jt]sx?$/, "");
           if (module === path.resolve(SRC, spec.file).replace(/\.[jt]sx?$/, "") && (!node.exportClause ||
-              (ts.isNamedExports(node.exportClause) && node.exportClause.elements.some(element => (element.propertyName ?? element.name).text === spec.name)))) fail(spec, input.file, "component re-export requires explicit audit");
+              (ts.isNamedExports(node.exportClause) && node.exportClause.elements.some(element => [spec.name, "default"].includes((element.propertyName ?? element.name).text))))) fail(spec, input.file, "component re-export requires explicit audit");
         }
       }
       ts.forEachChild(node, visit);
@@ -402,9 +416,9 @@ function motionReason(entries: { name: string; value: ts.Node }[]): string {
  */
 function ancestorPresentationReason(node: Opening): string {
   const tag = node.tagName.getText(), source = node.getSourceFile();
-  const isMotion = /^\w+\.[a-z]+$/.test(tag) && imported(source, tag.split(".")[0], "motion", "motion/react");
-  const wrapper = WRAPPERS.find(item => imported(source, tag, item.name, item.file));
-  const presence = imported(source, tag, "AnimatePresence", "motion/react");
+  const isMotion = /^\w+\.[a-z]+$/.test(tag) && ts.isPropertyAccessExpression(node.tagName) && imported(node.tagName.expression, "motion", "motion/react");
+  const wrapper = WRAPPERS.find(item => imported(node.tagName, item.name, item.file));
+  const presence = imported(node.tagName, "AnimatePresence", "motion/react");
   const contextProvider = tag === "KidModeContext.Provider" && source.fileName === "components/kidmode/KidModeContext.tsx";
   if (!/^[a-z][a-z0-9-]*$/.test(tag) && !isMotion && !wrapper && !presence && !contextProvider) return "component presentation is unverified";
   const entries: { name: string; value: ts.Node }[] = [];
@@ -536,7 +550,7 @@ function wrapperProblems(text: string, spec: typeof WRAPPERS[number], proof?: Cl
     if (depth > 8) return false;
     for (const node of alternatives(input)) {
       if (ts.isIdentifier(node)) {
-        if (imported(source, node.text, "cardCls", "lib/tokens.ts")) continue;
+        if (imported(node, "cardCls", "lib/tokens.ts")) continue;
         if (spec.name === "Modal" && node.text === "maxWidth") continue;
         if (spec.name === "PlayShell" && node.text === "className") continue;
         return false;
@@ -1167,6 +1181,71 @@ describe("CR-01 white-label negative controls", () => {
     expect(auditClassInputs([...reassigned, {file: "fixture.tsx", text: prefix}]).failures.some(problem => problem.includes("reassigned"))).toBe(true);
     const unsafeHero = audit('<HeroAvatar className={runtimeClass}/>;');
     expect(scanWhiteLabels(hero.file, hero.text, unsafeHero).cases.some(item => item.reason.includes("unresolved ancestor"))).toBe(true);
+  });
+
+  it("audits actual default component aliases instead of skipping their class inputs", () => {
+    const declarations = CLASS_INPUTS.map(spec => ({ file: spec.file, text: readFileSync(path.join(SRC, spec.file), "utf8") }));
+    const prefix = 'import {HeroAvatar} from "./components/ui/HeroAvatar"; import {PlayShell} from "./components/ui/playkit"; import {Modal} from "./components/ui/Modal"; <><HeroAvatar/><PlayShell/><Modal/></>; ';
+    const audit = (caller: string) => auditClassInputs([...declarations, { file: "fixture.tsx", text: prefix + caller }]);
+    const hero = declarations.find(input => input.file === "components/ui/HeroAvatar.tsx")!;
+    const baselineCallers = audit("").callers.get(inputKey(CLASS_INPUTS[0])) ?? 0;
+    for (const declaration of [
+      'import Hero from "./components/ui/HeroAvatar"; ',
+      'import {default as Hero} from "./components/ui/HeroAvatar"; ',
+    ]) {
+      const neutral = audit(declaration + '<Hero className={wide ? "p-4" : "p-6"}/>;');
+      expect(neutral.failures, declaration).toEqual([]);
+      expect(neutral.callers.get(inputKey(CLASS_INPUTS[0]))).toBe(baselineCallers + 1);
+      expect(scanWhiteLabels(hero.file, hero.text, neutral).cases.every(item => !item.reason)).toBe(true);
+      for (const classes of ['runtimeClass', '"opacity-50"', '"p-4 " + runtimeClass']) {
+        const unsafe = audit(declaration + '<Hero className={' + classes + '}/>;');
+        expect(unsafe.failures, declaration + classes).toContainEqual(expect.stringContaining("HeroAvatar.className: unresolved or unsafe"));
+        expect(unsafe.values.has(inputKey(CLASS_INPUTS[0]))).toBe(false);
+        expect(scanWhiteLabels(hero.file, hero.text, unsafe).cases.some(item => item.reason.includes("unresolved ancestor"))).toBe(true);
+      }
+    }
+    expect(audit('import Dialog from "./components/ui/Modal"; <Dialog maxWidth="max-w-lg"/>;').failures).toEqual([]);
+    expect(scan('import Dialog from "./components/ui/Modal"; <Dialog>' + label("var(--arbor-clay)") + '</Dialog>')[0].reason).toBe("");
+  });
+
+  it("fails unsupported defaults, changed default declarations and default re-exports", () => {
+    const declarations = CLASS_INPUTS.map(spec => ({ file: spec.file, text: readFileSync(path.join(SRC, spec.file), "utf8") }));
+    const prefix = 'import {HeroAvatar} from "./components/ui/HeroAvatar"; import {PlayShell} from "./components/ui/playkit"; import {Modal} from "./components/ui/Modal"; <><HeroAvatar/><PlayShell/><Modal/></>; ';
+    const audit = (inputs: SourceInput[], caller: string) => auditClassInputs([...inputs, { file: "fixture.tsx", text: prefix + caller }]);
+    for (const declaration of ['import Play from "./components/ui/playkit"; <Play/>;', 'import {default as Play} from "./components/ui/playkit"; <Play/>;']) {
+      expect(audit(declarations, declaration).failures).toContainEqual(expect.stringContaining("unsupported default component import"));
+    }
+    for (const spec of CLASS_INPUTS.filter(spec => spec.defaultExport)) {
+      const changed = declarations.map(input => input.file === spec.file
+        ? { ...input, text: input.text.replace("export default " + spec.name + ";", "const Other = runtimeComponent; export default Other;") }
+        : input);
+      expect(changed.find(input => input.file === spec.file)?.text).not.toBe(declarations.find(input => input.file === spec.file)?.text);
+      expect(audit(changed, "").failures).toContainEqual(expect.stringContaining("default export must identify the audited declaration"));
+    }
+    expect(audit(declarations, 'export {default as Hero} from "./components/ui/HeroAvatar";').failures)
+      .toContainEqual(expect.stringContaining("component re-export requires explicit audit"));
+  });
+
+  it.each([
+    ["SectionCard", "./components/ui/kit", ""],
+    ["Modal", "./components/ui/Modal", ""],
+    ["PlayShell", "./components/ui/playkit", ""],
+    ["KidModeProvider", "./components/kidmode/KidModeContext", ""],
+    ["motion", "motion/react", ".div"],
+    ["AnimatePresence", "motion/react", ""],
+  ])("requires the actual %s import binding for wrapper approval", (name, module, member) => {
+    for (const local of [name, "Reviewed"]) {
+      const prefix = 'import {' + name + (local === name ? "" : " as " + local) + '} from "' + module + '"; ';
+      const body = '<' + local + member + '>' + label("var(--arbor-clay)") + '</' + local + member + '>';
+      expect(scan(prefix + 'function Example(){ return ' + body + '; }')[0].reason, prefix).toBe("");
+      for (const declaration of [
+        'function Example({' + local + '}){ return ',
+        'function Example(' + local + '){ return ',
+        'function Example(){ const ' + local + ' = runtimeComponent; return ',
+      ]) {
+        expect(scan(prefix + declaration + body + '; }')[0].reason, prefix + declaration).toContain("component presentation is unverified");
+      }
+    }
   });
 
   it("rejects every approved fill alias and transitive dependency outside verified cascades", () => {
