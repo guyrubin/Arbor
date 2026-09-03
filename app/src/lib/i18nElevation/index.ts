@@ -18,6 +18,7 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 // ── Module imports: ONE line per module, ALPHABETICAL by module name. ─────────
+import * as accountSettings from "./accountSettings";
 import * as actionbar from "./actionbar";
 import * as agefilter from "./agefilter";
 import * as aiHonesty from "./aiHonesty";
@@ -54,6 +55,7 @@ import * as wow from "./wow";
 
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
 const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, string> }> = [
+  accountSettings,
   actionbar,
   agefilter,
   aiHonesty,
