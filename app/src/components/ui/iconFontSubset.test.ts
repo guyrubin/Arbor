@@ -17,13 +17,14 @@
  *   5. every icon name src/ can reference is actually IN the shipped subset —
  *      a name outside it renders as its own ligature text, i.e. defect 1 again.
  */
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 // Same extraction the generator uses — importing it (rather than re-implementing)
 // is what stops the shipped subset and the guard from drifting apart.
-import { collectIconNames, readVocabulary, FONT_FILE, NAMES_FILE } from "../../../scripts/build-icon-font.mjs";
+import { collectIconNames, sourceFiles, readVocabulary, FONT_FILE, NAMES_FILE } from "../../../scripts/build-icon-font.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.join(here, "..", "..", "..");
@@ -123,5 +124,42 @@ describe("the shipped subset covers every icon the app can ask for", () => {
       `these icon names are used in src/ but are NOT in the shipped font subset — they would render as English words. Run: npm run build:icon-font`,
     ).toEqual([]);
     expect(used.length).toBeGreaterThan(50); // the extraction still finds icons
+  });
+});
+
+describe("icon extraction follows runtime source", () => {
+  it("covers nested TS/JS consumers without treating test assertions as shipped icons", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "arbor-icon-source-"));
+    try {
+      const fixtures: Record<string, string> = {
+        "components/Icon.tsx": '<Icon name="home" />',
+        "navigation.ts": 'export const icon = "search";',
+        "legacy.jsx": '<Icon name="edit_note" />',
+        "icons.js": 'export const icon = "child_care";',
+        "dimensions.test.ts": 'expect("height").toBe("height");',
+        "view.spec.tsx": '<Fixture value="width" />',
+        "legacy.test.js": 'expect("error").toBeDefined();',
+        "legacy.spec.jsx": '<Fixture value="close" />',
+        "types.d.ts": 'type Dimension = "height";',
+        "__tests__/fixture.tsx": '<Fixture value="height" />',
+        "__mocks__/fixture.ts": 'export const value = "width";',
+      };
+      for (const [relative, content] of Object.entries(fixtures)) {
+        const file = path.join(root, relative);
+        mkdirSync(path.dirname(file), { recursive: true });
+        writeFileSync(file, content);
+      }
+      const files = sourceFiles(root);
+      expect(files.map((file: string) => path.relative(root, file).split(path.sep).join("/")).sort())
+        .toEqual(["components/Icon.tsx", "icons.js", "legacy.jsx", "navigation.ts"]);
+      const vocabulary = new Set(["home", "search", "edit_note", "child_care", "height", "width", "error", "close"]);
+      expect(collectIconNames(vocabulary, files)).toEqual(["child_care", "edit_note", "home", "search"]);
+      // A new runtime icon must still reach the coverage gate, even when it is
+      // absent from today's shipped manifest.
+      writeFileSync(path.join(root, "navigation.ts"), 'export const icon = "height";');
+      expect(collectIconNames(vocabulary, sourceFiles(root))).toContain("height");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

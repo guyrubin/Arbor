@@ -430,10 +430,10 @@ export default function StoryTimelineTab() {
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
+                className="touch-target inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
                 style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
-                {tt(f.labelKey)} <span className="opacity-60">{n}</span>
+                {tt(f.labelKey)} <span>{n}</span>
               </button>
             );
           })}

@@ -29,9 +29,10 @@ export const CSS_VARS = {
   rule: "var(--arbor-rule)",
   ruleStrong: "var(--arbor-rule-strong)",
 
-  // Primary — friendly green (repurposes the clay token name; stable values)
+  // Primary — sapphire; CSS owns CR-01 AA text, CTA and hover values
   clay: "var(--arbor-clay)",
   clayDeep: "var(--arbor-clay-deep)",
+  clayInk: "var(--arbor-clay-ink)",
   clayDim: "var(--arbor-clay-dim)",
   clayBorder: "var(--arbor-clay-border)",
   gradientPrimary: "var(--arbor-gradient-primary)",
@@ -66,11 +67,11 @@ export const CSS_VARS = {
   gradientCta: "var(--gradient-cta)",
 
   // AP-043 design-token sweep additions (high-traffic tsx/ts literals)
-  greenCtaStart: "var(--arbor-green-cta-start)",  // #3cc081 — CTA gradient start stop
+  greenCtaStart: "var(--arbor-green-cta-start)",  // AA sapphire CTA gradient start
   greenMid: "var(--arbor-green-mid)",              // #5fce97 — progress fills / success
   paperTinted: "var(--arbor-paper-tinted)",        // #eef6f1 — near-paper tinted well
   camFloor: "var(--arbor-cam-floor)",              // #16352a — dark cam/practice floor
-  mutedAlt: "var(--arbor-muted-alt)",              // #69747f — alternate muted slate
+  mutedAlt: "var(--arbor-muted-alt)",              // AA muted caption alias
 
   // Type families
   fontDisplay: "var(--font-display)",
