@@ -19,6 +19,10 @@
 
 import type { ChildProfile } from "../types";
 
+/** Age helpers also accept privacy-minimal export profiles. They do not need
+ * identity, language, or internal assessment fields to format an age. */
+export type ChildAgeProfile = Pick<ChildProfile, "age" | "birthDate" | "ageMonths">;
+
 /** AAP: stop correcting for prematurity at 24 months chronological age. */
 const CORRECTION_CEILING_MONTHS = 24;
 /** Weeks in a gestational term. */
@@ -86,7 +90,7 @@ export function correctedAgeMonths(profile: ChildProfile, now?: Date): number | 
  * Returns `null` only when none of these fields carry a usable value
  * (e.g. a profile where all three are absent/undefined).
  */
-export function ageMonthsFromProfile(profile: ChildProfile, now?: Date): number | null {
+export function ageMonthsFromProfile(profile: ChildAgeProfile, now?: Date): number | null {
   // Prefer birth date — most precise.
   if (profile.birthDate) {
     return chronologicalAgeMonths(profile.birthDate, now);
@@ -108,7 +112,7 @@ export function ageMonthsFromProfile(profile: ChildProfile, now?: Date): number 
  * Returns 0 when no age data is available (never returns null, so callers that
  * still read `.age` get a safe zero rather than a crash).
  */
-export function ageYearsFromProfile(profile: ChildProfile, now?: Date): number {
+export function ageYearsFromProfile(profile: ChildAgeProfile, now?: Date): number {
   const months = ageMonthsFromProfile(profile, now);
   if (months === null) return 0;
   return Math.floor(months / 12);
@@ -131,7 +135,7 @@ export function ageYearsFromProfile(profile: ChildProfile, now?: Date): number {
  * `age.yearsMonth1` / `age.yearsMonths`.
  */
 export function ageLabel(
-  profile: ChildProfile,
+  profile: ChildAgeProfile,
   t?: (key: string, vars?: Record<string, number>) => string,
   now?: Date,
 ): string {
