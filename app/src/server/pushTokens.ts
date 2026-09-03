@@ -136,8 +136,8 @@ export async function sendNudgePush(
       data: { nudgeId },
       webpush: {
         notification: {
-          icon: "/arbor-icon-192.png",
-          badge: "/arbor-icon-96.png",
+          icon: "/icons/icon-192.png",
+          badge: "/icons/icon-96.png",
           tag: "arbor-nudge",
         },
         fcmOptions: { link: "/" },

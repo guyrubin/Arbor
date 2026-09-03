@@ -78,9 +78,10 @@ describe("F-01 — the voice chip can never wedge into a dead button", () => {
 
   it("toggleVoice from visual-idle clears stale refs and FALLS THROUGH to starting", () => {
     expect(toggle).toMatch(/if \(action !== "start"\) \{ stopVoice\(\); return; \}/);
-    // The stale-ref branch clears but does NOT return — the tap keeps going…
-    // The stale-ref clear flows STRAIGHT into the Live-availability branch.
-    expect(toggle).toMatch(/if \(voiceOnRef\.current \|\| liveCtlRef\.current\) stopVoice\(\);\s*if \(liveAvail\)/);
+    // The stale-ref branch clears but does NOT return — the tap keeps going,
+    // paints the connecting state (S5), claims its epoch, and flows STRAIGHT
+    // into the Live-availability branch.
+    expect(toggle).toMatch(/if \(voiceOnRef\.current \|\| liveCtlRef\.current\) stopVoice\(\);\s*setVoicePhase\("connecting"\);\s*const epoch = \+\+voiceEpochRef\.current;\s*if \(liveAvail\)/);
     // …so every idle-looking tap reaches the token mint or the browser loop.
     expect(toggle).toContain("api.liveToken(");
     expect(toggle).toMatch(/startBrowserVoice\(\);\s*\};\s*$/);
@@ -120,5 +121,87 @@ describe("AI-V7 — the overlay is a surface, never an entry point", () => {
     expect(coach).toContain("onUserInterim: (delta) => setVoiceInterim((prev) => (prev + delta).trimStart())");
     // The settled transcript clears the interim caption before the turn sends.
     expect(coach).toMatch(/onTranscript: \(text\) => \{\s*setVoiceInterim\(""\);/);
+  });
+});
+
+/**
+ * S5 (2026-08-28 store-polish audit) — "Talk (HD) silently dead": the tap
+ * minted a token and attempted the connect, then painted NOTHING for 13s+.
+ * Root causes pinned closed here, extending the E4/F-01 visible-outcome pins:
+ *  (1) no paint existed before the token-mint + dynamic-import awaits — the
+ *      whole start window looked like a dead chip;
+ *  (2) getUserMedia ran with NO deadline (before the connect deadline ever
+ *      started) — a hung permission prompt/webview froze the start forever;
+ *  (3) cancelling during the start window raced the in-flight promise chain —
+ *      a lost-race session could re-open the overlay or zombie-start the loop.
+ * Contract: EVERY tap paints synchronously (connecting), and every terminal
+ * path — connect deadline, mic deadline, denied mic, unsupported speech,
+ * quota/paywall, Live failure — ends on a visible surface (phase or toast).
+ */
+describe("S5 — every Talk tap paints a visible outcome", () => {
+  const client = stripComments(read("lib/geminiLiveClient.ts"));
+  const startListeningFn = /const startListening = \(\) => \{[\s\S]*?\n  \};/.exec(coach)?.[0] ?? "";
+
+  it("the overlay (connecting state) paints SYNCHRONOUSLY on tap, before any await", () => {
+    // Pinned order inside toggleVoice: paint → epoch claim → first await.
+    const paintAt = toggle.indexOf('setVoicePhase("connecting")');
+    const firstAwait = toggle.indexOf("await api.liveToken(");
+    expect(paintAt).toBeGreaterThan(-1);
+    expect(firstAwait).toBeGreaterThan(-1);
+    expect(paintAt).toBeLessThan(firstAwait);
+    // The overlay is owned by voicePhase !== "off", so "connecting" mounts it
+    // (pinned above in AI-V7); the chip label paints the same state.
+    expect(coach).toMatch(/voicePhase === "connecting" \? t\("coach\.voice\.connecting"\)/);
+  });
+
+  it("getUserMedia is deadline-bounded, and a late grant can't leave a hot mic", () => {
+    expect(client).toMatch(/MIC_TIMEOUT_MS = 15_000/);
+    expect(client).toContain('withDeadline(micRequest, MIC_TIMEOUT_MS, "live-mic-timeout")');
+    // The lost-race grant stops its own tracks the moment it lands.
+    expect(client).toContain("micRequest.then((s) => s.getTracks().forEach((t) => t.stop()))");
+    // The connect deadline still guards the socket half (F-01, unchanged).
+    expect(client).toContain("withConnectDeadline(Promise.race([connecting, failedBeforeOpen]))");
+  });
+
+  it("stopVoice invalidates the in-flight start (epoch), and every await re-checks it", () => {
+    expect(coach).toMatch(/const stopVoice = \(\) => \{\s*voiceEpochRef\.current\+\+;/);
+    // After the token mint…
+    expect(toggle).toMatch(/await api\.liveToken\([\s\S]{0,120}\);\s*if \(epoch !== voiceEpochRef\.current\) return;/);
+    // …and after the connect resolves: a cancelled session is STOPPED, never adopted.
+    expect(toggle).toMatch(/if \(epoch !== voiceEpochRef\.current\) \{ ctl\.stop\(\); return; \}\s*liveCtlRef\.current = ctl;/);
+    // A late socket phase event from a cancelled start can't re-open the overlay…
+    expect(toggle).toMatch(/if \(epoch !== voiceEpochRef\.current\) return;\s*setVoicePhase\(p\);/);
+    // …and a cancelled attempt's failure path stays silent (no toast, no loop).
+    expect(toggle).toMatch(/catch \(err\) \{\s*clearLiveRefs\(\);\s*if \(epoch !== voiceEpochRef\.current\) return;\s*if \(err instanceof PaywallError\)/);
+  });
+
+  it("terminal path: quota/paywall ends visible (paywall opens, phase off)", () => {
+    expect(toggle).toMatch(/err instanceof PaywallError[\s\S]{0,200}setVoicePhase\("off"\);\s*openPaywall\(/);
+  });
+
+  it("terminal path: Live start failure toasts AND falls back to the browser loop", () => {
+    expect(toggle).toContain('toast(t("coach.toast.voiceFallback"), "info")');
+    expect(toggle).toMatch(/startBrowserVoice\(\);\s*\};\s*$/);
+  });
+
+  it("terminal path: a post-open socket error STOPS the session before degrading", () => {
+    // Previously onError only cleared the refs — mic + audio contexts stayed
+    // hot with no controller left to stop them.
+    expect(toggle).toMatch(/onError: \(\) => \{\s*liveCtlRef\.current\?\.stop\(\);\s*clearLiveRefs\(\);\s*if \(epoch !== voiceEpochRef\.current\) return;\s*toast\(t\("coach\.toast\.voiceFallback"\), "info"\);\s*startBrowserVoice\(\);/);
+  });
+
+  it("fallback loop paints on its own surfaces: listening phase or an honest toast", () => {
+    // (d) startListening paints the listening state synchronously, and the
+    // unsupported-browser branch ends visible (toast + off), never silent.
+    expect(startListeningFn).toMatch(/if \(!speechSupported\(\)\) \{ toast\(t\("coach\.toast\.voiceUnsupported"\), "info"\); voiceOnRef\.current = false; setVoicePhase\("off"\); return; \}\s*setVoicePhase\("listening"\);/);
+    // Fatal dictation outcomes stop voice AND toast (mic denied / retries out).
+    expect(startListeningFn).toMatch(/onFatal: \(reason\) => \{\s*stopVoice\(\);\s*toast\(/);
+    expect(startListeningFn).toContain('t("coach.toast.micPermission")');
+    expect(startListeningFn).toContain('t("coach.toast.micRetryStopped")');
+  });
+
+  it("the connecting copy exists in BOTH languages (parity with the phase set)", () => {
+    const i18n = read("lib/i18n.ts");
+    expect(i18n.match(/"coach\.voice\.connecting":/g)?.length).toBe(2);
   });
 });
