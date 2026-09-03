@@ -123,8 +123,8 @@ describe("VC-4 — CoachTab voice loop: escalation stops the loop, resources lan
     const autoRelisten = coach.match(/(?<!const )startListening\(\);/g) ?? [];
     const guarded = coach.match(/if \(voiceOnRef\.current\) startListening\(\);/g) ?? [];
     // The single unguarded call site is startBrowserVoice, which SETS the flag
-    // true on the same line (the parent's explicit opt-in).
-    expect(coach).toMatch(/voiceOnRef\.current = true; startListening\(\);/);
+    // true immediately beforehand (the parent's explicit opt-in).
+    expect(coach).toMatch(/voiceOnRef\.current = true;\s*startListening\(\);/);
     expect(autoRelisten.length - guarded.length).toBe(1);
   });
 

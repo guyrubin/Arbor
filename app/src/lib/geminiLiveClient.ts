@@ -27,6 +27,9 @@ export type LivePhase = "connecting" | "listening" | "speaking" | "closed";
 export type LiveHandlers = {
   onPhase?: (p: LivePhase) => void;
   onError?: (msg: string) => void;
+  /** Ordinary remote close after readiness; resources are already stopped.
+   *  Separate from phase closure, which also precedes safety notifications. */
+  onRemoteClose?: () => void;
   /** POST /api/live/turn — the authoritative server screen (MUST reject on failure). */
   screenTurn: (role: LiveTurnRole, text: string) => Promise<LiveTurnVerdict>;
   /** Screened user transcript → persist via the COACH-2 appendVoiceUser seam. */
@@ -44,6 +47,8 @@ export type LiveHandlers = {
   onFailClosed?: (reason: string) => void;
 };
 export type LiveSessionOptions = {
+  /** Cancels pending microphone/socket startup as well as an adopted session. */
+  signal?: AbortSignal;
   token: string;
   model: string;
   /** The server-pinned instruction returned by /live/token (cosmetic here —
@@ -58,14 +63,28 @@ export type LiveController = { stop: () => void };
  *  chip — the SDK promise races a hard deadline (same race pattern as the
  *  guard's screenWithDeadline in lib/liveTurnGuard.ts). */
 const CONNECT_TIMEOUT_MS = 10_000;
-const withConnectDeadline = <T,>(p: Promise<T>): Promise<T> =>
+/** S5: getUserMedia can pend indefinitely (a stuck permission prompt, a
+ *  webview with no mic plumbing) — BEFORE the connect deadline ever starts.
+ *  Slightly longer than the connect deadline so a parent reading the
+ *  permission dialog isn't yanked mid-decision; on expiry the caller falls
+ *  back to the screened browser loop with a visible toast. */
+const MIC_TIMEOUT_MS = 15_000;
+const abortError = () => new DOMException("Voice start cancelled", "AbortError");
+const withDeadline = <T,>(p: Promise<T>, ms: number, label: string, signal?: AbortSignal): Promise<T> =>
   new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("live-connect-timeout")), CONNECT_TIMEOUT_MS);
+    const cleanup = () => { clearTimeout(timer); signal?.removeEventListener("abort", onAbort); };
+    const fail = (error: unknown) => { cleanup(); reject(error); };
+    const onAbort = () => fail(abortError());
+    const timer = setTimeout(() => fail(new Error(label)), ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) onAbort();
     p.then(
-      (v) => { clearTimeout(timer); resolve(v); },
-      (e) => { clearTimeout(timer); reject(e); },
+      (value) => { cleanup(); resolve(value); },
+      (error) => fail(error),
     );
   });
+const withConnectDeadline = <T,>(p: Promise<T>, signal?: AbortSignal): Promise<T> =>
+  withDeadline(p, CONNECT_TIMEOUT_MS, "live-connect-timeout", signal);
 
 const floatTo16BitB64 = (input: Float32Array): string => {
   const buf = new ArrayBuffer(input.length * 2);
@@ -94,22 +113,23 @@ export async function startGeminiLive(
   opts: LiveSessionOptions,
   handlers: LiveHandlers,
 ): Promise<LiveController> {
-  handlers.onPhase?.("connecting");
-  const ai = new GoogleGenAI({ apiKey: opts.token, httpOptions: { apiVersion: "v1alpha" } });
-
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
-  const inCtx = new AudioContext({ sampleRate: 16000 });
-  const outCtx = new AudioContext({ sampleRate: 24000 });
+  if (opts.signal?.aborted) throw abortError();
+  let stopped = false;
+  let opened = false;
+  let ready = false;
+  let stream: MediaStream | null = null;
+  let inCtx: AudioContext | null = null;
+  let outCtx: AudioContext | null = null;
+  let session: Awaited<ReturnType<GoogleGenAI["live"]["connect"]>> | null = null;
+  let source: MediaStreamAudioSourceNode | null = null;
+  let processor: ScriptProcessorNode | null = null;
+  let rejectBeforeOpen: (error: Error) => void = () => {};
   let playHead = 0;
-
-  // AI-V2(b): every scheduled source is RETAINED so a server-VAD barge-in
-  // (serverContent.interrupted) can stop already-released audio instantly
-  // instead of letting it play on top of the parent's new words.
   const activeSources = new Set<AudioBufferSourceNode>();
 
-  // Module-PRIVATE playback (VC-1 condition 2): the only reference to this
-  // function is the guard's sink below — no socket message can reach it.
+  // Module-private: the guard sink remains the only playback caller.
   const playChunk = (b64: string) => {
+    if (stopped || !outCtx) return;
     const samples = b64ToFloat32(b64);
     if (!samples.length) return;
     const buffer = outCtx.createBuffer(1, samples.length, 24000);
@@ -119,16 +139,11 @@ export async function startGeminiLive(
     src.connect(outCtx.destination);
     activeSources.add(src);
     src.onended = () => activeSources.delete(src);
-    const now = outCtx.currentTime;
-    playHead = Math.max(playHead, now);
+    playHead = Math.max(playHead, outCtx.currentTime);
     src.start(playHead);
     playHead += buffer.duration;
   };
 
-  // AI-V2(b): the guard's onInterrupt sink — stop every retained source and
-  // reset the schedule head so the next released turn starts immediately.
-  // Reachable ONLY through guard.interrupt() (playChunk stays module-private
-  // and this never plays anything — it only silences).
   const stopPlayback = () => {
     for (const src of activeSources) {
       try { src.stop(); } catch { /* already ended */ }
@@ -136,124 +151,158 @@ export async function startGeminiLive(
     activeSources.clear();
     playHead = 0;
   };
-
-  // F-01: declared nullable so stopAll is safe to run when the connect itself
-  // fails — the mic and both audio contexts must release even though the
-  // session/processor graph never came up.
-  let session: Awaited<ReturnType<GoogleGenAI["live"]["connect"]>> | null = null;
-  let source: MediaStreamAudioSourceNode | null = null;
-  let processor: ScriptProcessorNode | null = null;
-
-  let stopped = false;
+  const stopTracks = (granted: MediaStream) => {
+    for (const track of granted.getTracks()) {
+      try { track.stop(); } catch { /* release the other tracks too */ }
+    }
+  };
   const stopAll = () => {
     if (stopped) return;
     stopped = true;
+    opts.signal?.removeEventListener("abort", onAbort);
     guard.dispose();
-    try { processor?.disconnect(); source?.disconnect(); } catch { /* ignore */ }
-    stream.getTracks().forEach((t) => t.stop());
-    try { session?.close(); } catch { /* ignore */ }
-    void inCtx.close().catch(() => {});
-    void outCtx.close().catch(() => {});
+    stopPlayback();
+    try { processor?.disconnect(); } catch { /* already disconnected */ }
+    try { source?.disconnect(); } catch { /* already disconnected */ }
+    if (stream) stopTracks(stream);
+    try { session?.close(); } catch { /* already closed */ }
+    void inCtx?.close().catch(() => {});
+    void outCtx?.close().catch(() => {});
+    // A safety halt or close may beat the SDK's connect resolution, even
+    // AFTER onopen. Startup must reject, never adopt this dead session.
+    if (!ready) rejectBeforeOpen(opts.signal?.aborted ? abortError() : new Error("live-session-stopped"));
     handlers.onPhase?.("closed");
+  };
+  const onAbort = () => stopAll();
+  const assertRunning = () => {
+    if (stopped || opts.signal?.aborted) throw abortError();
   };
 
   const guard = createLiveTurnGuard({
     screenTurn: handlers.screenTurn,
     screenLexical: screenModelOutputLexical,
-    sink: (b64) => { handlers.onPhase?.("speaking"); playChunk(b64); },
-    // The guard halts the WHOLE session (socket, mic, audio) before any
-    // crisis/blocked/degrade callback renders — stop() before render (VC-2).
+    sink: (b64) => { if (stopped) return; handlers.onPhase?.("speaking"); playChunk(b64); },
+    // Stop all resources BEFORE the guard's crisis/blocked/fail-closed render.
     halt: stopAll,
     onInterrupt: stopPlayback,
-    onUserTurn: handlers.onUserTurn,
-    onModelTurn: handlers.onModelTurn,
-    onCrisis: handlers.onCrisis,
-    onBlocked: handlers.onBlocked,
-    onFailClosed: handlers.onFailClosed,
+    onUserTurn: (text) => { if (!stopped) handlers.onUserTurn?.(text); },
+    onModelTurn: (text) => { if (!stopped) handlers.onModelTurn?.(text); },
+    // stopped is expected here: guard.halt already ran. An EXTERNAL abort,
+    // however, retires even these terminal notifications.
+    onCrisis: (verdict) => { if (!opts.signal?.aborted) handlers.onCrisis?.(verdict); },
+    onBlocked: (verdict) => { if (!opts.signal?.aborted) handlers.onBlocked?.(verdict); },
+    onFailClosed: (reason) => { if (!opts.signal?.aborted) handlers.onFailClosed?.(reason); },
   });
 
-  // F-01 (deferred pattern): the SDK's connect promise can hang, or resolve a
-  // session whose socket already died. Track whether onopen ever fired; when
-  // onerror/onclose beats it, reject startGeminiLive deterministically so the
-  // caller's catch (not a wedged ref) owns the failure.
-  let opened = false;
-  let rejectBeforeOpen: (e: Error) => void = () => {};
-  const failedBeforeOpen = new Promise<never>((_, reject) => { rejectBeforeOpen = reject; });
-
-  const connecting = ai.live.connect({
-    model: opts.model,
-    config: {
-      responseModalities: [Modality.AUDIO],
-      systemInstruction: opts.systemInstruction,
-      // VC-1: transcription is ALWAYS on (and server-pinned in the token
-      // constraints) — without it there is nothing to screen, and the guard
-      // treats transcription absence as flagged.
-      inputAudioTranscription: {},
-      outputAudioTranscription: {},
-      ...(opts.speechConfig ? { speechConfig: opts.speechConfig as never } : {}),
-    },
-    callbacks: {
-      onopen: () => { opened = true; handlers.onPhase?.("listening"); },
-      onmessage: (msg: any) => {
-        // ALL playback routes through the guard — buffered, screened, released.
-        if (msg?.data) guard.pushAudio(msg.data);
-        const sc = msg?.serverContent;
-        if (sc?.inputTranscription?.text) {
-          guard.pushInputTranscription(sc.inputTranscription.text);
-          // Caption of the parent's own words (AI-V7) — not model output.
-          handlers.onUserInterim?.(sc.inputTranscription.text);
-        }
-        if (sc?.outputTranscription?.text) guard.pushOutputTranscription(sc.outputTranscription.text);
-        // AI-V2(b): the parent spoke over the model — Gemini's server VAD
-        // reports the barge-in. ALL interruption handling routes through the
-        // guard: it drops the in-flight turn's unreleased buffer and drives
-        // the retained-source stop via its onInterrupt sink (playChunk keeps
-        // exactly one caller — the guard's release sink).
-        if (sc?.interrupted) {
-          guard.interrupt();
-          if (!guard.halted) handlers.onPhase?.("listening");
-        }
-        if (sc?.turnComplete) {
-          void guard.endModelTurn().then(() => {
-            if (!guard.halted) handlers.onPhase?.("listening");
-          });
-        }
-      },
-      // F-01: before open, error/close reject the start promise (the caller
-      // surfaces it); after open, they report through the live handlers.
-      onerror: (e: any) => {
-        if (!opened) { rejectBeforeOpen(new Error(e?.message || "Gemini Live error")); return; }
-        handlers.onError?.(e?.message || "Gemini Live error");
-      },
-      onclose: () => {
-        if (!opened) { rejectBeforeOpen(new Error("live-closed-before-open")); return; }
-        handlers.onPhase?.("closed");
-      },
-    },
-  });
-
+  // The listener exists before requesting the microphone. X can release an
+  // already granted stream while the SDK's connect promise is still pending.
+  opts.signal?.addEventListener("abort", onAbort, { once: true });
   try {
-    session = await withConnectDeadline(Promise.race([connecting, failedBeforeOpen]));
-    // A resolved connect counts as opened even if the SDK never fires onopen —
-    // from here error/close must report through the live handlers, not reject.
-    opened = true;
+    assertRunning();
+    handlers.onPhase?.("connecting");
+    assertRunning();
+    const ai = new GoogleGenAI({ apiKey: opts.token, httpOptions: { apiVersion: "v1alpha" } });
+    const micRequest = navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+    });
+    // Own the grant as soon as it arrives. A grant after cancellation/deadline
+    // releases itself; no AudioContext or socket is created for that grant.
+    void micRequest.then((granted) => {
+      if (stopped) stopTracks(granted);
+      else stream = granted;
+    }).catch(() => {});
+    stream = await withDeadline(micRequest, MIC_TIMEOUT_MS, "live-mic-timeout", opts.signal);
+    assertRunning();
+    inCtx = new AudioContext({ sampleRate: 16000 });
+    outCtx = new AudioContext({ sampleRate: 24000 });
+    assertRunning();
+
+    const failedBeforeOpen = new Promise<never>((_, reject) => { rejectBeforeOpen = reject; });
+    // connect() may throw synchronously before Promise.race attaches below.
+    // Mark this deferred handled while retaining its rejection for the race.
+    void failedBeforeOpen.catch(() => {});
+    const connecting = ai.live.connect({
+      model: opts.model,
+      config: {
+        responseModalities: [Modality.AUDIO],
+        systemInstruction: opts.systemInstruction,
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+        ...(opts.speechConfig ? { speechConfig: opts.speechConfig as never } : {}),
+      },
+      callbacks: {
+        onopen: () => {
+          if (stopped) return;
+          opened = true;
+          handlers.onPhase?.("listening");
+        },
+        onmessage: (msg: any) => {
+          if (stopped) return;
+          // ALL audio remains buffered behind the lexical + server screens.
+          if (msg?.data) guard.pushAudio(msg.data);
+          if (stopped) return;
+          const sc = msg?.serverContent;
+          if (sc?.inputTranscription?.text) {
+            guard.pushInputTranscription(sc.inputTranscription.text);
+            handlers.onUserInterim?.(sc.inputTranscription.text);
+          }
+          if (stopped) return;
+          if (sc?.outputTranscription?.text) guard.pushOutputTranscription(sc.outputTranscription.text);
+          if (sc?.interrupted) {
+            guard.interrupt();
+            if (!stopped && !guard.halted) handlers.onPhase?.("listening");
+          }
+          if (sc?.turnComplete) {
+            void guard.endModelTurn().then(() => {
+              if (!stopped && !guard.halted) handlers.onPhase?.("listening");
+            });
+          }
+        },
+        onerror: (error: any) => {
+          if (stopped) return;
+          const failure = new Error(error?.message || "Gemini Live error");
+          if (!ready) { rejectBeforeOpen(failure); stopAll(); return; }
+          stopAll();
+          handlers.onError?.(failure.message);
+        },
+        onclose: () => {
+          if (stopped) return;
+          if (!ready) {
+            rejectBeforeOpen(new Error(opened ? "live-closed-during-start" : "live-closed-before-open"));
+            stopAll();
+            return;
+          }
+          stopAll();
+          handlers.onRemoteClose?.();
+        },
+      },
+    });
+    // A resolution after stop/timeout owns only this socket, never a later
+    // attempt's controller. The side branch also handles late SDK rejection.
+    void connecting.then((connected) => {
+      if (stopped) { try { connected.close(); } catch { /* already closed */ } }
+      else session = connected;
+    }).catch(() => {});
+    const connected = await withConnectDeadline(Promise.race([connecting, failedBeforeOpen]), opts.signal);
+    assertRunning();
+    session = connected;
+    source = inCtx.createMediaStreamSource(stream);
+    processor = inCtx.createScriptProcessor(4096, 1, 1);
+    source.connect(processor);
+    processor.connect(inCtx.destination);
+    processor.onaudioprocess = (event) => {
+      if (stopped) return;
+      const data = floatTo16BitB64(event.inputBuffer.getChannelData(0));
+      try { session?.sendRealtimeInput({ media: { data, mimeType: "audio/pcm;rate=16000" } }); } catch { /* closed */ }
+    };
+    ready = true;
+    if (!opened) { opened = true; handlers.onPhase?.("listening"); }
+    assertRunning();
+    return { stop: stopAll };
   } catch (err) {
-    // F-01: a failed connect must not leave the mic or audio contexts held —
-    // release everything, then let the caller's catch decide the fallback.
+    // Covers mic, both AudioContext constructors, SDK connect AND graph setup.
+    // In particular, partial construction never strands a granted microphone.
     stopAll();
-    // A late SDK resolution after the race lost still gets its socket closed.
-    void connecting.then((s) => { try { s.close(); } catch { /* ignore */ } }).catch(() => {});
     throw err;
   }
-
-  source = inCtx.createMediaStreamSource(stream);
-  processor = inCtx.createScriptProcessor(4096, 1, 1);
-  source.connect(processor);
-  processor.connect(inCtx.destination);
-  processor.onaudioprocess = (e) => {
-    const data = floatTo16BitB64(e.inputBuffer.getChannelData(0));
-    try { session?.sendRealtimeInput({ media: { data, mimeType: "audio/pcm;rate=16000" } }); } catch { /* closed */ }
-  };
-
-  return { stop: stopAll };
 }

@@ -43,12 +43,16 @@ describe("orbMode — pure phase → visual mapping", () => {
     expect(orbMode("listening", false)).toBe("pulse");
     expect(orbMode("thinking", false)).toBe("shimmer");
     expect(orbMode("speaking", false)).toBe("wave");
+    // S5: connecting shares the shimmer (calm indeterminate wait) — its own
+    // icon + label keep it distinguishable (pinned below).
+    expect(orbMode("connecting", false)).toBe("shimmer");
   });
 
   it("reduced motion is always static, for every phase", () => {
     expect(orbMode("listening", true)).toBe("static");
     expect(orbMode("thinking", true)).toBe("static");
     expect(orbMode("speaking", true)).toBe("static");
+    expect(orbMode("connecting", true)).toBe("static");
   });
 });
 
@@ -69,12 +73,25 @@ describe("phases are visually distinct without reading text", () => {
     // The mic-level halo exists only while listening (real AnalyserNode drive).
     expect(listening).toContain("--vo-level");
     expect(thinking).not.toContain("--vo-level");
+    // S5: connecting is its own visible state — spinner glyph, not the
+    // thinking ellipsis, and no mic halo (nothing is being captured yet).
+    const connecting = render({ phase: "connecting" });
+    expect(connecting).toContain('data-orb-mode="shimmer"');
+    expect(connecting).toContain("progress_activity");
+    expect(connecting).not.toContain("more_horiz");
+    expect(connecting).not.toContain("--vo-level");
+    expect(thinking).not.toContain("progress_activity");
   });
 
   it("data-phase distinguishes all phases structurally", () => {
-    for (const phase of ["listening", "thinking", "speaking"] as const) {
+    for (const phase of ["connecting", "listening", "thinking", "speaking"] as const) {
       expect(render({ phase })).toContain(`data-phase="${phase}"`);
     }
+  });
+
+  it("S5: connecting renders a localized phase label in both languages", () => {
+    expect(render({ phase: "connecting" })).toContain("Connecting…");
+    expect(render({ phase: "connecting", lang: "he" as UiLang })).toContain("מתחבר…");
   });
 });
 
@@ -136,7 +153,7 @@ describe("register — calm green, tokens only, RTL mirroring", () => {
 
 describe("reduced motion — static phase states", () => {
   it("no keyframes and no animations under reduced motion, phases still distinct", () => {
-    for (const phase of ["listening", "thinking", "speaking"] as const) {
+    for (const phase of ["connecting", "listening", "thinking", "speaking"] as const) {
       const html = render({ phase, reducedMotion: true });
       expect(html).not.toContain("@keyframes");
       expect(html).not.toContain("animation");
