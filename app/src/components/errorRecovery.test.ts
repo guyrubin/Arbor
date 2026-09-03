@@ -248,6 +248,118 @@ describe("CR-02 ErrorBoundary — provider-independent parent recovery", () => {
   });
 });
 
+describe("CR-02 visible boundary fallback — document language subscription", () => {
+  function mockLanguageObserver() {
+    const observers: LanguageObserver[] = [];
+    class LanguageObserver {
+      observe = vi.fn();
+      disconnect = vi.fn();
+
+      constructor(private callback: MutationCallback) {
+        observers.push(this);
+      }
+
+      notify() {
+        this.callback([], this as unknown as MutationObserver);
+      }
+    }
+    vi.stubGlobal("MutationObserver", LanguageObserver);
+    return observers;
+  }
+
+  it("refreshes the same visible fallback EN → HE → EN after document-language effects", () => {
+    documentLanguage("en");
+    const observers = mockLanguageObserver();
+    const boundary = failedBoundary();
+    let markup = renderToStaticMarkup(boundary.render());
+    // The node harness supplies only the observer delivery and React updater;
+    // each refresh still renders the real boundary and translated controls.
+    const refresh = vi.spyOn(boundary, "forceUpdate").mockImplementation(() => {
+      markup = renderToStaticMarkup(boundary.render());
+    });
+
+    boundary.componentDidMount();
+    expect(observers).toHaveLength(1);
+    expect(observers[0].observe).toHaveBeenCalledExactlyOnceWith(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["lang"],
+    });
+    expectRecovery(markup, "en");
+
+    for (const lang of ["he", "en"] as const) {
+      document.documentElement.lang = lang;
+      observers[0].notify();
+      expectRecovery(markup, lang);
+      expectText(retryButton(markup), copy[lang].retry);
+      expectText(markup, copy[lang].today);
+      expectText(markup, copy[lang].escapeNote);
+      expect(markup).not.toContain(renderToStaticMarkup(copy[lang === "he" ? "en" : "he"].head));
+      expect(markup).not.toContain("synthetic-private-detail");
+      expect(boundary.state.hasError).toBe(true);
+    }
+    expect(refresh).toHaveBeenCalledTimes(2);
+    boundary.componentWillUnmount();
+  });
+
+  it("does not refresh healthy child content on document-language changes", () => {
+    documentLanguage("en");
+    const observers = mockLanguageObserver();
+    const boundary = new ErrorBoundary({
+      children: React.createElement("p", null, "Healthy section"),
+    });
+    const refresh = vi.spyOn(boundary, "forceUpdate").mockImplementation(() => {});
+    boundary.componentDidMount();
+    document.documentElement.lang = "he";
+    observers[0].notify();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(renderToStaticMarkup(boundary.render())).toBe("<p>Healthy section</p>");
+
+    // The same observer starts refreshing if React subsequently catches a
+    // child error; it does not require the boundary instance to remount.
+    boundary.state = ErrorBoundary.getDerivedStateFromError(new Error("synthetic"));
+    document.documentElement.lang = "en";
+    observers[0].notify();
+    expect(refresh).toHaveBeenCalledOnce();
+    boundary.componentWillUnmount();
+  });
+
+  it("disconnects on unmount and ignores stale deliveries across remounts", () => {
+    documentLanguage("en");
+    const observers = mockLanguageObserver();
+    const boundary = failedBoundary();
+    const refresh = vi.spyOn(boundary, "forceUpdate").mockImplementation(() => {});
+    boundary.componentDidMount();
+    boundary.componentWillUnmount();
+    expect(observers[0].disconnect).toHaveBeenCalledOnce();
+    observers[0].notify();
+    expect(refresh).not.toHaveBeenCalled();
+
+    // React Strict Mode may mount the same class instance again.
+    boundary.componentDidMount();
+    expect(observers).toHaveLength(2);
+    document.documentElement.lang = "he";
+    observers[0].notify();
+    expect(refresh).not.toHaveBeenCalled();
+    observers[1].notify();
+    expect(refresh).toHaveBeenCalledOnce();
+    boundary.componentWillUnmount();
+    expect(observers[1].disconnect).toHaveBeenCalledOnce();
+    observers[1].notify();
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it.each(["document", "MutationObserver"] as const)("keeps fallback usable without %s", (missing) => {
+    documentLanguage("he");
+    const observers = mockLanguageObserver();
+    vi.stubGlobal(missing, undefined);
+    const boundary = failedBoundary();
+    expect(() => boundary.componentDidMount()).not.toThrow();
+    expect(observers).toHaveLength(0);
+    expectRecovery(renderToStaticMarkup(boundary.render()), missing === "document" ? "en" : "he");
+    expect(() => boundary.componentWillUnmount()).not.toThrow();
+  });
+});
+
 describe("CR-02 ErrorState — real language context and rendered overrides", () => {
   it.each(languages)("uses current %s context even before the document effect runs", (lang) => {
     documentLanguage(lang === "he" ? "en" : "he");

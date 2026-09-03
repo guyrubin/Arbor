@@ -24,9 +24,9 @@ Normal-size text uses a minimum 4.5:1 contrast in root, theme and flat parent ca
 
 Parent benefit: the main action and its small supporting caption remain readable together on recessed/tinted cards. Source arithmetic found a 4.705:1 minimum across covered normal-text pairs; this is not a rendered accessibility verdict.
 
-G0 types/tests/floors/framework, 390px containment, 44px targets, console and Hebrew RTL remain the parent orchestrator's gates. G1 must compare current production overview/settings with the built routes before G2 is judged. No G0/G1/G2 pass is claimed from source inspection.
+Rendered checks complement the source guard: compare the same Overview, Settings and Practice routes in English and Hebrew at 390px, measure actual control targets and inspect the console. Synthetic development data and CSS benchmarks must be identified as such in the release evidence.
 
-Consumer handoff outside this module: `src/components/practice/PracticeStudioTab.tsx` uses the saturated `--arbor-hero-grad` behind small `--arbor-ink` / `--arbor-ink-soft` text. Change that section background to the existing `--arbor-coach-grad` (retain the primary CTA gradient), then verify the rendered heading and caption. The guard covers paper/tinted surfaces and primary CTAs; arbitrary consumer backgrounds, opacity/filter effects, artwork and other gradient families require rendered review.
+Practice Studio uses `--arbor-coach-grad` behind its small heading/caption and retains the primary CTA gradient. Timeline filter counts inherit their opaque label ink; reducing count opacity can fail contrast even when the underlying tokens pass. The guard covers paper/tinted surfaces and primary CTAs; arbitrary consumer backgrounds, opacity/filter effects, artwork and other gradient families require rendered review.
 
 ## Typography
 

@@ -314,6 +314,198 @@ const FLAT_RESOLVED_INLINE: Record<string, string> = {
   "--gradient-cta": "linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8)",
 };
 
+/** Independent pre-CR01 effective declarations, captured during round-one
+ * source inspection (2026-09-03). These literal expectations never read
+ * indexCss. Keep them fixed when editing CSS: only the exact CR01 replacements
+ * below are authorized. The flat baseline shares unchanged literals, then
+ * records its pre-existing overrides, including its extra surface tokens. */
+const PRE_CR01_ROOT_BASELINE: Readonly<Record<string, string>> = {
+  "--arbor-paper": "#f7f8f5",
+  "--arbor-paper-elevated": "#ffffff",
+  "--arbor-paper-deep": "#f1f4f2",
+  "--arbor-paper-sunk": "#e9eeec",
+  "--arbor-ink": "#1a1a2e",
+  "--arbor-ink-soft": "#2d3748",
+  "--arbor-muted": "#475569",
+  "--arbor-faint": "#64748b",
+  "--arbor-rule": "rgba(28, 56, 74, 0.11)",
+  "--arbor-rule-strong": "rgba(28, 56, 74, 0.2)",
+  "--mobile-nav-h": "58px",
+  "--arbor-clay": "#58a6ff",
+  "--arbor-clay-deep": "#1f6feb",
+  "--arbor-clay-dim": "rgba(88, 166, 255, 0.12)",
+  "--arbor-clay-soft": "linear-gradient(135deg, rgba(88,166,255,0.15), rgba(88,166,255,0.05))",
+  "--arbor-clay-glow": "0 0 20px rgba(88, 166, 255, 0.3)",
+  "--arbor-clay-border": "rgba(88, 166, 255, 0.2)",
+  "--arbor-green-soft": "linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05))",
+  "--arbor-green-ink": "#059669",
+  "--arbor-sage": "#10b981",
+  "--arbor-gradient-primary": "linear-gradient(135deg, var(--arbor-clay), var(--arbor-clay) 60%, var(--arbor-clay-deep))",
+  "--arbor-gradient-lav": "linear-gradient(135deg, var(--arbor-lav), var(--arbor-lav-ink))",
+  "--shadow-lav": "0 8px 20px rgba(167,139,250,0.28)",
+  "--arbor-gradient-progress": "linear-gradient(90deg, var(--arbor-clay), var(--arbor-clay-deep))",
+  "--arbor-peach": "#f97316",
+  "--arbor-peach-soft": "linear-gradient(135deg, rgba(249,115,22,0.15), rgba(249,115,22,0.05))",
+  "--arbor-peach-ink": "#b45309",
+  "--arbor-peach-glow": "0 0 16px rgba(249,115,22,0.2)",
+  "--arbor-lav": "#a78bfa",
+  "--arbor-lav-soft": "linear-gradient(135deg, rgba(167,139,250,0.15), rgba(167,139,250,0.05))",
+  "--arbor-lav-ink": "#6d28d9",
+  "--arbor-lav-glow": "0 0 16px rgba(167,139,250,0.2)",
+  "--arbor-yellow": "#fbbf24",
+  "--arbor-yellow-soft": "linear-gradient(135deg, rgba(251,191,36,0.15), rgba(251,191,36,0.05))",
+  "--arbor-yellow-ink": "#b45309",
+  "--arbor-yellow-glow": "0 0 16px rgba(251,191,36,0.2)",
+  "--arbor-pink": "#ec4899",
+  "--arbor-pink-soft": "linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05))",
+  "--arbor-pink-ink": "#be185d",
+  "--arbor-pink-glow": "0 0 16px rgba(236,72,153,0.2)",
+  "--arbor-sky": "#0ea5e9",
+  "--arbor-sky-soft": "linear-gradient(135deg, rgba(14,165,233,0.15), rgba(14,165,233,0.05))",
+  "--arbor-sky-ink": "#0369a1",
+  "--arbor-sky-glow": "0 0 16px rgba(14,165,233,0.2)",
+  "--arbor-blue": "#58a6ff",
+  "--arbor-ochre": "#f59e0b",
+  "--arbor-danger": "#ef4444",
+  "--glass-blur": "blur(12px)",
+  "--glass-border": "1.5px solid rgba(88, 166, 255, 0.2)",
+  "--t-caption": "10px",
+  "--t-xs": "0.75rem",
+  "--t-sm": "0.8125rem",
+  "--t-body": "13px",
+  "--t-md": "1.0625rem",
+  "--t-lg": "1.1875rem",
+  "--t-xl": "1.4375rem",
+  "--t-display": "26px",
+  "--arbor-on-accent": "#ffffff",
+  "--arbor-cam-stage": "#1c222b",
+  "--arbor-on-dark-muted": "#a8a093",
+  "--arbor-green-cta-start": "#58a6ff",
+  "--arbor-green-mid": "#79b8ff",
+  "--arbor-paper-tinted": "rgba(88,166,255,0.06)",
+  "--arbor-cam-floor": "#16352a",
+  "--arbor-muted-alt": "#69747f",
+  "--gradient-cta": "linear-gradient(135deg, var(--arbor-green-cta-start), var(--arbor-clay) 60%, var(--arbor-clay-deep))",
+  "--arbor-pack-courage": "#e2562d",
+  "--arbor-pack-responsibility": "#d7aa55",
+  "--arbor-pack-growth": "#6f9e6f",
+  "--arbor-pack-wisdom": "#68b4ff",
+  "--arbor-metric-resilience": "#a07af8",
+  "--arbor-metric-empathy": "#38c8f0",
+  "--arbor-pack-truth": "#4f6ae6",
+  "--arbor-metric-truth": "#4f6ae6",
+  "--font-display": "'Fraunces', 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif",
+  "--font-sans": "'Nunito', 'Heebo', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+  "--font-editorial": "'Instrument Serif', Georgia, serif",
+  "--t-base": "0.9375rem",
+  "--t-2xl": "1.75rem",
+  "--touch-min": "44px",
+  "--r-sm": "10px",
+  "--r": "14px",
+  "--r-lg": "18px",
+  "--r-xl": "22px",
+  "--shadow-xs": "0 1px 2px rgba(22,35,45,0.04)",
+  "--shadow-sm": "0 4px 12px rgba(22,35,45,0.06)",
+  "--shadow-md": "0 10px 24px rgba(22,35,45,0.08)",
+  "--shadow-lg": "0 18px 38px rgba(22,35,45,0.1)",
+  "--shadow-xl": "0 24px 56px rgba(22,35,45,0.13)",
+  "--shadow-green": "0 0 24px rgba(52,211,153,0.25)",
+  "--ring": "0 0 0 3px rgba(88, 166, 255, 0.18)",
+  "--page-max": "1480px",
+  "--content-max": "1040px",
+  "--rail-width": "360px",
+  "--shell-pad-x": "clamp(16px, 3vw, 48px)"
+};
+
+const PRE_CR01_FLAT_BASELINE: Readonly<Record<string, string>> = {
+  ...PRE_CR01_ROOT_BASELINE,
+  "--arbor-paper": "#fbfaf7",
+  "--arbor-paper-deep": "#eef3fb",
+  "--arbor-paper-sunk": "#e7eeea",
+  "--arbor-paper-tinted": "#eef3fb",
+  "--shadow-xs": "0 1px 2px rgba(20,34,90,.04)",
+  "--shadow-sm": "0 3px 12px rgba(20,34,90,.045)",
+  "--shadow-md": "0 8px 24px -18px rgba(20,34,90,.16)",
+  "--shadow-lg": "0 12px 30px -22px rgba(20,34,90,.18)",
+  "--shadow-xl": "0 16px 36px -24px rgba(20,34,90,.2)",
+  "--glass-blur": "none",
+  "--glass-border": "1px solid #e8eee9",
+  "--arbor-rule": "#e8eee9",
+  "--arbor-rule-strong": "#e8eef7",
+  "--arbor-ink": "#14225a",
+  "--arbor-ink-soft": "#1a2e4a",
+  "--arbor-muted": "#6b7a6e",
+  "--arbor-faint": "#8a958e",
+  "--accent": "#2b7fff",
+  "--arbor-clay": "#2b7fff",
+  "--arbor-clay-deep": "#1a6be8",
+  "--arbor-clay-dim": "rgba(43,127,255,0.10)",
+  "--arbor-clay-border": "rgba(43,127,255,0.18)",
+  "--arbor-green-soft": "#e7f6ef",
+  "--arbor-green-ink": "#047857",
+  "--arbor-hero-grad": "linear-gradient(140deg, #2b7fff 0%, #2b7fff 48%, #1f8a8c 108%)",
+  "--arbor-coach-grad": "linear-gradient(140deg, #eaf2ff, #e3eefa)",
+  "--arbor-avatar-grad": "linear-gradient(135deg, #2b7fff, #1f6fe0)",
+  "--arbor-tint": "#eef3fb",
+  "--arbor-tint-2": "#eaf2ff",
+  "--arbor-track": "#e7eeea",
+  "--arbor-success": "#10b981",
+  "--arbor-topbar-band": "#eef3fb",
+  "--arbor-subtab-active": "#14225a",
+  "--arbor-subtab-on-ink": "#ffffff",
+  "--arbor-gradient-primary": "linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb)",
+  "--arbor-gradient-progress": "linear-gradient(90deg, #58a6ff, #1f6feb)",
+  "--gradient-cta": "linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb)"
+};
+
+/** Exact replacements, not permission to change these tokens arbitrarily.
+ * Root progress changes representation only: its pre-change resolved colours
+ * stay pinned by the existing decorative-progress assertion. */
+const CR01_APPROVED_ROOT: Readonly<Record<string, string>> = {
+  "--arbor-faint": "var(--arbor-muted)",
+  "--arbor-clay": "#1558c0",
+  "--arbor-clay-deep": "#124da8",
+  "--arbor-clay-ink": "var(--arbor-clay-deep)",
+  "--arbor-green-ink": "#066446",
+  "--arbor-gradient-primary": "linear-gradient(135deg, var(--arbor-green-cta-start), var(--arbor-clay) 60%, var(--arbor-clay-deep))",
+  "--arbor-gradient-progress": "linear-gradient(90deg, #58a6ff, #1f6feb)",
+  "--arbor-peach-ink": "#92400e",
+  "--arbor-yellow-ink": "#92400e",
+  "--arbor-pink-ink": "#9d174d",
+  "--arbor-sky-ink": "#075985",
+  "--arbor-green-cta-start": "#1a6be8",
+  "--arbor-muted-alt": "var(--arbor-muted)"
+};
+
+const CR01_APPROVED_FLAT: Readonly<Record<string, string>> = {
+  "--arbor-muted": "#475569",
+  "--arbor-faint": "var(--arbor-muted)",
+  "--accent": "var(--arbor-clay)",
+  "--arbor-clay": "#1558c0",
+  "--arbor-clay-deep": "#124da8",
+  "--arbor-clay-ink": "var(--arbor-clay-deep)",
+  "--arbor-green-ink": "#066446",
+  "--arbor-gradient-primary": "linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8)",
+  "--arbor-peach-ink": "#92400e",
+  "--arbor-yellow-ink": "#92400e",
+  "--arbor-pink-ink": "#9d174d",
+  "--arbor-sky-ink": "#075985",
+  "--arbor-green-cta-start": "#1a6be8",
+  "--arbor-muted-alt": "var(--arbor-muted)",
+  "--gradient-cta": "linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8)"
+};
+
+function tokenBaselineDrift(
+  actual: ReadonlyMap<string, string>,
+  baseline: Readonly<Record<string, string>>,
+  approved: Readonly<Record<string, string>>,
+): string[] {
+  const expected = { ...baseline, ...approved };
+  const names = new Set([...Object.keys(expected), ...actual.keys()]);
+  return [...names].sort().flatMap((name) => actual.get(name) === expected[name] ? [] :
+    [name + ": expected [" + expected[name] + "], received [" + actual.get(name) + "]"]);
+}
+
 describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", () => {
   /** Extract `sel { ... }` body (first block whose header line matches). */
   const blockBody = (css: string, header: RegExp): string => {
@@ -376,26 +568,34 @@ describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", ()
     }
   });
 
-  it("CR-01 changes only the approved text/CTA token values in root and flat scopes", () => {
-    const corrected = {
-      "--arbor-clay": "#1558c0",
-      "--arbor-clay-deep": "#124da8",
-      "--arbor-clay-ink": "var(--arbor-clay-deep)",
-      "--arbor-green-cta-start": "#1a6be8",
-      "--arbor-muted": "#475569",
-      "--arbor-faint": "var(--arbor-muted)",
-      "--arbor-muted-alt": "var(--arbor-muted)",
-      "--arbor-green-ink": "#066446",
-      "--arbor-peach-ink": "#92400e",
-      "--arbor-yellow-ink": "#92400e",
-      "--arbor-pink-ink": "#9d174d",
-      "--arbor-sky-ink": "#075985",
-    };
-    for (const [name, value] of Object.entries(corrected)) {
-      expect(rootDecls.get(name), name + " root").toBe(value);
-      expect(flatDecls.get(name), name + " flat").toBe(value);
+  it("pins every root/flat token to the independent baseline plus exact CR01 corrections", () => {
+    expect(tokenBaselineDrift(rootDecls, PRE_CR01_ROOT_BASELINE, CR01_APPROVED_ROOT)).toEqual([]);
+    expect(tokenBaselineDrift(flatDecls, PRE_CR01_FLAT_BASELINE, CR01_APPROVED_FLAT)).toEqual([]);
+  });
+
+  it("rejects unrelated palette drift even when root and flat change identically", () => {
+    const changedCss = indexCss.replace(/(--arbor-lav\s*:\s*)#[0-9a-f]+/gi, "$1#c4b5fd");
+    const root = declsOf(blockBody(changedCss, /^:root\s*$|^:root\s*\{/m));
+    const flat = declsOf(blockBody(changedCss, /^\.arbor-app,\s*\n\.arbor-parent/m));
+    // The old root-versus-flat equality check accepts this exact regression.
+    expect(root.get("--arbor-lav")).toBe("#c4b5fd");
+    expect(flat.get("--arbor-lav")).toBe(root.get("--arbor-lav"));
+    for (const drift of [
+      tokenBaselineDrift(root, PRE_CR01_ROOT_BASELINE, CR01_APPROVED_ROOT),
+      tokenBaselineDrift(flat, PRE_CR01_FLAT_BASELINE, CR01_APPROVED_FLAT),
+    ]) {
+      expect(drift).toEqual(["--arbor-lav: expected [#a78bfa], received [#c4b5fd]"]);
     }
-    expect(flatDecls.get("--accent")).toBe("var(--arbor-clay)");
+  });
+
+  it("does not permit unrelated token additions/removals or arbitrary approved-token values", () => {
+    for (const changed of [
+      new Map([...rootDecls].filter(([name]) => name !== "--arbor-sage")),
+      new Map(rootDecls).set("--unapproved-palette", "#fff"),
+      new Map(rootDecls).set("--arbor-clay", "#58a6ff"),
+    ]) {
+      expect(tokenBaselineDrift(changed, PRE_CR01_ROOT_BASELINE, CR01_APPROVED_ROOT)).toHaveLength(1);
+    }
   });
   it("the decorative progress gradient retains its pre-CR-01 value", () => {
     const frozen = "linear-gradient(90deg, #58a6ff, #1f6feb)";

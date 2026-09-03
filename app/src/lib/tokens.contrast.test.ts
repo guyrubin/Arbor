@@ -235,6 +235,93 @@ function failures(pairs: Pair[]): string[] {
   });
 }
 
+
+/** Bounded consumer model: read the actual filter's two style branches and
+ * count span, then composite the count's opacity against that branch's fill.
+ * Unmodelled styles fail explicitly rather than disappearing from coverage. */
+function storyFilterConsumer(source: string): string {
+  const start = source.indexOf("{/* Filters */}");
+  const end = source.indexOf("{/* Timeline */}", start);
+  if (start < 0 || end < start) throw new Error("Missing StoryTimeline filter section");
+  const section = source.slice(start, end);
+  if (!/const on = filter === f\.key;/.test(section)) throw new Error("Unmodelled filter selection condition");
+  const buttons = [...section.matchAll(/<button\b[\s\S]*?<\/button>/g)];
+  if (buttons.length !== 1) throw new Error("Expected one mapped filter button");
+  return buttons[0][0];
+}
+
+function storyFilterCountPairs(source: string, runtime: Scope[]): Pair[] {
+  const consumer = storyFilterConsumer(source);
+  const classes = consumer.match(/className="([^"]*)"/);
+  if (!classes || /(?:^|\s)\S*(?:opacity|brightness|contrast|filter|mix-blend)-/.test(classes[1])) {
+    throw new Error("Unmodelled filter-button colour/opacity effect");
+  }
+  const branches = consumer.match(/style=\{on\s*\?\s*\{([^}]+)\}\s*:\s*\{([^}]+)\}\}/);
+  if (!branches) throw new Error("Missing selected/unselected filter styles");
+  const styleOf = (body: string): Declarations => {
+    const properties = /(\w+)\s*:\s*"([^"]*)"/g;
+    const entries = [...body.matchAll(properties)].map((match) => [match[1], match[2]]);
+    if (body.replace(properties, "").replace(/[\s,]/g, "") ||
+        entries.some(([key]) => !["background", "color", "border"].includes(key))) {
+      throw new Error("Unmodelled filter-button style");
+    }
+    const style = Object.fromEntries(entries);
+    if (!style.background || !style.color) throw new Error("Filter needs a declared fill and ink");
+    return style;
+  };
+  const spans = [...consumer.matchAll(/<span\b([^>]*)>\s*\{n\}\s*<\/span>/g)];
+  if (spans.length !== 1) throw new Error("Missing unique filter count span");
+  const attributes = spans[0][1].trim();
+  let opacity = 1;
+  if (attributes) {
+    const countClasses = attributes.match(/^className="([^"]*)"$/);
+    if (!countClasses) throw new Error("Unmodelled count attributes");
+    for (const className of countClasses[1].split(/\s+/).filter(Boolean)) {
+      const alpha = className.match(/^opacity-(\d+)$/);
+      if (!alpha || Number(alpha[1]) > 100) throw new Error("Unmodelled count class: " + className);
+      opacity *= Number(alpha[1]) / 100;
+    }
+  }
+  const states = [
+    { name: "selected", style: styleOf(branches[1]) },
+    { name: "unselected", style: styleOf(branches[2]) },
+  ];
+  return runtime.flatMap((scope) => states.flatMap((state) => {
+    const resolve = (value: string) => value.replace(/var\((--[\w-]+)\)/g,
+      (_, name: string) => required(scope.values, name));
+    const ink = colorOf(resolve(state.style.color));
+    const foreground: Color = [ink[0], ink[1], ink[2], ink[3] * opacity];
+    const paper = colorOf(required(scope.values, "--arbor-paper"));
+    return samplesOf(resolve(state.style.background)).map((sample, i) => ({
+      name: scope.name + ": " + state.name + " StoryTimeline filter count [" + i + "]",
+      foreground,
+      background: over(sample, paper),
+      floor: AA,
+    }));
+  }));
+}
+
+/** The shared scoped rule outranks .arbor-app button { min-width: 0 }.
+ * Verify the actual mapped control opts in and both dimensions use the
+ * declared 44px token; browser verification still owns rendered geometry. */
+function storyFilterTouchFailures(source: string, stylesheet: string, runtime: Scope[]): string[] {
+  const consumer = storyFilterConsumer(source);
+  const classes = consumer.match(/className="([^"]*)"/)?.[1].split(/\s+/) ?? [];
+  const failures: string[] = [];
+  if (!classes.includes("touch-target")) failures.push("filter button must use touch-target");
+  const clean = stylesheet.replace(/\/\*[\s\S]*?\*\//g, "");
+  const rule = clean.match(/\.touch-target,\s*\.arbor-app \.touch-target\s*\{([^}]+)\}/)?.[1];
+  for (const dimension of ["height", "width"]) {
+    if (!rule || !new RegExp("min-" + dimension + ":\\s*var\\(--touch-min\\);").test(rule)) {
+      failures.push("app-scoped touch-target must set min-" + dimension);
+    }
+  }
+  for (const scope of runtime) {
+    if (scope.values["--touch-min"] !== "44px") failures.push(scope.name + ": touch floor must be 44px");
+  }
+  return failures;
+}
+
 const scopes = runtimeScopes(css);
 
 describe("CR-01 — declared runtime contrast", () => {
@@ -358,5 +445,52 @@ describe("CR-01 — negative controls and fail-closed source parsing", () => {
     expect(() => colorOf("not-a-colour")).toThrow();
     expect(() => samplesOf("linear-gradient(135deg, #fff, unknown)")).toThrow();
     expect(() => samplesOf("linear-gradient(in oklab, #fff, #000)")).toThrow();
+  });
+});
+
+
+describe("CR-01 — StoryTimeline filter-count consumer", () => {
+  const source = readFileSync(path.join(here, "..", "components", "tabs", "StoryTimelineTab.tsx"), "utf8");
+
+  it("the actual filter button retains the app-scoped 44px touch floor in both states", () => {
+    expect(storyFilterTouchFailures(source, css, scopes)).toEqual([]);
+  });
+
+  it("rejects the pre-fix control without touch-target and a lost app-scoped floor", () => {
+    const consumer = storyFilterConsumer(source);
+    const old = source.replace(consumer, consumer.replace("touch-target ", ""));
+    expect(old).not.toBe(source);
+    expect(storyFilterTouchFailures(old, css, scopes)).toEqual(["filter button must use touch-target"]);
+    const unscoped = css.replace(/\.touch-target,\s*\.arbor-app \.touch-target/, ".touch-target");
+    expect(unscoped).not.toBe(css);
+    expect(storyFilterTouchFailures(source, unscoped, scopes)).toEqual([
+      "app-scoped touch-target must set min-height",
+      "app-scoped touch-target must set min-width",
+    ]);
+  });
+
+  for (const state of ["selected", "unselected"]) {
+    it(state + " count meets AA using its actual styles and inherited ink", () => {
+      const pairs = storyFilterCountPairs(source, scopes).filter((pair) =>
+        pair.name.includes(": " + state + " StoryTimeline"));
+      expect(new Set(pairs.map((pair) => pair.name.split(":")[0])).size).toBe(scopes.length);
+      expect(failures(pairs)).toEqual([]);
+    });
+
+    it("rejects the pre-fix opacity-60 count in the " + state + " state", () => {
+      const old = source.replace("<span>{n}</span>", '<span className="opacity-60">{n}</span>');
+      expect(old).not.toBe(source);
+      const pairs = storyFilterCountPairs(old, scopes).filter((pair) =>
+        pair.name.includes(": " + state + " StoryTimeline"));
+      expect(pairs.length).toBeGreaterThanOrEqual(scopes.length);
+      expect(failures(pairs)).toHaveLength(pairs.length);
+    });
+  }
+
+  it("fails closed if the consumer moves or gains an unmodelled text effect", () => {
+    expect(() => storyFilterCountPairs(source.replace("{/* Filters */}", ""), scopes)).toThrow();
+    const unmodelled = source.replace("<span>{n}</span>", "<span style={{ opacity: 0.6 }}>{n}</span>");
+    expect(unmodelled).not.toBe(source);
+    expect(() => storyFilterCountPairs(unmodelled, scopes)).toThrow();
   });
 });

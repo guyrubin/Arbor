@@ -4,14 +4,35 @@ import { track } from "../lib/analytics";
 import { statesText } from "../lib/i18nElevation/states";
 
 /**
- * Catches render errors in a subtree and shows a friendly retry card instead of
- * crashing the whole app. (Class component is required for error boundaries.)
+ * Catches render errors in the tab subtree below the app providers instead of
+ * crashing the whole app. This is not a global boundary for provider failures.
  */
 type ErrorBoundaryProps = { children?: React.ReactNode };
 type ErrorBoundaryState = { hasError: boolean };
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
+
+  private languageObserver?: MutationObserver;
+
+  componentDidMount() {
+    if (typeof document === "undefined" || typeof MutationObserver === "undefined") return;
+
+    // The language context writes html.lang in a passive effect, after this
+    // boundary has rendered. Subscribe without depending on that context.
+    const observer = new MutationObserver(() => {
+      if (this.languageObserver === observer && this.state.hasError) {
+        this.forceUpdate();
+      }
+    });
+    this.languageObserver = observer;
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+  }
+
+  componentWillUnmount() {
+    this.languageObserver?.disconnect();
+    this.languageObserver = undefined;
+  }
 
   static getDerivedStateFromError(_error: unknown): ErrorBoundaryState {
     return { hasError: true };
@@ -34,7 +55,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   goToToday = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    // A full reload also recovers when a provider failed. The URL hash wins
+    // A full reload starts again at Today. The URL hash wins
     // over the stored tab on startup, so this escapes a crashing section.
     window.location.hash = "#/overview";
     window.location.reload();
@@ -44,8 +65,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     const { hasError } = this.state;
 
     if (hasError) {
-      // The provider may itself be the failed subtree. Read the document
-      // language it (and the first-visit bootstrap) sets, without a context.
+      // Read the document language set by the language context and bootstrap.
+      // The observer refreshes this fallback after language effects run.
       const lang = typeof document === "undefined" ? "en" : document.documentElement.lang;
       const baseLang = lang.toLowerCase().split("-")[0];
       const heMode = baseLang === "he" || baseLang === "iw";
