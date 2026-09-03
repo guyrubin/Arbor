@@ -23,7 +23,7 @@
 #   No more blind 100%-to-prod. On push to main:
 #     job `deploy-candidate` (auto) → FULL green-gate (OPS-B3: tsc+test+framework+safety)
 #       → build+push API → deploy a 0%-traffic CANDIDATE revision (OPS-A3, see
-#       cloudbuild.prod.yaml --no-traffic --tag candidate) → smoke /healthz on the
+#       cloudbuild.prod.yaml --no-traffic --tag candidate) → smoke / and /api/health on the
 #       candidate tag URL (OPS-A2, scripts/post-deploy-smoke.mjs).
 #     job `promote` (GUY-GATED) → shifts 100% traffic to the proven candidate AND
 #       deploys hosting+firestore in the SAME job (no API/hosting split-brain).
@@ -105,7 +105,7 @@ jobs:
         run: |
           gcloud builds submit \
             --config cloudbuild.prod.yaml \
-            --substitutions=_REGION=europe-west4,_TAG=${GITHUB_SHA::7} \
+            --substitutions=_REGION=europe-west4,_TAG=${GITHUB_SHA::7},_REVISION=${GITHUB_SHA} \
             --default-buckets-behavior=regional-user-owned-bucket \
             --project "$PROJECT_ID"
 
@@ -118,7 +118,7 @@ jobs:
             | jq -r '.status.traffic[] | select(.tag=="candidate") | .url' | head -n1)
           echo "candidate URL: $CANDIDATE_URL"
           test -n "$CANDIDATE_URL"
-          node scripts/post-deploy-smoke.mjs "$CANDIDATE_URL" "${GITHUB_SHA::7}"
+          node scripts/post-deploy-smoke.mjs "$CANDIDATE_URL" "$GITHUB_SHA"
 
   # Stage 7: GUY-GATED prod promotion. The `production` Environment is where the human
   # AUTO-PROMOTE by default: after canary+smoke pass, traffic shifts to 100% with NO manual

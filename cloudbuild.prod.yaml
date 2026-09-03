@@ -76,7 +76,7 @@ steps:
       # GG-3 (NOT flipped): to move coach chat to Anthropic on Vertex, change
       # VERTEX_MODEL_CHAT=gemini-2.5-flash to VERTEX_MODEL_CHAT=claude-sonnet-5@anthropic
       # ONLY after enabling the Anthropic publisher in the GCP project (Model Garden).
-      - ^|^ARBOR_ENV=prod|MODEL_PROVIDER=vertex|MEMORY_ADAPTER=firestore|ENABLE_LOCAL_MEMORY_ADAPTER=false|ENABLE_HIGH_RISK_REVIEW_QUEUE=true|REQUIRE_AUTH=true|ENFORCE_ENTITLEMENTS=true|ARBOR_FAMILY_EMAILS=bguy.rubin@gmail.com|ARBOR_ADMIN_EMAILS=bguy.rubin@gmail.com|FREE_COACH_MESSAGES_PER_DAY=10|GCP_PROJECT_ID=$PROJECT_ID|FIREBASE_PROJECT_ID=$PROJECT_ID|GCP_REGION=${_REGION}|VERTEX_LOCATION=${_REGION}|VERTEX_MODEL_CHAT=gemini-2.5-flash|VERTEX_MODEL_IMAGE=gemini-2.5-flash-image|CHILD_ASR_PROVIDER=none|MAX_OUTPUT_TOKENS=8192|MEMORY_PROMPT_MAX_FACTS=40|IMAGE_GEN_DAILY_LIMIT=1000|IMAGE_GEN_GLOBAL_DAILY_LIMIT=50000|LIVE_ENABLED=true|TTS_PROVIDER=google|CORS_ORIGINS=https://$PROJECT_ID.web.app,https://$PROJECT_ID.firebaseapp.com,https://arborparentingapp.com,https://www.arborparentingapp.com|APP_URL=https://arborparentingapp.com
+      - ^|^ARBOR_ENV=prod|GITHUB_SHA=${_REVISION}|MODEL_PROVIDER=vertex|MEMORY_ADAPTER=firestore|ENABLE_LOCAL_MEMORY_ADAPTER=false|ENABLE_HIGH_RISK_REVIEW_QUEUE=true|REQUIRE_AUTH=true|ENFORCE_ENTITLEMENTS=true|ARBOR_FAMILY_EMAILS=bguy.rubin@gmail.com|ARBOR_ADMIN_EMAILS=bguy.rubin@gmail.com|FREE_COACH_MESSAGES_PER_DAY=10|GCP_PROJECT_ID=$PROJECT_ID|FIREBASE_PROJECT_ID=$PROJECT_ID|GCP_REGION=${_REGION}|VERTEX_LOCATION=${_REGION}|VERTEX_MODEL_CHAT=gemini-2.5-flash|VERTEX_MODEL_IMAGE=gemini-2.5-flash-image|CHILD_ASR_PROVIDER=none|MAX_OUTPUT_TOKENS=8192|MEMORY_PROMPT_MAX_FACTS=40|IMAGE_GEN_DAILY_LIMIT=1000|IMAGE_GEN_GLOBAL_DAILY_LIMIT=50000|LIVE_ENABLED=true|TTS_PROVIDER=google|CORS_ORIGINS=https://$PROJECT_ID.web.app,https://$PROJECT_ID.firebaseapp.com,https://arborparentingapp.com,https://www.arborparentingapp.com|APP_URL=https://arborparentingapp.com
       # Images use the AI-Studio Gemini API (separate quota from Vertex, which
       # 429s under arcade/story load). Key lives in Secret Manager, never in git.
       # REVENUECAT_WEBHOOK_AUTH = the shared secret the RC billing webhook sends;
@@ -88,5 +88,7 @@ substitutions:
   # _TAG is supplied at submit time (git short SHA). Defaults to "latest" so the
   # config is valid for manual `gcloud builds submit` runs where $SHORT_SHA is unset.
   _TAG: latest
+  # Full commit identity supplied by the gated deploy workflow.
+  _REVISION: dev
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/arbor/arbor-api:${_TAG}

@@ -1,69 +1,74 @@
 #!/usr/bin/env node
 /**
- * OPS-A2 — post-deploy smoke (liveness gate for the canary→promote pipeline).
+ * OPS-A2 / REL-ARBOR-002 — candidate liveness AND exact revision gate.
  *
- * Asserts the freshly-deployed CANDIDATE revision is actually serving before the
- * promote job shifts live traffic to it. Exits non-zero on failure so the pipeline
- * gates / rolls back instead of promoting blind.
+ * The candidate must serve the app shell and identify the full expected commit
+ * through /api/health before the promote job may shift production traffic.
+ * /healthz remains a compatibility alias; Google ingress intercepts that path.
+ * Neither missing identity nor a stale or malformed response can pass the gate.
  *
- * LIVENESS (the hard gate): GET `/` on the candidate tag URL must return 200 with the
- * app shell. The candidate tag URL routes ONLY to the new revision, so a 200 here proves
- * the NEW revision booted and serves — without depending on `/healthz`.
- *
- * VERSION (best-effort, non-fatal): `/healthz` would also confirm the exact build SHA,
- * but it is currently intercepted at the ingress (returns 404 with no Google-Frontend
- * header — a known infra issue, see RELEASE-LEDGER REL-ARBOR-002 note). So the version
- * match is logged when available and never fails the gate. Re-instate it as the hard
- * gate once `/healthz` is reachable in prod.
- *
- * Usage: node scripts/post-deploy-smoke.mjs <candidate-url> [expectedSha]
+ * Usage: node scripts/post-deploy-smoke.mjs <candidate-url> <full-commit-sha>
  */
+import { pathToFileURL } from "node:url";
 
-const host = (process.argv[2] || "https://arborprd-westeu.web.app").replace(/\/$/, "");
-const expectedVersion = process.argv[3] || "";
 const ATTEMPTS = 20;
 const DELAY_MS = 15000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function versionNote() {
-  // Best-effort only — never throws, never gates.
-  try {
-    const res = await fetch(`${host}/healthz`, { signal: AbortSignal.timeout(8000) });
-    if (res.ok) {
-      const body = await res.json().catch(() => null);
-      if (body?.version) {
-        const match = !expectedVersion || body.version === expectedVersion ? "match" : `!= ${expectedVersion}`;
-        console.log(`[smoke] /healthz version ${body.version} (${match})`);
-      }
-    } else {
-      console.log(`[smoke] /healthz unavailable (HTTP ${res.status}) — liveness gated on / instead (known infra note)`);
-    }
-  } catch {
-    console.log("[smoke] /healthz unreachable — liveness gated on / instead (known infra note)");
+export function validateTarget(host, expectedVersion) {
+  if (!/^[a-f0-9]{40}$/.test(expectedVersion ?? "")) {
+    throw new Error("The expected full 40-character commit SHA is required");
   }
+  const target = new URL(host);
+  if (!["http:", "https:"].includes(target.protocol) || target.username || target.password) {
+    throw new Error("A valid candidate HTTP(S) URL without credentials is required");
+  }
+  if (target.pathname !== "/" || target.search || target.hash) {
+    throw new Error("The candidate URL must be an origin without a path, query, or fragment");
+  }
+  return target.origin;
 }
 
-async function main() {
-  const url = `${host}/`;
-  for (let i = 1; i <= ATTEMPTS; i++) {
+export async function verifyCandidate(host, expectedVersion, fetcher = fetch) {
+  const origin = validateTarget(host, expectedVersion);
+  const shell = await fetcher(`${origin}/`, {
+    signal: AbortSignal.timeout(10000), cache: "no-store", redirect: "error",
+  });
+  if (shell.status !== 200 || !/<!doctype html/i.test(await shell.text())) {
+    throw new Error(`App shell unavailable (HTTP ${shell.status})`);
+  }
+  const health = await fetcher(`${origin}/api/health?release=${expectedVersion}`, {
+    signal: AbortSignal.timeout(8000), cache: "no-store", redirect: "error",
+  });
+  if (health.status !== 200 || !/^application\/json\b/i.test(health.headers.get("content-type") ?? "")) {
+    throw new Error(`Revision probe unavailable or not JSON (HTTP ${health.status})`);
+  }
+  const payload = await health.json();
+  if (payload?.status !== "ok" || payload?.version !== expectedVersion) {
+    throw new Error("Revision probe does not identify the expected healthy commit");
+  }
+  return payload.version;
+}
+
+export async function main(host, expectedVersion) {
+  // Configuration mistakes fail immediately, rather than waiting five minutes.
+  const origin = validateTarget(host, expectedVersion);
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-      const body = res.ok ? await res.text().catch(() => "") : "";
-      // Liveness: the candidate must serve the app shell (200 + an HTML document).
-      if (res.ok && /<!doctype html/i.test(body)) {
-        console.log(`[smoke] PASS — ${url} → 200, app shell served (candidate revision live)`);
-        await versionNote();
-        process.exit(0);
-      }
-      console.error(`[smoke] attempt ${i}: HTTP ${res.status}${res.ok ? " (2xx but not the app shell yet)" : ""}`);
-    } catch (err) {
-      console.error(`[smoke] attempt ${i}: ${err?.message ?? err}`);
+      const version = await verifyCandidate(origin, expectedVersion);
+      console.log(`[smoke] PASS — ${origin} serves the app shell and commit ${version}`);
+      return;
+    } catch (error) {
+      console.error(`[smoke] attempt ${attempt}: ${error?.message ?? error}`);
     }
-    if (i < ATTEMPTS) await sleep(DELAY_MS);
+    if (attempt < ATTEMPTS) await sleep(DELAY_MS);
   }
-  console.error(`[smoke] FAIL — ${url} did not serve the app shell within ${ATTEMPTS} attempts`);
-  process.exit(1);
+  throw new Error(`Candidate failed liveness or exact revision verification after ${ATTEMPTS} attempts`);
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main(process.argv[2], process.argv[3]).catch((error) => {
+    console.error(`[smoke] FAIL — ${error?.message ?? error}`);
+    process.exitCode = 1;
+  });
+}
