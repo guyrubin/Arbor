@@ -5,7 +5,7 @@
  * literals), grouping JSX occurrences by their owning opening tag. Only a
  * static intrinsic element with a direct approved opaque fill is accepted,
  * subject to explicit ancestor effects in the enabled, settled state.
- * Arbitrary CSS, runtime class inputs, portals and caller ancestry across
+ * Unknown class expressions fail. Arbitrary CSS, portals and caller ancestry across
  * component boundaries still require external/rendered verification.
  * Dynamic own classes/styles, inherited fills, components, alpha and other tokens
  * are debt, never implicit passes. Token luminance/theme coverage belongs to
@@ -98,31 +98,71 @@ function safeFill(value: string, property = "background"): boolean {
   return property === "backgroundImage" ? gradient : property === "backgroundColor" ? !gradient : true;
 }
 
-// Unique local consts and conditional branches only: no execution/type checker.
-const localConstants = new WeakMap<ts.SourceFile, Map<string, ts.Node[]>>();
+// Resolve lexical bindings, never a same-named const from another function or
+// an outer scope hidden by a parameter. This is deliberately not a type checker.
+function functionScope(node: ts.Node): node is ts.FunctionLikeDeclaration {
+  return ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) ||
+    ts.isMethodDeclaration(node) || ts.isConstructorDeclaration(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node);
+}
+const scopeBindings = new WeakMap<ts.Node, Map<string, ts.Node[]>>();
+function bindings(scope: ts.Node): Map<string, ts.Node[]> {
+  const cached = scopeBindings.get(scope);
+  if (cached) return cached;
+  const result = new Map<string, ts.Node[]>();
+  const add = (name: ts.BindingName, declaration: ts.Node) => {
+    if (ts.isIdentifier(name)) result.set(name.text, [...(result.get(name.text) ?? []), declaration]);
+    else for (const element of name.elements) if (ts.isBindingElement(element)) add(element.name, element);
+  };
+  const variables = (list: ts.VariableDeclarationList) => list.declarations.forEach(declaration => add(declaration.name, declaration));
+  if (functionScope(scope)) {
+    scope.parameters.forEach(parameter => add(parameter.name, parameter));
+    // var is function-scoped even when declared in a nested block.
+    const visit = (node: ts.Node) => {
+      if (node !== scope && functionScope(node)) return;
+      if (ts.isVariableDeclarationList(node) && !(node.flags & ts.NodeFlags.BlockScoped)) variables(node);
+      ts.forEachChild(node, visit);
+    };
+    visit(scope);
+  }
+  if (ts.isSourceFile(scope) || ts.isBlock(scope)) {
+    for (const statement of scope.statements) {
+      if (ts.isVariableStatement(statement)) variables(statement.declarationList);
+      if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement)) && statement.name) add(statement.name, statement);
+      if (ts.isImportDeclaration(statement) && statement.importClause) {
+        const clause = statement.importClause;
+        if (clause.name) add(clause.name, clause);
+        const named = clause.namedBindings;
+        if (named && ts.isNamedImports(named)) named.elements.forEach(element => add(element.name, element));
+        else if (named) add(named.name, named);
+      }
+    }
+  }
+  if (ts.isCatchClause(scope) && scope.variableDeclaration) add(scope.variableDeclaration.name, scope.variableDeclaration);
+  if ((ts.isForStatement(scope) || ts.isForOfStatement(scope) || ts.isForInStatement(scope)) && scope.initializer && ts.isVariableDeclarationList(scope.initializer)) variables(scope.initializer);
+  scopeBindings.set(scope, result);
+  return result;
+}
+function lexicalBinding(node: ts.Identifier): ts.Node | null | undefined {
+  for (let scope: ts.Node | undefined = node.parent; scope; scope = scope.parent) {
+    const found = bindings(scope).get(node.text);
+    if (found) return found.length === 1 ? found[0] : null;
+  }
+  return undefined;
+}
+function constValue(node: ts.Identifier): ts.Expression | undefined {
+  const binding = lexicalBinding(node);
+  return binding && ts.isVariableDeclaration(binding) && ts.isIdentifier(binding.name) &&
+    ts.isVariableDeclarationList(binding.parent) && (binding.parent.flags & ts.NodeFlags.Const) ? binding.initializer : undefined;
+}
 function alternatives(input: ts.Node, depth = 0): ts.Node[] {
   const node = unwrap(input);
   if (depth > 8) return [];
-  if (ts.isConditionalExpression(node)) return [...alternatives(node.whenTrue, depth + 1), ...alternatives(node.whenFalse, depth + 1)];
-  if (ts.isIdentifier(node)) {
-    const source = node.getSourceFile();
-    let constants = localConstants.get(source);
-    if (!constants) {
-      constants = new Map();
-      const visit = (n: ts.Node) => {
-        if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer &&
-            ts.isVariableDeclarationList(n.parent) && (n.parent.flags & ts.NodeFlags.Const)) {
-          constants!.set(n.name.text, [...(constants!.get(n.name.text) ?? []), n.initializer]);
-        }
-        ts.forEachChild(n, visit);
-      };
-      visit(source);
-      localConstants.set(source, constants);
-    }
-    const definitions = constants.get(node.text);
-    if (definitions?.length === 1) return alternatives(definitions[0], depth + 1);
+  if (ts.isConditionalExpression(node)) {
+    const yes = alternatives(node.whenTrue, depth + 1), no = alternatives(node.whenFalse, depth + 1);
+    return yes.length && no.length ? [...yes, ...no] : [];
   }
-  return [node];
+  const value = ts.isIdentifier(node) ? constValue(node) : undefined;
+  return value ? alternatives(value, depth + 1) : [node];
 }
 function allValues(node: ts.Node, allowed: string[]): boolean {
   const values = alternatives(node).map(value => ts.isStringLiteral(value) ? value.text : value.getText());
@@ -165,23 +205,154 @@ function imported(source: ts.SourceFile, local: string, name: string, module: st
 
 // This value is inspected and mutation-tested against its real declaration below.
 const CARD_CLASSES = "bg-white rounded-[18px] border border-[var(--arbor-rule)] shadow-[var(--shadow-xs)]";
-function classFragments(input: ts.Node, depth = 0): string[] {
-  if (depth > 8) return [];
-  const resolved = strings(input);
-  if (resolved) return resolved;
-  const result: string[] = [];
-  for (const node of alternatives(input)) {
-    if (ts.isIdentifier(node)) {
-      if (["lib/tokens.ts", "components/ui/kit.tsx"].some(file => imported(node.getSourceFile(), node.text, "cardCls", file))) result.push(CARD_CLASSES);
-      // Unresolved caller/runtime class inputs and arbitrary external CSS remain
-      // explicit rendered-review limits. Inspect every literal branch/fragment.
-    } else if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) ||
-        node.kind === ts.SyntaxKind.TemplateHead || node.kind === ts.SyntaxKind.TemplateMiddle || node.kind === ts.SyntaxKind.TemplateTail) {
-      result.push((node as ts.StringLiteral).text);
-    } else ts.forEachChild(node, child => { result.push(...classFragments(child, depth + 1)); });
-  }
-  return result;
+function forwardsCardClasses(text: string): boolean {
+  const source = ts.createSourceFile("components/ui/kit.tsx", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  return source.statements.some(node => ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) &&
+    path.resolve(SRC, "components/ui", node.moduleSpecifier.text).replace(/\.[jt]sx?$/, "") === path.resolve(SRC, "lib/tokens") &&
+    node.exportClause && ts.isNamedExports(node.exportClause) && node.exportClause.elements.some(element => element.name.text === "cardCls" && (element.propertyName ?? element.name).text === "cardCls"));
 }
+const classProofs = new WeakMap<ts.SourceFile, ClassInputProof>();
+function classValues(input: ts.Node, depth = 0): string[] | undefined {
+  if (depth > 12) return undefined;
+  const node = unwrap(input);
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return [node.text];
+  const join = (a?: string[], b?: string[]) => a && b && a.length * b.length <= 16 ? a.flatMap(x => b.map(y => x + y)) : undefined;
+  if (ts.isIdentifier(node)) {
+    const binding = lexicalBinding(node);
+    const local = constValue(node);
+    if (local) return classValues(local, depth + 1);
+    if (binding && ts.isImportSpecifier(binding) && ["lib/tokens.ts", "components/ui/kit.tsx"].some(file => imported(node.getSourceFile(), node.text, "cardCls", file))) return [CARD_CLASSES];
+    // Only the exact declared prop of one of the three audited components may
+    // use a caller proof. A shadowing parameter/local is never interchangeable.
+    if (binding && ts.isBindingElement(binding) && ts.isObjectBindingPattern(binding.parent) && ts.isParameter(binding.parent.parent)) {
+      const parameter = binding.parent.parent, fn = parameter.parent;
+      if (ts.isFunctionDeclaration(fn) && fn.parent === node.getSourceFile()) {
+        const prop = (binding.propertyName ?? binding.name).getText();
+        const spec = CLASS_INPUTS.find(spec => spec.file === node.getSourceFile().fileName && spec.name === fn.name?.text && spec.prop === prop);
+        if (spec) return classProofs.get(node.getSourceFile())?.values.get(inputKey(spec));
+      }
+    }
+    return undefined;
+  }
+  if (ts.isConditionalExpression(node)) {
+    const yes = classValues(node.whenTrue, depth + 1), no = classValues(node.whenFalse, depth + 1);
+    return yes && no && yes.length + no.length <= 16 ? [...yes, ...no] : undefined;
+  }
+  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) return join(classValues(node.left, depth + 1), classValues(node.right, depth + 1));
+  if (ts.isTemplateExpression(node)) {
+    let values: string[] | undefined = [node.head.text];
+    for (const span of node.templateSpans) values = join(join(values, classValues(span.expression, depth + 1)), [span.literal.text]);
+    return values;
+  }
+  return undefined;
+}
+// Three concrete class-prop contracts, resolved from actual defaults + all
+// import-proven JSX callers. Unknown args, spreads and reference escapes fail;
+// this is not permission to substitute arbitrary runtime props with empty text.
+const CLASS_INPUTS = [
+  { file: "components/ui/HeroAvatar.tsx", name: "HeroAvatar", prop: "className" },
+  { file: "components/ui/playkit.tsx", name: "PlayShell", prop: "className" },
+  { file: "components/ui/Modal.tsx", name: "Modal", prop: "maxWidth" },
+] as const;
+type ClassInput = typeof CLASS_INPUTS[number];
+type SourceInput = { file: string; text: string };
+type ClassInputProof = { values: Map<string, string[]>; failures: string[]; callers: Map<string, number> };
+const inputKey = (spec: ClassInput) => spec.file + "#" + spec.name + "." + spec.prop;
+function dimensionClasses(values: string[]): boolean {
+  return values.some(value => value.trim().split(/\s+/).filter(Boolean).some(token =>
+    !/^(?:(?:max-)?(?:sm|md|lg|xl|2xl):)*(?:(?:min-|max-)?[wh])-(?:[\w.-]+|\[[\w.%]+\])$/.test(token)));
+}
+function auditClassInputs(inputs: Iterable<SourceInput>): ClassInputProof {
+  const proof: ClassInputProof = { values: new Map(), failures: [], callers: new Map() };
+  const defaults = new Map<string, string[]>(), failed = new Set<string>();
+  const fail = (spec: ClassInput, site: string, why: string) => {
+    failed.add(inputKey(spec)); proof.failures.push(site + " " + spec.name + "." + spec.prop + ": " + why);
+  };
+  const accept = (spec: ClassInput, site: string, values: string[] | undefined) => {
+    if (!values || classEffect(values) || (spec.prop === "maxWidth" && dimensionClasses(values))) {
+      fail(spec, site, "unresolved or unsafe class input"); return;
+    }
+    const key = inputKey(spec), union = [...new Set([...(proof.values.get(key) ?? []), ...values])];
+    if (union.length > 16) fail(spec, site, "class branch bound exceeded");
+    else proof.values.set(key, union);
+  };
+  for (const input of inputs) {
+    const source = ts.createSourceFile(input.file, input.text, ts.ScriptTarget.Latest, true, /\.[jt]sx$/.test(input.file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const imports = new Map<string, ClassInput>();
+    for (const spec of CLASS_INPUTS) {
+      if (spec.file === input.file) {
+        const fn = source.statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === spec.name);
+        const binding = fn?.parameters[0]?.name;
+        const element = binding && ts.isObjectBindingPattern(binding) ? binding.elements.find(element => (element.propertyName ?? element.name).getText() === spec.prop) : undefined;
+        const values = element?.initializer && classValues(element.initializer);
+        if (!element || element.dotDotDotToken || !ts.isIdentifier(element.name) || !values) fail(spec, input.file, "class default/declaration changed");
+        else {
+          defaults.set(inputKey(spec), values); accept(spec, input.file + " default", values);
+          // A caller proof is valid only while the incoming string is retained.
+          const writes = (node: ts.Node) => {
+            if (ts.isIdentifier(node) && lexicalBinding(node) === element) {
+              const parent = node.parent;
+              if ((ts.isBinaryExpression(parent) && parent.left === node && parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
+                  ((ts.isPrefixUnaryExpression(parent) || ts.isPostfixUnaryExpression(parent)) && (parent.operator === ts.SyntaxKind.PlusPlusToken || parent.operator === ts.SyntaxKind.MinusMinusToken))) fail(spec, input.file, "class parameter is reassigned");
+            }
+            ts.forEachChild(node, writes);
+          };
+          if (fn?.body) writes(fn.body);
+        }
+      }
+      for (const statement of source.statements) {
+        if (!ts.isImportDeclaration(statement) || !statement.importClause) continue;
+        const clause = statement.importClause, named = clause.namedBindings;
+        const locals = [...(clause.name ? [clause.name.text] : []), ...(named && ts.isNamedImports(named) ? named.elements.map(element => element.name.text) : [])];
+        for (const local of locals) if (imported(source, local, spec.name, spec.file)) imports.set(local, spec);
+        if (named && ts.isNamespaceImport(named) && ts.isStringLiteral(statement.moduleSpecifier) &&
+            path.resolve(SRC, path.dirname(input.file), statement.moduleSpecifier.text).replace(/\.[jt]sx?$/, "") === path.resolve(SRC, spec.file).replace(/\.[jt]sx?$/, "")) fail(spec, input.file, "namespace component reference requires explicit audit");
+      }
+    }
+    const visit = (node: ts.Node) => {
+      if (ts.isIdentifier(node) && imports.has(node.text)) {
+        const spec = imports.get(node.text)!;
+        const binding = lexicalBinding(node);
+        const isReference = binding && (ts.isImportSpecifier(binding) || ts.isImportClause(binding));
+        const parent = node.parent;
+        const tag = (opening(parent) || ts.isJsxClosingElement(parent)) && parent.tagName === node;
+        if (isReference && !tag && !ts.isImportSpecifier(parent) && !ts.isImportClause(parent)) fail(spec, input.file, "component reference escapes direct JSX");
+        if (isReference && tag && opening(parent)) {
+          const key = inputKey(spec), site = input.file + ":" + (source.getLineAndCharacterOfPosition(parent.getStart()).line + 1);
+          proof.callers.set(key, (proof.callers.get(key) ?? 0) + 1);
+          if (parent.attributes.properties.some(ts.isJsxSpreadAttribute)) fail(spec, site, "spread may replace class input");
+          const args = parent.attributes.properties.filter((attribute): attribute is ts.JsxAttribute => ts.isJsxAttribute(attribute) && attribute.name.getText() === spec.prop);
+          if (args.length > 1) fail(spec, site, "duplicate class argument");
+          if (args.length) accept(spec, site, args[0].initializer && classValues(args[0].initializer));
+        }
+      }
+      // Re-exports would introduce callers outside this bounded import graph.
+      if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+        for (const spec of CLASS_INPUTS) {
+          const module = path.resolve(SRC, path.dirname(input.file), node.moduleSpecifier.text).replace(/\.[jt]sx?$/, "");
+          if (module === path.resolve(SRC, spec.file).replace(/\.[jt]sx?$/, "") && (!node.exportClause ||
+              (ts.isNamedExports(node.exportClause) && node.exportClause.elements.some(element => (element.propertyName ?? element.name).text === spec.name)))) fail(spec, input.file, "component re-export requires explicit audit");
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+  }
+  for (const spec of CLASS_INPUTS) {
+    const key = inputKey(spec);
+    if (!defaults.has(key)) fail(spec, spec.file, "missing class default source");
+    if (!proof.callers.get(key)) fail(spec, spec.file, "no proven JSX callers");
+    if (failed.has(key)) proof.values.delete(key);
+  }
+  return proof;
+}
+let productionProof: ClassInputProof | undefined;
+function productionClassInputs(): ClassInputProof {
+  return productionProof ??= auditClassInputs((function* () {
+    for (const file of productionFiles()) yield { file: path.relative(SRC, file).split(path.sep).join("/"), text: readFileSync(file, "utf8") };
+  })());
+}
+
 function classEffect(values: string[]): string {
   for (const value of values) for (const token of value.split(/\s+/)) {
     if (token === "opacity-100") continue;
@@ -226,7 +397,8 @@ function motionReason(entries: { name: string; value: ts.Node }[]): string {
 /** Explicit ancestor effects, not a complete CSS/caller-ancestry proof.
  * Backgrounds, borders, shadows, layout and backdrop-only filters cannot alter
  * an opaque child's fill. Known wrappers are guarded at their actual content
- * slots below. Portal ancestry, arbitrary CSS and runtime classes need review.
+ * slots below. Class props need complete finite caller proofs; arbitrary CSS
+ * and ancestry outside these concrete component contracts still need review.
  */
 function ancestorPresentationReason(node: Opening): string {
   const tag = node.tagName.getText(), source = node.getSourceFile();
@@ -245,15 +417,17 @@ function ancestorPresentationReason(node: Opening): string {
   }
   for (const entry of entries) {
     if (entry.name === "className") {
-      const reason = classEffect(classFragments(entry.value));
+      const values = classValues(entry.value);
+      if (!values) return "unresolved ancestor class expression";
+      const reason = classEffect(values);
       if (reason) return reason;
     }
     if (wrapper?.name === "Modal" && entry.name === "maxWidth") {
-      const values = alternatives(entry.value).flatMap(value => strings(value) ?? []);
-      if (!values.length || alternatives(entry.value).some(value => !strings(value))) return "Modal maxWidth must have literal class branches";
+      const values = classValues(entry.value);
+      if (!values) return "Modal maxWidth must have literal class branches";
       const reason = classEffect(values);
       if (reason) return "Modal maxWidth: " + reason;
-      if (values.some(value => value.split(/\s+/).some(token => !/^(?:(?:sm|md|lg|xl|2xl):)*max-w-(?:[\w.-]+|\[[\w.%]+\])$/.test(token)))) return "Modal maxWidth must contain only width utilities";
+      if (dimensionClasses(values)) return "Modal maxWidth must contain only dimension utilities";
     }
     if (entry.name === "style") {
       const props = properties(entry.value);
@@ -340,8 +514,9 @@ function classify(node: ts.Node): string {
 }
 
 /** Small audited-source checks, not a component renderer or CSS cascade engine. */
-function wrapperProblems(text: string, spec: typeof WRAPPERS[number]): string[] {
+function wrapperProblems(text: string, spec: typeof WRAPPERS[number], proof?: ClassInputProof): string[] {
   const source = ts.createSourceFile(spec.file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  if (proof) classProofs.set(source, proof);
   const fn = source.statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === spec.name);
   if (!fn) return ["missing wrapper declaration"];
   const binding = fn.parameters[0]?.name;
@@ -377,7 +552,7 @@ function wrapperProblems(text: string, spec: typeof WRAPPERS[number]): string[] 
       seen.add(node.expression.text);
       const reason = ancestorReason(node);
       if (reason) problems.push(reason);
-      for (let parent = node.parent; parent && parent !== fn; parent = parent.parent) {
+      for (let parent: ts.Node | undefined = node.parent; parent && parent !== fn; parent = parent.parent) {
         if (!ts.isJsxElement(parent)) continue;
         const classes = attr(parent.openingElement, "className")?.initializer;
         if (classes && !classInputKnown(classes)) problems.push("wrapper forwards unverified class input");
@@ -396,13 +571,32 @@ function wrapperProblems(text: string, spec: typeof WRAPPERS[number]): string[] 
 // Examine only the reviewed classes' own rules/state selectors and two named
 // keyframes. Arbitrary CSS/cascade remains outside this deliberately small audit.
 const AUDITED_CLASSES = ["arbor-app", "arbor-parent", "arbor-play", "comic-panel", "world-tile", "play-pop-in", "sprout-bob"];
+const VERIFIED_TOKEN_SELECTORS = new Set([":root", '[data-theme="teal"]', '[data-theme="blue"]', ".arbor-app", ".arbor-parent"]);
+function fillDependencies(css: string): Set<string> {
+  const graph = new Map<string, Set<string>>();
+  for (const declaration of css.matchAll(/(--[\w-]+)\s*:\s*([^;{}]+)/g)) {
+    const references = graph.get(declaration[1]) ?? new Set<string>();
+    for (const reference of declaration[2].matchAll(/var\(\s*(--[\w-]+)/g)) references.add(reference[1]);
+    graph.set(declaration[1], references);
+  }
+  const protectedTokens = new Set(SAFE_FILLS);
+  for (const token of protectedTokens) for (const dependency of graph.get(token) ?? []) protectedTokens.add(dependency);
+  return protectedTokens;
+}
 function cssProblems(input: string): string[] {
   const css = input.replace(/\/\*[\s\S]*?\*\//g, "");
+  const protectedTokens = fillDependencies(css);
   const problems: string[] = [];
   const seen = new Set<string>();
   for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selectors = match[1].trim().split(",").map(selector => selector.trim());
+    const selectors = match[1].split(";").at(-1)!.trim().split(",").map(selector => selector.trim());
     for (const selector of selectors) {
+      // Inspect protected-token declarations in every simple rule, including
+      // new/unreviewed classes. Only the separately contrast-tested cascades
+      // may redefine approved fills or any transitive var() dependency.
+      for (const declaration of match[2].matchAll(/(--[\w-]+)\s*:/g)) {
+        if (protectedTokens.has(declaration[1]) && !VERIFIED_TOKEN_SELECTORS.has(selector)) problems.push(selector + ": protected fill override " + declaration[1]);
+      }
       const name = AUDITED_CLASSES.find(name => new RegExp("(?:^|[ >+~])\\." + name + "(?:[.#[:][^ >+~]*)?$").test(selector));
       if (!name) continue;
       seen.add(name);
@@ -495,9 +689,10 @@ function dependencies(source: ts.SourceFile): (roots: ts.Node[]) => string[] {
   };
 }
 
-export function scanWhiteLabels(file: string, text: string): { cases: Case[]; literalCount: number } {
+export function scanWhiteLabels(file: string, text: string, proof?: ClassInputProof): { cases: Case[]; literalCount: number } {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true,
     /\.[jt]sx$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  if (proof) classProofs.set(source, proof);
   const owners = new Map<number, ts.Node>();
   let literalCount = 0;
   const visit = (node: ts.Node) => {
@@ -766,7 +961,9 @@ describe("CR-01 white-label source ratchet — future regressions, not legacy co
   it("rejects new/changed unresolved labels and requires stale debt to be retired", () => {
     const files = productionFiles();
     expect(files.length).toBeGreaterThan(100);
-    const scanned = files.map(file => scanWhiteLabels(path.relative(SRC, file).split(path.sep).join("/"), readFileSync(file, "utf8")));
+    const proof = productionClassInputs();
+    expect(proof.failures, "Known component class props require complete caller proofs.").toEqual([]);
+    const scanned = files.map(file => scanWhiteLabels(path.relative(SRC, file).split(path.sep).join("/"), readFileSync(file, "utf8"), proof));
     const cases = scanned.flatMap(result => result.cases);
     const debt = FROZEN_DEBT.filter(item => !RETIRED_DEBT.includes(keyOf(item)));
     const result = ratchet(cases, debt);
@@ -869,24 +1066,25 @@ describe("CR-01 white-label negative controls", () => {
   });
 
   it("guards the actual shared wrapper slots and fixed card chrome", () => {
+    const proof = productionClassInputs();
     for (const spec of WRAPPERS) {
       const source = readFileSync(path.join(SRC, spec.file), "utf8");
-      expect(wrapperProblems(source, spec), spec.name).toEqual([]);
+      expect(wrapperProblems(source, spec, proof), spec.name).toEqual([]);
       const start = source.indexOf("export function " + spec.name);
       const mutateSlot = (replacement: string) => source.slice(0, start) + source.slice(start).replace("{children}", replacement);
       const changed = mutateSlot( '<div style={{ opacity: .5 }}>{children}</div>');
-      expect(wrapperProblems(changed, spec), spec.name + " injected opacity").not.toEqual([]);
+      expect(wrapperProblems(changed, spec, proof), spec.name + " injected opacity").not.toEqual([]);
       const override = mutateSlot( '<div style={{ "--arbor-clay": "white" }}>{children}</div>');
-      expect(wrapperProblems(override, spec), spec.name + " injected token").not.toEqual([]);
+      expect(wrapperProblems(override, spec, proof), spec.name + " injected token").not.toEqual([]);
       if (spec.name === "SectionCard") {
-        expect(wrapperProblems(source.replace('className={`${cardCls} p-6`}', 'className={`${cardCls} p-6 opacity-50`}'), spec)).not.toEqual([]);
-        expect(wrapperProblems(source.replace('children, action }:', 'children, action, ...rest }:').replace('className={`${cardCls} p-6`}', 'className={`${cardCls} p-6`} {...rest}'), spec)).not.toEqual([]);
+        expect(wrapperProblems(source.replace('className={`${cardCls} p-6`}', 'className={`${cardCls} p-6 opacity-50`}'), spec, proof)).not.toEqual([]);
+        expect(wrapperProblems(source.replace('children, action }:', 'children, action, ...rest }:').replace('className={`${cardCls} p-6`}', 'className={`${cardCls} p-6`} {...rest}'), spec, proof)).not.toEqual([]);
       }
       if (spec.name === "Modal") {
-        expect(wrapperProblems(source.replace('maxWidth = "max-w-lg"', 'maxWidth = "max-w-lg opacity-50"'), spec)).not.toEqual([]);
+        expect(wrapperProblems(source.replace('maxWidth = "max-w-lg"', 'maxWidth = "max-w-lg opacity-50"'), spec, proof)).not.toEqual([]);
         // Both portal layers must settle neutral, not just the dialog itself.
-        expect(wrapperProblems(source.replace('animate={{ opacity: 1 }}', 'animate={{ opacity: .5 }}'), spec)).not.toEqual([]);
-        expect(wrapperProblems(source.replace('animate={{ opacity: 1, scale: 1', 'animate={{ opacity: .5, scale: 1'), spec)).not.toEqual([]);
+        expect(wrapperProblems(source.replace('animate={{ opacity: 1 }}', 'animate={{ opacity: .5 }}'), spec, proof)).not.toEqual([]);
+        expect(wrapperProblems(source.replace('animate={{ opacity: 1, scale: 1', 'animate={{ opacity: .5, scale: 1'), spec, proof)).not.toEqual([]);
       }
     }
     const tokens = ts.createSourceFile("lib/tokens.ts", readFileSync(path.join(SRC, "lib/tokens.ts"), "utf8"), ts.ScriptTarget.Latest, true);
@@ -897,6 +1095,9 @@ describe("CR-01 white-label negative controls", () => {
     };
     visit(tokens);
     expect(found).toEqual([CARD_CLASSES]);
+    const kit = readFileSync(path.join(SRC, "components/ui/kit.tsx"), "utf8");
+    expect(forwardsCardClasses(kit)).toBe(true);
+    expect(forwardsCardClasses(kit.replace('export { PASTEL, cardCls } from "../../lib/tokens"', 'export { PASTEL, cardCls } from "../../lib/unreviewed"'))).toBe(false);
     expect(classEffect([CARD_CLASSES])).toBe("");
     expect(classEffect([CARD_CLASSES + " opacity-50"])).not.toBe("");
   });
@@ -916,15 +1117,67 @@ describe("CR-01 white-label negative controls", () => {
     ]) expect(cssProblems(changed)).not.toEqual([]);
   });
 
-  it("inspects all class branches and literals while keeping runtime/CSS limits explicit", () => {
+  it("fails unresolved identifiers, template fragments and conditional arms", () => {
+    for (const expression of ['runtimeClass', '`p-4 ${runtimeClass}`', 'enabled ? "p-4" : runtimeClass', 'getClass("p-4")']) {
+      expect(scan('<div className={' + expression + '}>' + label("var(--arbor-clay)") + '</div>')[0].reason, expression).not.toBe("");
+    }
     for (const extra of ['const outer = "opacity-50";', 'const outer = enabled ? "p-4" : "opacity-50";', 'const outer = "[--arbor-clay:white]";']) {
       expect(scan(extra + '<div className={outer}>' + label("var(--arbor-clay)") + '</div>')[0].reason).not.toBe("");
     }
-    expect(scan('<div className={`p-4 ${runtimeClass} opacity-50`}>' + label("var(--arbor-clay)") + '</div>')[0].reason).not.toBe("");
-    // No claim about the runtimeClass value or arbitrary external CSS here.
-    expect(scan('<div className={`p-4 ${runtimeClass}`}>' + label("var(--arbor-clay)") + '</div>')[0].reason).toBe("");
   });
 
+  it("resolves finite branches and audited cardCls without crossing shadowed bindings", () => {
+    const body = '<div className={outer}>' + label("var(--arbor-clay)") + '</div>';
+    for (const source of [
+      'const outer = "p-4"; function Example(outer: string) { return ' + body + '; }',
+      'const outer = "p-4"; function Example({outer}: Props) { return ' + body + '; }',
+      'function Unrelated(){ const outer = "p-4"; } function Example(){ return ' + body + '; }',
+      'const outer = "p-4"; function Example(){ if(flag) { var outer = runtimeClass; } return ' + body + '; }',
+      'import {cardCls as outer} from "./lib/tokens"; function Example(outer: string){return ' + body + ';}',
+    ]) expect(scan(source)[0].reason, source).not.toBe("");
+    for (const source of [
+      'const outer = enabled ? "p-4" : "p-6"; ' + body,
+      'const outer = "opacity-50"; function Example(){ const outer = "p-4"; return ' + body + '; }',
+      'import {cardCls} from "./components/ui/kit"; <div className={`${cardCls} ${enabled ? "p-4" : "p-6"}`}>' + label("var(--arbor-clay)") + '</div>',
+    ]) expect(scan(source)[0].reason, source).toBe("");
+  });
+
+  it("proves known class props from their actual defaults and every import-proven caller", () => {
+    const declarations = CLASS_INPUTS.map(spec => ({ file: spec.file, text: readFileSync(path.join(SRC, spec.file), "utf8") }));
+    const prefix = 'import {HeroAvatar} from "./components/ui/HeroAvatar"; import {PlayShell} from "./components/ui/playkit"; import {Modal} from "./components/ui/Modal"; <><HeroAvatar/><PlayShell/><Modal/></>; ';
+    const audit = (text: string) => auditClassInputs([...declarations, {file: "fixture.tsx", text: prefix + text}]);
+    const neutral = audit('<HeroAvatar className={wide ? "p-4" : "p-6"}/>; <PlayShell className="p-4"/>; <Modal maxWidth="max-w-lg max-sm:h-full max-sm:max-h-none"/>;');
+    expect(neutral.failures).toEqual([]);
+    const hero = declarations.find(input => input.file === "components/ui/HeroAvatar.tsx")!;
+    expect(scanWhiteLabels(hero.file, hero.text).cases.some(item => item.reason.includes("unresolved ancestor"))).toBe(true);
+    expect(scanWhiteLabels(hero.file, hero.text, neutral).cases.every(item => !item.reason)).toBe(true);
+    for (const caller of [
+      '<HeroAvatar className={runtimeClass}/>;',
+      '<HeroAvatar className={`p-4 ${runtimeClass}`}/>;',
+      '<HeroAvatar className={ok ? "p-4" : runtimeClass}/>;',
+      '<HeroAvatar className="opacity-50"/>;',
+      '<HeroAvatar {...props}/>;',
+      'const Alias = HeroAvatar; <Alias/>;',
+      'function Forward({className}: Props){ return <PlayShell className={className}/>; }',
+      'const className = "p-4"; function Forward(className: string){ return <PlayShell className={className}/>; }',
+      '<Modal maxWidth={runtimeWidth}/>;',
+      '<Modal maxWidth="max-w-lg opacity-50"/>;',
+    ]) expect(audit(caller).failures, caller).not.toEqual([]);
+    const reassigned = declarations.map(input => input.file === hero.file ? { ...input, text: input.text.replace("const badge =", 'className = "opacity-50"; const badge =') } : input);
+    expect(auditClassInputs([...reassigned, {file: "fixture.tsx", text: prefix}]).failures.some(problem => problem.includes("reassigned"))).toBe(true);
+    const unsafeHero = audit('<HeroAvatar className={runtimeClass}/>;');
+    expect(scanWhiteLabels(hero.file, hero.text, unsafeHero).cases.some(item => item.reason.includes("unresolved ancestor"))).toBe(true);
+  });
+
+  it("rejects every approved fill alias and transitive dependency outside verified cascades", () => {
+    const css = readFileSync(path.join(SRC, "index.css"), "utf8");
+    for (const token of fillDependencies(css)) {
+      expect(cssProblems(css.replace(".comic-panel {", ".comic-panel { " + token + ": white;")), token).not.toEqual([]);
+    }
+    expect(cssProblems(css + "\n.new-surface { --gradient-cta: white; }")).not.toEqual([]);
+    const dependency = css + "\n:root { --gradient-cta: var(--reviewed-stop); --reviewed-stop: #1558c0; }\n.comic-panel { --reviewed-stop: white; }";
+    expect(cssProblems(dependency).some(problem => problem.includes("--reviewed-stop"))).toBe(true);
+  });
   it("validates every literal Modal maxWidth branch and actual import provenance", () => {
     const prefix = 'import { Modal } from "./components/ui/Modal"; ';
     for (const arg of ['"max-w-lg opacity-50"', 'wide ? "max-w-xl" : "opacity-50"', '"[--arbor-clay:white]"', 'runtimeWidth']) {
