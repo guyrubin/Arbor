@@ -305,16 +305,13 @@ const FLAT_INTENTIONAL_OVERRIDES = new Set([
   "--arbor-green-soft", "--arbor-green-ink",
 ]);
 
-/** Tokens whose :root value contains var(--arbor-clay*)/var(--arbor-green-cta-start)
-    references that the flat block overrides. A verbatim copy would re-resolve
-    them against the flat clay (#2b7fff) and CHANGE rendering, because custom
-    properties substitute var() at the scope where they are declared (the flat
-    register inherited these already substituted at :root). They are frozen at
-    today's :root-RESOLVED literals instead. */
+/** CR-01: only the two primary CTA gradients receive authorized AA stops.
+    They remain literal in the flat scope to avoid inherited var() surprises.
+    The decorative progress gradient is now the same frozen literal in both
+    scopes and remains subject to the ordinary byte-copy assertion. */
 const FLAT_RESOLVED_INLINE: Record<string, string> = {
-  "--arbor-gradient-primary": "linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb)",
-  "--arbor-gradient-progress": "linear-gradient(90deg, #58a6ff, #1f6feb)",
-  "--gradient-cta": "linear-gradient(135deg, #58a6ff, #58a6ff 60%, #1f6feb)",
+  "--arbor-gradient-primary": "linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8)",
+  "--gradient-cta": "linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8)",
 };
 
 describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", () => {
@@ -371,12 +368,39 @@ describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", ()
     ).toEqual([]);
   });
 
-  it("resolved-inline exceptions carry today's :root-resolved literals", () => {
+  it("resolved-inline CTA exceptions carry the authorized CR-01 literals", () => {
     for (const [name, expected] of Object.entries(FLAT_RESOLVED_INLINE)) {
       // the :root source must still be var()-based (else fold back to byte-copy)
       expect(rootDecls.get(name), `${name} in :root should still reference var()`).toContain("var(");
       expect(flatDecls.get(name), `${name} frozen literal drifted`).toBe(expected);
     }
+  });
+
+  it("CR-01 changes only the approved text/CTA token values in root and flat scopes", () => {
+    const corrected = {
+      "--arbor-clay": "#1558c0",
+      "--arbor-clay-deep": "#124da8",
+      "--arbor-clay-ink": "var(--arbor-clay-deep)",
+      "--arbor-green-cta-start": "#1a6be8",
+      "--arbor-muted": "#475569",
+      "--arbor-faint": "var(--arbor-muted)",
+      "--arbor-muted-alt": "var(--arbor-muted)",
+      "--arbor-green-ink": "#066446",
+      "--arbor-peach-ink": "#92400e",
+      "--arbor-yellow-ink": "#92400e",
+      "--arbor-pink-ink": "#9d174d",
+      "--arbor-sky-ink": "#075985",
+    };
+    for (const [name, value] of Object.entries(corrected)) {
+      expect(rootDecls.get(name), name + " root").toBe(value);
+      expect(flatDecls.get(name), name + " flat").toBe(value);
+    }
+    expect(flatDecls.get("--accent")).toBe("var(--arbor-clay)");
+  });
+  it("the decorative progress gradient retains its pre-CR-01 value", () => {
+    const frozen = "linear-gradient(90deg, #58a6ff, #1f6feb)";
+    expect(rootDecls.get("--arbor-gradient-progress")).toBe(frozen);
+    expect(flatDecls.get("--arbor-gradient-progress")).toBe(frozen);
   });
 
   it("intentional-override allowlist is exactly the pre-freeze 24 and all present", () => {
