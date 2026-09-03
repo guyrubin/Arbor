@@ -79,7 +79,7 @@ export default function PracticeStudioTab() {
       {/* Kid Mode — the safe play space, one clear primary action */}
       <section
         className="rounded-[22px] p-5 flex flex-wrap items-center justify-between gap-4"
-        style={{ background: "var(--arbor-hero-grad, var(--arbor-paper-deep))", border: "1px solid var(--arbor-rule)" }}
+        style={{ background: "var(--arbor-coach-grad, var(--arbor-paper-deep))", border: "1px solid var(--arbor-rule)" }}
         aria-label={t("practice.studio.kidmode.title")}
       >
         <div className="flex items-center gap-3 min-w-0">

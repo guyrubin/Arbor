@@ -385,8 +385,8 @@ export default function Shell() {
               </span>
               <button
                 onClick={() => toast("Add GEMINI_API_KEY to app/.env.local (copy from app/.env.example) to enable live AI responses.", "info")}
-                className="text-white font-extrabold px-3 py-1.5 rounded-xl flex-shrink-0"
-                style={{ background: "var(--arbor-peach)" }}
+                className="touch-target text-white font-extrabold px-3 py-1.5 rounded-xl flex-shrink-0"
+                style={{ background: "var(--arbor-peach-ink)" }}
               >
                 Learn how
               </button>
