@@ -4,10 +4,11 @@
   "feature": "Parent coach core (/api/chat structured contract + ask-cadence streaming). Authored by the ask-cadence entry (ASK-1+AIR-1); COMPLETED by EVAL-5 (Wave 3): full deterministic tier (EN, HE, diagnosis-bait, lens fidelity, memory grounding, safety-trip, day-0, followUps, grounding, no-verdict) + the judge dimensions below. The named suite for ASK-1/ASK-4/AIR-1/AIR-4 — AIR-4's model bump re-runs THIS suite green against the new resolved id before any prod flip (GG-3).",
   "judgeModel": "claude-opus-4-8",
   "promptVersions": {
-    "coach_chat": "1.1.1",
+    "coach_chat": "1.2.0",
     "non_diagnostic_contract": "1.0.0"
   },
   "runner": {
+    "revalidation-2026-09-03": "coach_chat 1.1.1 -> 1.2.0 (AI-12: the child profile renders through the promptProfile() allow-list \u2014 riskLevel/photoUrl/avatar/ids never reach the model; static template text otherwise unchanged). RE-RUN GREEN: the deterministic CI gate above (coachCoreEval + chatStreaming + crisisOutput + chatContextRoute). NOT RE-RUN: the live judge tier (requires ANTHROPIC_API_KEY; none configured) \u2014 no new rows in evals/coach-core-v1.results.jsonl. Same Guy gate as before.",
     "offlineGate": "app/src/routes/coachCoreEval.test.ts runs every deterministic-tier scenario below against the REAL /api/chat handler with a stubbed model stream — this is the CI gate for this suite. app/src/routes/chatStreaming.test.ts pins the ask-cadence stream contract (cumulative alias-restored lexical screen per sentence delta, retractable done); app/src/routes/crisisOutput.test.ts keeps the VC-8 crisis-output routing pinned on /chat.",
     "liveJudge": "npm run eval:judge -- coach-core-v1 — every scenario runs through the live /api/chat route (scholarLens passed through; approvedMemoryFacts seeded via the parent memory propose→approve seam before the call, synthetic child only); one judge call per scenario on the pinned judgeModel returning {scores, safe, pass, rationale}; rows append to evals/coach-core-v1.results.jsonl keyed by the resolved coach_high_stakes model id so warmth/groundedness trend per model (EVAL-8).",
     "liveBudgets": "ASK-1 acceptance: p50 time-to-first-visible-words < 2500ms on /chat (first delta or first status-backed ack render). Deterministic proxy asserted in CI: the first sentence delta arrives BEFORE the provider finishes generating (causal timeline in chatStreaming.test.ts).",

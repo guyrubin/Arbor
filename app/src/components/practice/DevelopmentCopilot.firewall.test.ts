@@ -16,7 +16,7 @@
  * key its visibility on the internal signal — `watch.some(level === "discuss")`
  * / `riskLevel !== "Low"` — as long as no grade renders and no tone flips).
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -160,5 +160,68 @@ describe("1.7 i18n — fullpicture module en/he parity", () => {
   it("keeps the surface title in parent language in both registers", () => {
     expect(fpEn["elev.fullpicture.title"]).toBe("The Full Picture");
     expect(fpHe["elev.fullpicture.title"]).toBe("התמונה המלאה");
+  });
+});
+
+/* ── GP-05 / AI-08 (2026-09-03): the ONE-caller B4 assertion above is now a
+   REPO-WIDE scan. TrustSafetyBar is constant-posture (kit.tsx): no call site
+   anywhere under components/ may feed it a `risk` EXPRESSION or a graded
+   literal. The two legacy `risk="Low"` literal sites (FeelingsLabTab,
+   SpeechCoachTab — owned by another lane) are an inert constant (the prop
+   type is narrowed to `"Low"` and ignored) and sit on a SHRINK-ONLY ratchet:
+   the count may only go down. */
+const componentsRoot = path.join(here, "..");
+const listTsx = (dir: string): string[] =>
+  readdirSync(dir).flatMap((name) => {
+    const full = path.join(dir, name);
+    if (statSync(full).isDirectory()) return name === "__snapshots__" ? [] : listTsx(full);
+    return /\.tsx$/.test(name) && !/\.test\.tsx$/.test(name) ? [full] : [];
+  });
+const TRUSTBAR_TAG = /<TrustSafetyBar\b[\s\S]*?\/?>/g;
+const RISK_EXPRESSION = /\brisk\s*=\s*\{/;
+const RISK_GRADED_LITERAL = /\brisk\s*=\s*["'](?:Moderate|High)["']/;
+const RISK_LOW_LITERAL = /\brisk\s*=\s*["']Low["']/;
+const RISK_LOW_LITERAL_BASELINE = 2;
+const OLD_COACHTAB_TRUSTBAR = `<TrustSafetyBar
+          risk={lastMessage.contract ? riskFromLevel(lastMessage.contract.riskLevel) : parseRisk(lastMessage.text)}
+          note={t("coach.trust.note")}
+          lang={uiLang}
+          onEscalate={() => setActiveTab("consult")}
+        />`;
+
+describe("GP-05 repo-wide — no <TrustSafetyBar> call site passes a risk expression or grade", () => {
+  const sites = listTsx(componentsRoot).flatMap((file) =>
+    (readFileSync(file, "utf8").match(TRUSTBAR_TAG) ?? []).map((tag) => ({ file: path.relative(componentsRoot, file), tag })),
+  );
+
+  it("negative control: the regexes catch the OLD CoachTab and DevelopmentCopilot call sites", () => {
+    expect(RISK_EXPRESSION.test(OLD_COACHTAB_TRUSTBAR)).toBe(true);
+    expect(RISK_EXPRESSION.test(OLD_TRUSTBAR)).toBe(true);
+    expect(RISK_GRADED_LITERAL.test('<TrustSafetyBar risk="High" />')).toBe(true);
+    expect(TRUSTBAR_TAG.test(OLD_COACHTAB_TRUSTBAR)).toBe(true);
+    TRUSTBAR_TAG.lastIndex = 0;
+  });
+
+  it("scans a non-trivial number of call sites (the walker is not vacuous)", () => {
+    expect(sites.length).toBeGreaterThanOrEqual(6);
+    expect(sites.some((s) => s.file.endsWith("CoachTab.tsx"))).toBe(true);
+  });
+
+  it("no call site passes risk={…} or a Moderate/High literal", () => {
+    for (const { file, tag } of sites) {
+      expect(tag, `${file} feeds TrustSafetyBar a risk expression`).not.toMatch(RISK_EXPRESSION);
+      expect(tag, `${file} feeds TrustSafetyBar a graded risk literal`).not.toMatch(RISK_GRADED_LITERAL);
+    }
+  });
+
+  it(`legacy risk="Low" literal sites only shrink (baseline ${RISK_LOW_LITERAL_BASELINE})`, () => {
+    const lowSites = sites.filter((s) => RISK_LOW_LITERAL.test(s.tag)).map((s) => s.file);
+    expect(lowSites.length, `risk="Low" sites: ${lowSites.join(", ")}`).toBeLessThanOrEqual(RISK_LOW_LITERAL_BASELINE);
+  });
+
+  it("CoachTab dropped riskFromLevel/parseRisk and gates the escalate action on the internal signal", () => {
+    const coachSrc = readFileSync(path.join(componentsRoot, "tabs", "CoachTab.tsx"), "utf8");
+    expect(coachSrc).not.toMatch(/\bparseRisk\b|\briskFromLevel\b/);
+    expect(coachSrc).toContain("onEscalate={escalationSignal ? () => setActiveTab(\"consult\") : undefined}");
   });
 });

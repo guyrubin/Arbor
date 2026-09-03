@@ -1,3 +1,4 @@
+import { ageLabel } from "../../lib/childAge";
 import React from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
@@ -8,6 +9,8 @@ import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, 
 import { buildPresetPacket, presetPacketToPrintSections } from "../../consult/packet";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { useHeroAvatar } from "../ui/HeroAvatar";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import type { LangObservation } from "../../growth/vocabAgg";
 
 /** Plan ids are minted as `plan-<epoch-ms>` (ArborContext) — recover the
  *  creation time for the CARE-7 delta counts. Unparseable → undefined (the
@@ -52,6 +55,13 @@ export function useReportExport() {
   // embed ONLY the stylized descriptor hero (isGenerated) — never a real photo —
   // into a document the parent may forward to a clinician.
   const { url: heroUrl, isGenerated } = useHeroAvatar();
+  // LC-19: the parent's logged phrases feed the Language Transition Note —
+  // the same registered `langObs` sink Language Lab writes (export/erase-swept).
+  const langObsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", {
+    orderByField: "timestamp",
+    orderDir: "desc",
+    max: 500,
+  });
   return (type: ReportType, excludedIds?: Set<string>) => {
     const heroImageUrl = isGenerated && heroUrl ? heroUrl : undefined;
     if (isProfessionalReportType(type)) {
@@ -77,7 +87,7 @@ export function useReportExport() {
       });
       const doc: ReportDoc = {
         title: REPORTS.find((r) => r.type === type)!.title,
-        subtitle: `${childProfile.name}, age ${childProfile.age}`,
+        subtitle: `${childProfile.name}, ${ageLabel(childProfile)}`,
         sections: presetPacketToPrintSections(type, packet, excludedIds),
         heroImageUrl,
       };
@@ -94,6 +104,7 @@ export function useReportExport() {
       checkedMilestones,
       totalMilestones,
       heroImageUrl,
+      langObs: langObsCol.items,
     });
     openPrintableReport(doc, childProfile.name);
   };

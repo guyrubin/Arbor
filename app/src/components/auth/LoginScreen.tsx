@@ -125,8 +125,11 @@ export default function LoginScreen() {
         </div>
 
         {error && (
-          <div className="text-xs rounded-xl px-4 py-2.5" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
-            {error}
+          <div role="alert" className="text-xs rounded-xl px-4 py-2.5" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+            {/* MOB-03: AuthContext hands an i18n KEY (lib/i18nElevation/storeShell
+                authErrorKey); t() resolves it in the parent's language and passes
+                any legacy literal through unchanged (missing key → the string). */}
+            {t(error)}
           </div>
         )}
 
@@ -169,6 +172,9 @@ export default function LoginScreen() {
               <Mail className="w-4 h-4 absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
               <input
                 type="email"
+                name="email"
+                autoComplete="email"
+                inputMode="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t("auth.emailPlaceholder")}
@@ -180,6 +186,8 @@ export default function LoginScreen() {
               <Lock className="w-4 h-4 absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
               <input
                 type="password"
+                name="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("auth.passwordPlaceholder")}

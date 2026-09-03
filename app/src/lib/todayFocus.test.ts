@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { focusHeadlineFrom } from "./todayFocus";
-import { en, he } from "./i18n";
+import { focusHeadlineFrom, focusHeadlineFor, focusBodyFor, whyLineFor, whyLineParts } from "./todayFocus";
+import { en, he, translate } from "./i18n";
 
 /**
  * Next-level Wave-1 (TODAY hub) pins — TODAY-1, CODEX-2, CODEX-3, TODAY-4.
@@ -92,9 +92,13 @@ describe("focusHeadlineFrom — pure scrub (CODEX-2 firewall condition)", () => 
 describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
   const src = read("components/tabs/OverviewTab.tsx");
 
-  it("derives the rendered headline through the pure scrub", () => {
-    expect(src).toContain("focusHeadlineFrom(focus?.text)");
+  it("derives the rendered headline through the pure scrub (TJB-02: the structured-aware entry point)", () => {
+    // Was `focusHeadlineFrom(focus?.text)` — the observation sentence. The
+    // hero now reads the whole record so the model's ONE step is the headline
+    // and legacy text-only records still resolve through focusHeadlineFrom.
+    expect(src).toContain("focusHeadlineFor(focus)");
     expect(src).toContain('headline={focusHeadline ?? t("ov.recoEmpty"');
+    expect(src).toContain("body={focusHeadline ? focusBody : undefined}");
   });
 
   it("has no keyword-override branch (canned copy never replaces live guidance)", () => {
@@ -118,6 +122,104 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
     expect(src).toContain("getHours()");
     expect(src).not.toContain("Good morning");
     expect(src).not.toContain("בוקר טוב");
+  });
+});
+
+/* ── TJB-02 — the STEP is the headline + what accept persists ─────────────── */
+describe("TJB-02 — focusHeadlineFor prefers the model's tryToday step", () => {
+  const fixture = {
+    text: "Maya's mornings have been busy with transitions this week. Try a two-minute warning before leaving the park.",
+    focus: "Maya's mornings have been busy with transitions this week.",
+    tryToday: "Try a two-minute warning before leaving the park.",
+  };
+
+  it("NEGATIVE CONTROL — the legacy rule alone returns the OBSERVATION (the bug)", () => {
+    expect(focusHeadlineFrom(fixture.text)).toBe(fixture.focus);
+  });
+
+  it("the headline (= what acceptTodayAction receives) is tryToday; the observation is the body", () => {
+    expect(focusHeadlineFor(fixture)).toBe(fixture.tryToday);
+    expect(focusBodyFor(fixture)).toBe(fixture.focus);
+  });
+
+  it("a legacy cached record (text only) still resolves through the first-sentence rule, with no body", () => {
+    expect(focusHeadlineFor({ text: fixture.text })).toBe(fixture.focus);
+    expect(focusBodyFor({ text: fixture.text })).toBeUndefined();
+    expect(focusHeadlineFor(null)).toBeNull();
+    expect(focusHeadlineFor({ text: "", tryToday: "  " })).toBeNull();
+  });
+
+  it("the step gets the SAME scrub + clamp (never a canned override)", () => {
+    expect(focusHeadlineFor({ tryToday: "1. What May Be Happening - (high): Name the feeling before the request." })).toBe("Name the feeling before the request.");
+    const long = `Try ${"a very ".repeat(40)}long step`;
+    const out = focusHeadlineFor({ tryToday: long })!;
+    expect(out.length).toBeLessThanOrEqual(150);
+    expect(out.endsWith("…")).toBe(true);
+  });
+
+  it("OverviewTab persists the headline (the step) through acceptTodayAction", () => {
+    const src = read("components/tabs/OverviewTab.tsx");
+    expect(src).toContain("acceptTodayAction(focusHeadline");
+  });
+
+  it("useTodaysFocus stores the structured fields (reads data.tryToday, data.focus, data.inputsUsed)", () => {
+    const hook = read("hooks/useTodaysFocus.ts");
+    expect(hook).toContain("data.tryToday");
+    expect(hook).toContain("data.focus");
+    expect(hook).toContain("data.inputsUsed");
+    expect(hook).toMatch(/export type Focus = \{[\s\S]*?tryToday\?: string;[\s\S]*?\}/);
+  });
+});
+
+/* ── ENG-07 / AI-19 — the why-line names only inputs that exist ───────────── */
+describe("ENG-07 — whyLineFor is built from real inputs", () => {
+  const tEn = (k: string, v?: Record<string, string | number>) => translate("en", k, v);
+  const tHe = (k: string, v?: Record<string, string | number>) => translate("he", k, v);
+
+  it("NEGATIVE CONTROL — the retired static line asserted every input; it is gone from both dictionaries", () => {
+    const retired = "Chosen from today's rhythm, recent moments, age, goals, and interests.";
+    expect(/rhythm|goals|interests/.test(retired)).toBe(true);
+    expect(en["today.intent.whyRhythm"]).toBeUndefined();
+    expect(he["today.intent.whyRhythm"]).toBeUndefined();
+    expect(read("components/tabs/OverviewTab.tsx")).not.toContain("today.intent.whyRhythm");
+  });
+
+  it("cold start (no moments) → the honest day-0 line with the child's name, no rhythm/goals/interests", () => {
+    const line = whyLineFor({ name: "Maya", recentCount: 0, confidence: "none", goals: 0, interests: 0 }, tEn);
+    expect(line).toBe("Chosen from Maya's age — add a moment and it gets sharper.");
+    expect(line).not.toMatch(/rhythm|goals|interests/);
+  });
+
+  it("moments but no rhythm read / goals / interests → recent moments + age only", () => {
+    const line = whyLineFor({ name: "Maya", recentCount: 3, confidence: "none", goals: 0, interests: 0 }, tEn);
+    expect(line).toBe("Chosen from recent moments, age.");
+    expect(line).not.toMatch(/rhythm|goals|interests/);
+  });
+
+  it("every real input is named when present", () => {
+    const line = whyLineFor({ name: "Maya", recentCount: 9, confidence: "high", goals: 2, interests: 3 }, tEn);
+    expect(line).toBe("Chosen from recent moments, today's rhythm, age, your goals, interests.");
+  });
+
+  it("server-reported inputsUsed wins over the client estimate", () => {
+    expect(whyLineParts({ name: "Maya", recentCount: 5, confidence: "none", goals: 0, interests: 0, inputsUsed: { momentCount: 0 } }).key).toBe("today.intent.why.day0");
+    expect(whyLineParts({ name: "Maya", recentCount: 0, confidence: "none", goals: 0, interests: 0, inputsUsed: { momentCount: 4 } }).key).toBe("today.intent.why.list");
+  });
+
+  it("renders in Hebrew through the same keys (no English leak)", () => {
+    const line = whyLineFor({ name: "מאיה", recentCount: 0, confidence: "none", goals: 0, interests: 0 }, tHe);
+    expect(line).toContain("מאיה");
+    expect(line).not.toMatch(/[A-Za-z]/);
+    for (const key of ["today.intent.why.list", "today.intent.why.day0", "today.intent.why.recent", "today.intent.why.rhythm", "today.intent.why.age", "today.intent.why.goals", "today.intent.why.interests", "today.intent.why.sep"]) {
+      expect(en[key], `en missing ${key}`).toBeTruthy();
+      expect(he[key], `he missing ${key}`).toBeTruthy();
+    }
+  });
+
+  it("OverviewTab feeds the hero why-line from whyLineFor, never a fixed key", () => {
+    const src = read("components/tabs/OverviewTab.tsx");
+    expect(src).toContain("why={focusWhy}");
+    expect(src).toMatch(/whyLineFor\(\s*\{\s*name: firstName,\s*recentCount,\s*confidence: rhythm\.confidence,\s*goals: activeGoals\.length,\s*interests: childProfile\.interests\?\.length \?\? 0,\s*inputsUsed: focus\?\.inputsUsed,\s*\},\s*t,\s*\)/);
   });
 });
 

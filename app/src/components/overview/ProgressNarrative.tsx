@@ -67,6 +67,9 @@ export default function ProgressNarrative({
     eyebrow: t("today.narrative.eyebrow"), title: t("today.narrative.title", { name: childName }), changed: t("today.narrative.changed"),
     evidence: t("today.narrative.evidence"), next: t("today.narrative.next"), open: t("today.narrative.open"),
     noChange: t("today.narrative.noChange"),
+    // RUN-19: the evidence cell's empty state is its OWN line — the "not
+    // enough confirmed moments" sentence renders once, in "What changed".
+    evidenceEmpty: t("today.narrative.evidenceEmpty"),
     changedBody: t("today.narrative.changedBody", {
       moments: plural("today.narrative.changedBody.moments", recentBehaviors.length),
       plays: plural("today.narrative.changedBody.plays", recentPlay.length),
@@ -106,7 +109,7 @@ export default function ProgressNarrative({
                 <Icon name="arrow_forward" size={14} className="mt-0.5 flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-green-ink)" }} />
               </button>
             </li>
-          ))}</ul> : <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{copy.noChange}</p>}
+          ))}</ul> : <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{copy.evidenceEmpty}</p>}
           <button type="button" onClick={() => onOpenEvidence()} className="mt-3 min-h-10 text-xs font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{copy.open}</button>
         </div>
         <NarrativeCell icon="arrow_forward" title={copy.next} body={copy.nextBody} />

@@ -10,6 +10,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useFamilyGlance } from "../../hooks/useFamilyGlance";
 import { Avatar } from "../ui/Avatar";
+// GP-01: the months-precise age label is THE parent-facing age render.
+import { ageLabel } from "../../lib/childAge";
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
@@ -19,8 +21,14 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 
 export default function FamilyGlanceCard() {
   const { t } = useLanguage();
-  const { setActiveChild } = useProfile();
+  const { setActiveChild, profiles } = useProfile();
   const rows = useFamilyGlance();
+  // The glance row carries the legacy whole-years `age`; the label reads the
+  // full profile (birthDate / ageMonths) so an infant is "7 months", not "Age 0".
+  const ageLine = (id: string): string => {
+    const p = profiles.find((c) => c.id === id);
+    return p ? ageLabel(p, t) : "";
+  };
 
   if (rows.length === 0) return null;
 
@@ -59,7 +67,7 @@ export default function FamilyGlanceCard() {
                   {row.name}
                 </span>
                 <span className="text-[11px] whitespace-nowrap" dir="auto" style={{ color: MUTED }}>
-                  {t("profile.ageLine", { age: row.age })}
+                  {t("profile.ageLine", { age: ageLine(row.id) })}
                 </span>
               </span>
 

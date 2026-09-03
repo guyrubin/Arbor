@@ -99,6 +99,50 @@ export function isUnderDailyCeiling(sentToday: number): boolean {
   return sentToday < 2;
 }
 
+export const NUDGE_DAILY_CEILING = 2;
+
+/** Local calendar day key (YYYY-MM-DD) — the counter's bucket. */
+export function nudgeDayKey(nowMs: number = Date.now()): string {
+  const d = new Date(nowMs);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+const SHOWN_KEY_PREFIX = "arbor.nudge.shown.";
+
+/**
+ * TJB-03 / ENG-02: the per-day SHOWN counter behind the max-2 contract —
+ * the distinct nudge kinds surfaced today, in localStorage under
+ * `arbor.nudge.shown.<day>` (mirrors `arbor.bell.read`: parent-device state,
+ * never child data, never Firestore). Older days are left to expire with the
+ * key namespace; only today's key is ever read.
+ */
+export function shownNudgesToday(nowMs: number = Date.now()): string[] {
+  try {
+    const raw = localStorage.getItem(SHOWN_KEY_PREFIX + nudgeDayKey(nowMs));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Record that `kind` was shown today (idempotent per kind per day). Returns
+ *  the updated list. */
+export function recordNudgeShown(kind: string, nowMs: number = Date.now()): string[] {
+  const shown = shownNudgesToday(nowMs);
+  if (shown.includes(kind)) return shown;
+  const next = [...shown, kind];
+  try {
+    localStorage.setItem(SHOWN_KEY_PREFIX + nudgeDayKey(nowMs), JSON.stringify(next));
+  } catch {
+    /* storage blocked — silent */
+  }
+  return next;
+}
+
 /** Format a 24h local hour as "HH:00" (e.g. 9 → "9:00 am", 21 → "9:00 pm"). */
 export function formatHour(h: number): string {
   const period = h < 12 ? "am" : "pm";

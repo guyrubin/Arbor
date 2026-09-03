@@ -28,16 +28,28 @@ export type CanonicalBehaviorType =
   | "Screentime Dispute"
   | "Sibling Conflict"
   | "Food Refusal"
-  | "Sleep Meltdown";
+  | "Sleep Meltdown"
+  | "Moment";
 
-/** The canonical six, each with its full (beh.type.*) and short (ql.type.*)
+/**
+ * TJB-01: the neutral, non-incident type. "She said 'butterfly' for the first
+ * time" is a moment, not a challenge — it has no trigger/response pair to
+ * invent and no intensity to grade. Stored with intensity 1 / duration 0 so
+ * it never feeds the friction rhythm (predict.ts counts intensity ≥ 4 only)
+ * and `buildTimeline`'s kind:"moment" row covers it like any other entry.
+ */
+export const MOMENT_BEHAVIOR_TYPE: CanonicalBehaviorType = "Moment";
+
+/** The canonical types, each with its full (beh.type.*) and short (ql.type.*)
  *  i18n label keys — both selects render from THIS list, no duplicated
- *  option literals anywhere else. */
+ *  option literals anywhere else. The neutral Moment renders first: it is the
+ *  default shape of the Journal's "catch the moment" promise. */
 export const BEHAVIOR_TYPES: {
   value: CanonicalBehaviorType;
   labelKey: string;
   shortLabelKey: string;
 }[] = [
+  { value: "Moment", labelKey: "beh.type.moment", shortLabelKey: "ql.type.moment" },
   { value: "Transition Refusal", labelKey: "beh.type.transition", shortLabelKey: "ql.type.transition" },
   { value: "Sensory Overload", labelKey: "beh.type.sensory", shortLabelKey: "ql.type.sensory" },
   { value: "Screentime Dispute", labelKey: "beh.type.screen", shortLabelKey: "ql.type.screen" },
@@ -47,6 +59,48 @@ export const BEHAVIOR_TYPES: {
 ];
 
 export const CANONICAL_BEHAVIOR_TYPES: CanonicalBehaviorType[] = BEHAVIOR_TYPES.map((b) => b.value);
+
+/** The incident-shaped types: the ONLY ones whose write requires a parent
+ *  `response`. Everything else (Moment, legacy free labels) saves on the
+ *  trigger text alone. Exported as a Set so call sites test membership, never
+ *  re-list the names. */
+export const INCIDENT_TYPES: ReadonlySet<string> = new Set<string>(
+  CANONICAL_BEHAVIOR_TYPES.filter((t) => t !== MOMENT_BEHAVIOR_TYPE),
+);
+
+export const isIncidentType = (behaviorType: string): boolean => INCIDENT_TYPES.has(behaviorType);
+
+/** Minimal draft shape every capture surface holds before a write. */
+export type BehaviorLogDraft = {
+  behaviorType: string;
+  trigger: string;
+  response?: string;
+};
+
+/**
+ * ONE validation rule for every write path (handleAddLog, QuickLogModal,
+ * BehaviorsTab submit/confirm): the trigger — "what happened" — is always
+ * required; the response — "what you tried" — only when the type is an
+ * incident. Returns the i18n key of the calm error to toast, or null when the
+ * draft may be written. Pure, so it is unit-tested directly (TJB-01 guard).
+ */
+export function validateLogDraft(d: BehaviorLogDraft): "beh.toast.fillTrigger" | "beh.toast.fillBoth" | null {
+  const trigger = String(d.trigger ?? "").trim();
+  const response = String(d.response ?? "").trim();
+  if (!trigger) return isIncidentType(d.behaviorType) ? "beh.toast.fillBoth" : "beh.toast.fillTrigger";
+  if (isIncidentType(d.behaviorType) && !response) return "beh.toast.fillBoth";
+  return null;
+}
+
+/** Field defaults for a plain moment saved from ONE text field. */
+export const momentLogFields = (text: string, context: string = "Home") => ({
+  behaviorType: MOMENT_BEHAVIOR_TYPE,
+  intensity: 1,
+  durationMinutes: 0,
+  trigger: text.trim(),
+  response: undefined as string | undefined,
+  context,
+});
 
 export const DEFAULT_BEHAVIOR_TYPE: CanonicalBehaviorType = "Transition Refusal";
 

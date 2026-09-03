@@ -15,13 +15,14 @@
  *  - Monitoring note text is character-for-character from DomainSignal.note.
  *  - Read state is local (localStorage), not synced — no backend call.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMonitoring } from "./useMonitoring";
 import { nextNudge } from "../lib/jitai";
 import { ageMonthsFromProfile } from "../lib/childAge";
 import { useArbor } from "../context/ArborContext";
 import { predictRhythm } from "../rhythm/predict";
 import type { ActiveTab } from "../context/ArborContext";
+import { loadPrefs, isInQuietHours, shownNudgesToday, recordNudgeShown } from "../growth/jitaiPrefs";
 
 export type NotificationKind = "monitoring" | "nudge";
 
@@ -39,6 +40,9 @@ export interface AppNotification {
   vars?: Record<string, string | number>;
   /** The tab to navigate to when the item is tapped. */
   action: ActiveTab;
+  /** ENG-01: the LOG nudge asks the landing surface (Today) to open text
+   *  capture — the consumer calls requestCapture(capture) before navigating. */
+  capture?: "text";
 }
 
 const LS_READ_KEY = "arbor.bell.read";
@@ -74,6 +78,14 @@ export function useNotifications(): {
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
+  // TJB-03 / ENG-02: the parent's Smart Reminders preferences gate this ONE
+  // choke point. Read once per mount (the panel saves to localStorage and the
+  // bell re-mounts on open), plus today's shown-kinds list for the max-2
+  // contract.
+  const prefs = useMemo(() => loadPrefs(), []);
+  const [shownToday, setShownToday] = useState<string[]>(() => shownNudgesToday());
+  const quiet = isInQuietHours(prefs, Date.now());
+
   // Derive monitoring signals via the ONE shared derivation (hooks/useMonitoring),
   // which owns the months-precise age conversion this hook used to duplicate.
   const monitoring = useMonitoring();
@@ -106,15 +118,29 @@ export function useNotifications(): {
 
   const nudge = useMemo(
     () =>
-      nextNudge({
-        nowMs: Date.now(),
-        rhythm,
-        loggedToday: loggedTodayCount,
-        recent7d,
-        childName: firstName,
-      }),
-    [rhythm, loggedTodayCount, recent7d, firstName],
+      quiet
+        ? null
+        : nextNudge(
+            {
+              nowMs: Date.now(),
+              rhythm,
+              loggedToday: loggedTodayCount,
+              recent7d,
+              childName: firstName,
+              shownToday,
+            },
+            prefs,
+          ),
+    [rhythm, loggedTodayCount, recent7d, firstName, prefs, quiet, shownToday],
   );
+
+  // Count the surfaced nudge against today's ceiling (idempotent per kind).
+  useEffect(() => {
+    if (!nudge) return;
+    const next = recordNudgeShown(nudge.kind);
+    if (next.length !== shownToday.length) setShownToday(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nudge?.kind]);
 
   // Build the notification list.
   const items: AppNotification[] = useMemo(() => {
@@ -122,7 +148,8 @@ export function useNotifications(): {
 
     // 1) Monitoring watch-areas — verbatim note text from DomainSignal.note.
     //    Only emit items for domains in the "monitor" watch level.
-    for (const signal of monitoring.watchAreas) {
+    //    TJB-03: the parent's "Milestone moments" toggle governs these items.
+    for (const signal of prefs.types.milestone ? monitoring.watchAreas : []) {
       list.push({
         id: `monitoring:${signal.domain}`,
         kind: "monitoring",
@@ -147,12 +174,13 @@ export function useNotifications(): {
         headlineKey: nudge.headlineKey,
         bodyKey: nudge.bodyKey,
         vars: nudge.vars,
-        action: nudge.action as ActiveTab,
+        action: nudge.action,
+        capture: nudge.capture,
       });
     }
 
     return list;
-  }, [monitoring.watchAreas, nudge]);
+  }, [monitoring.watchAreas, nudge, prefs.types.milestone]);
 
   const readSet = useMemo(() => readReadSet(), []);
 

@@ -1,3 +1,4 @@
+import { ageLabel } from "../../lib/childAge";
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
@@ -79,7 +80,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
       incomingNote?.trim()
         ? incomingNote.trim()
         : childProfile.challenges[0]
-        ? `We're working on ${childProfile.challenges[0].toLowerCase()} with ${first} (age ${childProfile.age}).`
+        ? `We're working on ${childProfile.challenges[0].toLowerCase()} with ${first} (${ageLabel(childProfile, t)}).`
         : ""
     );
     setConsultMode("either");

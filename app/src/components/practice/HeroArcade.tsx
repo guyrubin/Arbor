@@ -3,18 +3,25 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
-import { evaluateCosmetics, type CosmeticStats } from "../../practice/cosmetics";
+import { evaluateCosmetics, lifetimeDomains, type CosmeticStats } from "../../practice/cosmetics";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { isolate } from "../../lib/i18n";
 import HeroCrest from "../ui/HeroCrest";
 import { ArborMascot } from "../ui/ArborMascot";
 import { TabSkeleton } from "../ui/Skeleton";
+import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 
 /* HeroArcade — the comic-book Playbank home. The child's generated hero is the
    protagonist; each skill is a themed "world". Replaces the flat tab strip with
    a world picker, then renders the existing game tabs as the world's panel.
    New worlds (Beat Keeper / Hero Pose / Pattern Power) and the comic-share loop
-   land in later waves; they show here as "soon" so the full map is visible. */
+   land in later waves; they show here as "soon" so the full map is visible.
+
+   Kid register (lane K): the hero panel shows LEVEL + five star pips toward the
+   next level (KID-16 — never a % bar that drops to 0 after a win); every badge
+   keys on a lifetime metric (KID-02); every literal is an elev.play.arcade.*
+   key; colours are tokens; the comics CTA renders only when the parent shell is
+   reachable (KID-05, useKidSafeNav). */
 
 const SpeechCoachTab = lazy(() => import("./SpeechCoachTab"));
 const MimicStudioTab = lazy(() => import("./MimicStudioTab"));
@@ -68,45 +75,73 @@ const WORLDS: World[] = [
   { id: "word-world", name: "Word World", tag: "Language", icon: "menu_book", color: "sky", imagePrompt: "a warm cozy reading nook with open books, speech bubbles, and colorful letters floating gently", isNew: true, Comp: WordWorldTab, count: (d) => d.events.items.filter((e) => e.kind === "lang-strategy").length },
 ];
 
-function Stars({ n }: { n: number }) {
+/** Sessions per level — the level is monotonic; the pips fill toward the next. */
+const SESSIONS_PER_LEVEL = 5;
+
+function Stars({ n, aria }: { n: number; aria: string }) {
   return (
-    <div className="flex gap-0.5 mt-2" aria-label={`${n} of 3 stars`}>
+    <div className="flex gap-0.5 mt-2" aria-label={aria}>
       {[0, 1, 2].map((i) => (
         <Icon key={i} name="star" size={14} fill={i < n ? 1 : 0}
-          style={{ color: i < n ? "var(--arbor-yellow)" : "#cdc8bd" }} />
+          style={{ color: i < n ? "var(--arbor-yellow)" : "var(--arbor-rule-strong)" }} />
+      ))}
+    </div>
+  );
+}
+
+/** KID-16: five star pips toward the next level. Filled n/5, never a numeral,
+ *  never a bar that visibly empties — a fresh level simply starts a new row. */
+function LevelPips({ filled, aria }: { filled: number; aria: string }) {
+  return (
+    <div className="flex items-center gap-1.5" role="img" aria-label={aria}>
+      {Array.from({ length: SESSIONS_PER_LEVEL }).map((_, i) => (
+        <Icon key={i} name="star" size={22} fill={i < filled ? 1 : 0}
+          style={{ color: i < filled ? "var(--arbor-yellow)" : "var(--arbor-rule-strong)" }} />
       ))}
     </div>
   );
 }
 
 export default function HeroArcade({ initialWorldId }: { initialWorldId?: string } = {}) {
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile } = useArbor();
   const { t } = useLanguage();
   const data = usePracticeData(childProfile.id);
   const hero = useHeroAvatar();
-  // E8/F-10: display-time possessive for the comic CTA — bidi-isolated so a
-  // Hebrew hero name can't pull the "'s" to its right-hand side. hero.name
-  // itself stays raw (it is compared against the "your child" sentinel).
-  const heroPossessive = hero.name === "your child" ? "your child's" : `${isolate(hero.name)}'s`;
+  // KID-05: the comics CTA needs the parent shell; while Kid Mode is active the
+  // navigator is null and the CTA is not rendered at all (never a dead button).
+  const nav = useKidSafeNav();
+  const hasName = hero.name !== "your child";
+  // E8/F-10: hero.name itself stays raw (it is compared against the "your
+  // child" sentinel); display copy isolates it through t()'s interpolation.
+  const heroName = isolate(hero.name);
   // KID-4: a kid-dashboard game tile named after a world opens the arcade with
   // that world pre-selected (only ids that resolve to a playable world count).
   const [openId, setOpenId] = useState<string | null>(
     () => (initialWorldId && WORLDS.some((w) => w.id === initialWorldId && !!w.Comp) ? initialWorldId : null),
   );
 
+  // KID-02: every cosmetic metric is LIFETIME — nothing here can ever go down.
   const stats: CosmeticStats = useMemo(() => ({
     totalSessions:
       data.speech.items.length + data.mimic.items.length + data.adventures.items.length +
       data.events.items.length + data.missions.items.filter((m) => m.completed).length,
     daysPracticed: data.daysPracticed,
-    domainsTouched: data.week.domainsTouched.length,
+    domainsEverTouched: lifetimeDomains({
+      speech: data.speech.items,
+      mimic: data.mimic.items,
+      adventures: data.adventures.items,
+      events: data.events.items,
+      missions: data.missions.items,
+    }).length,
   }), [data]);
 
   const { unlocked, next, activeFrame } = useMemo(() => evaluateCosmetics(stats), [stats]);
   const badges = useMemo(() => unlocked.filter((c) => c.kind === "badge"), [unlocked]);
   const title = useMemo(() => unlocked.filter((c) => c.kind === "title").slice(-1)[0] ?? null, [unlocked]);
-  const level = 1 + Math.floor(stats.totalSessions / 5);
-  const powerPct = Math.round(((stats.totalSessions % 5) / 5) * 100);
+  const level = 1 + Math.floor(stats.totalSessions / SESSIONS_PER_LEVEL);
+  const pipsFilled = stats.totalSessions % SESSIONS_PER_LEVEL;
+  const cosmeticLabel = (id: string) => t(`elev.play.cosmetic.${id}.label`);
+  const cosmeticReq = (id: string) => t(`elev.play.cosmetic.${id}.req`);
 
   const open = openId ? WORLDS.find((w) => w.id === openId) : null;
   if (open?.Comp) {
@@ -117,9 +152,9 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
             tile named "Beat Keeper" lands on a surface that SAYS Beat Keeper. */}
         <div className="flex items-center gap-3 flex-wrap">
           <button onClick={() => setOpenId(null)}
-            className="play-pressable inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-extrabold"
+            className="play-pressable inline-flex items-center gap-2 rounded-full px-4 min-h-[44px] text-[13px] font-extrabold"
             style={{ background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
-            <Icon name="arrow_back" size={16} /> All worlds
+            <Icon name="arrow_back" size={16} /> {t("elev.play.arcade.allWorlds")}
           </button>
           <h1 className="font-black leading-none" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,4vw,28px)" }}>
             {open.name}
@@ -139,37 +174,33 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
         </HeroCrest>
         <div className="flex-1 min-w-0">
           <div className="inline-flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-[12px] font-black text-white rounded-full px-2.5 py-0.5"
-              style={{ background: "var(--arbor-lav)", border: "var(--comic-line)" }}>LVL {level}</span>
+            <span className="text-[12px] font-black rounded-full px-2.5 py-0.5"
+              style={{ background: "var(--arbor-lav)", color: "var(--arbor-on-accent)", border: "var(--comic-line)" }}>{t("elev.play.arcade.level", { n: level })}</span>
             {title ? (
               <span className="text-[12px] font-black rounded-full px-2.5 py-0.5"
                 style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)", border: "var(--comic-line)" }}>
-                <span aria-hidden="true">{title.emoji}</span> {title.label}
+                <span aria-hidden="true">{title.emoji}</span> {cosmeticLabel(title.id)}
               </span>
             ) : (
-              <span className="text-[13px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>Hero of the week</span>
+              <span className="text-[13px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>{t("elev.play.arcade.heroOfWeek")}</span>
             )}
           </div>
           <h1 className="font-black leading-none truncate" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(24px,5vw,40px)" }}>
-            {hero.name === "your child" ? "Your hero" : `${hero.name} the Brave`}
+            {hasName ? t("elev.play.arcade.heroBrave", { name: hero.name }) : t("elev.play.arcade.yourHero")}
           </h1>
           <div className="flex items-center gap-3 mt-3 flex-wrap">
             <div className="flex-1 min-w-[180px]">
-              <div className="flex justify-between text-[12px] font-extrabold mb-1" style={{ color: "var(--arbor-ink-soft)" }}>
-                <span>Power level</span><span>{powerPct}%</span>
-              </div>
-              <div className="h-5 rounded-full overflow-hidden" style={{ background: "#fff", border: "var(--comic-line)" }}>
-                <div className="power-fill" style={{ width: `${powerPct}%` }} />
-              </div>
+              <div className="text-[12px] font-extrabold mb-1" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.play.arcade.nextLevel")}</div>
+              <LevelPips filled={pipsFilled} aria={t("elev.play.arcade.nextLevelAria", { n: pipsFilled })} />
             </div>
             {/* KID-6: monotonic days-practiced counter — only ever grows, never
                 resets. Streaks are loss-framed and NEVER shown to the child
                 (practice/signals.ts doctrine). */}
             <div className="inline-flex items-center gap-1.5 rounded-2xl px-3 py-2"
-              style={{ background: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
+              style={{ background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
               <Icon name="event_available" size={20} fill={1} style={{ color: "var(--arbor-peach)" }} />
               <b className="text-[18px]" style={{ fontFamily: "var(--font-display)" }}>{data.daysPracticed}</b>
-              <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink-soft)" }}>days practiced</span>
+              <span className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.play.arcade.daysPracticed")}</span>
             </div>
           </div>
         </div>
@@ -179,13 +210,13 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
       <div className="flex items-end gap-3">
         <ArborMascot size={52} mood="wave" animate className="flex-shrink-0" />
         <div className="relative comic-panel px-4 py-3 text-[14px] font-extrabold" style={{ boxShadow: "var(--comic-pop)" }}>
-          Pick a world, hero. Every win powers up {hero.name === "your child" ? "your hero" : hero.name}!
+          {hasName ? t("elev.play.arcade.coachSay", { hero: hero.name }) : t("elev.play.arcade.coachSayGeneric")}
         </div>
       </div>
 
       {/* WORLDS */}
       <div>
-        <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>Choose your world</h2>
+        <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>{t("elev.play.arcade.chooseWorld")}</h2>
         <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
           {WORLDS.filter((w) => !w.isNew).map((w) => {
             const glyph = w.icon;
@@ -194,24 +225,24 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
             const c = COLOR[w.color];
             return (
               <button key={w.id} className="world-tile text-start relative" aria-disabled={!live}
-                aria-label={`${w.name}, ${w.tag}${live ? "" : ", coming soon"}`}
+                aria-label={live ? t("elev.play.arcade.worldAria", { world: w.name, tag: w.tag }) : t("elev.play.arcade.comingSoonAria", { world: w.name, tag: w.tag })}
                 onClick={() => live && setOpenId(w.id)}>
                 {w.isNew && (
-                  <span className="absolute top-0 left-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
-                    style={{ background: "var(--arbor-pink)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}>NEW</span>
+                  <span className="absolute top-0 left-0 z-[2] text-[11px] font-black px-2.5 py-1"
+                    style={{ background: "var(--arbor-pink)", color: "var(--arbor-on-accent)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}>{t("elev.play.arcade.new")}</span>
                 )}
                 <div className="comic-halftone relative overflow-hidden" style={{ height: 120, background: c.bg, borderBottom: "var(--comic-line)" }}>
                   <WorldScene worldId={w.id} imagePrompt={w.imagePrompt} heroUrl={hero.url ?? undefined}>
-                    <Icon name={glyph} size={48} fill={1} style={{ color: "#fff", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} />
+                    <Icon name={glyph} size={48} fill={1} style={{ color: "var(--arbor-on-accent)", filter: "drop-shadow(2px 2px 0 rgba(23,27,34,.35))" }} />
                   </WorldScene>
                 </div>
                 <div className="p-3">
                   <p className="font-black text-[16px] leading-none mb-2" style={{ fontFamily: "var(--font-display)" }}>{w.name}</p>
                   <span className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
                     style={{ border: "2px solid var(--comic-ink)", color: c.ink }}>{w.tag}</span>
-                  {live ? <Stars n={stars} /> : (
+                  {live ? <Stars n={stars} aria={t("elev.play.arcade.starsAria", { n: stars })} /> : (
                     <span className="flex items-center gap-1 mt-2 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                      <Icon name="lock" size={14} /> Soon
+                      <Icon name="lock" size={14} /> {t("elev.play.arcade.soon")}
                     </span>
                   )}
                 </div>
@@ -223,46 +254,50 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
 
       {/* HERO GEAR (cosmetics earned through play) */}
       <div>
-        <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>Your hero gear</h2>
+        <h2 className="font-black mb-3" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>{t("elev.play.arcade.gear")}</h2>
         {unlocked.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {unlocked.map((c) => (
-              <span key={c.id} title={c.requirement}
+              <span key={c.id} title={cosmeticReq(c.id)}
                 className="inline-flex items-center gap-1.5 text-[13px] font-black px-3 py-2 rounded-2xl"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }}>
-                <span aria-hidden="true">{c.emoji}</span> {c.label}
+                <span aria-hidden="true">{c.emoji}</span> {cosmeticLabel(c.id)}
               </span>
             ))}
             {next && (
               <span className="inline-flex items-center gap-1.5 text-[13px] font-bold px-3 py-2 rounded-2xl"
                 style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "3px dashed var(--comic-ink)" }}>
-                <Icon name="lock" size={14} /> {next.cosmetic.label} · {next.cosmetic.requirement}
+                <Icon name="lock" size={14} /> {cosmeticLabel(next.cosmetic.id)} · {cosmeticReq(next.cosmetic.id)}
               </span>
             )}
           </div>
         ) : (
           <p className="text-[13px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-            Play a world to earn {heroPossessive} first gear.
+            {hasName ? t("elev.play.arcade.firstGear", { name: hero.name }) : t("elev.play.arcade.firstGearGeneric")}
           </p>
         )}
       </div>
 
-      {/* VIRAL COMIC CTA (share loop wired in a later wave) */}
-      <section className="comic-panel p-5 sm:p-6 text-center" style={{ background: "var(--arbor-lav)", color: "#fff" }}>
-        <h3 className="font-black mb-1.5" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,4vw,30px)" }}>
-          Make {hero.name === "your child" ? "your" : heroPossessive} comic!
-        </h3>
-        <p className="font-bold text-[14px] mb-4 opacity-95 max-w-[44ch] mx-auto">
-          {hero.hasHero
-            ? "Turn your hero into a comic page, ready to share with the family."
-            : `Create ${heroPossessive} hero, then star them in a shareable comic.`}
-        </p>
-        <button onClick={() => setActiveTab("comics")}
-          className="play-pressable inline-flex items-center gap-2 rounded-full px-6 py-3 font-black text-[16px]"
-          style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", boxShadow: "0 6px 0 0 var(--comic-ink)", fontFamily: "var(--font-display)" }}>
-          <Icon name="photo_camera" size={20} /> {hero.hasHero ? "Create comic page" : "Create my hero"}
-        </button>
-      </section>
+      {/* VIRAL COMIC CTA (share loop wired in a later wave). KID-05: rendered
+          only when the parent shell is reachable — inside Kid Mode the tap
+          would be a frozen no-op, so the panel is simply absent. */}
+      {nav && (
+        <section className="comic-panel p-5 sm:p-6 text-center" style={{ background: "var(--arbor-lav)", color: "var(--arbor-on-accent)" }}>
+          <h3 className="font-black mb-1.5" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,4vw,30px)" }}>
+            {hasName ? t("elev.play.arcade.comic.title", { name: hero.name }) : t("elev.play.arcade.comic.titleGeneric")}
+          </h3>
+          <p className="font-bold text-[14px] mb-4 opacity-95 max-w-[44ch] mx-auto">
+            {hero.hasHero
+              ? t("elev.play.arcade.comic.bodyHero")
+              : t("elev.play.arcade.comic.bodyNoHero", { name: hasName ? hero.name : heroName })}
+          </p>
+          <button onClick={() => nav("comics")}
+            className="play-pressable inline-flex items-center gap-2 rounded-full px-6 py-3 font-black text-[16px]"
+            style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", boxShadow: "0 6px 0 0 var(--comic-ink)", fontFamily: "var(--font-display)" }}>
+            <Icon name="photo_camera" size={20} /> {hero.hasHero ? t("elev.play.arcade.comic.ctaHero") : t("elev.play.arcade.comic.ctaNoHero")}
+          </button>
+        </section>
+      )}
     </div>
   );
 }

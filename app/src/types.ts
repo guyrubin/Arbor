@@ -222,7 +222,10 @@ export interface BehaviorLog {
   intensity: number; // 1-5
   durationMinutes: number;
   trigger: string;
-  response: string;
+  /** What the parent tried. REQUIRED only for incident-type behaviourTypes
+   *  (content/behaviorTaxonomy INCIDENT_TYPES); a plain "Moment" — "she said
+   *  'butterfly' for the first time" — has no response to invent (TJB-01). */
+  response?: string;
   notes?: string;
   context?: BehaviorContext;
   resolved?: boolean;
@@ -462,6 +465,30 @@ export interface BehaviorAnalysis {
     scholarLens?: string;
   }[];
   actionPlanSuggestion: string;
+}
+
+/** TJB-04: a persisted row of the per-child `insights` subcollection (already
+ *  in CHILD_SUBCOLLECTIONS, so export + erasure cover it). Two kinds:
+ *   - "behavior-analysis": the Behaviors "Analyze" synthesis, keyed by day, so
+ *     a parent who tapped Analyze at 22:00 finds it again tomorrow;
+ *   - "kept-insight": the parent's one-tap "Keep this" of a suggestion line.
+ *  `todaysFocus` (useTodaysFocus) shares the collection but carries no `kind`
+ *  and is ignored by every reader here. */
+export interface InsightRecord {
+  id: string;
+  kind: "behavior-analysis" | "kept-insight";
+  /** YYYY-MM-DD local day the row was produced. */
+  dateKey: string;
+  createdAt: string;
+  lang?: string;
+  /** behavior-analysis only. */
+  analysis?: BehaviorAnalysis;
+  /** Counts-only provenance of the analysis (never a score). */
+  inputs?: { logCount: number };
+  /** kept-insight only. */
+  text?: string;
+  /** kept-insight only: the analysis row it was kept from. */
+  sourceId?: string;
 }
 
 export interface SchoolBrief {

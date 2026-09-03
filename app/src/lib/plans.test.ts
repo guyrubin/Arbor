@@ -69,6 +69,18 @@ describe("suggestedChallenges", () => {
     expect(sugg[0].reason).toContain("3×");
   });
 
+  it("never turns plain Moment rows into a challenge (Wave T, TJB-01)", () => {
+    const logs = [
+      log("Moment", 1, "bath"),
+      log("Moment", 2, "bath"),
+      log("Moment", 3, "bath"),
+    ];
+    expect(suggestedChallenges(logs, today, 2)).toHaveLength(0);
+    // Negative control: the same three rows as an incident type DO surface.
+    const incidents = logs.map((l) => ({ ...l, behaviorType: "tantrum" }));
+    expect(suggestedChallenges(incidents, today, 2)).toHaveLength(1);
+  });
+
   it("ignores one-offs, resolved logs, and stale logs", () => {
     const logs = [
       log("biting", 1),                 // single occurrence → below threshold

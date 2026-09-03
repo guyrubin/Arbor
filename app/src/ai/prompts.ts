@@ -28,7 +28,104 @@
  */
 import { createHash } from "node:crypto";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
+import { ageMonthsFromProfile } from "../lib/childAge.js";
+import type { ChildProfile } from "../types.js";
 import type { RecentTurn, WeeklyContext } from "./chatContext.js";
+
+// ── AI-12 / GP-16: the ONE profile allow-list every prompt goes through ──────
+//
+// Before this, every builder and every inline route prompt did
+// `JSON.stringify(childProfile)` on the raw client object — so the model was
+// primed with `riskLevel` (a verdict primitive the clinical firewall bans from
+// parent surfaces, injected UPSTREAM of every answer), the Firestore `id`, the
+// avatar metadata, and — when Storage is unavailable — a base64 `photoUrl`
+// data URL worth tens of thousands of tokens per call.
+//
+// `MODEL_PROFILE_FIELDS` is the single declaration of what the model may see;
+// `promptProfile` projects any profile-shaped value onto it. Never `riskLevel`,
+// `photoUrl`, `avatar`, `id`, onboarding stamps, timestamps. The same constant
+// is meant to drive the Trust Center "what Arbor uses" list (GP-16) so the
+// disclosure and the wire cannot drift apart.
+
+export const MODEL_PROFILE_FIELDS = [
+  "name",
+  "age",
+  "ageLabel",
+  "languages",
+  "schoolContext",
+  "strengths",
+  "challenges",
+  "activeGoals",
+  "interests",
+  "preterm",
+  "gender",
+] as const;
+
+export type ModelProfile = {
+  name?: string;
+  /** Whole years (legacy field) — kept so age-band reasoning stays stable. */
+  age?: number;
+  /** Months-precise label ("9 months", "4 years 2 months") from the B0 spine. */
+  ageLabel?: string;
+  languages?: string[];
+  schoolContext?: string;
+  strengths?: string[];
+  challenges?: string[];
+  /** Parent-selected goals — label + domain only (no ids, no timestamps). */
+  activeGoals?: { label: string; domain?: string }[];
+  interests?: string[];
+  preterm?: { gestationalWeeks: number };
+  gender?: string;
+};
+
+const stringList = (value: unknown, cap = 12): string[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  const out = value.filter((v): v is string => typeof v === "string" && v.trim().length > 0).map((v) => v.trim().slice(0, 80)).slice(0, cap);
+  return out.length > 0 ? out : undefined;
+};
+
+const monthsLabel = (months: number): string => {
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  if (y === 0) return `${months} month${months === 1 ? "" : "s"}`;
+  const years = `${y} year${y === 1 ? "" : "s"}`;
+  return m === 0 ? years : `${years} ${m} month${m === 1 ? "" : "s"}`;
+};
+
+/**
+ * Project a child profile onto the model allow-list. `null`/`undefined` stay
+ * `null` so every builder's "None provided"/"unknown" fallback is preserved.
+ * Pure and deterministic for a given `now` (birthDate → months uses `now`).
+ */
+export const promptProfile = (profile: unknown, now?: Date): ModelProfile | null => {
+  if (!profile || typeof profile !== "object") return null;
+  const p = profile as Partial<ChildProfile> & Record<string, unknown>;
+  const out: ModelProfile = {};
+  if (typeof p.name === "string" && p.name.trim()) out.name = p.name.trim().slice(0, 80);
+  if (typeof p.age === "number" && Number.isFinite(p.age)) out.age = Math.max(0, Math.round(p.age));
+  const months = ageMonthsFromProfile(p as ChildProfile, now);
+  if (months !== null) out.ageLabel = monthsLabel(months);
+  const languages = stringList(p.languages);
+  if (languages) out.languages = languages;
+  if (typeof p.schoolContext === "string" && p.schoolContext.trim()) out.schoolContext = p.schoolContext.trim().slice(0, 200);
+  const strengths = stringList(p.strengths);
+  if (strengths) out.strengths = strengths;
+  const challenges = stringList(p.challenges);
+  if (challenges) out.challenges = challenges;
+  if (Array.isArray(p.activeGoals)) {
+    const goals = (p.activeGoals as unknown[])
+      .filter((g): g is { label: string; domainId?: string } => !!g && typeof g === "object" && typeof (g as { label?: unknown }).label === "string")
+      .slice(0, 3)
+      .map((g) => (typeof g.domainId === "string" ? { label: g.label.slice(0, 80), domain: g.domainId } : { label: g.label.slice(0, 80) }));
+    if (goals.length > 0) out.activeGoals = goals;
+  }
+  const interests = stringList(p.interests);
+  if (interests) out.interests = interests;
+  const weeks = (p.preterm as { gestationalWeeks?: unknown } | undefined)?.gestationalWeeks;
+  if (typeof weeks === "number" && Number.isFinite(weeks)) out.preterm = { gestationalWeeks: weeks };
+  if (typeof p.gender === "string" && p.gender.trim()) out.gender = p.gender.trim().slice(0, 20);
+  return out;
+};
 
 export type PromptKey =
   | "non_diagnostic_contract"
@@ -48,10 +145,13 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // weeklyContext line (both between the scholar-lens paragraph and "Parent
   // question:"). With BOTH absent the rendered prompt is byte-identical to
   // 1.0.0 (sha 47871f42…) — pinned by the legacy-parity test in prompts.test.ts.
-  coach_chat: { version: "1.1.1", sha256: "e3aba865853b94e6786c418625be9ba3c4de183fa1b0d43732cdb3bc26a79a17" },
-  council_synthesis: { version: "1.0.0", sha256: "eeca63a0b6f414c196b5914ee5f93ab175ae1217c07f8914e756259d8320208c" },
-  voice_reply: { version: "1.0.0", sha256: "452e343ec9bcd855157d935c19d2b6d9e2bd4167d73b3ad0e33a9fa0c820b9ea" },
-  extract_log: { version: "1.0.0", sha256: "f296df39c25469f3db5878adb03c2dd29781d8b19111cd68995d9b909b2b4891" },
+  // 1.2.0 / x.1.0 (AI-12, 2026-09-03): the child profile is rendered through
+  // promptProfile() — the allow-list above — so `riskLevel`, `photoUrl`,
+  // `avatar` and ids never reach the model. Byte change on every builder.
+  coach_chat: { version: "1.2.0", sha256: "d015d9755a34f91f1f31c76716774907f249cf5f107dbeac0aa3aa0aaa87c776" },
+  council_synthesis: { version: "1.1.0", sha256: "6c00185e6fb6dde9296345c7b186b32fb4fbe54455e6155cfc92b3d374ae75de" },
+  voice_reply: { version: "1.1.0", sha256: "ef00f7f8cebe131da356309a503f0aa2f6cf53e0ec5db651c59b45fd0114322c" },
+  extract_log: { version: "1.1.0", sha256: "4d30bdb29b6a9b09138e5438cdefb32235cb188b4559af09cca325bf58755b53" },
 };
 
 export const promptVersionOf = (key: PromptKey): string => PROMPT_VERSIONS[key].version;
@@ -119,7 +219,7 @@ ${knowledgeContext || "No matching Arbor AI Wiki cards found. Use the framework 
 
 You are the Arbor Parent Coach, a developmental parenting support assistant.
 Current Child Profile Context:
-${childProfile ? JSON.stringify(childProfile, null, 2) : "None provided"}
+${childProfile ? JSON.stringify(promptProfile(childProfile), null, 2) : "None provided"}
 
 ACTIVE SCHOLAR LENS — apply this method, do not just name it:
 ${scholar.name} — ${scholar.concept}. ${scholar.method}
@@ -161,7 +261,7 @@ ${knowledgeContext || "No matching cards; keep uncertainty explicit."}
 
 You are the Arbor Parent Coach synthesizing a SCHOLAR COUNCIL into one answer.
 Child Profile:
-${childProfile ? JSON.stringify(childProfile, null, 2) : "None provided"}
+${childProfile ? JSON.stringify(promptProfile(childProfile), null, 2) : "None provided"}
 
 ${councilTakes}
 
@@ -191,7 +291,7 @@ export const buildVoiceReplyPrompt = ({
   languageDirective,
 }: VoiceReplyPromptArgs): string => `${NON_DIAGNOSTIC_CONTRACT}
 ${persona} Apply this lens: ${scholar.name} — ${scholar.method}
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 The parent just said: "${message}"
 Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
 
@@ -214,7 +314,7 @@ export const buildExtractLogPrompt = ({
 ${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor's logging assistant. Read the parent's description of a moment with their child and extract ONE structured behavior log. Observations only — never a diagnosis.
 
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 Parent description: "${message}"
 
 Rules:

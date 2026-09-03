@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { usePracticeData } from "../../practice/usePracticeData";
-import { evaluateCosmetics, type CosmeticStats } from "../../practice/cosmetics";
+import { evaluateCosmetics, lifetimeDomains, type CosmeticStats } from "../../practice/cosmetics";
 import { isolate } from "../../lib/i18n";
 
 /**
@@ -19,8 +19,15 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
       data.events.items.length +
       data.missions.items.filter((m) => m.completed).length,
     daysPracticed: data.daysPracticed,
-    domainsTouched: data.week.domainsTouched.length,
-  }), [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, data.daysPracticed, data.week.domainsTouched]);
+    // Lifetime, MONOTONIC domain count (never the resettable week window).
+    domainsEverTouched: lifetimeDomains({
+      speech: data.speech.items,
+      mimic: data.mimic.items,
+      adventures: data.adventures.items,
+      events: data.events.items,
+      missions: data.missions.items,
+    }).length,
+  }), [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, data.daysPracticed]);
 
   const { unlocked, next } = useMemo(() => evaluateCosmetics(stats), [stats]);
 

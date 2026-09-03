@@ -47,6 +47,25 @@ describe("shared kit — no graded child verdict text", () => {
   it("TrustSafetyBar renders no 'Risk: <grade>' text", () => {
     expect(code, "kit.tsx interpolates a risk grade into visible text").not.toMatch(/Risk:\s*\{|Risk:\s*[LMH]/);
   });
+
+  // GP-05 / AI-08 (2026-09-03): the bar's WASH was the verdict — mint → yellow
+  // → pink keyed off the model's riskLevel (a chromatic verdict, Law 2). The
+  // primitive is constant-posture now: no PASTEL tone may be selected off a
+  // risk value, and the graded union type is gone from its props.
+  const TONE_OFF_RISK = /risk\s*===?\s*["']High["'][\s\S]{0,120}?["'](?:pink|yellow|mint|sky)["']/;
+  const GRADED_PROP_UNION = /risk\?:\s*["']Low["']\s*\|\s*["']Moderate["']\s*\|\s*["']High["']/;
+  const OLD_TONE_LINE = `const tone: PastelKey = risk === "High" ? "pink" : risk === "Moderate" ? "yellow" : "mint";`;
+  const OLD_PROPS = `{ risk?: "Low" | "Moderate" | "High"; note?: string; onEscalate?: () => void; lang?: UiLang }`;
+  it("negative control: the regexes recognise the OLD chromatic mechanism", () => {
+    expect(TONE_OFF_RISK.test(OLD_TONE_LINE)).toBe(true);
+    expect(GRADED_PROP_UNION.test(OLD_PROPS)).toBe(true);
+  });
+  it("TrustSafetyBar selects no PASTEL tone off a risk value and takes no graded risk union", () => {
+    expect(code, "kit.tsx keys a PASTEL tone off the risk grade (chromatic verdict)").not.toMatch(TONE_OFF_RISK);
+    expect(code, "kit.tsx still declares the graded risk prop union").not.toMatch(GRADED_PROP_UNION);
+    expect(code).toContain("kit.trust.calm");
+    expect(code).not.toContain('t("kit.trust.elevated")');
+  });
 });
 
 // 2026-07-20 (product council): the Wave-3 guard scanned only the demoted dev-score

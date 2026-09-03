@@ -4,7 +4,9 @@
  * parent can "Save as PDF" or print. Content is generated from the child's real
  * data. Every report carries Arbor's non-diagnostic framing.
  */
+import { ageLabel } from "./childAge";
 import type { ChildProfile, BehaviorLog, ActionPlan } from "../types";
+import type { LangObservation } from "../growth/vocabAgg";
 import { fmtDay } from "./formatDate";
 import { topMomentDisplay } from "../hooks/useWeeklyRecap";
 
@@ -27,7 +29,20 @@ export type ReportContext = {
   /** Optional stylized hero portrait to anchor the printed document to the child.
    *  Callers pass this ONLY for the descriptor (stylized) avatar — never a real photo. */
   heroImageUrl?: string;
+  /** LC-19: the parent's logged language observations (the `langObs` sink) —
+   *  the ONLY source for the Language Transition Note's child-specific lines. */
+  langObs?: LangObservation[];
 };
+
+/* LC-19 — the Language Transition Note is built from the child's record
+ * (profile languages + school context + the parent's logged phrases), never
+ * from canned sentences presented as observations. The one general block
+ * that remains is labelled as Arbor's suggestion on EVERY line, so a teacher
+ * can never mistake it for something the parent observed. */
+export const GENERAL_SUGGESTION_LABEL = "Suggested by Arbor (general):";
+export const SUGGESTED_SCHOOL_PHRASES: readonly string[] = ["“Can you show me?”", "“Take your time.”", "“Would you like a or b?”"];
+/** Recent phrases quoted in the note (parent's own words, newest first). */
+const LANG_PHRASES_MAX = 6;
 
 /** Professional audiences (IA W4.2) build through the consult preset
  *  serializer (`src/consult/packet.ts`) — audience data ceilings + the
@@ -99,7 +114,7 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
   const { child, logs, plans, checkedMilestones, totalMilestones } = ctx;
   const wk = recentLogs(logs, 7);
   const mo = recentLogs(logs, 28);
-  const common = `${child.name}, age ${child.age}`;
+  const common = `${child.name}, ${ageLabel(child)}`;
 
   switch (type) {
     case "weekly":
@@ -110,7 +125,7 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
       ]};
     case "snapshot":
       return { title: "Development Snapshot", subtitle: common, sections: [
-        { heading: "At a glance", body: [`Age ${child.age}`, `${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
+        { heading: "At a glance", body: [`${ageLabel(child)}`, `${checkedMilestones} of ${totalMilestones} age-appropriate milestones noticed`] },
         { heading: "Strengths", body: child.strengths },
         { heading: "Where to support", body: child.challenges },
         { heading: "Languages", body: child.languages.join(" · ") },
@@ -121,14 +136,29 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
         { heading: "Recent events", body: mo.slice(0, 8).map(eventLine) },
         { heading: "What helped", body: mo.map((l) => l.response).filter(Boolean).slice(0, 5) },
       ]};
-    case "language":
+    case "language": {
+      // LC-19: child-specific lines come ONLY from the record — profile
+      // languages/school context, the parent's language-related focus areas,
+      // and the parent's logged phrases (counts per language + quoted words).
+      // Empty data → empty bodies (the print shell renders "—"), never a
+      // filler sentence about the child.
+      const obs = (ctx.langObs ?? []).filter((o) => (o.phrase || "").trim() && (o.language || "").trim());
+      const byLang = new Map<string, number>();
+      for (const o of obs) byLang.set(o.language.trim(), (byLang.get(o.language.trim()) ?? 0) + 1);
+      const perLanguage = [...byLang.entries()].map(([lang, n]) => `${lang}: ${n} word${n === 1 ? "" : "s"} or phrase${n === 1 ? "" : "s"} the parent has noticed`);
+      const recent = [...obs]
+        .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
+        .slice(0, LANG_PHRASES_MAX)
+        .map((o) => `${o.language.trim()}, in the parent's words: “${o.phrase.trim()}”`);
+      const languageFocus = child.challenges.filter((c) => /language|english|hebrew|dutch|speak|speech|talk|word|vocab/i.test(c));
       return { title: "Language Transition Note", subtitle: common, sections: [
         { heading: "Languages at home", body: child.languages.join(" · ") },
         { heading: "School context", body: child.schoolContext },
-        { heading: "Comfort & gaps", body: child.challenges.filter((c) => /language|english|speak|word/i.test(c)).concat(["Emotional vocabulary still developing"]) },
-        { heading: "Useful school phrases", body: ["“Can you show me?”", "“Take your time.”", "“Would you like a or b?”"] },
-        { heading: "Parent support plan", body: ["Pair new English words with familiar home-language anchors", "Celebrate attempts, not just correctness"] },
+        { heading: "Words and phrases the parent has noticed", body: [...perLanguage, ...recent] },
+        { heading: "Where the parent asks for support", body: languageFocus },
+        { heading: "Phrases that help at school", body: SUGGESTED_SCHOOL_PHRASES.map((p) => `${GENERAL_SUGGESTION_LABEL} ${p}`) },
       ]};
+    }
     case "growth":
       return { title: "Growth Plan Progress", subtitle: common, sections: plans.length ? plans.map((p) => {
         const steps = p.phases.flatMap((ph) => ph.steps);

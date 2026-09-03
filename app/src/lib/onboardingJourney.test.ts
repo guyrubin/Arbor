@@ -156,3 +156,49 @@ describe("onboardingJourney — transitions", () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 });
+
+// ── MOB-09 (wave T): the avatar is asked ONCE ────────────────────────────────
+import { clearAvatarSkipped, markAvatarSkipped, wowEntryStep } from "./onboardingJourney";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+describe("MOB-09 — avatar skipped in OnboardingFlow → the wow enters at the comic", () => {
+  it("markAvatarSkipped persists the flag; wowEntryStep(hasHero=false) → comic", () => {
+    markAvatarSkipped();
+    expect(readJourney().avatarSkipped).toBe(true);
+    expect(JSON.parse(store.getItem("arbor.journey") as string).avatarSkipped).toBe(true);
+    expect(wowEntryStep(false)).toBe("comic");
+  });
+
+  it("negative control: never skipped + no hero → avatar card (the pre-fix entry)", () => {
+    expect(readJourney().avatarSkipped).toBeUndefined();
+    expect(wowEntryStep(false)).toBe("avatar");
+  });
+
+  it("a child who already has a hero always enters at the comic", () => {
+    expect(wowEntryStep(true)).toBe("comic");
+    markAvatarSkipped();
+    expect(wowEntryStep(true)).toBe("comic");
+  });
+
+  it("clearAvatarSkipped (hero created after all) removes the flag; markWowDone clears it too", () => {
+    markAvatarSkipped();
+    clearAvatarSkipped();
+    expect(readJourney().avatarSkipped).toBeUndefined();
+    markAvatarSkipped();
+    markWowDone({ comicShown: true });
+    expect(readJourney().avatarSkipped).toBeUndefined();
+    expect(readJourney().wow).toBe("done");
+  });
+
+  it("wiring: OnboardingFlow marks the skip on step 4 and WowOnboarding uses wowEntryStep + the Sprout note", () => {
+    const root = path.resolve(__dirname, "..");
+    const flow = fs.readFileSync(path.join(root, "components/auth/OnboardingFlow.tsx"), "utf8");
+    const wow = fs.readFileSync(path.join(root, "components/onboarding/WowOnboarding.tsx"), "utf8");
+    expect(flow).toMatch(/onSkip=\{\(\) => \{\s*if \(!replaying\) markAvatarSkipped\(\);\s*goNext\(\);\s*\}\}/);
+    expect(flow).toContain("if (!replaying) clearAvatarSkipped();");
+    expect(wow).toContain("useState<WowStep>(() => wowEntryStep(hero.hasHero))");
+    expect(wow).not.toContain('(!hero.hasHero ? "avatar" : "comic")');
+    expect(wow).toContain('t("elev.storeshell.wow.sproutStars", { name })');
+  });
+});

@@ -7,6 +7,8 @@ import AddChildModal from "./AddChildModal";
 import ProfileEditDrawer from "./ProfileEditDrawer";
 import { Avatar } from "../ui/Avatar";
 import FamilyGlanceCard from "./FamilyGlanceCard";
+// GP-01: the months-precise age label is THE parent-facing age render.
+import { ageLabel } from "../../lib/childAge";
 
 export default function ProfileSwitcher() {
   const { profiles, activeChild, setActiveChild } = useProfile();
@@ -22,7 +24,7 @@ export default function ProfileSwitcher() {
           <span className="flex-shrink-0"><Avatar name={activeChild.name} photoURL={activeChild.photoUrl} size={36} ring /></span>
           <div className="min-w-0">
             <h4 className="text-sm font-bold leading-tight truncate" dir="auto" style={{ color: "var(--arbor-ink)" }}>{activeChild.name}</h4>
-            <p className="text-[11px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("profile.ageLine", { age: activeChild.age })}</p>
+            <p className="text-[11px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("profile.ageLine", { age: ageLabel(activeChild, t) })}</p>
           </div>
           <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
         </button>
@@ -41,7 +43,7 @@ export default function ProfileSwitcher() {
       {/* E6 (age-tuning visibility): quiet factual line — everything shown is
           selected for this child's age. A fact, never a clinical claim. */}
       <p className="mt-1.5 ps-1 text-[11px] text-start" style={{ color: "var(--arbor-muted)" }}>
-        {t("elev.agechips.switcher", { age: activeChild.age })}
+        {t("elev.growthTruth.agechip.switcher", { age: ageLabel(activeChild, t) })}
       </p>
 
       <AnimatePresence>
@@ -68,7 +70,7 @@ export default function ProfileSwitcher() {
                   <span className="flex-shrink-0"><Avatar name={p.name} photoURL={p.photoUrl} size={28} /></span>
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-bold truncate block" dir="auto" style={{ color: "var(--arbor-ink)" }}>{p.name}</span>
-                    <span className="text-[10px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("profile.ageLine", { age: p.age })}</span>
+                    <span className="text-[10px] whitespace-nowrap" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("profile.ageLine", { age: ageLabel(p, t) })}</span>
                   </div>
                   {p.id === activeChild.id && <Check className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} />}
                 </button>

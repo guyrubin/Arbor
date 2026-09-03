@@ -45,8 +45,9 @@ describe("ASK-2 — single sticky composer", () => {
     expect(coach).toContain("{!composerDocked && composerSection}");
     const docked = /data-testid="coach-docked-composer"[\s\S]*?\{composerSection\}/.exec(coach)?.[0] ?? "";
     expect(docked).not.toBe("");
-    // Sticky within the scrolling <main>, clearing the fixed MobileNav on mobile.
-    expect(coachRaw).toContain('className="sticky bottom-16 lg:bottom-0 z-30"');
+    // Sticky within the scrolling <main>, clearing the fixed MobileNav on mobile
+    // (MOB-14: --mobile-nav-h + safe-area inset, the OverviewTab formula).
+    expect(coachRaw).toContain('className="sticky bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+8px)] lg:bottom-0 z-30"');
   });
 
   it("the voice/photo capture chips travel inside the composer section", () => {

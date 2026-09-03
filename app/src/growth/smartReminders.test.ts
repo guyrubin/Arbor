@@ -267,3 +267,59 @@ describe("Smart Reminders i18n keys pass framing gate", () => {
     expect(bad).toHaveLength(0);
   });
 });
+
+// ── TJB-03 / ENG-02 — the per-day SHOWN counter behind the max-2 contract ────
+import { shownNudgesToday, recordNudgeShown, nudgeDayKey, NUDGE_DAILY_CEILING } from "./jitaiPrefs";
+
+describe("nudge shown counter (arbor.nudge.shown.<day>)", () => {
+  const NOW = new Date(2026, 5, 17, 16, 0, 0).getTime();
+
+  it("keys by LOCAL calendar day", () => {
+    expect(nudgeDayKey(NOW)).toBe("2026-06-17");
+  });
+
+  it("starts empty and records distinct kinds idempotently", () => {
+    expect(shownNudgesToday(NOW)).toEqual([]);
+    expect(recordNudgeShown("prep", NOW)).toEqual(["prep"]);
+    expect(recordNudgeShown("prep", NOW)).toEqual(["prep"]);
+    expect(recordNudgeShown("log", NOW)).toEqual(["prep", "log"]);
+    expect(shownNudgesToday(NOW)).toEqual(["prep", "log"]);
+    expect(LS["arbor.nudge.shown.2026-06-17"]).toBe(JSON.stringify(["prep", "log"]));
+  });
+
+  it("a new day is a fresh bucket", () => {
+    recordNudgeShown("prep", NOW);
+    expect(shownNudgesToday(NOW + 86_400_000)).toEqual([]);
+  });
+
+  it("the ceiling constant matches the contract copy", () => {
+    expect(NUDGE_DAILY_CEILING).toBe(2);
+  });
+});
+
+describe("Smart Reminders panel shows the live count and runs the gated engine", () => {
+  const panel = readFileSync(path.join(process.cwd(), "src/components/sections/SmartRemindersPanel.tsx"), "utf8");
+  const i18n = readFileSync(path.join(process.cwd(), "src/lib/i18n.ts"), "utf8");
+
+  it("NEGATIVE CONTROL — the pre-fix preview called nextNudge with inputs only", () => {
+    const preFix = `nextNudge({
+        nowMs: Date.now(),
+        rhythm,
+        loggedToday: loggedTodayCount,
+        recent7d,
+        childName: firstName,
+      }),`;
+    expect(preFix).not.toMatch(/shownToday,\s*\},\s*prefs,\s*\)/);
+  });
+
+  it("passes the saved prefs + today's shown list into nextNudge", () => {
+    expect(panel).toMatch(/shownToday,\s*\},\s*prefs,\s*\)/);
+  });
+
+  it('renders "n of 2 today" from the counter, in both languages', () => {
+    expect(panel).toContain('t("sr.max2.count"');
+    expect(panel).toContain('data-testid="sr-max2-count"');
+    expect(i18n).toMatch(/"sr\.max2\.count":\s*"\{n\} of 2 today"/);
+    expect(i18n).toMatch(/"sr\.max2\.count":\s*"\{n\} מתוך 2 היום"/);
+  });
+});

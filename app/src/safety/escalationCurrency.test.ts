@@ -3,6 +3,7 @@ import {
   CRITICAL_HELPLINE_LITERALS,
   escalationLiteralsIntact,
   HELPLINE_REVIEW_INTERVAL_DAYS,
+  HELPLINE_REVIEW_WARN_DAYS,
   HELPLINES_REVIEWED_ON,
   helplineReviewStatus,
 } from "./escalation";
@@ -38,5 +39,38 @@ describe("CI-05 escalation currency hook", () => {
     for (const lit of ["112", "988", "0800-0113", "101"]) {
       expect(CRITICAL_HELPLINE_LITERALS).toContain(lit);
     }
+  });
+
+  it("reports the days remaining until the review is due (negative once overdue)", () => {
+    expect(helplineReviewStatus(reviewedMs + DAY).daysRemaining).toBe(HELPLINE_REVIEW_INTERVAL_DAYS - 1);
+    expect(helplineReviewStatus(reviewedMs + (HELPLINE_REVIEW_INTERVAL_DAYS + 3) * DAY).daysRemaining).toBe(-3);
+  });
+});
+
+/* LC-15 — the REAL-clock tripwire. The "scheduled arbor-safety job" this hook
+ * was designed for has never run; the only run that reliably happens is CI.
+ * So the staleness check runs here against Date.now(): the December 2026
+ * expiry of HELPLINES_REVIEWED_ON fails a real suite run, and a 14-day early
+ * warning is printed so the re-review is scheduled before the failure lands.
+ * Fixing a red run = re-verify every number against its national registry,
+ * then bump HELPLINES_REVIEWED_ON (never widen the interval). */
+describe("LC-15 — crisis numbers were re-verified within the interval (real clock)", () => {
+  it("HELPLINES_REVIEWED_ON is within HELPLINE_REVIEW_INTERVAL_DAYS of today", () => {
+    const status = helplineReviewStatus(Date.now());
+    if (!status.stale && status.daysRemaining <= HELPLINE_REVIEW_WARN_DAYS) {
+      console.warn(
+        `[arbor-safety] crisis helpline review due in ${status.daysRemaining} day(s): ` +
+          `re-verify every HELPLINE_DIRECTORY number and bump HELPLINES_REVIEWED_ON (${status.reviewedOn}).`,
+      );
+    }
+    expect(
+      status.stale,
+      `crisis helpline numbers last verified ${status.reviewedOn} (${status.daysSince} days ago) — re-verify and bump HELPLINES_REVIEWED_ON`,
+    ).toBe(false);
+  });
+
+  it("the early-warning window is 14 days and sits inside the interval", () => {
+    expect(HELPLINE_REVIEW_WARN_DAYS).toBe(14);
+    expect(HELPLINE_REVIEW_WARN_DAYS).toBeLessThan(HELPLINE_REVIEW_INTERVAL_DAYS);
   });
 });

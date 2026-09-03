@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useToast } from "../context/ToastContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useArborOptional } from "../context/ArborContext";
 import { isNativePlatform } from "../lib/runtime";
 import { commerceAllowed } from "../components/kidmode/parentGate";
 import {
@@ -8,9 +9,48 @@ import {
   performCheckout,
   performOpenPortal,
   performRestore,
+  type CheckoutResult,
+  type NativeRestoreOutcome,
   type PaidPlan,
   type Cadence,
 } from "../lib/checkoutActions";
+
+type ToastTone = "info" | "success" | "error";
+export type OutcomeEffects = { toastKey: string | null; tone: ToastTone; close: boolean };
+
+/**
+ * MOB-08 — outcome → effects, pure (hooks/checkoutActions.test.ts).
+ *  - purchased   → the entitlement was already refreshed by performCheckout;
+ *                  CLOSE the paywall and confirm ("You're all set").
+ *  - redirected  → the page navigates; nothing to say.
+ *  - cancelled   → the parent closed the store sheet; silent by design.
+ *  - unavailable → honest "not available right now" (never the pre-launch
+ *                  "we'll email you" copy — nobody sends that email).
+ *  - error       → a dedicated purchase-failed line: nothing was charged.
+ */
+export function resolveCheckoutOutcome(result: CheckoutResult): OutcomeEffects {
+  switch (result) {
+    case "purchased":
+      return { toastKey: "pw.activated", tone: "success", close: true };
+    case "unavailable":
+      return { toastKey: "elev.storeshell.pw.checkoutUnavailable", tone: "info", close: false };
+    case "error":
+      return { toastKey: "elev.storeshell.pw.purchaseFailed", tone: "error", close: false };
+    default:
+      return { toastKey: null, tone: "info", close: false };
+  }
+}
+
+export function resolveRestoreOutcome(result: NativeRestoreOutcome): OutcomeEffects {
+  switch (result) {
+    case "restored":
+      return { toastKey: "set.plan.restoreDone", tone: "success", close: true };
+    case "error":
+      return { toastKey: "elev.storeshell.pw.restoreFailed", tone: "error", close: false };
+    default:
+      return { toastKey: "elev.storeshell.pw.checkoutUnavailable", tone: "info", close: false };
+  }
+}
 
 /**
  * MON-2 / STORE-2: shared checkout/manage/restore actions used by both the
@@ -26,7 +66,15 @@ import {
 export function useCheckout() {
   const { toast } = useToast();
   const { t } = useLanguage();
+  // Optional: the paywall lives in ArborContext; the hook also serves Settings,
+  // and must stay usable if a future surface mounts outside the provider.
+  const arbor = useArborOptional();
   const [busy, setBusy] = useState(false);
+
+  const applyEffects = (fx: OutcomeEffects) => {
+    if (fx.close) arbor?.closePaywall();
+    if (fx.toastKey) toast(t(fx.toastKey), fx.tone);
+  };
 
   const startCheckout = async (plan: PaidPlan, cadence: Cadence) => {
     if (busy) return;
@@ -39,12 +87,7 @@ export function useCheckout() {
     setBusy(true);
     try {
       const result = await performCheckout(defaultDeps(), plan, cadence);
-      // "redirected"/"purchased" need no toast (page navigates / plan updates);
-      // "cancelled" is the parent closing the native sheet — silent by design.
-      if (result === "unavailable" || result === "error") {
-        // CARE-5: checkout being unavailable is information, not a success.
-        toast(t("set.plan.checkoutSoon"), "info");
-      }
+      applyEffects(resolveCheckoutOutcome(result));
     } finally {
       setBusy(false);
     }
@@ -73,8 +116,7 @@ export function useCheckout() {
     setBusy(true);
     try {
       const result = await performRestore(defaultDeps());
-      if (result === "restored") toast(t("set.plan.restoreDone"), "success");
-      else toast(t("set.plan.checkoutSoon"), "info");
+      applyEffects(resolveRestoreOutcome(result));
     } finally {
       setBusy(false);
     }

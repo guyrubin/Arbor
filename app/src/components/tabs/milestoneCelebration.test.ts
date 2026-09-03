@@ -33,6 +33,7 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC_ROOT, rel), "utf8");
 const milestonesTab = read("components/tabs/MilestonesTab.tsx");
 const celebrationMoment = read("components/ui/CelebrationMoment.tsx");
 const prideMomentCard = read("components/overview/PrideMomentCard.tsx");
+const celebrateLib = read("lib/celebrate.ts");
 
 /** Minimal in-memory Storage double for the pure helpers. */
 function fakeStorage(initial: Record<string, string> = {}) {
@@ -127,6 +128,10 @@ describe("W5 register + safety walls", () => {
 
   it("reduced motion is respected — card entrance AND the confetti burst", () => {
     expect(celebrationMoment).toContain("prefersReducedMotion()");
-    expect(milestonesTab).toMatch(/if \(prefersReducedMotion\(\)\) return;[\s\S]{0,120}confetti\(/);
+    // Wave T (CR-05/GP-24): the burst routes through the ONE capped primitive,
+    // whose reduced-motion gate precedes the confetti call (pinned in
+    // lib/celebrationCaps.test.ts as well).
+    expect(milestonesTab).toMatch(/fireCelebration\(\{ kind: "milestone" \}\)/);
+    expect(celebrateLib).toMatch(/if \(prefersReducedMotion\(\)\) return;[\s\S]{0,200}confetti\(/);
   });
 });

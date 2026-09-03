@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage, type AiLang } from "../context/LanguageContext";
 import { authHeaders } from "../lib/api";
 import { ChildProfile } from "../types";
+import type { FocusInputsUsed } from "../lib/todayFocus";
 
 export type FocusSignals = {
   count: number;
@@ -27,7 +28,21 @@ export type FocusSignals = {
 /** `lang` is part of the cache IDENTITY — a Hebrew sentence must never render
  *  inside an English Today (and vice versa). Absent on pre-fix records, which
  *  therefore read as stale and regenerate once in the active language. */
-type Focus = { text: string; generatedAt: string; dateKey: string; lang?: AiLang };
+/** TJB-02: the structured server payload is kept whole — `focus` (the
+ *  observation) and `tryToday` (the ONE doable step) beside the joined
+ *  `text` — so the hero can render the step as the headline and persist the
+ *  step, not the observation. Pre-split cached records carry only `text` and
+ *  keep rendering through the legacy first-sentence rule. `inputsUsed` (AI-19)
+ *  rides along when the server reports it. */
+export type Focus = {
+  text: string;
+  focus?: string;
+  tryToday?: string;
+  inputsUsed?: FocusInputsUsed;
+  generatedAt: string;
+  dateKey: string;
+  lang?: AiLang;
+};
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
@@ -109,8 +124,26 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
       const cleaned = String(data.text || "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim();
       const short = cleaned.split(/(?<=[.!?])\s+/).slice(0, 3).join(" ");
       const text = short.length > 360 ? `${short.slice(0, 357).trimEnd()}…` : short || cleaned.slice(0, 240);
+      const tidy = (v: unknown, max: number) => {
+        const s = String(v ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim();
+        return s ? (s.length > max ? `${s.slice(0, max - 3).trimEnd()}…` : s) : undefined;
+      };
+      const focusObservation = tidy(data.focus, 400);
+      const tryToday = tidy(data.tryToday, 300);
+      const inputsUsed: FocusInputsUsed | undefined =
+        data.inputsUsed && typeof data.inputsUsed === "object"
+          ? {
+              momentCount: Number.isFinite(Number(data.inputsUsed.momentCount)) ? Number(data.inputsUsed.momentCount) : undefined,
+              topTrigger: data.inputsUsed.topTrigger ? String(data.inputsUsed.topTrigger).slice(0, 80) : undefined,
+              lastActionOutcome: data.inputsUsed.lastActionOutcome ? String(data.inputsUsed.lastActionOutcome) : undefined,
+            }
+          : undefined;
+      // Firestore rejects `undefined` fields — only present keys are written.
       const next: Focus = {
         text,
+        ...(focusObservation ? { focus: focusObservation } : {}),
+        ...(tryToday ? { tryToday } : {}),
+        ...(inputsUsed ? { inputsUsed: JSON.parse(JSON.stringify(inputsUsed)) as FocusInputsUsed } : {}),
         generatedAt: new Date().toISOString(),
         dateKey: todayKey(),
         lang: aiLang,

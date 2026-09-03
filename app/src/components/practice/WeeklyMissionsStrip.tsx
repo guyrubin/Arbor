@@ -17,11 +17,12 @@
  *     emoji-enriched day labels.
  *   - Accessible: role=list, role=listitem, aria-label per slot.
  */
-import React, { useMemo } from "react";
+import React, { useMemo, useSyncExternalStore } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { weeklyStripDays } from "../../practice/signals";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 import type { PracticeDomain } from "../../types";
 
 // ── Activity-type → token mapping ──────────────────────────────────────────
@@ -73,6 +74,57 @@ export default function WeeklyMissionsStrip() {
   );
 
   const completedCount = days.filter((d) => d.done).length;
+
+  // KID-18: inside Kid Mode the strip shows DONE days only, as stars — a
+  // monotonic row the child can be proud of. Empty rings for missed days are a
+  // streak-shaped calendar the child cannot act on here (missions are toggled
+  // on the parent Journey tab), so they never render in the kid register.
+  const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
+  if (kidMode) {
+    const doneDays = days.filter((d) => d.done);
+    if (doneDays.length === 0) return null;
+    return (
+      <section
+        aria-label={t("elev.play.strip.kidTitle")}
+        style={{
+          borderRadius: "var(--r-xl)",
+          background: "var(--arbor-paper-elevated)",
+          border: "1px solid var(--arbor-rule)",
+          boxShadow: "var(--shadow-sm)",
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          flexWrap: "wrap",
+        }}
+      >
+        <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>
+          {t("elev.play.strip.kidTitle")}
+        </span>
+        <ol role="list" style={{ display: "flex", gap: "6px", listStyle: "none", padding: 0, margin: 0 }}>
+          {doneDays.map((day) => (
+            <li
+              key={day.date}
+              role="listitem"
+              aria-label={t("elev.play.strip.starAria", { day: weekdayShort(day.date, uiLang) })}
+              style={{
+                minWidth: "44px",
+                minHeight: "44px",
+                borderRadius: "50%",
+                background: "var(--arbor-yellow-soft)",
+                color: "var(--arbor-yellow-ink)",
+                display: "grid",
+                placeItems: "center",
+                fontSize: "22px",
+              }}
+            >
+              <span aria-hidden="true">⭐</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    );
+  }
 
   return (
     <section

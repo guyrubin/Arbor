@@ -14,6 +14,9 @@ import type { PracticeDomain } from "../../types";
 import { assertClinicianExportCeiling } from "../../consult/packet";
 import { track } from "../../lib/analytics";
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
+// GP-01 / GP-08: months-precise age label + the shared age window.
+import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
+import { ageWindowMilestones, comparisonAgeMonths } from "../../lib/milestoneData";
 
 type SavedScreening = ScreeningResult & { id: string };
 
@@ -69,7 +72,15 @@ export default function DevelopmentCopilot() {
   // Keyed by PRACTICE domain (via MILESTONE_DOMAIN_MAP) so it lines up with the
   // `bands` / DOMAIN_META keys the rows iterate; the same helper feeds the
   // weekly-history count register so the live and historical views agree.
-  const domainCounts = useMemo(() => domainMilestoneCounts(milestones), [milestones]);
+  // GP-08: counted over the child's AGE WINDOW (current corrected band + one
+  // earlier — the shared lib/milestoneData.milestoneAgeWindow), never the whole
+  // 0–6y catalogue, so "x of y noticed" is an age-appropriate denominator.
+  const comparisonMonths = useMemo(() => {
+    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    return comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks);
+  }, [childProfile]);
+  const windowMilestones = useMemo(() => ageWindowMilestones(milestones, comparisonMonths), [milestones, comparisonMonths]);
+  const domainCounts = useMemo(() => domainMilestoneCounts(windowMilestones), [windowMilestones]);
 
   const advCount = data.adventures.items.length;
   const advCorrect = data.adventures.items.filter((a) => a.correct).length;
@@ -137,7 +148,7 @@ export default function DevelopmentCopilot() {
     const streakClause = ` Streak: ${data.streak} day(s).`;
     const build = (withStreak: boolean): string | null => {
       const lines: string[] = [
-        `ARBOR PRACTICE SUMMARY — ${childProfile.name}, age ${childProfile.age}`,
+        `ARBOR PRACTICE SUMMARY — ${childProfile.name}, age ${ageLabel(childProfile)}`,
         `Generated ${data.today} · Parent-collected observational data · NOT a diagnostic assessment`,
         ``,
         `Domain picture (milestone checklist + home practice signal):`,
@@ -234,7 +245,7 @@ export default function DevelopmentCopilot() {
           the per-domain trend glyphs — all verdicts on a child. Now mirrors
           DevScoreCard: count / mechanism / route-to-pro. Emits nothing about
           the child as a verdict. */}
-      <SectionCard title={`Domain picture — age ${childProfile.age}`} icon={<Icon name="monitoring" size={20} />} tone="mint">
+      <SectionCard title={`Domain picture — age ${ageLabel(childProfile, t)}`} icon={<Icon name="monitoring" size={20} />} tone="mint">
         <ul className="space-y-2.5">
           {bands.map((b) => {
             const meta = DOMAIN_META[b.domain];

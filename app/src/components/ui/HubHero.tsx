@@ -36,6 +36,10 @@ export interface HubHeroProps {
   cta?: { label: string; onClick: () => void; icon?: React.ReactNode; testId?: string };
   /** Living stat trio (0–3 shown). Counts only — see firewall note above. */
   stats?: HubHeroStat[];
+  /** RUN-08: the translated teach line shown INSTEAD of the trio while every
+   *  stat is zero (a day-0 parent never meets a wall of "0 · 0 · 0"). When
+   *  omitted, an all-zero trio renders nothing at all — never a numeral. */
+  zeroLine?: string;
   /** Oversized, faint lucide glyph rendered at the inline-end. Decorative. */
   icon?: LucideIcon;
   testId?: string;
@@ -49,6 +53,7 @@ export function HubHero({
   tone = "mint",
   cta,
   stats,
+  zeroLine,
   icon: GhostIcon,
   testId,
   className = "",
@@ -65,6 +70,9 @@ export function HubHero({
   }, [entered]);
 
   const trio = (stats ?? []).slice(0, 3);
+  // RUN-08 "zero wall": a trio whose every value is 0 is not information — the
+  // first non-zero stat brings the numerals back.
+  const allZero = trio.length > 0 && trio.every((s) => Number(s.value) === 0);
 
   return (
     <section
@@ -123,7 +131,17 @@ export function HubHero({
           </button>
         )}
 
-        {trio.length > 0 && (
+        {allZero && zeroLine && (
+          <p
+            data-testid={testId ? `${testId}-zero-line` : undefined}
+            className="mt-4 text-[var(--t-sm)] font-bold"
+            style={{ color: p.ink }}
+          >
+            {zeroLine}
+          </p>
+        )}
+
+        {trio.length > 0 && !allZero && (
           <div className="mt-4 grid grid-cols-1 min-[420px]:grid-cols-3 gap-0 min-[420px]:gap-2.5">
             {trio.map((s, i) => (
               <div

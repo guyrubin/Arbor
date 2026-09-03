@@ -131,7 +131,7 @@ export function HoldExitButton({ onExit, idleLabel, ariaIdle }: HoldExitButtonPr
   return (
     <div style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
       <button
-        aria-label={holding ? `${aria} — ${Math.round(progress)}%` : aria}
+        aria-label={holding ? `${aria} — ${t("kid.exit.holding", { n: Math.ceil((HOLD_MS - elapsed) / 1000) })}` : aria}
         aria-live="polite"
         onPointerDown={beginHold}
         onPointerUp={releaseHold}

@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useArbor } from "../context/ArborContext";
-import { ageMonthsFromProfile } from "../lib/childAge";
-import { deriveMonitoring, type MonitoringResult } from "../lib/monitoring";
+import { deriveMonitoring, monitoringAgeYears, type MonitoringResult } from "../lib/monitoring";
 
 /**
  * The ONE "worth keeping an eye on" derivation.
@@ -17,6 +16,12 @@ import { deriveMonitoring, type MonitoringResult } from "../lib/monitoring";
  * get a different watch answer depending on which surface asked. Centralising
  * the input here makes every surface answer the question identically.
  *
+ * GP-04: the age is the CORRECTED (preterm-adjusted) months — the same
+ * comparison age the Milestones map and the Development Check use — via
+ * `monitoringAgeYears` in lib/monitoring.ts (pure, unit-tested). A 15-month-old
+ * born at 28 weeks is never flagged against the 12-month band on the same page
+ * that promises corrected-age comparison.
+ *
  * CLINICAL FIREWALL: returns watch/on-track signals for a parent-facing
  * "worth a conversation" nudge — never a diagnosis, score, or verdict.
  */
@@ -25,10 +30,7 @@ export function useMonitoring(): MonitoringResult {
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
-  // Months-precise when the profile carries a birthDate/ageMonths, else the
-  // legacy coarse year. monitoring.ts still takes fractional years.
-  const ageMonthsPrecise = ageMonthsFromProfile(childProfile);
-  const ageYears = ageMonthsPrecise !== null ? ageMonthsPrecise / 12 : (childProfile.age ?? 0);
+  const ageYears = monitoringAgeYears(childProfile);
 
   return useMemo(
     () => deriveMonitoring({ ageYears, milestones, behaviorLogs }, firstName),

@@ -8,7 +8,7 @@ import { useToast } from "../../context/ToastContext";
 import { PageHeader, SectionCard, cardCls, Chip, IconBadge, TrustSafetyBar } from "../ui/kit";
 import { bandForAgeMonths, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
 import { comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
-import { ageMonthsFromProfile } from "../../lib/childAge";
+import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
 import { computeRecheckDueAt, isRecheckDue } from "../../lib/screeningRecheck";
 import { buildMonitoringReportDoc, type DomainSignal } from "../../lib/monitoring";
 import { useMonitoring } from "../../hooks/useMonitoring";
@@ -50,7 +50,10 @@ export default function Screening() {
     // The builder is clinician-ceiling-bound (IA W4.5) and fail-closed: a
     // blocked doc exports NOTHING.
     try {
-      const doc = buildMonitoringReportDoc(monitoring, childProfile.name, childProfile.age);
+      // GP-01: the printable carries the months-precise label ("7 months"),
+      // never the legacy whole-years number ("age 0"). English on purpose —
+      // the doc is the clinician-facing export.
+      const doc = buildMonitoringReportDoc(monitoring, childProfile.name, ageLabel(childProfile));
       openPrintableReport(doc, childProfile.name);
       toast(t("screen.monitor.exportOpen"), "info");
     } catch {

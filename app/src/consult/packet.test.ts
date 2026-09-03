@@ -10,11 +10,17 @@ import {
   CONSULT_PRESETS,
   FORBIDDEN_EXPORT_TOKENS,
   assertClinicianExportCeiling,
+  isConsultPacketEmpty,
+  serializeForExport,
+  humanDomainLabel,
+  milestoneInAgeWindow,
+  EXPORT_AUDIENCES,
   type BuildPacketInput,
   type ConsultAudience,
   type ConsultPacket,
 } from "./packet";
 import { ClinicalLanguageError } from "../lib/clinicalScan";
+import { ALL_MILESTONES, MILESTONE_AGE_BANDS } from "../lib/milestoneData";
 
 const NOW = new Date("2026-06-15T12:00:00").getTime();
 const DAY = 86_400_000;
@@ -231,21 +237,25 @@ describe("UND-4 — development snapshot preserves observed / not sure / not yet
     ],
   };
 
-  it("a 'not sure' milestone appears as its OWN category with its date — never collapsed into not-yet", () => {
+  it("a 'not sure' milestone appears as its OWN category with its date — and not-yet items are NEVER listed (RUN-01)", () => {
     for (const audience of CLINICIANS) {
       const md = serializePresetPacket(audience, buildPresetPacket(audience, withStatuses));
       expect(md).toMatch(/Not sure yet \(1\): Hops on one foot \(Motor, 2026-06-01\)/);
       expect(md).toMatch(/Observed \(1\): Two-word phrases \(Language, 2026-05-20\)/);
-      expect(md).toMatch(/Not yet observed \(2\):.*Takes turns in games \(Social, 2026-06-03\)/);
+      // RUN-01 (wave T): the pre-fix "Not yet observed (2): …" deficit list is gone —
+      // an unmarked item is "never asked", not "not observed".
+      expect(md).not.toMatch(/Not yet observed/);
+      expect(md).not.toContain("Takes turns in games");
     }
   });
 
-  it("legacy milestones without a status derive from `checked` (checked → observed, unchecked → not yet)", () => {
+  it("legacy milestones without a status derive from `checked` (checked → observed; unchecked → never listed)", () => {
     const p = buildConsultPacket(base); // base fixture has no status fields
     const dev = p.sections.find((s) => s.id === "development")!;
     const text = dev.items.map((it) => it.text).join("\n");
     expect(text).toMatch(/Observed \(1\): Two-word phrases/);
-    expect(text).toMatch(/Not yet observed \(1\): Hops on one foot/);
+    expect(text).not.toMatch(/Not yet observed/); // RUN-01: updated from the pre-fix "Not yet observed (1): Hops on one foot"
+    expect(text).not.toContain("Hops on one foot");
     expect(text).not.toMatch(/Not sure yet/); // no unfounded uncertainty claim
   });
 
@@ -396,5 +406,139 @@ describe("IA W4.2 — presetPacketToPrintSections (the PDF export path)", () => 
       ),
     };
     expect(() => presetPacketToPrintSections("teacher", edited)).toThrow(ClinicalLanguageError);
+  });
+});
+
+/* ── Wave T lane C ─────────────────────────────────────────────────────────── */
+
+describe("LC-06 — isConsultPacketEmpty (the empty state can actually mount)", () => {
+  it("profile-only input yields only the about section, and that IS empty", () => {
+    const p = buildConsultPacket({ ...base, logs: [], milestones: [], plans: [], memory: [] });
+    expect(p.sections.map((s) => s.id)).toEqual(["about"]);
+    expect(isConsultPacketEmpty(p)).toBe(true);
+  });
+
+  it("day-0 seeded checklists (every milestone unmarked) are still empty — no observation, no section", () => {
+    const seeded = ALL_MILESTONES.map((m) => ({ domain: m.domain, title: m.title, checked: false, ageMonths: m.ageMonths }));
+    const p = buildConsultPacket({ ...base, logs: [], milestones: seeded, plans: [], memory: [] });
+    expect(isConsultPacketEmpty(p)).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix test `sections.length === 0` never fires, even for a profile-only packet", () => {
+    const p = buildConsultPacket({ ...base, logs: [], milestones: [], plans: [], memory: [] });
+    expect(p.sections.length === 0).toBe(false);
+  });
+
+  it("one logged moment makes the packet non-empty", () => {
+    const p = buildConsultPacket({ ...base, milestones: [], plans: [], memory: [] });
+    expect(isConsultPacketEmpty(p)).toBe(false);
+  });
+});
+
+describe("RUN-01 — the development snapshot never reads as a deficit list", () => {
+  /** Age-5 profile, the real CDC/ASHA/Arbor library, ONE observation in the 4-year band. */
+  const seeded = ALL_MILESTONES.map((m) => ({
+    domain: m.domain, title: m.title, checked: false, ageMonths: m.ageMonths,
+  }));
+  const fourYearItem = ALL_MILESTONES.find((m) => m.ageMonths === 48)!;
+  const ageFive: BuildPacketInput = {
+    ...base,
+    profile: { ...base.profile, age: 5, ageMonths: 60 },
+    milestones: seeded.map((m) =>
+      m.title === fourYearItem.title ? { ...m, checked: true, status: "yes" as const, observedAt: "2026-06-10T09:00:00.000Z" } : m
+    ),
+  };
+  const text = () => serializePresetPacket("pediatrician", buildPresetPacket("pediatrician", ageFive));
+  const infantTitles = ALL_MILESTONES.filter((m) => typeof m.ageMonths === "number" && m.ageMonths <= 12).map((m) => m.title);
+
+  it("emits no raw snake_case domain keys, no `key: n/m` fractions, and no 'Not yet observed' list", () => {
+    const md = text();
+    expect(md).not.toMatch(/[a-z]+_[a-z]+: \d+\/\d+/);
+    expect(md).not.toMatch(/[a-z]+_[a-z]+/);
+    expect(md).not.toMatch(/Not yet observed/i);
+    expect(md).not.toMatch(/\d+\/\d+/);
+  });
+
+  it("names no milestone from the 0–12-month band for a 5-year-old", () => {
+    const md = text();
+    expect(infantTitles.length).toBeGreaterThan(20); // sanity: the library is real
+    for (const title of infantTitles) expect(md, `infant milestone leaked: ${title}`).not.toContain(title);
+  });
+
+  it("windows the denominator to the 4- and 5-year checklists and uses Development's human labels", () => {
+    const md = text();
+    const inWindow = ALL_MILESTONES.filter((m) => typeof m.ageMonths === "number" && m.ageMonths >= 48 && m.ageMonths < 72);
+    expect(md).toContain(`1 of ${inWindow.length} milestones on the 5 years checklists noticed so far.`);
+    expect(md).toContain("Thinking & attention:");
+    expect(md).toContain(`Observed (1): ${fourYearItem.title} (${humanDomainLabel(fourYearItem.domain)}, 2026-06-10)`);
+    expect(md).not.toContain(`of ${ALL_MILESTONES.length} `);
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix shape (all-library denominator + snake_case fractions) trips the guard regexes", () => {
+    const preFix = `cognition_executive_function: 0/31.\nNot yet observed (133): Calms when comforted; Smiles at people.`;
+    expect(preFix).toMatch(/[a-z]+_[a-z]+: \d+\/\d+/);
+    expect(preFix).toMatch(/Not yet observed/);
+  });
+
+  it("milestoneInAgeWindow: current band + the one before; unanchored items always count", () => {
+    expect(milestoneInAgeWindow(60, 60)).toBe(true);
+    expect(milestoneInAgeWindow(48, 60)).toBe(true);
+    expect(milestoneInAgeWindow(36, 60)).toBe(false);
+    expect(milestoneInAgeWindow(2, 60)).toBe(false);
+    expect(milestoneInAgeWindow(72, 60)).toBe(false); // never ahead-of-band
+    expect(milestoneInAgeWindow(undefined, 60)).toBe(true);
+    expect(MILESTONE_AGE_BANDS.length).toBeGreaterThan(5);
+  });
+
+  it("humanDomainLabel never returns an identifier", () => {
+    expect(humanDomainLabel("cognition_executive_function")).toBe("Thinking & attention");
+    expect(humanDomainLabel("custom_thing")).toBe("Custom thing");
+    expect(humanDomainLabel("Motor")).toBe("Motor");
+  });
+});
+
+describe("LC-08 — serializeForExport: one seam, audience-capped, note scanned", () => {
+  const noteHeading = "Parent note";
+
+  it("teacher output excludes memory facts and log-derived patterns", () => {
+    const md = serializeForExport("teacher", buildConsultPacket(base), new Set(), "Loves trains.", noteHeading);
+    expect(md).not.toMatch(/Calms fastest with a countdown/);
+    expect(md).not.toMatch(/Transition Refusal/);
+    expect(md).not.toMatch(/Sibling Conflict/);
+    expect(md).not.toMatch(/Development snapshot/);
+    expect(md).toContain("Smoother mornings");
+    expect(md).toContain("## Parent note");
+    expect(md).toContain("Loves trains.");
+  });
+
+  it("a note containing a clinical term FAILS CLOSED for a teacher, passes for a clinician and for the parent's own records", () => {
+    const note = "The school suggested a speech delay assessment.";
+    const packet = buildConsultPacket(base);
+    expect(() => serializeForExport("teacher", packet, new Set(), note, noteHeading)).toThrow(ClinicalLanguageError);
+    expect(serializeForExport("clinician", packet, new Set(), note, noteHeading)).toContain(note);
+    expect(serializeForExport("self", packet, new Set(), note, noteHeading)).toContain(note);
+  });
+
+  it("clinician output keeps patterns + approved memory; parent-own records keep everything selected", () => {
+    const packet = buildConsultPacket(base);
+    const clin = serializeForExport("clinician", packet);
+    expect(clin).toMatch(/Transition Refusal: 2 times/);
+    expect(clin).toMatch(/Calms fastest with a countdown/);
+    const self = serializeForExport("self", packet, new Set(["mem-0"]));
+    expect(self).toMatch(/Transition Refusal/);
+    expect(self).not.toMatch(/Calms fastest with a countdown/); // redaction honoured
+  });
+
+  it("a percentage or forbidden token in the note fails closed for EVERY audience", () => {
+    const packet = buildConsultPacket(base);
+    for (const audience of EXPORT_AUDIENCES) {
+      expect(() => serializeForExport(audience, packet, new Set(), "Progress 80% overall.", noteHeading), audience).toThrow(ClinicalLanguageError);
+      expect(() => serializeForExport(audience, packet, new Set(), "riskLevel: Low", noteHeading), audience).toThrow(ClinicalLanguageError);
+    }
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix path (serializePacket + appendParentNote) hands a teacher the memory facts", () => {
+    const preFix = appendParentNote(serializePacket(buildConsultPacket(base)), "any note", noteHeading);
+    expect(preFix).toMatch(/Calms fastest with a countdown/);
   });
 });

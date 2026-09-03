@@ -6,6 +6,8 @@ import ParentalGatePanel from "./ParentalGatePanel";
 import DeleteAccountModal from "./DeleteAccountModal";
 import InviteCard from "../referral/InviteCard";
 import { PlanPrices } from "../billing/PlanPrices";
+import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
+import { Skeleton } from "../ui/Skeleton";
 import { PlanBadge } from "../ui/PlanBadge";
 import { useLanguage, type AiLang } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
@@ -25,7 +27,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const { showAiRail, setShowAiRail, setActiveTab } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
-  const { entitlement } = useEntitlement();
+  // MOB-08: `loading` → skeleton row (never "Free" while unsure); `isFallback`
+  // → "couldn't verify — showing last known · Retry" line.
+  const { entitlement, loading: entitlementLoading, isFallback: entitlementUnverified, retry: retryEntitlement } = useEntitlement();
   const isPaid = entitlement.plan !== "free";
   const isBeta = isPaid && !entitlement.enforced;
   const coachLimit = entitlement.limits.coachMessagesPerDay;
@@ -109,16 +113,38 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-clay-deep)" }}><Icon name="auto_awesome" size={18} /></span>
               <div className="min-w-0">
-                <p className="font-bold flex items-center gap-2 flex-wrap" style={{ color: "var(--arbor-ink)" }}>
-                  {t("set.plan.your", { plan: planLabel })}
-                  {/* 3.6 — the plan chip on the plan row itself (paid plans only). */}
-                  {entitlement.plan === "plus" && <PlanBadge plan="plus" />}
-                  {entitlement.plan === "family" && <PlanBadge plan="family" />}
-                </p>
-                <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{planDesc}</p>
+                {entitlementLoading ? (
+                  /* MOB-08: skeleton while the entitlement is unresolved — a Plus
+                     parent must never read "Your plan: Free" during the fetch. */
+                  <div role="status" aria-label={t("elev.storeshell.plan.verifying")} data-testid="plan-loading" className="space-y-1.5">
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-3 w-52" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-bold flex items-center gap-2 flex-wrap" style={{ color: "var(--arbor-ink)" }}>
+                      {t("set.plan.your", { plan: planLabel })}
+                      {/* 3.6 — the plan chip on the plan row itself (paid plans only). */}
+                      {entitlement.plan === "plus" && <PlanBadge plan="plus" />}
+                      {entitlement.plan === "family" && <PlanBadge plan="family" />}
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{planDesc}</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
+
+          {/* MOB-08: the server could not be asked — say so, and offer Retry
+              instead of silently showing Free + upgrade CTAs. */}
+          {!entitlementLoading && entitlementUnverified && (
+            <p className="text-xs mt-2 flex flex-wrap items-center gap-2" data-testid="plan-unverified" style={{ color: "var(--arbor-peach-ink)" }}>
+              <span>{t("elev.storeshell.plan.unverified")}</span>
+              <button type="button" onClick={() => void retryEntitlement()} className="font-bold underline underline-offset-2 min-h-[44px]" style={{ color: "var(--arbor-clay-deep)" }}>
+                {t("elev.storeshell.plan.retry")}
+              </button>
+            </p>
+          )}
 
           {/* Paid: show renewal/trial status + manage */}
           {isPaid && !isBeta && (
@@ -376,6 +402,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             </button>
           </div>
         )}
+
+        {/* MOB-01: Privacy · Terms · Support — reachable in-app (Apple 5.1.1(i),
+            Play Data Safety), next to the account controls. */}
+        <div className="pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+          <LegalLinks />
+        </div>
       </div>
     </Modal>
     {entitlement.isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} />}

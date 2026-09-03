@@ -29,7 +29,8 @@ import { pickHighestWatchSignal } from "../../lib/monitoring";
 import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { playDomainLabel } from "../../playbank/content";
 import { usePrideMoment } from "../../hooks/usePrideMoment";
-import { focusHeadlineFrom } from "../../lib/todayFocus";
+import { focusHeadlineFor, focusBodyFor, whyLineFor } from "../../lib/todayFocus";
+import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { dailyPromptKeys } from "../../lib/promptBank";
 import { buildSinceVisitRows, type SinceVisitRow } from "../overview/sinceVisitEvents";
 import { chooseTodayAction } from "../overview/chooseTodayAction";
@@ -94,6 +95,7 @@ export default function OverviewTab() {
     behaviorLogs, childProfile, seedCoach,
     donePlayIds, logPlayCompletion, playLogs, requestCapture, setShowAiRail, actionLoop,
     activeTodayAction, acceptTodayAction, requestJournalFocus, conversations,
+    pendingCaptureMode, consumeCaptureRequest,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -111,6 +113,17 @@ export default function OverviewTab() {
   // requestCapture() seam JournalTab's compose tiles use (BehaviorsTab consumes
   // it once and opens the real mic/photo flow). No new capture path.
   const [quickLogOpen, setQuickLogOpen] = useState(false);
+  // ENG-01: the JITAI LOG nudge lands on Today with a pending "text" capture
+  // request (the same requestCapture seam Journal's tiles use) — consume it
+  // once and open the quick-log here, so the nudge's promise "Log a moment"
+  // is one tap, not a hub switch. Voice/photo requests are Behaviors' to
+  // consume and pass through untouched.
+  useEffect(() => {
+    if (pendingCaptureMode !== "text") return;
+    consumeCaptureRequest();
+    setQuickLogOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCaptureMode]);
   const startCapture = (mode: CaptureMode) => {
     requestCapture(mode);
     setActiveTab("behaviors");
@@ -210,7 +223,9 @@ export default function OverviewTab() {
 
   const topTrigger = useMemo(() => {
     const counts = new Map<string, number>();
-    behaviorLogs.forEach((l) => counts.set(l.behaviorType, (counts.get(l.behaviorType) || 0) + 1));
+    // TJB-01: plain Moments are not a "pattern most often around …" — only
+    // incident types compete for the top trigger the focus prompt names.
+    behaviorLogs.filter((l) => isIncidentType(l.behaviorType)).forEach((l) => counts.set(l.behaviorType, (counts.get(l.behaviorType) || 0) + 1));
     let top = ""; let max = 0;
     counts.forEach((v, k) => { if (v > max) { max = v; top = k; } });
     return top;
@@ -231,7 +246,29 @@ export default function OverviewTab() {
   // the guaranteed-action chain below — TodayActionLoop still gets null so the
   // fallback can never be persisted via acceptTodayAction nor injected into
   // the next focus prompt.
-  const focusHeadline = useMemo(() => focusHeadlineFrom(focus?.text), [focus?.text]);
+  // TJB-02: the headline is the model's ONE step (`tryToday`) when the record
+  // is structured, else the legacy first sentence of `text`; the observation
+  // (`focus`) renders as the hero body. Same pure scrub on every path.
+  const focusHeadline = useMemo(() => focusHeadlineFor(focus), [focus]);
+  const focusBody = useMemo(() => focusBodyFor(focus), [focus]);
+  // ENG-07 / AI-19: the why-line names ONLY the inputs that really exist for
+  // this child (server-reported inputsUsed when present); day-0 gets the
+  // honest "chosen from age" line.
+  const focusWhy = useMemo(
+    () =>
+      whyLineFor(
+        {
+          name: firstName,
+          recentCount,
+          confidence: rhythm.confidence,
+          goals: activeGoals.length,
+          interests: childProfile.interests?.length ?? 0,
+          inputsUsed: focus?.inputsUsed,
+        },
+        t,
+      ),
+    [firstName, recentCount, rhythm.confidence, activeGoals.length, childProfile.interests?.length, focus?.inputsUsed, t],
+  );
 
   // ── W1 1.2: the guaranteed action — deterministic fallback chain. A fetch
   //    in flight for a child WITH signals keeps the hero (skeleton) so the
@@ -554,6 +591,7 @@ export default function OverviewTab() {
             <TodayRecommendation
               eyebrow={t("today.guidance.tag")}
               headline={focusHeadline ?? t("ov.recoEmpty", { name: firstName })}
+              body={focusHeadline ? focusBody : undefined}
               meta={t("today.meta")}
               action={t("today.begin")}
               loading={focusLoading && !focus}
@@ -567,7 +605,7 @@ export default function OverviewTab() {
               // W1 1.2 why-line + masterplan 3.1 chain: the copy rides the card's
               // own ContentWhyLine slot so the TrustLink lands AFTER the why text
               // (it used to sit between the CTA and a sibling <p>).
-              why={t("today.intent.whyRhythm")}
+              why={focusWhy}
             />
           ) : todayChoice.kind === "play" ? (
             playSection

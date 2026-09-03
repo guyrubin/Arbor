@@ -2,12 +2,14 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
 import {
+  MODEL_PROFILE_FIELDS,
   PROMPT_VERSIONS,
   buildChatPrompt,
   buildCouncilSynthesisPrompt,
   buildExtractLogPrompt,
   buildVoiceReplyPrompt,
   promptFingerprint,
+  promptProfile,
   promptVersionOf,
   type PromptKey,
 } from "./prompts.js";
@@ -161,12 +163,18 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
  * Masterplan 1.3 — coach_chat 1.1.0: the two OPTIONAL context blocks
  * (recentTurns transcript + weeklyContext line) must be pure ADDITIONS.
  * The load-bearing guarantee is byte-parity on the legacy path: a request
- * carrying neither field produces EXACTLY the 1.0.0 prompt bytes — pinned
- * here against the retired 1.0.0 sha256 so a regression that perturbs the
- * legacy template (even by one byte) fails loudly.
+ * carrying neither field produces EXACTLY the block-free prompt bytes —
+ * pinned here so a regression that perturbs the legacy template (even by
+ * one byte) fails loudly.
+ *
+ * AI-12 (2026-09-03, coach_chat 1.2.0): the child profile now renders through
+ * promptProfile() (the `id` in the canonical args is dropped), so the
+ * block-free baseline moved from the retired 1.0.0 digest (47871f42…) to the
+ * digest below. Same guarantee, new bytes — the ASSERTION is unchanged: with
+ * both 1.3 fields absent the prompt equals the block-free rendering.
  */
-describe("Masterplan 1.3 — coach_chat legacy byte-parity (v1.0.0 pin)", () => {
-  const COACH_CHAT_V1_0_0_SHA256 = "47871f42bfdb1cb2d63d2adcde56662e7792c40f086d4139dfd438d62a8686c5";
+describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.2.0 pin)", () => {
+  const COACH_CHAT_V1_0_0_SHA256 = "781d9e82fb51556d1a8fc0d0458315df90eb9dd1aecfe04f0da186369951de88";
   const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
   const legacyArgs = {
     developmentalFramework: "«framework»",
@@ -178,11 +186,11 @@ describe("Masterplan 1.3 — coach_chat legacy byte-parity (v1.0.0 pin)", () => 
     languageDirective: "«language-directive»",
   } as const;
 
-  it("with BOTH new fields absent, the prompt is byte-identical to coach_chat 1.0.0", () => {
+  it("with BOTH new fields absent, the prompt is byte-identical to the block-free 1.2.0 rendering", () => {
     expect(sha256(buildChatPrompt({ ...legacyArgs }))).toBe(COACH_CHAT_V1_0_0_SHA256);
   });
 
-  it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep 1.0.0 bytes", () => {
+  it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
     expect(sha256(buildChatPrompt({ ...legacyArgs, recentTurns: [], weeklyContext: null }))).toBe(
       COACH_CHAT_V1_0_0_SHA256,
     );
@@ -195,5 +203,118 @@ describe("Masterplan 1.3 — coach_chat legacy byte-parity (v1.0.0 pin)", () => 
     expect(
       sha256(buildChatPrompt({ ...legacyArgs, weeklyContext: { momentCount: 1, milestonesCrossedCount: 0 } })),
     ).not.toBe(COACH_CHAT_V1_0_0_SHA256);
+  });
+});
+
+/**
+ * AI-12 / GP-16 (2026-09-03) — the promptProfile allow-list guard.
+ *
+ * Every builder used to `JSON.stringify(childProfile)` the RAW client object,
+ * so the model was primed with `riskLevel` (a verdict primitive the firewall
+ * bans from parent surfaces, injected upstream of every answer), the
+ * Firestore id, avatar metadata and — when Storage is unavailable — a base64
+ * `photoUrl` data URL. This pins: a deliberately leaky profile renders into
+ * EVERY builder with none of those substrings present, while the allow-listed
+ * facts survive. The negative control proves the fixture actually carries the
+ * leaks (raw stringify contains all of them), so the guard cannot go vacuous.
+ */
+describe("AI-12 / GP-16 — promptProfile allow-list: no verdict, photo, avatar or id reaches any prompt", () => {
+  const scholar = { name: "Vygotsky", concept: "ZPD", method: "Scaffold one step beyond.", defaultFrame: "aim" };
+  const LEAKY_PROFILE = {
+    id: "child-firestore-42",
+    name: "Mia",
+    age: 4,
+    languages: ["en", "he"],
+    schoolContext: "Gan Shalom, mornings",
+    strengths: ["kind"],
+    challenges: ["transitions"],
+    riskLevel: "High",
+    onboardingComplete: true,
+    onboardingCompletedAt: "2026-01-02T00:00:00Z",
+    photoUrl: "data:image/png;base64,AAAAQUFBQUFBQUE=",
+    avatar: { style: "storybook", source: "photo", createdAt: "2026-01-01T00:00:00Z" },
+    activeGoals: [{ goalId: "goal-7", label: "Calmer transitions", domainId: "social", addedAt: "2026-02-02T00:00:00Z" }],
+    interests: ["Trains"],
+    interestsUpdatedAt: "2026-03-03T00:00:00Z",
+    preterm: { gestationalWeeks: 34 },
+    gender: "girl",
+  };
+  const LEAK_SUBSTRINGS = [
+    "riskLevel",
+    '"High"',
+    "photoUrl",
+    "data:image",
+    "base64,AAAA",
+    "child-firestore-42",
+    "avatar",
+    "storybook",
+    "onboardingComplete",
+    "goal-7",
+    "addedAt",
+    "createdAt",
+    "interestsUpdatedAt",
+  ];
+  const KEPT_FACTS = ["Mia", "Gan Shalom", "kind", "transitions", "Trains", "Calmer transitions", "gestationalWeeks", "girl", "4 years"];
+
+  const builders: Record<string, () => string> = {
+    coach_chat: () =>
+      buildChatPrompt({
+        developmentalFramework: "FW",
+        approvedMemory: "",
+        knowledgeContext: "",
+        childProfile: LEAKY_PROFILE,
+        scholar,
+        message: "Q",
+        languageDirective: "",
+      }),
+    council_synthesis: () =>
+      buildCouncilSynthesisPrompt({
+        developmentalFramework: "FW",
+        approvedMemory: "",
+        knowledgeContext: "",
+        childProfile: LEAKY_PROFILE,
+        councilTakes: "TAKES",
+        message: "Q",
+        languageDirective: "",
+      }),
+    voice_reply: () =>
+      buildVoiceReplyPrompt({ persona: "PERSONA", scholar, childProfile: LEAKY_PROFILE, message: "Q", languageDirective: "" }),
+    extract_log: () =>
+      buildExtractLogPrompt({ childProfile: LEAKY_PROFILE, message: "Q", behaviorTypes: "A | B", languageDirective: "" }),
+  };
+
+  for (const [name, build] of Object.entries(builders)) {
+    it(`${name}: renders none of the leak substrings and keeps the allow-listed facts`, () => {
+      const prompt = build();
+      for (const leak of LEAK_SUBSTRINGS) {
+        expect(prompt, `${name} leaks "${leak}" into the model prompt`).not.toContain(leak);
+      }
+      for (const fact of KEPT_FACTS) {
+        expect(prompt, `${name} dropped the allow-listed fact "${fact}"`).toContain(fact);
+      }
+    });
+  }
+
+  it("negative control: the raw JSON.stringify of the fixture DOES carry every leak substring", () => {
+    const raw = JSON.stringify(LEAKY_PROFILE);
+    for (const leak of LEAK_SUBSTRINGS) expect(raw).toContain(leak);
+  });
+
+  it("promptProfile emits only MODEL_PROFILE_FIELDS keys, and null for a missing profile", () => {
+    const projected = promptProfile(LEAKY_PROFILE);
+    expect(projected).not.toBeNull();
+    for (const key of Object.keys(projected ?? {})) {
+      expect((MODEL_PROFILE_FIELDS as readonly string[]).includes(key), `unexpected key ${key}`).toBe(true);
+    }
+    expect(projected?.activeGoals).toEqual([{ label: "Calmer transitions", domain: "social" }]);
+    expect(promptProfile(null)).toBeNull();
+    expect(promptProfile(undefined)).toBeNull();
+    expect(promptProfile({})).toEqual({});
+  });
+
+  it("MODEL_PROFILE_FIELDS never lists the banned fields (the disclosure list and the wire share one constant)", () => {
+    for (const banned of ["riskLevel", "photoUrl", "avatar", "id", "onboardingComplete", "onboardingCompletedAt", "interestsUpdatedAt"]) {
+      expect((MODEL_PROFILE_FIELDS as readonly string[]).includes(banned)).toBe(false);
+    }
   });
 });

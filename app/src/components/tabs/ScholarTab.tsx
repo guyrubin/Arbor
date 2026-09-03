@@ -1,3 +1,4 @@
+import { ageLabel } from "../../lib/childAge";
 import React from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
@@ -59,7 +60,7 @@ export default function ScholarTab() {
                   onClick={() => seedCoach({
                     // AI-input seed (sent to the model in aiLang) — intentionally English; the
                     // model localizes its reply via getAiLanguage(). Do not translate.
-                    prompt: `Using ${isolate(sch.name)}'s ${sch.concept} lens, give me practical, non-diagnostic guidance for ${isolate(childProfile.name)} (age ${childProfile.age}) — what to notice and two things to try this week.`,
+                    prompt: `Using ${isolate(sch.name)}'s ${sch.concept} lens, give me practical, non-diagnostic guidance for ${isolate(childProfile.name)} (${ageLabel(childProfile, t)}) — what to notice and two things to try this week.`,
                     lens: sch.name,
                     source: "scholar-apply",
                   })}

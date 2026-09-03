@@ -17,6 +17,9 @@ import { buildDailyPlan, buildGoalObservation, estimateLoggedDayCount, type Dail
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { isolate } from "../../lib/i18n";
 import type { GoalObservation } from "../../practice/dailyPlan";
+import type { ChildProfile } from "../../types";
+// GP-01: the months-precise age label is THE parent-facing age render.
+import { ageLabel } from "../../lib/childAge";
 
 /* Grow › Daily Play — the activity library. Today's top picks for this child,
    matched to their band and recently-logged concerns. The single hero pick also
@@ -26,14 +29,15 @@ import type { GoalObservation } from "../../practice/dailyPlan";
    child's age band — this chip just RENDERS that existing fact ("for age 5").
    Clinical firewall: the age is a plain fact, never a verdict or claim.
    Styling mirrors the existing duration badge chip on DailyPlayCard. */
-function AgeChip({ age }: { age: number }) {
+function AgeChip({ profile }: { profile: ChildProfile }) {
   const { t } = useLanguage();
+  // GP-01: the months-precise label ("7 months"), never the whole-years "age 0".
   return (
     <span
       className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold"
       style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
     >
-      {t("elev.agechips.card", { age })}
+      {t("elev.growthTruth.agechip.card", { age: ageLabel(profile, t) })}
     </span>
   );
 }
@@ -275,7 +279,7 @@ export default function DailyPlayTab() {
           Post-activity observation writes to goalObservations sub-collection (COPPA-reviewed path). */}
       <div className="max-w-[640px]">
         {/* E6: plan comes from the band-matched picks — render the age fact. */}
-        {dailyPlan && <div className="mb-1.5"><AgeChip age={childProfile.age} /></div>}
+        {dailyPlan && <div className="mb-1.5"><AgeChip profile={childProfile} /></div>}
         <DailyPlanCard
           plan={dailyPlan}
           noGoal={activeGoals.length === 0}
@@ -293,7 +297,7 @@ export default function DailyPlayTab() {
 
       <div className="max-w-[640px]">
         {/* E6: shown only when the course's bands include this child's band. */}
-        {course.bands.includes(childBand) && <div className="mb-1.5"><AgeChip age={childProfile.age} /></div>}
+        {course.bands.includes(childBand) && <div className="mb-1.5"><AgeChip profile={childProfile} /></div>}
         <CourseCard
           course={course}
           childName={firstName}
@@ -336,7 +340,7 @@ export default function DailyPlayTab() {
           })}
         </div>
         {/* E6: readiness tracks are parent-chosen — chip only when band-true. */}
-        {readinessCourse.bands.includes(childBand) && <div className="mb-1.5"><AgeChip age={childProfile.age} /></div>}
+        {readinessCourse.bands.includes(childBand) && <div className="mb-1.5"><AgeChip profile={childProfile} /></div>}
         <CourseCard
           course={readinessCourse}
           childName={firstName}
@@ -360,7 +364,7 @@ export default function DailyPlayTab() {
         {picks.map((p) => (
           <div key={p.activity.id}>
             {/* E6: each pick was selected with childProfile.age — render the fact. */}
-            <div className="mb-1.5"><AgeChip age={childProfile.age} /></div>
+            <div className="mb-1.5"><AgeChip profile={childProfile} /></div>
             <DailyPlayCard
               pick={p}
               childName={firstName}

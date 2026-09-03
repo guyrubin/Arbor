@@ -140,3 +140,46 @@ describe("3.1 — the chain's destination is the Trust Center, from ONE componen
     expect(src).toContain('trustText(uiLang, "elev.trust.link")');
   });
 });
+
+/* ── TJB-04: the Behaviors analysis card joins the chain ─────────────────────
+   The card used to be component state with no why-line and no "keep" — a
+   synthesis a parent could not find tomorrow. It now renders through the
+   shared ContentActionBar slot (why-line + TrustLink surface
+   "behavior-analysis" + the canonical `save` verb = "Keep this") and is
+   persisted to the child's `insights` subcollection. */
+describe("TJB-04 — the Behaviors analysis card carries the why-line → Trust Center chain and a Keep", () => {
+  const BAR_WITH_TRUST = /<ContentActionBar[\s\S]{0,300}?surface="behavior-analysis"[\s\S]{0,300}?\btrustLink\b/;
+
+  it("NEGATIVE CONTROL — the pre-fix card (coach button only, no why, no chain) fails the matcher", () => {
+    const preFix = `<div className="flex flex-wrap gap-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                  <button onClick={() => { seedCoach({ prompt: \`…\`, source: "behavior-analysis" }); }}>
+                    <Icon name="auto_awesome" size={15} fill={1} /> {t("beh.analyzeCoachCta")}
+                  </button>
+                </div>`;
+    expect(BAR_WITH_TRUST.test(preFix)).toBe(false);
+    expect(preFix).not.toMatch(/t\("beh\.analysis\.why"/);
+  });
+
+  it("BehaviorsTab renders the why-line through the shared slot with trustLink ON, surface behavior-analysis", () => {
+    const src = read("components/tabs/BehaviorsTab.tsx");
+    expect(src).toMatch(/t\("beh\.analysis\.why"/);
+    expect(src).toMatch(BAR_WITH_TRUST);
+    expect(src).toContain('from "../ui/ContentActionBar"');
+  });
+
+  it("offers ONE-tap Keep this through the canonical save verb, writing to the insights record", () => {
+    const src = read("components/tabs/BehaviorsTab.tsx");
+    expect(src).toMatch(/verb: "save",\s*label: t\("beh\.analysis\.keep"\)/);
+    expect(src).toMatch(/keepBehaviorInsight\(behaviorAnalysis\.actionPlanSuggestion\)/);
+    const ctx = read("context/ArborContext.tsx");
+    expect(ctx).toMatch(/useChildCollection<InsightRecord>\(childProfile\.id, "insights"/);
+    expect(ctx).toMatch(/kind: "behavior-analysis"/);
+    expect(ctx).toMatch(/kind: "kept-insight"/);
+  });
+
+  it("the why-line is counts-only copy in both languages (no score/percent/verdict)", () => {
+    const en = read("lib/i18n.ts").match(/"beh\.analysis\.why":\s*"([^"]+)"/g) ?? [];
+    expect(en.length).toBe(2);
+    for (const line of en) expect(line).not.toMatch(/%|score|on track|delay/i);
+  });
+});

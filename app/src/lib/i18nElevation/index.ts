@@ -19,9 +19,10 @@
 
 // ── Module imports: ONE line per module, ALPHABETICAL by module name. ─────────
 import * as actionbar from "./actionbar";
-import * as agechips from "./agechips";
 import * as agefilter from "./agefilter";
+import * as aiHonesty from "./aiHonesty";
 import * as auth from "./auth";
+import * as carehonesty from "./careHonesty";
 import * as careprofile from "./careprofile";
 import * as celebrate from "./celebrate";
 import * as childsignals from "./childsignals";
@@ -31,7 +32,9 @@ import * as foundation from "./foundation";
 import * as fullpicture from "./fullpicture";
 import * as gate from "./gate";
 import * as growth from "./growth";
+import * as growthTruth from "./growthTruth";
 import * as journal from "./journal";
+import * as kidRegister from "./kidRegister";
 import * as personal from "./personal";
 import * as planclarity from "./planclarity";
 import * as promise from "./promise";
@@ -43,6 +46,7 @@ import * as sidebar from "./sidebar";
 import * as sincevisit from "./sincevisit";
 import * as spine from "./spine";
 import * as states from "./states";
+import * as storeShell from "./storeShell";
 import * as syncstatus from "./syncstatus";
 import * as today from "./today";
 import * as trustcenter from "./trustcenter";
@@ -51,9 +55,10 @@ import * as wow from "./wow";
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
 const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, string> }> = [
   actionbar,
-  agechips,
   agefilter,
+  aiHonesty,
   auth,
+  carehonesty,
   careprofile,
   celebrate,
   childsignals,
@@ -63,7 +68,9 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   fullpicture,
   gate,
   growth,
+  growthTruth,
   journal,
+  kidRegister,
   personal,
   planclarity,
   promise,
@@ -75,6 +82,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   sincevisit,
   spine,
   states,
+  storeShell,
   syncstatus,
   today,
   trustcenter,

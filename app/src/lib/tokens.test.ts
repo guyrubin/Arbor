@@ -180,7 +180,6 @@ const HEX_RE = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g;
 /** file (POSIX path relative to src/) → sorted unique lowercased hex literals allowed there */
 const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/auth/LoginScreen.tsx": ["#1976d2", "#4caf50", "#ff3d00", "#ffc107"], // Google logo SVG
-  "components/billing/PaywallModal.tsx": ["#fff"],
   "components/kidmode/KidDashboard.tsx": ["#58a6ff"],
   "components/layout/AdminDashboard.tsx": ["#fff"],
   "components/layout/AiRail.tsx": ["#fff"],
@@ -195,12 +194,10 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/practice/EarlyReadingTrack.tsx": ["#fff", "#ffffff"],
   "components/practice/FeelingsLabTab.tsx": ["#fff"],
   "components/practice/GoalBuilderModal.tsx": ["#7a6bd8", "#d6566f", "#ece9f9", "#fff"],
-  "components/practice/HeroArcade.tsx": ["#cdc8bd", "#fff"],
   "components/practice/MemoryMatch.tsx": ["#fff"],
   "components/practice/MimicMatch.tsx": ["#1c222b", "#5fce97", "#a8a093"], // game canvas art
   "components/practice/SpeechCoachTab.tsx": ["#fff", "#ffffff"],
   "components/practice/WordWorldTab.tsx": ["#fff"],
-  "components/profile/AddChildModal.tsx": ["#eef6f1", "#fff"],
   "components/profile/AvatarCreator.tsx": ["#fff"],
   "components/sections/AskSpecialist.tsx": ["#fff"],
   "components/sections/FindProfessional.tsx": ["#fff"],
@@ -217,7 +214,7 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/tabs/DailyPlayTab.tsx": ["#fff"],
   "components/tabs/HeroJourneyTab.tsx": ["#fff"],
   "components/tabs/LanguageLabVocabView.tsx": ["#ffffff"],
-  "components/tabs/MilestonesTab.tsx": ["#34b277", "#3f8cc9", "#5fce97", "#d9763f", "#fff"], // confetti brand literals
+  "components/tabs/MilestonesTab.tsx": ["#fff"], // Wave T: confetti brand literals moved to lib/celebrate (BRAND_CONFETTI)
   "components/tabs/StoryTimelineTab.tsx": ["#fff"],
   "components/ui/ArborMark.tsx": [
     // brand-mark SVG gradient stops — allowlisted art file

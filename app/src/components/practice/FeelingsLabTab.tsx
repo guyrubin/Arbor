@@ -1,14 +1,15 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useSyncExternalStore } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
-import { PlayShell, PlayHeader, StatBubble, ChoiceTile, MascotSay, PlayButton, PlayPanel } from "../ui/playkit";
+import { PlayShell, PlayHeader, StatBubble, ChoiceTile, MascotSay, PlayButton, PlayPanel, ProgressPips } from "../ui/playkit";
 import { BREATHING_PATTERNS, CALM_TOOLS, EMOTION_SCENARIOS, EMOTIONS } from "../../practice/playContent";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { EmotionAvatar } from "../ui/EmotionAvatar";
 import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
 const eventId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -96,6 +97,29 @@ export default function FeelingsLabTab() {
     window.setTimeout(() => setCompletedCalm(null), 1400);
   };
 
+  // KID-04: Kid Mode renders the kid subset only (self-check → scenario →
+  // tiles → next). Stats, the safety note, the explainer cards and the
+  // calm-tool logging are the parent register and stay in the !kidMode branch.
+  const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
+
+  const emotionTiles = choiceEmotions.map((emotion) => {
+    const picked = pickedEmotion === emotion.id;
+    const reveal = pickedEmotion !== null;
+    const correct = emotion.id === scenario.answer;
+    const state = picked ? (correct ? "correct" : "wrong") : reveal && !correct ? "dim" : "idle";
+    return (
+      <ChoiceTile
+        key={emotion.id}
+        emoji={emotion.emoji}
+        label={emotion.label}
+        onClick={() => chooseEmotion(emotion.id)}
+        disabled={!!pickedEmotion}
+        state={state}
+      />
+    );
+  });
+
+  if (!kidMode) {
   return (
     <PlayShell>
       <PlayHeader
@@ -105,7 +129,6 @@ export default function FeelingsLabTab() {
       />
 
       <TrustSafetyBar
-        risk="Low"
         note="This is coaching and practice, not mental-health diagnosis. Patterns worth discussing are surfaced gently in the Development Dashboard."
       />
 
@@ -164,22 +187,7 @@ export default function FeelingsLabTab() {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {choiceEmotions.map((emotion) => {
-            const picked = pickedEmotion === emotion.id;
-            const reveal = pickedEmotion !== null;
-            const correct = emotion.id === scenario.answer;
-            const state = picked ? (correct ? "correct" : "wrong") : reveal && !correct ? "dim" : "idle";
-            return (
-              <ChoiceTile
-                key={emotion.id}
-                emoji={emotion.emoji}
-                label={emotion.label}
-                onClick={() => chooseEmotion(emotion.id)}
-                disabled={!!pickedEmotion}
-                state={state}
-              />
-            );
-          })}
+          {emotionTiles}
         </div>
         {pickedEmotion && (
           <div className="mt-5">
@@ -247,6 +255,78 @@ export default function FeelingsLabTab() {
           ))}
         </div>
       </SectionCard>
+    </PlayShell>
+  );
+  }
+
+  // KID-04: the KID register — Mood Mountain. Self-check → scenario → tiles →
+  // next. Counts never verdicts: progress is pips, feedback is words.
+  return (
+    <PlayShell>
+      <PlayHeader
+        title={t("elev.play.feelings.title")}
+        say={t("elev.play.feelings.say", { name: first })}
+        mood="happy"
+      />
+
+      <PlayPanel tone="yellow">
+        <div className="flex items-center gap-4 rounded-2xl p-4 mb-4" style={{ background: "var(--arbor-paper-deep)" }}>
+          <EmotionAvatar
+            name={first}
+            photoURL={childProfile.photoUrl}
+            emotionEmoji={activeEmotion?.emoji}
+            emotionLabel={activeEmotion?.label}
+            color={activeColor}
+            size={64}
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-[15px] font-extrabold mb-2" style={{ color: "var(--arbor-ink)" }}>{t("elev.play.feelings.selfCheck", { name: first })}</p>
+            <div className="flex flex-wrap gap-2">
+              {EMOTIONS.map((e) => {
+                const on = feltEmotion === e.id;
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => feel(e.id)}
+                    aria-pressed={on}
+                    aria-label={e.label}
+                    className="play-pressable rounded-full min-w-[48px] min-h-[48px] px-3 text-2xl transition"
+                    style={on
+                      ? { background: "var(--arbor-paper-elevated)", boxShadow: `0 0 0 3px ${EMOTION_TONE[e.id] ?? "var(--arbor-clay)"}` }
+                      : { background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+                  >
+                    {e.emoji}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <ProgressPips total={EMOTION_SCENARIOS.length} current={scenarioIdx % EMOTION_SCENARIOS.length} tone="yellow" />
+
+        <div className="rounded-[var(--play-radius)] p-6 my-4" style={{ background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}>
+          <p className="text-5xl mb-3">{scenario.emoji}</p>
+          <p className="text-[1.35rem] font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            {scenario.text}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {emotionTiles}
+        </div>
+        {pickedEmotion && (
+          <div className="mt-5">
+            <MascotSay mood={pickedEmotion === scenario.answer ? "proud" : "think"} tone={pickedEmotion === scenario.answer ? "clay" : "yellow"}>
+              {pickedEmotion === scenario.answer
+                ? t("elev.play.feelings.yes", { feeling: answer.label.toLowerCase() })
+                : t("elev.play.feelings.retry", { feeling: answer.label.toLowerCase() })}
+            </MascotSay>
+            <div className="mt-4">
+              <PlayButton tone="yellow" onClick={nextScenario}>{t("elev.play.feelings.next")} <Icon name="chevron_right" size={18} /></PlayButton>
+            </div>
+          </div>
+        )}
+      </PlayPanel>
     </PlayShell>
   );
 }

@@ -1,10 +1,11 @@
 import express from "express";
+import { createHash } from "node:crypto";
 import type { ArborConfig } from "../config/env.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
 import { abortableIterate, raceWithAbort } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildVoiceReplyPrompt } from "../ai/prompts.js";
+import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildVoiceReplyPrompt, promptProfile } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
@@ -1426,7 +1427,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
           : "";
       const prompt = `${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor's Today's Focus writer for a calm parenting app.
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 What the parent has logged this week: ${count} moment${count === 1 ? "" : "s"}, most often around "${topTrigger || "transitions"}".${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
 Write today's single most useful parenting focus:
 - "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
@@ -1474,7 +1475,13 @@ Return only JSON matching the schema.`;
         return;
       }
 
-      const payload = { text, focus, tryToday, generatedAt: new Date().toISOString(), dateKey };
+      // AI-19: provenance of the inputs the focus was built from — an integer
+      // count, the parent-tagged category label, and the parent-reported
+      // outcome enum. Never intensity, never a percentage, never note text.
+      const inputsUsed: { momentCount: number; topTrigger?: string; lastActionOutcome?: string } = { momentCount: count };
+      if (topTrigger) inputsUsed.topTrigger = topTrigger;
+      if (lastActionOutcome) inputsUsed.lastActionOutcome = lastActionOutcome;
+      const payload = { text, focus, tryToday, inputsUsed, generatedAt: new Date().toISOString(), dateKey };
       // Firewall condition 4: only screened payloads are cached.
       if (focusCache.size >= FOCUS_CACHE_MAX) {
         const oldest = focusCache.keys().next().value;
@@ -1492,6 +1499,135 @@ Return only JSON matching the schema.`;
       }
       logger.error("Arbor Todays Focus Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to draft today's focus", details: error.message });
+    }
+  });
+
+  // AI-01 (2026-09-03): POST /explain — the lightweight "why does this
+  // matter / what can I try" generator for NON-coach surfaces (Milestones ›
+  // Explain + Analyze gaps, Behaviors › inline co-regulation script). Those
+  // surfaces used to POST /api/chat with a synthetic UI prompt and render the
+  // coach's INTERNAL markdown (Frame Routing, Pending Memory Review, Knowledge
+  // Cards Used, Handoff Note) as a prose wall — while appendMemoryProposals
+  // wrote pending memory facts the parent never discussed.
+  //
+  // Built on the /todays-focus template: analysis_structured (analysis
+  // budget, NOT the coach meter), a 2-field schema {explanation, tryToday},
+  // NON_DIAGNOSTIC_CONTRACT embedded, screenModelOutput BEFORE return, a
+  // per-day cache keyed uid/child/lang/subject(+details digest) that stores
+  // only screened payloads, and — the load-bearing contract — NO memory
+  // proposals and NO coach-contract rendering (pinned by
+  // routes/explainRoute.test.ts).
+  const explainCache = new Map<string, Record<string, unknown>>();
+  const EXPLAIN_CACHE_MAX = 2000;
+  const EXPLAIN_SUBJECT_MAX = 160;
+  const EXPLAIN_DETAILS_MAX = 2400;
+
+  router.post("/explain", async (req, res) => {
+    const { childProfile, subject, details, language } = req.body ?? {};
+    const subjectText = typeof subject === "string" ? subject.replace(/\s+/g, " ").trim().slice(0, EXPLAIN_SUBJECT_MAX) : "";
+    if (!subjectText) {
+      res.status(400).json({ error: "A subject to explain is required" });
+      return;
+    }
+    const detailsText = typeof details === "string" ? details.trim().slice(0, EXPLAIN_DETAILS_MAX) : "";
+    const lang = language === "he" ? "he" : "en";
+
+    // Same input gate as /generate-plan: a subject/detail that reads as an
+    // immediate-escalation concern gets professional routing, never a model
+    // explanation.
+    const escalationMatch = screenForImmediateEscalation({ subject: subjectText, details: detailsText });
+    if (escalationMatch) {
+      res.status(409).json({
+        error: "Professional support recommended",
+        details: `This concern may require professional or urgent assessment. Category: ${escalationMatch.category}.`,
+        escalationCategory: escalationMatch.category,
+      });
+      return;
+    }
+
+    const detailsDigest = detailsText ? createHash("sha256").update(detailsText, "utf8").digest("hex").slice(0, 16) : "none";
+    const cacheKey = `${actorOf(req).uid}:${childProfile?.id ?? "none"}:${focusDateKey()}:${lang}:${subjectText.toLowerCase()}:${detailsDigest}`;
+    const cached = explainCache.get(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
+    // AIR-9: an explainer is ambient-weight — the tight analysis budget.
+    const budget = createRouteBudget(res, "analysis");
+    try {
+      const languageDirective =
+        lang === "he"
+          ? "\nIMPORTANT: The parent speaks Hebrew. Write both fields in natural, warm Hebrew (עברית)."
+          : "";
+      const prompt = `${NON_DIAGNOSTIC_CONTRACT}
+${developmentalFramework}
+You are Arbor's explainer for a calm parenting app. A parent tapped "explain" on something in their child's record.
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
+Subject: ${subjectText}${detailsText ? `\nWhat the parent's record shows (counts and labels the parent entered):\n${detailsText}` : ""}
+Write:
+- "explanation": 2-4 warm, plain sentences on why this matters for a child at this age and what it typically looks like — an observation, never an assessment of THIS child, never a readiness or delay claim.
+- "tryToday": ONE small, concrete thing the parent can try today, phrased as a doable step with the words they could say.
+Never include a score, percentage, trend, severity, diagnosis, or outcome claim. No headings, no markdown, no emojis, no bullet lists.${languageDirective}
+Return only JSON matching the schema.`;
+
+      const privacy = createRedaction(childProfile?.name);
+      const draft = (await raceWithAbort(modelProvider.generateJson({
+        route: "analysis_structured",
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        temperature: 0.5,
+        budget: budget.budget,
+        schema: {
+          type: Type.OBJECT,
+          required: ["explanation", "tryToday"],
+          properties: {
+            explanation: { type: Type.STRING },
+            tryToday: { type: Type.STRING }
+          }
+        }
+      }), budget.signal)) as { explanation?: unknown; tryToday?: unknown };
+
+      const restored = privacy.restoreDeep(draft) as { explanation?: unknown; tryToday?: unknown };
+      const clean = (v: unknown, cap: number) => String(v ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, cap);
+      const explanation = clean(restored.explanation, 700);
+      const tryToday = clean(restored.tryToday, 400);
+      const text = [explanation, tryToday].filter(Boolean).join(" ");
+      if (!text) {
+        budget.settle();
+        res.status(502).json({ error: "Explanation returned no usable text" });
+        return;
+      }
+
+      // Firewall condition 1: the FULL output screen gates the return.
+      const outputVerdict = await screenModelOutput(modelProvider, text);
+      budget.settle();
+      if (outputVerdict.flagged) {
+        logger.warn("Explain output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        res.status(422).json({ error: "Arbor couldn't explain that right now. Please try again later." });
+        return;
+      }
+
+      const payload = { explanation, tryToday, text, generatedAt: new Date().toISOString(), dateKey: focusDateKey() };
+      if (explainCache.size >= EXPLAIN_CACHE_MAX) {
+        const oldest = explainCache.keys().next().value;
+        if (oldest !== undefined) explainCache.delete(oldest);
+      }
+      explainCache.set(cacheKey, payload);
+      res.json(payload);
+    } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Explain deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
+      logger.error("Arbor Explain Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to explain that", details: error.message });
     }
   });
 
@@ -1549,14 +1685,14 @@ Return only JSON matching the schema.`;
       ? `${NON_DIAGNOSTIC_CONTRACT}
 ${guard}
 You can SEE the attached document photo. Read it (OCR) and extract what matters for this child's care.
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 Parent note: "${typeof note === "string" ? note : ""}"
 Return JSON: offTopic, documentType, summary, keyPoints[], suggestedMemory[] (durable facts the parent could approve), questionsForProfessional[], handoffNote.${languageDirective}`
       : `${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
 ${guard}
 You can SEE the attached photo. Describe only what is observable and relevant, then give gentle, non-diagnostic next steps.
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 Parent note: "${typeof note === "string" ? note : ""}"
 Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avoid[], nonDiagnosticNote.${languageDirective}`;
 
@@ -2079,7 +2215,7 @@ ${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
 
 Generate a structured, non-diagnostic Arbor action plan.
-Profile: ${JSON.stringify(childProfile)}
+Profile: ${JSON.stringify(promptProfile(childProfile))}
 Focus Challenge: "${challengeTopic}"
 Return JSON with title, issue, phases, scripts, and successIndicators.
 `;
@@ -2432,7 +2568,7 @@ ${languageDirective}`;
 ${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
 Analyze Arbor parent-logged observations.
-Child Details: ${JSON.stringify(childProfile)}
+Child Details: ${JSON.stringify(promptProfile(childProfile))}
 Behavior Logs: ${JSON.stringify(logs)}
 Return JSON with frequencyCount, intensityTrend, triggerBreakdown, expertInsights, actionPlanSuggestion.
 `;
@@ -2532,7 +2668,7 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, expertInsight
       const prompt = `
 ${NON_DIAGNOSTIC_CONTRACT}
 Create an Arbor professional handoff brief for ${String(audience).toUpperCase()}.
-Child Details: ${JSON.stringify(childProfile)}
+Child Details: ${JSON.stringify(promptProfile(childProfile))}
 Key Logged Behaviors: ${JSON.stringify(logs)}
 Milestone Context: ${JSON.stringify(milestones)}
 Return JSON with title, date, overview, keyStrengths, classroomChallenges, languageSupportPlan, suggestedTeacherStrategies, crisisEscalationTrigger.
@@ -2703,7 +2839,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       const languageDirective = language === "he" ? "\nWrite every human-readable value in warm, natural Hebrew (עברית)." : "";
       const prompt = `${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor writing a parent's WEEKLY DIGEST — short, warm, concrete, zero fluff. Never diagnose.
-Child: ${childProfile ? JSON.stringify(childProfile) : "unknown"}
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 This week's true, computed stats (do not contradict them): ${JSON.stringify(stats)}
 Write: title (e.g. "${privacy.redact(childName)}'s week"), subject (email subject), preheader (one line), summary (2-3 sentences),
 highlights (2-4 short bullets celebrating real effort/progress), watchFor (0-2 gentle observations worth keeping an eye on),

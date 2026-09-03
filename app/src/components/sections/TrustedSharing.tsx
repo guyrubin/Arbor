@@ -5,7 +5,8 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
-import { downloadJson } from "../../lib/childData";
+import { downloadJson, exportChildData } from "../../lib/childData";
+import { useAuth } from "../../context/AuthContext";
 import { api, ApiError, PaywallError } from "../../lib/api";
 import type { DeletionReceipt, ShareGrant, ShareRole, SharedPacketView } from "../../types";
 import Modal from "../ui/Modal";
@@ -33,8 +34,9 @@ const ROLE_TONE: Record<ShareRole, PastelKey> = { co_parent: "mint", professiona
  *  from real, server-enforced share grants — scoped, time-boxed, revocable
  *  (incl. co-parents) — plus what's shared with you. */
 export default function TrustedSharing() {
-  const { childProfile, behaviorLogs, actionPlans, openPaywall, setActiveTab } = useArbor();
+  const { childProfile, openPaywall, setActiveTab } = useArbor();
   const { deleteChild } = useProfile();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
@@ -164,15 +166,23 @@ export default function TrustedSharing() {
     setViewError(null);
   };
 
-  const exportData = () => {
-    downloadJson(`arbor-${first.toLowerCase()}-data.json`, {
-      exportedAt: new Date().toISOString(),
-      child: childProfile,
-      behaviorLogs,
-      actionPlans,
-      note: t("sec.sharing.data.exportNote"),
-    });
-    toast(t("sec.sharing.audit.exported", { name: first }), "success");
+  // LC-02: "Export all data" exports ALL data — the same complete sweep
+  // (profile + every CHILD_SUBCOLLECTIONS sink + server memory ledger and
+  // share grants) that ProfileEditDrawer uses, never a hand-built subset. The
+  // parent-facing note rides along as a top-level field.
+  const [exporting, setExporting] = useState(false);
+  const exportData = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const data = await exportChildData(user?.uid, childProfile);
+      downloadJson(`arbor-${first.toLowerCase()}-data.json`, { ...data, exportNote: t("sec.sharing.data.exportNote") });
+      toast(t("sec.sharing.audit.exported", { name: first }), "success");
+    } catch {
+      toast(t("sec.sharing.data.export"), "error");
+    } finally {
+      setExporting(false);
+    }
   };
 
   // CARE-1: REAL GDPR Art. 17 erasure — the old confirm/alert theater claimed a

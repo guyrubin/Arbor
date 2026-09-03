@@ -8,8 +8,9 @@ import {
   monitoredDomainToPlayHint,
   watchPointsSummary,
   MONITORED_DOMAIN_LABEL,
+  monitoringAgeYears,
 } from "./monitoring.js";
-import type { BehaviorLog, Milestone } from "../types";
+import type { BehaviorLog, ChildProfile, Milestone } from "../types";
 
 const NOW = new Date("2026-06-06T12:00:00.000Z").getTime();
 const daysAgo = (n: number) => new Date(NOW - n * 24 * 60 * 60 * 1000).toISOString();
@@ -376,9 +377,11 @@ describe("buildMonitoringReportDoc", () => {
       },
       "Mila",
     );
-    const doc = buildMonitoringReportDoc(res, "Mila Cohen", 3);
+    const doc = buildMonitoringReportDoc(res, "Mila Cohen", "3 years");
     expect(doc.title).toMatch(/Monitoring/);
     expect(doc.subtitle).toContain("Mila Cohen");
+    // GP-01: the printable carries the months-precise LABEL, never "age 0".
+    expect(doc.subtitle).toBe("Mila Cohen, age 3 years");
     const headings = doc.sections.map((s) => s.heading);
     expect(headings).toContain("Areas to discuss");
     expect(headings).toContain("Non-diagnostic note");
@@ -386,7 +389,7 @@ describe("buildMonitoringReportDoc", () => {
 
   it("still renders cleanly when no areas are flagged", () => {
     const res = deriveMonitoring({ ageYears: 2, now: NOW }, "Mila");
-    const doc = buildMonitoringReportDoc(res, "Mila Cohen", 2);
+    const doc = buildMonitoringReportDoc(res, "Mila Cohen", "2 years");
     const discuss = doc.sections.find((s) => s.heading === "Areas to discuss")!;
     expect(String(discuss.body)).toMatch(/No areas/);
   });
@@ -414,7 +417,7 @@ describe("buildMonitoringReportDoc", () => {
       },
       "Mila",
     );
-    const doc = buildMonitoringReportDoc(res, "Mila Cohen", 3);
+    const doc = buildMonitoringReportDoc(res, "Mila Cohen", "3 years");
     const notSure = doc.sections.find((s) => s.heading.includes("not sure about"))!;
     expect(notSure).toBeDefined();
     const notSureBody = (notSure.body as string[]).join("\n");
@@ -516,5 +519,60 @@ describe("watchPointsSummary (UND-3)", () => {
     expect(points).toHaveLength(2);
     expect(points[0]).toEqual({ domain: "social_development", count: 2 });
     expect(points[1].count).toBe(1);
+  });
+});
+
+/**
+ * GP-04 — monitoring compares against the CORRECTED (preterm-adjusted) age,
+ * the same AAP helper the Milestones map and the Development Check use.
+ * Before: useMonitoring fed the raw chronological months, so a 15-month-old
+ * born at 28 weeks got "One language skill typically seen by now hasn't been
+ * noted…" on the same page that promised corrected-age comparison.
+ */
+describe("GP-04 — monitoringAgeYears is the corrected age (preterm)", () => {
+  const profile = (over: Partial<ChildProfile> = {}): ChildProfile => ({
+    id: "c1",
+    name: "Noa",
+    age: 1,
+    ageMonths: 15,
+    languages: ["Hebrew"],
+    schoolContext: "",
+    strengths: [],
+    challenges: [],
+    riskLevel: "Low",
+    ...over,
+  });
+  // A 12-month-band item the parent answered "not yet": overdue once the
+  // comparison age reaches 12 + 2 (grace) = 14 months.
+  const twelveMonthNotYet = () => [milestone({ ageGroup: "12 months", observationStatus: "not_yet" })];
+
+  it("a 15-month-old born at 28 weeks is compared at ~12.2 months (AAP correction)", () => {
+    const years = monitoringAgeYears(profile({ preterm: { gestationalWeeks: 28 } }));
+    expect(years * 12).toBeCloseTo(12.2, 1);
+  });
+
+  it("preterm fixture: no overdue signal that the CHRONOLOGICAL age would produce", () => {
+    const corrected = deriveMonitoring(
+      { ageYears: monitoringAgeYears(profile({ preterm: { gestationalWeeks: 28 } })), milestones: twelveMonthNotYet(), now: NOW },
+      "Noa",
+    );
+    expect(corrected.elevated).toBe(false);
+    expect(corrected.watchAreas).toEqual([]);
+    expect(corrected.domains.find((d) => d.domain === "language_communication")!.overdueMilestones).toEqual([]);
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix chronological input (15/12 years) DOES flag the same item", () => {
+    const chronological = deriveMonitoring({ ageYears: 15 / 12, milestones: twelveMonthNotYet(), now: NOW }, "Noa");
+    expect(chronological.watchAreas.length).toBeGreaterThan(0);
+    expect(chronological.domains.find((d) => d.domain === "language_communication")!.overdueMilestones).toHaveLength(1);
+  });
+
+  it("a term child (no preterm record) is unchanged — chronological months / 12", () => {
+    expect(monitoringAgeYears(profile()) * 12).toBe(15);
+    expect(monitoringAgeYears(profile({ preterm: { gestationalWeeks: 40 } })) * 12).toBe(15);
+  });
+
+  it("correction stops at 24 months (AAP) — a 30-month-old born at 28 weeks compares at 30", () => {
+    expect(monitoringAgeYears(profile({ ageMonths: 30, age: 2, preterm: { gestationalWeeks: 28 } })) * 12).toBe(30);
   });
 });

@@ -29,6 +29,7 @@ import { TabSkeleton } from "../ui/Skeleton";
 import { useLanguage } from "../../context/LanguageContext";
 import KidDashboard, { type KidSurface } from "./KidDashboard";
 import { HoldExitButton } from "./HoldExitButton";
+import { KidErrorBoundary } from "./KidErrorBoundary";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
 const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
@@ -255,25 +256,36 @@ export default function KidModeOverlay() {
               paddingBlock: "24px",
             }}
           >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.14 }}
-              >
-                {view === "home" ? (
-                  <KidDashboard onOpenSurface={openSurface} onExit={closeKidMode} />
-                ) : view === "arcade" ? (
-                  <Suspense fallback={<TabSkeleton />}>
-                    <PracticeHubTab initialWorldId={arcadeWorldId ?? undefined} />
-                  </Suspense>
-                ) : (
-                  <Suspense fallback={<TabSkeleton />}>{surface && <surface.Comp />}</Suspense>
-                )}
-              </motion.div>
-            </AnimatePresence>
+            {/* KID-22: Kid Mode's own boundary. It wraps the SURFACE AREA only —
+                the hold-to-exit control in the header above stays mounted, so a
+                throwing world can never blank the app or weaken the lock. The
+                fallback's only action is Home (setView("home")). */}
+            <KidErrorBoundary
+              onHome={() => setView("home")}
+              resetKey={view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view}
+              title={t("elev.kid.crash.title")}
+              homeLabel={t("elev.kid.crash.home")}
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.14 }}
+                >
+                  {view === "home" ? (
+                    <KidDashboard onOpenSurface={openSurface} onExit={closeKidMode} />
+                  ) : view === "arcade" ? (
+                    <Suspense fallback={<TabSkeleton />}>
+                      <PracticeHubTab initialWorldId={arcadeWorldId ?? undefined} />
+                    </Suspense>
+                  ) : (
+                    <Suspense fallback={<TabSkeleton />}>{surface && <surface.Comp />}</Suspense>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </KidErrorBoundary>
           </div>
         </motion.div>
       )}

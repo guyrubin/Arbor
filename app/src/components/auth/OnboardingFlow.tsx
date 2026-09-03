@@ -6,7 +6,9 @@ import {
 } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
-import { markWowPending, setCoachSeed } from "../../lib/onboardingJourney";
+import { markWowPending, setCoachSeed, markAvatarSkipped, clearAvatarSkipped } from "../../lib/onboardingJourney";
+import { useEntitlement } from "../../hooks/useEntitlement"; // MOB-12: admin gate for the replay affordance
+import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: policy links beside the consent checkbox
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
@@ -347,6 +349,9 @@ function StepChild({
           />
           <span className="text-[12px] leading-snug" style={{ color: "var(--arbor-ink)" }}>{t("ob.consent.controller")}</span>
         </label>
+        {/* MOB-01: a parent giving controller consent for child data can read
+            what they are consenting to — Privacy · Terms · Support, in-app. */}
+        <LegalLinks />
       </div>
 
       <button
@@ -622,7 +627,7 @@ function PromiseCard({ name }: { name: string }) {
 
 // ── Step 5 — Ready ─────────────────────────────────────────────────────────
 
-function StepReady({
+export function StepReady({
   name,
   ageYears,
   ageMonthsPart,
@@ -631,6 +636,7 @@ function StepReady({
   saving,
   onSubmit,
   onReplay,
+  showReplay = false,
 }: {
   name: string;
   ageYears: number;
@@ -641,6 +647,9 @@ function StepReady({
   onSubmit: () => void;
   /** Triggers a non-persisting replay of the full flow from Step 1. */
   onReplay: () => void;
+  /** MOB-12: the replay is a QA affordance — DEV builds / admins only. A
+   *  parent's real setup screen has exactly ONE button (Enter Arbor). */
+  showReplay?: boolean;
 }) {
   const { t } = useLanguage();
   const totalAgeMonths = ageYears * 12 + ageMonthsPart;
@@ -703,17 +712,20 @@ function StepReady({
         {t("ob.step.ready.cta")}
       </button>
 
-      {/* AP-049 AC-1: re-launchable demo entry point */}
-      <button
-        type="button"
-        onClick={onReplay}
-        className="w-full text-xs font-bold py-2 flex items-center justify-center gap-1.5"
-        style={{ color: "var(--arbor-muted)", minHeight: 44 }}
-        aria-label={t("ob.demo.relaunch")}
-      >
-        <RefreshCw className="w-3.5 h-3.5" aria-hidden />
-        {t("ob.demo.relaunch")}
-      </button>
+      {/* AP-049 AC-1: re-launchable demo entry point — MOB-12: gated to DEV /
+          admin (the `?onboarding=1` dev preview in App.tsx already covers QA). */}
+      {showReplay && (
+        <button
+          type="button"
+          onClick={onReplay}
+          className="w-full text-xs font-bold py-2 flex items-center justify-center gap-1.5"
+          style={{ color: "var(--arbor-muted)", minHeight: 44 }}
+          aria-label={t("ob.demo.relaunch")}
+        >
+          <RefreshCw className="w-3.5 h-3.5" aria-hidden />
+          {t("ob.demo.relaunch")}
+        </button>
+      )}
     </div>
   );
 }
@@ -728,6 +740,10 @@ export default function OnboardingFlow() {
   const { addChild, updateChild, profiles } = useProfile();
   const { toast } = useToast();
   const { t } = useLanguage();
+  // MOB-12: the "Relaunch onboarding demo" replay is a QA affordance, never a
+  // parent-facing control — DEV builds or admin accounts only.
+  const { entitlement } = useEntitlement();
+  const showReplay = import.meta.env.DEV || entitlement.isAdmin === true;
 
   // P0.4 — resume: if a profile was created but onboarding never finished
   // (onboardingComplete === false), pick up where the parent left off instead of
@@ -976,9 +992,15 @@ export default function OnboardingFlow() {
                 childName={name.trim()}
                 onAvatarCreated={(result) => {
                   setAvatarResult(result);
+                  if (!replaying) clearAvatarSkipped();
                   goNext();
                 }}
-                onSkip={goNext}
+                // MOB-09: remember the skip so the wow overlay does not ask
+                // the same avatar question again (enters at the comic).
+                onSkip={() => {
+                  if (!replaying) markAvatarSkipped();
+                  goNext();
+                }}
                 replayMode={replaying}
               />
             )}
@@ -993,6 +1015,7 @@ export default function OnboardingFlow() {
                 saving={saving}
                 onSubmit={submit}
                 onReplay={startReplay}
+                showReplay={showReplay}
               />
             )}
           </motion.div>

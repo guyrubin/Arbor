@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut as firebaseSignOut,
@@ -10,6 +11,7 @@ import {
 } from "firebase/auth";
 import { auth, firebaseEnabled } from "../lib/firebase";
 import { setAuthTokenProvider } from "../lib/api";
+import { authErrorKey } from "../lib/i18nElevation/storeShell";
 import { initNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
 import { trackSessionOpen } from "../lib/loopEvents";
@@ -49,28 +51,10 @@ const toAuthUser = (u: User): AuthUser => ({
   photoURL: u.photoURL,
 });
 
-/** Map raw Firebase auth error codes to calm, parent-friendly copy (handoff P0.1).
+/** Map raw Firebase auth error codes to an i18n KEY (Wave T, MOB-03): the
+ *  LoginScreen renders `t(error)`, so a Hebrew parent gets Hebrew copy.
  *  Never surface "Firebase: Error (auth/…)" strings to a parent. */
-const friendlyAuthError = (err: any): string => {
-  switch (err?.code) {
-    case "auth/invalid-credential":
-    case "auth/wrong-password":
-    case "auth/invalid-email":
-      return "We couldn't sign you in. Please check your email and password, or request access.";
-    case "auth/user-not-found":
-      return "No Arbor account found for this email. Request access if you haven't been invited yet.";
-    case "auth/user-disabled":
-      return "This account has been disabled. Contact hello@arbor.app for help.";
-    case "auth/too-many-requests":
-      return "Too many attempts. Please wait a moment and try again, or reset your password.";
-    case "auth/network-request-failed":
-      return "We couldn't reach Arbor. Check your connection and try again.";
-    case "auth/popup-blocked":
-      return "Your browser blocked the sign-in popup. Allow popups for Arbor and try again.";
-    default:
-      return "Something went wrong signing you in. Please try again or request access.";
-  }
-};
+const friendlyAuthError = (err: any): string => authErrorKey(err?.code);
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -108,6 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearMathExit();
     } catch (err: any) {
       if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") return;
+      if (err?.code === "auth/popup-blocked") {
+        // MOB-03: a blocked popup is not a dead end — fall back to the
+        // redirect flow (the page returns to the app after Google).
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
+      }
       setError(friendlyAuthError(err));
       throw err;
     }

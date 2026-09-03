@@ -9,7 +9,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
-import { BEHAVIOR_TYPES, EXTRACT_CONTEXTS, behaviorTypeLabel, normalizeExtractedLog } from "../../content/behaviorTaxonomy";
+import { BEHAVIOR_TYPES, DEFAULT_BEHAVIOR_TYPE, EXTRACT_CONTEXTS, behaviorTypeLabel, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
 import type { BehaviorContext } from "../../types";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview). */
@@ -31,6 +31,7 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
     setNewLogNotes,
     childProfile,
     handleAddLog,
+    addMoment,
     offerPostCaptureCoach,
   } = useArbor();
   const { toast } = useToast();
@@ -41,6 +42,15 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
   // the parent wrote what the model drafted), 'text' for a hand-filled form.
   const [source, setSource] = useState<CaptureSource>("text");
   const [drafting, setDrafting] = useState(false);
+  // TJB-01: the modal opens as a ONE-field moment ("What happened?") — the
+  // Journal's "catch the moment" promise. The incident form (type, intensity,
+  // what you tried) is opt-in behind "This was a hard moment", so a joyful
+  // moment never has to invent a challenge type or a parent response.
+  const [hardMoment, setHardMoment] = useState(false);
+  const toggleHardMoment = (on: boolean) => {
+    setHardMoment(on);
+    if (on && !isIncidentType(newLogType)) setNewLogType(DEFAULT_BEHAVIOR_TYPE);
+  };
   // AI-CAP-3 firewall condition: a 409 on the TYPED path renders the FULL
   // crisis-resources surface (never a toast) and writes ZERO draft fields —
   // the ApiError must not fall through to sentence-into-trigger.
@@ -50,6 +60,7 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
       setReviewing(false);
       setSource("text");
       setEscalationMarkdown(null);
+      setHardMoment(false);
     }
   }, [open]);
   // TODAY-3: the review step is the SHARED ConfirmCaptureReview contract
@@ -80,6 +91,7 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
       setNewLogResponse(n.response || t("beh.extract.noResponse"));
       if (n.notes) setNewLogNotes(n.notes);
       setSource("ai-draft");
+      setHardMoment(true);
       setReviewing(true);
     } catch (err) {
       // FAIL-CLOSED: the escalation branch runs FIRST and writes no draft field.
@@ -98,9 +110,23 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
     }
   };
 
+  // TJB-01: the plain-moment save — one field, one tap, no review step (there
+  // is nothing drafted to review; the parent wrote every word).
+  const saveMoment = (e: React.FormEvent) => {
+    e.preventDefault();
+    const written = addMoment(newLogTrigger);
+    if (!written) {
+      toast(t("beh.toast.fillTrigger"), "error");
+      return;
+    }
+    setNewLogTrigger("");
+    onClose();
+    toast(t("ql.moment.okToast"), "success");
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
+    if (validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse })) {
       toast(t("ql.errToast"), "error");
       return;
     }
@@ -110,7 +136,7 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
   const confirm = (e: React.FormEvent) => {
     // AI-CAP-5: inline review editing can empty a required field — keep the
     // review open with a calm error instead of a silent failed write.
-    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
+    if (validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse })) {
       e.preventDefault();
       toast(t("ql.errToast"), "error");
       return;
@@ -178,14 +204,43 @@ export default function QuickLogModal({ open, onClose }: { open: boolean; onClos
         onEdit={() => setReviewing(false)}
         onDiscard={discard}
         onConfirm={confirm}
-      /> : <form onSubmit={submit} className="space-y-4 text-sm">
+      /> : !hardMoment ? <form onSubmit={saveMoment} className="space-y-4 text-sm" data-testid="quicklog-moment-form">
+        <div className="space-y-1.5">
+          <label htmlFor="quick-log-moment" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.moment.label")}</label>
+          <input
+            id="quick-log-moment"
+            value={newLogTrigger}
+            onChange={(e) => setNewLogTrigger(e.target.value)}
+            placeholder={t("ql.moment.ph")}
+            autoFocus
+            className="min-h-11 w-full rounded-xl p-2.5 text-sm focus:outline-none"
+            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+          />
+        </div>
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+          <input type="checkbox" checked={hardMoment} onChange={(e) => toggleHardMoment(e.target.checked)} className="h-5 w-5" style={{ accentColor: "var(--arbor-clay)" }} />
+          <span className="min-w-0">
+            <span className="block text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ql.moment.hard")}</span>
+            <span className="block text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ql.moment.hardHint")}</span>
+          </span>
+        </label>
+        <button type="submit" className="min-h-11 w-full py-3 text-white font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)" }}>
+          {t("ql.moment.save")}
+        </button>
+      </form> : <form onSubmit={submit} className="space-y-4 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+          <input type="checkbox" checked={hardMoment} onChange={(e) => toggleHardMoment(e.target.checked)} className="h-5 w-5" style={{ accentColor: "var(--arbor-clay)" }} />
+          <span className="block text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ql.moment.hard")}</span>
+        </label>
         <div className="space-y-1.5">
           <label htmlFor="quick-log-type" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.type")}</label>
           {/* AI-CAP-8: options render from the ONE shared taxonomy module — no
-              duplicated option literals across capture forms. */}
+              duplicated option literals across capture forms. TJB-01: the
+              incident form lists incident types only; the neutral Moment is
+              the other branch of this modal. */}
           <select id="quick-log-type" value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
             {BEHAVIOR_TYPES.map((b) => (
-              <option key={b.value} value={b.value}>{t(b.shortLabelKey)}</option>
+              isIncidentType(b.value) ? <option key={b.value} value={b.value}>{t(b.shortLabelKey)}</option> : null
             ))}
           </select>
         </div>

@@ -27,6 +27,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { nextNudge } from "../../lib/jitai";
+import { shownNudgesToday, NUDGE_DAILY_CEILING } from "../../growth/jitaiPrefs";
 import { predictRhythm } from "../../rhythm/predict";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import {
@@ -119,16 +120,24 @@ export default function SmartRemindersPanel() {
     return behaviorLogs.filter((l) => new Date(l.timestamp).getTime() >= cutoff).length;
   }, [behaviorLogs]);
 
+  // TJB-03: the preview runs the SAME gated engine the bell runs — the
+  // parent's saved prefs + today's shown count are passed in, so the "next
+  // nudge" card shows what will actually fire, not what the engine could.
+  const shownToday = useMemo(() => shownNudgesToday(), []);
   const nudge = useMemo(
     () =>
-      nextNudge({
-        nowMs: Date.now(),
-        rhythm,
-        loggedToday: loggedTodayCount,
-        recent7d,
-        childName: firstName,
-      }),
-    [rhythm, loggedTodayCount, recent7d, firstName],
+      nextNudge(
+        {
+          nowMs: Date.now(),
+          rhythm,
+          loggedToday: loggedTodayCount,
+          recent7d,
+          childName: firstName,
+          shownToday,
+        },
+        prefs,
+      ),
+    [rhythm, loggedTodayCount, recent7d, firstName, prefs, shownToday],
   );
 
   // ── Persist helper ──────────────────────────────────────────────────────────
@@ -203,9 +212,15 @@ export default function SmartRemindersPanel() {
         >
           <Icon name="notifications" size={18} />
         </span>
-        <p className="text-[13px] leading-relaxed font-medium" style={{ color: INK }}>
-          {t("sr.max2")}
-        </p>
+        <div className="min-w-0">
+          <p className="text-[13px] leading-relaxed font-medium" style={{ color: INK }}>
+            {t("sr.max2")}
+          </p>
+          {/* ENG-02: the contract is a live count, not a promise. */}
+          <p className="mt-1 text-[12px] font-bold" style={{ color: MUTED }} data-testid="sr-max2-count">
+            {t("sr.max2.count", { n: Math.min(shownToday.length, NUDGE_DAILY_CEILING) })}
+          </p>
+        </div>
       </div>
 
       {/* NEXT NUDGE CARD (AC-1) */}

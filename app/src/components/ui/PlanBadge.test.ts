@@ -158,8 +158,11 @@ describe("source contracts (node env — same style as TrustPanel.test.ts)", () 
     expect(modal).toContain('<PlanBadge plan="family" />');
   });
 
-  it("PaywallModal keeps price literals out of copy (prices stay in PlanPrices/pricing.ts)", () => {
+  it("PaywallModal keeps price literals out of copy (prices stay in paywallModel/pricing.ts)", () => {
     expect(modal).not.toMatch(/€\s?\d/);
-    expect(modal).toContain("<PlanPrices");
+    // MOB-02 (wave T): the paywall now renders its own selectable plan rows
+    // from the pure paywallModel (buildPlanRows over lib/pricing) instead of
+    // the shared PlanPrices block — prices still never appear as copy literals.
+    expect(modal).toMatch(/buildPlanRows\(\{/);
   });
 });

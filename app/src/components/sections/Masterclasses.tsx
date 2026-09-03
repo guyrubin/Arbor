@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import confetti from "canvas-confetti";
+import { celebrate } from "../../lib/celebrate";
 import { GraduationCap } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { HubHero } from "../ui/HubHero";
 import { SpineRibbon } from "../ui/SpineRibbon";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { cardCls, IconBadge, ProgressBar, PASTEL, type PastelKey } from "../ui/kit";
-import { BRAND_CONFETTI } from "../../lib/tokens";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { MASTERCLASSES, FRAME_LABELS, type FrameId, type Masterclass } from "../../lib/masterclasses";
@@ -137,6 +136,7 @@ export default function Masterclasses() {
           entrance). E8: EvidenceChip on the hero's meta row. */}
       <div className="mx-auto w-full min-w-0 max-w-[1180px]">
         <HubHero
+          zeroLine={t("elev.growthTruth.hero.empty")}
           tone="sky"
           icon={GraduationCap}
           eyebrow={t("elev.hero.academy.eyebrow")}
@@ -388,11 +388,10 @@ function Reader({ m, he, isDone, onDone, onBack, frameLabel, tone, reflection, o
   m: Masterclass; he: boolean; isDone: boolean; onDone: () => void; onBack: () => void; frameLabel: string; tone: PastelKey; reflection: string; onReflect: (v: string) => void;
 }) {
   const { t } = useLanguage();
-  // Wave-8: a single subtle brand-colored burst on completing a lesson (respects reduced-motion).
+  // Wave-8: a single subtle brand-colored burst on completing a lesson
+  // (capped + reduced-motion-safe via lib/celebrate — Law 7).
   const onComplete = () => {
-    if (typeof window !== "undefined" && !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      confetti({ particleCount: 90, spread: 75, startVelocity: 45, origin: { y: 0.7 }, colors: BRAND_CONFETTI, disableForReducedMotion: true });
-    }
+    celebrate({ kind: "lesson" });
     onDone();
   };
   return (

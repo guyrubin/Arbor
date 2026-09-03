@@ -121,3 +121,29 @@ describe("TODAY-6 — 'What changed' carries ONE non-comparative week count", ()
     expect(narrative).not.toMatch(/\b(easing|rising|intensifying)\b/i);
   });
 });
+
+/* ── RUN-19 — one empty sentence, not two ────────────────────────────────────
+   "What changed" and "Your evidence" both rendered the identical "There are
+   not enough confirmed moments…" line on an empty picture. The evidence cell
+   now has its own one-line empty state (with the journal button as the single
+   next action); the sentence renders once. */
+describe("RUN-19 — Developing picture renders the empty sentence once", () => {
+  it("NEGATIVE CONTROL — the pre-fix shape rendered copy.noChange in BOTH cells", () => {
+    const preFix = `<NarrativeCell icon="moving" title={copy.changed} body={hasEvidence ? \`\${copy.changedBody} \${weekCount}\` : copy.noChange} />
+          ))}</ul> : <p className="mt-3 text-[11px] leading-relaxed">{copy.noChange}</p>}`;
+    expect((preFix.match(/copy\.noChange/g) ?? []).length).toBe(2);
+  });
+
+  it("copy.noChange is rendered exactly once (the What-changed cell); the evidence cell uses its own line", () => {
+    const rendered = narrative.slice(narrative.indexOf("return ("));
+    expect((rendered.match(/copy\.noChange/g) ?? []).length).toBe(1);
+    expect(rendered).toContain("{copy.evidenceEmpty}");
+  });
+
+  it("the evidence empty line exists in EN + HE and differs from noChange", () => {
+    for (const dict of [en, he]) {
+      expect(dict["today.narrative.evidenceEmpty"]).toBeTruthy();
+      expect(dict["today.narrative.evidenceEmpty"]).not.toBe(dict["today.narrative.noChange"]);
+    }
+  });
+});

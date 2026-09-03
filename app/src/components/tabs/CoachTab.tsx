@@ -67,21 +67,10 @@ import { prefetchNaturalAudio, registerTtsToken } from "../../lib/naturalVoice";
 import { escalationMatchForCategory, renderEscalationMarkdown } from "../../safety/escalation";
 import { usePrefersReducedMotion } from "../ui/playkit";
 
-type Risk = "Low" | "Moderate" | "High";
-
-/** Map a structured riskLevel string straight to the trust bar (TS-1). */
-function riskFromLevel(level?: string): Risk {
-  const v = (level || "").toLowerCase();
-  if (v === "high" || v === "severe" || v === "urgent") return "High";
-  if (v === "moderate" || v === "elevated") return "Moderate";
-  return "Low";
-}
-
-/** Fallback for text-only messages: extract the risk level from the prose. */
-function parseRisk(text: string): Risk {
-  const m = text.match(/risk level:\s*\*{0,2}\s*(low|moderate|high|elevated|severe)/i);
-  return riskFromLevel(m?.[1]);
-}
+// GP-05 / AI-08: the graded Risk type and its two mapping helpers (level →
+// grade, prose-regex → grade) are GONE — TrustSafetyBar is constant-posture now. The only
+// thing the contract's riskLevel may drive is the PRESENCE of the escalate
+// action (escalationSignal below), never a colour or a grade.
 
 // Follow-ups: the STATIC FALLBACK trio, used only when the answer's contract
 // carries no model-anticipated followUps (ASK-4). The visible label is
@@ -143,6 +132,7 @@ export default function CoachTab() {
     requestLearnRead,
     proposeMemory,
     memoryReviewError,
+    approvedMemoryItems,
     milestones,
     behaviorLogs,
     conversationChanges,
@@ -168,6 +158,11 @@ export default function CoachTab() {
   // sentence deltas into the live bubble (chatLive), and settled answers
   // render instantly. Follow-up chips wait until no bubble is still live.
   const lastMessage = chatMessages[chatMessages.length - 1];
+  // GP-05 / AI-08: the escalate action's PRESENCE keys on the contract's
+  // internal signal (any non-low riskLevel). The value never renders and never
+  // picks a colour — TrustSafetyBar is constant-posture.
+  const escalationSignal =
+    typeof lastMessage?.contract?.riskLevel === "string" && !/^low$/i.test(lastMessage.contract.riskLevel.trim());
   const showFollowUps =
     !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && !lastMessage.chatLive && userTurnExists;
 
@@ -646,7 +641,12 @@ export default function CoachTab() {
             <div className="min-w-0">
               <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("coach.empty.title", { name: childFirst })}</p>
               <p className="text-[11px] leading-relaxed truncate" style={{ color: "var(--arbor-muted)" }}>
-                {t("coach.memoryLine", { name: childFirst })}
+                {/* AI-23: count-aware — never promise memory use before a fact exists. */}
+                {approvedMemoryItems.length === 0
+                  ? t("elev.aihonesty.memory.none", { name: childFirst })
+                  : approvedMemoryItems.length === 1
+                    ? t("elev.aihonesty.memory.one", { name: childFirst })
+                    : t("elev.aihonesty.memory.some", { name: childFirst, n: approvedMemoryItems.length })}
               </p>
             </div>
           </div>
@@ -889,9 +889,10 @@ export default function CoachTab() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>{t("coach.coachName")}</p>
-            <p className="text-[11px] font-bold flex items-center gap-1.5 leading-tight" style={{ color: "var(--arbor-green-ink)" }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--arbor-green-ink)" }} aria-hidden />
-              {t("coach.coachStatus")}
+            {/* AI-13 (honest AI, Law 4): no presence dot, no "always here" —
+                a software guide, not a person on shift. */}
+            <p className="text-[11px] font-bold leading-tight" style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.aihonesty.coachStatus")}
             </p>
           </div>
           <span className="text-[11px] font-bold flex items-center gap-1.5 flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>
@@ -1329,24 +1330,27 @@ export default function CoachTab() {
         </div>
       </div>
 
-      {/* Trust & Safety — surfaces the model's real risk + escalation (TS-1/TS-3) */}
+      {/* Trust & Safety — constant posture (GP-05/AI-08): the bar never grades
+          or colours the child; the escalate action is gated on the contract's
+          internal signal only (TS-1/TS-3). */}
       {lastMessage?.sender === "ai" && userTurnExists && (
         <TrustSafetyBar
-          risk={lastMessage.contract ? riskFromLevel(lastMessage.contract.riskLevel) : parseRisk(lastMessage.text)}
           note={t("coach.trust.note")}
           lang={uiLang}
-          onEscalate={() => setActiveTab("consult")}
+          onEscalate={escalationSignal ? () => setActiveTab("consult") : undefined}
         />
       )}
 
       {/* ASK-2: the docked composer — the SAME single element from the hero
           position, now sticky at the viewport bottom so the follow-up loop
-          never requires scrolling back up. bottom-16 clears the fixed
-          MobileNav bar; from lg the sidebar layout has no bottom bar. */}
+          never requires scrolling back up. MOB-14: the offset is the
+          OverviewTab formula — --mobile-nav-h + the iOS safe-area inset + 8px —
+          so the send button never sits under a Face-ID tab bar; from lg the
+          sidebar layout has no bottom bar. */}
       {composerDocked && (
         <div
           data-testid="coach-docked-composer"
-          className="sticky bottom-16 lg:bottom-0 z-30"
+          className="sticky bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+8px)] lg:bottom-0 z-30"
           style={{ background: "var(--arbor-paper)", borderTop: "1px solid var(--arbor-rule)", boxShadow: "0 -6px 16px rgba(41,51,63,0.05)" }}
         >
           {composerSection}

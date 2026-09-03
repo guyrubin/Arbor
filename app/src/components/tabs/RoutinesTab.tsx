@@ -140,6 +140,7 @@ export default function RoutinesTab() {
     >
       {/* Hub hero — names the surface + the job sentence. */}
       <HubHero
+        zeroLine={t("elev.growthTruth.hero.empty")}
         tone="sky"
         icon={CalendarCheck}
         eyebrow={t("routines.eyebrow")}

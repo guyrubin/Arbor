@@ -3,6 +3,7 @@ import TopbarKidSwitcher from "./TopbarKidSwitcher";
 import TopbarSearch from "../search/TopbarSearch";
 import TopbarBell from "./TopbarBell";
 import KidModeButton from "./KidModeButton";
+import SafetyRing from "./SafetyRing"; // IA-01: canon Safety life-ring — first control in the band
 import OfflineChip from "../ui/OfflineChip"; // W0.6: renders only while offline
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -69,6 +70,12 @@ export default function Topbar() {
       {/* Right zone: lean desktop control band (search → Kid Mode → rail toggle →
           bell → child switcher). Ask Arbor lives in the sidebar, not here. */}
       <div className="flex min-w-0 shrink items-center gap-2.5">
+        {/* IA-01: Safety life-ring — FIRST in the band, always reachable in one
+            tap (surfaceContract `safety`: "one tap reaches a human"). Fixed
+            size; never the control that gives up width. */}
+        <div className="flex-shrink-0">
+          <SafetyRing />
+        </div>
         {/* W0.6: subtle offline chip — self-hides while online, RTL-safe. It is
             the only other flexible box here: when it appears it must not shove
             the child switcher off the header, so it clips instead. */}

@@ -55,8 +55,16 @@ describe("both upgrade surfaces show the price before checkout (CARE-5)", () => 
   const planPrices = readSrc("components/billing/PlanPrices.tsx");
   const checkout = readSrc("hooks/useCheckout.ts");
 
-  it("PaywallModal renders the shared PlanPrices block", () => {
-    expect(paywall).toMatch(/<PlanPrices cadence=\{cadence\}/);
+  // MOB-02 (wave T): the paywall body is now ONE selectable plan list built by
+  // the pure paywallModel (buildPlanRows) over the SAME lib/pricing constant —
+  // the price is still rendered before any checkout, per plan and per cadence.
+  it("PaywallModal renders the plan list from the shared paywallModel over lib/pricing", () => {
+    const model = readSrc("components/billing/paywallModel.ts");
+    expect(paywall).toMatch(/buildPlanRows\(\{[^}]*cadence/);
+    expect(paywall).toContain('data-testid="plan-prices"');
+    expect(model).toContain('from "../../lib/pricing"');
+    expect(model).toContain("PLAN_PRICES[plan].monthlyEur");
+    expect(model).toContain("PLAN_PRICES[plan].annualEur");
   });
 
   it("Settings plan panel renders the shared PlanPrices block", () => {
@@ -76,8 +84,13 @@ describe("both upgrade surfaces show the price before checkout (CARE-5)", () => 
     // STORE-2 consolidated the Settings plan panel's duplicate inline checkout
     // into the ONE platform-gated hook, so the CARE-5 toast now has exactly one
     // home. Both surfaces must reach it through the hook — no inline re-impl.
-    expect(checkout).toMatch(/t\("set\.plan\.checkoutSoon"\), "info"\)/);
-    expect(checkout).not.toMatch(/checkoutSoon"\), "success"/);
+    // MOB-08 (wave T): the "unavailable" outcome maps to the honest
+    // elev.storeshell.pw.checkoutUnavailable line (tone "info") through the
+    // pure resolveCheckoutOutcome — the pre-launch "we'll email you" copy
+    // (set.plan.checkoutSoon) is no longer reachable from the hook.
+    expect(checkout).toMatch(/case "unavailable":\s*\n\s*return \{ toastKey: "elev\.storeshell\.pw\.checkoutUnavailable", tone: "info"/);
+    expect(checkout).not.toContain("set.plan.checkoutSoon");
+    expect(checkout).not.toMatch(/checkoutUnavailable", tone: "success"/);
     expect(settings).toMatch(/useCheckout\(\)/);
     expect(settings).not.toMatch(/checkoutSoon"\), "success"/);
     expect(paywall).toMatch(/useCheckout\(\)/);

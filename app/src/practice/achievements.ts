@@ -93,11 +93,13 @@ export function computeAchievements(x: AchievementInput): Achievement[] {
     { id: "days-3", emoji: "🌟", title: "3 days of play", detail: "Practiced on three different days — any pace counts.", earned: x.daysPracticed >= 3 },
     { id: "days-7", emoji: "🏆", title: "7 days of play", detail: "Practiced on seven different days, whenever they happened.", earned: x.daysPracticed >= 7 },
     { id: "explorer", emoji: "🧭", title: "Explorer", detail: "Tried all four practice areas.", earned: modulesUsed >= 4 },
-    { id: "sound-master", emoji: "🎙️", title: "Sound on the rise", detail: "Took one sound above 80% with 10+ tries.", earned: x.stats.some((s) => s.attempts >= 10 && s.recentAccuracy >= 80) },
+    // KID-17: EFFORT only — ten tries on one sound earns it, whatever the result.
+    { id: "sound-master", emoji: "🎙️", title: "Sound explorer", detail: "Gave one sound 10 or more tries.", earned: x.stats.some((s) => s.attempts >= 10) },
     { id: "word-collector", emoji: "📚", title: "Word collector", detail: "Finished 15 Words & Express rounds.", earned: wordRounds >= 15 },
     { id: "feelings-friend", emoji: "💛", title: "Feelings friend", detail: "Played 10 Feelings Lab rounds.", earned: emotionRounds >= 10 },
     { id: "calm-captain", emoji: "🫧", title: "Calm captain", detail: "Completed 5 calm-down practices.", earned: calmRounds >= 5 },
-    { id: "memory-whiz", emoji: "🧠", title: "Memory whiz", detail: "Aced a big Memory Match grid.", earned: memoryRounds.some((e) => (e.score ?? 0) >= 90 && (e.meta ?? "").includes("12")) },
+    // KID-17: EFFORT only — playing the big grid earns it; no efficiency threshold.
+    { id: "memory-whiz", emoji: "🧠", title: "Big-grid explorer", detail: "Played the biggest Memory Match grid.", earned: memoryRounds.some((e) => (e.meta ?? "").includes("12")) },
     { id: "story-hero", emoji: "📖", title: "Story hero", detail: "Completed a Story Journey choice.", earned: x.heroRuns > 0 },
     { id: "adventurer", emoji: "🗺️", title: "Adventurer", detail: "Answered 15 adventure scenes.", earned: x.adventures.length >= 15 },
     { id: "mission-20", emoji: "🎯", title: "Mission 20", detail: "Completed 20 daily missions.", earned: missionsDone >= 20 },

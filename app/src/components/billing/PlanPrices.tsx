@@ -8,7 +8,7 @@ const PLAN_NAME_KEY: Record<PaidPlan, string> = { plus: "set.plan.plus", family:
 
 /** Store-localized currency formatting for native price math (annual → its
  *  effective per-month figure). Falls back to the raw number on a bad code. */
-const fmtStoreCurrency = (amount: number, currencyCode: string): string => {
+export const fmtStoreCurrency = (amount: number, currencyCode: string): string => {
   try {
     return new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode }).format(amount);
   } catch {

@@ -16,9 +16,14 @@ import { TrustLink } from "../trust/TrustLink";
  * guard upstream) "Begin" stays the lone primary and acceptTodayAction is
  * unreachable, so fallback copy can never be persisted into actionLoops.
  */
-export default function TodayRecommendation({ eyebrow, headline, meta, action, loading, onBegin, accept, why }: {
+export default function TodayRecommendation({ eyebrow, headline, body, meta, action, loading, onBegin, accept, why }: {
   eyebrow: string;
+  /** TJB-02: the model's ONE doable step (`tryToday`) — what the capacity
+   *  chips + accept attach to and what acceptTodayAction persists. */
   headline: string;
+  /** TJB-02: the model's observation (`focus`) rendered UNDER the step as
+   *  context — never the thing that gets accepted. */
+  body?: string;
   meta: string;
   action: string;
   loading: boolean;
@@ -57,6 +62,9 @@ export default function TodayRecommendation({ eyebrow, headline, meta, action, l
         <div className="flex min-w-0 flex-col justify-center p-5 sm:px-6">
           <span className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</span>
           {loading ? <div className="mt-2 space-y-2"><Skeleton className="h-6 w-4/5" /><Skeleton className="h-5 w-1/2" /></div> : <h2 className="mt-1.5 text-[21px] font-extrabold leading-[1.12] sm:text-[23px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", textWrap: "balance" } as React.CSSProperties}>{headline}</h2>}
+          {!loading && body && (
+            <p dir="auto" data-testid="today-focus-observation" className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{body}</p>
+          )}
           {accept && (
             <div className="mt-3 inline-flex self-start rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)" }} role="group" aria-label={accept.lengthAria}>
               {(["tiny", "standard", "roomy"] as ActionCapacity[]).map((value) => (

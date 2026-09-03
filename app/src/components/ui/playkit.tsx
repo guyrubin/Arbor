@@ -1,9 +1,9 @@
 import React from "react";
 import { motion } from "motion/react";
-import confetti from "canvas-confetti";
+import { celebrate } from "../../lib/celebrate";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
 import { HeroAvatar } from "./HeroAvatar";
-import { BRAND_CONFETTI, TONE_INK, TONE_SOFT, T, type PlayTone } from "../../lib/tokens";
+import { TONE_INK, TONE_SOFT, T, type PlayTone } from "../../lib/tokens";
 
 /* ════════════════════════════════════════════════════════════════════════════
    PlayKit — the child-facing primitive set for Practice Studio.
@@ -14,21 +14,16 @@ import { BRAND_CONFETTI, TONE_INK, TONE_SOFT, T, type PlayTone } from "../../lib
    (see index.css) so parent surfaces stay premium and quiet.
    ════════════════════════════════════════════════════════════════════════════ */
 
-// `BRAND_CONFETTI`, `TONE_INK`, `TONE_SOFT`, and `PlayTone` now come from the
-// typed token mirror (`src/lib/tokens.ts`). Re-export PlayTone so consumers that
-// did `import { PlayTone } from ".../playkit"` keep working unchanged.
+// `TONE_INK`, `TONE_SOFT`, and `PlayTone` now come from the typed token mirror
+// (`src/lib/tokens.ts`). Re-export PlayTone so consumers that did
+// `import { PlayTone } from ".../playkit"` keep working unchanged.
 export type { PlayTone };
 
-/** Fire a short, brand-colored confetti burst. Respects reduced-motion. */
+/** Fire ONE short, brand-colored confetti burst. Thin wrapper over the single
+ *  capped primitive in `lib/celebrate` (≤12 particles / ≤800 ms, BRAND_CONFETTI,
+ *  no burst under reduced-motion) — kept for the existing kid-surface callers. */
 export function celebrateBurst(): void {
-  if (typeof window === "undefined") return;
-  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-  const fire = (particleRatio: number, opts: confetti.Options) =>
-    confetti({ origin: { y: 0.7 }, colors: BRAND_CONFETTI, disableForReducedMotion: true, particleCount: Math.floor(150 * particleRatio), ...opts });
-  fire(0.25, { spread: 26, startVelocity: 55 });
-  fire(0.2, { spread: 60 });
-  fire(0.35, { spread: 100, decay: 0.91, scalar: 0.9 });
-  fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+  celebrate({ kind: "play" });
 }
 
 /** Wrapper that turns a tab into a "play surface" (soft gradient wash + rhythm). */

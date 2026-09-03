@@ -16,15 +16,98 @@
  *   row cancels the inset with --arbor-main-pt, whose value must keep matching
  *   <main>'s Tailwind padding — that is what this test pins.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+describe("TopbarBell — a LOG nudge opens the composer on arrival (lane T)", () => {
+  it("handleNavigate calls requestCapture(item.capture) BEFORE setActiveTab", () => {
+    const bell = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "TopbarBell.tsx"), "utf8");
+    expect(bell).toMatch(/if \(item\.capture\) requestCapture\(item\.capture\);\s*\n\s*setActiveTab\(item\.action\);/);
+  });
+});
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const topbar = readFileSync(path.join(here, "Topbar.tsx"), "utf8");
 const shell = readFileSync(path.join(here, "Shell.tsx"), "utf8");
+const mobileNav = readFileSync(path.join(here, "MobileNav.tsx"), "utf8");
+const safetyRing = readFileSync(path.join(here, "SafetyRing.tsx"), "utf8");
 const indexCss = readFileSync(path.join(here, "..", "..", "index.css"), "utf8");
+// Drop comments so prose about a banned pattern cannot trip (or satisfy) a scan.
+const stripComments = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+/* ── IA-01 / IA-18 / IA-25 (wave T) — Safety life-ring is canon chrome ───── */
+
+describe("IA-01 — the Safety life-ring is mounted in all three chrome homes", () => {
+  it("Topbar control band, Shell accessories strip and the More-sheet header each mount <SafetyRing", () => {
+    for (const [name, src] of [["Topbar", topbar], ["Shell", shell], ["MobileNav", mobileNav]] as const) {
+      expect(stripComments(src), `${name} does not mount <SafetyRing`).toContain("<SafetyRing");
+    }
+  });
+
+  it("Topbar: the ring is the FIRST control in the band, in a non-shrinking wrapper", () => {
+    const band = stripComments(topbar.slice(topbar.lastIndexOf("Right zone")));
+    const ring = band.indexOf("<SafetyRing");
+    expect(ring).toBeGreaterThan(-1);
+    for (const later of ["<OfflineChip", "<TopbarSearch", "<KidModeButton", "<TopbarBell", "<TopbarKidSwitcher"]) {
+      expect(band.indexOf(later), `${later} renders before the Safety ring`).toBeGreaterThan(ring);
+    }
+    expect(/flex-shrink-0|flex-none/.test(band.slice(Math.max(0, ring - 120), ring))).toBe(true);
+  });
+
+  it("Shell: the ring takes the strip slot the duplicate Ask door held (IA-18)", () => {
+    const strip = stripComments(shell.slice(shell.indexOf("actions={"), shell.indexOf("actions={") + 1800));
+    expect(strip).toContain("<SafetyRing");
+    expect(strip.indexOf("<SafetyRing")).toBeLessThan(strip.indexOf("requestOpenSearch"));
+  });
+
+  it("MobileNav: the More-sheet header row mounts the ring and closes the sheet on navigate", () => {
+    const header = stripComments(mobileNav.slice(mobileNav.indexOf('aria-label={t("nav.popover.more")}')));
+    expect(header).toMatch(/<SafetyRing onNavigate=\{\(\) => setMoreOpen\(false\)\} \/>/);
+  });
+
+  it("SafetyRing: aria-label = nav.tab.safety, navigates to the safety route, ≥44px, hidden while kid-locked", () => {
+    const src = stripComments(safetyRing);
+    expect(src).toContain('t("nav.tab.safety")');
+    expect(src).toContain('setActiveTab("safety")');
+    expect(src).toMatch(/min-w-\[44px\] min-h-\[44px\]/);
+    expect(src).toContain("useSyncExternalStore(subscribeKidMode, isKidModeActive)");
+    expect(src).toMatch(/if \(kidLocked\) return null;/);
+    // tokens only
+    expect(src.match(/#[0-9a-fA-F]{3,6}\b/g) ?? []).toEqual([]);
+  });
+});
+
+describe("IA-18 — the duplicate Ask Arbor strip door is gone", () => {
+  it("AskArborButton.tsx no longer exists and has zero importers in src/", () => {
+    expect(existsSync(path.join(here, "AskArborButton.tsx"))).toBe(false);
+    const importers: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const p = path.join(dir, name);
+        if (statSync(p).isDirectory()) { if (name !== "node_modules") walk(p); continue; }
+        if (!/\.(ts|tsx)$/.test(name) || /\.test\./.test(name)) continue;
+        if (/AskArborButton/.test(readFileSync(p, "utf8"))) importers.push(path.relative(here, p));
+      }
+    };
+    walk(path.join(here, "..", ".."));
+    expect(importers).toEqual([]);
+  });
+});
+
+describe("IA-25 — no fake presence in the shell chrome", () => {
+  it("no animate-pulse anywhere in Shell / Topbar / MobileNav", () => {
+    for (const [name, src] of [["Shell", shell], ["Topbar", topbar], ["MobileNav", mobileNav]] as const) {
+      expect(stripComments(src), `${name} carries a pulsing dot`).not.toContain("animate-pulse");
+    }
+  });
+
+  it("negative control: the scan sees the pre-fix pattern", () => {
+    const preFix = '<span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" />';
+    expect(stripComments(preFix)).toContain("animate-pulse");
+  });
+});
 
 describe("UC-8a — the topbar title always gets usable width", () => {
   const bandMatch = topbar.match(/<div className="flex min-w-0 ([a-z-]+) items-center gap-2\.5">/);

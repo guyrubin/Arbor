@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { SectionCard, cardCls, Chip } from "../ui/kit";
-import { PlayShell, PlayHeader, PlayButton, ProgressPips, Celebrate } from "../ui/playkit";
+import { cardCls } from "../ui/kit";
+import { PlayShell, PlayHeader, PlayButton, ProgressPips, Celebrate, PlayPanel } from "../ui/playkit";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 import { T } from "../../lib/tokens";
 import { MIMIC_PACKS, type MimicPack } from "../../practice/content";
@@ -30,6 +31,9 @@ export default function MimicStudioTab() {
   // never embedded — same guard as ComicsTab).
   const { url: heroUrl } = useHeroAvatar();
   const heroDataUrl = heroUrl && heroUrl.startsWith("data:") ? heroUrl : undefined;
+  // KID-26: file saves (the practice stamp) are parent-only — a child alone
+  // must not trigger an OS save/share sheet from inside Kid Mode.
+  const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
 
   const [packId, setPackId] = useState<string>(MIMIC_PACKS[0].id);
   const pack: MimicPack = MIMIC_PACKS.find((p) => p.id === packId) ?? MIMIC_PACKS[0];
@@ -145,7 +149,10 @@ export default function MimicStudioTab() {
       </div>
 
       {/* The round: model card + mirror */}
-      <SectionCard title={`${pack.emoji} ${pack.title} — round ${promptIdx + 1} of ${pack.prompts.length}`} icon={<Icon name="mood" size={20} />} tone="coral">
+      <PlayPanel tone="peach">
+        <h2 className="text-xl font-extrabold mb-4 flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+          <Icon name="mood" size={20} /> {`${pack.emoji} ${pack.title} — round ${promptIdx + 1} of ${pack.prompts.length}`}
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Model card — the parent demonstrates, big and theatrical */}
           <div className={`${cardCls} p-6 text-center flex flex-col items-center justify-center`} style={{ background: "var(--arbor-paper-deep)", minHeight: 260 }}>
@@ -154,15 +161,18 @@ export default function MimicStudioTab() {
             </motion.span>
             <p className="text-lg font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{prompt.title}</p>
             <p className="text-sm mt-2 max-w-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{prompt.instruction}</p>
-            <Chip tone="coral" icon={<Icon name="mood" size={12} />}>{prompt.focus}</Chip>
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold mt-2" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
+              <Icon name="mood" size={12} /> {prompt.focus}
+            </span>
+            {/* KID-14: ≥ 44 px targets for the prev/next round controls. */}
             <div className="flex gap-2 mt-4">
               <button onClick={() => setPromptIdx((i) => (i - 1 + pack.prompts.length) % pack.prompts.length)} aria-label={t("aria.previousRound")}
-                className="p-2 rounded-xl" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
-                <Icon name="chevron_left" size={16} />
+                className="play-pressable p-3 min-w-[44px] min-h-[44px] rounded-xl inline-grid place-items-center" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
+                <Icon name="chevron_left" size={20} />
               </button>
               <button onClick={() => setPromptIdx((i) => (i + 1) % pack.prompts.length)} aria-label={t("aria.nextRound")}
-                className="p-2 rounded-xl" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
-                <Icon name="chevron_right" size={16} />
+                className="play-pressable p-3 min-w-[44px] min-h-[44px] rounded-xl inline-grid place-items-center" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
+                <Icon name="chevron_right" size={20} />
               </button>
             </div>
             {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "var(--arbor-clay)" }}>✓ Already played — replays still count</p>}
@@ -184,7 +194,7 @@ export default function MimicStudioTab() {
               </div>
             )}
             {mirrorOn && (
-              <button onClick={stopMirror} className="absolute top-3 end-3 z-10 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "rgba(28,34,43,0.75)" }}>
+              <button onClick={stopMirror} className="absolute top-3 end-3 z-10 inline-flex items-center gap-1.5 text-[12px] font-extrabold px-3.5 py-2.5 min-h-[44px] rounded-xl text-white" style={{ background: "rgba(28,34,43,0.75)" }}>
                 <Icon name="no_photography" size={14} /> Mirror off
               </button>
             )}
@@ -209,10 +219,11 @@ export default function MimicStudioTab() {
             </motion.span>
           )}
         </div>
-        <p className="text-[11px] mt-3" style={{ color: "var(--arbor-muted)" }}>
-          Every attempt counts — in video-modeling practice, the imitation effort matters more than a perfect copy.
+        {/* KID-29: kid-register phrasing — no therapy-method vocabulary in front of the child. */}
+        <p className="text-[12px] mt-3 font-semibold" style={{ color: "var(--arbor-muted)" }}>
+          {t("elev.play.mimic.effortNote")}
         </p>
-      </SectionCard>
+      </PlayPanel>
 
       {/* Pack-complete win beat — fires once per pack per mount. */}
       {wonPackId && (() => {
@@ -230,24 +241,27 @@ export default function MimicStudioTab() {
               </PlayButton>
             ))}
             {/* AP-050: practice_stamp — save a branded hero card for this pack win.
-                Uses the already-saved avatar data URL (no new data capture). */}
-            <PlayButton
-              variant="soft"
-              tone="clay"
-              size="md"
-              onClick={() => {
-                void downloadPracticeStampCanvas(
-                  {
-                    imageUrl: heroDataUrl,
-                    name: first,
-                    headline: `${wonPack.title} complete!`,
-                    sub: `${first} finished all ${wonPack.prompts.length} rounds`,
-                  },
-                );
-              }}
-            >
-              Save stamp
-            </PlayButton>
+                Uses the already-saved avatar data URL (no new data capture).
+                KID-26: parent register only — never a file save from Kid Mode. */}
+            {!kidMode && (
+              <PlayButton
+                variant="soft"
+                tone="clay"
+                size="md"
+                onClick={() => {
+                  void downloadPracticeStampCanvas(
+                    {
+                      imageUrl: heroDataUrl,
+                      name: first,
+                      headline: `${wonPack.title} complete!`,
+                      sub: `${first} finished all ${wonPack.prompts.length} rounds`,
+                    },
+                  );
+                }}
+              >
+                Save stamp
+              </PlayButton>
+            )}
             <PlayButton onClick={() => setWonPackId(null)} variant="soft" tone="lav" size="md">
               Stay here
             </PlayButton>

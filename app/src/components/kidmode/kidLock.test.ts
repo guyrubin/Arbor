@@ -417,3 +417,65 @@ describe("KID-LOCK modules honor the kid-mode safety contract", () => {
     }
   });
 });
+
+// ── KID-22 (lane K): Kid Mode's own error boundary never weakens the lock ────
+// react-dom/server does not run class boundaries, so the boundary's two halves
+// are pinned separately: (a) the catch path leaves the gate untouched and logs
+// through the analytics seam; (b) the fallback renders exactly ONE control,
+// Home, which routes to the dashboard — never an exit. (c) The overlay wiring
+// keeps the hold-to-exit control OUTSIDE the boundary.
+import React from "react";
+import { renderToString } from "react-dom/server";
+import { KidErrorBoundary, KidCrashFallback } from "./KidErrorBoundary";
+
+describe("KID-22: a throwing kid surface leaves Kid Mode locked", () => {
+  it("catching an error never touches the gate (isKidModeActive stays true)", () => {
+    setKidModeActive(true);
+    const boundary = new KidErrorBoundary({ onHome: () => undefined, title: "t", homeLabel: "h" });
+    expect(KidErrorBoundary.getDerivedStateFromError()).toEqual({ hasError: true });
+    expect(() => boundary.componentDidCatch(new Error("Cannot read properties of undefined (reading 'options')"))).not.toThrow();
+    expect(isKidModeActive()).toBe(true);
+    // the boundary module has no write path to the gate at all
+    const src = readSrc("components", "kidmode", "KidErrorBoundary.tsx");
+    expect(src).not.toContain("setKidModeActive");
+    expect(src).not.toContain("closeKidMode");
+    expect(src).not.toContain("writeKidModeState");
+  });
+
+  it("the fallback renders exactly one control — Home — and it routes home, not out", () => {
+    let homed = 0;
+    const html = renderToString(React.createElement(KidCrashFallback, { title: "Oops", homeLabel: "Home", onHome: () => { homed++; } }));
+    expect(html).toContain("Oops");
+    expect((html.match(/<button\b/g) ?? []).length).toBe(1);
+    expect(html).not.toMatch(/exit|parent|retry|try again/i);
+    expect(html).toContain('role="alert"');
+    // the boundary's goHome clears the error and calls onHome
+    const boundary = new KidErrorBoundary({ onHome: () => { homed++; }, title: "t", homeLabel: "h" });
+    boundary.setState = ((next: { hasError: boolean }) => { boundary.state = next; }) as typeof boundary.setState;
+    (boundary as unknown as { goHome: () => void }).goHome();
+    expect(homed).toBe(1);
+    expect(boundary.state.hasError).toBe(false);
+  });
+
+  it("KidModeOverlay wraps the SURFACE AREA in KidErrorBoundary and keeps HoldExitButton outside it", () => {
+    const src = readSrc("components", "kidmode", "KidModeOverlay.tsx");
+    const open = src.indexOf("<KidErrorBoundary");
+    const close = src.indexOf("</KidErrorBoundary>");
+    expect(open).toBeGreaterThan(0);
+    expect(close).toBeGreaterThan(open);
+    const inside = src.slice(open, close);
+    expect(inside).toContain("<KidDashboard");
+    expect(inside).toContain("<PracticeHubTab");
+    expect(inside).not.toContain("<HoldExitButton");
+    expect(src.slice(0, open)).toContain("<HoldExitButton");
+    expect(inside).toContain('onHome={() => setView("home")}');
+  });
+
+  it("the fallback copy is kid-register keys (elev.kid.crash.*), not a raw error message", () => {
+    const src = readSrc("components", "kidmode", "KidModeOverlay.tsx");
+    expect(src).toContain('t("elev.kid.crash.title")');
+    expect(src).toContain('t("elev.kid.crash.home")');
+    const boundary = readSrc("components", "kidmode", "KidErrorBoundary.tsx");
+    expect(boundary).not.toMatch(/\{message\}|error\.message\}/);
+  });
+});

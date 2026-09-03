@@ -220,6 +220,10 @@ export const createApp = (config: ArborConfig) => {
       // ambient card must never silently burn the free plan's daily coach
       // messages; the /chat+/council coach gate below deliberately excludes it).
       "/api/todays-focus",
+      // Wave T (AI-01): the lightweight explain route replaces the coach
+      // route for Milestones/Behaviors explanations — same hourly AI quota,
+      // same exclusion from the coach meter as todays-focus.
+      "/api/explain",
     ],
     createAiQuota(counters)
   );

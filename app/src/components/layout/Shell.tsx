@@ -8,7 +8,9 @@ import { sectionForTab, hubTabsForSection } from "../../lib/navigation";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import KidModeButton from "./KidModeButton";
-import AskArborButton from "./AskArborButton";
+// IA-01 / IA-18: the Safety life-ring takes the strip slot the duplicate Ask
+// door used to hold (Ask is already a primary MobileNav tab 8mm below).
+import SafetyRing from "./SafetyRing";
 import AiRail from "./AiRail";
 import ChildContextHeader from "./ChildContextHeader";
 import MobileNav from "./MobileNav";
@@ -19,7 +21,7 @@ import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurfa
 import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
-import { refreshEntitlement } from "../../hooks/useEntitlement";
+import { refreshEntitlement, takeBillingReturn, startBillingReturnPoll } from "../../hooks/useEntitlement";
 import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
 import { KidModeProvider } from "../kidmode/KidModeContext";
@@ -39,6 +41,8 @@ import WowOnboarding from "../onboarding/WowOnboarding";
 import PostCaptureCoachStrip from "../overview/PostCaptureCoachStrip";
 // W0.5+W0.6: ONE global data-freshness banner (offline / couldn't-refresh).
 import SyncStatusBanner from "../ui/SyncStatusBanner";
+// GP-01: the months-precise age label is THE parent-facing age render.
+import { ageLabel } from "../../lib/childAge";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
@@ -225,23 +229,21 @@ export default function Shell() {
   // MON-2: returning from hosted checkout (success URL carries ?billing=success).
   // The RevenueCat webhook writes the entitlement async, so poll a few times until
   // the plan flips, then confirm. Strip the param so a refresh doesn't re-trigger.
+  // MOB-07 / IA-15: App.tsx's BillingReturnWatcher mounts first and strips the
+  // param, leaving the sessionStorage flag; keying off the flag (read-once)
+  // OR the raw param (if this ever mounts first) makes the sequence fire
+  // exactly once. The poll + toasts live in hooks/useEntitlement
+  // (startBillingReturnPoll), guarded by useEntitlement.test.ts.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("billing") !== "success") return;
-    params.delete("billing");
-    const clean = window.location.pathname + (params.toString() ? `?${params}` : "") + window.location.hash;
-    try { window.history.replaceState(null, "", clean); } catch { /* noop */ }
-    toast(t("pw.activating"), "info");
-    let tries = 0;
-    let timer: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      tries += 1;
-      const ent = await refreshEntitlement();
-      if (ent.plan !== "free") { toast(t("pw.activated"), "success"); return; }
-      if (tries < 6) timer = setTimeout(() => void poll(), 2500);
-    };
-    void poll();
-    return () => clearTimeout(timer);
+    const fromParam = params.get("billing") === "success";
+    if (fromParam) {
+      params.delete("billing");
+      const clean = window.location.pathname + (params.toString() ? `?${params}` : "") + window.location.hash;
+      try { window.history.replaceState(null, "", clean); } catch { /* noop */ }
+    }
+    if (!takeBillingReturn() && !fromParam) return;
+    return startBillingReturnPoll({ toast, t, refresh: refreshEntitlement });
   }, [toast, t]);
 
   return (
@@ -280,12 +282,14 @@ export default function Shell() {
           <ChildContextHeader
             className="lg:hidden"
             identity={<span className="text-xs font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--arbor-muted)" }}>
-              <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-clay)" }} />
-              <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {t("top.age")} {childProfile.age}</strong>
+              {/* IA-25: no pulsing "live" dot — nothing here is live, and a
+                  pulse reads as presence (law 4). The child avatar is the mark. */}
+              <span className="truncate">{t("top.caringFor")} <strong style={{ color: "var(--arbor-ink)" }}>{childProfile.name} · {ageLabel(childProfile, t)}</strong>
               {focusLabel && <span className="hidden sm:inline"> · {t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></span>}</span>
             </span>}
             actions={<div className="flex w-full sm:w-auto items-center gap-2 overflow-x-auto no-scrollbar">
-              <AskArborButton />
+              {/* IA-01: Safety life-ring — first accessory, one tap from every hub. */}
+              <SafetyRing />
               {/* Capture ("log a moment") is NOT a global chrome button — it has
                   two canonical homes: the Behaviors hub composer and the Journal
                   compose card, both one tap away in the bottom nav. Duplicating it

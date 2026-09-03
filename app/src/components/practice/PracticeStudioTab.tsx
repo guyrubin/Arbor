@@ -96,6 +96,20 @@ export default function PracticeStudioTab() {
             <p className="text-[12.5px]" style={{ color: "var(--arbor-ink-soft)" }}>
               {t("practice.studio.kidmode.sub")}
             </p>
+            {/* KID-20 / RUN-04: the three reassurance chips are PARENT copy, so
+                they live here on the door — not in the child's first viewport. */}
+            <ul aria-label={t("elev.practice.door.aria")} className="flex flex-wrap gap-1.5 mt-2 list-none p-0 m-0">
+              {(["elev.practice.door.locked", "elev.practice.door.private", "elev.practice.door.stars"] as const).map((key) => (
+                <li
+                  key={key}
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold"
+                  style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}
+                >
+                  <Icon name="verified_user" size={12} style={{ color: "var(--arbor-green-ink)" }} />
+                  {t(key)}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
         <button

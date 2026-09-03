@@ -22,6 +22,21 @@ export const PATTERN_PUZZLES: PatternPuzzle[] = [
   { id: "p6", shown: ["🟥", "🟦", "🟩", "🟥", "🟦"], answer: "🟩", options: ["🟩", "🟥", "🟦"] },
 ];
 
+/**
+ * KID-01: the ONE way a component may read a pattern puzzle by round index.
+ * The 6th answer advances `idx` to PATTERN_PUZZLES.length; a bare
+ * `PATTERN_PUZZLES[idx]` then dereferences `undefined` BEFORE any done-check
+ * can run and white-screens the world at its moment of celebration. Here the
+ * index is clamped, so `puzzle` is always a real puzzle and `done` carries the
+ * completion signal separately. Pure — the guard in
+ * components/practice/patternPower.test.ts plays every round through it.
+ */
+export function patternRound(idx: number, puzzles: PatternPuzzle[] = PATTERN_PUZZLES): { done: boolean; puzzle: PatternPuzzle } {
+  const last = Math.max(0, puzzles.length - 1);
+  const clamped = Math.min(Math.max(0, Math.floor(idx)), last);
+  return { done: idx >= puzzles.length, puzzle: puzzles[clamped] };
+}
+
 export interface PoseCard {
   id: string;
   name: string;

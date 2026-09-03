@@ -4,6 +4,8 @@ import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
 import AddChildModal from "../profile/AddChildModal";
+// GP-01: the months-precise age label is THE parent-facing age render.
+import { ageLabel } from "../../lib/childAge";
 
 /**
  * AP-047: Topbar kid-switcher chip.
@@ -168,7 +170,7 @@ export default function TopbarKidSwitcher() {
                     {p.name}
                   </span>
                   <span style={{ fontSize: "10px", color: "var(--arbor-muted)" }}>
-                    {t("profile.ageLine", { age: p.age })}
+                    {t("profile.ageLine", { age: ageLabel(p, t) })}
                   </span>
                 </div>
                 {p.id === activeChild.id && (

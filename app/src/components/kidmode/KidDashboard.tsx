@@ -30,13 +30,15 @@
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Brain, Gamepad2, Heart, HeartPulse, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight, ShieldCheck } from "lucide-react";
+import { BookOpen, Brain, Gamepad2, Heart, HeartPulse, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useHeroAvatar, HeroAvatar } from "../ui/HeroAvatar";
 import { usePracticeData } from "../../practice/usePracticeData";
 import WorldScene from "../practice/WorldScene";
 import { HoldExitButton } from "./HoldExitButton";
+import { kidIsolate } from "./kidText";
+import { lastPlayedWorldYesterday } from "./kidGreeting";
 
 export type KidSurface = "journeys" | "arcade" | "feelings";
 
@@ -257,6 +259,20 @@ export default function KidDashboard({
   const { t } = useLanguage();
   const hero = useHeroAvatar();
   const data = usePracticeData(childProfile.id);
+  // RUN-03: every kid-register string renders through the bidi isolate so an
+  // EN placeholder inside a Hebrew (RTL) shell keeps its own direction —
+  // "Hi Dylan!" can never paint as "!Hi Dylan".
+  const kt = (key: string, vars?: Record<string, string | number>) => kidIsolate(t(key, vars));
+  // RUN-21: the sub-greeting is derived from REAL state — the world played
+  // yesterday (named exactly as its tile) or the neutral invitation. Never
+  // praise-for-nothing, never a score, never a missed day.
+  const yesterdayWorld = useMemo(
+    () => lastPlayedWorldYesterday({ speech: data.speech.items, mimic: data.mimic.items, adventures: data.adventures.items, events: data.events.items }, data.today),
+    [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.today],
+  );
+  const greetingSub = yesterdayWorld
+    ? kt("elev.kid.greeting.playedYesterday", { world: t(`kid.game.${yesterdayWorld}.title`) })
+    : kt("elev.kid.greeting.ready");
 
   // Monotonic star total — lifetime sessions across modules. Never a streak.
   const stars = useMemo(
@@ -276,9 +292,9 @@ export default function KidDashboard({
         <HeroAvatar size={56} mood="wave" ring decorative />
         <div style={{ minInlineSize: 0 }}>
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-2xl)", color: "var(--arbor-sky-ink)", lineHeight: 1.05 }}>
-            {t("kid.greeting", { name: hero.name })}
+            {kt("kid.greeting", { name: hero.name })}
           </div>
-          <div style={{ fontSize: "var(--t-sm)", color: "var(--arbor-muted)" }}>{t("kid.greetingSub")}</div>
+          <div style={{ fontSize: "var(--t-sm)", color: "var(--arbor-muted)" }}>{greetingSub}</div>
         </div>
         <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: "12px" }}>
           <StarMeter value={stars} />
@@ -287,33 +303,10 @@ export default function KidDashboard({
       </header>
 
       {/* ── Today's adventure banner ────────────────────────────────────── */}
-      <section
-        aria-label={t("kid.safety.aria")}
-        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}
-      >
-        {(["kid.safety.locked", "kid.safety.private", "kid.safety.stars"] as const).map((key) => (
-          <div
-            key={key}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 12px",
-              borderRadius: "16px",
-              background: "var(--arbor-paper-elevated)",
-              border: "1px solid var(--arbor-rule)",
-              color: "var(--arbor-muted)",
-              fontSize: "var(--t-sm)",
-              fontWeight: 800,
-            }}
-          >
-            <ShieldCheck className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-green-ink)", flexShrink: 0 }} />
-            {t(key)}
-          </div>
-        ))}
-      </section>
-
-      {/* P3 adds the bounded daily quest + real progress. Shell shows no
+      {/* KID-20 / RUN-04: the three parent-reassurance chips (parent locked /
+          private by default / stars, never streaks) now live on the parent-side
+          Kid-Mode door in PracticeStudioTab — the kid home opens on the hero.
+          P3 adds the bounded daily quest + real progress. Shell shows no
           fabricated progress numerals. */}
       <button
         className="world-tile play-pop-in"
@@ -346,14 +339,14 @@ export default function KidDashboard({
         <span style={{ position: "absolute", insetInline: 0, insetBlockEnd: 0, padding: "18px", display: "flex", alignItems: "flex-end", gap: "14px" }}>
           <span style={{ flex: 1, minInlineSize: 0 }}>
             {/* Uppercase via CSS (a no-op in Hebrew) so the key stays sentence-case. */}
-            <span style={{ display: "block", fontSize: "var(--t-xs)", letterSpacing: "0.08em", fontWeight: 800, color: "var(--arbor-on-accent)", opacity: 0.9, textTransform: "uppercase" }}>{t("kid.quest.eyebrow")}</span>
-            <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-2xl)", color: "var(--arbor-on-accent)", lineHeight: 1.08 }}>{t("kid.quest.title")}</span>
-            <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-on-accent)", opacity: 0.88 }}>{t("kid.quest.sub")}</span>
+            <span style={{ display: "block", fontSize: "var(--t-xs)", letterSpacing: "0.08em", fontWeight: 800, color: "var(--arbor-on-accent)", opacity: 0.9, textTransform: "uppercase" }}>{kt("kid.quest.eyebrow")}</span>
+            <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-2xl)", color: "var(--arbor-on-accent)", lineHeight: 1.08 }}>{kt("kid.quest.title")}</span>
+            <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-on-accent)", opacity: 0.88 }}>{kt("kid.quest.sub")}</span>
           </span>
           <span
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", paddingInline: "16px", paddingBlock: "10px", borderRadius: "999px", background: "var(--arbor-peach)", color: "var(--arbor-on-accent)", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}
           >
-            {t("kid.quest.cta")} <ChevronRight className="w-4 h-4" aria-hidden="true" />
+            {kt("kid.quest.cta")} <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </span>
         </span>
       </button>
@@ -362,11 +355,11 @@ export default function KidDashboard({
       <section aria-label={t("kid.adventures.title")}>
         <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--t-base)", fontWeight: 900, color: "var(--arbor-ink)", marginBlockEnd: "10px" }}>
           <Sparkles className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-green-ink)" }} />
-          {t("kid.adventures.title")}
+          {kt("kid.adventures.title")}
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
           {ADVENTURES.map((a, i) => (
-            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={t(`kid.adv.${a.id}.title`)} sub={t(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} art={a.art} heroUrl={hero.url ?? undefined} big index={i} onClick={() => onOpenSurface(a.surface)} />
+            <SceneTile key={a.id} worldId={a.worldId} accent={a.accent} Icon={a.Icon} title={kt(`kid.adv.${a.id}.title`)} sub={kt(`kid.adv.${a.id}.sub`)} imagePrompt={a.imagePrompt} art={a.art} heroUrl={hero.url ?? undefined} big index={i} onClick={() => onOpenSurface(a.surface)} />
           ))}
         </div>
       </section>
@@ -376,18 +369,18 @@ export default function KidDashboard({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBlockEnd: "10px" }}>
           <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--t-base)", fontWeight: 900, color: "var(--arbor-ink)" }}>
             <Gamepad2 className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-lav-ink)" }} />
-            {t("kid.games.title")}
+            {kt("kid.games.title")}
           </h2>
           <button
             onClick={() => onOpenSurface("arcade")}
-            style={{ appearance: "none", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-muted)" }}
+            style={{ appearance: "none", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", minHeight: "44px", fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-muted)" }}
           >
-            {t("kid.games.seeAll")} <ChevronRight className="w-4 h-4" aria-hidden="true" />
+            {kt("kid.games.seeAll")} <ChevronRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px" }}>
           {GAMES.map((g, i) => (
-            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={t(`kid.game.${g.id}.title`)} sub={t(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} art={g.art} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
+            <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(`kid.game.${g.id}.title`)} sub={kt(`kid.game.${g.id}.sub`)} imagePrompt={g.imagePrompt} art={g.art} heroUrl={hero.url ?? undefined} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
         </div>
       </section>

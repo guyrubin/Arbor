@@ -7,7 +7,8 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { DOMAIN_META, fillTemplate } from "../../practice/content";
 import { computeAchievements } from "../../practice/achievements";
-import { composeWeek, suggestObjectives } from "../../practice/journey";
+import { aimDomains, composeWeek, suggestObjectives } from "../../practice/journey";
+import { aimVirtues, loadCharter } from "../../lib/becoming";
 import { useCopilot, usePracticeData } from "../../practice/usePracticeData";
 import { domainMilestoneCounts } from "../../practice/signals";
 import type { JourneyObjective, MissionRecord } from "../../types";
@@ -39,7 +40,12 @@ export default function JourneyTab() {
     () => composeWeek(copilot.bands, copilot.recommendation, data.today),
     [copilot.bands, copilot.recommendation, data.today]
   );
-  const suggestedObjectives = useMemo(() => suggestObjectives(copilot.bands, month), [copilot.bands, month]);
+  // KID-17: objectives follow the family's Charter aims (HeroJourneyTab
+  // pattern), never the child's weakest signal.
+  const suggestedObjectives = useMemo(
+    () => suggestObjectives(copilot.bands, month, aimDomains(aimVirtues(loadCharter()))),
+    [copilot.bands, month],
+  );
   const currentObjectives = useMemo(
     () => objectivesCol.items.filter((o) => o.month === month),
     [objectivesCol.items, month]
@@ -100,9 +106,10 @@ export default function JourneyTab() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* KID-17: counts, never a 0–100 score that grades the parent. */}
         <div className={`${cardCls} p-5`}>
-          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.score}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>Practice consistency score</p>
+          <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.missions.items.filter((m) => m.completed).length}</p>
+          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.missionsDone")}</p>
         </div>
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.week.activeDays}</p>
@@ -199,7 +206,8 @@ export default function JourneyTab() {
                 <div>
                   <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{a.title}</p>
                   <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{a.detail}</p>
-                  <Chip tone={a.earned ? "mint" : "sky"}>{a.earned ? "Earned" : "Not yet"}</Chip>
+                  {/* KID-17: no dangling verdict on an unearned badge — the chip appears when earned. */}
+                  {a.earned && <Chip tone="mint">{t("elev.practice.journey.earned")}</Chip>}
                 </div>
               </div>
             </div>

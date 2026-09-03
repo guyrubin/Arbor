@@ -33,6 +33,7 @@ export default function ConsultTab() {
   return (
     <div>
       <HubHero
+        zeroLine={t("elev.growthTruth.hero.empty")}
         tone="sky"
         icon={Stethoscope}
         eyebrow={t("elev.hero.care.eyebrow")}

@@ -9,10 +9,16 @@
  */
 
 import { ClinicalLanguageError, findClinicalDiagnosisTerm } from "../lib/clinicalScan";
+import { DOMAIN_LABEL } from "../lib/screening";
+import { bandForAgeMonths, milestoneAgeWindow } from "../lib/milestoneData";
+import { ageLabel } from "../lib/childAge";
 
 export interface PacketInputProfile {
   name: string;
   age: number;
+  /** RUN-01: months-precise age when known (lib/childAge). Falls back to
+   *  `age * 12` — drives the age-windowed milestone denominator. */
+  ageMonths?: number;
   languages: string[];
   schoolContext?: string;
   strengths?: string[];
@@ -30,6 +36,9 @@ export interface PacketInputMilestone {
   domain: string;
   title: string;
   checked: boolean;
+  /** RUN-01: the checklist age anchor in months (CDC band). Absent on
+   *  legacy/custom items — those always count toward the denominator. */
+  ageMonths?: number;
   /** UND-4 (AR-CAP-08): the parent's actual response — preserved end-to-end.
    *  Absent on legacy items; derived from `checked` in that case. */
   status?: "yes" | "not_sure" | "not_yet";
@@ -83,6 +92,39 @@ const isoDay = (ts?: string | number): string | null => {
   return Number.isFinite(t) ? new Date(t).toISOString().slice(0, 10) : null;
 };
 
+/* RUN-01 — a packet that leaves the app must read like a human wrote it.
+ *
+ *  · Domain keys go through the SAME human label map the Development /
+ *    Screening surfaces render ("Thinking & attention", never
+ *    "cognition_executive_function"). Non-canonical domains (custom items)
+ *    fall back to a de-snaked, capitalised form so an identifier never leaks.
+ *  · The milestone denominator is AGE-WINDOWED: the child's current CDC band
+ *    plus the one before it (the checklists a well-child visit would look
+ *    at). A 5-year-old is never measured against the 2-month checklist.
+ *    NOTE for lane G: `milestoneInAgeWindow` is the small local helper the
+ *    brief allows; lane G adds the shared one on `lib/milestoneData.ts` and
+ *    this call site should switch to it. */
+
+/** Human label for a developmental-domain id (Development's own map). */
+export function humanDomainLabel(domain: string): string {
+  const known = (DOMAIN_LABEL as Record<string, string>)[domain];
+  if (known) return known;
+  const plain = domain.replace(/_/g, " ").trim();
+  return plain ? plain.charAt(0).toUpperCase() + plain.slice(1) : domain;
+}
+
+/** Is this milestone inside the child's age window (current band or the one
+ *  immediately before it)? Items with no age anchor always count. */
+export function milestoneInAgeWindow(milestoneAgeMonths: number | undefined, childAgeMonths: number): boolean {
+  // Lane G: ONE window definition app-wide (lib/milestoneData.milestoneAgeWindow):
+  // current CDC band + the one before it; unanchored items always count.
+  return milestoneAgeWindow(childAgeMonths).includes(milestoneAgeMonths);
+}
+
+/** Age in months the packet windows against: explicit months, else years × 12. */
+const childAgeMonthsOf = (profile: PacketInputProfile): number =>
+  typeof profile.ageMonths === "number" && Number.isFinite(profile.ageMonths) ? profile.ageMonths : Math.max(0, profile.age) * 12;
+
 /** Assemble the packet from the child's record. Empty sources yield no section. */
 export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   const { profile, logs, milestones, plans, memory, nowMs } = input;
@@ -94,7 +136,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
 
   // 1) Who the child is.
   const aboutItems: PacketItem[] = [
-    { id: "about-basics", text: `${profile.name}, age ${profile.age}${profile.languages.length ? `, speaks ${profile.languages.join(" and ")}` : ""}.` },
+    { id: "about-basics", text: `${profile.name}, ${ageLabel(profile)}${profile.languages.length ? `, speaks ${profile.languages.join(" and ")}` : ""}.` },
   ];
   if (profile.schoolContext) aboutItems.push({ id: "about-school", text: `Setting: ${profile.schoolContext}.` });
   if (profile.strengths?.length) aboutItems.push({ id: "about-strengths", text: `Strengths: ${profile.strengths.join(", ")}.` });
@@ -126,38 +168,51 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   }
 
   // 3) Development snapshot — milestone coverage in the parent's OWN response
-  //    groups (UND-4 / AR-CAP-08: the packet preserves observed / not sure /
-  //    not yet, with observation dates — for a provider, "parent is unsure"
-  //    vs "parent has not seen it" is the useful distinction). Counts and
-  //    factual titles only — never a percentage, score, or verdict.
-  if (milestones.length) {
-    const observed = milestones.filter((m) => effectiveObservation(m) === "yes");
-    const notSure = milestones.filter((m) => effectiveObservation(m) === "not_sure");
-    const notYet = milestones.filter((m) => effectiveObservation(m) === "not_yet");
+  //    groups (UND-4 / AR-CAP-08: the packet preserves observed / not sure,
+  //    with observation dates — for a provider, "parent is unsure" is a useful
+  //    signal). RUN-01: the packet NEVER lists what the parent has NOT seen —
+  //    an unmarked item is "never asked", not "not observed", and a list of
+  //    them reads as a deficit sheet to a professional. So: the section
+  //    exists only once the parent has recorded at least one observation;
+  //    it carries noticed counts (age-windowed) + the parent's own responses;
+  //    domain ids render through the human label map. Counts and factual
+  //    titles only — never a percentage, score, or verdict.
+  const observed = milestones.filter((m) => effectiveObservation(m) === "yes");
+  const notSure = milestones.filter((m) => effectiveObservation(m) === "not_sure");
+  if (observed.length || notSure.length) {
+    const childMonths = childAgeMonthsOf(profile);
+    const inWindow = milestones.filter((m) => milestoneInAgeWindow(m.ageMonths, childMonths));
+    const observedInWindow = inWindow.filter((m) => effectiveObservation(m) === "yes");
     const MAX_LISTED = 6;
     const groupLine = (id: string, label: string, group: PacketInputMilestone[]): PacketItem | null => {
       if (group.length === 0) return null;
       const listed = group.slice(0, MAX_LISTED).map((m) => {
         const date = isoDay(m.observedAt);
-        return `${m.title} (${m.domain}${date ? `, ${date}` : ""})`;
+        return `${m.title} (${humanDomainLabel(m.domain)}${date ? `, ${date}` : ""})`;
       });
       const more = group.length > MAX_LISTED ? `; and ${group.length - MAX_LISTED} more` : "";
       return { id, text: `${label} (${group.length}): ${listed.join("; ")}${more}.` };
     };
     const byDomain = new Map<string, { done: number; total: number }>();
-    for (const m of milestones) {
+    for (const m of inWindow) {
       const d = byDomain.get(m.domain) ?? { done: 0, total: 0 };
       d.total += 1; if (effectiveObservation(m) === "yes") d.done += 1;
       byDomain.set(m.domain, d);
     }
+    const windowLabel = bandForAgeMonths(childMonths).label;
     const items: PacketItem[] = [
-      { id: "dev-overall", text: `${observed.length} of ${milestones.length} tracked milestones noticed so far.` },
+      {
+        id: "dev-overall",
+        text: `${observedInWindow.length} of ${inWindow.length} milestones on the ${windowLabel} checklists noticed so far` +
+          (observed.length !== observedInWindow.length ? ` (${observed.length} noticed in total).` : "."),
+      },
       ...[
         groupLine("dev-observed", "Observed", observed),
         groupLine("dev-not-sure", "Not sure yet", notSure),
-        groupLine("dev-not-yet", "Not yet observed", notYet),
       ].filter((it): it is PacketItem => it !== null),
-      ...[...byDomain.entries()].map(([domain, d], i) => ({ id: `dev-${i}`, text: `${domain}: ${d.done}/${d.total}.` })),
+      ...[...byDomain.entries()]
+        .filter(([, d]) => d.total > 0)
+        .map(([domain, d], i) => ({ id: `dev-${i}`, text: `${humanDomainLabel(domain)}: ${d.done} of ${d.total} noticed.` })),
     ];
     sections.push({ id: "development", title: "Development snapshot", items });
   }
@@ -261,6 +316,15 @@ export function countIncluded(packet: ConsultPacket, excludedIds: Set<string>): 
     (n, s) => n + s.items.filter((it) => !excludedIds.has(it.id)).length,
     0
   );
+}
+
+/** LC-06: a packet with nothing beyond the profile's "about" section has
+ *  nothing to hand a professional — the consult surface shows its empty state
+ *  (log a moment first) instead of an export bar for a one-line packet. The
+ *  "about" section is always emitted, so `sections.length === 0` is never
+ *  true; this is the honest emptiness test. */
+export function isConsultPacketEmpty(packet: ConsultPacket): boolean {
+  return packet.sections.every((s) => s.id === "about");
 }
 
 /* Audience presets (IA W4.1 + CARE-7) — one packet builder, five audiences,
@@ -473,4 +537,61 @@ export function presetPacketToPrintSections(
   }
   assertWithinCeiling(preset, sections.flatMap((s) => [s.heading, ...s.body]).join("\n"));
   return sections;
+}
+
+/* ── LC-08 — the ONE export seam for Copy / Download / Send ─────────────────
+ * The consult surface's most-used verbs used to build their text through the
+ * unguarded `serializePacket` — no audience, no ceiling, no scan — so a
+ * teacher reached through "Send to a professional" received memory facts and
+ * log-derived patterns the teacher preset forbids, and the free-text parent
+ * note was never scanned. Components may not import `serializePacket` (a
+ * source-scan guard enforces it); they call this instead:
+ *
+ *  - clinician → the clinician preset (therapist ceiling — all clinician
+ *    presets share one policy), term-scan exempt, forbidden tokens + %
+ *    fail closed;
+ *  - teacher   → the teacher preset: curated ceiling, AND the parent note is
+ *    scanned for clinical-diagnosis terms BEFORE it joins (fail closed);
+ *  - self      → the parent's own records: everything they selected, still
+ *    behind the forbidden-token / percentage ceiling (no export carries a
+ *    riskLevel or a %). */
+
+export type ExportAudience = "clinician" | "teacher" | "self";
+export const EXPORT_AUDIENCES: readonly ExportAudience[] = ["clinician", "teacher", "self"];
+export const DEFAULT_EXPORT_AUDIENCE: ExportAudience = "clinician";
+
+const PRESET_FOR_EXPORT_AUDIENCE: Record<Exclude<ExportAudience, "self">, ConsultAudience> = {
+  clinician: "therapist",
+  teacher: "teacher",
+};
+
+/** Serialize a packet for a chosen audience with the parent's note appended
+ *  under `noteHeading`. Throws `ClinicalLanguageError` (fail closed — nothing
+ *  is returned) when the audience's ceiling or scan is violated. */
+export function serializeForExport(
+  audience: ExportAudience,
+  packet: ConsultPacket,
+  excludedIds: Set<string> = new Set(),
+  note: string = "",
+  noteHeading: string = "Parent note"
+): string {
+  if (audience === "self") {
+    const md = appendParentNote(serializePacket(packet, excludedIds), note, noteHeading);
+    assertClinicianExportCeiling(md);
+    return md;
+  }
+  const preset = CONSULT_PRESETS[PRESET_FOR_EXPORT_AUDIENCE[audience]];
+  if (preset.clinicalTermScan) {
+    const violation = findClinicalDiagnosisTerm(note);
+    if (violation) {
+      throw new ClinicalLanguageError(
+        violation,
+        `Export blocked: clinical-diagnosis term "${violation}" in the parent note is not allowed in a ${preset.audience} export.`
+      );
+    }
+  }
+  const md = appendParentNote(serializePresetPacket(preset.audience, packet, excludedIds), note, noteHeading);
+  assertWithinCeiling(preset, md);
+  assertClinicianExportCeiling(md);
+  return md;
 }

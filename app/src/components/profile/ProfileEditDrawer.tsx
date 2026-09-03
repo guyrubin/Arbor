@@ -14,6 +14,9 @@ import { uploadChildPhoto } from "../../lib/storage";
 import { sanitizeInterestToken } from "../../playbank/select";
 import { isolate } from "../../lib/i18n";
 import { fmtDay } from "../../lib/formatDate";
+// GP-03 / MOB-04: ONE age write ({ birthDate, ageMonths, age }) from a months
+// value, and the months-precise label shown live while editing (GP-01).
+import { ageLabelForMonths, ageMonthsFromProfile, agePatchFromMonths } from "../../lib/childAge";
 import AvatarCreator from "./AvatarCreator";
 import RewardsCard from "./RewardsCard";
 
@@ -41,7 +44,16 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const { t, uiLang } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(activeChild.name);
-  const [age, setAge] = useState(activeChild.age);
+  // The edited age lives as TOTAL MONTHS (years + months inputs below); the
+  // legacy whole-years field is derived at save time, never edited directly.
+  const [ageMonths, setAgeMonths] = useState<number>(() => ageMonthsFromProfile(activeChild) ?? 0);
+  const ageYearsPart = Math.floor(ageMonths / 12);
+  const ageMonthsPart = ageMonths % 12;
+  const setAgeParts = (years: number, months: number) => {
+    const y = Math.max(0, Math.min(18, Number.isFinite(years) ? Math.round(years) : 0));
+    const m = Math.max(0, Math.min(11, Number.isFinite(months) ? Math.round(months) : 0));
+    setAgeMonths(y * 12 + m);
+  };
   const [schoolContext, setSchoolContext] = useState(activeChild.schoolContext);
   const [languages, setLanguages] = useState(activeChild.languages.join(", "));
   const [strengths, setStrengths] = useState(activeChild.strengths.join("\n"));
@@ -88,7 +100,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   useEffect(() => {
     if (!open) return;
     setName(activeChild.name);
-    setAge(activeChild.age);
+    setAgeMonths(ageMonthsFromProfile(activeChild) ?? 0);
     setSchoolContext(activeChild.schoolContext);
     setLanguages(activeChild.languages.join(", "));
     setStrengths(activeChild.strengths.join("\n"));
@@ -154,9 +166,14 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const save = async () => {
     setSaving(true);
     try {
+      // GP-03: the age is written as { birthDate, ageMonths, age } from ONE
+      // months value, so ageMonthsFromProfile(patched) moves with the edit
+      // (birthDate is the field every months-precise consumer prefers). An
+      // unchanged age keeps the stored fields untouched.
+      const agePatch = ageMonths !== (ageMonthsFromProfile(activeChild) ?? 0) ? agePatchFromMonths(ageMonths) : {};
       await updateChild(activeChild.id, {
         name: name.trim() || activeChild.name,
-        age,
+        ...agePatch,
         schoolContext,
         languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
         strengths: strengths.split("\n").map((s) => s.trim()).filter(Boolean),
@@ -233,9 +250,41 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                 <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
               </div>
 
+              {/* GP-03 / MOB-04 — months-precise age editor (years + months). The
+                  live label is the same ageLabel path every surface renders. */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Age: <span style={{ color: "var(--arbor-green-ink)" }}>{age}</span></label>
-                <input type="range" min={0} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value))} className="w-full" style={{ accentColor: "var(--arbor-clay)" }} />
+                <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  {t("elev.growthTruth.drawer.age")}: <span data-testid="profile-age-label" style={{ color: "var(--arbor-green-ink)" }}>{ageLabelForMonths(ageMonths, t)}</span>
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                    {t("elev.growthTruth.drawer.years")}
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={18}
+                      value={ageYearsPart}
+                      onChange={(e) => setAgeParts(Number(e.target.value), ageMonthsPart)}
+                      className="w-full rounded-xl px-4 py-2.5 min-h-[44px] focus:outline-none"
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                    {t("elev.growthTruth.drawer.months")}
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={11}
+                      value={ageMonthsPart}
+                      onChange={(e) => setAgeParts(ageYearsPart, Number(e.target.value))}
+                      className="w-full rounded-xl px-4 py-2.5 min-h-[44px] focus:outline-none"
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+                <p className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("elev.growthTruth.drawer.ageHint")}</p>
               </div>
 
               <div className="space-y-1.5">

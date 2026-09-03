@@ -141,3 +141,106 @@ describe("AI-CAP-8 — both capture selects render from the shared module (struc
     expect(routes).toMatch(/CANONICAL_BEHAVIOR_TYPES\.join\(/);
   });
 });
+
+/* ── TJB-01 — a joyful moment saves WITHOUT inventing "what you tried" ───────
+   The data contract, not the composer chrome: `response` is optional on
+   BehaviorLog, required only for incident types; the neutral "Moment" type is
+   the default shape of the Journal's "catch the moment" promise; and no
+   capture surface may block on a window alert() again. */
+import {
+  INCIDENT_TYPES,
+  MOMENT_BEHAVIOR_TYPE,
+  isIncidentType,
+  validateLogDraft,
+  momentLogFields,
+} from "./behaviorTaxonomy";
+
+const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const readSrc = (rel: string) => stripComments(fs.readFileSync(path.resolve(__dirname, "..", rel), "utf8"));
+
+describe("TJB-01 — validateLogDraft: response is required for incidents only", () => {
+  it("a one-sentence positive moment saves with NO response", () => {
+    expect(validateLogDraft({ behaviorType: MOMENT_BEHAVIOR_TYPE, trigger: "She said 'butterfly' for the first time", response: "" })).toBeNull();
+    expect(validateLogDraft({ behaviorType: MOMENT_BEHAVIOR_TYPE, trigger: "Laughed at the dog for a full minute" })).toBeNull();
+  });
+
+  it("NEGATIVE CONTROL — an incident without a response is still refused", () => {
+    expect(validateLogDraft({ behaviorType: "Transition Refusal", trigger: "Would not put boots on", response: "" })).toBe("beh.toast.fillBoth");
+    expect(validateLogDraft({ behaviorType: "Sleep Meltdown", trigger: "x", response: "   " })).toBe("beh.toast.fillBoth");
+  });
+
+  it("a moment still needs the one field it has (what happened)", () => {
+    expect(validateLogDraft({ behaviorType: MOMENT_BEHAVIOR_TYPE, trigger: "   " })).toBe("beh.toast.fillTrigger");
+  });
+
+  it("INCIDENT_TYPES is exactly the canonical set minus Moment, and Moment is listed for both selects", () => {
+    expect(INCIDENT_TYPES.has(MOMENT_BEHAVIOR_TYPE)).toBe(false);
+    expect(isIncidentType("Transition Refusal")).toBe(true);
+    expect([...INCIDENT_TYPES].length).toBe(BEHAVIOR_TYPES.length - 1);
+    expect(BEHAVIOR_TYPES.some((b) => b.value === MOMENT_BEHAVIOR_TYPE)).toBe(true);
+    for (const dict of [en, he]) {
+      expect(dict["beh.type.moment"]).toBeTruthy();
+      expect(dict["ql.type.moment"]).toBeTruthy();
+      expect(dict["beh.toast.fillTrigger"]).toBeTruthy();
+    }
+  });
+
+  it("momentLogFields never feeds the friction rhythm (intensity 1, duration 0, no response)", () => {
+    const f = momentLogFields("  First full sentence today  ");
+    expect(f.behaviorType).toBe(MOMENT_BEHAVIOR_TYPE);
+    expect(f.intensity).toBe(1);
+    expect(f.durationMinutes).toBe(0);
+    expect(f.trigger).toBe("First full sentence today");
+    expect(f.response).toBeUndefined();
+  });
+});
+
+describe("TJB-01 — no capture surface renders a blocking alert()", () => {
+  const CAPTURE_SURFACES = [
+    "context/ArborContext.tsx",
+    "components/overview/QuickLogModal.tsx",
+    "components/overview/QuickCaptureBar.tsx",
+    "components/overview/PromptCaptureCard.tsx",
+    "components/tabs/BehaviorsTab.tsx",
+    "components/tabs/JournalTab.tsx",
+  ];
+  const ALERT_CALL = /(^|[^.\w])alert\s*\(/;
+
+  it("NEGATIVE CONTROL — the matcher catches the pre-fix handleAddLog alert", () => {
+    const preFix = `    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
+      alert("Please provide trigger details and active response summary.");
+      return;
+    }`;
+    expect(ALERT_CALL.test(stripComments(preFix))).toBe(true);
+    // A word that merely ends in "alert" (role="alert", escalationAlert) is not a call.
+    expect(ALERT_CALL.test('<div role="alert" dir="auto">')).toBe(false);
+  });
+
+  for (const rel of CAPTURE_SURFACES) {
+    it(`${rel} has no alert( call`, () => {
+      expect(readSrc(rel)).not.toMatch(ALERT_CALL);
+    });
+  }
+
+  it("handleAddLog validates through validateLogDraft and toasts (never blocks)", () => {
+    const ctx = readSrc("context/ArborContext.tsx");
+    expect(ctx).toMatch(/const invalid = validateLogDraft\(\{ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse \}\)/);
+    expect(ctx).toContain("toast(t(invalid), \"error\")");
+    expect(ctx).toContain("const addMoment = (text: string)");
+  });
+
+  it("QuickLogModal's default path is the ONE-field moment form writing through addMoment", () => {
+    const modal = readSrc("components/overview/QuickLogModal.tsx");
+    expect(modal).toContain('data-testid="quicklog-moment-form"');
+    expect(modal).toMatch(/addMoment\(newLogTrigger\)/);
+    // The incident branch still validates through the shared rule.
+    expect(modal).toMatch(/validateLogDraft\(\{ behaviorType: newLogType/);
+    expect(modal).not.toMatch(/!newLogTrigger\.trim\(\) \|\| !newLogResponse\.trim\(\)/);
+  });
+
+  it("BehaviorsTab's two write paths validate through the shared rule (no fillBoth hard-block)", () => {
+    const tab = readSrc("components/tabs/BehaviorsTab.tsx");
+    expect(tab).not.toMatch(/!newLogTrigger\.trim\(\) \|\| !newLogResponse\.trim\(\)/);
+    expect((tab.match(/validateLogDraft\(\{ behaviorType: newLogType/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+});

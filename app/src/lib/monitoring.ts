@@ -18,8 +18,22 @@
  * register (the Screening / Development surface) and the existing report
  * exporter in `reportExport.ts`.
  */
-import type { BehaviorLog, Milestone, DevelopmentalDomainId } from "../types";
+import type { BehaviorLog, ChildProfile, Milestone, DevelopmentalDomainId } from "../types";
 import { assertClinicianExportCeiling } from "../consult/packet";
+import { ageMonthsFromProfile } from "./childAge";
+import { comparisonAgeMonths } from "./milestoneData";
+
+/**
+ * GP-04 — the age the monitoring layer compares against, in (fractional) years:
+ * months-precise from birthDate/ageMonths (legacy whole years as the last
+ * fallback) and CORRECTED for prematurity with the SAME AAP helper the
+ * Milestones map and the Development Check use (`comparisonAgeMonths`). Pure,
+ * so the preterm case is unit-tested here rather than inside the hook.
+ */
+export function monitoringAgeYears(profile: ChildProfile, now?: Date): number {
+  const chronoMonths = ageMonthsFromProfile(profile, now) ?? Math.max(0, Math.round((profile.age || 0) * 12));
+  return comparisonAgeMonths(chronoMonths, profile.preterm?.gestationalWeeks) / 12;
+}
 
 /** The six monitored developmental domains (the ecosystem domain is contextual,
  *  not a child-skill domain, so it is intentionally excluded from monitoring). */
@@ -384,7 +398,9 @@ export function monitoredDomainToPlayHint(domain: MonitoredDomainId): PlayDomain
 export function buildMonitoringReportDoc(
   result: MonitoringResult,
   childName: string,
-  childAgeYears: number,
+  /** GP-01: the months-precise label from lib/childAge.ageLabel() ("7 months",
+   *  "4 years") — never the legacy whole-years number ("age 0"). */
+  childAgeLabel: string,
 ): { title: string; subtitle: string; sections: { heading: string; body: string | string[] }[] } {
   const sections: { heading: string; body: string | string[] }[] = [
     {
@@ -445,7 +461,7 @@ export function buildMonitoringReportDoc(
 
   return {
     title: "Developmental Monitoring Summary",
-    subtitle: `${childName}, age ${childAgeYears}`,
+    subtitle: `${childName}, age ${childAgeLabel}`,
     sections,
   };
 }

@@ -35,6 +35,10 @@ export interface JourneyState {
   wow: "pending" | "done";
   rail: JourneyRailState;
   coachSeed?: string;
+  /** MOB-09: the parent declined the avatar in OnboardingFlow step 4 — the
+   *  wow overlay must NOT ask the same question again (enters at the comic).
+   *  Present only when true; cleared when the wow finishes. */
+  avatarSkipped?: true;
 }
 
 const LS_KEY = "arbor.journey";
@@ -148,7 +152,33 @@ export function markWowDone(opts: { comicShown: boolean }): void {
   const rail: JourneyRailState = opts.comicShown
     ? { ...j.rail, clicked: { ...j.rail.clicked, comic: true } }
     : j.rail;
-  writeJourney({ ...j, wow: "done", rail });
+  // The skip flag only exists to stop the wow re-asking; once the wow is
+  // done the FirstStepsRail carries the durable avatar nudge.
+  const { avatarSkipped: _skipped, ...rest } = j;
+  writeJourney({ ...rest, wow: "done", rail });
+}
+
+// ── MOB-09: avatar asked once ──────────────────────────────────────────────
+
+/** OnboardingFlow step 4 "Skip for now" — remember so the wow enters at the comic. */
+export function markAvatarSkipped(): void {
+  writeJourney({ ...readJourney(), avatarSkipped: true });
+}
+
+/** The parent did create a hero after all (stepped back, or via the flow). */
+export function clearAvatarSkipped(): void {
+  const { avatarSkipped: _skipped, ...rest } = readJourney();
+  writeJourney(rest as JourneyState);
+}
+
+/**
+ * Which card the wow overlay opens on. A child who already has a hero, or
+ * whose parent just declined one, goes straight to the comic; only a hero-less
+ * child whose parent was never asked sees the avatar card.
+ */
+export function wowEntryStep(hasHero: boolean, journey: JourneyState = readJourney()): "avatar" | "comic" {
+  if (hasHero) return "comic";
+  return journey.avatarSkipped ? "comic" : "avatar";
 }
 
 export function setRailDismissed(): void {

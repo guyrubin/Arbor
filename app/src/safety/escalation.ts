@@ -151,6 +151,37 @@ export const screenForImmediateEscalation = (fields: Record<string, unknown>): E
   return null;
 };
 
+/* LC-01 — dialable helplines in every escalation render.
+ *
+ * The coach/behaviors/quick-log surfaces render this markdown through
+ * `MarkdownBlock`, which turns `[label](tel:…)` and `[label](#/safety)` into
+ * real anchors (≥44px targets). The block is appended to EVERY escalation
+ * render so a parent in crisis gets buttons, not a paragraph — and a route to
+ * the Safety surface, which had no inbound link from the escalation sites.
+ * Pure string (this module is shared with the server routes): no React here. */
+
+/** Flag glyph per directory region — mirrors the flags in the resources copy. */
+export const HELPLINE_REGION_FLAG: Record<HelplineRegion, string> = {
+  il: "🇮🇱", eu: "🇪🇺", nl: "🇳🇱", be: "🇧🇪", us: "🇺🇸",
+};
+
+/** Route the "Get help now" link targets — the Safety surface hash route. */
+export const SAFETY_ROUTE_HASH = "#/safety";
+
+/** Markdown list of `[number](tel:…)` links for EVERY directory entry, grouped
+ *  by region, followed by the `[Get help now](#/safety)` route line. */
+export const renderHelplineLinksMarkdown = (): string => {
+  const regions = [...new Set(HELPLINE_DIRECTORY.map((h) => h.region))];
+  const lines = regions.map((region) => {
+    const links = HELPLINE_DIRECTORY
+      .filter((h) => h.region === region)
+      .map((h) => `[${h.number}](tel:${h.tel})`)
+      .join(" · ");
+    return `- ${HELPLINE_REGION_FLAG[region]} ${links}`;
+  });
+  return `### Call now\n${lines.join("\n")}\n\n[Get help now](${SAFETY_ROUTE_HASH})`;
+};
+
 export const renderEscalationMarkdown = (match: EscalationMatch) => `### 1. What May Be Happening
 This may involve **${match.label}**, which is outside the safe scope of an AI parenting coach.
 
@@ -173,7 +204,9 @@ Write down what happened, when it started, duration, physical symptoms, safety r
 Escalate now. Category: **${match.category}**.
 
 ### Get help now
-${match.resources}`;
+${match.resources}
+
+${renderHelplineLinksMarkdown()}`;
 
 /* CI-05 — escalation currency hook (fail-loud on stale crisis numbers).
  *
@@ -198,18 +231,69 @@ export const HELPLINE_REVIEW_INTERVAL_DAYS = 180;
  * tripwire so an edit can't silently drop a crisis number. */
 export const CRITICAL_HELPLINE_LITERALS = ["112", "988", "0800-0113", "101", "911"] as const;
 
-export type HelplineReviewStatus = { reviewedOn: string; daysSince: number; stale: boolean };
+export type HelplineReviewStatus = {
+  reviewedOn: string;
+  daysSince: number;
+  stale: boolean;
+  /** Days left before the review goes stale (negative once overdue). LC-15:
+   *  the CI unit suite warns when this drops to ≤ HELPLINE_REVIEW_WARN_DAYS. */
+  daysRemaining: number;
+};
+
+/** LC-15: early-warning window — the real-clock CI test `console.warn`s when
+ *  the re-review is due within this many days, so the December staleness
+ *  surfaces in a run that actually happens (no scheduler is trusted). */
+export const HELPLINE_REVIEW_WARN_DAYS = 14;
 
 /** Pure: is the crisis-number review overdue as of `nowMs`? Fail-loud callers
- * (the periodic arbor-safety check) treat `stale: true` as a hard failure. */
+ *  (the CI unit suite, LC-15; any periodic arbor-safety check) treat
+ *  `stale: true` as a hard failure. */
 export function helplineReviewStatus(
   nowMs: number,
   reviewedOn: string = HELPLINES_REVIEWED_ON,
   intervalDays: number = HELPLINE_REVIEW_INTERVAL_DAYS,
 ): HelplineReviewStatus {
   const daysSince = Math.floor((nowMs - Date.parse(reviewedOn)) / 86_400_000);
-  return { reviewedOn, daysSince, stale: daysSince > intervalDays };
+  return { reviewedOn, daysSince, stale: daysSince > intervalDays, daysRemaining: intervalDays - daysSince };
 }
+
+/* LC-14 — market-first helpline ordering (pure; consumed by SafetyTab).
+ *
+ * A Belgian parent in crisis must not scroll past three Israeli numbers: the
+ * family's market group renders first, the EU-wide 112 group second, and the
+ * remaining regions sit behind an "Other countries" fold. The hint is
+ * whatever the caller knows — a UI language ("he"), a BCP-47 tag ("nl-BE"),
+ * or an attribution market ("il" | "nl" | "be" | "ie" | "uk" | "intl"). An
+ * unknown hint yields the EU-first order (112 is the widest-reaching number). */
+
+const HELPLINE_REGION_ORDER_DEFAULT: readonly HelplineRegion[] = ["eu", "il", "nl", "be", "us"];
+
+/** Resolve a language/market hint to the family's helpline region, or null. */
+export function helplineRegionForHint(hint: string | null | undefined): HelplineRegion | null {
+  const raw = (hint ?? "").trim().toLowerCase();
+  if (!raw) return null;
+  // "nl-BE" / "en_US" → the territory subtag wins over the language.
+  const parts = raw.split(/[-_]/);
+  const territory = parts.length > 1 ? parts[parts.length - 1] : null;
+  const lang = parts[0];
+  const byTerritory: Record<string, HelplineRegion> = { il: "il", be: "be", nl: "nl", us: "us" };
+  if (territory && byTerritory[territory]) return byTerritory[territory];
+  const byLangOrMarket: Record<string, HelplineRegion> = { he: "il", il: "il", iw: "il", be: "be", nl: "nl", us: "us" };
+  return byLangOrMarket[lang] ?? null;
+}
+
+/** Full render order of helpline regions for this family: market first, EU
+ *  second, then the rest in the default order. Always contains every region
+ *  exactly once, so the directory is never partially rendered. */
+export function helplineOrderFor(hint: string | null | undefined): HelplineRegion[] {
+  const family = helplineRegionForHint(hint);
+  const head: HelplineRegion[] = family && family !== "eu" ? [family, "eu"] : ["eu"];
+  const rest = HELPLINE_REGION_ORDER_DEFAULT.filter((r) => !head.includes(r));
+  return [...head, ...rest];
+}
+
+/** How many leading groups render expanded; the rest fold under "Other countries". */
+export const HELPLINE_EXPANDED_GROUPS = 2;
 
 /** Every critical literal still present in the live escalation copy? `false`
  * means a crisis number was dropped — the second fail-loud tripwire. */

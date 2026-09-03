@@ -59,13 +59,15 @@ describe("AIX-S3(a) — AskSpecialist: parent-editable prefill, explicit-act sha
   });
 
   it("the note joins the packet only via appendParentNote in markdown() — no new send path", () => {
-    expect(code).toContain("appendParentNote(serializePacket(packet, excluded), visionNote");
+    expect(code).toContain("serializeForExport(audience, packet, excluded, visionNote");
     // No auto-send: the only submit acts remain the existing explicit ones.
     expect(code).not.toMatch(/useEffect\([\s\S]{0,400}?(submitConsult|requestConsult)/);
   });
 
   it("editing the note re-arms the reviewed gate", () => {
-    expect(code).toMatch(/setReviewed\(false\); \}, \[excluded, visionNote, childProfile\.id\]/);
+    // Wave T (LC-08): the export audience is part of what the parent reviews,
+    // so changing it re-arms the gate too.
+    expect(code).toMatch(/setReviewed\(false\); \}, \[excluded, visionNote, audience, childProfile\.id\]/);
   });
 });
 

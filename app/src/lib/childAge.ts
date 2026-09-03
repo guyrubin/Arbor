@@ -120,8 +120,15 @@ export function ageYearsFromProfile(profile: ChildProfile, now?: Date): number {
  * Calm, factual age label for display: "9 months", "1 year 3 months", "4 years".
  * Not a clinical claim — just a human-readable summary of a factual date.
  *
+ * GP-01 / MOB-32: this is THE one parent-facing age display path. Every render
+ * of the child's age goes through it (guarded by lib/childAge.ageLabel.test.ts)
+ * — the legacy whole-years `profile.age` field prints "Age 0" for an infant.
+ *
  * `t` is an optional translation shim; if omitted, English strings are used.
- * Keys: `age.months`, `age.year`, `age.years`, `age.yearMonths`, `age.yearsMonths`.
+ * Plural forms are explicit KEYS (never a `{plural}` suffix token, which the
+ * translator does not resolve): `age.month1` / `age.months`, `age.year` /
+ * `age.years2` / `age.years`, `age.yearMonth1` / `age.yearMonths`,
+ * `age.yearsMonth1` / `age.yearsMonths`.
  */
 export function ageLabel(
   profile: ChildProfile,
@@ -130,18 +137,32 @@ export function ageLabel(
 ): string {
   const months = ageMonthsFromProfile(profile, now);
   if (months === null) return "";
+  return ageLabelForMonths(months, t);
+}
 
+/** The label for a known months value (the seam ageLabel() renders through). */
+export function ageLabelForMonths(
+  totalMonths: number,
+  t?: (key: string, vars?: Record<string, number>) => string,
+): string {
+  const months = Math.max(0, Math.round(totalMonths));
   const tr = (key: string, vars?: Record<string, number>) =>
     t ? t(key, vars) : defaultLabel(key, vars);
 
   const years = Math.floor(months / 12);
   const remainingMonths = months % 12;
 
-  if (years === 0) return tr("age.months", { n: months });
-  if (remainingMonths === 0)
-    return years === 1 ? tr("age.year") : tr("age.years", { n: years });
-  return years === 1
-    ? tr("age.yearMonths", { m: remainingMonths })
+  if (years === 0) return months === 1 ? tr("age.month1") : tr("age.months", { n: months });
+  if (remainingMonths === 0) {
+    if (years === 1) return tr("age.year");
+    if (years === 2) return tr("age.years2");
+    return tr("age.years", { n: years });
+  }
+  if (years === 1) {
+    return remainingMonths === 1 ? tr("age.yearMonth1") : tr("age.yearMonths", { m: remainingMonths });
+  }
+  return remainingMonths === 1
+    ? tr("age.yearsMonth1", { n: years })
     : tr("age.yearsMonths", { n: years, m: remainingMonths });
 }
 
@@ -149,13 +170,45 @@ function defaultLabel(key: string, vars?: Record<string, number>): string {
   const n = vars?.n ?? 0;
   const m = vars?.m ?? 0;
   switch (key) {
-    case "age.months": return `${vars?.n ?? 0} month${(vars?.n ?? 0) !== 1 ? "s" : ""}`;
+    case "age.month1": return "1 month";
+    case "age.months": return `${n} months`;
     case "age.year": return "1 year";
+    case "age.years2": return "2 years";
     case "age.years": return `${n} years`;
-    case "age.yearMonths": return `1 year ${m} month${m !== 1 ? "s" : ""}`;
-    case "age.yearsMonths": return `${n} years ${m} month${m !== 1 ? "s" : ""}`;
+    case "age.yearMonth1": return "1 year 1 month";
+    case "age.yearMonths": return `1 year ${m} months`;
+    case "age.yearsMonth1": return `${n} years 1 month`;
+    case "age.yearsMonths": return `${n} years ${m} months`;
     default: return key;
   }
+}
+
+// ── Age edit (profile drawer) ────────────────────────────────────────────────
+
+/** The three age fields every consumer reads, derived from ONE months value. */
+export interface AgePatch {
+  /** Legacy whole-years field (Math.floor(months / 12)). */
+  age: number;
+  /** Explicit months (the onboarding fallback). */
+  ageMonths: number;
+  /** Approximate ISO birth date — the gold source `ageMonthsFromProfile` prefers. */
+  birthDate: string;
+}
+
+/**
+ * GP-03 / MOB-04: the ONE builder for an age edit. Editing the age used to
+ * patch `age` alone while `birthDate`/`ageMonths` stayed stale, so the topbar
+ * showed the new number while every months-precise consumer (bands, screening,
+ * monitoring) kept reasoning about the old child. Writing all three fields from
+ * one months value keeps `ageMonthsFromProfile(patched)` in step with the edit.
+ */
+export function agePatchFromMonths(ageMonths: number, now?: Date): AgePatch {
+  const months = Math.max(0, Math.min(216, Math.round(Number.isFinite(ageMonths) ? ageMonths : 0)));
+  return {
+    age: Math.floor(months / 12),
+    ageMonths: months,
+    birthDate: birthDateFromAgeMonths(months, now),
+  };
 }
 
 // ── Onboarding utility ───────────────────────────────────────────────────────

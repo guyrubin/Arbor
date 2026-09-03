@@ -167,7 +167,7 @@ function NotificationItem({
 /** AP-046: bell button + popover panel. Populates the second right-zone slot
  *  in Topbar.tsx (between <TopbarSearch/> and <TopbarKidSwitcher/>). */
 export default function TopbarBell() {
-  const { setActiveTab } = useArbor();
+  const { setActiveTab, requestCapture } = useArbor();
   const { t } = useLanguage();
   const { items, unreadCount, markAllRead } = useNotifications();
 
@@ -221,10 +221,13 @@ export default function TopbarBell() {
 
   const handleNavigate = useCallback(
     (item: AppNotification) => {
+      // Lane T: the LOG nudge carries `capture: "text"` — open the composer
+      // on arrival (pinned in chromeLayout.test.ts).
+      if (item.capture) requestCapture(item.capture);
       setActiveTab(item.action);
       closePanel();
     },
-    [setActiveTab, closePanel],
+    [setActiveTab, requestCapture, closePanel],
   );
 
   // Compute the unread count to display — only items NOT in readIds.

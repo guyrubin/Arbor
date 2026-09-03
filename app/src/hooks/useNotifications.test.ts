@@ -154,3 +154,47 @@ describe("AP-046: badge count framing", () => {
     expect(ariaLabel).toBe("1 unread notification");
   });
 });
+
+// ── TJB-03 / ENG-02 — the hook is the ONE choke point that reads the prefs ──
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+describe("TJB-03 — useNotifications enforces the Smart Reminders preferences", () => {
+  const src = readFileSync(path.join(process.cwd(), "src/hooks/useNotifications.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+  it("NEGATIVE CONTROL — the pre-fix hook (no prefs import, unconditional nextNudge) fails these matchers", () => {
+    const preFix = `import { nextNudge } from "../lib/jitai";
+  const nudge = useMemo(
+    () =>
+      nextNudge({
+        nowMs: Date.now(),
+        rhythm,
+        loggedToday: loggedTodayCount,
+        recent7d,
+        childName: firstName,
+      }),`;
+    expect(preFix).not.toMatch(/import \{[^}]*\bloadPrefs\b[^}]*\} from "\.\.\/growth\/jitaiPrefs"/);
+    expect(preFix).not.toMatch(/isInQuietHours\(prefs/);
+  });
+
+  it("imports loadPrefs + isInQuietHours (+ the shown counter) from growth/jitaiPrefs", () => {
+    expect(src).toMatch(/import \{[^}]*\bloadPrefs\b[^}]*\} from "\.\.\/growth\/jitaiPrefs"/);
+    expect(src).toMatch(/import \{[^}]*\bisInQuietHours\b[^}]*\} from "\.\.\/growth\/jitaiPrefs"/);
+    expect(src).toMatch(/import \{[^}]*\brecordNudgeShown\b[^}]*\} from "\.\.\/growth\/jitaiPrefs"/);
+  });
+
+  it("gates the nudge on quiet hours and passes prefs + today's shown kinds into nextNudge", () => {
+    expect(src).toMatch(/isInQuietHours\(prefs, Date\.now\(\)\)/);
+    expect(src).toMatch(/quiet\s*\?\s*null\s*:\s*nextNudge\(/);
+    expect(src).toMatch(/shownToday,\s*\},\s*prefs,\s*\)/);
+    expect(src).toMatch(/recordNudgeShown\(nudge\.kind\)/);
+  });
+
+  it("the parent's Milestone toggle governs the monitoring items; the item carries the real route + capture flag", () => {
+    expect(src).toMatch(/prefs\.types\.milestone \? monitoring\.watchAreas : \[\]/);
+    expect(src).toContain("capture: nudge.capture");
+    expect(src).not.toContain("nudge.action as ActiveTab");
+  });
+});

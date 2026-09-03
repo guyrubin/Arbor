@@ -1,15 +1,25 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { PageHeader, SectionCard, cardCls, Chip, PastelKey } from "../ui/kit";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
+import { ageLabel } from "../../lib/childAge";
+import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
 import LanguageLabVocabView from "./LanguageLabVocabView";
 
 /**
  * Language Lab — multilingual development support, driven by the child's own
  * `languages` profile (not hard-coded). Home language = first listed, the
- * "second language" we help build = second listed, the rest are early exposure.
+ * "second language" we help build = second listed, the rest are also heard.
+ *
+ * CLINICAL FIREWALL (GP-02): each language is a ROLE in the home plus a COUNT
+ * of the moments the parent logged for it — never a proficiency grade. The
+ * old cards graded the child's languages by LIST ORDER ("Native" / "Emerging"
+ * / "Exposure" in mint / yellow / sky, "Developing — …") with no observation
+ * behind them; that is the verdict class Law 2 bans. One neutral tone, no
+ * status chip.
  */
 export default function LanguageLabTab() {
   const { childProfile, setActiveTab, seedCoach } = useArbor();
@@ -21,34 +31,33 @@ export default function LanguageLabTab() {
   const second = langs[1];
   const others = langs.slice(2);
   const target = second || t("lang.theirSecondLang");
+  // GP-01: the months-precise age label — the ONE parent-facing age render.
+  const age = ageLabel(childProfile, t);
+
+  // Read-only over the SAME parent-logged phrase observations the vocabulary
+  // log below writes ("langObs") — a count per language, nothing derived.
+  const obsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", { orderByField: "timestamp", orderDir: "desc" });
+  const countByLang = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of aggregateLangCounts(obsCol.items)) map.set(c.language.toLowerCase(), c.count);
+    return map;
+  }, [obsCol.items]);
+  const countLine = (lang: string): string => {
+    const n = countByLang.get(lang.toLowerCase()) ?? 0;
+    if (n === 0) return t("elev.growthTruth.lang.count.none");
+    return n === 1 ? t("elev.growthTruth.lang.count.one") : t("elev.growthTruth.lang.count.many", { n });
+  };
 
   const askCoach = (prompt: string) => {
     seedCoach({ prompt, lens: "Lev Vygotsky", source: "language-lab" });
   };
 
-  const profileCards = [
-    home && {
-      label: t("lang.homeLabel"),
-      value: home,
-      note: t("lang.homeNote"),
-      tag: t("lang.homeTag"),
-      tone: "mint" as PastelKey,
-    },
-    second && {
-      label: t("lang.secondLabel"),
-      value: second,
-      note: t("lang.secondNote"),
-      tag: t("lang.secondTag"),
-      tone: "yellow" as PastelKey,
-    },
-    ...others.map((o) => ({
-      label: t("lang.otherLabel"),
-      value: o,
-      note: t("lang.otherNote"),
-      tag: t("lang.otherTag"),
-      tone: "sky" as PastelKey,
-    })),
-  ].filter(Boolean) as { label: string; value: string; note: string; tag: string; tone: PastelKey }[];
+  // Roles in the home — plain rows, one tone, counts only.
+  const languageRows = [
+    home && { role: t("elev.growthTruth.lang.role.home"), value: home, note: t("elev.growthTruth.lang.role.note.home", { first }) },
+    second && { role: t("elev.growthTruth.lang.role.second"), value: second, note: t("elev.growthTruth.lang.role.note.second") },
+    ...others.map((o) => ({ role: t("elev.growthTruth.lang.role.also"), value: o, note: t("elev.growthTruth.lang.role.note.also") })),
+  ].filter(Boolean) as { role: string; value: string; note: string }[];
 
   const activities = [
     {
@@ -118,7 +127,7 @@ export default function LanguageLabTab() {
               <button
                 onClick={() =>
                   // AIX-S4: seed via i18n — HE parents see a Hebrew prompt in the chat box.
-                  askCoach(t("seed.langWeekPlan", { name, age: childProfile.age, target, home: home || t("lang.theHomeLang") }))
+                  askCoach(t("seed.langWeekPlan", { name, age, target, home: home || t("lang.theHomeLang") }))
                 }
                 className="inline-flex items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
@@ -143,7 +152,7 @@ export default function LanguageLabTab() {
                     <span className="break-words text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{item.lens}</span>
                     <button
                       onClick={() =>
-                        askCoach(t("seed.langActivity", { title: item.title, target, name, age: childProfile.age }))
+                        askCoach(t("seed.langActivity", { title: item.title, target, name, age }))
                       }
                       className="inline-flex items-center gap-1 text-[10px] font-bold transition"
                       style={{ color: "var(--arbor-muted)" }}
@@ -156,18 +165,21 @@ export default function LanguageLabTab() {
             </div>
           </SectionCard>
 
-          {/* Language profile — the context that frames the activities */}
-          <SectionCard title={t("lang.profileTitle", { first, age: childProfile.age })} icon={<Icon name="translate" size={20} />} tone="sky">
-            <div className="grid min-w-0 grid-cols-1 gap-3 text-xs sm:grid-cols-2 xl:grid-cols-3 xl:gap-4">
-              {profileCards.map((c, i) => (
-                <div key={i} className={`${cardCls} min-w-0 space-y-2 p-4`}>
-                  <span className="text-[10px] uppercase font-bold tracking-wide block" style={{ color: "var(--arbor-muted)" }}>{c.label}</span>
-                  <b className="block break-words text-sm" style={{ color: "var(--arbor-ink)" }}>{c.value}</b>
-                  <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.note}</p>
-                  <Chip tone={c.tone}>{c.tag}</Chip>
-                </div>
+          {/* Language profile — roles in the home + moments logged. One tone,
+              no status chip, nothing graded (GP-02). */}
+          <SectionCard title={t("lang.profileTitle", { first, age })} icon={<Icon name="translate" size={20} />} tone="sky">
+            <ul className="divide-y" style={{ borderColor: "var(--arbor-rule)" }} data-testid="lang-role-rows">
+              {languageRows.map((row) => (
+                <li key={`${row.role}-${row.value}`} className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] uppercase font-bold tracking-wide block" style={{ color: "var(--arbor-muted)" }}>{row.role}</span>
+                    <b className="block break-words text-sm" dir="auto" style={{ color: "var(--arbor-ink)" }}>{row.value}</b>
+                    <p className="text-xs leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>{row.note}</p>
+                  </div>
+                  <span className="text-xs font-bold whitespace-nowrap tabular-nums" style={{ color: "var(--arbor-muted)" }}>{countLine(row.value)}</span>
+                </li>
               ))}
-            </div>
+            </ul>
             {!second && (
               <p className="text-[11px] italic mt-4" style={{ color: "var(--arbor-muted)" }}>
                 {t("lang.onlyOne", { first })}

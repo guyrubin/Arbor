@@ -91,7 +91,8 @@ export default function BeatKeeperWorld() {
       {phase === "scored" && (
         <>
           <MascotSay mood="proud" tone="clay">
-            {score >= 80 ? `Wow, ${first}, you nailed the beat!` : score >= 50 ? "Nice rhythm! Try the next tempo." : "Keep feeling the beat — you've got this!"} ({score}%)
+            {/* KID-27 / kid register: the child hears the beat verdict as words + stars, never a percentage. */}
+            {score >= 80 ? `Wow, ${first}, you nailed the beat!` : score >= 50 ? "Nice rhythm! Try the next tempo." : "Keep feeling the beat — you've got this!"}
           </MascotSay>
           <div className="flex justify-center">
             <PlayButton onClick={() => { setPhase("ready"); setPulse(-1); setRoundIdx((i) => i + 1); }}>

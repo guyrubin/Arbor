@@ -12,6 +12,7 @@ import { runInstrumented } from "../../hooks/useAsyncAction";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { useLanguage } from "../../context/LanguageContext";
 import { downloadHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
+import { isKidModeActive } from "../../lib/kidModeGate";
 import type { HeroSceneRender } from "../../types";
 
 /**
@@ -102,14 +103,9 @@ export function HeroScenePlayer({
   // AP-050: routes through the shared HeroAvatarCanvas module ("story" template)
   // so the scene save is tracked through one compositing path. Output is
   // byte-identical: story → renderShareCard("story", opts) → renderStoryCard.
-  const saveComicPage = () => {
-    if (!sceneArt) return;
-    void downloadHeroAvatarCanvas(
-      "story",
-      { imageUrl: sceneArt, name: heroName, title: scene.title },
-      `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`,
-    );
-  };
+  // KID-26: the save call itself lives inside the parent-only JSX branch below
+  // (the kid-register scanner strips `!isKidModeActive() && (…)` blocks), so
+  // no file download is reachable from inside Kid Mode.
 
   const artSize = immersive ? "w-40 h-40 md:w-48 md:h-48" : "w-28 h-28";
   const textSize = immersive ? "text-2xl md:text-3xl leading-relaxed" : "text-sm md:text-base leading-relaxed";
@@ -121,8 +117,16 @@ export function HeroScenePlayer({
           Beat {beatNumber} of {beatTotal}
         </span>
         {scene.narration && <SpeakButton text={scene.narration} lang={uiLang} />}
-        {sceneArt && (
-          <button onClick={saveComicPage} className="flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
+        {/* KID-26: file downloads are a parent affordance — never reachable from inside Kid Mode. */}
+        {sceneArt && !isKidModeActive() && (
+          <button
+            onClick={() =>
+              void downloadHeroAvatarCanvas(
+                "story",
+                { imageUrl: sceneArt, name: heroName, title: scene.title },
+                `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`,
+              )
+            } className="flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
             <Download className="w-3.5 h-3.5" /> Save
           </button>
         )}

@@ -6,6 +6,7 @@ import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
 import { usePulses } from "../../lib/pulse";
 import { requestOpenSearch } from "../search/SearchModal";
+import SafetyRing from "./SafetyRing"; // IA-01: Safety life-ring in the More-sheet header row
 
 /**
  * Bottom tab bar shown on mobile and tablet (< lg). The Heartwood IA has TEN
@@ -113,9 +114,13 @@ export default function MobileNav() {
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("nav.popover.more")}</span>
-              <button aria-label={t("aria.close")} onClick={() => setMoreOpen(false)} className="p-2 rounded-full" style={{ color: "var(--arbor-muted)" }}>
-                <Icon name="close" size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* IA-01: Safety is one tap from the sheet too — closes it on navigate. */}
+                <SafetyRing onNavigate={() => setMoreOpen(false)} />
+                <button aria-label={t("aria.close")} onClick={() => setMoreOpen(false)} className="w-11 h-11 flex items-center justify-center rounded-full" style={{ color: "var(--arbor-muted)" }}>
+                  <Icon name="close" size={18} />
+                </button>
+              </div>
             </div>
             {/* W1.9 mobile search entry: full-width row above the category
                 grid — opens the same SearchModal as the accessories strip

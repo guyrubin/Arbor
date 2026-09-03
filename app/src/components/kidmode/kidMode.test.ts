@@ -287,7 +287,7 @@ describe("KID-2: shieldShellSiblings — shell carries inert while Kid Mode is o
 });
 
 // ── KID-1: i18n — kid.* namespace coverage, no hardcoded copy, register split ─
-import { en, he } from "../../lib/i18n";
+import { en, he, isolate } from "../../lib/i18n";
 
 /** Strip // and /* *\/ comments so scans only see live code. */
 function stripComments(src: string): string {
@@ -415,7 +415,9 @@ describe("KID-1 register separation: kid.* i18n keys never referenced outside ki
   const ALLOWED = [
     path.join(SRC_ROOT, "components", "kidmode") + path.sep, // the kid register itself
     path.join(SRC_ROOT, "lib", "i18n.ts"), // the dictionaries
+    path.join(SRC_ROOT, "lib", "i18nElevation", "kidRegister.ts"), // lane K's kid dictionary (elev.kid.*)
     path.join(SRC_ROOT, "lib", "comicCopyFirewall.test.ts"), // the kid-copy firewall scanner — must name the kid.* namespace to scan it
+    path.join(SRC_ROOT, "lib", "kidRegisterScan.test.ts"), // the kid-register scanner — names the elev.kid.* namespace to scan it
   ];
 
   function walk(dir: string, out: string[] = []): string[] {
@@ -432,9 +434,118 @@ describe("KID-1 register separation: kid.* i18n keys never referenced outside ki
     for (const file of walk(SRC_ROOT)) {
       if (ALLOWED.some((a) => file === a || file.startsWith(a))) continue;
       const src = readFileSync(file, "utf8");
-      if (/["'`]kid\./.test(src)) offenders.push(path.relative(SRC_ROOT, file));
+      // Both the base kid.* namespace and lane K's elev.kid.* namespace are the kid register.
+      if (/["'`](?:elev\.)?kid\./.test(src)) offenders.push(path.relative(SRC_ROOT, file));
     }
     expect(offenders, `parent surfaces referencing kid.* keys: ${offenders.join(", ")}`).toEqual([]);
+  });
+});
+
+// ── Lane K (RUN-03 / RUN-21 / KID-20): every kidmode/*.tsx is literal-free and
+// bidi-isolated; the sub-greeting is state-derived; the parent chips are gone.
+import { en as kidElevEn, he as kidElevHe } from "../../lib/i18nElevation/kidRegister";
+import { kidIsolate } from "./kidText";
+import { lastPlayedWorldYesterday, dayBefore } from "./kidGreeting";
+
+describe("RUN-03: every kidmode/*.tsx renders no bare JSX text of two or more words", () => {
+  const ALL_KID_TSX = readdirSync(__dirname).filter((f) => f.endsWith(".tsx"));
+
+  it("walks the WHOLE directory (a new kid file is covered automatically)", () => {
+    expect(ALL_KID_TSX).toEqual(expect.arrayContaining(["KidDashboard.tsx", "KidModeOverlay.tsx", "HoldExitButton.tsx", "ParentChallenge.tsx", "KidErrorBoundary.tsx"]));
+  });
+
+  it.each(ALL_KID_TSX)("%s has no JSX text literal of ≥ 2 words", (file) => {
+    const src = stripComments(readSelf(file));
+    const textNodes = [...src.matchAll(/>([^<>{}]+)</g)]
+      .map((m) => m[1].trim())
+      .filter((s) => /[A-Za-z]{2}/.test(s) && /^[\sA-Za-z'’.,!?…-]+$/.test(s) && s.split(/\s+/).length >= 2);
+    expect(textNodes, `${file} bare JSX copy: ${JSON.stringify(textNodes)}`).toEqual([]);
+  });
+
+  it("negative control — the pre-fix literal would be caught", () => {
+    const planted = "<div>You're doing amazing today</div>";
+    const textNodes = [...planted.matchAll(/>([^<>{}]+)</g)].map((m) => m[1].trim()).filter((s) => s.split(/\s+/).length >= 2);
+    expect(textNodes).toEqual(["You're doing amazing today"]);
+  });
+
+  it("KidDashboard renders its copy through the bidi isolate (kt) — greeting included", () => {
+    const src = stripComments(readSelf("KidDashboard.tsx"));
+    expect(src).toContain("kidIsolate(t(key, vars))");
+    expect(src).toContain('kt("kid.greeting"');
+    // No un-isolated t() reaches a text node: every t(" in JSX position is kt(".
+    const bareT = [...src.matchAll(/>\{t\("([^"]+)"/g)].map((m) => m[1]);
+    expect(bareT, `un-isolated t() in a text node: ${bareT.join(", ")}`).toEqual([]);
+  });
+
+  it("the elev.kid.* dictionary is en/he parity-complete", () => {
+    const enKeys = Object.keys(kidElevEn).filter((k) => k.startsWith("elev.kid."));
+    const heKeys = Object.keys(kidElevHe).filter((k) => k.startsWith("elev.kid."));
+    expect(enKeys.length).toBeGreaterThan(0);
+    expect(heKeys.sort()).toEqual(enKeys.sort());
+  });
+});
+
+describe("RUN-03: kidIsolate keeps a Latin run's punctuation in place inside an RTL shell", () => {
+  const FSI = "⁨";
+  const PDI = "⁩";
+
+  it("wraps a pure-Latin string in a first-strong isolate (the '!Hi Dylan' fix)", () => {
+    expect(kidIsolate("Hi Dylan!")).toBe(`${FSI}Hi Dylan!${PDI}`);
+  });
+
+  it("negative control — lib/i18n.isolate alone is a no-op on pure Latin (the bug)", () => {
+    expect(isolate("Hi Dylan!")).toBe("Hi Dylan!");
+  });
+
+  it("leaves Hebrew (and Hebrew-bearing) strings to isolate() — no double wrap once GD-6 lands", () => {
+    expect(kidIsolate("שלום דילן!")).toBe(isolate("שלום דילן!"));
+    expect(kidIsolate("Hi נועה!")).toBe(isolate("Hi נועה!"));
+    // exactly one isolate pair — never FSI FSI … PDI PDI
+    expect(kidIsolate("Hi נועה!").split(FSI).length - 1).toBe(1);
+    expect(kidIsolate("Hi נועה!").split(PDI).length - 1).toBe(1);
+  });
+
+  it("does not touch strings with no letters (numbers, emoji)", () => {
+    expect(kidIsolate("12")).toBe("12");
+    expect(kidIsolate("⭐")).toBe("⭐");
+  });
+});
+
+describe("RUN-21: the sub-greeting derives from real state", () => {
+  const ts = (day: string, hh = "10") => `${day}T${hh}:00:00.000Z`;
+  const empty = { speech: [], mimic: [], adventures: [], events: [] };
+
+  it("day-0 (nothing played) → null → the neutral invitation", () => {
+    expect(lastPlayedWorldYesterday(empty, "2026-09-03")).toBeNull();
+  });
+
+  it("names the world played most recently YESTERDAY, by dashboard tile id", () => {
+    const y = dayBefore("2026-09-03");
+    expect(y).toBe("2026-09-02");
+    expect(lastPlayedWorldYesterday({ ...empty, speech: [{ timestamp: ts(y) }] }, "2026-09-03")).toBe("sound-lab");
+    expect(lastPlayedWorldYesterday({ ...empty, events: [{ timestamp: ts(y), kind: "pattern" }] }, "2026-09-03")).toBe("pattern-power");
+    // latest of the day wins
+    expect(
+      lastPlayedWorldYesterday({ ...empty, mimic: [{ timestamp: ts(y, "09") }], events: [{ timestamp: ts(y, "18"), kind: "rhythm" }] }, "2026-09-03"),
+    ).toBe("beat-keeper");
+  });
+
+  it("play on OTHER days (today, two days ago) does not count as yesterday", () => {
+    expect(lastPlayedWorldYesterday({ ...empty, speech: [{ timestamp: ts("2026-09-03") }, { timestamp: ts("2026-09-01") }] }, "2026-09-03")).toBeNull();
+  });
+
+  it("crosses a month boundary correctly", () => {
+    expect(dayBefore("2026-09-01")).toBe("2026-08-31");
+  });
+
+  it("KidDashboard no longer renders praise-for-nothing or the parent chips (KID-20 / RUN-04)", () => {
+    const src = stripComments(readSelf("KidDashboard.tsx"));
+    expect(src).not.toContain('"kid.greetingSub"');
+    expect(src).not.toContain("kid.safety.");
+    expect(src).toContain("lastPlayedWorldYesterday(");
+    // …and the chips now live on the parent-side door.
+    const door = stripComments(readFileSync(path.join(__dirname, "..", "practice", "PracticeStudioTab.tsx"), "utf8"));
+    for (const k of ["elev.practice.door.locked", "elev.practice.door.private", "elev.practice.door.stars"]) expect(door).toContain(k);
   });
 });
 

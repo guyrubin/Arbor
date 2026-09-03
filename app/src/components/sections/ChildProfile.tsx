@@ -12,6 +12,11 @@ import { api } from "../../lib/api";
 import { scopeDisplayLabels } from "../../lib/shareScopes";
 import type { ShareGrant } from "../../types";
 import ProfileEditDrawer from "../profile/ProfileEditDrawer";
+import { useProfile } from "../../context/ProfileContext";
+// GP-01 / GP-08 / RUN-02: months-precise age label + the shared age window and
+// the ONE "worth watching next" derivation.
+import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
+import { ageWindowMilestones, comparisonAgeMonths, milestoneAgeWindow, selectNextMilestones } from "../../lib/milestoneData";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -24,11 +29,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 export default function ChildProfile() {
   const {
-    childProfile, milestones, milestonesPercent, checkedMilestones, totalMilestones,
+    childProfile, milestones,
     behaviorLogs, playLogs, actionPlans, approvedMemoryItems, pendingMemoryItems, setActiveTab,
   } = useArbor();
   const { t } = useLanguage();
   const { user } = useAuth();
+  // GP-15: the child count is the family's real count, never a literal.
+  const { profiles } = useProfile();
   const { hasHero, name: heroName } = useHeroAvatar();
   const first = childProfile.name.split(" ")[0];
 
@@ -51,8 +58,23 @@ export default function ChildProfile() {
     return { count: recent.length, latest: recent[0] ?? null, resolved: recent.filter((l) => l.resolved).length };
   }, [behaviorLogs]);
 
-  // Chapter 3 — the next milestones worth watching for this age.
-  const nextMilestones = useMemo(() => milestones.filter((m) => !m.checked).slice(0, 3), [milestones]);
+  // Chapter 3 — the record inside the child's AGE WINDOW (current corrected
+  // band + one earlier, the shared lib/milestoneData helper): "x of y noticed"
+  // is an age-appropriate denominator (GP-08), and "worth watching next" comes
+  // from the ONE next-picks derivation the Development hub's weekly focus heads
+  // (RUN-02) — never `filter(!checked).slice(0, 3)` over the 0–6y catalogue,
+  // which told a 5-year-old's parent to watch for "Smiles at people".
+  const comparisonMonths = useMemo(() => {
+    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    return comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks);
+  }, [childProfile]);
+  const windowRecord = useMemo(() => {
+    const inWindow = ageWindowMilestones(milestones, comparisonMonths);
+    const checked = inWindow.filter((m) => m.checked).length;
+    const total = inWindow.length;
+    return { checked, total, share: total > 0 ? (checked / total) * 100 : 0, band: milestoneAgeWindow(comparisonMonths).label };
+  }, [milestones, comparisonMonths]);
+  const nextMilestones = useMemo(() => selectNextMilestones(milestones, comparisonMonths, 3), [milestones, comparisonMonths]);
 
   // Chapter 7 — the live plan, if one exists.
   const activePlan = actionPlans[0] ?? null;
@@ -80,28 +102,44 @@ export default function ChildProfile() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
-      {/* ── E2 hub hero — the family-album job sentence + one CTA (add a member,
-          via the SAME Trusted Sharing route the Family Circle card uses) + a
-          living count trio. FIREWALL: counts only — the child in this profile,
-          people in the circle (account holder + live ShareGrants), and total
-          captured moments (behavior + play logs, the album motif). ─────────── */}
+      {/* ── E2 hub hero — the family-album job sentence + ONE CTA + a living
+          count trio. GP-15 / RUN-20: the CTA is the surface contract's primary
+          move (`approve-memory`): review the pending proposals when there are
+          any, else add a fact about the child (the same "what Arbor knows"
+          drawer). Adding a family member stays on the Family Circle card.
+          FIREWALL: counts only — the children in this family, people in the
+          circle (account holder + live ShareGrants), and total captured moments
+          (behavior + play logs, the album motif). ───────────────────────────── */}
       <HubHero
         tone="yellow"
         icon={Album}
         eyebrow={t("elev.hero.profile.eyebrow")}
         title={t("elev.hero.profile.title")}
         subtitle={t("elev.hero.profile.sub", { name: first })}
-        cta={{
-          label: t("elev.hero.profile.cta"),
-          icon: <Icon name="person_add" size={16} />,
-          onClick: () => setActiveTab("sharing"),
-          testId: "profile-hero-cta",
-        }}
+        cta={
+          pendingMemoryItems.length > 0
+            ? {
+                // primaryMove: approve-memory
+                label: t("elev.growthTruth.profile.cta.review"),
+                icon: <Icon name="bookmark" size={16} />,
+                onClick: () => setActiveTab("memory"),
+                testId: "profile-hero-cta",
+              }
+            : {
+                // primaryMove: approve-memory (nothing pending → add a fact)
+                label: t("elev.growthTruth.profile.cta.addFact", { name: first }),
+                icon: <Icon name="edit" size={16} />,
+                onClick: () => setEditingProfile(true),
+                testId: "profile-hero-cta",
+              }
+        }
         stats={[
-          { value: 1, label: t("elev.stat.children") },
+          { value: profiles.length, label: t("elev.stat.children") },
           { value: shares.length + 1, label: t("elev.stat.family") },
           { value: behaviorLogs.length + playLogs.length, label: t("elev.stat.moments") },
         ]}
+        // RUN-08: day-0 teach line instead of a wall of zeros.
+        zeroLine={t("elev.growthTruth.hero.empty")}
         testId="profile-hub-hero"
       />
 
@@ -218,7 +256,7 @@ export default function ChildProfile() {
       />
 
       {/* Chapter 1 — who {first} is */}
-      <SectionCard title={t("cp.ch.who", { name: first, age: childProfile.age })} icon={<Icon name="person" size={20} />} tone="mint">
+      <SectionCard title={t("cp.ch.who", { name: first, age: ageLabel(childProfile, t) })} icon={<Icon name="person" size={20} />} tone="mint">
         <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <Field label={t("cp.f.languages")} value={childProfile.languages.join(" · ") || "—"} />
           <Field label={t("cp.f.school")} value={childProfile.schoolContext || "—"} />
@@ -286,10 +324,11 @@ export default function ChildProfile() {
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--arbor-paper-deep)" }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${milestonesPercent}%`, background: "var(--arbor-gradient-progress)" }} />
+              {/* Count-proportion fill of the age-window record (never a score). */}
+              <div className="h-full rounded-full transition-all" style={{ width: `${windowRecord.share}%`, background: "var(--arbor-gradient-progress)" }} />
             </div>
             <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
-              <strong style={{ color: "var(--arbor-ink)" }}>{t("cp.ms.progress", { checked: checkedMilestones, total: totalMilestones, age: childProfile.age })}</strong>
+              <strong style={{ color: "var(--arbor-ink)" }}>{t("elev.growthTruth.window.noticed", { checked: windowRecord.checked, total: windowRecord.total, band: windowRecord.band })}</strong>
             </p>
           </div>
         </div>
@@ -323,6 +362,9 @@ export default function ChildProfile() {
             ))}
             {childProfile.strengths.length === 0 && <li className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("cp.strengths.empty")}</li>}
           </ul>
+          {/* GP-26 / IA-09: the strengths leaf's ONE live door (it was a
+              declared route with zero entry points). */}
+          <div className="mt-3"><JumpLink onClick={() => setActiveTab("strengths")} color="var(--arbor-green-ink)">{t("elev.growthTruth.profile.openStrengths")}</JumpLink></div>
         </SectionCard>
         <SectionCard title={t("cp.ch.support")} icon={<Icon name="eco" size={20} />} tone="coral">
           <ul className="space-y-3">

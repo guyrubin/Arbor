@@ -10,7 +10,7 @@ import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
 import OnboardingFlow from "./components/auth/OnboardingFlow";
 import { firebaseClientMisconfigured, missingFirebaseClientConfig } from "./lib/firebase";
-import { refreshEntitlement } from "./hooks/useEntitlement";
+import { refreshEntitlement, markBillingReturn } from "./hooks/useEntitlement";
 import { recordBillingTransition } from "./lib/billingTransition";
 
 /**
@@ -109,6 +109,10 @@ function BillingReturnWatcher() {
     const returnedFromCheckout = params.get("billing") === "success";
 
     if (returnedFromCheckout) {
+      // MOB-07 / IA-15: this watcher mounts BEFORE Shell and strips the param,
+      // so Shell's MON-2 activation sequence never saw it. Leave the session
+      // flag FIRST; Shell takes (and clears) it and owns the poll + toasts.
+      markBillingReturn();
       params.delete("billing");
       const qs = params.toString();
       const clean = window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;

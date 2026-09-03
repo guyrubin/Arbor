@@ -145,6 +145,7 @@ inbox
 info
 input
 insights
+interests
 ios
 ios_share
 iso
@@ -221,6 +222,7 @@ play_lesson
 playing_cards
 playlist_add
 preview
+privacy
 problem
 progress_activity
 psychiatry
@@ -280,6 +282,7 @@ straighten
 strategy
 style
 subject
+support
 support_agent
 swap_horiz
 switch

@@ -1,10 +1,11 @@
+import { ageLabel } from "../../lib/childAge";
 import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls, Chip, type PastelKey } from "../ui/kit";
 import { TrustPanel } from "../ui/TrustPanel";
-import { PlayShell, PlayHeader, PlayButton, ChoiceTile, ProgressPips, Celebrate } from "../ui/playkit";
+import { PlayShell, PlayHeader, PlayButton, ChoiceTile, ProgressPips, Celebrate, MascotSay } from "../ui/playkit";
 import { BAND_LABEL, SOUND_LIBRARY, type SoundEntry } from "../../practice/content";
 import { CATEGORY_ROUNDS, EXPRESS_PROMPTS, VOCAB_SETS } from "../../practice/playContent";
 import { matchResult, speechDose, ageAppropriateSoundIds, isSoundAgeAppropriate } from "../../practice/signals";
@@ -299,6 +300,10 @@ export default function SpeechCoachTab() {
     { result: "missed", labelKey: "prac.speech.result.missed", tone: "pink" },
   ];
 
+  // KID-03: the PARENT register — the drill sheet with dose, per-sound
+  // progress, coach hand-off, consent and the language switch. Everything in
+  // this branch is parent-only; the kid subset below renders in Kid Mode.
+  if (!kidMode) {
   return (
     <PlayShell>
       <PlayHeader
@@ -313,7 +318,6 @@ export default function SpeechCoachTab() {
       />
 
       <TrustSafetyBar
-        risk="Low"
         note={t("prac.speech.safetyNote", { name: first })}
       />
 
@@ -633,7 +637,7 @@ export default function SpeechCoachTab() {
       {/* Sound Progress Tracking (feature 3) */}
       <SectionCard title={t("prac.speech.progress.title", { name: first })} icon={<Icon name="trending_up" size={20} />} tone="lav"
         action={
-          <button onClick={() => askCoach(t("prac.speech.progress.coachPrompt", { name: first, age: childProfile.age, sound: sound.label, score: statForActive?.recentAccuracy ?? 0, level }))}
+          <button onClick={() => askCoach(t("prac.speech.progress.coachPrompt", { name: first, age: ageLabel(childProfile, t), sound: sound.label, score: statForActive?.recentAccuracy ?? 0, level }))}
             className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
             <Icon name="auto_awesome" size={14} /> {t("prac.speech.progress.coachCta")}
           </button>
@@ -669,6 +673,90 @@ export default function SpeechCoachTab() {
           {t("prac.speech.progress.footer")}
         </p>
       </SectionCard>
+    </PlayShell>
+  );
+  }
+
+  // KID-03: the KID register — Sound Lab. Hero + big target card, sound picker
+  // as icon pills (no numerals), record → auto-playback, and the parent floor
+  // as three big tiles. No dose bar, no per-sound progress or trend arrows, no
+  // coach hand-off, no language switch, no consent card, no verdict copy.
+  const kidSounds = SOUND_LIBRARY.filter((s) => isSoundAgeAppropriate(s.band, childProfile.age));
+  const RESULT_EMOJI: Record<SpeechAttempt["result"], string> = { got: "🌟", almost: "👍", missed: "🔁" };
+  return (
+    <PlayShell>
+      <PlayHeader
+        title={t("elev.play.soundlab.title")}
+        say={t("elev.play.soundlab.say", { name: first })}
+        mood="happy"
+      />
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t("elev.play.soundlab.pickSound")}>
+        {(kidSounds.length ? kidSounds : SOUND_LIBRARY).map((s) => {
+          const on = s.id === soundId;
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSoundId(s.id)}
+              aria-pressed={on}
+              aria-label={t("elev.play.soundlab.soundAria", { sound: s.label })}
+              className="play-pressable min-w-[56px] min-h-[56px] px-4 rounded-2xl text-xl font-extrabold transition inline-flex items-center justify-center"
+              style={on
+                ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", boxShadow: "var(--comic-pop)" }
+                : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "2px solid var(--arbor-rule)" }}
+            >
+              {s.id.toUpperCase()}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="rounded-[var(--play-radius-lg)] p-7 text-center" style={{ background: "var(--arbor-sky-soft)", border: "2px solid var(--arbor-sky-soft)" }}>
+        <p className="text-[12px] uppercase font-extrabold tracking-wider mb-3" style={{ color: "var(--arbor-sky-ink)" }}>
+          {t("elev.play.soundlab.sayIt")}
+        </p>
+        <p className="font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", fontSize: "3.4rem" }}>
+          {target}
+        </p>
+        <div className="flex justify-center gap-2.5 mt-5">
+          <PlayButton variant="soft" tone="sky" size="md" onClick={() => setItemIdx((i) => Math.max(0, i - 1))} disabled={itemIdx === 0}>
+            {t("prac.speech.back")}
+          </PlayButton>
+          <PlayButton tone="sky" size="md" onClick={() => setItemIdx((i) => Math.min(items.length - 1, i + 1))} disabled={itemIdx >= items.length - 1}>
+            {t("prac.speech.next")} <Icon name="chevron_right" size={16} />
+          </PlayButton>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {recState !== "recording" ? (
+          <PlayButton onClick={() => void startRecording()} tone="peach">
+            <Icon name="mic" size={22} /> {t("elev.play.soundlab.record")}
+          </PlayButton>
+        ) : (
+          <PlayButton onClick={stopRecording} tone="pink" className="animate-pulse">
+            <Icon name="stop" size={22} /> {t("elev.play.soundlab.stop")}
+          </PlayButton>
+        )}
+        {audioUrl && recState === "review" && (
+          <>
+            {/* Auto-playback: the child hears themselves straight away; the big
+                button replays. No native 32px control in the kid register. */}
+            <audio src={audioUrl} autoPlay aria-hidden="true" />
+            <PlayButton variant="soft" tone="sky" onClick={() => { void new Audio(audioUrl).play().catch(() => { /* best-effort replay */ }); }}>
+              <Icon name="play_arrow" size={22} /> {t("elev.play.soundlab.listen")}
+            </PlayButton>
+          </>
+        )}
+      </div>
+      {micError && <MascotSay mood="think" tone="peach">{micError}</MascotSay>}
+
+      <div className="grid grid-cols-3 gap-3" role="group" aria-label={t("prac.speech.howDidItSound")}>
+        {RESULT_BTN.map((b) => (
+          <ChoiceTile key={b.result} emoji={RESULT_EMOJI[b.result]} label={t(b.labelKey)} onClick={() => saveAttempt(b.result, "parent")} />
+        ))}
+      </div>
+      {lastSaved && <MascotSay mood="proud" tone="clay">{t("elev.play.soundlab.saved")}</MascotSay>}
     </PlayShell>
   );
 }

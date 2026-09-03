@@ -12,6 +12,7 @@ import { track } from "../../lib/analytics";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { isolate } from "../../lib/i18n";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
+import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 
 const SKILL_LABEL: Record<string, string> = {
   vocabulary: "Vocabulary",
@@ -28,8 +29,10 @@ const SKILL_LABEL: Record<string, string> = {
  * Wrong answers get warm scaffolding and a retry — there is no "fail" state.
  */
 export default function AdventuresTab() {
-  const { childProfile, setActiveTab, openPaywall } = useArbor();
+  const { childProfile, openPaywall } = useArbor();
   const { t } = useLanguage();
+  // KID-05: the comic CTA on the win screen needs the parent shell; null in Kid Mode → not rendered.
+  const nav = useKidSafeNav();
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
   const vars = { name: first, age: childProfile.age };
@@ -235,7 +238,8 @@ export default function AdventuresTab() {
             title={`${isolate(first)} finished “${scenario.title}”!`}
             stars={sessionCorrect}
             starsTotal={scenario.scenes.length}
-            subtitle={`${sessionCorrect} of ${scenario.scenes.length} first-try answers — and every answer taught us something for ${isolate(first)}'s development picture.`}
+            // KID-29: kid-register finish — the child is never told they were measured.
+            subtitle={t("elev.play.adventures.done.sub", { n: sessionCorrect, total: scenario.scenes.length })}
           >
             <PlayButton variant="soft" tone="lav" onClick={() => openScenario(scenario.id)}>
               <Icon name="replay" size={16} /> Play again
@@ -243,9 +247,11 @@ export default function AdventuresTab() {
             <PlayButton variant="soft" tone="clay" onClick={() => setActiveId(null)}>
               <Icon name="explore" size={16} /> More adventures
             </PlayButton>
-            <PlayButton tone="lav" onClick={() => setActiveTab("comics")}>
-              <Icon name="auto_awesome" size={16} /> Make a hero comic
-            </PlayButton>
+            {nav && (
+              <PlayButton tone="lav" onClick={() => nav("comics")}>
+                <Icon name="auto_awesome" size={16} /> Make a hero comic
+              </PlayButton>
+            )}
           </Celebrate>
         </PlayPanel>
       )}

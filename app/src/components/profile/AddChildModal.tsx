@@ -5,7 +5,8 @@ import { Button } from "../ui/Button";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useEntitlement } from "../../hooks/useEntitlement";
+import { useArbor } from "../../context/ArborContext";
+import { useEntitlement, childLimitReached, PAID_PLAN_LIMITS } from "../../hooks/useEntitlement";
 import { buildNewChildInput, type ChildGender } from "../../lib/childProfileInput";
 import { PlanBadge } from "../ui/PlanBadge";
 
@@ -15,9 +16,12 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
   const { addChild, profiles } = useProfile();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { entitlement } = useEntitlement();
+  const { entitlement, loading: entitlementLoading } = useEntitlement();
+  const { openPaywall } = useArbor();
   // MON-1: multi-child is a Plus feature once entitlements are enforced.
-  const atChildLimit = entitlement.enforced && profiles.length >= entitlement.limits.maxChildren;
+  // MOB-08: never hard-gate on the client fallback / while loading — a Plus
+  // family on a flaky connection must not be told "one child only".
+  const atChildLimit = childLimitReached({ entitlement, loading: entitlementLoading, childCount: profiles.length });
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [ageMonths, setAgeMonths] = useState<number>(48);
@@ -65,19 +69,23 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
     return (
       <Modal open={open} onClose={close} title={t("ac.title")}>
         <div className="space-y-4 text-sm">
-          <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "linear-gradient(120deg,#eef6f1,var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "#fff", color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
+          <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
             <div>
               {/* 3.6 — the at-limit state names its gate: multi-child is a Plus feature. */}
               <p className="font-bold flex items-center gap-2 flex-wrap" style={{ color: "var(--arbor-ink)" }}>
                 {t("ac.limitTitle")}
                 <PlanBadge feature="maxChildren" />
               </p>
+              {/* MOB-13: the Plus limit comes from the ONE client mirror pinned to
+                  server PLAN_LIMITS (useEntitlement.test.ts), never a literal. */}
               <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                {t("ac.limitBody", { max: entitlement.limits.maxChildren === 1 ? 6 : entitlement.limits.maxChildren })}
+                {t("ac.limitBody", { max: PAID_PLAN_LIMITS.maxChildren })}
               </p>
-              <button onClick={() => { toast(t("ac.notifyToast"), "success"); close(); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-clay)", color: "#fff" }}>
-                {t("ac.notify")}
+              {/* MOB-13: soft gate that SELLS — the real paywall (Stripe/StoreKit
+                  live), not a "we'll let you know" toast nobody follows up. */}
+              <button type="button" onClick={() => { close(); openPaywall("maxChildren", "plus"); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
+                {t("elev.storeshell.ac.seePlus")}
               </button>
             </div>
           </div>

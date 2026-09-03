@@ -1,4 +1,5 @@
 import type { ActionPlan, BehaviorLog } from "../types";
+import { MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
 
 /**
  * Pure helpers that turn a one-shot Growth Plan into a closed loop:
@@ -77,6 +78,9 @@ export function suggestedChallenges(
   const cutoff = new Date(`${today}T23:59:59`).getTime() - windowDays * 86400000;
   const recent = logs.filter((l) => {
     if (l.resolved) return false;
+    // Wave T (TJB-01): plain "Moment" rows are ordinary journal captures —
+    // they never accumulate into a suggested challenge.
+    if (l.behaviorType === MOMENT_BEHAVIOR_TYPE) return false;
     const t = new Date(l.timestamp).getTime();
     return !Number.isNaN(t) && t >= cutoff;
   });

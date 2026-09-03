@@ -117,3 +117,82 @@ describe("N6 — source pins (shared quarantine + E9 dates)", () => {
     expect(src).not.toMatch(/toLocale(Date|Time)?String|Intl\.DateTimeFormat/);
   });
 });
+
+/* LC-19 — the Language Transition Note carries the child's RECORD, never
+ * canned sentences presented as observations. With empty observations every
+ * child-specific body line must be derived from the profile (or be empty);
+ * the one general block is labelled on every line. The pre-fix constants are
+ * kept as the negative control. */
+import { GENERAL_SUGGESTION_LABEL, SUGGESTED_SCHOOL_PHRASES } from "./reportExport";
+
+const PRE_FIX_CANNED = [
+  "Emotional vocabulary still developing",
+  "Pair new English words with familiar home-language anchors",
+  "Celebrate attempts, not just correctness",
+];
+
+/** A body line is honest when it is empty, quotes a profile value, or is an
+ *  explicitly labelled general suggestion. */
+function lineIsDerivedOrLabelled(line: string, child: ReportContext["child"]): boolean {
+  if (!line.trim()) return true;
+  if (line.startsWith(GENERAL_SUGGESTION_LABEL)) return true;
+  const profileValues = [...child.languages, child.schoolContext, ...child.challenges, ...child.strengths].filter(Boolean);
+  return profileValues.some((v) => line.includes(v));
+}
+
+describe("LC-19 — Language Transition Note is built from the record", () => {
+  // Sentinel profile values: no canned English sentence can accidentally
+  // "contain" a real language name, so the honesty checker is exact.
+  const empty: ReportContext = {
+    ...CTX,
+    logs: [],
+    langObs: [],
+    child: { ...CTX.child, languages: ["Zorbish", "Quenya"], schoolContext: "Sentinel kindergarten 7", strengths: ["sentinel-strength"], challenges: [] },
+  };
+
+  it("with empty observations, no section body is a constant sentence about the child", () => {
+    const doc = buildReport("language", empty);
+    for (const s of doc.sections) {
+      const lines = Array.isArray(s.body) ? s.body : [s.body];
+      for (const line of lines) {
+        expect(lineIsDerivedOrLabelled(line, empty.child), `${s.heading}: "${line}"`).toBe(true);
+      }
+    }
+  });
+
+  it("the pre-fix canned lines are gone from the document", () => {
+    const text = flattenDoc(buildReport("language", empty));
+    for (const canned of PRE_FIX_CANNED) expect(text).not.toContain(canned);
+    expect(text).not.toContain("Comfort & gaps");
+    expect(text).not.toContain("Parent support plan");
+  });
+
+  it("logged phrases appear as per-language counts + the parent's quoted words", () => {
+    const withObs: ReportContext = {
+      ...CTX,
+      langObs: [
+        { id: "a", timestamp: "2026-08-30T10:00:00.000Z", language: "Hebrew", phrase: "עוד פעם" },
+        { id: "b", timestamp: "2026-08-31T10:00:00.000Z", language: "English", phrase: "more please" },
+        { id: "c", timestamp: "2026-09-01T10:00:00.000Z", language: "English", phrase: "all done" },
+      ],
+    };
+    const text = flattenDoc(buildReport("language", withObs));
+    expect(text).toContain("English: 2 words or phrases the parent has noticed");
+    expect(text).toContain("Hebrew: 1 word or phrase the parent has noticed");
+    expect(text).toContain("in the parent's words: “all done”");
+    expect(text).toContain("in the parent's words: “עוד פעם”");
+    expect(text).toContain("Bilingual preschool");
+  });
+
+  it("general phrases stay, but every line is labelled as Arbor's suggestion", () => {
+    const doc = buildReport("language", empty);
+    const general = doc.sections.find((s) => s.heading === "Phrases that help at school")!;
+    const lines = Array.isArray(general.body) ? general.body : [general.body];
+    expect(lines.length).toBe(SUGGESTED_SCHOOL_PHRASES.length);
+    for (const line of lines) expect(line.startsWith(GENERAL_SUGGESTION_LABEL)).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL: the pre-fix constant sentence is flagged by the honesty checker", () => {
+    for (const canned of PRE_FIX_CANNED) expect(lineIsDerivedOrLabelled(canned, empty.child)).toBe(false);
+  });
+});

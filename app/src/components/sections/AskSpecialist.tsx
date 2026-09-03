@@ -1,10 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { appendParentNote, buildConsultPacket, serializePacket, countIncluded } from "../../consult/packet";
+import {
+  buildConsultPacket,
+  countIncluded,
+  isConsultPacketEmpty,
+  serializeForExport,
+  EXPORT_AUDIENCES,
+  DEFAULT_EXPORT_AUDIENCE,
+  type ExportAudience,
+} from "../../consult/packet";
+import { ClinicalLanguageError } from "../../lib/clinicalScan";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { Modal } from "../ui/Modal";
 import { InitialsTile, InsetRow, PASTEL } from "../ui/kit";
@@ -25,13 +35,36 @@ import FindProfessional from "./FindProfessional";
    verified-pros rail (right). The packet is built from the LIVE child record
    (buildConsultPacket), never a static design array; each section's items
    render as label/value inset rows with a per-item include-toggle. The
-   GDPR/COPPA trust row lives INSIDE the summary card in green tokens. */
+   GDPR/COPPA trust row lives INSIDE the summary card in green tokens.
+
+   Wave T (lane C):
+   · LC-08 — the audience ("For: a clinician / a teacher / my own records") is
+     a REQUIRED first step of the export bar; Copy / Download / Send all build
+     their text through the ONE guarded seam `serializeForExport` (audience
+     ceiling + note scan, fail closed). The last choice is remembered on the
+     device (metadata only, never child data).
+   · LC-07 — packet rows render in full (no truncation) and a "Preview exactly
+     what leaves" expander shows the recipient's text word for word.
+   · LC-06 — the empty state mounts for a profile-only record. */
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
 const GREEN = "var(--arbor-green-ink)";
 const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
+
+/** Device-local memory of the parent's last audience choice (no child data). */
+const AUDIENCE_STORAGE_KEY = "arbor.consultExportAudience";
+const readStoredAudience = (): ExportAudience => {
+  try {
+    const v = localStorage.getItem(AUDIENCE_STORAGE_KEY);
+    return v && (EXPORT_AUDIENCES as readonly string[]).includes(v) ? (v as ExportAudience) : DEFAULT_EXPORT_AUDIENCE;
+  } catch {
+    return DEFAULT_EXPORT_AUDIENCE;
+  }
+};
+
+type ExportBuild = { text: string; error: null } | { text: null; error: string };
 
 export default function AskSpecialist() {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, setActiveTab, pendingConsultNote, consumeConsultPrefill } = useArbor();
@@ -42,6 +75,13 @@ export default function AskSpecialist() {
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [reviewed, setReviewed] = useState(false);
+
+  // LC-08: audience is the first step of the export bar; remembered per device.
+  const [audience, setAudienceState] = useState<ExportAudience>(readStoredAudience);
+  const setAudience = (a: ExportAudience) => {
+    setAudienceState(a);
+    try { localStorage.setItem(AUDIENCE_STORAGE_KEY, a); } catch { /* metadata only */ }
+  };
 
   // AIX-S3(a): the Vision handoff note lands HERE — as a parent-editable note in
   // the composer, never as an auto-share. Consume the one-shot seam into local
@@ -93,13 +133,15 @@ export default function AskSpecialist() {
     () => buildConsultPacket({
       profile: {
         name: childProfile.name, age: childProfile.age, languages: childProfile.languages,
+        // RUN-01: months-precise age drives the age-windowed milestone denominator.
+        ageMonths: ageMonthsFromProfile(childProfile) ?? undefined,
         schoolContext: childProfile.schoolContext, strengths: childProfile.strengths, challenges: childProfile.challenges,
       },
       logs: behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, intensity: l.intensity, timestamp: l.timestamp, resolved: l.resolved })),
       // UND-4 (AR-CAP-08): preserve the parent's actual response + date —
       // observed / not sure / not yet — in the redactable packet card too.
       milestones: milestones.map((m) => ({
-        domain: m.domain, title: m.title, checked: m.checked,
+        domain: m.domain, title: m.title, checked: m.checked, ageMonths: m.ageMonths,
         status: m.observationStatus ?? (m.checked ? "yes" : "not_yet"),
         observedAt: m.observationUpdatedAt,
       })),
@@ -110,35 +152,49 @@ export default function AskSpecialist() {
     [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]
   );
 
-  const isEmpty = packet.sections.length === 0;
+  // LC-06: "about" is always emitted, so the honest emptiness test is
+  // "nothing beyond about" — the authored empty state can finally mount.
+  const isEmpty = isConsultPacketEmpty(packet);
   const includedCount = countIncluded(packet, excluded);
-  const noneSelected = includedCount === 0 || !reviewed;
   const toggle = (id: string) =>
     setExcluded((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const markdown = useCallback(
-    () => appendParentNote(serializePacket(packet, excluded), visionNote, t("consult.visionNote.heading")),
-    [packet, excluded, visionNote, t]
-  );
+  // LC-08: the ONE export text for Copy / Download / Send — audience-capped
+  // and note-scanned. A blocked build yields NO text (fail closed) and a
+  // parent-readable reason; every verb disables until the parent fixes it.
+  const exportBuild = useMemo<ExportBuild>(() => {
+    try {
+      return { text: serializeForExport(audience, packet, excluded, visionNote, t("consult.visionNote.heading")), error: null };
+    } catch (err) {
+      const reason = err instanceof ClinicalLanguageError && audience === "teacher"
+        ? t("elev.carehonesty.consult.blocked.teacher", { term: err.term })
+        : t("elev.carehonesty.consult.blocked.generic");
+      return { text: null, error: reason };
+    }
+  }, [audience, packet, excluded, visionNote, t]);
+  const exportText = exportBuild.text;
+  const noneSelected = includedCount === 0 || !reviewed || exportText == null;
 
-  useEffect(() => { setReviewed(false); }, [excluded, visionNote, childProfile.id]);
+  useEffect(() => { setReviewed(false); }, [excluded, visionNote, audience, childProfile.id]);
 
   const copy = async () => {
+    if (exportText == null) return;
     // Growth loop (P0-4): the consult packet is a `story` artifact shared to a
     // professional — reuse the existing union value, don't mint a new one here.
     trackShareInitiated("story", "ask_specialist");
     try {
-      await navigator.clipboard.writeText(markdown());
+      await navigator.clipboard.writeText(exportText);
       trackShareCompleted("story", "clipboard");
       toast("Packet copied. Paste it to your professional.", "success");
     }
     catch { toast("Could not copy. Try Download instead.", "error"); }
   };
   const download = () => {
-    const blob = new Blob([markdown()], { type: "text/markdown" });
+    if (exportText == null) return;
+    const blob = new Blob([exportText], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `${firstName}-arbor-handoff-${packet.generatedAt}.md`;
+    a.href = url; a.download = `${firstName}-arbor-handoff-${audience}-${packet.generatedAt}.md`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
     toast("Downloaded. Bring it to your appointment.", "success");
@@ -299,7 +355,7 @@ export default function AskSpecialist() {
           <p className="text-sm mt-1.5 leading-relaxed max-w-[420px] mx-auto" style={{ color: MUTED }}>{t("consult.empty.body")}</p>
           <button
             onClick={() => setActiveTab("behaviors")}
-            className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 mt-4"
+            className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 mt-4 min-h-[44px]"
             style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
           >
             {t("consult.empty.cta")}
@@ -310,9 +366,10 @@ export default function AskSpecialist() {
           {/* Two-column: live redactable packet (left) + verified-pros rail (right). */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-5 items-start">
             {/* Left: the summary card (the moat read). Section titles mirror the
-                child record (incl. the 7 Development-Map domains in the dev
+                child record (incl. the Development-Map domains in the dev
                 snapshot); each item is a label/value inset row with an
-                include-toggle. The GDPR/COPPA trust row lives inside the card. */}
+                include-toggle. LC-07: rows render in FULL — the row is the line
+                the parent approves, so it is never cut mid-sentence. */}
             <section className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
               <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("care.packet.title")}</h2>
               <p className="text-[12px] font-semibold mt-1.5 leading-relaxed" style={{ color: MUTED }}>{t("care.lead", { name: firstName })}</p>
@@ -328,15 +385,22 @@ export default function AskSpecialist() {
                           label={section.title}
                           value={it.text}
                           excluded={!on}
+                          multiline
+                          testId="consult-packet-item"
                           check={
                             <button
                               onClick={() => toggle(it.id)}
                               aria-pressed={on}
                               aria-label={`Include: ${it.text}`}
-                              className="flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition self-start mt-0.5"
-                              style={on ? { background: GREEN, color: "#fff" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+                              className="flex-shrink-0 w-11 h-11 -m-3 rounded-md flex items-center justify-center transition self-start"
+                              style={{ color: on ? "#fff" : MUTED }}
                             >
-                              {on && <Icon name="check" size={14} weight={600} />}
+                              <span
+                                className="w-5 h-5 rounded-md flex items-center justify-center"
+                                style={on ? { background: GREEN, color: "#fff" } : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+                              >
+                                {on && <Icon name="check" size={14} weight={600} />}
+                              </span>
                             </button>
                           }
                         />
@@ -352,95 +416,159 @@ export default function AskSpecialist() {
                 <Icon name="verified_user" size={19} fill={1} style={{ color: GREEN }} />
                 <span className="text-[11.5px] font-semibold leading-relaxed" style={{ color: GREEN }}>{t("care.trust")}</span>
               </div>
+
+              {/* LC-07: the recipient's exact text, word for word, for the
+                  audience chosen below. A blocked build shows the reason here
+                  instead of any text (fail closed). */}
+              <details className="mt-3.5 rounded-[13px] px-3.5 py-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
+                <summary className="cursor-pointer list-none min-h-[44px] flex items-center gap-2 text-[12.5px] font-extrabold" style={{ color: GREEN }}>
+                  <Icon name="visibility" size={16} /> {t("elev.carehonesty.consult.preview.toggle")}
+                </summary>
+                <p className="text-[11.5px] leading-relaxed" style={{ color: MUTED }}>{t("elev.carehonesty.consult.preview.hint")}</p>
+                {exportText != null ? (
+                  <pre
+                    dir="auto"
+                    data-testid="consult-export-preview"
+                    className="whitespace-pre-wrap break-words text-[12px] leading-relaxed mt-2 mb-2 font-sans"
+                    style={{ color: INK, fontFamily: "inherit" }}
+                  >
+                    {exportText}
+                  </pre>
+                ) : (
+                  <p role="alert" className="text-[12px] font-bold leading-relaxed mt-2 mb-2" style={{ color: "var(--arbor-pink-ink)" }}>
+                    {exportBuild.error}
+                  </p>
+                )}
+              </details>
             </section>
 
             {/* Right: verified-pros rail. */}
             {ProsRail}
           </div>
 
-          {/* Export & send bar (sticky) — the single transactional control. */}
-          <div className="sticky bottom-2 rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
-            <span className="text-[13px] font-bold me-auto" style={{ color: MUTED }} aria-live="polite">
-              {t("consult.selected", { n: includedCount })}
-            </span>
-            <label className="flex items-start gap-2 min-w-[220px] text-[11.5px] font-bold leading-snug" style={{ color: MUTED }}>
-              <input
-                type="checkbox"
-                checked={reviewed}
-                onChange={(e) => setReviewed(e.target.checked)}
-                className="mt-0.5 h-4 w-4 flex-shrink-0"
-              />
-              <span>{t("consult.reviewed")}</span>
-            </label>
-            <button onClick={copy} disabled={noneSelected}
-              className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-              style={{ background: GREEN_SOFT, color: GREEN }}>
-              <Icon name="content_copy" size={17} /> {t("consult.copy")}
-            </button>
-            <button onClick={download} disabled={noneSelected}
-              className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-              style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}>
-              <Icon name="download" size={18} /> {t("consult.download")}
-            </button>
-
-            {/* Export as PDF ▾ — menu replacing the standalone Reports grid. */}
-            <div className="relative">
-              <button
-                ref={menuTriggerRef}
-                onClick={() => setMenuOpen((o) => !o)}
-                disabled={noneSelected}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-                style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}>
-                <Icon name="description" size={17} /> {t("consult.exportPdf")} <Icon name="expand_more" size={15} />
-              </button>
-              <AnimatePresence>
-                {menuOpen && (
-                  <motion.div
-                    ref={menuRef}
-                    role="menu"
-                    aria-label={t("consult.exportPdf")}
-                    initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-                    animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-                    transition={{ duration: reduceMotion ? 0 : 0.15 }}
-                    className="absolute bottom-full mb-2 w-[260px] rounded-2xl overflow-hidden p-1.5 z-20 end-0"
-                    style={{ transformOrigin: "bottom", background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
-                    {REPORTS.map((r, idx) => (
-                      <button
-                        key={r.type}
-                        ref={(el) => { itemRefs.current[idx] = el; }}
-                        role="menuitem"
-                        onClick={() => runExport(r.type)}
-                        onKeyDown={(e) => onMenuKey(e, idx)}
-                        className="w-full text-start rounded-xl px-3 py-2.5 text-[13px] font-semibold transition hover:brightness-95 min-h-[44px] flex items-center"
-                        style={{ color: INK }}>
-                        {r.title}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+          {/* Export & send bar (sticky) — the single transactional control.
+              LC-08: the audience selector is the REQUIRED first step; every verb
+              below builds through the same guarded text for that audience. */}
+          <div className="sticky bottom-2 rounded-2xl p-4 flex flex-col gap-3" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span id="consult-audience-label" className="text-[12px] font-extrabold me-1" style={{ color: INK }}>
+                {t("elev.carehonesty.consult.audience.label")}
+              </span>
+              <div role="radiogroup" aria-labelledby="consult-audience-label" className="flex flex-wrap items-center gap-1.5">
+                {EXPORT_AUDIENCES.map((a) => {
+                  const on = a === audience;
+                  return (
+                    <button
+                      key={a}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => setAudience(a)}
+                      className="inline-flex items-center gap-1.5 text-[12.5px] font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
+                      style={on
+                        ? { background: GREEN, color: "#fff" }
+                        : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+                    >
+                      {on && <Icon name="check" size={14} weight={600} />}
+                      {t(`elev.carehonesty.consult.audience.${a}`)}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="basis-full text-[11.5px] leading-relaxed" style={{ color: MUTED }}>
+                {t(`elev.carehonesty.consult.audience.hint.${audience}`)}
+              </span>
+              {exportText == null && (
+                <span role="alert" className="basis-full text-[11.5px] font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>
+                  {exportBuild.error}
+                </span>
+              )}
             </div>
 
-            {/* Send to a professional — the real directory + consult request,
-                prefilled from the selected packet. Replaces the dead "soon" stub. */}
-            <button
-              onClick={() => setSendOpen(true)}
-              disabled={noneSelected}
-              className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-              style={{ background: "var(--arbor-paper-sunk)", color: GREEN, border: "1px solid rgba(52,178,119,0.30)" }}>
-              <Icon name="send" size={17} /> {t("consult.send")}
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-[13px] font-bold me-auto" style={{ color: MUTED }} aria-live="polite">
+                {t("consult.selected", { n: includedCount })}
+              </span>
+              <label className="flex items-start gap-2 min-w-[220px] min-h-[44px] text-[11.5px] font-bold leading-snug" style={{ color: MUTED }}>
+                <input
+                  type="checkbox"
+                  checked={reviewed}
+                  onChange={(e) => setReviewed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 flex-shrink-0"
+                />
+                <span>{t("consult.reviewed")}</span>
+              </label>
+              <button onClick={copy} disabled={noneSelected}
+                className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
+                style={{ background: GREEN_SOFT, color: GREEN }}>
+                <Icon name="content_copy" size={17} /> {t("consult.copy")}
+              </button>
+              <button onClick={download} disabled={noneSelected}
+                className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
+                style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}>
+                <Icon name="download" size={18} /> {t("consult.download")}
+              </button>
+
+              {/* Export as PDF ▾ — menu replacing the standalone Reports grid. */}
+              <div className="relative">
+                <button
+                  ref={menuTriggerRef}
+                  onClick={() => setMenuOpen((o) => !o)}
+                  disabled={noneSelected}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
+                  style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}>
+                  <Icon name="description" size={17} /> {t("consult.exportPdf")} <Icon name="expand_more" size={15} />
+                </button>
+                <AnimatePresence>
+                  {menuOpen && (
+                    <motion.div
+                      ref={menuRef}
+                      role="menu"
+                      aria-label={t("consult.exportPdf")}
+                      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+                      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.15 }}
+                      className="absolute bottom-full mb-2 w-[260px] rounded-2xl overflow-hidden p-1.5 z-20 end-0"
+                      style={{ transformOrigin: "bottom", background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-md)" }}>
+                      {REPORTS.map((r, idx) => (
+                        <button
+                          key={r.type}
+                          ref={(el) => { itemRefs.current[idx] = el; }}
+                          role="menuitem"
+                          onClick={() => runExport(r.type)}
+                          onKeyDown={(e) => onMenuKey(e, idx)}
+                          className="w-full text-start rounded-xl px-3 py-2.5 text-[13px] font-semibold transition hover:brightness-95 min-h-[44px] flex items-center"
+                          style={{ color: INK }}>
+                          {r.title}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Send to a professional — the real directory + consult request,
+                  prefilled from the selected packet. Replaces the dead "soon" stub. */}
+              <button
+                onClick={() => setSendOpen(true)}
+                disabled={noneSelected}
+                className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
+                style={{ background: "var(--arbor-paper-sunk)", color: GREEN, border: "1px solid rgba(52,178,119,0.30)" }}>
+                <Icon name="send" size={17} /> {t("consult.send")}
+              </button>
+            </div>
           </div>
         </>
       )}
 
       {/* Send modal — hosts the verified directory + consult-request flow with the
-          selected packet handed in as the prefilled note. */}
+          audience-capped packet handed in as the prefilled note (LC-08: a
+          blocked build hands in NOTHING). */}
       <Modal open={sendOpen} onClose={() => setSendOpen(false)} title={t("consult.send")} maxWidth="max-w-3xl">
-        <FindProfessional embedded incomingNote={markdown()} />
+        <FindProfessional embedded incomingNote={exportText ?? ""} />
       </Modal>
     </motion.div>
   );

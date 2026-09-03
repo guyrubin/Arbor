@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import confetti from "canvas-confetti";
+import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -34,6 +34,7 @@ import { agefilterText } from "../../lib/i18nElevation/agefilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
+import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
@@ -89,7 +90,11 @@ const METRIC_EMOJI: Record<DevelopmentMetricId, string> = {
 };
 
 export default function HeroJourneyTab() {
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile } = useArbor();
+  // KID-05: hub tiles navigate the PARENT shell — rendered only while the
+  // shell is reachable (null inside Kid Mode, where the call would be a
+  // silent no-op and a dead button in front of the child).
+  const kidNav = useKidSafeNav();
   const { aiLang, t, uiLang } = useLanguage();
   const { toast } = useToast();
 
@@ -181,7 +186,7 @@ export default function HeroJourneyTab() {
 
   const chooseOption = (id: string) => {
     setChoiceId(id);
-    confetti({ particleCount: 70, spread: 70, origin: { y: 0.7 } });
+    celebrate({ kind: "choice" });
     setSceneIndex((i) => Math.min(scenes.length - 1, i + 1));
   };
 
@@ -201,8 +206,8 @@ export default function HeroJourneyTab() {
     };
     await runsCol.upsert(run);
     setSaved(true);
-    confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
-    toast("Journey complete — development saved", "success");
+    celebrate({ kind: "complete" });
+    toast(aiLang === "he" ? "המסע הושלם — הסיפור נשמר" : "Journey complete — story saved", "success");
   };
 
   const replay = (run: HeroJourneyRun) => {
@@ -362,9 +367,10 @@ export default function HeroJourneyTab() {
         {/* IN-HUB TILES (UC-4) — Hero Comics + Family Formation live inside the
             Academy / Story Journeys surface, not as their own sidebar doors. */}
         <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+          {kidNav && (
           <button
             className="world-tile text-start"
-            onClick={() => setActiveTab("comics")}
+            onClick={() => kidNav("comics")}
             aria-label={he ? "קומיקס גיבור" : "Hero Comics"}
           >
             <div className="comic-halftone relative grid place-items-center" style={{ height: 96, background: "var(--arbor-peach)", borderBottom: "var(--comic-line)" }}>
@@ -380,10 +386,12 @@ export default function HeroJourneyTab() {
               </p>
             </div>
           </button>
+          )}
 
+          {kidNav && (
           <button
             className="world-tile text-start"
-            onClick={() => setActiveTab("family")}
+            onClick={() => kidNav("family")}
             aria-label={he ? "מגילת המשפחה" : "Family Formation"}
           >
             <div className="comic-halftone relative grid place-items-center" style={{ height: 96, background: "var(--arbor-yellow)", borderBottom: "var(--comic-line)" }}>
@@ -398,6 +406,7 @@ export default function HeroJourneyTab() {
               </p>
             </div>
           </button>
+          )}
         </div>
 
         {/* PACK FILTER — comic chips */}
@@ -411,7 +420,7 @@ export default function HeroJourneyTab() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setPackFilter(p.id as HeroPackId | "all")}
-                className="px-3.5 py-1.5 rounded-full text-[13px] font-black transition"
+                className="px-3.5 py-2.5 min-h-[44px] rounded-full text-[13px] font-black transition"
                 style={
                   active
                     ? { background: w ? w.bg : "var(--arbor-clay)", color: "#fff", border: "var(--comic-line)", boxShadow: "var(--comic-pop)" }
@@ -445,7 +454,7 @@ export default function HeroJourneyTab() {
                   aria-checked={showAllAges}
                   onClick={toggleShowAllAges}
                   data-testid="agefilter-toggle-hero-journeys"
-                  className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11.5px] font-black"
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-2.5 min-h-[44px] text-[11.5px] font-black"
                   style={{
                     background: showAllAges ? "var(--arbor-yellow)" : "#fff",
                     border: "2px solid var(--comic-ink)",
@@ -471,7 +480,7 @@ export default function HeroJourneyTab() {
               <button
                 type="button"
                 onClick={toggleShowAllAges}
-                className="mt-3 inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[12.5px] font-black"
+                className="mt-3 inline-flex items-center gap-1 rounded-full px-3.5 py-2.5 min-h-[44px] text-[12.5px] font-black"
                 style={{ background: "var(--arbor-yellow)", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}
               >
                 <Icon name="unfold_more" size={15} /> {agefilterText("elev.agefilter.showAll", he)}
@@ -679,11 +688,11 @@ export default function HeroJourneyTab() {
               className="w-full py-3 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98]"
               style={{ background: T.gradientCta }}
             >
-              <Icon name="emoji_events" size={16} /> {aiLang === "he" ? `סיימו ושמרו את ההתפתחות של ${isolate(childProfile.name)}` : `Finish & save ${isolate(childProfile.name)}'s development`}
+              <Icon name="emoji_events" size={16} /> {aiLang === "he" ? `סיימו ושמרו את הסיפור של ${isolate(childProfile.name)}` : `Finish & save ${isolate(childProfile.name)}'s story`}
             </button>
           ) : (
             <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
-              <Icon name="check" size={16} /> {aiLang === "he" ? `נשמר להתפתחות של ${isolate(childProfile.name)}` : `Saved to ${isolate(childProfile.name)}'s development`}
+              <Icon name="check" size={16} /> {aiLang === "he" ? `נשמר לסיפור של ${isolate(childProfile.name)}` : `Saved to ${isolate(childProfile.name)}'s story`}
             </div>
           )}
         </div>

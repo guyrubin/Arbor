@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import confetti from "canvas-confetti";
+import { celebrate as fireCelebration } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
 // W5 celebration chain — the shared E7 celebration grammar layered on a fresh
 // milestone "yes" (once per milestone id, ≤1/session), plus the threshold-
@@ -12,14 +12,13 @@ import {
   markCelebrated,
 } from "../ui/CelebrationMoment";
 import PrideMomentCard from "../overview/PrideMomentCard";
-import { prefersReducedMotion } from "../../lib/devscore";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { cardCls, ProgressBar, RadialProgress, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
-import { bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt } from "../../lib/milestoneData";
+import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt } from "../../lib/milestoneData";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
@@ -36,14 +35,9 @@ import framework from "../../framework.json";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 
 function celebrate() {
-  // Reduced motion: a particle burst is pure motion — skip it entirely.
-  if (prefersReducedMotion()) return;
-  confetti({
-    particleCount: 90,
-    spread: 70,
-    origin: { y: 0.6 },
-    colors: ["#34b277", "#5fce97", "#d9763f", "#3f8cc9"],
-  });
+  // ONE capped, brand-coloured, reduced-motion-safe burst — the Law 7 caps
+  // (≤12 particles / ≤800 ms) and the reduced-motion gate live in lib/celebrate.
+  fireCelebration({ kind: "milestone" });
 }
 
 export default function MilestonesTab() {
@@ -51,8 +45,6 @@ export default function MilestonesTab() {
     milestones,
     setMilestoneObservation,
     addCustomMilestone,
-    checkedMilestones,
-    totalMilestones,
     handleGenerateMilestoneScaffold,
     isAnalyzingMilestones,
     milestoneAnalysisOfGaps,
@@ -117,6 +109,18 @@ export default function MilestonesTab() {
   const corrected = correctedAge(chronoMonths, gestationalWeeks);
   const comparisonMonths = comparisonAgeMonths(chronoMonths, gestationalWeeks);
   const currentBand = bandForAgeMonths(comparisonMonths);
+  // GP-09: the ONE band after the current one stays open ("coming up"); bands
+  // beyond it collapse behind "Show later milestones".
+  const nextBandMonths = (() => {
+    const idx = MILESTONE_AGE_BANDS.findIndex((b) => b.months === currentBand.months);
+    return MILESTONE_AGE_BANDS[idx + 1]?.months ?? currentBand.months;
+  })();
+  // GP-08: every count on this surface is over the child's AGE WINDOW (current
+  // corrected band + one earlier — the shared lib/milestoneData helper), never
+  // the whole 0–6y catalogue ("0 of 133" / "0/28" on day 0).
+  const windowMilestones = useMemo(() => ageWindowMilestones(milestones, comparisonMonths), [milestones, comparisonMonths]);
+  const windowChecked = windowMilestones.filter((m) => m.checked).length;
+  const windowTotal = windowMilestones.length;
 
   // UND-3 — "Gentle watch points" derives from the canonical useMonitoring
   // watch-area derivation: real domain names + COUNTS only (clinical firewall —
@@ -151,21 +155,28 @@ export default function MilestonesTab() {
     }
     setExplaining((p) => ({ ...p, [item.id]: true }));
     try {
-      const res = await fetch("/api/chat", {
+      // Wave-T (lane A/T): the inline explainer uses the dedicated explain
+      // route — never the chat route, the heaviest in the app — and renders
+      // the STRUCTURED fields (explanation, then one "try today" step under
+      // its own heading). Same body shape as ArborContext.explainViaApi.
+      const res = await fetch("/api/explain", {
         method: "POST",
         headers: await authHeaders(),
         body: JSON.stringify({
+          childProfile,
+          subject: `The developmental milestone "${item.title}"`,
           // UND-8 — months-precise for under-24-month children ("a 9-month-old",
           // never "a 0-year-old"); the B0 chronoMonths spine is the source.
-          message: explainMilestonePrompt(item.title, chronoMonths),
-          childProfile,
-          scholarLens: "Integrated Balanced",
+          details: explainMilestonePrompt(item.title, chronoMonths),
           language: getAiLanguage(),
         }),
       });
       if (!res.ok) throw new Error("fail");
       const data = await res.json();
-      setExplanations((p) => ({ ...p, [item.id]: String(data.text || "") }));
+      const explanation = String(data?.explanation ?? "").trim();
+      const tryToday = String(data?.tryToday ?? "").trim();
+      const markdown = [explanation, tryToday ? `### ${t("explain.tryToday")}\n${tryToday}` : ""].filter(Boolean).join("\n\n");
+      setExplanations((p) => ({ ...p, [item.id]: markdown || "### Unavailable\nCould not load guidance right now." }));
     } catch {
       setExplanations((p) => ({ ...p, [item.id]: "### Unavailable\nCould not load guidance right now." }));
     } finally {
@@ -177,6 +188,8 @@ export default function MilestonesTab() {
   // current band and anything ahead start open. Tracks which collapsed bands the
   // parent has manually expanded.
   const [openEarlierBands, setOpenEarlierBands] = useState<Record<number, boolean>>({});
+  // GP-09: bands beyond current + next start collapsed too ("Show later milestones").
+  const [openLaterBands, setOpenLaterBands] = useState<Record<number, boolean>>({});
 
   const [showAdd, setShowAdd] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -185,13 +198,13 @@ export default function MilestonesTab() {
   const domainStats = useMemo(() => {
     const map: Record<string, { total: number; checked: number }> = {};
     for (const dom of domainOptions) map[dom.id] = { total: 0, checked: 0 };
-    for (const m of milestones) {
+    for (const m of windowMilestones) {
       if (!map[m.domain]) map[m.domain] = { total: 0, checked: 0 };
       map[m.domain].total += 1;
       if (m.checked) map[m.domain].checked += 1;
     }
     return map;
-  }, [milestones, domainOptions]);
+  }, [windowMilestones, domainOptions]);
 
   const submitCustom = (e: React.FormEvent) => {
     e.preventDefault();
@@ -401,25 +414,34 @@ export default function MilestonesTab() {
           const isCurrent = band.months === currentBand.months;
           const isEarlier = band.months !== -1 && band.months < currentBand.months;
           const isAhead = band.months !== -1 && band.months > currentBand.months;
-          const collapsed = isEarlier && !openEarlierBands[band.months];
+          // GP-09: only the ONE next band opens as "coming up"; later bands
+          // collapse behind "Show later milestones" (mirror of ms.showEarlier).
+          const isLater = band.months !== -1 && band.months > nextBandMonths;
+          const isToggleable = isEarlier || isLater;
+          const collapsed = (isEarlier && !openEarlierBands[band.months]) || (isLater && !openLaterBands[band.months]);
+          const toggleBand = () => {
+            if (isEarlier) setOpenEarlierBands((p) => ({ ...p, [band.months]: !p[band.months] }));
+            else if (isLater) setOpenLaterBands((p) => ({ ...p, [band.months]: !p[band.months] }));
+          };
           const checkedInBand = band.items.filter((m) => m.checked).length;
           return (
             <div key={band.months} className="space-y-2">
               <button
                 type="button"
-                onClick={() => { if (isEarlier) setOpenEarlierBands((p) => ({ ...p, [band.months]: !p[band.months] })); }}
+                onClick={toggleBand}
                 aria-expanded={!collapsed}
                 className="w-full flex items-center justify-between gap-2 text-start"
-                style={{ cursor: isEarlier ? "pointer" : "default" }}
+                style={{ cursor: isToggleable ? "pointer" : "default" }}
               >
                 <span className="flex items-center gap-2">
                   <span className="text-[11px] font-extrabold uppercase tracking-wide" style={{ color: isCurrent ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{band.label}</span>
                   {isCurrent && <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.currentBand")}</span>}
-                  {isAhead && <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.aheadBand")}</span>}
+                  {isAhead && !isLater && <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.aheadBand")}</span>}
+                  {isLater && <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("elev.growthTruth.ms.laterBand")}</span>}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{checkedInBand}/{band.items.length}</span>
-                  {isEarlier && (
+                  {isToggleable && (
                     <Icon name="expand_more" size={16} className="transition-transform" style={{ color: "var(--arbor-muted)", transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }} />
                   )}
                 </span>
@@ -434,11 +456,11 @@ export default function MilestonesTab() {
               {collapsed && (
                 <button
                   type="button"
-                  onClick={() => setOpenEarlierBands((p) => ({ ...p, [band.months]: true }))}
-                  className="text-[11px] font-bold"
+                  onClick={toggleBand}
+                  className="text-[11px] font-bold min-h-[44px]"
                   style={{ color: "var(--arbor-green-ink)" }}
                 >
-                  {t("ms.showEarlier")}
+                  {isLater ? t("elev.growthTruth.ms.showLater") : t("ms.showEarlier")}
                 </button>
               )}
             </div>
@@ -503,15 +525,17 @@ export default function MilestonesTab() {
                   noticed milestones (never a %/score/verdict); the ring fill is only the
                   checked/total count-proportion, and it is not labelled as competence. */}
               <div className="mt-4 flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <RadialProgress value={checkedMilestones} total={totalMilestones} tone="mint" size={92} thickness={10}>
+                <RadialProgress value={windowChecked} total={windowTotal} tone="mint" size={92} thickness={10}>
                   <span className="text-center leading-none">
-                    <span className="block text-[26px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{checkedMilestones}</span>
-                    <span className="block text-[11px] font-bold mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")} {totalMilestones}</span>
+                    <span className="block text-[26px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-green-ink)" }}>{windowChecked}</span>
+                    <span className="block text-[11px] font-bold mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("ms.of")} {windowTotal}</span>
                   </span>
                 </RadialProgress>
                 <div className="min-w-0">
                   <div className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</div>
                   <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.snapshotNotScore")}</p>
+                  {/* GP-08: the denominator is the age window, and the parent is told so. */}
+                  <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.window.hint")}</p>
                 </div>
               </div>
 

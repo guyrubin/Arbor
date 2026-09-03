@@ -17,7 +17,8 @@ import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCap
 import { speechSupported, startDictation } from "../../lib/speech";
 import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
-import { BEHAVIOR_TYPES, behaviorTypeLabel, normalizeExtractedLog } from "../../content/behaviorTaxonomy";
+import { BEHAVIOR_TYPES, behaviorTypeLabel, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
+import { ContentActionBar } from "../ui/ContentActionBar";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import { useAuth } from "../../context/AuthContext";
@@ -33,6 +34,8 @@ const DAY = 86_400_000;
  *  only (mint|coral|lav|yellow|pink|sky); unknown types fall back to coral so a
  *  row never renders blank. */
 const TYPE_VISUAL: Record<string, { icon: string; tone: PastelKey }> = {
+  // TJB-01: the neutral moment — no incident glyph, no coral.
+  "Moment": { icon: "favorite", tone: "mint" },
   "Transition Refusal": { icon: "bolt", tone: "coral" },
   "Sensory Overload": { icon: "volume_up", tone: "pink" },
   "Screentime Dispute": { icon: "devices", tone: "sky" },
@@ -109,6 +112,8 @@ export default function BehaviorsTab() {
     isAnalyzingBehavior,
     behaviorLogs,
     behaviorAnalysis,
+    behaviorAnalysisRecord,
+    keepBehaviorInsight,
     inlineCoRegulationScripts,
     isGeneratingInlineScript,
     handleGetInlineCoRegulationScript,
@@ -128,6 +133,12 @@ export default function BehaviorsTab() {
   const { user } = useAuth();
   const { t, uiLang } = useLanguage();
   const behFirst = (childProfile.name || "").split(" ")[0];
+  // TJB-04 why-line: counts-only provenance of the analysis — how many logged
+  // moments it read and the day it was generated. Never a score.
+  const analysisWhy = t("beh.analysis.why", {
+    n: behaviorAnalysisRecord?.inputs?.logCount ?? behaviorLogs.length,
+    date: new Date(behaviorAnalysisRecord?.createdAt ?? Date.now()).toLocaleDateString(uiLang === "he" ? "he-IL" : undefined, { month: "short", day: "numeric" }),
+  });
   // COACH-5: quick-capture copy lives in i18n.ts (beh.capture.*), never an
   // inline per-language ternary table — keys stay visible to i18n tooling.
   const captureCopy = {
@@ -428,7 +439,7 @@ export default function BehaviorsTab() {
     const rows = filtered
       .map(
         (l) =>
-          `<tr><td>${new Date(l.timestamp).toLocaleString()}</td><td>${escapeHtml(l.behaviorType)}</td><td>${l.context || ""}</td><td>${l.intensity}/5</td><td>${l.durationMinutes}m</td><td>${l.resolved ? t("beh.resolved") : t("beh.open")}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response)}</td></tr>`
+          `<tr><td>${new Date(l.timestamp).toLocaleString()}</td><td>${escapeHtml(l.behaviorType)}</td><td>${l.context || ""}</td><td>${l.intensity}/5</td><td>${l.durationMinutes}m</td><td>${l.resolved ? t("beh.resolved") : t("beh.open")}</td><td>${escapeHtml(l.trigger)}</td><td>${escapeHtml(l.response ?? "")}</td></tr>`
       )
       .join("");
     // print stylesheet — intentional literals (printed report has its own static
@@ -459,8 +470,11 @@ export default function BehaviorsTab() {
   // alert, which read as "it didn't save even though I typed something").
   const submitLog = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
-      toast(t("beh.toast.fillBoth"), "error");
+    // TJB-01: ONE validation rule (validateLogDraft) — response required for
+    // incident types only; a plain Moment saves on "what happened" alone.
+    const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
+    if (invalid) {
+      toast(t(invalid), "error");
       return;
     }
     // TODAY-3: while the gate is armed (voice-originated or a Today/Journal
@@ -481,9 +495,10 @@ export default function BehaviorsTab() {
   const confirmReview = (e: React.FormEvent) => {
     // AI-CAP-5: inline review editing can now empty a required field — let the
     // shared validation speak and keep the review open instead of fake-toasting.
-    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
+    const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
+    if (invalid) {
       e.preventDefault();
-      toast(t("beh.toast.fillBoth"), "error");
+      toast(t(invalid), "error");
       return;
     }
     const wasEditing = !!editingLogId;
@@ -555,6 +570,7 @@ export default function BehaviorsTab() {
           coral hero; same job, one kit). Warm tone; stat trio = this-week flat
           counts only — no averages, no trends (clinical firewall). */}
       <HubHero
+        zeroLine={t("elev.growthTruth.hero.empty")}
         tone="coral"
         icon={HeartHandshake}
         eyebrow={t("beh.hero.tag")}
@@ -717,21 +733,33 @@ export default function BehaviorsTab() {
                     ))}
                   </div>
                 </div>
-                {/* Capability-depth: the analysis is no longer a dead-end report.
-                    One tap carries the detected pattern + the suggested plan into
-                    Ask Arbor (the same setChatInput -> coach route the inline-script
-                    "Discuss in Coach" button uses). Surfaces existing AI content;
-                    adds no new claim. */}
-                <div className="flex flex-wrap gap-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                  <button
-                    onClick={() => {
-                      seedCoach({ prompt: `${t("beh.analyzeCoachPrompt", { name: behFirst })}\n\n${behaviorAnalysis.actionPlanSuggestion}`, source: "behavior-analysis" });
-                    }}
-                    className="inline-flex items-center gap-2 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition active:scale-[0.98]"
-                    style={{ background: T.gradientCta }}
-                  >
-                    <Icon name="auto_awesome" size={15} fill={1} /> {t("beh.analyzeCoachCta")}
-                  </button>
+                {/* TJB-04 (law #4): every model output carries a visible why /
+                    provenance line chained to the Trust Center, and ONE tap keeps
+                    the suggestion into the child's record (insights subcollection).
+                    The shared ContentActionBar owns the slot: why-line + TrustLink
+                    surface "behavior-analysis", "Keep this" as the canonical save
+                    verb, and the existing Ask-Arbor hand-off as an extra. */}
+                <div className="pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                  <ContentActionBar
+                    surface="behavior-analysis"
+                    why={analysisWhy}
+                    trustLink
+                    variant="bar"
+                    actions={[
+                      { verb: "save", label: t("beh.analysis.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(behaviorAnalysis.actionPlanSuggestion) },
+                    ]}
+                    extras={[
+                      {
+                        id: "coach",
+                        label: t("beh.analyzeCoachCta"),
+                        icon: "auto_awesome",
+                        fill: 1,
+                        onClick: () => {
+                          seedCoach({ prompt: `${t("beh.analyzeCoachPrompt", { name: behFirst })}\n\n${behaviorAnalysis.actionPlanSuggestion}`, source: "behavior-analysis" });
+                        },
+                      },
+                    ]}
+                  />
                 </div>
               </motion.div>
             )}
@@ -1027,7 +1055,7 @@ export default function BehaviorsTab() {
             </div>
 
             <div className="mt-4 space-y-1.5">
-              <label className="text-xs font-bold block" style={{ color: "var(--arbor-ink)" }}>{captureCopy.tried} <span style={{ color: "var(--arbor-peach-ink)" }}>*</span></label>
+              <label className="text-xs font-bold block" style={{ color: "var(--arbor-ink)" }}>{captureCopy.tried} {isIncidentType(newLogType) && <span style={{ color: "var(--arbor-peach-ink)" }}>*</span>}</label>
               <input type="text" value={newLogResponse} onChange={(e) => setNewLogResponse(e.target.value)} placeholder={t("beh.responsePlaceholder")} className="min-h-11 w-full rounded-xl p-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
             </div>
 

@@ -10,8 +10,11 @@ import { fmtDay } from "../../lib/formatDate";
 import {
   FIND_A_HELPLINE_URL,
   HELPLINE_DIRECTORY,
+  HELPLINE_EXPANDED_GROUPS,
+  helplineOrderFor,
   type HelplineRegion,
 } from "../../safety/escalation";
+import { loadAttribution } from "../../lib/attribution";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 
 type Contact = { id: string; name: string; role: string; phone: string; notes: string };
@@ -34,6 +37,21 @@ export default function SafetyTab() {
   const { childProfile, approvedMemoryItems, handleMemoryDecision, isMemoryUpdating } = useArbor();
   const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
+
+  // LC-14: the family's market decides which helplines come first. The
+  // attribution market (il / nl / be) is the strongest signal; otherwise the
+  // UI language ("he" → il, else EU-first). Groups outside the rendered set
+  // are dropped defensively; the first group's primary number becomes the
+  // full-width call button above the crisis card.
+  const helplineOrder = useMemo(() => {
+    let market: string | null = null;
+    try { market = loadAttribution()?.market ?? null; } catch { market = null; }
+    const hint = market && ["il", "nl", "be"].includes(market) ? market : uiLang;
+    return helplineOrderFor(hint).filter((r) => HELPLINE_GROUPS.includes(r));
+  }, [uiLang]);
+  const primaryHelpline = HELPLINE_DIRECTORY.find((h) => h.region === helplineOrder[0]) ?? HELPLINE_DIRECTORY[0];
+  const expandedGroups = helplineOrder.slice(0, HELPLINE_EXPANDED_GROUPS);
+  const foldedGroups = helplineOrder.slice(HELPLINE_EXPANDED_GROUPS);
 
   const reviewedKey = useMemo(() => `arbor.safetyReviewed.${childProfile.id}`, [childProfile.id]);
   const checklistKey = useMemo(() => `arbor.safetyChecklist.${childProfile.id}`, [childProfile.id]);
@@ -76,12 +94,49 @@ export default function SafetyTab() {
 
   const reviewStale = !lastReviewed || Date.now() - new Date(lastReviewed).getTime() > 30 * 86_400_000;
 
+  /** One helpline group: heading + every directory entry as a tel: link. */
+  const renderHelplineGroup = (region: HelplineRegion) => (
+    <div key={region}>
+      <h3 className="text-[11px] font-extrabold uppercase tracking-wider mb-2" style={{ color: "var(--arbor-muted)" }}>
+        {t(`elev.safety.helplines.group.${region}`)}
+      </h3>
+      <div className="space-y-2">
+        {HELPLINE_DIRECTORY.filter((h) => h.region === region).map((h) => (
+          <a
+            key={h.id}
+            href={`tel:${h.tel}`}
+            onClick={() => track("safety_helpline_tel_tap", { code: h.tel })}
+            className={`${cardCls} flex items-center gap-3 px-3.5 py-2 min-h-[44px] text-xs font-bold transition hover:shadow-[var(--shadow-xs)]`}
+            style={{ color: "var(--arbor-ink)" }}
+          >
+            <span className="flex-1 min-w-0">{t(`elev.safety.helpline.${h.id}`)}</span>
+            <span dir="ltr" className="text-sm font-extrabold whitespace-nowrap" style={{ color: "var(--arbor-pink-ink)" }}>{h.number}</span>
+            <Icon name="call" size={16} style={{ color: "var(--arbor-pink-ink)" }} />
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader
         title={t("elev.safety.header.title")}
         subtitle={t("elev.safety.header.sub")}
       />
+
+      {/* LC-14: ONE tap reaches a human — the family-market primary number as a
+          full-width call button, above everything else on the screen. */}
+      <a
+        href={`tel:${primaryHelpline.tel}`}
+        onClick={() => track("safety_helpline_tel_tap", { code: primaryHelpline.tel, primary: true })}
+        className="w-full flex items-center justify-center gap-3 rounded-2xl min-h-[56px] px-5 py-3 text-base font-extrabold transition hover:brightness-95"
+        style={{ background: "var(--arbor-pink-ink)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-md)" }}
+      >
+        <Icon name="call" size={22} fill={1} />
+        <span>{t("elev.carehonesty.safety.callPrimary", { number: primaryHelpline.number })}</span>
+        <span className="text-[12px] font-bold opacity-90 truncate">{t(`elev.safety.helpline.${primaryHelpline.id}`)}</span>
+      </a>
 
       {/* Pinned crisis-language card */}
       <div className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-soft)" }}>
@@ -94,33 +149,23 @@ export default function SafetyTab() {
         <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.crisis.danger")}</p>
       </div>
 
-      {/* Crisis helplines — real numbers, one tap to call */}
+      {/* Crisis helplines — real numbers, one tap to call. LC-14: market group
+          first, EU second; the remaining regions fold under "Other countries". */}
       <SectionCard title={t("elev.safety.helplines.title")} icon={<Icon name="call" size={20} />} tone="pink">
         <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.helplines.sub")}</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-5">
-          {HELPLINE_GROUPS.map((region) => (
-            <div key={region}>
-              <h3 className="text-[11px] font-extrabold uppercase tracking-wider mb-2" style={{ color: "var(--arbor-muted)" }}>
-                {t(`elev.safety.helplines.group.${region}`)}
-              </h3>
-              <div className="space-y-2">
-                {HELPLINE_DIRECTORY.filter((h) => h.region === region).map((h) => (
-                  <a
-                    key={h.id}
-                    href={`tel:${h.tel}`}
-                    onClick={() => track("safety_helpline_tel_tap", { code: h.tel })}
-                    className={`${cardCls} flex items-center gap-3 px-3.5 py-2 min-h-[44px] text-xs font-bold transition hover:shadow-[var(--shadow-xs)]`}
-                    style={{ color: "var(--arbor-ink)" }}
-                  >
-                    <span className="flex-1 min-w-0">{t(`elev.safety.helpline.${h.id}`)}</span>
-                    <span dir="ltr" className="text-sm font-extrabold whitespace-nowrap" style={{ color: "var(--arbor-pink-ink)" }}>{h.number}</span>
-                    <Icon name="call" size={16} style={{ color: "var(--arbor-pink-ink)" }} />
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
+          {expandedGroups.map((region) => renderHelplineGroup(region))}
         </div>
+        {foldedGroups.length > 0 && (
+          <details className="mt-4">
+            <summary className="cursor-pointer list-none inline-flex items-center gap-1.5 min-h-[44px] text-xs font-extrabold" style={{ color: "var(--arbor-muted)" }}>
+              <Icon name="expand_more" size={16} /> {t("elev.carehonesty.safety.otherCountries")}
+            </summary>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-5 mt-3">
+              {foldedGroups.map((region) => renderHelplineGroup(region))}
+            </div>
+          </details>
+        )}
         <a
           href={FIND_A_HELPLINE_URL}
           target="_blank"

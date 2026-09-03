@@ -15,7 +15,10 @@ import {
   ActionLoopEntry,
   ActionCapacity,
   ActionOutcome,
+  InsightRecord,
 } from "../types";
+import { useToastOptional } from "./ToastContext";
+import { validateLogDraft, momentLogFields, isIncidentType } from "../content/behaviorTaxonomy";
 import type { ScoredActivity } from "../playbank/select";
 import { ROUTE_IDS, resolveRouteId, type ActiveTab } from "../lib/routes";
 import {
@@ -37,7 +40,8 @@ import { takeCoachSeed } from "../lib/onboardingJourney";
 import { matchLearnCards, type SavedLearnItem } from "../learn/learnLibrary";
 import { LEARN_CARDS } from "../learn/learnCards";
 import { concernsForBehaviors } from "../content/selectCards";
-import { ageYearsFromProfile } from "../lib/childAge";
+import { ageYearsFromProfile, ageMonthsFromProfile } from "../lib/childAge";
+import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 import { sortActionLoop, todayActionId } from "../actionLoop/model";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
@@ -142,6 +146,11 @@ function useArborState() {
   // through the SAME i18n dictionaries as the rest of the UI — a Hebrew
   // session must never see an English status string.
   const { t } = useLanguage();
+  // TJB-01: every blocking alert() in this provider is gone — feedback goes
+  // through the app toast (ToastProvider wraps ArborProvider in App.tsx; the
+  // optional accessor keeps unit renders without a provider from throwing).
+  const toastCtx = useToastOptional();
+  const toast = (message: string, type?: "success" | "error" | "info") => toastCtx?.toast(message, type);
 
   // Active child comes from ProfileContext so every AI call, log, and plan is
   // scoped to the selected child rather than a hardcoded profile.
@@ -293,6 +302,17 @@ function useArborState() {
     max: 200,
   });
 
+  // TJB-04: the Behaviors "Analyze" synthesis + the parent's kept lines live in
+  // the per-child `insights` subcollection (registered in CHILD_SUBCOLLECTIONS,
+  // so GDPR export/erasure already cover it). Ordered by createdAt, which the
+  // useTodaysFocus `todaysFocus` doc in the same collection does not carry —
+  // that doc therefore never enters this list.
+  const insightsCol = useChildCollection<InsightRecord>(childProfile.id, "insights", {
+    orderByField: "createdAt",
+    orderDir: "desc",
+    max: 60,
+  });
+
   const savedLearnIds = useMemo(() => savedLearnCol.items.map((s) => s.id), [savedLearnCol.items]);
   const toggleSavedLearn = (cardId: string) => {
     if (savedLearnCol.items.some((s) => s.id === cardId)) {
@@ -437,37 +457,48 @@ function useArborState() {
   const [inlineCoRegulationScripts, setInlineCoRegulationScripts] = useState<{ [logId: string]: string }>({});
   const [isGeneratingInlineScript, setIsGeneratingInlineScript] = useState<{ [logId: string]: boolean }>({});
 
+  /**
+   * Wave-T (lane A): the two inline explainers — the per-log co-regulation
+   * script and the milestone scaffold — used to POST hand-written prompts to
+   * /api/chat, the heaviest route in the app, burning the coach meter on
+   * ambient cards. They now call the dedicated explain route:
+   *   body    { childProfile, subject, details?, language }
+   *   returns { explanation, tryToday, text }
+   * The STRUCTURED fields are rendered (explanation, then one "try today"
+   * step under its own heading); the joined `text` is never used. This
+   * adapter is the ONLY client seam for the route.
+   */
+  const explainViaApi = async (payload: { subject: string; details?: string }): Promise<{ explanation: string; tryToday: string }> => {
+    const res = await fetch("/api/explain", {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        childProfile,
+        subject: payload.subject,
+        details: payload.details,
+        language: getAiLanguage(),
+      }),
+    });
+    if (!res.ok) throw new Error((await res.text().catch(() => "")) || `Request failed (${res.status})`);
+    const data = await res.json();
+    return {
+      explanation: String(data?.explanation ?? "").trim(),
+      tryToday: String(data?.tryToday ?? "").trim(),
+    };
+  };
+  /** Structured markdown for the two explainers' existing string consumers:
+   *  the explanation, then the step under its own localized heading. */
+  const explainMarkdown = (r: { explanation: string; tryToday: string }): string =>
+    [r.explanation, r.tryToday ? `### ${t("explain.tryToday")}\n${r.tryToday}` : ""].filter(Boolean).join("\n\n");
+
   const handleGetInlineCoRegulationScript = async (log: BehaviorLog) => {
     setIsGeneratingInlineScript((prev) => ({ ...prev, [log.id]: true }));
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          message: `Create a brief, highly actionable parental co-regulation script for a ${childProfile.age}-year-old child experiencing the following event:
-Type of challenge: ${log.behaviorType}
-Duration: ${log.durationMinutes} mins
-Intensity: ${log.intensity}/5
-Trigger: ${log.trigger}
-Current Parent response: ${log.response}
-
-Respond with EXACTLY three short markdown items:
-### 1. Developmental Co-regulation Read
-(Name why this happens from an attachment perspective in 1 brief sentence)
-
-### 2. Exact Reassuring Script
-(Provide real direct verbal scripts parent can say immediately to support)
-
-### 3. Key Trap to Avoid
-(State what the parent should avoid doing/saying)`,
-          childProfile: childProfile,
-          scholarLens: "Bowlby's Attachment Model",
-          language: getAiLanguage(),
-        }),
+      const result = await explainViaApi({
+        subject: `A co-regulation script for this logged moment (${log.behaviorType})`,
+        details: `Duration: ${log.durationMinutes} mins. Intensity: ${log.intensity}/5. Trigger: ${log.trigger}. What the parent tried: ${log.response || "not recorded"}.`,
       });
-      if (!res.ok) throw new Error((await res.text().catch(() => "")) || `Request failed (${res.status})`);
-      const data = await res.json();
-      setInlineCoRegulationScripts((prev) => ({ ...prev, [log.id]: data.text }));
+      setInlineCoRegulationScripts((prev) => ({ ...prev, [log.id]: explainMarkdown(result) }));
     } catch (err: any) {
       setInlineCoRegulationScripts((prev) => ({
         ...prev,
@@ -489,26 +520,11 @@ Respond with EXACTLY three short markdown items:
         .filter((m) => !m.checked)
         .map((m) => `- ${m.title} (${m.domain}): ${m.description}`)
         .join("\n");
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          message: `Analyze checked vs unchecked milestones for a ${childProfile.age}-year-old child named ${childProfile.name} in transition:
-Checked:
-${checkedList || "None"}
-
-Unchecked:
-${uncheckedList || "None"}
-
-Give a Vygotskian scaffolding learning assessment, outlining a real plan of how to master these goals. Highlight the path to bilingual confidence (Hebrew-English) and sensory self-regulation. Give 2 custom interactive exercises the parent can embed in daily play. Format with exact clean display headings.`,
-          childProfile: childProfile,
-          scholarLens: "Vygotskian Scaffolding",
-          language: getAiLanguage(),
-        }),
+      const result = await explainViaApi({
+        subject: "How to scaffold the next milestones through daily play (Vygotskian scaffolding)",
+        details: `Milestones already noticed:\n${checkedList || "None"}\n\nNot yet noticed:\n${uncheckedList || "None"}`,
       });
-      if (!res.ok) throw new Error((await res.text().catch(() => "")) || `Request failed (${res.status})`);
-      const data = await res.json();
-      setMilestoneAnalysisOfGaps(data.text);
+      setMilestoneAnalysisOfGaps(explainMarkdown(result));
     } catch (err: any) {
       setMilestoneAnalysisOfGaps(renderApiConnectionError(err?.message));
     } finally {
@@ -639,9 +655,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     }
   }, [activeStoryPage, currentStory]);
 
-  // Calculation of developmental scores
-  const checkedMilestones = milestones.filter((m) => m.checked).length;
-  const totalMilestones = milestones.length;
+  // Developmental COUNTS (never a score): windowed to the child's current CDC
+  // band + one earlier (Wave T, GP-08) — the same window Growth, Milestones
+  // and the Full Picture use, so Today never prints an all-ages denominator.
+  const windowedMilestones = useMemo(() => {
+    const chronoMonths = ageMonthsFromProfile(childProfile) ?? Math.round((childProfile.age || 0) * 12);
+    return ageWindowMilestones(milestones, comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks));
+  }, [milestones, childProfile]);
+  const checkedMilestones = windowedMilestones.filter((m) => m.checked).length;
+  const totalMilestones = windowedMilestones.length;
   const milestonesPercent = totalMilestones > 0 ? Math.round((checkedMilestones / totalMilestones) * 100) : 0;
   const pendingMemoryItems = memoryReviewItems.filter((item) => item.status === "pending");
   const approvedMemoryItems = memoryReviewItems.filter((item) => item.status === "approved");
@@ -688,7 +710,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       const data = await res.json();
       setMemoryReviewItems(data.items || []);
     } catch (err: any) {
-      alert(err.message || "Could not update memory review item.");
+      toast(t("ctx.toast.memoryReviewFailed"), "error");
     } finally {
       setIsMemoryUpdating(null);
     }
@@ -968,10 +990,14 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setEditingLogId(null);
   };
 
+  // TJB-01: the ONE validation rule lives in content/behaviorTaxonomy
+  // (validateLogDraft) — trigger always, response only for incident types —
+  // and the failure is a calm toast, never a blocking alert().
   const handleAddLog = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLogTrigger.trim() || !newLogResponse.trim()) {
-      alert("Please provide trigger details and active response summary.");
+    const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
+    if (invalid) {
+      toast(t(invalid), "error");
       return;
     }
     const existing = editingLogId ? behaviorLogs.find((l) => l.id === editingLogId) : null;
@@ -982,7 +1008,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       intensity: newLogIntensity,
       durationMinutes: newLogDuration,
       trigger: newLogTrigger,
-      response: newLogResponse,
+      // A moment carries a response only if the parent actually wrote one.
+      response: isIncidentType(newLogType) ? newLogResponse : newLogResponse.trim() || undefined,
       notes: newLogNotes || undefined,
       context: newLogContext,
       resolved: existing ? existing.resolved : false,
@@ -995,6 +1022,30 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     resetLogForm();
   };
 
+  /**
+   * TJB-01: a plain moment from ONE text field — no type, no intensity, no
+   * "what you tried". Writes directly (independent of the incident draft
+   * state, so a half-filled form elsewhere never leaks into it). Returns the
+   * written row, or null when the text is empty.
+   */
+  const addMoment = (text: string): BehaviorLog | null => {
+    const fields = momentLogFields(text, newLogContext);
+    if (validateLogDraft(fields)) return null;
+    const logItem: BehaviorLog = {
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      behaviorType: fields.behaviorType,
+      intensity: fields.intensity,
+      durationMinutes: fields.durationMinutes,
+      trigger: fields.trigger,
+      context: fields.context as BehaviorContext,
+      resolved: true,
+    };
+    void logsCol.upsert(logItem);
+    track("log_created", { type: logItem.behaviorType, intensity: logItem.intensity, context: logItem.context });
+    return logItem;
+  };
+
   // Load a log into the form for editing.
   const startEditLog = (id: string) => {
     const log = behaviorLogs.find((l) => l.id === id);
@@ -1003,7 +1054,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     setNewLogIntensity(log.intensity);
     setNewLogDuration(log.durationMinutes);
     setNewLogTrigger(log.trigger);
-    setNewLogResponse(log.response);
+    setNewLogResponse(log.response ?? "");
     setNewLogNotes(log.notes || "");
     setNewLogContext(log.context || "Home");
     setNewLogPhoto(log.photoAttachment || "");
@@ -1036,6 +1087,20 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     try {
       const data = await api.analyzeBehavior({ logs: behaviorLogs, childProfile });
       setBehaviorAnalysis(data);
+      // TJB-04: persist keyed by day so the synthesis survives a reload (one
+      // row per child per day; a re-run the same day replaces it). Counts-only
+      // provenance rides along for the why-line.
+      const dateKey = new Date().toISOString().slice(0, 10);
+      const record: InsightRecord = {
+        id: `behavior-analysis-${dateKey}`,
+        kind: "behavior-analysis",
+        dateKey,
+        createdAt: new Date().toISOString(),
+        lang: getAiLanguage(),
+        analysis: data,
+        inputs: { logCount: behaviorLogs.length },
+      };
+      void insightsCol.upsert(record);
     } catch (err: any) {
       console.error(err);
       setApiError(err.message || "Failed to generate AI behavior evaluation.");
@@ -1059,7 +1124,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       track("plan_generated", { title: planData.title });
       trackFirstPlan({ title: planData.title }); // activation: only the family's first plan
       void maybeActivateReferral(); // mk-p0-2: a referred parent's activation closes the loop
-      alert(`Action Plan successfully woven: "${planData.title}"`);
+      toast(t("ctx.toast.planWoven", { title: planData.title }), "success");
     } catch (err: any) {
       console.error(err);
       if (err instanceof PaywallError) openPaywall(err.feature || "advancedPlans", err.plan);
@@ -1082,7 +1147,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       });
       setCurrentStory(newStory);
       setActiveStoryPage(0);
-      alert(`Co-regulated Bedtime Story completed: "${newStory.title}"`);
+      toast(t("ctx.toast.storyDone", { title: newStory.title }), "success");
     } catch (err: any) {
       console.error(err);
       setApiError(err.message || "Failed to write story.");
@@ -1090,6 +1155,35 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       setIsStoryGenerating(false);
     }
   };
+
+  // TJB-04: the latest persisted analysis for this child — what the Behaviors
+  // card renders after a reload (session state wins while it exists).
+  const behaviorAnalysisRecord = useMemo<InsightRecord | null>(
+    () => insightsCol.items.find((r) => r.kind === "behavior-analysis" && !!r.analysis) ?? null,
+    [insightsCol.items],
+  );
+  const behaviorAnalysisView: BehaviorAnalysis | null = behaviorAnalysis ?? behaviorAnalysisRecord?.analysis ?? null;
+
+  /** TJB-04 "Keep this": one tap writes the suggestion line as a kept-insight
+   *  row in the same subcollection (parent-owned record, no new sink). */
+  const keepBehaviorInsight = (text: string) => {
+    const clean = text.trim();
+    if (!clean) return;
+    const now = new Date().toISOString();
+    const row: InsightRecord = {
+      id: `kept-${Date.now()}`,
+      kind: "kept-insight",
+      dateKey: now.slice(0, 10),
+      createdAt: now,
+      lang: getAiLanguage(),
+      text: clean,
+      sourceId: behaviorAnalysisRecord?.id,
+    };
+    void insightsCol.upsert(row);
+    try { track("insight_kept", { source: "behavior-analysis" }); } catch { /* noop */ }
+    toast(t("beh.analysis.kept", { name: (childProfile.name || "").split(" ")[0] }), "success");
+  };
+  const keptInsights = useMemo(() => insightsCol.items.filter((r) => r.kind === "kept-insight"), [insightsCol.items]);
 
   // Mark a behavior log resolved / unresolved
   const toggleLogResolved = (id: string) => {
@@ -1301,7 +1395,10 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     activeStoryPage,
     setActiveStoryPage,
     storyReadingProgress,
-    behaviorAnalysis,
+    behaviorAnalysis: behaviorAnalysisView,
+    behaviorAnalysisRecord,
+    keepBehaviorInsight,
+    keptInsights,
     isAnalyzingBehavior,
     memoryReviewItems,
     isMemoryUpdating,
@@ -1330,6 +1427,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     appendVoiceAiDelta,
     finalizeVoiceAiTurn,
     handleAddLog,
+    addMoment,
     handleAnalyzeBehaviors,
     handleGenerateActionPlan,
     handleGenerateStory,

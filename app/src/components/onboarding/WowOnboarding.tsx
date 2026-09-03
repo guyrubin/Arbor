@@ -43,7 +43,7 @@ import { HERO_STORIES } from "../../lib/heroJourneys";
 import { renderHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
 import { prefersReducedMotion } from "../../lib/devscore";
 import { PASTEL } from "../../lib/tokens";
-import { markWowDone, readJourney } from "../../lib/onboardingJourney";
+import { markWowDone, readJourney, wowEntryStep } from "../../lib/onboardingJourney";
 import AvatarCreator from "../profile/AvatarCreator";
 import { HeroAvatar, useHeroAvatar } from "../ui/HeroAvatar";
 import { ShareButton } from "../ui/ShareButton";
@@ -75,7 +75,11 @@ export function WowOnboarding() {
   // ── Step state — start at the first step the account hasn't done. ─────────
   // OnboardingFlow guarantees a child exists before the wow can trigger; an
   // avatar made there (or earlier) enters straight at the comic.
-  const [step, setStep] = useState<WowStep>(() => (!hero.hasHero ? "avatar" : "comic"));
+  // MOB-09: a parent who declined the avatar in OnboardingFlow step 4 is NOT
+  // asked again — the overlay enters at the comic (lib/onboardingJourney
+  // wowEntryStep, pinned by onboardingJourney.test.ts).
+  const [step, setStep] = useState<WowStep>(() => wowEntryStep(hero.hasHero));
+  const [avatarSkipped] = useState<boolean>(() => readJourney().avatarSkipped === true);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [comic, setComic] = useState<{ url: string | null; fallback: boolean } | null>(null);
   // The avatar created INSIDE this flow, held locally: updateChild's profile
@@ -306,6 +310,13 @@ export function WowOnboarding() {
             <p className="text-[var(--t-sm)] max-w-sm" style={{ color: "var(--arbor-muted)" }}>
               {t("elev.wow.comic.preparingSub")}
             </p>
+            {/* MOB-09: the parent declined the avatar — say who stars, once, and
+                where the hero can be made later (the rail keeps the nudge). */}
+            {avatarSkipped && !heroDataUrl && (
+              <p className="text-[var(--t-xs)] max-w-sm" data-testid="wow-sprout-note" style={{ color: "var(--arbor-muted)" }}>
+                {t("elev.storeshell.wow.sproutStars", { name })}
+              </p>
+            )}
           </div>
         );
       case "closing":
@@ -337,6 +348,13 @@ export function WowOnboarding() {
               sub={t("elev.wow.done.sub", { name })}
               center
             />
+            {/* MOB-09: one line under the comic when Sprout stood in for a
+                declined avatar — the hero can be made anytime from the profile. */}
+            {avatarSkipped && !heroDataUrl && (
+              <p className="text-[var(--t-xs)] max-w-sm" data-testid="wow-sprout-note" style={{ color: "var(--arbor-muted)" }}>
+                {t("elev.storeshell.wow.sproutStars", { name })}
+              </p>
+            )}
             <div className="flex flex-wrap items-center justify-center gap-3">
               {/* Parent-mediated share ONLY — the existing pipeline (branded
                   card + referral code). This is the flow's single share prompt. */}
@@ -360,7 +378,7 @@ export function WowOnboarding() {
         );
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, comic, name, storyTitle, heroDataUrl, t, finish]);
+  }, [step, comic, name, storyTitle, heroDataUrl, avatarSkipped, t, finish]);
 
   if (!visible) return null;
 

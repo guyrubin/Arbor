@@ -380,6 +380,73 @@ export function bandForAgeMonths(ageMonths: number): { months: number; label: st
   return band;
 }
 
+/* ───────────────────────────── Age window (GP-08 / RUN-02 / lane C) ───────────────────────────── */
+
+/** Ascending band thresholds, derived once from the canonical bands. */
+const MILESTONE_BAND_MONTHS: readonly number[] = MILESTONE_AGE_BANDS.map((b) => b.months);
+
+export interface MilestoneAgeWindow {
+  /** The child's current (corrected) band threshold in months. */
+  currentBandMonths: number;
+  /** The one band immediately before it (equals currentBandMonths at the first band). */
+  earlierBandMonths: number;
+  /** Label of the current band (e.g. "9 months", "4 years"). */
+  label: string;
+  /** Whether a milestone anchored at `ageMonths` sits inside the window.
+   *  Unanchored items (legacy/custom, no `ageMonths`) always count. */
+  includes: (milestoneAgeMonths: number | undefined) => boolean;
+}
+
+/**
+ * THE shared age window: the child's current CDC band plus the one before it.
+ * Every parent-facing denominator ("x of y noticed"), every "next" pick and the
+ * consult packet window against this — never the whole 0–6y catalogue, so a
+ * 6-month-old's parent is not shown "0 of 133" and a 5-year-old's parent is not
+ * told to watch for "Smiles at people". `comparisonMonths` is the corrected
+ * (preterm-adjusted) age — see comparisonAgeMonths().
+ */
+export function milestoneAgeWindow(comparisonMonths: number): MilestoneAgeWindow {
+  const current = bandForAgeMonths(Math.max(0, Number.isFinite(comparisonMonths) ? comparisonMonths : 0));
+  const idx = MILESTONE_BAND_MONTHS.indexOf(current.months);
+  const earlierBandMonths = idx > 0 ? MILESTONE_BAND_MONTHS[idx - 1] : current.months;
+  const includes = (milestoneAgeMonths: number | undefined): boolean => {
+    if (typeof milestoneAgeMonths !== "number" || !Number.isFinite(milestoneAgeMonths)) return true;
+    const itemBand = bandForAgeMonths(milestoneAgeMonths).months;
+    return itemBand >= earlierBandMonths && itemBand <= current.months;
+  };
+  return { currentBandMonths: current.months, earlierBandMonths, label: current.label, includes };
+}
+
+/** The milestones inside the child's age window (current band + one earlier). */
+export function ageWindowMilestones<M extends { ageMonths?: number }>(milestones: M[], comparisonMonths: number): M[] {
+  const window = milestoneAgeWindow(comparisonMonths);
+  return milestones.filter((m) => window.includes(m.ageMonths));
+}
+
+/**
+ * The ONE "worth watching next" derivation (RUN-02): open items in the child's
+ * age window, ordered current band first ("not sure" ahead of untouched), then
+ * the earlier band. Never an ahead-of-band item, never an unrelated infant item
+ * for a kindergartener. `selectWeeklyFocus` is this list's head.
+ */
+export function selectNextMilestones(milestones: Milestone[], comparisonMonths: number, limit = 3): Milestone[] {
+  const window = milestoneAgeWindow(comparisonMonths);
+  const bandOf = (m: Milestone): number | null =>
+    typeof m.ageMonths === "number" ? bandForAgeMonths(m.ageMonths).months : null;
+  const open = milestones.filter((m) => !m.checked && window.includes(m.ageMonths) && bandOf(m) !== null);
+  const rank = (m: Milestone): number => {
+    const inCurrent = bandOf(m) === window.currentBandMonths;
+    const notSure = m.observationStatus === "not_sure";
+    // current+not_sure < current < earlier+not_sure < earlier — stable within a tier.
+    return (inCurrent ? 0 : 2) + (notSure ? 0 : 1);
+  };
+  return open
+    .map((m, i) => ({ m, i, r: rank(m) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .slice(0, Math.max(0, limit))
+    .map((x) => x.m);
+}
+
 /* ───────────────────────────── Weekly focus selection (UND-6) ───────────────────────────── */
 
 /** How the weekly focus should be framed: "watch" = the parent marked it
@@ -407,20 +474,19 @@ export interface WeeklyFocusSelection {
  * (preterm-adjusted) age in months — see comparisonAgeMonths().
  */
 export function selectWeeklyFocus(milestones: Milestone[], comparisonMonths: number): WeeklyFocusSelection | null {
+  // Single derivation (RUN-02): the weekly focus is the head of the shared
+  // "next" list — current band first (not-sure ahead), then the earlier band.
+  const [first] = selectNextMilestones(milestones, comparisonMonths, 1);
+  if (first) return { milestone: first, mode: first.observationStatus === "not_sure" ? "watch" : "try" };
+
+  // Beyond the window: the NEAREST earlier band with an open item (a parent who
+  // never marked the 9-month list for a 3-year-old still gets a real focus).
   const currentBandMonths = bandForAgeMonths(comparisonMonths).months;
   const bandOf = (m: Milestone): number | null =>
     typeof m.ageMonths === "number" ? bandForAgeMonths(m.ageMonths).months : null;
-  const open = milestones.filter((m) => !m.checked);
-
-  const inBand = open.filter((m) => bandOf(m) === currentBandMonths);
-  const inBandNotSure = inBand.find((m) => m.observationStatus === "not_sure");
-  if (inBandNotSure) return { milestone: inBandNotSure, mode: "watch" };
-  if (inBand.length > 0) return { milestone: inBand[0], mode: "try" };
-
-  // Nearest earlier band with an open item.
-  const earlier = open.filter((m) => {
+  const earlier = milestones.filter((m) => {
     const b = bandOf(m);
-    return b !== null && b < currentBandMonths;
+    return !m.checked && b !== null && b < currentBandMonths;
   });
   if (earlier.length > 0) {
     const nearestBandMonths = Math.max(...earlier.map((m) => bandOf(m) as number));

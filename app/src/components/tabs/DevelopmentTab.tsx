@@ -8,7 +8,7 @@ import { EvidenceChip } from "../ui/EvidenceChip";
 import { countSince, WEEK_MS } from "../../lib/pulse";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { isRecheckDue, latestRecheckDueAt } from "../../lib/screeningRecheck";
-import { comparisonAgeMonths, selectWeeklyFocus } from "../../lib/milestoneData";
+import { ageWindowMilestones, comparisonAgeMonths, selectWeeklyFocus } from "../../lib/milestoneData";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import DevScoreCard from "../sections/DevScoreCard";
 import PhysicalGrowthCard from "../sections/PhysicalGrowthCard";
@@ -133,14 +133,18 @@ export default function DevelopmentTab() {
   // E2 hero stat trio — CLINICAL FIREWALL: counts and plain activity facts
   // only ("x of y noticed", active-domain count, moments-this-week count).
   // Never percentages, verdicts, or trend deltas on this surface.
+  // GP-08: "x of y" is counted over the child's AGE WINDOW (current corrected
+  // band + one earlier — lib/milestoneData.milestoneAgeWindow), never the
+  // whole 0–6y catalogue ("0 of 133" on day 0).
   const heroStats = useMemo(() => {
-    const noticed = milestones.filter((m) => m.checked).length;
+    const inWindow = ageWindowMilestones(milestones, comparisonMonths);
+    const noticed = inWindow.filter((m) => m.checked).length;
     const domainsActive = new Set(milestones.filter((m) => m.checked).map((m) => m.domain)).size;
     const nowMs = Date.now();
     const weekAgo = nowMs - WEEK_MS;
     const momentsWeek = countSince(behaviorLogs, weekAgo, nowMs) + countSince(playLogs, weekAgo, nowMs);
-    return { noticed, total: milestones.length, domainsActive, momentsWeek };
-  }, [milestones, behaviorLogs, playLogs]);
+    return { noticed, total: inWindow.length, domainsActive, momentsWeek };
+  }, [milestones, comparisonMonths, behaviorLogs, playLogs]);
 
   // C2 — push opt-in state. The toggle is hidden when pushCapable() is false
   // (no VITE_FIREBASE_VAPID_KEY in the build).
@@ -192,6 +196,8 @@ export default function DevelopmentTab() {
             { value: heroStats.domainsActive, label: t("elev.hero.growth.stat.domains") },
             { value: heroStats.momentsWeek, label: t("elev.hero.growth.stat.week") },
           ]}
+          // RUN-08: day-0 teach line instead of "0 · 0 · 0".
+          zeroLine={t("elev.growthTruth.hero.empty")}
           testId="growth-hub-hero"
         />
         {/* Meta row — pulled up under the hero (hero carries its own mb-6). */}

@@ -84,27 +84,34 @@ function useUiLang(explicit?: UiLang): UiLang {
 }
 
 /** Trust & Safety strip — embedded across guidance, reports, sharing, handoffs.
- *  `risk` reflects the model's real computed risk level; when it's elevated and
- *  `onEscalate` is provided, a "Talk to a professional" action is surfaced.
+ *  GP-05 / AI-08 (2026-09-03): CONSTANT posture. The bar used to take the
+ *  model's riskLevel as a `risk` prop and flip its wash mint → yellow → pink —
+ *  a chromatic verdict on the child (Law 2: counts, never verdicts, never
+ *  colour). Now ONE calm register on every surface. The "Talk to a
+ *  professional" action renders whenever the CALLER passes `onEscalate` — the
+ *  caller keys that on its internal signal (contract riskLevel, watch signal),
+ *  never on colour, and no grade ever renders. `risk` survives only as an
+ *  ignored, deprecated `"Low"` literal so the two legacy `risk="Low"` call
+ *  sites keep compiling until they drop it (ratcheted to zero by
+ *  DevelopmentCopilot.firewall.test.ts).
  *  Localized via kit.trust.* keys (COACH-1); `lang` overrides the provider. */
-export function TrustSafetyBar({ risk = "Low", note, onEscalate, lang }: { risk?: "Low" | "Moderate" | "High"; note?: string; onEscalate?: () => void; lang?: UiLang }) {
+export function TrustSafetyBar({ note, onEscalate, lang }: { /** @deprecated ignored — constant posture; drop it. */ risk?: "Low"; note?: string; onEscalate?: () => void; lang?: UiLang }) {
   const uiLang = useUiLang(lang);
   const t = (key: string) => translate(uiLang, key);
-  const tone: PastelKey = risk === "High" ? "pink" : risk === "Moderate" ? "yellow" : "mint";
-  const elevated = risk !== "Low";
+  const posture = PASTEL.mint;
   return (
-    <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[var(--t-sm)]" style={{ background: PASTEL[tone].soft, color: "var(--arbor-ink)" }}>
+    <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[var(--t-sm)]" style={{ background: posture.soft, color: "var(--arbor-ink)" }}>
       {/* Clinical firewall: never a graded child verdict ("Risk: Low") on a
-          parent surface — the tone wash + escalate button carry the attention,
-          the text stays a posture line, not a grade. */}
-      <span className="font-extrabold" style={{ color: PASTEL[tone].ink }}>
-        {elevated ? t("kit.trust.elevated") : t("kit.trust.calm")}
+          parent surface — one posture line, one tone; the escalate button
+          (caller-gated) carries the attention, not a colour. */}
+      <span className="font-extrabold" style={{ color: posture.ink }}>
+        {t("kit.trust.calm")}
       </span>
       <span style={{ color: "var(--arbor-muted)" }}>{t("kit.trust.nonDiagnostic")}</span>
       <span style={{ color: "var(--arbor-muted)" }}>{t("kit.trust.escalation")}</span>
       {note && <span style={{ color: "var(--arbor-muted)" }}>· {note}</span>}
-      {elevated && onEscalate && (
-        <button onClick={onEscalate} className="ms-auto inline-flex items-center gap-1 font-extrabold rounded-full px-3 py-1" style={{ background: PASTEL[tone].ink, color: T.onAccent }}>
+      {onEscalate && (
+        <button onClick={onEscalate} className="ms-auto inline-flex items-center gap-1 font-extrabold rounded-full px-3 py-1" style={{ background: posture.ink, color: T.onAccent, minHeight: 44 }}>
           {t("kit.trust.talkPro")}
         </button>
       )}
@@ -249,24 +256,33 @@ export function InsetRow({
   check,
   trailing,
   excluded = false,
+  multiline = false,
+  testId,
 }: {
   label: React.ReactNode;
   value?: React.ReactNode;
   check?: React.ReactNode;
   trailing?: React.ReactNode;
   excluded?: boolean;
+  /** LC-07: render the full value (wrapped) instead of a single truncated
+   *  line — required wherever the row IS the thing the parent approves
+   *  (consult packet items), so a preview is never cut mid-sentence. */
+  multiline?: boolean;
+  /** Optional `data-testid` for guard tests on the row element. */
+  testId?: string;
 }) {
   return (
     <div
-      className="flex items-center gap-3 rounded-[13px] px-3.5 py-2.5"
+      className={`flex ${multiline ? "items-start" : "items-center"} gap-3 rounded-[13px] px-3.5 py-2.5`}
       style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
+      data-testid={testId}
     >
       {check}
       <div className="min-w-0 flex-1">
         <div className="text-[var(--t-xs)] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{label}</div>
         {value != null && (
           <div
-            className="text-[var(--t-sm)] font-bold truncate"
+            className={`text-[var(--t-sm)] font-bold ${multiline ? "whitespace-pre-wrap break-words leading-relaxed" : "truncate"}`}
             style={{ color: "var(--arbor-ink)", textDecoration: excluded ? "line-through" : undefined, opacity: excluded ? 0.5 : 1 }}
           >
             {value}
