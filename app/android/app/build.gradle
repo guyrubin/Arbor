@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "app.arbor.family"
+    namespace = "com.arborparenting.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.arbor.family"
+        applicationId "com.arborparenting.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // versionCode is overridable from CI (-PversionCode=$GITHUB_RUN_NUMBER) so

@@ -1,4 +1,4 @@
-package app.arbor.family;
+package com.arborparenting.app;
 
 import com.getcapacitor.BridgeActivity;
 

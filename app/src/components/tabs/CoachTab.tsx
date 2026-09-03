@@ -35,6 +35,7 @@ import { startDictation, speechSupported } from "../../lib/speech";
 // tested decision function — while Arbor speaks on the fallback loop a tap
 // INTERRUPTS (voice stays on); a second tap during listening turns voice off.
 import { voiceChipAction } from "../../lib/voiceChipAction";
+import { createVoiceLifetime, type VoiceAttempt } from "../../lib/voiceLifetime";
 // AI-V7: the calm bottom-sheet voice surface (orb + live captions), owned by
 // voicePhase !== "off". The chip below stays the ONLY entry point.
 import VoiceOverlay from "../coach/VoiceOverlay";
@@ -245,7 +246,10 @@ export default function CoachTab() {
   // Realtime voice coach: prefers Gemini Live (true bidirectional audio) when the
   // server reports it's available, and falls back to a hands-free browser loop —
   // listen (STT) → ask → speak (TTS) → listen again.
-  const [voicePhase, setVoicePhase] = useState<"off" | "listening" | "thinking" | "speaking">("off");
+  // S5: "connecting" is a first-class phase — it paints SYNCHRONOUSLY on the
+  // chip tap (before any await), so the token mint / SDK chunk fetch / mic
+  // prompt / socket connect window is never a silent 10s+ hole.
+  const [voicePhase, setVoicePhase] = useState<"off" | "connecting" | "listening" | "thinking" | "speaking">("off");
   const [liveAvail, setLiveAvail] = useState(false);
   // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
   // browser-STT partials / Live input transcription — never model output).
@@ -256,6 +260,7 @@ export default function CoachTab() {
   const [liveSession, setLiveSession] = useState(false);
   const liveCtlRef = useRef<null | { stop: () => void }>(null);
   const voiceOnRef = useRef(false);
+  const voiceLifetimeRef = useRef(createVoiceLifetime());
   const dictationLoopRef = useRef<DictationLoop | null>(null);
   // Streaming-voice TTS queue (speak each sentence as it streams in).
   const ttsQueueRef = useRef<string[]>([]);
@@ -270,19 +275,23 @@ export default function CoachTab() {
   const [conversationProposals, setConversationProposals] = useState<ConversationProposal[]>([]);
   const [proposalBusyId, setProposalBusyId] = useState<string | null>(null);
 
-  const deriveConversationProposals = async (transcript: string) => {
+  const deriveConversationProposals = async (transcript: string, attempt: VoiceAttempt | null = voiceLifetimeRef.current.current) => {
+    if (!attempt?.isCurrent()) return;
+    const sessionId = voiceSessionIdRef.current;
     const turnId = "turn-" + (++voiceTurnRef.current) + "-" + Date.now();
     try {
       const result = await api.extractConversationProposals({
         transcript, childProfile, language: getAiLanguage(),
         milestones: milestones.map(({ id, title, checked, observationStatus }) => ({ id, title, checked, observationStatus })),
       });
+      if (!attempt.isCurrent()) return;
       const normalized = normalizeConversationProposals(result.proposals, {
-        sessionId: voiceSessionIdRef.current, turnId, childId: childProfile.id, language: getAiLanguage(),
+        sessionId, turnId, childId: childProfile.id, language: getAiLanguage(),
       });
       const checked = attachProposalConflicts(normalized, { behaviorLogs, milestones, committedChanges: conversationChanges });
-      if (checked.length) setConversationProposals((current) => [...current, ...checked].slice(-8));
+      if (checked.length) setConversationProposals((current) => attempt.isCurrent() ? [...current, ...checked].slice(-8) : current);
     } catch (error) {
+      if (!attempt.isCurrent()) return;
       // Escalation remains owned by the existing voice safety path. Extraction
       // failure is non-blocking: conversation continues and nothing is saved.
       if (!(error instanceof EscalationRequiredError)) console.warn("Harbor proposal extraction unavailable", error);
@@ -308,7 +317,8 @@ export default function CoachTab() {
 
   // Speak queued sentences one at a time; when drained after a turn, resume listening.
   const pumpTts = () => {
-    if (ttsSpeakingRef.current) return;
+    const attempt = voiceLifetimeRef.current.current;
+    if (!attempt?.isCurrent() || ttsSpeakingRef.current) return;
     const next = ttsQueueRef.current.shift();
     if (!next) {
       if (streamDoneRef.current) {
@@ -324,7 +334,7 @@ export default function CoachTab() {
     setVoicePhase("speaking");
     if (ttsSupported()) {
       prefetchUpNext();
-      speak(next, () => { ttsSpeakingRef.current = false; pumpTts(); });
+      speak(next, () => { if (!attempt.isCurrent()) return; ttsSpeakingRef.current = false; pumpTts(); });
     } else {
       ttsSpeakingRef.current = false;
       pumpTts();
@@ -341,15 +351,19 @@ export default function CoachTab() {
   // A streaming voice turn: stream the answer token-by-token and speak each
   // sentence the moment it completes (real-time, not wait-then-speak).
   const streamVoiceTurn = async (text: string) => {
+    const attempt = voiceLifetimeRef.current.current;
+    if (!attempt?.isCurrent()) return;
     setVoicePhase("thinking");
     voiceBufRef.current = "";
     streamDoneRef.current = false;
     const controller = new AbortController();
     voiceAbortRef.current = controller;
+    const ownsTurn = () => attempt.isCurrent() && !controller.signal.aborted && voiceAbortRef.current === controller;
     try {
       await streamVoice(
         { message: text, childProfile, scholarLens: selectedLens, language: getAiLanguage() },
         (delta) => {
+          if (!ownsTurn()) return;
           // COACH-2: caption + persist the SAME screened text that is spoken —
           // the delta accumulates into a live AI bubble in the thread.
           appendVoiceAiDelta(delta);
@@ -372,6 +386,7 @@ export default function CoachTab() {
           // appended markdown goes through appendVoiceAiDelta directly —
           // persisted + visible but never enqueued for speech.
           onEvent: (event, data) => {
+            if (!ownsTurn()) return;
             if (event === "delta") {
               // AI-V5: deltas carry a short-TTL screened-sentence token —
               // register it so /api/tts can skip the model re-screen for
@@ -390,6 +405,7 @@ export default function CoachTab() {
           },
         },
       );
+      if (!ownsTurn()) return;
       if (voiceBufRef.current.trim()) enqueueSpeak(voiceBufRef.current);
       voiceBufRef.current = "";
       streamDoneRef.current = true;
@@ -400,16 +416,18 @@ export default function CoachTab() {
       // AI-V2(a): an ABORT is always driven by bargeInVoice/stopVoice, which
       // already settled the caption + phase (barge-in is synchronously back
       // in "listening") — only a genuine stream failure recovers here.
-      if (!controller.signal.aborted) {
+      if (ownsTurn()) {
         finalizeVoiceAiTurn();
         if (voiceOnRef.current) startListening(); else setVoicePhase("off");
       }
     } finally {
-      voiceAbortRef.current = null;
+      if (voiceAbortRef.current === controller) voiceAbortRef.current = null;
     }
   };
 
   const startListening = () => {
+    const attempt = voiceLifetimeRef.current.current;
+    if (!attempt?.isCurrent() || !voiceOnRef.current) return;
     if (!speechSupported()) { toast(t("coach.toast.voiceUnsupported"), "info"); voiceOnRef.current = false; setVoicePhase("off"); return; }
     setVoicePhase("listening");
     // AI-V3: the dictation loop owns recognition restarts — recoverable errors
@@ -421,21 +439,23 @@ export default function CoachTab() {
     const loop = createDictationLoop({
       start: startDictation,
       lang: aiLang === "he" ? "he-IL" : "en-US",
-      isActive: () => voiceOnRef.current,
+      isActive: () => attempt.isCurrent() && voiceOnRef.current,
       // AI-V7: surface interim partials as the overlay's live caption of the
       // parent's own words (<500ms after speech starts — straight from the
       // recognizer, no model round-trip).
-      onInterim: (text) => setVoiceInterim(text),
+      onInterim: (text) => { if (attempt.isCurrent()) setVoiceInterim(text); },
       onTranscript: (text) => {
+        if (!attempt.isCurrent()) return;
         setVoiceInterim("");
         if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
         // COACH-2: persist the dictated turn through the existing
         // chat-message write seam before asking.
         appendVoiceUserTurn(text);
-        void deriveConversationProposals(text);
+        void deriveConversationProposals(text, attempt);
         void streamVoiceTurn(text);
       },
       onFatal: (reason) => {
+        if (!attempt.isCurrent()) return;
         stopVoice();
         toast(
           reason === "permission"
@@ -460,6 +480,7 @@ export default function CoachTab() {
   };
 
   const stopVoice = () => {
+    voiceLifetimeRef.current.cancel();
     voiceOnRef.current = false;
     streamDoneRef.current = false;
     ttsQueueRef.current = [];
@@ -468,7 +489,6 @@ export default function CoachTab() {
     dictationLoopRef.current?.stop();
     dictationLoopRef.current = null;
     stopSpeaking();
-    liveCtlRef.current?.stop();
     clearLiveRefs();
     setVoiceInterim("");
     // COACH-2: settle (and keep) any partial caption when the parent stops.
@@ -482,6 +502,7 @@ export default function CoachTab() {
   // already said), and go straight back to listening. Voice STAYS on; a
   // second tap during "listening" stops (voiceChipAction pins the contract).
   const bargeInVoice = () => {
+    voiceLifetimeRef.current.begin();
     ttsQueueRef.current = [];
     ttsSpeakingRef.current = false;
     streamDoneRef.current = false;
@@ -495,76 +516,97 @@ export default function CoachTab() {
     if (voiceOnRef.current) startListening();
   };
 
-  const startBrowserVoice = () => { voiceOnRef.current = true; startListening(); };
+  const startBrowserVoice = () => {
+    voiceLifetimeRef.current.begin();
+    clearLiveRefs();
+    voiceOnRef.current = true;
+    startListening();
+  };
 
   const toggleVoice = async () => {
     const action = voiceChipAction(voicePhase, Boolean(liveCtlRef.current));
     if (action === "interrupt" && voiceOnRef.current) { bargeInVoice(); return; }
     if (action !== "start") { stopVoice(); return; }
-    // F-01: a chip that LOOKS idle must always start (or visibly say why not).
-    // Stale refs — a wedged Live controller or a dangling hands-free flag with
-    // the phase already "off" — are cleared first; the tap then FALLS THROUGH
-    // to a fresh start instead of dead-ending on stopVoice.
     if (voiceOnRef.current || liveCtlRef.current) stopVoice();
+    // Paint before the token/import/mic/socket awaits; X owns cancellation
+    // throughout startup, including before a LiveController exists.
+    setVoicePhase("connecting");
+    const attempt = voiceLifetimeRef.current.begin();
+    let liveClosed = false;
 
-    // Prefer true Gemini Live when the server says it's provisioned.
     if (liveAvail) {
       try {
-        // AI-V9: the session language picks the server-pinned persona + voice;
-        // childId scopes the per-turn screen (requireChildOwnership).
         const fresh = await api.liveToken({ language: getAiLanguage(), childId: childProfile.id });
+        if (!attempt.isCurrent()) return;
         if (fresh.available && fresh.token && fresh.model) {
           const { startGeminiLive } = await import("../../lib/geminiLiveClient");
-          setVoicePhase("thinking");
-          // VC-1/2/3/5: every Live turn routes through the liveTurnGuard —
-          // audio buffers per turn and releases only after the shared lexical
-          // floor AND the server verdict from /api/live/turn both pass. The
-          // guard closes the session BEFORE any crisis/blocked/degrade render.
-          liveCtlRef.current = await startGeminiLive(
+          if (!attempt.isCurrent()) return;
+          const ctl = await startGeminiLive(
             {
+              signal: attempt.signal,
               token: fresh.token,
               model: fresh.model,
-              // FW-NEW-P0: the persona/voice are server-pinned into the token's
-              // liveConnectConstraints at mint time — echoing them back keeps
-              // the client connect config byte-identical to the pin.
               systemInstruction: fresh.systemInstruction || "",
               speechConfig: fresh.speechConfig,
             },
             {
-              // F-01: 'closed' is a Live-terminal phase — clear the refs so
-              // the chip can start again (previously the ONLY terminal path
-              // with no cleanup: a server-side close wedged the chip). Late
-              // 'closed' reports — the controller already cleared, or the
-              // browser fallback loop running (voiceOnRef) — are ignored so
-              // socket teardown can never stomp the fallback's phase.
               onPhase: (p) => {
+                if (!attempt.isCurrent()) return;
                 if (p === "closed") {
-                  if (!liveCtlRef.current || voiceOnRef.current) return;
+                  liveClosed = true;
                   clearLiveRefs();
                   setVoicePhase("off");
+                  // Guard halt precedes its safety notification; do not retire
+                  // that notification's owner here. Catch/terminal handlers
+                  // decide the outcome, and liveClosed forbids late adoption.
                   return;
                 }
-                setVoicePhase(p === "connecting" ? "thinking" : p);
+                if (liveClosed) return;
+                setVoicePhase(p);
               },
-              onError: () => { clearLiveRefs(); toast(t("coach.toast.voiceFallback"), "info"); startBrowserVoice(); },
-              screenTurn: (role, text) =>
-                api.liveTurn({ role, text, language: getAiLanguage(), childId: childProfile.id }),
-              // COACH-2 / VC-3: Live turns persist through the SAME reducers the
-              // browser loop uses (appendVoiceUser / applyVoiceDelta /
-              // settleVoiceTurn → the existing conversationsCol upsert) — no
-              // new capture path, conversations stays in CHILD_SUBCOLLECTIONS.
-              onUserTurn: (text) => { setVoiceInterim(""); appendVoiceUserTurn(text); void deriveConversationProposals(text); },
-              // AI-V7: Live input transcription = the parent's own words —
-              // accumulate into the overlay caption while they speak.
-              onUserInterim: (delta) => setVoiceInterim((prev) => (prev + delta).trimStart()),
-              onModelTurn: (text) => { appendVoiceAiDelta(text); finalizeVoiceAiTurn(); },
-              onCrisis: (v) => {
-                // Session is ALREADY stopped (guard halts before rendering).
+              onRemoteClose: () => {
+                if (!attempt.isCurrent()) return;
+                attempt.end();
                 clearLiveRefs();
                 voiceOnRef.current = false;
-                // VC-8: the guard's client-side lexical crisis stop carries no
-                // server resourcesMarkdown — render the matching escalation
-                // resources locally so crisis help ALWAYS lands on screen.
+                setVoiceInterim("");
+                finalizeVoiceAiTurn();
+                setVoicePhase("off");
+              },
+              onError: () => {
+                if (!attempt.isCurrent()) return;
+                attempt.end();
+                clearLiveRefs();
+                toast(t("coach.toast.voiceFallback"), "info");
+                startBrowserVoice();
+              },
+              screenTurn: async (role, text) => {
+                if (!attempt.isCurrent() || liveClosed) throw new DOMException("Stale voice turn", "AbortError");
+                const verdict = await api.liveTurn({ role, text, language: getAiLanguage(), childId: childProfile.id });
+                if (!attempt.isCurrent() || liveClosed) throw new DOMException("Stale voice verdict", "AbortError");
+                return verdict;
+              },
+              onUserTurn: (text) => {
+                if (!attempt.isCurrent() || liveClosed) return;
+                setVoiceInterim("");
+                appendVoiceUserTurn(text);
+                void deriveConversationProposals(text, attempt);
+              },
+              onUserInterim: (delta) => {
+                if (!attempt.isCurrent() || liveClosed) return;
+                setVoiceInterim((prev) => attempt.isCurrent() && !liveClosed ? (prev + delta).trimStart() : prev);
+              },
+              onModelTurn: (text) => {
+                if (!attempt.isCurrent() || liveClosed) return;
+                appendVoiceAiDelta(text);
+                finalizeVoiceAiTurn();
+              },
+              onCrisis: (v) => {
+                if (!attempt.isCurrent()) return;
+                attempt.end();
+                clearLiveRefs();
+                voiceOnRef.current = false;
+                // Preserve VC-8 resources for client-side lexical crisis hits.
                 appendVoiceAiDelta(
                   v.resourcesMarkdown ?? renderEscalationMarkdown(escalationMatchForCategory(v.category)),
                 );
@@ -573,6 +615,8 @@ export default function CoachTab() {
                 setVoicePhase("off");
               },
               onBlocked: (v) => {
+                if (!attempt.isCurrent()) return;
+                attempt.end();
                 clearLiveRefs();
                 voiceOnRef.current = false;
                 if (v.blockedMarkdown) appendVoiceAiDelta(v.blockedMarkdown);
@@ -580,41 +624,55 @@ export default function CoachTab() {
                 if (v.spokenText) speak(v.spokenText);
                 setVoicePhase("off");
               },
-              // VC-5: screening unavailability degrades VISIBLY to the screened
-              // browser voice loop (/voice screens every turn server-side).
               onFailClosed: () => {
+                if (!attempt.isCurrent()) return;
+                attempt.end();
                 clearLiveRefs();
                 toast(t("coach.toast.voiceStandardMode"), "info");
                 startBrowserVoice();
               },
             },
           );
+          if (liveClosed) { ctl.stop(); attempt.end(); return; }
+          // adopt closes only this returned controller if the attempt lost.
+          if (!attempt.adopt(ctl)) return;
+          liveCtlRef.current = ctl;
           setLiveSession(true);
+          setVoiceInterim("");
+          setVoicePhase("listening");
           return;
         }
       } catch (err) {
-        // F-01: NEVER swallow the Live start failure silently — the tap must
-        // end in voice running or a visible reason why not.
+        if (!attempt.isCurrent()) return;
         clearLiveRefs();
         if (err instanceof PaywallError) {
-          // Twin of the ArborContext PaywallError handlers: a 402 is a
-          // conversion moment, not an error toast.
+          attempt.end();
           setVoicePhase("off");
           openPaywall(err.feature || "coach_unlimited", err.plan);
           return;
         }
         console.warn("Live voice start failed — falling back to browser voice", err);
         toast(t("coach.toast.voiceFallback"), "info");
-        // fall through to the screened browser loop
       }
     }
+    if (!attempt.isCurrent()) return;
     startBrowserVoice();
   };
 
-  // Stop any audio/recognition on unmount.
-  useEffect(() => () => { dictationLoopRef.current?.stop(); stopSpeaking(); voiceAbortRef.current?.abort(); liveCtlRef.current?.stop(); }, []);
+  // Invalidate before any teardown can synchronously report closed/error.
+  // No state writes on unmount; late grants/verdicts cannot adopt or render.
+  useEffect(() => () => {
+    voiceLifetimeRef.current.cancel();
+    voiceOnRef.current = false;
+    dictationLoopRef.current?.stop();
+    dictationLoopRef.current = null;
+    stopSpeaking();
+    voiceAbortRef.current?.abort();
+    voiceAbortRef.current = null;
+    liveCtlRef.current = null;
+  }, []);
 
-  const voiceLabel = voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
+  const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
   // COACH-2: live caption text on the voicePhase chip while the answer streams
   // in / is spoken (the same screened text that fills the thread bubble).
   const liveVoiceText =

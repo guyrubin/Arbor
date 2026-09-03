@@ -89,13 +89,13 @@ describe("VC-1 condition 1 — transcription always on, absence handled by the g
 
 describe("F-01 — connect failure is deterministic (deadline + deferred reject + cleanup)", () => {
   it("the connect races the failedBeforeOpen deferred inside a hard deadline", () => {
-    expect(client).toContain("withConnectDeadline(Promise.race([connecting, failedBeforeOpen]))");
+    expect(client).toContain("withConnectDeadline(Promise.race([connecting, failedBeforeOpen]), opts.signal)");
     expect(client).toMatch(/CONNECT_TIMEOUT_MS = 10_000/);
   });
 
-  it("onerror/onclose BEFORE open reject the start promise instead of dangling", () => {
-    expect(client).toMatch(/onerror:[\s\S]{0,200}if \(!opened\) \{ rejectBeforeOpen\(/);
-    expect(client).toMatch(/onclose:[\s\S]{0,200}if \(!opened\) \{ rejectBeforeOpen\(/);
+  it("onerror/onclose before graph readiness reject startup, including close after onopen", () => {
+    expect(client).toMatch(/onerror:[\s\S]{0,300}if \(!ready\) \{ rejectBeforeOpen\(failure\); stopAll\(\); return;/);
+    expect(client).toMatch(/onclose:[\s\S]{0,200}if \(!ready\) \{\s*rejectBeforeOpen\(/);
   });
 
   it("a rejected connect releases everything via stopAll before rethrowing", () => {
