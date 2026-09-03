@@ -27,15 +27,20 @@ import { translate, type UiLang } from "../../lib/i18n";
  * Tap-orb = barge-in (AI-V2(a), browser fallback loop only), X = end voice.
  */
 
-export type VoiceOverlayPhase = "listening" | "thinking" | "speaking";
+// S5: "connecting" joins the phase set — the sheet opens the instant the
+// parent taps Talk, BEFORE the token mint / mic prompt / socket connect, so
+// the start window is a visible (and cancellable via X) state, never silence.
+export type VoiceOverlayPhase = "connecting" | "listening" | "thinking" | "speaking";
 
 export type OrbMode = "pulse" | "shimmer" | "wave" | "static";
 
-/** Pure phase → orb visual mapping (unit-tested; reduced motion = static). */
+/** Pure phase → orb visual mapping (unit-tested; reduced motion = static).
+ *  connecting shares the shimmer animation with thinking but keeps its own
+ *  icon + label, so the phases stay distinguishable without reading text. */
 export function orbMode(phase: VoiceOverlayPhase, reducedMotion: boolean): OrbMode {
   if (reducedMotion) return "static";
   if (phase === "listening") return "pulse";
-  if (phase === "thinking") return "shimmer";
+  if (phase === "thinking" || phase === "connecting") return "shimmer";
   return "wave";
 }
 
@@ -155,7 +160,7 @@ export default function VoiceOverlay({
           type="button"
           onClick={onClose}
           aria-label={t("coach.voice.end")}
-          className="ms-auto flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          className="touch-target ms-auto flex h-11 w-11 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
           style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
         >
           <Icon name="close" size={18} />
@@ -213,7 +218,7 @@ export default function VoiceOverlay({
                 ))}
               </span>
             ) : (
-              <Icon name={phase === "listening" ? "mic" : "more_horiz"} size={34} fill={1} />
+              <Icon name={phase === "listening" ? "mic" : phase === "connecting" ? "progress_activity" : "more_horiz"} size={34} fill={1} />
             )}
           </button>
         </div>
