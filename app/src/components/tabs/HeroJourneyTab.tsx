@@ -515,15 +515,15 @@ export default function HeroJourneyTab() {
                 >
                   {isAimed(story) ? (
                     <span
-                      className="absolute top-0 left-0 z-[2] text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
-                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}
+                      className="absolute top-0 z-[2] text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
+                      style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "var(--comic-line)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
                     >
                       ★ {he ? "המטרה שלכם" : "Your aim"}
                     </span>
                   ) : story.origin === "original" ? (
                     <span
-                      className="absolute top-0 left-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
-                      style={{ background: "var(--arbor-pink)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}
+                      className="absolute top-0 z-[2] text-[11px] font-black text-white px-2.5 py-1"
+                      style={{ background: "var(--arbor-pink-ink)", border: "var(--comic-line)", insetInlineStart: 0, borderStartStartRadius: "var(--play-radius)", borderEndEndRadius: "12px" }}
                     >
                       {he ? "מקורי" : "ORIGINAL"}
                     </span>

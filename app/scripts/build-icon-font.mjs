@@ -27,7 +27,7 @@
  * -----------------------
  * Icon names reach <Icon name=…> from many places: literals in JSX, `msIcon`
  * fields in nav/data tables, ternaries, Record<> lookup maps. Rather than try
- * to trace all of them, we take every snake_case string literal in src/ and
+ * to trace all of them, we take every snake_case string literal in runtime source under src/ and
  * intersect it with the official Material Symbols vocabulary snapshot
  * (scripts/material-symbols-icon-names.txt). That over-collects a little
  * (generic words such as "error" or "search" that happen to be icon names too)
@@ -61,12 +61,15 @@ export const NAMES_FILE = "material-symbols-rounded-subset.icons.txt";
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
-/** Every .ts/.tsx file under src/. */
+/** Runtime source only: tests and declarations cannot request a shipped glyph. */
 export function sourceFiles(dir = SRC, out = []) {
   for (const entry of readdirSync(dir)) {
     const p = path.join(dir, entry);
-    if (statSync(p).isDirectory()) sourceFiles(p, out);
-    else if (/\.tsx?$/.test(entry)) out.push(p);
+    if (statSync(p).isDirectory()) {
+      if (entry !== "__tests__" && entry !== "__mocks__") sourceFiles(p, out);
+    } else if (/\.[jt]sx?$/.test(entry) && !/\.(?:test|spec)\.[jt]sx?$|\.d\.ts$/.test(entry)) {
+      out.push(p);
+    }
   }
   return out;
 }
