@@ -4,7 +4,6 @@ import {
   BehaviorLog,
   Milestone,
   ActionPlan,
-  BedtimeStory,
   BehaviorAnalysis,
   MemoryReviewItem,
   BehaviorContext,
@@ -22,7 +21,6 @@ import {
   sampleBehaviorLogs,
   initialMilestones,
   defaultActionPlans,
-  sampleBedtimeStory,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
 import { api, authHeaders, getAiLanguage, PaywallError } from "../lib/api";
@@ -44,6 +42,7 @@ import type { ConversationChangeRecord, ConversationProposal } from "../lib/conv
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
 import { buildChatContext, readWeeklyContextConsent } from "../ai/chatContext";
 import { useLanguage } from "./LanguageContext";
+import { useToast } from "./ToastContext";
 
 const readLS = (key: string): string | null => {
   try {
@@ -142,6 +141,10 @@ function useArborState() {
   // through the SAME i18n dictionaries as the rest of the UI — a Hebrew
   // session must never see an English status string.
   const { t } = useLanguage();
+  // W4 loud errors: failures and confirmations surface as localized toasts on
+  // whatever tab the parent is on — never raw alert()s, never a message that
+  // only renders inside CoachTab. ToastProvider wraps ArborProvider (App.tsx).
+  const { toast } = useToast();
 
   // Active child comes from ProfileContext so every AI call, log, and plan is
   // scoped to the selected child rather than a hardcoded profile.
@@ -365,7 +368,9 @@ function useArborState() {
     if (!alreadyDone) trackPlayCompleted(a.activity.domain, a.reason, source);
   };
 
-  const [currentStory, setCurrentStory] = useState<BedtimeStory>(sampleBedtimeStory);
+  // W4: the legacy bedtime-story context surface (currentStory / storyTopic /
+  // handleGenerateStory / …) was deleted — zero consumers; BedtimeStoriesTab
+  // owns its own story flow end-to-end.
 
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
@@ -409,15 +414,6 @@ function useArborState() {
     "Screen time tantrums when tablet is turned off"
   );
   const [isPlanGenerating, setIsPlanGenerating] = useState<boolean>(false);
-
-  // Form states: Generated Story Book
-  const [storyTopic, setStoryTopic] = useState<string>("Fear of starting school");
-  const [storyMoral, setStoryMoral] = useState<string>(
-    "Courage in taking small steps and holding on to safe things"
-  );
-  const [isStoryGenerating, setIsStoryGenerating] = useState<boolean>(false);
-  const [activeStoryPage, setActiveStoryPage] = useState<number>(0);
-  const [storyReadingProgress, setStoryReadingProgress] = useState<number>(0);
 
   // Form states: Behavior Analysis
   const [behaviorAnalysis, setBehaviorAnalysis] = useState<BehaviorAnalysis | null>(null);
@@ -631,14 +627,6 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   useEffect(() => writeLS("arbor.aiRail", String(showAiRail)), [showAiRail]);
   useEffect(() => writeLS("arbor.lens", selectedLens), [selectedLens]);
 
-  // Story reading progress calculation
-  useEffect(() => {
-    if (currentStory && currentStory.pages) {
-      const percentage = Math.round(((activeStoryPage + 1) / (currentStory.pages.length + 1)) * 100);
-      setStoryReadingProgress(percentage);
-    }
-  }, [activeStoryPage, currentStory]);
-
   // Calculation of developmental scores
   const checkedMilestones = milestones.filter((m) => m.checked).length;
   const totalMilestones = milestones.length;
@@ -688,7 +676,8 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       const data = await res.json();
       setMemoryReviewItems(data.items || []);
     } catch (err: any) {
-      alert(err.message || "Could not update memory review item.");
+      console.error(err);
+      toast(t("err.memoryUpdate"), "error");
     } finally {
       setIsMemoryUpdating(null);
     }
@@ -971,7 +960,7 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   const handleAddLog = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLogTrigger.trim() || !newLogResponse.trim()) {
-      alert("Please provide trigger details and active response summary.");
+      toast(t("beh.toast.fillBoth"), "error");
       return;
     }
     const existing = editingLogId ? behaviorLogs.find((l) => l.id === editingLogId) : null;
@@ -1032,13 +1021,14 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   // Trigger analysis for logs
   const handleAnalyzeBehaviors = async () => {
     setIsAnalyzingBehavior(true);
-    setApiError(null);
     try {
       const data = await api.analyzeBehavior({ logs: behaviorLogs, childProfile });
       setBehaviorAnalysis(data);
     } catch (err: any) {
       console.error(err);
-      setApiError(err.message || "Failed to generate AI behavior evaluation.");
+      // W4: surface the failure on the Behaviors tab itself (error toast) —
+      // setApiError only ever rendered inside CoachTab, i.e. invisibly here.
+      toast(t("err.behaviorAnalyze"), "error");
     } finally {
       setIsAnalyzingBehavior(false);
     }
@@ -1047,7 +1037,6 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
   // Generate Custom Action Plan
   const handleGenerateActionPlan = async () => {
     setIsPlanGenerating(true);
-    setApiError(null);
     try {
       // M4: wrap with start/success/error analytics ("plan_create_*") without
       // disturbing the context-wide loading/error/paywall handling below.
@@ -1059,35 +1048,15 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
       track("plan_generated", { title: planData.title });
       trackFirstPlan({ title: planData.title }); // activation: only the family's first plan
       void maybeActivateReferral(); // mk-p0-2: a referred parent's activation closes the loop
-      alert(`Action Plan successfully woven: "${planData.title}"`);
+      toast(t("plan.toast.created", { title: planData.title }), "success");
     } catch (err: any) {
       console.error(err);
+      // W4: PaywallError keeps its upgrade prompt; every other failure lands
+      // as an error toast on the Plans tab — setApiError only rendered in CoachTab.
       if (err instanceof PaywallError) openPaywall(err.feature || "advancedPlans", err.plan);
-      else setApiError(err.message || "Failed to generate developmental Action Plan.");
+      else toast(t("err.planCreate"), "error");
     } finally {
       setIsPlanGenerating(false);
-    }
-  };
-
-  // Generate Book Bedtime Story
-  const handleGenerateStory = async () => {
-    setIsStoryGenerating(true);
-    setApiError(null);
-    try {
-      const newStory = await api.generateStory({
-        childName: childProfile.name,
-        age: childProfile.age,
-        topic: storyTopic,
-        moral: storyMoral + (getAiLanguage() === "he" ? " (Write the entire story in warm, natural Hebrew.)" : ""),
-      });
-      setCurrentStory(newStory);
-      setActiveStoryPage(0);
-      alert(`Co-regulated Bedtime Story completed: "${newStory.title}"`);
-    } catch (err: any) {
-      console.error(err);
-      setApiError(err.message || "Failed to write story.");
-    } finally {
-      setIsStoryGenerating(false);
     }
   };
 
@@ -1228,8 +1197,6 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     acceptTodayAction,
     recordTodayOutcome,
     removeTodayAction,
-    currentStory,
-    setCurrentStory,
     selectedLens,
     setSelectedLens,
     chatInput,
@@ -1293,14 +1260,6 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     planChallengeTopic,
     setPlanChallengeTopic,
     isPlanGenerating,
-    storyTopic,
-    setStoryTopic,
-    storyMoral,
-    setStoryMoral,
-    isStoryGenerating,
-    activeStoryPage,
-    setActiveStoryPage,
-    storyReadingProgress,
     behaviorAnalysis,
     isAnalyzingBehavior,
     memoryReviewItems,
@@ -1332,7 +1291,6 @@ Give a Vygotskian scaffolding learning assessment, outlining a real plan of how 
     handleAddLog,
     handleAnalyzeBehaviors,
     handleGenerateActionPlan,
-    handleGenerateStory,
     handleToggleMilestone,
     setMilestoneObservation,
     addCustomMilestone,

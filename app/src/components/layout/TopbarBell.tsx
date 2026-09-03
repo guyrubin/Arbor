@@ -333,7 +333,7 @@ export default function TopbarBell() {
                 color: T.faint,
               }}
             >
-              {t("bell.title", {}) || "Notifications"}
+              {t("bell.title")}
             </span>
           </div>
 
@@ -347,7 +347,7 @@ export default function TopbarBell() {
                 color: T.muted,
               }}
             >
-              {t("bell.empty", {}) || "Nothing new right now."}
+              {t("bell.empty")}
             </div>
           ) : (
             items.map((item) => (

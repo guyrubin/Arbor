@@ -384,6 +384,9 @@ export const en: Dict = {
   "top.focus": "Focus",
   "top.search": "Search",
   "top.howHelps": "How Arbor helps",
+  // AP-046 topbar notification bell (panel header + empty state)
+  "bell.title": "Notifications",
+  "bell.empty": "Nothing new right now.",
   // error / retry states (m5)
   "err.retry": "Try again",
   "err.careTeam.title": "We couldn't load your care team",
@@ -392,6 +395,12 @@ export const en: Dict = {
   "err.memory.body": "Something interrupted the connection. Approved facts and pending reviews are safe — give it another try.",
   "err.focus.title": "Today's focus didn't load",
   "err.focus.body": "That was a connection hiccup, not your data. Try again in a moment.",
+  // W4 loud errors — failures that used to hide in raw alert()s / the CoachTab-only
+  // apiError card now surface as localized toasts on the tab where they happen.
+  "err.memoryUpdate": "We couldn't update that memory item — give it another try.",
+  "err.planCreate": "We couldn't create the plan. Your challenge is still here — give it another try.",
+  "err.behaviorAnalyze": "We couldn't pull the picture together — give it another try.",
+  "err.popupBlocked": "Please allow pop-ups to export the report, then try again.",
   // coach
   "coach.subtitle": "Tell Arbor what's happening. You'll get a calm next step and the words to say — and Arbor remembers for next time.",
   "coach.contract.memoryBody": "Durable facts wait for your approval before becoming memory.",
@@ -793,6 +802,7 @@ export const en: Dict = {
   "plan.templates": "Templates:",
   "plan.placeholder": "Describe a challenge (e.g. throwing cutlery at dinner)…",
   "plan.creating": "Creating your plan…",
+  "plan.toast.created": "Your Action Plan is ready: “{title}”",
   "plan.createBtn": "Create plan",
   "plan.empty.head": "No action plans yet",
   "plan.empty.body": "Describe a challenge above (or pick a template) and create your first plan.",
@@ -2683,6 +2693,8 @@ export const he: Dict = {
   "top.focus": "מיקוד",
   "top.search": "חיפוש",
   "top.howHelps": "איך ארבור עוזר",
+  "bell.title": "התראות",
+  "bell.empty": "אין חדש כרגע.",
   "err.retry": "נסו שוב",
   "err.careTeam.title": "לא הצלחנו לטעון את צוות הטיפול",
   "err.careTeam.body": "משהו הפריע לחיבור. הנתונים של {name} בטוחים — נסו שוב.",
@@ -2690,6 +2702,10 @@ export const he: Dict = {
   "err.memory.body": "משהו הפריע לחיבור. העובדות שאושרו והפריטים לבדיקה בטוחים — נסו שוב.",
   "err.focus.title": "המיקוד של היום לא נטען",
   "err.focus.body": "זו הייתה תקלת חיבור, לא הנתונים שלכם. נסו שוב עוד רגע.",
+  "err.memoryUpdate": "לא הצלחנו לעדכן את פריט הזיכרון — נסו שוב.",
+  "err.planCreate": "לא הצלחנו ליצור את התוכנית. האתגר שהזנתם עדיין כאן — נסו שוב.",
+  "err.behaviorAnalyze": "לא הצלחנו לחבר את התמונה — נסו שוב.",
+  "err.popupBlocked": "כדי לייצא את הדוח יש לאפשר חלונות קופצים בדפדפן, ואז לנסות שוב.",
   "coach.subtitle": "ספרו לארבור מה קורה. תקבלו צעד הבא רגוע ומותאם לגיל ואת המילים המדויקות לומר, וארבור יזכור זאת לפעם הבאה.",
   "coach.contract.memoryBody": "עובדות מתמשכות מחכות לאישורכם לפני שהן הופכות לזיכרון.",
   "coach.lens": "עדשת המומחה הפעילה",
@@ -3078,6 +3094,7 @@ export const he: Dict = {
   "plan.templates": "תבניות:",
   "plan.placeholder": "תארו אתגר (למשל זריקת סכו\"ם בארוחת ערב)…",
   "plan.creating": "יוצר את התוכנית שלכם…",
+  "plan.toast.created": "תוכנית הפעולה שלכם מוכנה: “{title}”",
   "plan.createBtn": "יצירת תוכנית",
   "plan.empty.head": "אין עדיין תוכניות פעולה",
   "plan.empty.body": "תארו אתגר למעלה (או בחרו תבנית) וצרו את התוכנית הראשונה.",

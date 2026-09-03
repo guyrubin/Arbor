@@ -138,11 +138,13 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
   }
 }
 
-export function openPrintableReport(doc: ReportDoc, childName: string) {
+/** Opens the branded print shell in a new window. Returns false when the
+ *  browser blocked the pop-up — callers own the user-visible feedback
+ *  (localized toast, W4) since this lib has no i18n/toast seam of its own. */
+export function openPrintableReport(doc: ReportDoc, childName: string): boolean {
   const w = window.open("", "_blank", "noopener,noreferrer");
   if (!w) {
-    alert("Please allow pop-ups to export the report, then try again.");
-    return;
+    return false;
   }
   const sectionsHtml = doc.sections.map((s) => {
     const items = Array.isArray(s.body) ? s.body.filter(Boolean) : [s.body];
@@ -185,4 +187,5 @@ export function openPrintableReport(doc: ReportDoc, childName: string) {
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
   </body></html>`);
   w.document.close();
+  return true;
 }

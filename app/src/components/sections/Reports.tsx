@@ -4,6 +4,7 @@ import { Icon } from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { useToast } from "../../context/ToastContext";
 import { buildReport, openPrintableReport, isProfessionalReportType, ReportDoc, ReportType } from "../../lib/reportExport";
 import { buildPresetPacket, presetPacketToPrintSections } from "../../consult/packet";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
@@ -52,6 +53,10 @@ export function useReportExport() {
   // embed ONLY the stylized descriptor hero (isGenerated) — never a real photo —
   // into a document the parent may forward to a clinician.
   const { url: heroUrl, isGenerated } = useHeroAvatar();
+  // W4 loud errors: a pop-up-blocked print window surfaces as a localized
+  // error toast (openPrintableReport returns false) instead of a raw alert().
+  const { toast } = useToast();
+  const { t } = useLanguage();
   return (type: ReportType, excludedIds?: Set<string>) => {
     const heroImageUrl = isGenerated && heroUrl ? heroUrl : undefined;
     if (isProfessionalReportType(type)) {
@@ -81,7 +86,10 @@ export function useReportExport() {
         sections: presetPacketToPrintSections(type, packet, excludedIds),
         heroImageUrl,
       };
-      openPrintableReport(doc, childProfile.name);
+      if (!openPrintableReport(doc, childProfile.name)) {
+        toast(t("err.popupBlocked"), "error");
+        return;
+      }
       // Only a build that survived the fail-closed guards reaches this line —
       // a blocked packet throws above and records nothing.
       recordExport(childProfile.id, type);
@@ -95,7 +103,7 @@ export function useReportExport() {
       totalMilestones,
       heroImageUrl,
     });
-    openPrintableReport(doc, childProfile.name);
+    if (!openPrintableReport(doc, childProfile.name)) toast(t("err.popupBlocked"), "error");
   };
 }
 

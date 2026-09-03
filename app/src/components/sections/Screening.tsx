@@ -51,7 +51,11 @@ export default function Screening() {
     // blocked doc exports NOTHING.
     try {
       const doc = buildMonitoringReportDoc(monitoring, childProfile.name, childProfile.age);
-      openPrintableReport(doc, childProfile.name);
+      // W4 loud errors: a pop-up-blocked print window gets its own honest toast.
+      if (!openPrintableReport(doc, childProfile.name)) {
+        toast(t("err.popupBlocked"), "error");
+        return;
+      }
       toast(t("screen.monitor.exportOpen"), "info");
     } catch {
       toast(t("screen.monitor.exportBlocked"), "error");
