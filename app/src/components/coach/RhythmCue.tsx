@@ -59,6 +59,9 @@ function recordDismissed(kind: string, nowMs = Date.now()): string[] {
   return next;
 }
 
+/** day|surface|kind already counted — see the impression effect below. */
+const SEEN_IMPRESSIONS = new Set<string>();
+
 export default function RhythmCue({ surface = "coach" }: { surface?: NudgeSurface }) {
   const { childProfile, behaviorLogs, setActiveTab, requestCapture } = useArbor();
   const { t } = useLanguage();
@@ -107,10 +110,17 @@ export default function RhythmCue({ surface = "coach" }: { surface?: NudgeSurfac
 
   const visible = nudge && !dismissed.includes(nudge.kind) ? nudge : null;
 
-  // ENG-11: measured exactly once per kind per mount, at the moment it is
-  // actually on screen — an impression, not a decision.
+  // ENG-11: an impression, not a decision — and exactly ONE per cue per
+  // surface per day. This component is mounted on Today AND on Ask, so a
+  // per-mount effect logged the same cue twice on a tab switch, skewing the
+  // very metric ENG-11 exists to produce. The seen-set is module-level and
+  // day-keyed, so a remount within the day is silent and a new day starts over.
   useEffect(() => {
-    if (visible) trackNudgeShown(visible, surface);
+    if (!visible) return;
+    const key = `${nudgeDayKey()}|${surface}|${visible.kind}`;
+    if (SEEN_IMPRESSIONS.has(key)) return;
+    SEEN_IMPRESSIONS.add(key);
+    trackNudgeShown(visible, surface);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible?.kind, surface]);
 

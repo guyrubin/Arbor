@@ -136,6 +136,7 @@ export default function CoachTab() {
     openConversation,
     deleteConversation,
     apiError,
+    apiErrorStatus,
     seedCoach,
     requestCapture,
     requestConsultPrefill,
@@ -272,7 +273,14 @@ export default function CoachTab() {
   // they must never share one sentence, and none of them may render the
   // server's own English `details` string.
   const failureCopy: AiFailureCopy | null =
-    aiFailure ?? (apiError && !isChatLoading ? classifyAiFailure(null, { online, childName: childFirst }) : null);
+    aiFailure ?? (apiError && !isChatLoading
+      // AI-06: classify on the STATUS the context preserved. Passing null
+      // here collapsed a quota refusal and a consent refusal into one
+      // sentence with a Retry button — a retry the parent owns the answer
+      // to. The raw server message is still never rendered.
+      ? classifyAiFailure(apiErrorStatus == null ? null : { status: apiErrorStatus },
+          { online, childName: childFirst })
+      : null);
 
   // F-08: text for the ALWAYS-mounted polite chat-status live region (twin:
   // VoiceOverlay's caption block — "always mounted so aria-live announces

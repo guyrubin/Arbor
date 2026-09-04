@@ -145,8 +145,14 @@ export function nextNudge(inp: JitaiInputs, prefs?: JitaiPrefs): Nudge | null {
   //    day-1 family deserves the bedtime surface as much as a day-30 one.
   //    It sits ABOVE the LOG cue because after 18:00 the honest next move is
   //    tonight's story, not "capture the day you are still living"; the
-  //    15:00–17:59 LOG window is untouched. Quiet hours (default 21:00) close
-  //    it again, and the max-2 ceiling applies like every other kind.
+  //    15:00–17:59 LOG window is MOSTLY untouched — the exception is a family
+  //    whose own windDownHour resolves to 17 (predict.ts can derive
+  //    max(17, eveningPeak - 1)), who get BEDTIME at 17:00 instead of LOG.
+  //    That is their own rhythm rather than an invented early evening, but the
+  //    window is not unconditional and this comment used to claim it was.
+  //    Quiet hours (default 21:00) close it again. The max-2 ceiling applies —
+  //    though note RhythmCue reads the ledger without spending it, so on Today
+  //    and Ask the ceiling binds only via the bell.
   if (bedtimeDoorOpen(hour, rhythm.windDownHour) && kindAllowed("bedtime", inp, prefs)) {
     return {
       kind: "bedtime",

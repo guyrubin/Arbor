@@ -197,17 +197,37 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
   // GP-34 — the milestone the parent chose to watch for after this check.
   const [watchingId, setWatchingId] = useState<string | null>(null);
 
-  // Persist on every change (cheap: a handful of keys), and follow a child or
-  // band switch rather than leaking one child's answers into another's check.
-  useEffect(() => {
-    writeScreeningDraft(childProfile.id, band.id, answers);
-  }, [childProfile.id, band.id, answers]);
+  // Which child+band the CURRENT `answers` belong to. It is state, not a ref,
+  // so it is set in the same batch as `answers` and the two can never disagree.
+  //
+  // Without it these two effects leaked answers ACROSS SIBLINGS: passive effects
+  // run in declaration order, so on a child switch the persist effect fired in a
+  // render where `childProfile.id` was already the NEW child while `answers` was
+  // still the previous child's — writing sibling A's answers under sibling B's
+  // key. Same-band siblings (twins, or two children in one age band) then had
+  // the item ids match, nothing filtered, and B's Development Check opened
+  // pre-filled with A's answers, labelled as B's and submittable as B's record.
+  const [answersFor, setAnswersFor] = useState(`${childProfile.id}|${band.id}`);
+
   useEffect(() => {
     const draft = readScreeningDraft(childProfile.id, band.id, itemIds);
     setAnswers(draft ?? {});
+    setAnswersFor(`${childProfile.id}|${band.id}`);
     setRestored(Object.keys(draft ?? {}).length > 0);
+    // A switch also has to drop the previous child's in-flight screen: an open
+    // result, the record it was written onto, and any watch choice.
+    setPhase("intro");
+    setResult(null);
+    setActiveId(null);
+    setWatchingId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childProfile.id, band.id]);
+
+  useEffect(() => {
+    // Stale answers (still the previous child's) are never persisted.
+    if (answersFor !== `${childProfile.id}|${band.id}`) return;
+    writeScreeningDraft(childProfile.id, band.id, answers);
+  }, [childProfile.id, band.id, answers, answersFor]);
   // Id of the saved screening record the result screen is showing — the
   // re-check reminder is written onto THIS record (UND-2: no fake done-state).
   const [activeId, setActiveId] = useState<string | null>(null);

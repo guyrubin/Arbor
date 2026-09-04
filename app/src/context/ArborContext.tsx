@@ -406,6 +406,11 @@ function useArborState() {
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
   const [chatStreamStatus, setChatStreamStatus] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  // AI-06: the STATUS, kept beside the message. Without it the coach called
+  // classifyAiFailure(null) and a 429 (quota, waiting helps) and a 451
+  // (your permission is needed, waiting never helps) rendered one identical
+  // sentence with a Retry button. The raw message is still never rendered.
+  const [apiErrorStatus, setApiErrorStatus] = useState<number | null>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
 
   // MON-2 paywall: a 402 (PaywallError) opens an inline upgrade prompt instead
@@ -942,6 +947,7 @@ function useArborState() {
       // renders t("coach.error") — never the raw err.message). No error bubble
       // is appended, so no Firestore/index/provider internals ever land in a
       // stressed parent's thread or in the persisted conversation.
+      setApiErrorStatus(err instanceof ApiError ? err.status : null);
       setApiError(err.message || "An exception occurred while connecting to Arbor services.");
       setChatMessages((prev) => abortChatStream(prev));
     } finally {
@@ -1374,6 +1380,7 @@ function useArborState() {
     isChatLoading,
     chatStreamStatus,
     apiError,
+    apiErrorStatus,
     paywall,
     openPaywall,
     closePaywall,

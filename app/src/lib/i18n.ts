@@ -568,6 +568,9 @@ export const en: Dict = {
   "beh.photo": "Photo (optional)",
   "beh.addPhoto": "Add a photo",
   "beh.save": "Save log",
+  // TJB-09: shown while an extract round-trip is still in flight, when saving
+  // is deliberately held so the fail-closed escalation gate cannot be outrun.
+  "beh.saveWaiting": "Checking…",
   "beh.update": "Update log",
   "beh.cancel": "Cancel",
   "beh.activeLogs": "Active observation logs",
@@ -2885,6 +2888,7 @@ export const he: Dict = {
   "beh.photo": "תמונה (רשות)",
   "beh.addPhoto": "הוספת תמונה",
   "beh.save": "שמירת תיעוד",
+  "beh.saveWaiting": "בודקים…",
   "beh.update": "עדכון תיעוד",
   "beh.cancel": "ביטול",
   "beh.activeLogs": "תיעודי תצפית פעילים",

@@ -61,6 +61,7 @@ export const en: Record<string, string> = {
   "elev.closeloop.entry.close": "Close",
   "elev.closeloop.entry.edit": "Edit this moment",
   "elev.closeloop.entry.noted": "Noted by",
+  "elev.closeloop.entry.suggested": "Wording suggested by Arbor",
   "elev.closeloop.entry.when": "When",
 
   // ── TJB-11: the week's suggestion came from Arbor's built-in guidance.
@@ -104,6 +105,7 @@ export const he: Record<string, string> = {
   "elev.closeloop.entry.close": "סגירה",
   "elev.closeloop.entry.edit": "לערוך את הרגע",
   "elev.closeloop.entry.noted": "תועד על ידי",
+  "elev.closeloop.entry.suggested": "הניסוח הוצע על ידי Arbor",
   "elev.closeloop.entry.when": "מתי",
 
   "elev.closeloop.recap.builtin": "ארבור הרכיב את זה מהספירות שלכם השבוע.",

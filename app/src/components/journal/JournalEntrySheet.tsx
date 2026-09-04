@@ -100,6 +100,15 @@ export default function JournalEntrySheet({
                 {t("elev.closeloop.entry.noted")}
               </dt>
               <dd className="mt-1 font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{provLabel}</dd>
+              {/* Accepting the step and saying how it went are the parent's own
+                  acts, so "You" is right — but the SENTENCE above is Arbor's
+                  wording. This thread feeds clinician handoffs, where "noted by
+                  parent: <Arbor's text>" would misattribute authorship. */}
+              {signal?.kind === "action" && (
+                <dd className="mt-1 font-normal" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
+                  {t("elev.closeloop.entry.suggested")}
+                </dd>
+              )}
             </div>
           </dl>
 

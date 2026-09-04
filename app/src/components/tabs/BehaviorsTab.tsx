@@ -1261,8 +1261,13 @@ export default function BehaviorsTab() {
             </AnimatePresence>
 
             <div className="mt-5 flex gap-2">
-              <button type="submit" className="flex-1 py-3 transition text-white font-extrabold text-xs rounded-xl active:scale-[0.98]" style={{ background: T.gradientCta }}>
-                {editingLogId ? t("beh.update") : t("beh.save")}
+              {/* TJB-09 made the draft visible BEFORE the extract round-trip
+                  settles, which opened a window where a parent could save an
+                  escalation-triggering entry before the 409 arrived — the
+                  record would already be written when the fail-closed gate
+                  fired. Saving is held until the call settles. */}
+              <button type="submit" disabled={parsing} className="flex-1 py-3 transition text-white font-extrabold text-xs rounded-xl active:scale-[0.98] disabled:opacity-60" style={{ background: T.gradientCta }}>
+                {parsing ? t("beh.saveWaiting") : editingLogId ? t("beh.update") : t("beh.save")}
               </button>
               {editingLogId && (
                 <button type="button" onClick={cancelEditLog} className="px-4 py-3 font-bold text-xs rounded-xl transition" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>

@@ -28,7 +28,9 @@ export type SinceVisitRow =
   | { kind: "conversations"; at: number; count: number };
 
 export type SinceVisitRows = {
-  /** ≤ maxRows rows, priority order: milestones → noticed → moments → plays → chats. */
+  /** ≤ maxRows rows, priority order: milestones -> noticed -> ACTION -> moments -> plays -> chats
+ *  (action rows were inserted ahead of moments with TJB-05; with
+ *  SINCE_VISIT_MAX_ROWS = 3 that can push plays into hiddenCount). */
   rows: SinceVisitRow[];
   /** Underlying events NOT conveyed by the visible rows (drives "+N more in Journal"). */
   hiddenCount: number;
