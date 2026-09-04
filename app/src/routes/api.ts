@@ -2745,7 +2745,14 @@ Return JSON with frequencyCount, intensityTrend, triggerBreakdown, expertInsight
   });
 
   router.post("/generate-handoff", async (req, res) => {
-    const { childProfile, logs, milestones, audience = "teacher" } = req.body;
+    const { childProfile, logs, milestones, audience = "teacher", language } = req.body;
+    // LC-11: the client sends `language`, and until this line existed the
+    // argument was INERT — a Hebrew-reading parent handed their child's teacher
+    // an English brief. Same directive the coach and vision routes use.
+    const handoffLanguageDirective =
+      language === "he"
+        ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
+        : "";
     const safetyLogText = Array.isArray(logs)
       ? logs.map((log) => [log.behaviorType, log.trigger, log.response, log.notes].filter(Boolean).join(" ")).join("\n")
       : "";
@@ -2766,7 +2773,7 @@ Create an Arbor professional handoff brief for ${String(audience).toUpperCase()}
 Child Details: ${JSON.stringify(promptProfile(childProfile))}
 Key Logged Behaviors: ${JSON.stringify(logs)}
 Milestone Context: ${JSON.stringify(milestones)}
-Return JSON with title, date, overview, keyStrengths, classroomChallenges, languageSupportPlan, suggestedTeacherStrategies, crisisEscalationTrigger.
+Return JSON with title, date, overview, keyStrengths, classroomChallenges, languageSupportPlan, suggestedTeacherStrategies, crisisEscalationTrigger.${handoffLanguageDirective}
 `;
       const privacy = createRedaction(childProfile?.name);
       const brief = privacy.restoreDeep(await modelProvider.generateJson({
