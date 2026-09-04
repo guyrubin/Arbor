@@ -9,7 +9,6 @@ import type { ChildProfile, BehaviorLog, ActionPlan } from "../types";
 import type { LangObservation } from "../growth/vocabAgg";
 import { fmtDay } from "./formatDate";
 import { topMomentDisplay } from "../hooks/useWeeklyRecap";
-import { isNativePlatform } from "./runtime";
 
 export type ReportSection = { heading: string; body: string | string[] };
 export type ReportDoc = {
@@ -170,6 +169,22 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
 }
 
 /**
+ * Native check WITHOUT importing the Capacitor runtime. reportExport is pulled
+ * in by many surfaces, and a static @capacitor/core import here dragged the
+ * runtime into their module graphs (it timed out AskSpecialist's render test at
+ * import). lib/share.ts avoids the same import for the same reason. The WebView
+ * injects this global; a browser or test env simply gets false.
+ */
+const isNativeRuntime = (): boolean => {
+  try {
+    const cap = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    return typeof cap?.isNativePlatform === "function" ? cap.isNativePlatform() : false;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Export the report.
  *
  * MOB-06: this used to be `window.open` + `window.print()` with a hardcoded
@@ -185,7 +200,7 @@ export async function openPrintableReport(doc: ReportDoc, childName: string): Pr
   const html = renderPrintableHtml(doc, childName);
   const filename = `${slugForFile(doc.title)}-${slugForFile(childName)}.html`;
 
-  if (isNativePlatform) {
+  if (isNativeRuntime()) {
     try {
       const [{ Share }, { Filesystem, Directory, Encoding }] = await Promise.all([
         import("@capacitor/share"),
