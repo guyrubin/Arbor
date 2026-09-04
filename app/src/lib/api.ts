@@ -223,6 +223,118 @@ export async function streamVoice(
   }
 }
 
+/** AI-07: the settled `/api/council` answer, on either transport. */
+export type CouncilPayload = {
+  text: string;
+  contract?: CoachContract;
+  council?: CouncilTake[];
+  memoryReviewItems?: MemoryReviewItem[];
+  /** Set when the server's output screen flagged the answer — the caller must
+   *  RETRACT any streamed prose and render `text` (blocked/crisis markdown)
+   *  instead, never a merge of the two. */
+  outputBlocked?: boolean;
+  blockedCategory?: string;
+  riskLevel?: string;
+  escalationCategory?: string;
+};
+
+/**
+ * AI-07 — STREAMING scholar council over SSE, the council twin of the /api/chat
+ * stream. Before this, `api.council()` was one POST that resolved only when the
+ * whole multi-agent orchestration had finished: a silent spinner the parent
+ * could not stop.
+ *
+ * `onDelta` fires once per SCREENED SENTENCE. The server tails the synthesis
+ * contract's leading `text` prose out of the model stream, restores aliases,
+ * and releases a sentence only after the cumulative screen passes — the exact
+ * same seam /api/chat uses (createScreenedProseRelay in routes/api.ts), so the
+ * two screens cannot drift. `onStatus` receives milestone STAGE KEYS only
+ * (`memory` | `council` | `sources` | `plan`) — never server-authored copy, so
+ * the caller owns localization and a HE session never sees English.
+ *
+ * CANCELLATION: pass `opts.signal`. Aborting it closes the response, which the
+ * server reads as the client going away and aborts the upstream provider call
+ * (createRouteBudget) — the orchestration genuinely stops rather than running
+ * on and billing. An abort surfaces as the fetch's own AbortError.
+ *
+ * CLINICAL FIREWALL: structured panels and the per-scholar council takes arrive
+ * ONLY in the resolved payload (the server's `done` frame), after the full
+ * output screen has run on the complete rendered answer. Delta text is prose
+ * only. A resolved payload with `outputBlocked` means the streamed prose must
+ * be discarded, not appended to.
+ */
+export async function streamCouncil(
+  payload: { message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" },
+  onDelta: (text: string) => void,
+  opts: { signal?: AbortSignal; onStatus?: (stage: string) => void } = {},
+): Promise<CouncilPayload> {
+  const res = await fetch("/api/council", {
+    method: "POST",
+    headers: await authHeaders({ Accept: "text/event-stream" }),
+    body: JSON.stringify(payload),
+    signal: opts.signal,
+  });
+  if (!res.ok) {
+    // The council sits behind the same metered coach gate as /chat, so the
+    // typed errors callers already branch on (402 → paywall, 409 → escalation)
+    // MUST survive this path too. Collapsing them into a bare Error here would
+    // turn a conversion moment and a safety decision into "try again".
+    let detail = "The scholar council could not be reached.";
+    let errData: any = null;
+    try {
+      errData = await res.json();
+      detail = errData?.details || errData?.error || detail;
+    } catch {
+      /* non-JSON error body — keep the neutral default */
+    }
+    if (res.status === 402) {
+      throw new PaywallError(detail, {
+        plan: errData?.upgrade?.plan === "family" ? "family" : "plus",
+        feature: errData?.upgrade?.feature,
+      });
+    }
+    if (res.status === 409) {
+      throw new EscalationRequiredError(detail, {
+        category: typeof errData?.escalationCategory === "string" ? errData.escalationCategory : undefined,
+      });
+    }
+    throw new ApiError(detail, res.status, retryAfterOf(res));
+  }
+  // A server that did not open SSE (no Accept honoured, or a proxy stripped it)
+  // still answers with one JSON body — degrade to it rather than failing.
+  if (!res.headers.get("content-type")?.includes("text/event-stream") || !res.body) {
+    return (await res.json()) as CouncilPayload;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let settled: CouncilPayload | null = null;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf("\n\n")) !== -1) {
+      const block = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      let event = "message";
+      const dataLines: string[] = [];
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+      }
+      if (!dataLines.length) continue;
+      const data = JSON.parse(dataLines.join("\n"));
+      if (event === "status" && typeof data.stage === "string") opts.onStatus?.(data.stage);
+      else if (event === "delta" && data.text) onDelta(data.text);
+      else if (event === "done") settled = data as CouncilPayload;
+      else if (event === "error") throw new Error(data.details || data.error || "Council stream error");
+    }
+  }
+  if (!settled) throw new Error("The scholar council ended without a final answer");
+  return settled;
+}
+
 export const api = {
   analyzeBehavior: (payload: { logs: BehaviorLog[]; childProfile: ChildProfile }) =>
     post<BehaviorAnalysis>("/api/analyze-behavior", payload),

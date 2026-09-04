@@ -940,6 +940,14 @@ const FROZEN_DEBT: readonly Debt[] = [
 const FROZEN_SEAL = "66b8a7891677ed44216437abe0176e245b554deb40754e7f1d747688e6af5ee6";
 // Retire exact keys only after fixing/removing their consumer; never rewrite the snapshot.
 const RETIRED_DEBT: readonly string[] = [
+  // RESOLVED 2026-09-04, not re-frozen. The Coach today-plan tick sat in a box
+  // whose fill was a ternary, so the ratchet could not prove what the white
+  // glyph rendered against and the case stayed unresolved debt. Split into an
+  // explicit checked/unchecked pair: identical pixels, but the fill is now
+  // statically known (white on --arbor-clay #1558c0, ~6.4:1). Retiring the key
+  // is the sanctioned exit — the alternative on offer was regenerating the
+  // fingerprint, which is exactly what this ratchet exists to prevent.
+  "components/coach/CoachAnswerCards.tsx#6f5ae7331ee0c4cd4ab9ba4ce41eb4324d6760b68103cbfb3e7f57ce288d3ced",
   // Parent fixes the two simple failing fills to their verified ink tokens.
   "components/layout/Shell.tsx#2b4b7497e9d0d5200019ce8fa4a82065f35f4897e8f823224067aea6296b2fd4",
   "components/tabs/HeroJourneyTab.tsx#9befbd35e2ca987d66a6b7e6f8cce856f91a81c7e45b8012e009c4476f156d42",

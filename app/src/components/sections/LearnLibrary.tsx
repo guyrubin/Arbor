@@ -27,6 +27,7 @@ import { track } from "../../lib/analytics";
 import { concernsForBehaviors } from "../../content/selectCards";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { readLearnFeedback, setLearnFeedback, type LearnFeedback } from "../../learn/learnFeedback";
+import { learnReadCount, markLearnCardRead, readLearnReadIds } from "../../learn/learnReadState";
 import {
   LEARN_CATEGORIES,
   concernsContributed,
@@ -73,11 +74,24 @@ export default function LearnLibrary() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<LearnFeedback>(() => readLearnFeedback());
 
+  // LC-21 — reads the parent has already opened, on this device, for THIS
+  // child (the shelf is child-scoped throughout: age window, ranking, saved).
+  // Storage that is unavailable or cleared yields [], which renders the same
+  // correct, unmarked library the surface shipped with.
+  const [readIds, setReadIds] = useState<string[]>(() => readLearnReadIds(childProfile.id));
+  useEffect(() => {
+    setReadIds(readLearnReadIds(childProfile.id));
+  }, [childProfile.id]);
+  const markRead = (cardId: string) => setReadIds(markLearnCardRead(childProfile.id, cardId));
+
   // LL — deep-link seam: another surface asked for one read or one shelf.
   useEffect(() => {
     if (!pendingLearnRequest) return;
     if (pendingLearnRequest.cardId && learnCardById(pendingLearnRequest.cardId)) {
       setOpenId(pendingLearnRequest.cardId);
+      // A deep-linked open is an open: mark it here too, or arriving from the
+      // hub's "today's read" would leave the library still showing it unread.
+      markRead(pendingLearnRequest.cardId);
     } else if (pendingLearnRequest.category) {
       setFilter(pendingLearnRequest.category as Filter);
       setOpenId(null);
@@ -122,8 +136,17 @@ export default function LearnLibrary() {
 
   const openCard = (id: string) => {
     setOpenId(id);
+    markRead(id);
     try { track("learn_open_card", { card: id }); } catch { /* noop */ }
   };
+
+  // A count of what the PARENT read. Intersected with the catalogue so a read
+  // id left behind by a card that has gone dark cannot overstate it. Never a
+  // fraction, a ring, or anything that reads as a verdict on the child.
+  const readCount = useMemo(
+    () => learnReadCount(readIds, LEARN_CARDS.map((c) => c.id)),
+    [readIds]
+  );
 
   const open = openId ? learnCardById(openId) : undefined;
   if (open) {
@@ -251,6 +274,7 @@ export default function LearnLibrary() {
                 featured
                 index={i}
                 saved={savedLearnIds.includes(card.id)}
+                read={readIds.includes(card.id)}
                 onOpen={() => openCard(card.id)}
                 onToggleSave={() => toggleSavedLearn(card.id)}
                 t={t}
@@ -270,6 +294,7 @@ export default function LearnLibrary() {
               </h2>
               <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                 {t("learn.count", { n: LEARN_CARDS.length })}
+                {readCount > 0 && ` · ${t("elev.learnCare.read.count", { n: readCount })}`}
               </span>
             </div>
           )}
@@ -281,6 +306,7 @@ export default function LearnLibrary() {
                 he={he}
                 index={i}
                 saved={savedLearnIds.includes(card.id)}
+                read={readIds.includes(card.id)}
                 onOpen={() => openCard(card.id)}
                 onToggleSave={() => toggleSavedLearn(card.id)}
                 t={t}
@@ -350,6 +376,7 @@ function LearnGridCard({
   card,
   he,
   saved,
+  read,
   featured,
   index,
   onOpen,
@@ -359,6 +386,8 @@ function LearnGridCard({
   card: LearnCard;
   he: boolean;
   saved: boolean;
+  /** LC-21 — the parent already opened this read on this device. */
+  read?: boolean;
   featured?: boolean;
   index: number;
   onOpen: () => void;
@@ -413,6 +442,18 @@ function LearnGridCard({
             <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
               {t("learn.ages", { min: card.ageMin, max: card.ageMax })}
             </span>
+            {/* LC-21 — a quiet marker for a read the PARENT already opened.
+                Absent when nothing is known (cleared or blocked storage), which
+                is exactly the unmarked library this surface shipped with. */}
+            {read && (
+              <span
+                className="inline-flex items-center gap-1 text-[11px] font-bold"
+                style={{ color: "var(--arbor-muted)" }}
+              >
+                <Icon name="check" size={13} />
+                {t("elev.learnCare.read.badge")}
+              </span>
+            )}
           </div>
           <h3 className="text-[15px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
             {pick(he, card.title)}

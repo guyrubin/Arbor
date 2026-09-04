@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDialog } from "../../hooks/useDialog";
 import { motion, AnimatePresence } from "motion/react";
@@ -41,6 +41,14 @@ import { LEARN_CARDS } from "../../learn/learnCards";
 import { useMonitoring } from "../../hooks/useMonitoring";
 import { watchPointsSummary } from "../../lib/monitoring";
 import { HeroAvatar } from "../ui/HeroAvatar";
+// GP-31 — a first is a note and a date, not a boolean. The editor lives in
+// components/milestones; the record + its per-child, sweepable store live in
+// lib/firstsKeepsake (beside lib/firsts, which owns the CELEBRATION of a first).
+import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet";
+import {
+  readKeepsakes, removeKeepsake, upsertKeepsake, writeKeepsakes,
+  type KeepsakeDraft, type KeepsakeMap,
+} from "../../lib/firstsKeepsake";
 import framework from "../../framework.json";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 
@@ -94,6 +102,25 @@ export default function MilestonesTab() {
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
 
   const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open: Boolean(celebratingId), onClose: () => setCelebratingId(null) });
+
+  // GP-31 — the keepsakes this child's parent has written. Device-local at
+  // `arbor.firstsKeepsakes.<childId>`, so clearChildLocalState sweeps them
+  // with the child; re-seeded whenever the active child changes so one
+  // child's notes can never appear under a sibling's milestones.
+  const [keepsakes, setKeepsakes] = useState<KeepsakeMap>({});
+  const [keepsakeFor, setKeepsakeFor] = useState<string | null>(null);
+  useEffect(() => {
+    setKeepsakes(readKeepsakes(childProfile.id));
+  }, [childProfile.id]);
+  const persistKeepsakes = (next: KeepsakeMap) => {
+    setKeepsakes(next);
+    writeKeepsakes(childProfile.id, next);
+  };
+  const saveKeepsake = (draft: KeepsakeDraft) =>
+    persistKeepsakes(upsertKeepsake(keepsakes, draft, new Date().toISOString()));
+  const dropKeepsake = (milestoneId: string) =>
+    persistKeepsakes(removeKeepsake(keepsakes, milestoneId));
+  const openKeepsake = keepsakeFor ? milestones.find((m) => m.id === keepsakeFor) ?? null : null;
 
   /** One place decides what a mark does. Celebration fires ONLY on a fresh
    *  "yes" (never on uncheck / not_yet / not_sure): confetti stays the light
@@ -363,6 +390,59 @@ export default function MilestonesTab() {
               );
             })()}
           </div>
+          {/* GP-31 — the keepsake. `observationUpdatedAt` records the day the
+              parent PRESSED the button; this records what they actually saw,
+              on the day it happened, in their own words. Offered only once the
+              milestone is marked — a keepsake belongs to a first that has
+              happened. A photo is optional; the note and the date are the
+              whole thing. Descriptive record only: no score, no comparison. */}
+          {item.checked && (
+            <div className="pt-2">
+              {keepsakes[item.id] ? (
+                <div
+                  data-testid="ms-keepsake"
+                  className="rounded-xl p-2.5"
+                  style={{ background: "var(--arbor-lav-soft)", border: "1px solid var(--arbor-rule)" }}
+                >
+                  <p className="text-[12.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                    {keepsakes[item.id].note}
+                  </p>
+                  {keepsakes[item.id].photoUrl && (
+                    <img
+                      src={keepsakes[item.id].photoUrl}
+                      alt=""
+                      className="mt-2 w-full rounded-lg object-cover"
+                      style={{ maxHeight: 160 }}
+                    />
+                  )}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>
+                      {t("elev.waveR.keepsake.on", { date: fmtDay(keepsakes[item.id].noticedOn, uiLang) })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setKeepsakeFor(item.id); }}
+                      className="text-[11px] font-bold"
+                      style={{ color: "var(--arbor-muted)" }}
+                    >
+                      {t("elev.waveR.keepsake.edit")}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  data-testid="ms-keepsake-add"
+                  aria-label={t("elev.waveR.keepsake.aria")}
+                  onClick={(e) => { e.preventDefault(); setKeepsakeFor(item.id); }}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-bold"
+                  style={{ color: "var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}
+                >
+                  <Icon name="bookmark_add" size={13} fill={1} /> {t("elev.waveR.keepsake.add")}
+                </button>
+              )}
+            </div>
+          )}
           {/* UND-8 — inline rename form (the gestation form is the pattern):
               in-app, translated, themed — no native window.prompt. */}
           {item.custom && renamingId === item.id && (
@@ -869,6 +949,22 @@ export default function MilestonesTab() {
           </div>
         </div>
       )}
+
+      {/* GP-31 — the keepsake editor. One sheet for the whole list; a null
+          milestone keeps it closed. Save/remove write through the pure
+          helpers in lib/firstsKeepsake and persist to this child's own
+          sweepable store — the milestone record itself is never touched. */}
+      <FirstKeepsakeSheet
+        open={Boolean(openKeepsake)}
+        milestoneId={openKeepsake?.id ?? ""}
+        milestoneTitle={openKeepsake?.title ?? ""}
+        childId={childProfile.id}
+        childName={firstName}
+        keepsake={openKeepsake ? keepsakes[openKeepsake.id] ?? null : null}
+        onSave={saveKeepsake}
+        onRemove={() => { if (openKeepsake) dropKeepsake(openKeepsake.id); }}
+        onClose={() => setKeepsakeFor(null)}
+      />
 
       {/* W5 celebration chain — the FULL moment layered over the tab on a fresh
           "yes" (never on uncheck), on top of the confetti burst. The card body

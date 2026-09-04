@@ -189,7 +189,13 @@ export default function OverviewTab() {
         : undefined,
     }, 1);
     return picks[0] ?? null;
-  }, [behaviorLogs, childProfile.age, childProfile.id, donePlayIds, goalDomains, sessionLength, latestCompletedAction]);
+    // ENG-L2: `childProfile.interests` is READ above, so it must be a dep.
+    // Without it, a parent who answered the "one thing {name} loves" ask on
+    // this very screen kept the pre-interest pick until some unrelated dep
+    // changed — the interest was captured and then visibly ignored, which is
+    // worse than never asking. Joined so the identity of the array (a new one
+    // per profile write) cannot re-run selection on every render.
+  }, [behaviorLogs, childProfile.age, childProfile.id, childProfile.interests?.join(" "), donePlayIds, goalDomains, sessionLength, latestCompletedAction]);
 
   // AIX-S4: seeds go through i18n (seed.*) — HE parents see Hebrew in the chat box.
   const coachOnPlay = (p: ScoredActivity) => {

@@ -28,7 +28,7 @@ import {
   sampleBedtimeStory,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
-import { api, ApiError, authHeaders, getAiLanguage, PaywallError } from "../lib/api";
+import { api, ApiError, authHeaders, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 import { track } from "../lib/analytics";
 import { isKidModeActive } from "../lib/kidModeGate";
@@ -982,23 +982,52 @@ function useArborState() {
 
     // ASK-8: same retry-dedupe seam as handleChatSend — a council retry after
     // a failure reuses the trailing user question instead of duplicating it.
-    setChatMessages((prev) => appendChatUser(prev, promptValue, selectedLens));
+    // AI-07: the council streams and can be stopped, exactly like /chat. It used
+    // to be one awaited api.council(...) — a silent spinner for the length of a
+    // multi-agent orchestration, with no way out. It now takes the SAME ack
+    // bubble → screened sentence deltas → settleChatTurn path, driven by the
+    // same server-side relay, so the two answers cannot render or screen
+    // differently. The controller goes in chatAbortRef, which is what the
+    // existing Stop button already aborts — cancelling a council turn needed no
+    // new affordance, only this wiring.
+    setChatMessages((prev) =>
+      appendChatAck(appendChatUser(prev, promptValue, selectedLens), t("coach.ack"), selectedLens),
+    );
     setIsChatLoading(true);
+
+    const controller = new AbortController();
+    chatAbortRef.current = controller;
+
     try {
-      const data = await api.council({
-        message: promptValue,
-        childProfile,
-        scholarLens: selectedLens || "Integrated Balanced",
-        language: getAiLanguage(),
-      });
+      const data = await streamCouncil(
+        {
+          message: promptValue,
+          childProfile,
+          scholarLens: selectedLens || "Integrated Balanced",
+          language: getAiLanguage(),
+        },
+        (text) => setChatMessages((prev) => applyChatDelta(prev, text, selectedLens)),
+        {
+          signal: controller.signal,
+          onStatus: (stage) => setChatStreamStatus(chatStageStatus(stage)),
+        },
+      );
       if (data.memoryReviewItems) setMemoryReviewItems(data.memoryReviewItems);
-      setChatMessages((prev) => [
-        ...prev,
-        { sender: "ai", text: data.text, lens: selectedLens, contract: data.contract, council: data.council },
-      ]);
+      // The same settle seam as /chat — which is also the ONE place a done-time
+      // output-screen flag retracts streamed prose. Appending a fresh bubble
+      // here instead would leave the streamed text standing next to the
+      // blocked replacement.
+      setChatMessages((prev) => settleChatTurn(prev, data, selectedLens));
       track("coach_council", { lens: selectedLens, voices: data.council?.length || 0 });
     } catch (err: any) {
       console.error(err);
+      if (err.name === "AbortError") {
+        // Parity with /chat: screened partial prose is kept, an ack-only bubble
+        // is dropped, and no cancel message is written into the thread — a stop
+        // is the parent's own action, not something Arbor says back to them.
+        setChatMessages((prev) => abortChatStream(prev));
+        return;
+      }
       if (err instanceof PaywallError) {
         openPaywall(err.feature, err.plan);
       } else {
@@ -1006,9 +1035,12 @@ function useArborState() {
         // raw err.message bubble is appended to (or persisted with) the thread.
         setApiError(err.message || "The scholar council could not be reached.");
       }
+      // Whatever the failure, the live ack/partial bubble must not survive it.
+      setChatMessages((prev) => abortChatStream(prev));
     } finally {
       setIsChatLoading(false);
       setChatStreamStatus(null);
+      chatAbortRef.current = null;
     }
   };
 
@@ -1255,7 +1287,20 @@ function useArborState() {
    * adapters receive no reference to this function. Confirmation is explicit,
    * atomic per proposal, auditable and reversible.
    */
-  const commitConversationProposal = async (proposal: ConversationProposal): Promise<ConversationChangeRecord> => {
+  /**
+   * AI-04: `origin` is the modality the proposal actually came from. This used
+   * to be hardcoded — every kept row got an id prefixed "voice-" and the stored
+   * response "Parent-confirmed from Harbor conversation". That was true while
+   * the only tray was the live-voice one. It stopped being true the moment a
+   * TYPED turn could be kept, and `log.response` is rendered to the parent and
+   * printed into reports, so the app was telling them they had said something
+   * out loud that they had typed. Defaults to "voice" so existing callers are
+   * byte-identical.
+   */
+  const commitConversationProposal = async (
+    proposal: ConversationProposal,
+    origin: "voice" | "typed" = "voice",
+  ): Promise<ConversationChangeRecord> => {
     if (proposal.childId !== childProfile.id) throw new Error("Proposal belongs to a different child");
     if (!proposal.summary.trim()) throw new Error("Proposal is empty");
     if (proposal.conflict?.code === "missing_milestone") throw new Error("The milestone no longer exists");
@@ -1269,11 +1314,14 @@ function useArborState() {
       await milestonesCol.upsert({ ...milestone, checked: proposal.milestoneStatus === "yes", observationStatus: proposal.milestoneStatus, observationUpdatedAt: confirmedAt });
       commitRef = { collection: "milestones", id: milestone.id };
     } else {
-      const id = "voice-" + proposal.id;
+      const id = origin + "-" + proposal.id;
       const behaviorType = proposal.target === "observation" ? "Observation" : proposal.target === "journal" ? "Journal moment" : "Report fact";
       await logsCol.upsert({
         id, timestamp: proposal.occurredAt ?? confirmedAt, behaviorType, intensity: 1, durationMinutes: 0,
-        trigger: proposal.summary.trim(), response: "Parent-confirmed from Harbor conversation",
+        trigger: proposal.summary.trim(),
+        response: origin === "typed"
+          ? "Parent-confirmed from a typed coach conversation"
+          : "Parent-confirmed from Harbor conversation",
         notes: proposal.sourceExcerpt, context: "Home", resolved: false,
         conversationProposalId: proposal.id, sourceExcerpt: proposal.sourceExcerpt,
       });

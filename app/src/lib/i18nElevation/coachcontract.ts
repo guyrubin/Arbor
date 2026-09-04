@@ -55,6 +55,19 @@ export const en: Record<string, string> = {
   "elev.coachcontract.controls.memory": "You approve or remove memory facts any time in Profile › Child Memory",
   "elev.coachcontract.controls.weekly": "Turn weekly context off any time — it stops with your next question",
 
+  // AI-10 — the in-product quality signal on a coach answer (thumbs).
+  // Register: the parent is telling US whether OUR answer helped. Every string
+  // keeps the subject on the answer; `note` says so outright, because a thumb
+  // sitting under a card about a child must not be readable as a verdict on
+  // the child. No score, no rating, no percentage, no grade — the parent has
+  // exactly two answers and can take either one back.
+  "elev.coachcontract.feedback.prompt": "Did this answer help?",
+  "elev.coachcontract.feedback.up": "It helped",
+  "elev.coachcontract.feedback.down": "It didn't help",
+  "elev.coachcontract.feedback.thanks": "Thank you — this is how the answers get better.",
+  "elev.coachcontract.feedback.undo": "Tap again to undo",
+  "elev.coachcontract.feedback.note": "This is about the answer, never about your child.",
+
   // ── The consent toggle (default OFF, per child)
   "elev.coachcontract.toggle": "Let the coach see this week's moments",
   "elev.coachcontract.toggleHint":
@@ -79,6 +92,14 @@ export const he: Record<string, string> = {
 
   "elev.coachcontract.controls.memory": "אתם מאשרים או מסירים עובדות זיכרון בכל רגע בפרופיל › זיכרון הילד",
   "elev.coachcontract.controls.weekly": "אפשר לכבות את ההקשר השבועי בכל רגע — הוא נעצר כבר מהשאלה הבאה",
+
+  // AI-10 — משוב על התשובה (לא על הילד). פנייה בלשון רבים, שקטה.
+  "elev.coachcontract.feedback.prompt": "התשובה הזו עזרה לכם?",
+  "elev.coachcontract.feedback.up": "עזרה",
+  "elev.coachcontract.feedback.down": "לא עזרה",
+  "elev.coachcontract.feedback.thanks": "תודה — ככה התשובות נעשות טובות יותר.",
+  "elev.coachcontract.feedback.undo": "לחיצה נוספת מבטלת",
+  "elev.coachcontract.feedback.note": "המשוב הוא על התשובה, אף פעם לא על הילד שלכם.",
 
   "elev.coachcontract.toggle": "לאפשר למאמן לראות את הרגעים מהשבוע",
   "elev.coachcontract.toggleHint":

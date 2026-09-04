@@ -1,10 +1,22 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
+import { ShareButton } from "../ui/ShareButton";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ageLabelForMonths } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
+import { isIncidentType } from "../../content/behaviorTaxonomy";
+import type { ShareCardOpts } from "../../lib/shareCard";
 import type { LifecycleMoment, LifecycleMomentKind } from "../../lib/lifecycle";
+import {
+  FIRST_MOMENT_STEPS,
+  dismissFirstMomentChain,
+  markFirstMomentStep,
+  readFirstMomentChain,
+  resolveFirstMomentChain,
+  type FirstMomentMarks,
+  type FirstMomentStepId,
+} from "../../lib/firstMomentChain";
 
 /**
  * LifecycleMomentCard — Wave E (ENG-09/L0/L1/L2/L3/L5, ENG-20): the ONE
@@ -62,6 +74,24 @@ const KIND_KEY: Record<LifecycleMomentKind, string> = {
   "day-one": "d1",
 };
 
+/* ── ENG-L0: the day-0 chain ───────────────────────────────────────────────
+   "first-moment" used to be a one-line announcement whose single CTA jumped
+   straight to the bedtime story, so a parent's first session ended holding
+   nothing. It now walks the three pieces that ALREADY exist — the captured
+   moment, a keepsake card off the existing ShareButton/renderShareCard
+   pipeline, and tonight's story — with lib/firstMomentChain.ts as its memory.
+   Reached the same way as before: at most one lifecycle module on Today.
+
+   The step is a walk, not a gate: any unfinished step is actionable, in any
+   order, and leaving mid-way loses nothing (the marks are device-local and the
+   card is sticky until the parent finishes it or waves it away — see
+   LIFECYCLE_STICKY_KINDS in useLifecycleMoment.ts). */
+const CHAIN_ICON: Record<FirstMomentStepId, string> = {
+  moment: "edit_note",
+  keepsake: "auto_awesome",
+  story: "auto_stories",
+};
+
 /** Six of the twelve curated CI-29 suggestions — the existing shared keys. */
 const SUGGESTION_KEYS = [
   "interest.trains",
@@ -87,7 +117,7 @@ export default function LifecycleMomentCard({
   onCapture: () => void;
 }) {
   const { t } = useLanguage();
-  const { setActiveTab } = useArbor();
+  const { setActiveTab, childProfile, behaviorLogs } = useArbor();
   const [picked, setPicked] = useState<string[]>([]);
   const [typed, setTyped] = useState("");
   const [saving, setSaving] = useState(false);
@@ -98,6 +128,51 @@ export default function LifecycleMomentCard({
   const vars = { name: childName, age };
 
   const isAsk = moment.kind === "interest-ask";
+  const isChain = moment.kind === "first-moment";
+
+  // ── ENG-L0 chain state. Seeded from the device record so a parent who did
+  //    one step yesterday resumes where they stopped; writes go straight back
+  //    so closing the app mid-chain never loses a step. ──
+  const childId = childProfile.id;
+  const [marks, setMarks] = useState<FirstMomentMarks>(() =>
+    isChain ? readFirstMomentChain(childId) : {},
+  );
+  useEffect(() => {
+    if (isChain) setMarks(readFirstMomentChain(childId));
+  }, [isChain, childId]);
+  const chain = resolveFirstMomentChain({ momentCount: moment.counts.total, marks });
+
+  // The parent's own words from their first PLAIN moment. Incident rows are
+  // excluded deliberately: their trigger text describes a hard moment, and a
+  // shareable card is the last place that belongs. With no plain moment the
+  // keepsake still renders — it simply carries the title and nothing else.
+  const firstMomentWords = useMemo(() => {
+    if (!isChain) return "";
+    const plain = behaviorLogs
+      .filter((l) => !isIncidentType(l.behaviorType))
+      .slice()
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+    return (plain?.trigger || plain?.notes || "").trim().slice(0, 180);
+  }, [isChain, behaviorLogs]);
+
+  const markStep = (step: "keepsake" | "story") => {
+    setMarks(markFirstMomentStep(childId, step));
+    track("d0_chain_step", { step });
+  };
+
+  // Finishing the third step retires the card for good — the chain has nothing
+  // left to say, and a completed checklist that keeps reappearing is a nag.
+  useEffect(() => {
+    if (isChain && chain.complete) onDismiss();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isChain, chain.complete]);
+
+  // The X on a chain card also retires the chain itself, so clearing the
+  // lifecycle ledger can never resurrect a walk the parent waved away.
+  const dismissCard = () => {
+    if (isChain) dismissFirstMomentChain(childId);
+    onDismiss();
+  };
 
   const go = (tab: Parameters<typeof setActiveTab>[0]) => {
     track("lifecycle_moment_action", { kind: moment.kind });
@@ -182,7 +257,7 @@ export default function LifecycleMomentCard({
         </div>
         <button
           type="button"
-          onClick={onDismiss}
+          onClick={dismissCard}
           aria-label={t("elev.lifecycle.dismiss")}
           className="-m-2 flex h-11 w-11 flex-none items-center justify-center rounded-full"
           style={{ color: "var(--arbor-faint)" }}
@@ -192,10 +267,99 @@ export default function LifecycleMomentCard({
         </button>
       </div>
 
-      {/* ENG-L2: the ask. Chips + one free-text line, written straight to
+      {/* ENG-L0: the day-0 chain. Three steps over three EXISTING mechanisms —
+          the moment they already captured, a keepsake through the shared
+          ShareButton pipeline, and the bedtime-stories route. Counts only:
+          "{n} of 3" is how many steps the PARENT took, and there is
+          deliberately no bar, ring or percentage drawn from it. */}
+      {isChain ? (
+        <div className="mt-4">
+          <ol className="space-y-2" aria-label={t("elev.d0.aria")} data-testid="d0-chain">
+            {FIRST_MOMENT_STEPS.map((step) => {
+              const done = chain.done[step];
+              const label = t(`elev.d0.step.${step}`);
+              return (
+                <li
+                  key={step}
+                  data-testid={`d0-step-${step}`}
+                  data-done={done ? "true" : "false"}
+                  className="flex flex-wrap items-center gap-2.5 rounded-xl px-3 py-2"
+                  style={{ background: "var(--arbor-paper-deep)" }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="flex h-7 w-7 flex-none items-center justify-center rounded-full"
+                    style={
+                      done
+                        ? { background: style.ink, color: "var(--arbor-on-accent)" }
+                        : { background: style.soft, color: style.ink }
+                    }
+                  >
+                    <Icon name={done ? "check" : CHAIN_ICON[step]} size={15} />
+                  </span>
+                  <span
+                    className="min-w-0 flex-1 text-[12.5px] font-bold leading-tight"
+                    style={{ color: "var(--arbor-ink)" }}
+                    dir="auto"
+                  >
+                    {label}
+                  </span>
+                  {done && (
+                    <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-faint)" }}>
+                      {t("elev.d0.step.done")}
+                    </span>
+                  )}
+                  {/* The keepsake IS the existing share pipeline — one tap
+                      renders the card on device. `captionKey` is explicit so
+                      the artifact fallback ("{name}'s story, made with Arbor")
+                      can never claim Arbor wrote the parent's words. */}
+                  {!done && step === "keepsake" && (
+                    <span
+                      data-testid="d0-keepsake-share"
+                      onClickCapture={() => markStep("keepsake")}
+                    >
+                      <ShareButton
+                        artifact="story"
+                        surface="d0_first_moment"
+                        childName={childName}
+                        captionKey="elev.d0.share.caption"
+                        label={t("elev.d0.keepsake.cta")}
+                        getCardOpts={(): ShareCardOpts => ({
+                          name: childName,
+                          title: t("elev.d0.keepsake.title", { name: childName }),
+                          ...(firstMomentWords ? { takeaway: firstMomentWords } : {}),
+                        })}
+                      />
+                    </span>
+                  )}
+                  {!done && step === "story" && (
+                    <button
+                      type="button"
+                      data-testid="d0-story-cta"
+                      onClick={() => {
+                        markStep("story");
+                        track("lifecycle_moment_action", { kind: moment.kind });
+                        setActiveTab("bedtime-stories");
+                      }}
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-[12px] font-extrabold"
+                      style={{ color: "var(--arbor-clay)" }}
+                    >
+                      {t("elev.d0.story.cta")}
+                      <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          <p className="mt-2.5 px-1 text-[11px] font-bold tabular-nums" style={{ color: "var(--arbor-faint)" }}>
+            {t("elev.d0.progress", { count: chain.doneCount, total: chain.total })}
+          </p>
+        </div>
+      ) : /* ENG-L2: the ask. Chips + one free-text line, written straight to
           `interests[]` on the profile (the same field ProfileEditDrawer owns),
-          so play selection picks it up on the very next pick. */}
-      {isAsk ? (
+          so play selection picks it up on the very next pick. */
+      isAsk ? (
         <div className="mt-4">
           <div className="flex flex-wrap gap-2" role="group" aria-label={t("elev.lifecycle.loves.aria", { name: childName })}>
             {SUGGESTION_KEYS.map((key) => {

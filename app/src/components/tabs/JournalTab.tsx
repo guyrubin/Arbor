@@ -22,6 +22,12 @@ import { dailyPromptKeys } from "../../lib/promptBank";
 import { track } from "../../lib/analytics";
 import { setCaptureCue } from "../../lib/captureCue";
 import JournalEntrySheet from "../journal/JournalEntrySheet";
+// AI-04 — the typed-turn proposals tray, and the ledger that records where a
+// kept row came from. The tray is the ONLY new capture affordance here; both
+// of its actions run existing seams (commitConversationProposal for the
+// one-tap keep, requestCapture("ai-draft") for the edit-first route).
+import CaptureProposalsTray from "../capture/CaptureProposalsTray";
+import { provenanceForSignal, readCaptureProvenance, type KeptProvenance } from "../../lib/captureProvenance";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -112,6 +118,7 @@ function JournalRow({
   domainLabel,
   title,
   detail,
+  originLabel = "",
   focused = false,
   onOpen,
 }: {
@@ -124,6 +131,10 @@ function JournalRow({
   domainLabel: string;
   title: string;
   detail: string;
+  /** AI-04: set only on a row the parent KEPT from an Arbor answer. The badge
+   *  above still reads "You" — keeping it was the parent's act — but the words
+   *  are Arbor's, and a row that does not say so is the defect AI-04 closes. */
+  originLabel?: string;
   /** TODAY-6: true while this row is the target of an evidence deep-link —
    *  a brief calm highlight so the parent lands on the cited entry. */
   focused?: boolean;
@@ -173,6 +184,20 @@ function JournalRow({
             {prov === "child" && <Icon name="child_care" size={12} fill={1} />}
             {provLabel}
           </span>
+          {/* AI-04 provenance chip — this row's words came from an Arbor
+              answer the parent chose to keep. Descriptive origin, never a
+              verdict; omitted entirely on a row the parent wrote themselves. */}
+          {originLabel && (
+            <span
+              data-testid="journal-row-origin"
+              className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide rounded-md px-1.5 py-0.5"
+              dir="auto"
+              style={{ background: PASTEL.mint.soft, color: PASTEL.mint.ink }}
+            >
+              <Icon name="bookmark_added" size={11} fill={1} />
+              {originLabel}
+            </span>
+          )}
           {/* Domain chip — omitted when the entry can't be classified (JRNL-6). */}
           {domain && (
             <Chip tone={tone} icon={<Icon name={DOMAIN_MS[domain]} size={13} fill={1} />}>{domainLabel}</Chip>
@@ -223,6 +248,16 @@ export default function JournalTab() {
   // The ONE timeline read (hooks/useTimeline) — the same stream the Story
   // density renders. No second read, no new write path.
   const signals = useTimeline();
+
+  // AI-04 — the origin ledger for rows kept from an Arbor answer. Re-read when
+  // the log ledger changes, which is exactly when a keep has just landed (the
+  // tray writes the ledger row right after commitConversationProposal returns
+  // the committed log id). Read-only here; the Journal never writes it.
+  const [keptProvenance, setKeptProvenance] = useState<KeptProvenance[]>([]);
+  useEffect(() => {
+    setKeptProvenance(readCaptureProvenance(childProfile.id));
+  }, [childProfile.id, behaviorLogs]);
+  const originLabel = t("elev.waveR.provenance.chip");
 
   // TODAY-6 evidence deep-link: when a citing surface (ProgressNarrative)
   // named a signal id, scroll to + briefly highlight exactly that row, then
@@ -448,6 +483,13 @@ export default function JournalTab() {
         </div>
       </section>
 
+      {/* AI-04 — the typed-turn proposals tray. A voice turn has had a review
+          tray since Harbor; a typed turn produced nothing keepable at all, so
+          the parent retyped what they had just read. Sits directly under the
+          compose card because keeping a line IS a capture. Renders nothing
+          when the last answer offers nothing keepable. */}
+      <CaptureProposalsTray surface="journal" />
+
       {/* Masterplan 1.5 — spine ribbon: what a saved moment feeds (ONE direction:
           → the weekly story behind the timeline tab). Quiet strip below the
           header + compose region, never above them (Rule A keeps it off Today).
@@ -548,6 +590,7 @@ export default function JournalTab() {
                     domainLabel={domain ? t(`journal.domain.${domain}`) : ""}
                     title={signalTitle(s, tt)}
                     detail={signalDetail(s, tt)}
+                    originLabel={provenanceForSignal(keptProvenance, s.id) ? originLabel : ""}
                     focused={s.id === focusId}
                     onOpen={() => setOpenSignal(s)}
                   />
@@ -576,6 +619,7 @@ export default function JournalTab() {
         when={openSignal?.at ? new Date(openSignal.at).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) : ""}
         title={openSignal ? signalTitle(openSignal, tt) : ""}
         detail={openSignal ? signalDetail(openSignal, tt) : ""}
+        kept={openSignal ? provenanceForSignal(keptProvenance, openSignal.id) : null}
         onClose={() => setOpenSignal(null)}
         onEdit={openMomentLogId(openSignal) ? editOpenSignal : undefined}
       />

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, IconBadge, type PastelKey } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
+import { initialCharterValues, saveFamilyCharter } from "../../lib/familyCharter";
 import type { FrameId } from "../../lib/masterclasses";
 
 // Each ritual → its Material Symbols Rounded glyph (UC-2 visual-match).
@@ -17,27 +18,32 @@ const FRAME_TONE: Record<FrameId, PastelKey> = {
   aim: "sky", twoAxes: "mint", story: "lav", shadow: "coral", marriage: "pink", shepherd: "yellow",
 };
 
-const KEY = "arbor.familyCharter";
-const DEFAULT = ["Courage", "Honesty", "Responsibility", "Kindness"];
-
 /** Arbor Academy › Family Formation. The Family Charter is a real, persisted tool;
- *  the rituals are real, repeatable practices (family as the first institution). */
+ *  the rituals are real, repeatable practices (family as the first institution).
+ *
+ *  LC-22 — the charter's persistence lives in `lib/familyCharter` (one owner,
+ *  one key, one normaliser). This surface no longer reaches into the device
+ *  store itself. Two defects went with the move:
+ *   · the load ran in a mount EFFECT while the save ran in a second effect, so
+ *     the first commit wrote the seeded defaults over the family's saved
+ *     charter and only a re-render put it back. The values are now read
+ *     synchronously in the state initialiser, and written only when the parent
+ *     actually edits — there is no mount-time write left to clobber anything.
+ *   · the load fed the raw stored value straight into state with no shape
+ *     check, so anything that was not an array of strings made `values.map`
+ *     throw and killed the only screen that could have repaired the charter.
+ *     `initialCharterValues` always returns an array. */
 export default function FamilyFormation() {
   const { t, aiLang } = useLanguage();
   const he = aiLang === "he";
-  const [values, setValues] = useState<string[]>(DEFAULT);
+  const [values, setValues] = useState<string[]>(() => initialCharterValues());
   const [input, setInput] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
-  useEffect(() => {
-    try { const raw = localStorage.getItem(KEY); if (raw) setValues(JSON.parse(raw)); } catch { /* ignore */ }
-  }, []);
-  useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(values)); } catch { /* ignore */ }
-  }, [values]);
-
-  const add = () => { const v = input.trim(); if (v && !values.includes(v)) { setValues((p) => [...p, v]); setInput(""); } };
-  const remove = (v: string) => setValues((p) => p.filter((x) => x !== v));
+  // Persist on the edit, and render exactly what a reload will show.
+  const commit = (next: string[]) => setValues(saveFamilyCharter(next));
+  const add = () => { const v = input.trim(); if (v && !values.includes(v)) { commit([...values, v]); setInput(""); } };
+  const remove = (v: string) => commit(values.filter((x) => x !== v));
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">

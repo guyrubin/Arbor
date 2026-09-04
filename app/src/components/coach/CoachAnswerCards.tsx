@@ -6,6 +6,7 @@ import { translate } from "../../lib/i18n";
 import { SpeakButton } from "../ui/SpeakButton";
 import { TrustLink } from "../trust/TrustLink";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
+import { track } from "../../lib/analytics";
 
 /**
  * Pure helper: returns the G2-safe disclosure header for N sources.
@@ -65,6 +66,173 @@ export function memoryFooterLabel(n: number | undefined, lang: UiLang = "en"): s
  */
 export function escalationTier(riskLevel?: string): "quiet" | "prominent" {
   return (riskLevel || "low").toLowerCase() === "low" ? "quiet" : "prominent";
+}
+
+/* ══ AI-10 — in-product quality signal on a coach answer ═════════════════════
+   Before this, answer quality was unmeasured in production: a parent who got a
+   bad answer had no way to tell us, so nothing about answer quality reached us
+   except churn. This is a thumbs up / down about THE ANSWER.
+
+   CLINICAL FIREWALL. This is a signal about Arbor's output, never a judgement
+   about the child. Nothing here scores, rates, grades or renders a verdict on
+   a child, and nothing about the child is stored: the emitted props are the
+   answer fingerprint, the vote, the scholar lens, which coach surface produced
+   it, the UI language, and the COUNT of sources — no question text, no answer
+   text, no name, no age band, no domains, no risk level. `feedbackProps` is
+   the single place those props are built, and its test asserts the exclusions.
+
+   The signal goes through the EXISTING first-party telemetry seam
+   (lib/analytics `track`), which writes to the signed-in parent's own
+   Firestore collection `users/{uid}/events` — fire-and-forget, best effort,
+   and a no-op when Firebase is unconfigured or the parent is anonymous. No new
+   store was invented for it. ═════════════════════════════════════════════ */
+
+/** The analytics event name. Stable — retrieval queries key on this string. */
+export const COACH_FEEDBACK_EVENT = "coach_answer_feedback";
+
+export type CoachAnswerVote = "up" | "down";
+
+/**
+ * FNV-1a, 32-bit. A ONE-WAY fingerprint: it is what identifies an answer in
+ * the telemetry stream (so a vote and its later un-vote are the same answer),
+ * and it is NOT a way to recover what the answer said. The source text never
+ * leaves the device.
+ */
+function fnv1a(input: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+/**
+ * Stable per-answer id. Derived from the answer's own prose so the same
+ * rendered answer keeps the same id across remounts (the vote survives leaving
+ * and reopening the thread) while two different answers do not collide.
+ * Exported so tests can cover it without mounting the component.
+ */
+export function answerSignature(contract: CoachContract): string {
+  const basis = [contract.text ?? "", contract.parentScript ?? "", ...(contract.todayPlan ?? [])].join(" ");
+  return `a-${fnv1a(basis)}`;
+}
+
+/**
+ * Pure helper: the telemetry props for one vote. ALLOW-LIST shaped — the
+ * returned object is built field by field and never spreads the contract, so a
+ * new contract field cannot silently start shipping child data.
+ * `vote: "cleared"` is the un-vote, recorded rather than merely forgotten:
+ * a parent taking a downvote back is itself a signal.
+ */
+export function feedbackProps(args: {
+  answerId: string;
+  vote: CoachAnswerVote | "cleared";
+  lens?: string;
+  surface: "coach" | "council";
+  lang: UiLang;
+  sources: number;
+}): Record<string, string | number> {
+  return {
+    answer_id: args.answerId,
+    vote: args.vote,
+    lens: args.lens || "default",
+    surface: args.surface,
+    lang: args.lang,
+    sources: args.sources,
+  };
+}
+
+const VOTE_KEY_PREFIX = "arbor.coachVote.";
+
+/** Per-device memory of this parent's vote. Every access is guarded: a private
+ *  window, blocked site data or a non-browser render must degrade to "no vote
+ *  recorded", never throw into the answer render. */
+export function readStoredVote(answerId: string): CoachAnswerVote | null {
+  try {
+    const raw = localStorage.getItem(VOTE_KEY_PREFIX + answerId);
+    return raw === "up" || raw === "down" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredVote(answerId: string, vote: CoachAnswerVote | null): void {
+  try {
+    if (vote) localStorage.setItem(VOTE_KEY_PREFIX + answerId, vote);
+    else localStorage.removeItem(VOTE_KEY_PREFIX + answerId);
+  } catch {
+    /* storage unavailable — the vote still sends, it just isn't remembered */
+  }
+}
+
+/**
+ * The control itself. Deliberately the quietest row on the card: it must never
+ * compete with the answer, never block it, and never delay it — it renders
+ * after the answer has already settled and every write is fire-and-forget.
+ */
+function AnswerFeedback({ contract, lens, surface, lang, sources }: {
+  contract: CoachContract;
+  lens?: string;
+  surface: "coach" | "council";
+  lang: UiLang;
+  sources: number;
+}) {
+  const answerId = answerSignature(contract);
+  const [vote, setVote] = useState<CoachAnswerVote | null>(() => readStoredVote(answerId));
+  const t = (key: string) => translate(lang, key);
+
+  const cast = (next: CoachAnswerVote) => {
+    // Reversible: tapping the active thumb clears the vote.
+    const resolved = vote === next ? null : next;
+    setVote(resolved);
+    writeStoredVote(answerId, resolved);
+    try {
+      track(COACH_FEEDBACK_EVENT, feedbackProps({ answerId, vote: resolved ?? "cleared", lens, surface, lang, sources }));
+    } catch {
+      /* telemetry is never allowed to break an answer */
+    }
+  };
+
+  const buttonStyle = (active: boolean) =>
+    active
+      ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }
+      : { background: "white", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" };
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1">
+      <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+        {vote ? t("elev.coachcontract.feedback.thanks") : t("elev.coachcontract.feedback.prompt")}
+      </span>
+      <button
+        type="button"
+        onClick={() => cast("up")}
+        aria-pressed={vote === "up"}
+        aria-label={t("elev.coachcontract.feedback.up")}
+        title={vote === "up" ? t("elev.coachcontract.feedback.undo") : t("elev.coachcontract.feedback.up")}
+        className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 min-h-[32px] rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+        style={buttonStyle(vote === "up")}
+      >
+        <Icon name="thumb_up" size={13} aria-hidden /> {t("elev.coachcontract.feedback.up")}
+      </button>
+      <button
+        type="button"
+        onClick={() => cast("down")}
+        aria-pressed={vote === "down"}
+        aria-label={t("elev.coachcontract.feedback.down")}
+        title={vote === "down" ? t("elev.coachcontract.feedback.undo") : t("elev.coachcontract.feedback.down")}
+        className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 min-h-[32px] rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+        style={buttonStyle(vote === "down")}
+      >
+        <Icon name="thumb_down" size={13} aria-hidden /> {t("elev.coachcontract.feedback.down")}
+      </button>
+      {/* States plainly what the control is about, so a thumb is never read as
+          a judgement on the child (clinical firewall, stated in the UI). */}
+      <span className="text-[10px] w-full" style={{ color: "var(--arbor-muted)" }}>
+        {t("elev.coachcontract.feedback.note")}
+      </span>
+    </div>
+  );
 }
 
 /**
@@ -195,9 +363,27 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
             {contract.todayPlan.map((step, i) => (
               <li key={i}>
                 <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-start gap-2 text-start w-full group">
-                  <span className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition" style={done[i] ? { background: "var(--arbor-clay)", border: "1px solid var(--arbor-clay)" } : { border: "1px solid var(--arbor-rule-strong)" }}>
-                    {done[i] && <Icon name="check" size={12} className="text-white" />}
-                  </span>
+                  {/* CR-01: the checked and unchecked boxes are separate
+                      elements rather than one box with a conditional fill.
+                      Same pixels either way — but the contrast ratchet can only
+                      prove a tick's legibility when the fill it sits on is
+                      statically known, and a ternary hid that. The glyph moves
+                      from a text-white class to --arbor-on-accent, the token
+                      that exists for ink on a saturated accent fill, so the
+                      pairing is expressed in tokens the checker can resolve. */}
+                  {done[i] ? (
+                    <span
+                      className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition"
+                      style={{ background: "var(--arbor-clay)", border: "1px solid var(--arbor-clay)" }}
+                    >
+                      <Icon name="check" size={12} style={{ color: "var(--arbor-on-accent)" }} />
+                    </span>
+                  ) : (
+                    <span
+                      className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition"
+                      style={{ border: "1px solid var(--arbor-rule-strong)" }}
+                    />
+                  )}
                   <span className="text-[12.5px] leading-snug" style={done[i] ? { color: "var(--arbor-muted)", textDecoration: "line-through" } : { color: "var(--arbor-ink)" }}>{step}</span>
                 </button>
               </li>
@@ -428,6 +614,16 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           </button>
         )}
       </div>
+
+      {/* AI-10: the in-product quality signal. Last row on the card, after the
+          answer has fully settled — it never gates or delays the answer. */}
+      <AnswerFeedback
+        contract={contract}
+        lens={lens}
+        surface={council && council.length > 0 ? "council" : "coach"}
+        lang={lang}
+        sources={sources.length}
+      />
     </div>
   );
 }

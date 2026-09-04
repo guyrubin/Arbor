@@ -226,10 +226,22 @@ describe("ENG-L2 — the interests capture is wired to the field that already wo
   });
 
   it("the ask STAYS until it is answered; announcements retire after one render", () => {
-    expect([...LIFECYCLE_STICKY_KINDS]).toEqual(["interest-ask"]);
+    // ENG-L0 (2026-09-04) added "first-moment": it stopped being an
+    // announcement and now carries the resumable day-0 chain (moment →
+    // keepsake → tonight's story), which a one-render retirement would make
+    // impossible to pick back up. The RULE is unchanged and is what the
+    // assertions below actually protect: a kind is sticky only when it is an
+    // open question or an unfinished walk, and everything else is marked seen
+    // the first time it renders.
+    expect([...LIFECYCLE_STICKY_KINDS].sort()).toEqual(["first-moment", "interest-ask"]);
     expect(hook).toMatch(
       /if \(!LIFECYCLE_STICKY_KINDS\.has\(momentKind\)\) markLifecycleSeen\(childId, momentKey\)/,
     );
+    // Negative control: the announcements really are NOT sticky, so the line
+    // above is not vacuously true for every kind.
+    for (const announcement of ["welcome-back", "birthday", "age-band", "first-week", "day-one"] as const) {
+      expect(LIFECYCLE_STICKY_KINDS.has(announcement), `${announcement} must retire after one render`).toBe(false);
+    }
   });
 
   it("the card offers curated chips from the EXISTING shared interest keys", () => {
@@ -237,9 +249,19 @@ describe("ENG-L2 — the interests capture is wired to the field that already wo
     expect(card).not.toMatch(/const SUGGESTION_LABELS[^=]*=\s*\[\s*"Trains"/);
   });
 
-  it("claims only what is true: interests reach PLAY selection, not the coach prompts", () => {
-    // AI-21/ENG-17: `interests` is collected but still not instructed into the
-    // coach prompt. Copy that promised otherwise would be a lie on the surface.
+  it("claims only what is true: the copy promises PLAY, and only PLAY", () => {
+    // WHAT CHANGED (2026-09-04, ENG-L2 trace). The original note here said
+    // `interests` never reached the coach at all. That is no longer accurate:
+    // ai/prompts.ts MODEL_PROFILE_FIELDS now allow-lists "interests" and
+    // promptProfile projects it, so the tokens ARE serialised into
+    // buildChatPrompt's "Current Child Profile Context" block.
+    //
+    // The assertion below still stands, and for a sharper reason: the coach is
+    // given the interest as CONTEXT, and is nowhere INSTRUCTED to build on it.
+    // Play selection is different — playbank/select.ts applies a real 1.3x
+    // interest boost and names the match in the why-line. Copy that promised
+    // the coach would use it would be promising an instruction that does not
+    // exist in the prompt.
     expect(lifecycleEn["elev.lifecycle.loves.body"]).toBeTruthy();
     expect(lifecycleEn["elev.lifecycle.loves.body"]).not.toMatch(/\bcoach\b/i);
     expect(lifecycleEn["elev.lifecycle.loves.saved"]).not.toMatch(/\bcoach\b/i);

@@ -101,6 +101,62 @@ export const en: Record<string, string> = {
     "No words written down yet. The first one you add starts the ledger.",
   "elev.waveR.words.firstOn": "First written down {date}",
 
+  // ── AI-04 · the typed-turn proposals tray ────────────────────────────────
+  // Every line describes an act of the PARENT (you asked / you keep / it was
+  // written down). Nothing here grades the child or claims a finding.
+  "elev.waveR.capture.eyebrow": "From your last answer",
+  "elev.waveR.capture.title": "Keep any of this?",
+  "elev.waveR.capture.body":
+    "Arbor's own words from the answer you just read. Keeping one writes it into the journal with today's date and where it came from — you can edit it first.",
+  "elev.waveR.capture.field.todayPlan": "Something to try",
+  "elev.waveR.capture.field.parentScript": "Words to use",
+  "elev.waveR.capture.field.observe": "Something to look out for",
+  "elev.waveR.capture.asked": "You asked",
+  "elev.waveR.capture.editLabel": "What gets kept",
+  "elev.waveR.capture.keep": "Keep this",
+  "elev.waveR.capture.edit": "Edit first",
+  "elev.waveR.capture.skip": "Not this one",
+  "elev.waveR.capture.kept": "Kept in the journal, with where it came from.",
+  "elev.waveR.capture.keepFailed": "That did not save. Nothing was written — try again.",
+  "elev.waveR.capture.duplicate": "Something very close to this is already in the record.",
+
+  // ── AI-04 · what a kept row says about its own origin ────────────────────
+  "elev.waveR.provenance.chip": "From Ask Arbor",
+  "elev.waveR.provenance.line":
+    "Arbor wrote these words in an answer to you. Keeping them was your choice, on {date}.",
+  "elev.waveR.provenance.asked": "You had asked: {question}",
+  "elev.waveR.provenance.prompt": "Arbor guidance, version {version}",
+
+  // ── GP-31 · "Firsts" keepsakes: a note and a date on a fresh milestone ───
+  "elev.waveR.keepsake.eyebrow": "A first, kept",
+  "elev.waveR.keepsake.add": "Add a note and a date",
+  "elev.waveR.keepsake.edit": "Edit this keepsake",
+  "elev.waveR.keepsake.title": "Keep this first",
+  "elev.waveR.keepsake.intro":
+    "Write what you saw and the day you saw it. A photo is optional — the note and the date are enough.",
+  "elev.waveR.keepsake.noteLabel": "What you saw",
+  "elev.waveR.keepsake.notePlaceholder": "Took three steps from the sofa to me.",
+  "elev.waveR.keepsake.dateLabel": "The day you saw it",
+  "elev.waveR.keepsake.photoLabel": "A photo, if you have one",
+  "elev.waveR.keepsake.photoAdd": "Add a photo",
+  "elev.waveR.keepsake.photoRemove": "Remove the photo",
+  "elev.waveR.keepsake.photoNote":
+    "A photo is stored with this child's own data, and is deleted when they are.",
+  "elev.waveR.keepsake.save": "Save the keepsake",
+  "elev.waveR.keepsake.remove": "Remove the keepsake",
+  "elev.waveR.keepsake.cancel": "Cancel",
+  "elev.waveR.keepsake.share": "Share this first",
+  "elev.waveR.keepsake.saved": "Kept, with the day you gave it.",
+  "elev.waveR.keepsake.removed": "The keepsake is gone. The milestone stays marked.",
+  "elev.waveR.keepsake.needNote": "Write a line about what you saw first.",
+  "elev.waveR.keepsake.needDate": "Give the day you saw it.",
+  "elev.waveR.keepsake.futureDate": "That day has not arrived yet.",
+  "elev.waveR.keepsake.photoFailed": "That photo did not load. Your note and date are safe.",
+  "elev.waveR.keepsake.on": "Kept for {date}",
+  "elev.waveR.keepsake.count.one": "1 first kept with a note",
+  "elev.waveR.keepsake.count.many": "{n} firsts kept with a note",
+  "elev.waveR.keepsake.aria": "Keep a note and a date for this milestone",
+
   // ── ENG-24 · the Monday anchor ───────────────────────────────────────────
   "elev.waveR.recap.eyebrow": "Your week",
   "elev.waveR.recap.title": "A new week with {name} starts here",
@@ -191,6 +247,60 @@ export const he: Record<string, string> = {
   "elev.waveR.words.empty":
     "עוד לא נכתבו מילים. הראשונה שתוסיפו פותחת את היומן.",
   "elev.waveR.words.firstOn": "נכתב לראשונה ב־{date}",
+
+  // ── AI-04 ────────────────────────────────────────────────────────────────
+  "elev.waveR.capture.eyebrow": "מתוך התשובה האחרונה",
+  "elev.waveR.capture.title": "לשמור משהו מזה?",
+  "elev.waveR.capture.body":
+    "אלה המילים של ארבור מהתשובה שקראתם עכשיו. שמירה כותבת אותן ליומן עם התאריך של היום ועם המקור שלהן — אפשר לערוך לפני.",
+  "elev.waveR.capture.field.todayPlan": "משהו לנסות",
+  "elev.waveR.capture.field.parentScript": "מילים להגיד",
+  "elev.waveR.capture.field.observe": "משהו לשים לב אליו",
+  "elev.waveR.capture.asked": "שאלתם",
+  "elev.waveR.capture.editLabel": "מה יישמר",
+  "elev.waveR.capture.keep": "לשמור את זה",
+  "elev.waveR.capture.edit": "לערוך קודם",
+  "elev.waveR.capture.skip": "לא את זה",
+  "elev.waveR.capture.kept": "נשמר ביומן, יחד עם המקור.",
+  "elev.waveR.capture.keepFailed": "זה לא נשמר. שום דבר לא נכתב — נסו שוב.",
+  "elev.waveR.capture.duplicate": "משהו קרוב מאוד לזה כבר רשום.",
+
+  // ── AI-04 ────────────────────────────────────────────────────────────────
+  "elev.waveR.provenance.chip": "מתוך שיחה עם ארבור",
+  "elev.waveR.provenance.line":
+    "ארבור כתבה את המילים האלה בתשובה אליכם. ההחלטה לשמור אותן הייתה שלכם, ב־{date}.",
+  "elev.waveR.provenance.asked": "שאלתם אז: {question}",
+  "elev.waveR.provenance.prompt": "תוכן ההנחיה של ארבור, גרסה {version}",
+
+  // ── GP-31 ────────────────────────────────────────────────────────────────
+  "elev.waveR.keepsake.eyebrow": "פעם ראשונה, שמורה",
+  "elev.waveR.keepsake.add": "להוסיף פתק ותאריך",
+  "elev.waveR.keepsake.edit": "לערוך את המזכרת",
+  "elev.waveR.keepsake.title": "לשמור את הפעם הראשונה",
+  "elev.waveR.keepsake.intro":
+    "כתבו מה ראיתם ובאיזה יום. תמונה היא רשות — הפתק והתאריך מספיקים.",
+  "elev.waveR.keepsake.noteLabel": "מה ראיתם",
+  "elev.waveR.keepsake.notePlaceholder": "שלושה צעדים מהספה אליי.",
+  "elev.waveR.keepsake.dateLabel": "היום שבו ראיתם",
+  "elev.waveR.keepsake.photoLabel": "תמונה, אם יש",
+  "elev.waveR.keepsake.photoAdd": "להוסיף תמונה",
+  "elev.waveR.keepsake.photoRemove": "להסיר את התמונה",
+  "elev.waveR.keepsake.photoNote":
+    "תמונה נשמרת יחד עם הנתונים של הילד או הילדה, ונמחקת יחד איתם.",
+  "elev.waveR.keepsake.save": "לשמור את המזכרת",
+  "elev.waveR.keepsake.remove": "להסיר את המזכרת",
+  "elev.waveR.keepsake.cancel": "ביטול",
+  "elev.waveR.keepsake.share": "לשתף את הפעם הראשונה",
+  "elev.waveR.keepsake.saved": "נשמר, עם היום שנתתם.",
+  "elev.waveR.keepsake.removed": "המזכרת הוסרה. אבן הדרך נשארת מסומנת.",
+  "elev.waveR.keepsake.needNote": "כתבו קודם שורה על מה שראיתם.",
+  "elev.waveR.keepsake.needDate": "ציינו את היום שבו ראיתם.",
+  "elev.waveR.keepsake.futureDate": "היום הזה עוד לא הגיע.",
+  "elev.waveR.keepsake.photoFailed": "התמונה לא נטענה. הפתק והתאריך שמורים.",
+  "elev.waveR.keepsake.on": "נשמר לתאריך {date}",
+  "elev.waveR.keepsake.count.one": "פעם ראשונה אחת נשמרה עם פתק",
+  "elev.waveR.keepsake.count.many": "{n} פעמים ראשונות נשמרו עם פתק",
+  "elev.waveR.keepsake.aria": "לשמור פתק ותאריך לאבן הדרך הזו",
 
   // ── ENG-24 ───────────────────────────────────────────────────────────────
   "elev.waveR.recap.eyebrow": "השבוע שלכם",

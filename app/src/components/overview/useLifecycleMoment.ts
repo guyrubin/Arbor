@@ -57,9 +57,18 @@ const DAY_MS = 86_400_000;
 /**
  * Kinds that persist until the parent acts on them. Everything else is an
  * announcement and retires itself after one render.
+ *
+ * ENG-L0 puts "first-moment" here. It is no longer an announcement: it carries
+ * the day-0 chain (moment → keepsake → tonight's story, lib/firstMomentChain),
+ * and a three-step walk that retires after ONE render is not resumable — a
+ * parent who captured a moment and closed the app would have lost the rest of
+ * the loop with no way back to it. It still leaves for good the moment they
+ * finish it or wave it away (LifecycleMomentCard calls onDismiss on both), so
+ * nothing here re-asks a parent who is done.
  */
 export const LIFECYCLE_STICKY_KINDS: ReadonlySet<LifecycleMomentKind> = new Set<LifecycleMomentKind>([
   "interest-ask",
+  "first-moment",
 ]);
 
 export interface LifecycleMomentState {

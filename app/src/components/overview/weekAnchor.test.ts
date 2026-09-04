@@ -16,6 +16,7 @@ import {
   weekAnchorSeenKey,
 } from "./weekAnchor";
 import { isRecapUnopened, recapWeekId } from "../../hooks/useWeeklyRecap";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
 
 /** Minimal in-memory Storage stand-in (the suite runs in `environment: "node"`). */
 function fakeStorage(): Storage {
@@ -127,5 +128,72 @@ describe("ENG-24 — the anchor card is a door, not a second recap", () => {
     const buttons = CARD.match(/data-testid="today-week-anchor-(open|later)"[\s\S]{0,400}?className="([^"]+)"/g) ?? [];
     expect(buttons.length).toBe(2);
     for (const b of buttons) expect(b).toContain("min-h-11");
+  });
+});
+
+/**
+ * WHY THE ANCHOR IS STILL UNMOUNTED (2026-09-04 review).
+ *
+ * The mount was re-examined on the view that "did the parent open last week's
+ * recap?" is a REFINEMENT of a Monday nudge, not a precondition — and that the
+ * device-local dismissal marker above should therefore be enough to mount the
+ * card with no new Firestore subscription on Today.
+ *
+ * The dismissal half is indeed free, and so is the opened half: the recap's own
+ * opened marker (`arbor.recap.opened.<childId>`, useWeeklyRecap) is already
+ * localStorage. What is NOT free is EXISTENCE, and the shipped copy makes
+ * existence a hard claim: the body says last week is "written up and waiting"
+ * and the CTA says "Open last week". A weekly report is only ever generated
+ * when the trailing week has at least one logged moment
+ * (shouldAutoGenerateRecap), and useChildCollection mirrors to localStorage in
+ * SANDBOX MODE ONLY — so a signed-in device holds no local copy to read. A
+ * parent who logged nothing last week would be told a report is waiting and
+ * land on an empty Weekly surface.
+ *
+ * Softening the copy to fit what Today knows was explicitly ruled out. So the
+ * card stays unmounted until Today has a real recap signal, and this guard
+ * makes that conditional rather than permanent: mount it the day the signal is
+ * there, and this test passes.
+ */
+describe("ENG-24 — the anchor may only be mounted WITH a real recap signal", () => {
+  const OVERVIEW = readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "tabs", "OverviewTab.tsx"),
+    "utf8",
+  )
+    .replace(/\r\n/g, "\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+  it("the Today hub source was actually read", () => {
+    expect(OVERVIEW.length).toBeGreaterThan(20_000);
+    expect(OVERVIEW).toContain("export default function OverviewTab");
+  });
+
+  it("the copy really does claim a written report is waiting", () => {
+    // If this ever fails, the copy has been softened — which is the one way to
+    // mount the card that was ruled out. Re-read the note above before editing.
+    expect(elevationEn["elev.waveR.recap.body"]).toMatch(/written up and waiting/i);
+    expect(elevationEn["elev.waveR.recap.cta"]).toMatch(/open last week/i);
+    expect(elevationHe["elev.waveR.recap.body"]).toMatch(/כתוב ומחכה/);
+  });
+
+  it("Today never renders the anchor without a recap signal in the same file", () => {
+    const mounts = /<WeekAnchorCard|weekAnchorRecapDue\(/.test(OVERVIEW);
+    const hasSignal = /useWeeklyRecap\(|recapUnopened/.test(OVERVIEW);
+    expect(
+      !mounts || hasSignal,
+      "OverviewTab mounts the week anchor but derives no recap signal. The card claims " +
+        'last week is "written up and waiting"; without a real report that claim is false ' +
+        "and the CTA lands the parent on an empty Weekly surface.",
+    ).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL — the guard fires on a mount with no signal", () => {
+    const bad = "return <WeekAnchorCard weekId={recapWeekId()} />;";
+    expect(/<WeekAnchorCard|weekAnchorRecapDue\(/.test(bad)).toBe(true);
+    expect(/useWeeklyRecap\(|recapUnopened/.test(bad)).toBe(false);
+    // …and passes once the signal is genuinely there.
+    const good = "const recap = useWeeklyRecap();\n  return <WeekAnchorCard weekId={recap.currentId} />;";
+    expect(/useWeeklyRecap\(|recapUnopened/.test(good)).toBe(true);
   });
 });

@@ -25,6 +25,7 @@ import * as aierrors from "./aierrors";
 import * as aiHonesty from "./aiHonesty";
 import * as auth from "./auth";
 import * as carehonesty from "./careHonesty";
+import * as careNetwork from "./careNetwork";
 import * as careprofile from "./careprofile";
 import * as celebrate from "./celebrate";
 import * as childmemory from "./childmemory";
@@ -33,6 +34,7 @@ import * as closeloop from "./closeloop";
 import * as coachcontract from "./coachcontract";
 import * as continueModule from "./continue";
 import * as evening from "./evening";
+import * as firstMoment from "./firstMoment";
 import * as growthCare from "./growthCare";
 import * as foundation from "./foundation";
 import * as fullpicture from "./fullpicture";
@@ -73,6 +75,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   aiHonesty,
   auth,
   carehonesty,
+  careNetwork,
   careprofile,
   celebrate,
   childmemory,
@@ -81,6 +84,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   coachcontract,
   continueModule,
   evening,
+  firstMoment,
   growthCare,
   foundation,
   fullpicture,

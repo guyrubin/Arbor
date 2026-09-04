@@ -31,6 +31,14 @@ export const en: Record<string, string> = {
   "elev.learnCare.pick.why.saved": "Continues a topic you saved.",
   "elev.learnCare.pick.deeper": "Go deeper with a full course below.",
 
+  // ── LC-21 · Learn read state ───────────────────────────────────────────────
+  // What the PARENT opened, on their own device. A marker and a count — never
+  // a fraction, a streak, or a word that grades the child. Both strings are
+  // absent from the screen when nothing is known, so a cleared or blocked store
+  // renders the plain library rather than a wrong "0".
+  "elev.learnCare.read.badge": "Read",
+  "elev.learnCare.read.count": "{n} already read",
+
   // ── LC-12 · Appointments ───────────────────────────────────────────────────
   "elev.learnCare.appt.when.label": "Date and time",
   "elev.learnCare.appt.when.missing": "No date yet",
@@ -105,6 +113,10 @@ export const he: Record<string, string> = {
   "elev.learnCare.pick.why.logs": "נבחר לפי מה שתיעדתם השבוע.",
   "elev.learnCare.pick.why.saved": "ממשיך נושא ששמרתם.",
   "elev.learnCare.pick.deeper": "להעמיק בקורס מלא למטה.",
+
+  // ── LC-21 ──────────────────────────────────────────────────────────────────
+  "elev.learnCare.read.badge": "נקרא",
+  "elev.learnCare.read.count": "{n} כבר נקראו",
 
   // ── LC-12 ──────────────────────────────────────────────────────────────────
   "elev.learnCare.appt.when.label": "תאריך ושעה",

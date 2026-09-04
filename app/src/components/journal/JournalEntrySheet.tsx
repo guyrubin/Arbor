@@ -6,6 +6,8 @@ import { PASTEL, Chip, domainVisual, type PastelKey } from "../ui/kit";
 import { ShareButton } from "../ui/ShareButton";
 import { useArbor } from "../../context/ArborContext";
 import type { ShareCardOpts } from "../../lib/shareCard";
+import { fmtDay } from "../../lib/formatDate";
+import type { KeptProvenance } from "../../lib/captureProvenance";
 import type { TimelineSignal, SignalProvenance } from "../../lib/signalTimeline";
 import type { DevelopmentalDomainId } from "../../types";
 
@@ -35,6 +37,7 @@ export default function JournalEntrySheet({
   when,
   title,
   detail,
+  kept = null,
   onClose,
   onEdit,
 }: {
@@ -47,11 +50,16 @@ export default function JournalEntrySheet({
   when: string;
   title: string;
   detail: string;
+  /** AI-04: present only when the parent KEPT this row from an Arbor answer.
+   *  This sheet feeds clinician handoffs, so "noted by You" over Arbor's own
+   *  sentence would misattribute authorship — the same reason the `action`
+   *  kind already carries its "Arbor suggested this" line below. */
+  kept?: KeptProvenance | null;
   onClose: () => void;
   /** Present only for parent-owned moments — routes into the existing editor. */
   onEdit?: () => void;
 }) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const { childProfile } = useArbor();
   const childName = (childProfile?.name || "").split(" ")[0];
   const tone: PastelKey = signal
@@ -116,6 +124,33 @@ export default function JournalEntrySheet({
               )}
             </div>
           </dl>
+
+          {/* AI-04 — the kept row's origin, in full. The Journal feed shows a
+              chip; this is the record behind it: that Arbor wrote the words,
+              which prompt version produced them, what the parent had asked,
+              and the day the parent chose to keep them. A saved row whose
+              origin is not recorded is the defect this item exists to close. */}
+          {kept && (
+            <div
+              data-testid="journal-entry-provenance"
+              className="rounded-xl p-3 text-[12px] leading-relaxed"
+              dir="auto"
+              style={{ background: PASTEL.mint.soft, color: PASTEL.mint.ink }}
+            >
+              <p className="font-extrabold uppercase tracking-wider text-[10px]">
+                {t("elev.waveR.provenance.chip")}
+              </p>
+              <p className="mt-1 font-bold">
+                {t("elev.waveR.provenance.line", { date: fmtDay(kept.keptAt, uiLang) })}
+              </p>
+              {kept.sourceExcerpt && (
+                <p className="mt-1">{t("elev.waveR.provenance.asked", { question: kept.sourceExcerpt })}</p>
+              )}
+              <p className="mt-1 opacity-80">
+                {t("elev.waveR.provenance.prompt", { version: kept.promptVersion })}
+              </p>
+            </div>
+          )}
 
           {domain && (
             <Chip tone={tone}>{domainLabel}</Chip>

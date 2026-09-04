@@ -2,8 +2,13 @@
 // forming around) to the child's hero journey, so stories that build the family's
 // chosen virtues surface first and the aim is visible. Pure, dependency-free.
 import type { DevelopmentMetricId } from "../types";
+// The charter's storage key has ONE owner (lib/familyCharter.ts). It used to be
+// spelled here as a second literal, which is how the writer and the readers were
+// free to disagree about shape. Importing the constant keeps this module pure —
+// it is a string, not a dependency on React, storage or the network.
+import { FAMILY_CHARTER_KEY } from "./familyCharter";
 
-const CHARTER_KEY = "arbor.familyCharter";
+const CHARTER_KEY = FAMILY_CHARTER_KEY;
 
 /** The family's chosen values (free text), as set in Family Formation. */
 export const loadCharter = (): string[] => {

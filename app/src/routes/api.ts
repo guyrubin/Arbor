@@ -114,13 +114,20 @@ const writeSse = (res: express.Response, event: string, data: unknown) => {
  * prose. /council has no streaming at all, so a council answer is a silent
  * spinner until the whole multi-agent orchestration finishes.
  *
- * SCOPE, STATED HONESTLY: this relay is extracted so /council can be moved onto
- * it without a second copy of the screening logic drifting from this one — but
- * that move has NOT happened. The relay is constructed at exactly one site,
- * inside /chat; /council still ends with res.json(...). AI-07 is the item that
- * finishes the job. Do not read this docblock as a description of /council's
- * current behaviour: on a safety-critical screening seam, a comment claiming
- * coverage that does not exist is worse than no comment.
+ * SCOPE, STATED HONESTLY: as of AI-07 the relay is constructed at exactly TWO
+ * sites — /chat and /council — and those are the only two. Both drive the
+ * identical screen through this one function, so the two screens cannot drift;
+ * that non-drift is the whole reason the logic lives here rather than being
+ * copied. /council opts into SSE the same way /chat does (an
+ * `Accept: text/event-stream` request header, see `wantsSse`); a request
+ * WITHOUT that header still gets one `res.json(...)` at the end, and on that
+ * path the relay is constructed with `enabled=false` and releases nothing —
+ * screening on the non-SSE path is done entirely by the done-time
+ * `screenModelOutput` call, exactly as before. What this docblock does NOT
+ * claim: /voice has its own cadence relay (see the /voice handler) and is not
+ * routed through here. On a safety-critical screening seam, a comment claiming
+ * coverage that does not exist is worse than no comment — if a third route is
+ * added, edit this paragraph in the same commit.
  *
  * CLINICAL FIREWALL: a flagged span reaches NO SSE frame — `push`/`flush`
  * return the verdict and release nothing further. Structured panels stay gated
@@ -827,15 +834,37 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // SAGE-2 (v6): multi-agent scholar council. The orchestrator selects the most
   // relevant scholar agents, runs each as its own lensed model call (in parallel),
   // then synthesizes the takes into one coherent, non-diagnostic answer.
+  // AI-07: the council answer used to be a silent spinner — one res.json() after
+  // the whole multi-agent orchestration finished — and the parent had no way to
+  // stop it. It now opts into SSE exactly as /chat does (Accept:
+  // text/event-stream) and drives the SHARED createScreenedProseRelay, so the
+  // council screen and the chat screen are one function and cannot drift. A
+  // request without the SSE Accept header is unchanged: same single res.json().
+  //
+  // The in-app caller IS switched: ArborContext's handleCouncilSend drives
+  // `streamCouncil` (lib/api.ts) with the same ack-bubble → screened deltas →
+  // settleChatTurn path /chat uses, and its AbortController lives in the same
+  // chatAbortRef the Stop button already aborts. The non-SSE `api.council()`
+  // remains for callers that do not ask for the stream.
   router.post("/council", async (req, res) => {
     const { message, childProfile, scholarLens, language } = req.body;
+    const streamResponse = wantsSse(req);
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "A message is required" });
       return;
     }
     const escalationMatch = screenForImmediateEscalation({ message });
     if (escalationMatch) {
-      res.json({ text: renderEscalationMarkdown(escalationMatch), riskLevel: "urgent", escalationCategory: escalationMatch.category, council: [] });
+      // Byte-identical payload on both transports — the SSE form is the same
+      // object inside a `done` frame, never a re-worded stream-only variant.
+      const payload = { text: renderEscalationMarkdown(escalationMatch), riskLevel: "urgent", escalationCategory: escalationMatch.category, council: [] };
+      if (streamResponse) {
+        beginSse(res);
+        writeSse(res, "done", payload);
+        res.end();
+      } else {
+        res.json(payload);
+      }
       return;
     }
     const languageDirective =
@@ -845,6 +874,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     // AIR-9: one 45s budget covers the whole council (parallel takes + synthesis).
     const budget = createRouteBudget(res, "coach");
     try {
+      // AI-07: SSE opens BEFORE the orchestration so the parent sees the turn
+      // begin immediately. `status` frames carry milestone stage KEYS only
+      // (memory → council → sources → plan) — the client owns the localized
+      // copy (i18n `coach.status.*`), so no English leaks into a HE session.
+      // `council` is a council-only stage; a client that does not know the key
+      // falls back to its generic loading line rather than showing nothing.
+      if (streamResponse) {
+        beginSse(res);
+        writeSse(res, "status", { stage: "memory" });
+      }
       const childId = toChildId(childProfile);
       // OWN-1: uid-derived family — never the client-supplied childProfile.familyId.
       const familyId = await resolveFamilyId(req, childProfile);
@@ -864,14 +903,19 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
 
       // 1) Each scholar agent deliberates in parallel (raced at the route seam
       // too, so a signal-ignoring provider cannot outlive the budget).
+      if (streamResponse) writeSse(res, "status", { stage: "council" });
       const takes = await raceWithAbort(runScholarTakes(modelProvider, council, {
         message: privacy.redact(message),
         childProfile: redactProfile(privacy, childProfile),
         language,
         budget: budget.budget
       }), budget.signal);
+      // AI-07: the parent may have left (or the deadline fired) during the
+      // parallel takes — stop here rather than paying for the synthesis call.
+      if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
 
       // 2) Ground the synthesis in the council's cards + approved memory.
+      if (streamResponse) writeSse(res, "status", { stage: "sources" });
       const scholarCards = await loadCardsByIds(council.flatMap((s) => s.cardIds));
       const retrievedCards = await retrieveKnowledgeCards({
         // AI-03: same derived keys as /chat. `childDomains` (the old source)
@@ -898,15 +942,78 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         languageDirective
       });
 
-      const raw = await raceWithAbort(modelProvider.generateJson({
+      // VC-8 parity with /chat: ONE builder for the mid-stream flag and the
+      // done-time flag, so the two blocked payload shapes stay byte-identical
+      // (and both keep the council contract's `council: []`).
+      const buildBlockedPayload = (outputVerdict: OutputScreenVerdict) => {
+        logger.warn("Council output blocked by output safety screen", {
+          requestId: requestIdOf(req),
+          category: outputVerdict.category,
+          reason: outputVerdict.reason,
+        });
+        // VC-8: crisis output → crisis resources, never the generic blocked state.
+        if (outputVerdict.category === "crisis") {
+          const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
+          return {
+            text: renderEscalationMarkdown(crisisMatch),
+            riskLevel: "urgent",
+            escalationCategory: crisisMatch.category,
+            outputBlocked: true,
+            blockedCategory: "crisis" as const,
+            council: [],
+          };
+        }
+        return { text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category, council: [] };
+      };
+
+      // AI-07: the SHARED screened sentence relay (createScreenedProseRelay
+      // above) — the same seam /chat drives, so the council screen and the chat
+      // screen are one implementation and cannot drift. The synthesis contract's
+      // leading `text` prose is tailed out of the raw JSON stream, alias-RESTORED
+      // FIRST (the NAME_SUBJECT lexical floor assumes restored names), and
+      // released one COMPLETE sentence at a time only after
+      // screenModelOutputLexical passes on the CUMULATIVE restored prose. A
+      // flagged span reaches NO SSE frame. Structured panels AND the per-scholar
+      // council takes stay gated at `done`, where the full pre-cadence
+      // screenModelOutput still runs on the complete rendered answer — so a
+      // done-time flag makes the client retract the streamed bubble.
+      // On the non-SSE path the relay is constructed with enabled=false and
+      // releases nothing; the done-time screen is unchanged.
+      const relay = createScreenedProseRelay(res, privacy.createStreamRestorer(), streamResponse);
+      if (streamResponse) writeSse(res, "status", { stage: "plan" });
+
+      let rawResponse = "";
+      // The stream is ALSO raced at the route seam (abortableIterate) so even a
+      // provider that ignores the signal cannot outlive the budget — this is
+      // what makes a council answer genuinely cancellable, not just hidden.
+      for await (const chunk of abortableIterate(modelProvider.generateJsonStream({
         route: "coach_high_stakes",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: coachResponseSchema,
         temperature: 0.4,
         budget: budget.budget,
         promptVersion: PROMPT_VERSIONS.council_synthesis.version
-      }), budget.signal);
-      const structured = privacy.restoreDeep(coachResponseZodSchema.parse(raw));
+      }), budget.signal)) {
+        if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
+        rawResponse += chunk;
+        const verdict = relay.push(chunk);
+        if (verdict) {
+          writeSse(res, "done", buildBlockedPayload(verdict));
+          res.end();
+          return;
+        }
+      }
+      {
+        const verdict = relay.flush();
+        if (verdict) {
+          writeSse(res, "done", buildBlockedPayload(verdict));
+          res.end();
+          return;
+        }
+      }
+      if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
+
+      const structured = privacy.restoreDeep(coachResponseZodSchema.parse(parseJson(rawResponse.trim())));
       const restoredTakes = privacy.restoreDeep(takes);
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((c) => c.id);
@@ -920,25 +1027,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const renderedText = renderCoachResponse(structured);
       const outputVerdict = await screenModelOutput(modelProvider, renderedText);
       if (outputVerdict.flagged) {
-        logger.warn("Council output blocked by output safety screen", {
-          requestId: requestIdOf(req),
-          category: outputVerdict.category,
-          reason: outputVerdict.reason,
-        });
-        // VC-8: crisis output → crisis resources, never the generic blocked state.
-        if (outputVerdict.category === "crisis") {
-          const crisisMatch = escalationMatchForCategory(outputVerdict.escalationCategory);
-          res.json({
-            text: renderEscalationMarkdown(crisisMatch),
-            riskLevel: "urgent",
-            escalationCategory: crisisMatch.category,
-            outputBlocked: true,
-            blockedCategory: "crisis",
-            council: [],
-          });
-          return;
+        // Done-time flag (lexical floor on the FULL rendered answer + the
+        // semantic classifier when enabled): same payload as the mid-stream
+        // flag — the client retracts any streamed bubble and replaces it.
+        const blockedPayload = buildBlockedPayload(outputVerdict);
+        if (streamResponse) {
+          writeSse(res, "done", blockedPayload);
+          res.end();
+        } else {
+          res.json(blockedPayload);
         }
-        res.json({ text: renderBlockedOutputMarkdown(), outputBlocked: true, blockedCategory: outputVerdict.category, council: [] });
         return;
       }
 
@@ -948,17 +1046,38 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         frameRouting: structured.frameRouting
       });
       budget.settle();
-      res.json({ text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems });
+      const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };
+      if (streamResponse) {
+        writeSse(res, "done", payload);
+        res.end();
+      } else {
+        res.json(payload);
+      }
     } catch (error: any) {
       budget.settle();
       if (budget.clientGone()) return;
       if (budget.timedOut || isAbortError(error)) {
         logger.warn("Arbor Council deadline exceeded", { requestId: requestIdOf(req) });
-        res.status(504).json(DEADLINE_ERROR);
+        // AIR-9: same calm parent-register copy on both transports; on SSE it
+        // travels as an `error` frame because the headers are already sent.
+        if (streamResponse) {
+          if (!res.headersSent) beginSse(res);
+          writeSse(res, "error", DEADLINE_ERROR);
+          res.end();
+        } else {
+          res.status(504).json(DEADLINE_ERROR);
+        }
         return;
       }
       logger.error("Arbor Council Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Failed to convene the scholar council", details: error.message });
+      const payload = { error: "Failed to convene the scholar council", details: error.message };
+      if (streamResponse) {
+        if (!res.headersSent) beginSse(res);
+        writeSse(res, "error", payload);
+        res.end();
+      } else {
+        res.status(500).json(payload);
+      }
     }
   });
 

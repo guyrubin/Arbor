@@ -11,21 +11,55 @@ import { track } from "../../lib/analytics";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { isolate } from "../../lib/i18n";
 // LC-09: the "track" leg — a recorded consult request becomes a tracked
 // appointment, so "Track it in Appointments" stops landing on an empty list.
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { appointmentFromConsultRequest, type Appointment } from "../../lib/careTrack";
 
-const SPECIALTIES = [
-  "Child Psychologist", "Speech Therapist", "Occupational Therapist", "Parenting Coach",
-  "Educational Consultant", "Pediatrician", "Autism / ADHD Specialist", "Sleep Consultant",
-  "Family Therapist", "School Readiness Specialist",
+/** Specialty chips. `query` is the CANONICAL search term the chip drops into
+ *  the search box — professional records come back from /api/professionals in
+ *  English, so translating the query would make every chip match nothing.
+ *  Only `labelKey` is translated; see i18nElevation/careNetwork.ts. */
+const SPECIALTIES: ReadonlyArray<{ query: string; labelKey: string }> = [
+  { query: "Child Psychologist", labelKey: "elev.careNet.spec.psychologist" },
+  { query: "Speech Therapist", labelKey: "elev.careNet.spec.speech" },
+  { query: "Occupational Therapist", labelKey: "elev.careNet.spec.ot" },
+  { query: "Parenting Coach", labelKey: "elev.careNet.spec.parentCoach" },
+  { query: "Educational Consultant", labelKey: "elev.careNet.spec.eduConsultant" },
+  { query: "Pediatrician", labelKey: "elev.careNet.spec.pediatrician" },
+  { query: "Autism / ADHD Specialist", labelKey: "elev.careNet.spec.neuro" },
+  { query: "Sleep Consultant", labelKey: "elev.careNet.spec.sleep" },
+  { query: "Family Therapist", labelKey: "elev.careNet.spec.family" },
+  { query: "School Readiness Specialist", labelKey: "elev.careNet.spec.schoolReadiness" },
 ];
 
-const FILTERS = ["Verified by Arbor", "Online", "In-person", "Hebrew", "English", "Ages 3–6", "Insurance accepted"];
+/** LC-16: a filter's IDENTITY is this id, never the label a parent reads.
+ *  The screen used to hold the selection as the English label string and
+ *  switch on it — so translating "Verified by Arbor" would have left every
+ *  chip visibly selected and matching nothing on a Hebrew UI. */
+export type CareFilterId =
+  | "verified"
+  | "online"
+  | "in_person"
+  | "hebrew"
+  | "english"
+  | "ages_3_6"
+  | "insurance";
 
-// Fallback shown if the API is unavailable (keeps the directory functional offline).
+export const CARE_FILTERS: ReadonlyArray<{ id: CareFilterId; labelKey: string }> = [
+  { id: "verified", labelKey: "elev.careNet.filter.verified" },
+  { id: "online", labelKey: "elev.careNet.filter.online" },
+  { id: "in_person", labelKey: "elev.careNet.filter.inPerson" },
+  { id: "hebrew", labelKey: "elev.careNet.filter.hebrew" },
+  { id: "english", labelKey: "elev.careNet.filter.english" },
+  { id: "ages_3_6", labelKey: "elev.careNet.filter.ages36" },
+  { id: "insurance", labelKey: "elev.careNet.filter.insurance" },
+];
+
+// Fallback shown if the API is unavailable (keeps the directory functional
+// offline). LC-16: this stays EMPTY. Arbor shows nobody until a real
+// practitioner's identity and credentials have been reviewed — never a seed,
+// a sample, or a placeholder profile.
 const FALLBACK: Professional[] = [];
 // True if the professional's age range overlaps [lo, hi].
 function agesOverlap(ages: string, lo: number, hi: number): boolean {
@@ -35,15 +69,17 @@ function agesOverlap(ages: string, lo: number, hi: number): boolean {
   return min <= hi && max >= lo;
 }
 
-function matchesFilter(p: Professional, f: string): boolean {
+/** Matching is language-independent: it reads the filter's id and the
+ *  professional record, never any displayed copy. */
+export function matchesFilter(p: Professional, f: CareFilterId): boolean {
   switch (f) {
-    case "Verified by Arbor": return !!p.verified;
-    case "Online": return /online|remote/i.test(`${p.mode} ${p.city}`);
-    case "In-person": return /in.?person/i.test(p.mode);
-    case "Hebrew": return /hebrew/i.test(p.langs);
-    case "English": return /english/i.test(p.langs);
-    case "Ages 3–6": return agesOverlap(p.ages, 3, 6);
-    case "Insurance accepted": return (p as { insurance?: boolean }).insurance !== false;
+    case "verified": return !!p.verified;
+    case "online": return /online|remote/i.test(`${p.mode} ${p.city}`);
+    case "in_person": return /in.?person/i.test(p.mode);
+    case "hebrew": return /hebrew/i.test(p.langs);
+    case "english": return /english/i.test(p.langs);
+    case "ages_3_6": return agesOverlap(p.ages, 3, 6);
+    case "insurance": return (p as { insurance?: boolean }).insurance !== false;
     default: return true;
   }
 }
@@ -66,8 +102,8 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
   const { toast } = useToast();
   const { t } = useLanguage();
   const first = childProfile.name.split(" ")[0];
-  const [active, setActive] = useState<string[]>(["Verified by Arbor"]);
-  const toggle = (f: string) => setActive((p) => (p.includes(f) ? p.filter((x) => x !== f) : [...p, f]));
+  const [active, setActive] = useState<CareFilterId[]>(["verified"]);
+  const toggle = (f: CareFilterId) => setActive((p) => (p.includes(f) ? p.filter((x) => x !== f) : [...p, f]));
   const [pros, setPros] = useState<Professional[]>(FALLBACK);
   const [query, setQuery] = useState("");
   // MON-3 v1: real consult request flow (durable, email-based transaction).
@@ -86,7 +122,11 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
       incomingNote?.trim()
         ? incomingNote.trim()
         : childProfile.challenges[0]
-        ? `We're working on ${childProfile.challenges[0].toLowerCase()} with ${first} (${ageLabel(childProfile, t)}).`
+        ? t("elev.careNet.consult.note.default", {
+            topic: childProfile.challenges[0].toLowerCase(),
+            name: first,
+            age: ageLabel(childProfile, t),
+          })
         : ""
     );
     setConsultMode("either");
@@ -116,13 +156,18 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           proName: consultPro.name,
           proRole: consultPro.role,
           requestId: request.id,
+          // PERSISTED VALUE, not display copy: Appointments stores and renders
+          // this string. It stays canonical English so a parent who switches
+          // language does not end up with a half-translated record.
           mode: consultMode === "in_person" ? "In person" : "Online",
           nowMs: Date.now(),
         })
       );
       toast(t("elev.learnCare.track.created"), "success");
-    } catch (err: any) {
-      toast(err.message || "Couldn't record the request — please try again.", "error");
+    } catch {
+      // The API's own message is an untranslated server string; the parent
+      // gets the localized failure line and can retry.
+      toast(t("elev.careNet.consult.error"), "error");
     } finally {
       setConsultBusy(false);
     }
@@ -154,7 +199,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       {!embedded && (
-        <PageHeader eyebrow="Care Network" title={t("sec.findpro.title")} subtitle={t("sec.findpro.sub", { name: childProfile.name.split(" ")[0] })} />
+        <PageHeader eyebrow={t("elev.careNet.eyebrow")} title={t("sec.findpro.title")} subtitle={t("sec.findpro.sub", { name: childProfile.name.split(" ")[0] })} />
       )}
 
       {/* Search + filters */}
@@ -164,26 +209,27 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by specialty, concern, or name"
+            placeholder={t("elev.careNet.search.placeholder")}
+            dir="auto"
             className="flex-1 bg-transparent outline-none text-sm"
             style={{ color: "var(--arbor-ink)" }}
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => {
-            const on = active.includes(f);
+          {CARE_FILTERS.map((f) => {
+            const on = active.includes(f.id);
             return (
-              <button key={f} onClick={() => toggle(f)} className="rounded-full px-3 py-1.5 text-xs font-bold transition inline-flex items-center gap-1"
+              <button key={f.id} onClick={() => toggle(f.id)} className="rounded-full px-3 py-1.5 text-xs font-bold transition inline-flex items-center gap-1"
                 style={on ? { background: "var(--arbor-clay)", color: "#fff" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                {f === "Verified by Arbor" && <Icon name="verified_user" size={15} fill={on ? 1 : 0} />}{f}
+                {f.id === "verified" && <Icon name="verified_user" size={15} fill={on ? 1 : 0} />}{t(f.labelKey)}
               </button>
             );
           })}
         </div>
         <div className="flex flex-wrap gap-1.5 pt-1">
           {SPECIALTIES.map((s, i) => (
-            <button key={s} onClick={() => setQuery(s)} className="cursor-pointer">
-              <Chip tone={(["mint","sky","lav","coral","yellow","pink"] as const)[i % 6]}>{s}</Chip>
+            <button key={s.query} onClick={() => setQuery(s.query)} className="cursor-pointer">
+              <Chip tone={(["mint","sky","lav","coral","yellow","pink"] as const)[i % 6]}>{t(s.labelKey)}</Chip>
             </button>
           ))}
         </div>
@@ -193,9 +239,9 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
       {results.length === 0 ? (
         <div className={`${cardCls} p-10 text-center`}>
           <Icon name="shield_person" size={34} style={{ color: "var(--arbor-green-ink)" }} />
-          <p className="mt-3 text-base font-bold" style={{ color: "var(--arbor-ink)" }}>The verified directory is opening soon.</p>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Arbor will only show professionals after their identity and credentials have been reviewed. You can still prepare a private summary for someone you already trust.</p>
-          {!embedded && <button onClick={() => setActiveTab("consult")} className="mt-4 rounded-xl px-4 py-2.5 text-xs font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>Prepare a shareable summary</button>}
+          <p className="mt-3 text-base font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.careNet.empty.title")}</p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.empty.body")}</p>
+          {!embedded && <button onClick={() => setActiveTab("consult")} className="mt-4 rounded-xl px-4 py-2.5 text-xs font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>{t("elev.careNet.empty.cta")}</button>}
         </div>
       ) : (
         <div className="grid lg:grid-cols-2 gap-5">
@@ -205,23 +251,23 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
                 <InitialsTile name={p.name} tone={(p.tone in PASTEL ? p.tone : "sky") as PastelKey} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{p.name}</h3>
-                    {p.verified && <Chip tone="mint" icon={<Icon name="verified" size={15} fill={1} />}>Verified by Arbor</Chip>}
+                    <h3 className="text-base font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{p.name}</h3>
+                    {p.verified && <Chip tone="mint" icon={<Icon name="verified" size={15} fill={1} />}>{t("elev.careNet.card.verified")}</Chip>}
                   </div>
-                  <p className="text-sm font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{p.role}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{p.creds}</p>
+                  <p className="text-sm font-semibold" dir="auto" style={{ color: "var(--arbor-green-ink)" }}>{p.role}</p>
+                  <p className="text-xs mt-0.5" dir="auto" style={{ color: "var(--arbor-muted)" }}>{p.creds}</p>
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-yellow-ink)" }}><Icon name="star" size={15} fill={1} /> {p.rating}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
-                <span className="inline-flex items-center gap-1.5"><Icon name="translate" size={15} /> {p.langs}</span>
-                <span className="inline-flex items-center gap-1.5"><Icon name="location_on" size={15} /> {p.city}</span>
-                <span className="inline-flex items-center gap-1.5"><Icon name="language" size={15} /> {p.mode}</span>
-                <span>Ages {p.ages} · {p.price}</span>
+                <span className="inline-flex items-center gap-1.5" dir="auto"><Icon name="translate" size={15} /> {p.langs}</span>
+                <span className="inline-flex items-center gap-1.5" dir="auto"><Icon name="location_on" size={15} /> {p.city}</span>
+                <span className="inline-flex items-center gap-1.5" dir="auto"><Icon name="language" size={15} /> {p.mode}</span>
+                <span dir="auto">{t("elev.careNet.card.ages", { ages: p.ages, price: p.price })}</span>
               </div>
-              <p className="text-xs mt-3 leading-relaxed" style={{ color: "var(--arbor-ink)" }}><b>Handles:</b> {p.handles}</p>
-              <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{p.approach}</p>
+              <p className="text-xs mt-3 leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}><b>{t("elev.careNet.card.handles")}</b> {p.handles}</p>
+              <p className="text-xs mt-1 leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{p.approach}</p>
 
               <div className="flex gap-2 mt-4">
                 <button
@@ -229,15 +275,15 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
                   className="flex-1 inline-flex items-center justify-center gap-1.5 text-white font-bold text-xs rounded-xl py-2.5"
                   style={{ background: "var(--arbor-gradient-primary)" }}
                 >
-                  <Icon name="send" size={15} /> Request consultation
+                  <Icon name="send" size={15} /> {t("elev.careNet.card.request")}
                 </button>
                 {!embedded && (
                   <button
-                    onClick={() => { toast("Build a shareable summary in Consult.", "info"); setActiveTab("consult"); }}
+                    onClick={() => { toast(t("elev.careNet.share.toast"), "info"); setActiveTab("consult"); }}
                     className="inline-flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl px-3 py-2.5 bg-white"
                     style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
                   >
-                    <Icon name="description" size={15} /> Share Arbor summary
+                    <Icon name="description" size={15} /> {t("elev.careNet.card.share")}
                   </button>
                 )}
               </div>
@@ -245,30 +291,30 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           ))}
         </div>
       )}
-      <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>No profile appears here until Arbor has completed its verification process.</p>
+      <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.footer.verification")}</p>
 
       {/* MON-3 v1: consultation request modal */}
-      <Modal open={!!consultPro} onClose={() => setConsultPro(null)} title={consultPro ? `Request a consultation — ${consultPro.name}` : "Request a consultation"}>
+      <Modal open={!!consultPro} onClose={() => setConsultPro(null)} title={consultPro ? t("elev.careNet.consult.titleWith", { name: consultPro.name }) : t("elev.careNet.consult.title")}>
         {consultDone ? (
           <div className="space-y-4 text-sm">
             <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)" }}>
               <Icon name="check_circle" size={20} fill={1} style={{ color: "var(--arbor-green-ink)" }} />
               <div>
-                <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>Request recorded</p>
+                <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.careNet.done.title")}</p>
                 <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                  Arbor saved your consultation request{consultPro ? ` for ${consultPro.name}` : ""}. We'll coordinate the introduction — you can prepare context to share meanwhile.
+                  {consultPro ? t("elev.careNet.done.body", { name: consultPro.name }) : t("elev.careNet.done.bodyGeneric")}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {consultDone.mailto && (
                 <a href={consultDone.mailto} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 text-white" style={{ background: "var(--arbor-clay)" }}>
-                  <Icon name="mail" size={15} /> Send the intro email
+                  <Icon name="mail" size={15} /> {t("elev.careNet.done.mail")}
                 </a>
               )}
               {!embedded && (
                 <button onClick={() => { setConsultPro(null); setActiveTab("consult"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
-                  <Icon name="description" size={15} /> Prepare a shareable summary
+                  <Icon name="description" size={15} /> {t("elev.careNet.done.summary")}
                 </button>
               )}
               <button onClick={() => { setConsultPro(null); setActiveTab("appointments"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
@@ -279,33 +325,34 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
         ) : (
           <div className="space-y-4 text-sm">
             <div className="space-y-1.5">
-              <label htmlFor="consult-note" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>What's going on? (shared with the professional)</label>
+              <label htmlFor="consult-note" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.note.label")}</label>
               <textarea
                 id="consult-note"
                 value={consultNote}
                 onChange={(e) => setConsultNote(e.target.value)}
                 rows={3}
-                placeholder={`A sentence or two about what you'd like help with for ${first}.`}
+                dir="auto"
+                placeholder={t("elev.careNet.note.placeholder", { name: first })}
                 className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none"
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
             </div>
             <div className="space-y-1.5">
-              <span className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>Preferred format</span>
+              <span className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("elev.careNet.mode.label")}</span>
               <div className="flex gap-2">
-                {([["either", "Either"], ["video", "Video call"], ["in_person", "In person"]] as const).map(([k, label]) => (
+                {([["either", "elev.careNet.mode.either"], ["video", "elev.careNet.mode.video"], ["in_person", "elev.careNet.mode.inPerson"]] as const).map(([k, labelKey]) => (
                   <button key={k} type="button" onClick={() => setConsultMode(k)} className="flex-1 py-2 rounded-xl text-xs font-bold transition"
                     style={consultMode === k ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-                    {label}
+                    {t(labelKey)}
                   </button>
                 ))}
               </div>
             </div>
             <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-              Nothing from {isolate(first)}'s profile is shared automatically — only the note above. You stay in control of any reports you choose to share.
+              {t("elev.careNet.privacy", { name: first })}
             </p>
             <button onClick={() => void submitConsult()} disabled={consultBusy} className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
-              {consultBusy ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> Sending…</>) : (<><Icon name="send" size={18} /> Send the request</>)}
+              {consultBusy ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("elev.careNet.sending")}</>) : (<><Icon name="send" size={18} /> {t("elev.careNet.send")}</>)}
             </button>
           </div>
         )}

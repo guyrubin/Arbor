@@ -294,7 +294,11 @@ export default function AskSpecialist() {
               <div className="text-[11px] font-semibold mt-0.5 inline-flex items-center gap-1.5" style={{ color: MUTED }}>
                 <span>{p.langs?.split(" · ")[0] || p.langs}</span>
                 <span aria-hidden="true">·</span>
-                <span>{/online|remote/i.test(`${p.mode} ${p.city}`) ? "Online" : p.mode}</span>
+                {/* Provider records arrive in an unknown language, so an
+                    unrecognised mode passes through as-is; the one value we
+                    recognise is ours to translate rather than print in English
+                    to a Hebrew-reading parent. */}
+                <span dir="auto">{/online|remote/i.test(`${p.mode} ${p.city}`) ? t("elev.careNet.filter.online") : p.mode}</span>
                 <span aria-hidden="true">·</span>
                 <span className="inline-flex items-center gap-0.5" style={{ color: "var(--arbor-yellow-ink)" }}><Icon name="star" size={13} fill={1} /> {p.rating}</span>
               </div>

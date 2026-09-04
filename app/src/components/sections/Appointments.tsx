@@ -291,12 +291,25 @@ function ApptRow({
   const status = appointmentStatus(appt);
   const dated = appointmentStartMs(appt) != null;
 
+  // LC-16 residual: the appointment's meeting format is STORED as English
+  // display copy (In person / Online) because it is written once and outlives
+  // any later language
+  // switch — persisting localized copy into a record is the wrong trade, and
+  // the provider-matching regexes read English too. So it is translated HERE,
+  // at render, where the parent's current language is the right answer.
+  // Anything unrecognised passes through untouched: provider records arrive in
+  // an unknown language, and the row is already dir="auto" for exactly that.
+  const modeLabel =
+    /^in.?person$/i.test(appt.mode) ? t("elev.careNet.mode.inPerson")
+    : /^(online|remote|video)$/i.test(appt.mode) ? t("elev.careNet.filter.online")
+    : appt.mode;
+
   return (
     <div className={`${cardCls} p-4 space-y-3`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{appt.who}</h3>
-          <p className="text-xs" dir="auto" style={{ color: "var(--arbor-muted)" }}>{appt.role} · {appt.mode}</p>
+          <p className="text-xs" dir="auto" style={{ color: "var(--arbor-muted)" }}>{appt.role} · {modeLabel}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* The chip describes the BOOKING, never the child. */}
