@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import Icon from "../ui/Icon";
+import { AiBlock, KeepBar } from "../ui/AiBlock";
 import { Modal } from "../ui/Modal";
 import { api, ApiError, getAiLanguage, type VisionResult, type VisionObserve, type VisionDocument } from "../../lib/api";
 // AI-06: /api/vision is the ONE surface that can return both a 429 (this
@@ -22,12 +23,14 @@ import type { ChildProfile } from "../../types";
  * an HE session renders the modal AND the model output fully in Hebrew (RTL).
  */
 
+/** AI-17: the section frame is the shared AiBlock inset tone — this file used
+ *  to hand-roll a second copy of the coach answer's frame. Only the empty
+ *  guard and the list body stay local; the frame markup is unchanged. */
 const List = ({ icon, title, tint, items }: { icon: React.ReactNode; title: string; tint: string; items: string[] }) =>
   items?.length ? (
-    <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider mb-1.5" style={{ color: tint }}>{icon} {title}</span>
+    <AiBlock tone="inset" icon={icon} title={title} tint={tint}>
       <ul className="space-y-1 text-[12.5px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-ink)" }}>{items.map((t, i) => <li key={i}>{t}</li>)}</ul>
-    </div>
+    </AiBlock>
   ) : null;
 
 export default function ArborVision({ open, mode, onClose, childProfile, onSeedCoach, onGoHandoff, onGoBehaviors, onProposeMemory }: {
@@ -212,23 +215,28 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
           {(result as VisionObserve).nonDiagnosticNote && (
             <p className="text-[11px] italic px-1" style={{ color: "var(--arbor-muted)" }}>{(result as VisionObserve).nonDiagnosticNote}</p>
           )}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <button onClick={() => {
-              const observation = (result as VisionObserve).observations?.[0] || "";
-              const trimmed = note.trim();
-              onSeedCoach(trimmed
-                ? t("vis.seed.observeWithNote", { note: trimmed, observation })
-                : t("vis.seed.observe", { observation }));
-              close();
-            }}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              <Icon name="chat" size={14} /> {t("vis.action.discuss")}
-            </button>
-            <button onClick={() => { onGoBehaviors((result as VisionObserve).observations?.join(". ") || note); close(); }}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              <Icon name="bookmark" size={14} /> {t("vis.action.log")}
-            </button>
-          </div>
+          <KeepBar
+            actions={[
+              {
+                id: "discuss",
+                onClick: () => {
+                  const observation = (result as VisionObserve).observations?.[0] || "";
+                  const trimmed = note.trim();
+                  onSeedCoach(trimmed
+                    ? t("vis.seed.observeWithNote", { note: trimmed, observation })
+                    : t("vis.seed.observe", { observation }));
+                  close();
+                },
+                content: <><Icon name="chat" size={14} /> {t("vis.action.discuss")}</>,
+              },
+              {
+                id: "log",
+                tone: "outline",
+                onClick: () => { onGoBehaviors((result as VisionObserve).observations?.join(". ") || note); close(); },
+                content: <><Icon name="bookmark" size={14} /> {t("vis.action.log")}</>,
+              },
+            ]}
+          />
         </div>
       )}
 
@@ -274,26 +282,35 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
             </div>
           )}
           <List icon={<Icon name="chat" size={12} />} title={t("vis.sec.askPro")} tint="var(--arbor-lav-ink)" items={(result as VisionDocument).questionsForProfessional} />
-          <div className="flex flex-wrap gap-2 pt-1">
-            <button onClick={() => { const n = (result as VisionDocument).handoffNote || (result as VisionDocument).summary; copy(n); onGoHandoff(n); close(); }}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              <Icon name="send" size={14} /> {t("vis.action.handoff")}
-            </button>
-            <button onClick={() => {
-              onSeedCoach(t("vis.seed.document", {
-                docType: (result as VisionDocument).documentType || t("vis.docType.fallback"),
-                summary: (result as VisionDocument).summary,
-              }));
-              close();
-            }}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              <Icon name="chat" size={14} /> {t("vis.action.discuss")}
-            </button>
-            <button onClick={() => copy((result as VisionDocument).summary)}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-              {copied ? <><Icon name="check" size={14} /> {t("vis.action.copied")}</> : <><Icon name="content_copy" size={14} /> {t("vis.action.copy")}</>}
-            </button>
-          </div>
+          <KeepBar
+            actions={[
+              {
+                id: "handoff",
+                onClick: () => { const n = (result as VisionDocument).handoffNote || (result as VisionDocument).summary; copy(n); onGoHandoff(n); close(); },
+                content: <><Icon name="send" size={14} /> {t("vis.action.handoff")}</>,
+              },
+              {
+                id: "discuss",
+                tone: "outline",
+                onClick: () => {
+                  onSeedCoach(t("vis.seed.document", {
+                    docType: (result as VisionDocument).documentType || t("vis.docType.fallback"),
+                    summary: (result as VisionDocument).summary,
+                  }));
+                  close();
+                },
+                content: <><Icon name="chat" size={14} /> {t("vis.action.discuss")}</>,
+              },
+              {
+                id: "copy",
+                tone: "outline",
+                onClick: () => copy((result as VisionDocument).summary),
+                content: copied
+                  ? <><Icon name="check" size={14} /> {t("vis.action.copied")}</>
+                  : <><Icon name="content_copy" size={14} /> {t("vis.action.copy")}</>,
+              },
+            ]}
+          />
         </div>
       )}
     </Modal>

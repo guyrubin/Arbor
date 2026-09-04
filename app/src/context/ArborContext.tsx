@@ -30,6 +30,7 @@ import {
 import { useProfile } from "./ProfileContext";
 import { api, ApiError, authHeaders, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
+import type { ExplainAnswer } from "../lib/explainAnswer";
 import { track } from "../lib/analytics";
 import { isKidModeActive } from "../lib/kidModeGate";
 import { runInstrumented } from "../hooks/useAsyncAction";
@@ -465,9 +466,9 @@ function useArborState() {
   const [memoryReviewError, setMemoryReviewError] = useState<boolean>(false);
 
   // Embedded Interactive AI States and Helpers
-  const [milestoneAnalysisOfGaps, setMilestoneAnalysisOfGaps] = useState<string>("");
+  const [milestoneAnalysisOfGaps, setMilestoneAnalysisOfGaps] = useState<ExplainAnswer | null>(null);
   const [isAnalyzingMilestones, setIsAnalyzingMilestones] = useState<boolean>(false);
-  const [inlineCoRegulationScripts, setInlineCoRegulationScripts] = useState<{ [logId: string]: string }>({});
+  const [inlineCoRegulationScripts, setInlineCoRegulationScripts] = useState<{ [logId: string]: ExplainAnswer }>({});
   const [isGeneratingInlineScript, setIsGeneratingInlineScript] = useState<{ [logId: string]: boolean }>({});
 
   /**
@@ -477,11 +478,16 @@ function useArborState() {
    * ambient cards. They now call the dedicated explain route:
    *   body    { childProfile, subject, details?, language }
    *   returns { explanation, tryToday, text }
-   * The STRUCTURED fields are rendered (explanation, then one "try today"
-   * step under its own heading); the joined `text` is never used. This
-   * adapter is the ONLY client seam for the route.
+   * The STRUCTURED fields are rendered (explanation, then one step in its own
+   * framed block); the joined `text` is never used. This adapter is the ONLY
+   * client seam for the route.
+   *
+   * AI-17: both explainers now STORE these two fields rather than flattening
+   * them into markdown here. The string form is derived at the two places that
+   * genuinely need a string — one-tap keep, and seeding a coach thread — via
+   * explainAnswerText, which reproduces the old markdown byte for byte.
    */
-  const explainViaApi = async (payload: { subject: string; details?: string }): Promise<{ explanation: string; tryToday: string }> => {
+  const explainViaApi = async (payload: { subject: string; details?: string }): Promise<ExplainAnswer> => {
     const res = await fetch("/api/explain", {
       method: "POST",
       headers: await authHeaders(),
@@ -499,10 +505,11 @@ function useArborState() {
       tryToday: String(data?.tryToday ?? "").trim(),
     };
   };
-  /** Structured markdown for the two explainers' existing string consumers:
-   *  the explanation, then the step under its own localized heading. */
-  const explainMarkdown = (r: { explanation: string; tryToday: string }): string =>
-    [r.explanation, r.tryToday ? `### ${t("explain.tryToday")}\n${r.tryToday}` : ""].filter(Boolean).join("\n\n");
+  /** A failed explainer answer travels through the SAME slot as a good one, so
+   *  the notice still reaches MarkdownBlock and its helpline numbers stay
+   *  tappable. It carries no step, so no block invites the parent to act. */
+  const explainFailure = (message: string): ExplainAnswer =>
+    ({ explanation: renderApiConnectionError(message), tryToday: "" });
 
   const handleGetInlineCoRegulationScript = async (log: BehaviorLog) => {
     setIsGeneratingInlineScript((prev) => ({ ...prev, [log.id]: true }));
@@ -511,11 +518,11 @@ function useArborState() {
         subject: `A co-regulation script for this logged moment (${log.behaviorType})`,
         details: `Duration: ${log.durationMinutes} mins. Intensity: ${log.intensity}/5. Trigger: ${log.trigger}. What the parent tried: ${log.response || "not recorded"}.`,
       });
-      setInlineCoRegulationScripts((prev) => ({ ...prev, [log.id]: explainMarkdown(result) }));
+      setInlineCoRegulationScripts((prev) => ({ ...prev, [log.id]: result }));
     } catch (err: any) {
       setInlineCoRegulationScripts((prev) => ({
         ...prev,
-        [log.id]: renderApiConnectionError(err?.message),
+        [log.id]: explainFailure(err?.message),
       }));
     } finally {
       setIsGeneratingInlineScript((prev) => ({ ...prev, [log.id]: false }));
@@ -537,9 +544,9 @@ function useArborState() {
         subject: "How to scaffold the next milestones through daily play (Vygotskian scaffolding)",
         details: `Milestones already noticed:\n${checkedList || "None"}\n\nNot yet noticed:\n${uncheckedList || "None"}`,
       });
-      setMilestoneAnalysisOfGaps(explainMarkdown(result));
+      setMilestoneAnalysisOfGaps(result);
     } catch (err: any) {
-      setMilestoneAnalysisOfGaps(renderApiConnectionError(err?.message));
+      setMilestoneAnalysisOfGaps(explainFailure(err?.message));
     } finally {
       setIsAnalyzingMilestones(false);
     }

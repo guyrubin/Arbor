@@ -5,7 +5,12 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
+// MarkdownBlock stays for the deterministic escalation copy, whose bare
+// helpline numbers it turns into tap targets. The co-regulation script is no
+// longer a markdown wall — AI-17 renders its two structured fields as fields.
 import { MarkdownBlock } from "../ui/MarkdownBlock";
+import { ExplainAnswerBlock } from "../ui/ExplainAnswer";
+import { explainAnswerText } from "../../lib/explainAnswer";
 import { Skeleton } from "../ui/Skeleton";
 import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
 import { HubHero } from "../ui/HubHero";
@@ -1029,9 +1034,9 @@ export default function BehaviorsTab() {
                                           <AnimatePresence initial={false}>
                                             {inlineCoRegulationScripts[log.id] && (
                                               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-xl space-y-2 mt-1 text-[11px] leading-relaxed select-text overflow-hidden bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-                                                <MarkdownBlock text={inlineCoRegulationScripts[log.id]} className="space-y-1.5" />
+                                                <ExplainAnswerBlock answer={inlineCoRegulationScripts[log.id]} tryTodayLabel={t("explain.tryToday")} className="space-y-1.5" />
                                                 <div className="flex justify-end pt-1 gap-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                                                  <button type="button" onClick={() => seedCoach({ prompt: `Regarding the log event where the child did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${inlineCoRegulationScripts[log.id]}\n\nHow do I adapt this if they continue to resist or act physically aggressive?`, lens: "Bowlby's Attachment Model", source: "behavior-coreg" })} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
+                                                  <button type="button" onClick={() => seedCoach({ prompt: `Regarding the log event where the child did: "${log.trigger}" and parent responded: "${log.response}". Here is the script I generated: \n\n${explainAnswerText(inlineCoRegulationScripts[log.id], t("explain.tryToday"))}\n\nHow do I adapt this if they continue to resist or act physically aggressive?`, lens: "Bowlby's Attachment Model", source: "behavior-coreg" })} className="text-[10px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
                                                     {t("beh.discussCoach")} <Icon name="open_in_new" size={11} />
                                                   </button>
                                                 </div>

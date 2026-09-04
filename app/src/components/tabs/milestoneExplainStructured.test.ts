@@ -104,7 +104,10 @@ describe("GP-23 — a failed answer is an honest, translated STATE", () => {
   });
 
   it("an empty answer is treated as a failure, never rendered as guidance", () => {
-    expect(SRC).toMatch(/if \(!markdown\) throw new Error\("empty"\);/);
+    // AI-17 moved the emptiness rule into the shared, tested helper — the
+    // guard is the same guard, applied to the structured answer.
+    expect(SRC).toMatch(/if \(isEmptyExplainAnswer\(answer\)\) throw new Error\("empty"\);/);
+    expect(SRC).toMatch(/isEmptyExplainAnswer.*from "\.\.\/\.\.\/lib\/explainAnswer"/);
   });
 });
 
@@ -116,7 +119,12 @@ describe("GP-23 — the gap analysis joins the same cluster", () => {
     expect(bar).toMatch(/\btrustLink\b/);
     expect(bar).toMatch(/elev\.waveR\.ms\.gaps\.why/);
     expect(bar).toMatch(/verb: "save"/);
-    expect(bar).toMatch(/keepBehaviorInsight\(milestoneAnalysisOfGaps\)/);
+    // AI-17: the gap analysis is STORED as the route's two structured fields,
+    // so the keep verb writes its derived text form. Both halves of that chain
+    // are pinned — the derivation, and the verb that consumes it — so this is
+    // no weaker than pinning the single identifier it replaced.
+    expect(bar).toMatch(/keepBehaviorInsight\(gapsText\)/);
+    expect(SRC).toMatch(/const gapsText = milestoneAnalysisOfGaps \? explainAnswerText\(milestoneAnalysisOfGaps, t\("explain\.tryToday"\)\) : "";/);
     // The coach hand-off is preserved, as a surface-specific EXTRA (the
     // canonical verb order is never re-ordered around it).
     expect(bar).toMatch(/extras=\{\[/);

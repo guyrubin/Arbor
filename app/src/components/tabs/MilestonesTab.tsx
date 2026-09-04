@@ -16,7 +16,10 @@ import {
 import PrideMomentCard from "../overview/PrideMomentCard";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { MarkdownBlock } from "../ui/MarkdownBlock";
+// AI-17 — the explain route's two structured fields are rendered as fields
+// (prose, then one framed step), not glued into markdown and re-parsed.
+import { ExplainAnswerBlock } from "../ui/ExplainAnswer";
+import { explainAnswerText, isEmptyExplainAnswer, type ExplainAnswer } from "../../lib/explainAnswer";
 // GP-23 — the two AI answers a parent reads WHILE marking milestones were the
 // least structured AI in the app: raw markdown, an English-only failure
 // string, no why-line, no provenance, nothing to keep. They now ride the same
@@ -86,8 +89,15 @@ export default function MilestonesTab() {
   // openDomain === null → the "all domains" master list (the closed Map);
   // set → the single-domain drill-in detail pane.
   const [openDomain, setOpenDomain] = useState<string | null>(null);
-  const [explanations, setExplanations] = useState<Record<string, string>>({});
+  // AI-17: the explain route's TWO structured fields are held as they arrive.
+  // They used to be glued into a markdown string here and re-parsed by a
+  // markdown renderer downstream, which threw the structure away.
+  const [explanations, setExplanations] = useState<Record<string, ExplainAnswer>>({});
   const [explaining, setExplaining] = useState<Record<string, boolean>>({});
+  // AI-17: the ONE text form of the gap analysis, for the two consumers that
+  // genuinely need a string — one-tap keep, and seeding a coach thread. The
+  // render uses the structured fields directly.
+  const gapsText = milestoneAnalysisOfGaps ? explainAnswerText(milestoneAnalysisOfGaps, t("explain.tryToday")) : "";
   // GP-23: a failed explain is a STATE, not a fake answer. It used to be a
   // hard-coded English markdown heading rendered through
   // MarkdownBlock — untranslated, unstyled, and indistinguishable from real
@@ -212,11 +222,12 @@ export default function MilestonesTab() {
       });
       if (!res.ok) throw new Error("fail");
       const data = await res.json();
-      const explanation = String(data?.explanation ?? "").trim();
-      const tryToday = String(data?.tryToday ?? "").trim();
-      const markdown = [explanation, tryToday ? `### ${t("explain.tryToday")}\n${tryToday}` : ""].filter(Boolean).join("\n\n");
-      if (!markdown) throw new Error("empty");
-      setExplanations((p) => ({ ...p, [item.id]: markdown }));
+      const answer: ExplainAnswer = {
+        explanation: String(data?.explanation ?? "").trim(),
+        tryToday: String(data?.tryToday ?? "").trim(),
+      };
+      if (isEmptyExplainAnswer(answer)) throw new Error("empty");
+      setExplanations((p) => ({ ...p, [item.id]: answer }));
     } catch {
       // GP-23: an honest, translated failure state rendered by the card
       // below — never a markdown heading masquerading as guidance.
@@ -506,7 +517,7 @@ export default function MilestonesTab() {
                 </div>
               ) : (
                 <>
-                  <MarkdownBlock text={explanations[item.id]} className="space-y-1.5" />
+                  <ExplainAnswerBlock answer={explanations[item.id]} tryTodayLabel={t("explain.tryToday")} className="space-y-1.5" />
                   <ContentActionBar
                     variant="inline"
                     surface="milestone-explain"
@@ -516,7 +527,7 @@ export default function MilestonesTab() {
                     trustLink
                     className="mt-2.5"
                     actions={[
-                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(`${item.title} — ${explanations[item.id]}`) },
+                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(`${item.title} — ${explainAnswerText(explanations[item.id], t("explain.tryToday"))}`) },
                     ]}
                   />
                 </>
@@ -884,7 +895,7 @@ export default function MilestonesTab() {
 
         {milestoneAnalysisOfGaps ? (
           <div className="p-4 rounded-xl text-xs leading-relaxed space-y-3 select-text bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-            <MarkdownBlock text={milestoneAnalysisOfGaps} className="space-y-2" />
+            <ExplainAnswerBlock answer={milestoneAnalysisOfGaps} tryTodayLabel={t("explain.tryToday")} className="space-y-2" />
             {/* GP-23 — "Find next steps" produced markdown whose only exit was
                 "Discuss in Coach": nothing said where it came from, and the
                 parent could not keep it. Same shared cluster as the inline
@@ -897,10 +908,10 @@ export default function MilestonesTab() {
               trustLink
               className="pt-2.5"
               actions={[
-                { verb: "save", label: t("elev.waveR.ms.gaps.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(milestoneAnalysisOfGaps) },
+                { verb: "save", label: t("elev.waveR.ms.gaps.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(gapsText) },
               ]}
               extras={[
-                { id: "coach", label: t("ms.discussCoach"), icon: "forum", onClick: () => seedCoach({ prompt: t("seed.milestoneGaps", { analysis: milestoneAnalysisOfGaps }), lens: "Vygotsky's Scaffolding", source: "milestones-gap" }) },
+                { id: "coach", label: t("ms.discussCoach"), icon: "forum", onClick: () => seedCoach({ prompt: t("seed.milestoneGaps", { analysis: gapsText }), lens: "Vygotsky's Scaffolding", source: "milestones-gap" }) },
               ]}
             />
           </div>

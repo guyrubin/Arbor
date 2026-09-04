@@ -3,7 +3,7 @@ import Icon from "../ui/Icon";
 import type { CoachContract, CouncilTake } from "../../types";
 import type { UiLang } from "../../lib/i18n";
 import { translate } from "../../lib/i18n";
-import { SpeakButton } from "../ui/SpeakButton";
+import { AiBlock, Checklist, KeepBar, SayThis } from "../ui/AiBlock";
 import { TrustLink } from "../trust/TrustLink";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { track } from "../../lib/analytics";
@@ -252,21 +252,11 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
 // telemetry/evals (and inside the screened renderCoachResponse text) — it is
 // simply never rendered here.
 
-function Panel({ icon, title, tint, children, action }: {
-  icon: React.ReactNode; title: string; tint: string; children: React.ReactNode; action?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl p-3.5 bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tint }}>
-          {icon} {title}
-        </span>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
-}
+// AI-17: the section frame, the say-this block, the checklist and the action
+// row used to live here and were re-implemented on two other surfaces. They
+// are now the shared primitives in ui/AiBlock.tsx — lifted from THIS file
+// unchanged, so this surface renders exactly what it rendered before (pinned
+// by coachAnswerCardsMarkup.test.ts).
 
 export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onCreateLog, onAddToHandoff, onManageMemory, reviewUnavailable = false }: {
   contract: CoachContract;
@@ -282,7 +272,9 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
    *  review-invite chip so the footer never deep-links into a broken queue. */
   reviewUnavailable?: boolean;
 }) {
-  const [done, setDone] = useState<Record<number, boolean>>({});
+  // AI-17: the per-step done state moved into the shared Checklist with the
+  // markup it drives. The copied state stays HERE because this surface has two
+  // copy targets (the script and the hand-off note) and clears them as one.
   const [copied, setCopied] = useState<string | null>(null);
   const [citationsOpen, setCitationsOpen] = useState(false);
   const [escalateOpen, setEscalateOpen] = useState(false);
@@ -333,24 +325,20 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
 
       {/* Parent script — say aloud */}
       {contract.parentScript && (
-        <Panel
-          icon={<Icon name="format_quote" size={12} />} title={t("coach.cards.sayThis")} tint="var(--arbor-sky-ink)"
-          action={
-            <div className="flex items-center gap-2">
-              <SpeakButton text={contract.parentScript} lang={lang} className="text-[10px]" />
-              <button onClick={() => copy(contract.parentScript, "script")} className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
-                {copied === "script" ? <><Icon name="check" size={12} /> {t("coach.cards.copied")}</> : <><Icon name="content_copy" size={12} /> {t("coach.action.copy")}</>}
-              </button>
-            </div>
-          }
-        >
-          <p className="text-[13px] leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>&ldquo;{contract.parentScript}&rdquo;</p>
-        </Panel>
+        <SayThis
+          text={contract.parentScript}
+          title={t("coach.cards.sayThis")}
+          lang={lang}
+          copyLabel={t("coach.action.copy")}
+          copiedLabel={t("coach.cards.copied")}
+          copied={copied === "script"}
+          onCopy={() => copy(contract.parentScript, "script")}
+        />
       )}
 
       {/* Today's plan — interactive checklist */}
       {contract.todayPlan?.length > 0 && (
-        <Panel
+        <AiBlock
           icon={<Icon name="checklist" size={12} />} title={t("coach.cards.tryToday")} tint="var(--arbor-green-ink)"
           action={
             <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan[0])}
@@ -359,42 +347,13 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
             </button>
           }
         >
-          <ul className="space-y-1">
-            {contract.todayPlan.map((step, i) => (
-              <li key={i}>
-                <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-start gap-2 text-start w-full group">
-                  {/* CR-01: the checked and unchecked boxes are separate
-                      elements rather than one box with a conditional fill.
-                      Same pixels either way — but the contrast ratchet can only
-                      prove a tick's legibility when the fill it sits on is
-                      statically known, and a ternary hid that. The glyph moves
-                      from a text-white class to --arbor-on-accent, the token
-                      that exists for ink on a saturated accent fill, so the
-                      pairing is expressed in tokens the checker can resolve. */}
-                  {done[i] ? (
-                    <span
-                      className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition"
-                      style={{ background: "var(--arbor-clay)", border: "1px solid var(--arbor-clay)" }}
-                    >
-                      <Icon name="check" size={12} style={{ color: "var(--arbor-on-accent)" }} />
-                    </span>
-                  ) : (
-                    <span
-                      className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition"
-                      style={{ border: "1px solid var(--arbor-rule-strong)" }}
-                    />
-                  )}
-                  <span className="text-[12.5px] leading-snug" style={done[i] ? { color: "var(--arbor-muted)", textDecoration: "line-through" } : { color: "var(--arbor-ink)" }}>{step}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Panel>
+          <Checklist items={contract.todayPlan} />
+        </AiBlock>
       )}
 
       {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
       {council && council.length > 0 && (
-        <Panel icon={<Icon name="group" size={12} />} title={t("coach.cards.council", { n: council.length })} tint="var(--arbor-sky-ink)">
+        <AiBlock icon={<Icon name="group" size={12} />} title={t("coach.cards.council", { n: council.length })} tint="var(--arbor-sky-ink)">
           <ul className="space-y-2">
             {council.map((c) => (
               <li key={c.scholarId} className="text-[12.5px] leading-snug">
@@ -405,7 +364,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
               </li>
             ))}
           </ul>
-        </Panel>
+        </AiBlock>
       )}
 
       {/* ASK-3: "Why this might be happening" — the hypotheses collapse into a
@@ -445,18 +404,18 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       {/* Avoid / Observe */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {contract.avoid?.length > 0 && (
-          <Panel icon={<Icon name="block" size={12} />} title={t("coach.cards.avoid")} tint="var(--arbor-peach-ink)">
+          <AiBlock icon={<Icon name="block" size={12} />} title={t("coach.cards.avoid")} tint="var(--arbor-peach-ink)">
             <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.avoid.map((a, i) => <li key={i}>{a}</li>)}
             </ul>
-          </Panel>
+          </AiBlock>
         )}
         {contract.observe?.length > 0 && (
-          <Panel icon={<Icon name="visibility" size={12} />} title={t("coach.cards.watchFor")} tint="var(--arbor-lav-ink)">
+          <AiBlock icon={<Icon name="visibility" size={12} />} title={t("coach.cards.watchFor")} tint="var(--arbor-lav-ink)">
             <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
               {contract.observe.map((o, i) => <li key={i}>{o}</li>)}
             </ul>
-          </Panel>
+          </AiBlock>
         )}
       </div>
 
@@ -467,11 +426,11 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
           is identical in both tiers and is never conditionally dropped — when
           collapsed it is hidden, not unmounted, so it stays in the DOM. */}
       {contract.escalateIf?.length > 0 && (escalationTier(contract.riskLevel) === "prominent" ? (
-        <Panel icon={<Icon name="warning" size={12} />} title={t("coach.escalate.headline")} tint="var(--arbor-pink-ink)">
+        <AiBlock icon={<Icon name="warning" size={12} />} title={t("coach.escalate.headline")} tint="var(--arbor-pink-ink)">
           <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-pink-ink)" }}>
             {contract.escalateIf.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
-        </Panel>
+        </AiBlock>
       ) : (
         <div className="rounded-xl" style={{ border: "1px solid var(--arbor-rule)", overflow: "hidden" }}>
           <button
@@ -602,18 +561,25 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
       )}
 
       {/* Structured actions — the answer feeds the rest of the app (ECO-3) */}
-      <div className="flex flex-wrap items-center gap-2 pt-1">
-        <button onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || "")}
-          className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-          <Icon name="playlist_add" size={14} /> {t("coach.cards.saveToPlan")}
-        </button>
-        {contract.handoffNotes?.teacher && (
-          <button onClick={() => { onAddToHandoff(contract.handoffNotes.teacher); copy(contract.handoffNotes.teacher, "handoff"); }}
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-            {copied === "handoff" ? <><Icon name="check" size={14} /> {t("coach.cards.copiedNote")}</> : <><Icon name="send" size={14} /> {t("coach.cards.teacherNote")}</>}
-          </button>
-        )}
-      </div>
+      <KeepBar
+        actions={[
+          {
+            id: "plan",
+            onClick: () => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || ""),
+            content: <><Icon name="playlist_add" size={14} /> {t("coach.cards.saveToPlan")}</>,
+          },
+          ...(contract.handoffNotes?.teacher
+            ? [{
+                id: "handoff",
+                tone: "outline" as const,
+                onClick: () => { onAddToHandoff(contract.handoffNotes.teacher); copy(contract.handoffNotes.teacher, "handoff"); },
+                content: copied === "handoff"
+                  ? <><Icon name="check" size={14} /> {t("coach.cards.copiedNote")}</>
+                  : <><Icon name="send" size={14} /> {t("coach.cards.teacherNote")}</>,
+              }]
+            : []),
+        ]}
+      />
 
       {/* AI-10: the in-product quality signal. Last row on the card, after the
           answer has fully settled — it never gates or delays the answer. */}
