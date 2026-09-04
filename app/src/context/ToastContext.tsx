@@ -66,7 +66,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           #root it inherits inert/aria-hidden whenever any dialog is open, which
           silences exactly the toasts dialogs raise (deletion done, gate blocked,
           avatar errors) and makes their dismiss button unclickable. */}
-      {!kidLocked && typeof document !== "undefined" && createPortal(
+      {!kidLocked && (
+      typeof document === "undefined" ? null : createPortal(
       <div role="status" aria-live="polite" data-dialog-shield-exempt
         className="fixed top-4 end-4 z-[80] flex flex-col gap-2 w-[min(92vw,340px)]">
         <AnimatePresence>
@@ -91,7 +92,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>, document.body)}
+      </div>, document.body)
+      )}
     </ToastContext.Provider>
   );
 }
