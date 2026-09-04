@@ -50,6 +50,9 @@ export const CHILD_SUBCOLLECTIONS = [
   "bandSnapshots",
   "appointments",
   "apptQuestions",
+  // LC-12: what the professional actually said, in the parent's own words,
+  // captured after the visit. Per-child data → export + erase sweep.
+  "apptFollowUps",
   "wellness",
   // W5.4: saved comic-book shelf — METADATA ONLY (id/adventureId/title/lang/
   // createdAt). Page-art data-URLs are never persisted (Firestore 1MB doc cap

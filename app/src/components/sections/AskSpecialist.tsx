@@ -23,6 +23,11 @@ import type { Professional } from "../../services/professionals";
 import { ARBOR_PROFESSIONALS } from "../../services/professionals";
 import { authHeaders } from "../../lib/api";
 import { REPORTS, useReportExport } from "./Reports";
+// LC-20 + LC-12: the reason for the visit, the questions prepared in
+// Appointments, and the discipline-specific evidence each preset reads.
+import { useChildCollection } from "../../hooks/useChildCollection";
+import type { LangObservation } from "../../growth/vocabAgg";
+import type { GrowthEntry } from "../../growth/growthEntries";
 import FindProfessional from "./FindProfessional";
 
 /* Care › Consult — the single "get expert input" flow (b3).
@@ -88,6 +93,24 @@ export default function AskSpecialist() {
   // editable state; the note rides into copy/download/export/send ONLY through
   // the parent's existing explicit acts (all behind the reviewed-checkbox gate).
   const [visionNote, setVisionNote] = useState("");
+
+  // LC-20 — REASON FOR VISIT. The packet opened with "About" and never said why
+  // the parent was coming, so the clinician still had to ask the first
+  // question. The composer is ALWAYS shown (not only when the coach prefilled
+  // it) and the line rides into every audience's packet, in the parent's own
+  // words. Device-local until an export the parent triggers.
+  const [reason, setReason] = useState("");
+
+  // The parent's prepared questions and the discipline-specific evidence — the
+  // same registered per-child sinks Appointments, Language Lab and the growth
+  // card write. Read-only here.
+  const questionsCol = useChildCollection<{ id: string; text: string }>(childProfile.id, "apptQuestions");
+  const langObsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", { orderByField: "timestamp", orderDir: "desc", max: 200 });
+  const growthCol = useChildCollection<GrowthEntry>(childProfile.id, "growthEntries", { orderByField: "date", orderDir: "desc", max: 200 });
+  const preparedQuestions = useMemo(
+    () => questionsCol.items.map((q) => q.text).filter((x) => x.trim().length > 0),
+    [questionsCol.items]
+  );
   useEffect(() => {
     if (pendingConsultNote != null) {
       setVisionNote(pendingConsultNote);
@@ -148,8 +171,15 @@ export default function AskSpecialist() {
       plans: actionPlans.map((p) => ({ title: p.title, issue: p.issue })),
       memory: approvedMemoryItems.map((m) => ({ fact: m.fact, status: m.status })),
       nowMs: Date.now(),
+      // LC-20 / LC-12 — the parent's own voice and the evidence each preset reads.
+      reason,
+      questions: preparedQuestions,
+      langObs: langObsCol.items
+        .map((o) => ({ phrase: o.phrase ?? "", language: o.language, at: o.timestamp }))
+        .filter((o) => o.phrase.trim().length > 0),
+      growthEntries: growthCol.items.map((g) => ({ date: g.date, heightCm: g.heightCm, weightKg: g.weightKg })),
     }),
-    [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]
+    [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, reason, preparedQuestions, langObsCol.items, growthCol.items]
   );
 
   // LC-06: "about" is always emitted, so the honest emptiness test is
@@ -175,7 +205,7 @@ export default function AskSpecialist() {
   const exportText = exportBuild.text;
   const noneSelected = includedCount === 0 || !reviewed || exportText == null;
 
-  useEffect(() => { setReviewed(false); }, [excluded, visionNote, audience, childProfile.id]);
+  useEffect(() => { setReviewed(false); }, [excluded, visionNote, reason, audience, childProfile.id]);
 
   const copy = async () => {
     if (exportText == null) return;
@@ -203,11 +233,22 @@ export default function AskSpecialist() {
   const runExport = (type: typeof REPORTS[number]["type"]) => {
     setMenuOpen(false);
     menuTriggerRef.current?.focus();
+    // LC-11 — ONE teacher door. Two teacher artefacts used to coexist with
+    // different content ceilings: this menu's "Teacher Handoff" (about + tried)
+    // and the School Brief (AI-curated five fields, parent-approved per export,
+    // clinical scan fail-closed). A parent could not tell which one to use, so
+    // the menu item now opens the School Brief instead of minting a rival
+    // document.
+    if (type === "teacher") {
+      toast(t("elev.learnCare.brief.oneDoor.hint"), "info");
+      setActiveTab("school-brief");
+      return;
+    }
     toast(t("consult.opening"), "info");
     // Professional audiences route through the W4.1 preset serializer inside
     // useReportExport — the parent's include-toggles (redaction) ride along.
     // The catch is the fail-closed seam: a blocked packet exports NOTHING.
-    try { exportReport(type, excluded); }
+    try { exportReport(type, excluded, { reason, questions: preparedQuestions }); }
     catch { toast(t("consult.exportError"), "error"); }
   };
 
@@ -298,6 +339,35 @@ export default function AskSpecialist() {
           {t("consult.subtitle", { name: firstName })}
         </p>
       </header>
+
+      {/* LC-20 — the first thing the clinician reads, and the first thing the
+          parent writes. Always shown: a summary that never says why the parent
+          came makes the professional open by asking it. */}
+      <section className="rounded-[18px] p-4" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>
+        <label htmlFor="consult-reason" className="inline-flex items-center gap-2 text-[12px] font-extrabold" style={{ color: GREEN }}>
+          <Icon name="help" size={16} /> {t("elev.learnCare.reason.label")}
+        </label>
+        <p className="text-[11.5px] leading-relaxed mt-1" style={{ color: MUTED }}>{t("elev.learnCare.reason.hint")}</p>
+        <textarea
+          id="consult-reason"
+          data-testid="consult-reason-input"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={2}
+          dir="auto"
+          placeholder={t("elev.learnCare.reason.placeholder")}
+          className="w-full text-[13.5px] leading-relaxed rounded-[13px] px-3 py-2.5 mt-2 resize-y min-h-[56px]"
+          style={{ color: INK, background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+        />
+        {reason.trim() === "" && (
+          <p className="text-[11px] mt-1.5" style={{ color: MUTED }}>{t("elev.learnCare.reason.missing")}</p>
+        )}
+        {preparedQuestions.length > 0 && (
+          <p className="text-[11.5px] mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
+            <Icon name="check_circle" size={14} fill={1} /> {t("elev.learnCare.appt.questions.toPacket")}
+          </p>
+        )}
+      </section>
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {([

@@ -53,6 +53,24 @@ export interface PacketInputPlan {
 }
 export interface PacketInputMemory { fact: string; status: string }
 
+/** LC-20 — a phrase the parent logged in Language Lab (the registered `langObs`
+ *  sink). Feeds the SLP preset's own section; no other audience receives it. */
+export interface PacketInputLangObs {
+  phrase: string;
+  language?: string;
+  /** ISO date the parent recorded it. */
+  at?: string | number;
+}
+
+/** LC-20 — a parent-logged physical measurement (the `growthEntries` sink).
+ *  Feeds the pediatrician preset's own section. Raw numbers as the parent
+ *  entered them — never a percentile, centile band or growth verdict. */
+export interface PacketInputGrowthEntry {
+  date: string;
+  heightCm?: number;
+  weightKg?: number;
+}
+
 export interface PacketItem { id: string; text: string }
 export interface PacketSection { id: string; title: string; note?: string; items: PacketItem[] }
 export interface ConsultPacket {
@@ -78,6 +96,18 @@ export interface BuildPacketInput {
    *  ⇒ the packet gains a computed, counts-only "Since the last export" delta
    *  section. Absent (no prior export) ⇒ no delta section — fail quiet. */
   lastExportedAt?: string | number;
+  /** LC-20: the parent's one-line reason for the visit. When present it is the
+   *  FIRST section of every packet, so the clinician does not open by asking
+   *  the question the parent already answered. The parent's own words. */
+  reason?: string;
+  /** LC-12 + LC-20: the questions the parent prepared in Appointments. They
+   *  ride into the packet so the prep work reaches the room. */
+  questions?: string[];
+  /** LC-20: phrases from Language Lab — the SLP preset's own evidence. */
+  langObs?: PacketInputLangObs[];
+  /** LC-20: parent-logged measurements — the pediatrician preset's own
+   *  evidence. Numbers as entered; never a percentile or growth verdict. */
+  growthEntries?: PacketInputGrowthEntry[];
 }
 
 /** Effective parent response for a milestone: the explicit wave-2 observation
@@ -133,6 +163,20 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
   const recent = logs.filter((l) => toMs(l.timestamp) >= since);
 
   const sections: PacketSection[] = [];
+
+  // 0) LC-20 — WHY THE PARENT IS COMING. Every preset used to open with
+  //    "About", so a clinician read four dated, structured sections and still
+  //    had to ask the first question. When the parent writes a line, it opens
+  //    the packet. Their own words, unedited, never a paraphrase.
+  const reason = (input.reason ?? "").trim();
+  if (reason) {
+    sections.push({
+      id: "reason",
+      title: "What I'd like help with",
+      note: "In the parent's own words.",
+      items: [{ id: "reason-line", text: reason }],
+    });
+  }
 
   // 1) Who the child is.
   const aboutItems: PacketItem[] = [
@@ -235,6 +279,85 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       title: "Context worth knowing",
       note: "Approved notes from your history with Arbor.",
       items,
+    });
+  }
+
+  // 5b) LC-20 — SLP evidence: the phrases the parent actually logged. This
+  //     section exists ONLY in the SLP preset's ceiling, which is what finally
+  //     makes "SLP Summary" a different document from "Pediatrician Summary".
+  //     Parent-recorded phrases, dated — no scoring, no articulation verdict.
+  if (input.langObs?.length) {
+    const items: PacketItem[] = input.langObs.slice(0, 12).map((o, i) => {
+      const day = isoDay(o.at);
+      const lang = o.language ? ` [${o.language}]` : "";
+      return { id: `lang-${i}`, text: `${o.phrase}${lang}${day ? ` (${day})` : ""}` };
+    });
+    sections.push({
+      id: "language-observations",
+      title: "Phrases we have heard",
+      note: "Parent-recorded phrases, as heard at home.",
+      items,
+    });
+  }
+
+  // 5c) LC-20 — pediatrician evidence: the measurements the parent logged, as
+  //     entered. NEVER a percentile, centile band, or growth verdict; the
+  //     clinician plots these against their own charts.
+  if (input.growthEntries?.length) {
+    const items: PacketItem[] = [...input.growthEntries]
+      .sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0))
+      .slice(0, 8)
+      .map((g, i) => {
+        const parts = [
+          g.heightCm != null ? `${g.heightCm} cm` : null,
+          g.weightKg != null ? `${g.weightKg} kg` : null,
+        ].filter(Boolean);
+        return { id: `growth-${i}`, text: `${isoDay(g.date) ?? g.date}: ${parts.join(", ")}` };
+      })
+      .filter((it) => !/: $/.test(it.text));
+    if (items.length) {
+      sections.push({
+        id: "growth-measurements",
+        title: "Measurements we have taken",
+        note: "Parent-recorded measurements, as entered at home.",
+        items,
+      });
+    }
+  }
+
+  // 5d) LC-20 — behavioural evidence: what the parent noticed came BEFORE the
+  //     hard moments, in their own words, with counts. Only the behavioral
+  //     health preset's ceiling includes it.
+  const triggerCounts = new Map<string, number>();
+  for (const l of recent) {
+    const trigger = (l.trigger ?? "").trim();
+    if (trigger) triggerCounts.set(trigger, (triggerCounts.get(trigger) ?? 0) + 1);
+  }
+  if (triggerCounts.size) {
+    const items: PacketItem[] = [...triggerCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([trigger, n], i) => ({
+        id: `trigger-${i}`,
+        text: `"${trigger}" — noted ${n} time${n === 1 ? "" : "s"}.`,
+      }));
+    sections.push({
+      id: "triggers",
+      title: "What we noticed came first",
+      note: "The parent's own words for what preceded a hard moment — counts, not causes.",
+      items,
+    });
+  }
+
+  // 5e) LC-12 + LC-20 — the questions the parent prepared in Appointments.
+  //     Prep work that used to stop at the Appointments screen now reaches the
+  //     room. Every audience gets them: they are the parent's questions.
+  const questions = (input.questions ?? []).map((q) => q.trim()).filter(Boolean);
+  if (questions.length) {
+    sections.push({
+      id: "questions",
+      title: "Questions I want to ask",
+      items: questions.slice(0, 10).map((q, i) => ({ id: `question-${i}`, text: q })),
     });
   }
 
@@ -362,13 +485,21 @@ export interface ConsultPreset {
   clinicalTermScan: boolean;
 }
 
-/** The single clinician ceiling every clinician audience reuses (CARE-7):
- *  same sections, same data ceiling, term-scan exempt — one policy, no forks. */
+/** LC-20: the parent's reason for the visit and their prepared questions open
+ *  and close EVERY packet — they are the parent's own words, not child data
+ *  derived by Arbor, so no audience ceiling excludes them. */
+const PARENT_VOICE_SECTIONS = ["reason", "questions"] as const;
+
+/** The shared clinician ceiling (CARE-7): same base sections, same data
+ *  ceiling, term-scan exempt — one policy, no forks. Each clinician audience
+ *  then adds the ONE evidence section its own discipline actually reads
+ *  (LC-20: four "professional" reports used to be byte-identical documents
+ *  that differed only in their title). */
 const CLINICIAN_SECTIONS = ["about", "patterns", "development", "tried", "memory", "since-last-visit"] as const;
 const CLINICIAN_CEILING = { logDerivedPatterns: true, approvedMemoryFacts: true } as const;
-const clinicianPreset = (audience: ConsultAudience): ConsultPreset => ({
+const clinicianPreset = (audience: ConsultAudience, extraSections: readonly string[] = []): ConsultPreset => ({
   audience,
-  sections: CLINICIAN_SECTIONS,
+  sections: [...PARENT_VOICE_SECTIONS, ...CLINICIAN_SECTIONS, ...extraSections],
   dataCeiling: { ...CLINICIAN_CEILING },
   clinicalTermScan: false,
 });
@@ -376,14 +507,18 @@ const clinicianPreset = (audience: ConsultAudience): ConsultPreset => ({
 export const CONSULT_PRESETS: Record<ConsultAudience, ConsultPreset> = {
   teacher: {
     audience: "teacher",
-    sections: ["about", "tried"],
+    sections: [...PARENT_VOICE_SECTIONS, "about", "tried"],
     dataCeiling: { logDerivedPatterns: false, approvedMemoryFacts: false },
     clinicalTermScan: true,
   },
+  // The generalist ceiling — everything shared, no discipline-specific evidence.
   therapist: clinicianPreset("therapist"),
-  pediatrician: clinicianPreset("pediatrician"),
-  slp: clinicianPreset("slp"),
-  behavioral_health: clinicianPreset("behavioral_health"),
+  // Physical measurements the parent logged, as entered (never a percentile).
+  pediatrician: clinicianPreset("pediatrician", ["growth-measurements"]),
+  // The phrases the parent actually heard at home.
+  slp: clinicianPreset("slp", ["language-observations"]),
+  // What the parent noticed came first, in their own words, with counts.
+  behavioral_health: clinicianPreset("behavioral_health", ["triggers"]),
 };
 
 /** Tokens that appear in NO export, for ANY audience (clinician or not). */

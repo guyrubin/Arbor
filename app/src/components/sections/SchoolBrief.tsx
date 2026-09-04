@@ -17,8 +17,15 @@ import {
   ClinicalLanguageError,
   OUTSIDE_ERASE_REACH_NOTICE_KEY,
   APPROVE_EXPORT_CTA_KEY,
+  // LC-11
+  schoolBriefToPrintSections,
+  parentEscalationNote,
+  assertEscalationNoteNotExported,
   type ExportState,
 } from "../../schoolBrief/schoolBrief";
+// LC-11: the teacher receives a real document through the shared, native-aware
+// print egress — not a Markdown blob a gan teacher cannot open.
+import { openPrintableReport } from "../../lib/reportExport";
 
 /* AP-056 — School Handoff Brief (parent-controlled, teacher-facing).
  *
@@ -50,8 +57,8 @@ const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 
 export default function SchoolBrief() {
-  const { childProfile, behaviorLogs, milestones } = useArbor();
-  const { t } = useLanguage();
+  const { childProfile, behaviorLogs, milestones, setActiveTab } = useArbor();
+  const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const reduceMotion = useReducedMotion();
   const firstName = (childProfile.name || "your child").split(" ")[0];
@@ -131,6 +138,13 @@ export default function SchoolBrief() {
         logs: behaviorLogs,
         milestones,
         audience: "teacher", // reuse the redacted + escalation-screened path
+        // LC-11: a Hebrew-speaking gan teacher was handed an English brief —
+        // the generation prompt carried no language directive at all. The
+        // client now states the parent's language at the seam.
+        // NOTE: the matching "Write in {language}" line in the /generate-handoff
+        // prompt lives in src/routes/api.ts, which is outside this lane's file
+        // ownership. Until it lands this argument is inert, not wrong.
+        language: uiLang === "he" ? "he" : "en",
       });
       setDraft(data);
       setEditing(false);
@@ -156,24 +170,29 @@ export default function SchoolBrief() {
     try {
       const ex = buildExport();
       if (!ex) return;
-      const md = serializeSchoolBrief(ex, sectionLabels);
-      const blob = new Blob([md], { type: "text/markdown" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${firstName}-school-handoff-${ex.date}.md`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      const sections = schoolBriefToPrintSections(ex, sectionLabels);
+      // Fail closed at the egress seam: the parent-only escalation note may
+      // never ride out in the teacher's copy (it is not in CURATED_FIELDS, so
+      // this is belt-and-braces — and it stays that way by test).
+      assertEscalationNoteNotExported(
+        serializeSchoolBrief(ex, sectionLabels),
+        parentEscalationNote(draft)
+      );
+      void openPrintableReport(
+        { title: ex.title, subtitle: `${firstName} · ${ex.date}`, sections },
+        childProfile.name
+      );
       setReviewOpen(false);
-      toast(t("schoolBrief.downloaded"), "success");
+      toast(t("elev.learnCare.brief.printed"), "success");
     } catch (err) {
       // Condition 3 fail-closed: a diagnosis term (incl. one edited in) means we DO NOT export.
       if (err instanceof ClinicalLanguageError) toast(t("schoolBrief.nonDiagnostic", { name: firstName }), "error");
       else toast("Couldn't build the note — please try again.", "error");
     }
   };
+
+  // LC-11: the generator's escalation note — parent-only, never exported.
+  const escalationNote = parentEscalationNote(draft);
 
   const motionProps = reduceMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0 } }
@@ -264,6 +283,34 @@ export default function SchoolBrief() {
             <p className="text-[12px] leading-relaxed pt-1" style={{ color: "var(--arbor-faint)" }}>{t("schoolBrief.bilingualNote")}</p>
           </div>
 
+          {/* LC-11 — THE SAFETY FIELD THAT WAS BEING DROPPED. The generator is
+              required by its own schema to return `crisisEscalationTrigger`; it
+              is correctly kept out of the teacher's copy, but it was never
+              rendered anywhere either, so the model's escalation note vanished
+              silently. It belongs to the PARENT. Shown here, outside the brief
+              card, clearly labelled as not part of the teacher's document, and
+              routed to Safety and support. */}
+          {escalationNote && (
+            <section
+              data-testid="school-brief-escalation"
+              className="rounded-2xl p-4 space-y-2"
+              style={{ background: "var(--arbor-yellow-soft)", border: `1px solid ${RULE}` }}
+            >
+              <h2 className="text-[14px] font-extrabold inline-flex items-center gap-2" style={{ color: "var(--arbor-yellow-ink)" }}>
+                <Icon name="flag" size={16} /> {t("elev.learnCare.brief.escalation.title")}
+              </h2>
+              <p className="text-[13px] leading-relaxed" dir="auto" style={{ color: INK }}>{escalationNote}</p>
+              <p className="text-[11.5px] leading-relaxed" style={{ color: MUTED }}>{t("elev.learnCare.brief.escalation.body")}</p>
+              <button
+                onClick={() => setActiveTab("safety")}
+                className="inline-flex items-center gap-2 text-[12.5px] font-bold rounded-xl px-4 min-h-[44px]"
+                style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: `1px solid ${RULE}` }}
+              >
+                <Icon name="health_and_safety" size={16} /> {t("elev.learnCare.brief.escalation.cta")}
+              </button>
+            </section>
+          )}
+
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={generate}
@@ -288,7 +335,7 @@ export default function SchoolBrief() {
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
               style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
             >
-              <Icon name="download" size={16} /> {t("schoolBrief.download")}
+              <Icon name="description" size={16} /> {t("elev.learnCare.brief.print")}
             </button>
           </div>
         </>

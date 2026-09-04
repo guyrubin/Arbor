@@ -21,6 +21,10 @@ import {
   serializeSchoolBrief,
   findClinicalDiagnosisTerm,
   ClinicalLanguageError,
+  // LC-11
+  schoolBriefToPrintSections,
+  parentEscalationNote,
+  assertEscalationNoteNotExported,
 } from "./schoolBrief";
 import { en, he } from "../lib/i18n";
 import * as schoolBriefMod from "./schoolBrief";
@@ -259,5 +263,82 @@ describe("AP-056 — serialized PDF/markdown body stays curated + non-diagnostic
     expect(md).not.toContain("LEDGER");
     expect(md).toContain(cleanBrief.title);
     expect(findClinicalDiagnosisTerm(md)).toBeNull();
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * LC-11 — the teacher gets a document, and the escalation note the generator
+ * returns finally reaches the PARENT instead of being dropped on the floor.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+describe("LC-11 — the parent-only escalation note", () => {
+  const LABELS = {
+    overview: "Overview",
+    strengths: "Strengths",
+    challenges: "Challenges",
+    language: "Language",
+    strategies: "Strategies",
+  };
+  const brief = {
+    overview: "Noa settles quickly with a warm greeting at the door.",
+    keyStrengths: ["Curious about books"],
+    classroomChallenges: ["Needs a heads-up before transitions"],
+    languageSupportPlan: ["Hebrew at home, English at school"],
+    suggestedTeacherStrategies: ["Give a two-minute warning"],
+    crisisEscalationTrigger: "If Noa stops eating for two days, call the family doctor.",
+  };
+
+  it("surfaces the note to the parent when the generator returned one", () => {
+    const note = parentEscalationNote(brief);
+    expect(note).toBe(brief.crisisEscalationTrigger);
+  });
+
+  it("returns null when the generator returned nothing (no empty card renders)", () => {
+    expect(parentEscalationNote({ ...brief, crisisEscalationTrigger: "" })).toBeNull();
+    expect(parentEscalationNote({ ...brief, crisisEscalationTrigger: "   " })).toBeNull();
+    expect(parentEscalationNote({})).toBeNull();
+    expect(parentEscalationNote(null)).toBeNull();
+  });
+
+  it("THE SAFETY RULE: the note never rides out in the teacher's copy", () => {
+    const ex = buildSchoolBriefExport(brief, { title: "School Brief — Noa", date: "2026-09-04" });
+    const md = serializeSchoolBrief(ex, LABELS);
+    expect(md).not.toContain(brief.crisisEscalationTrigger);
+    // …and the egress assertion agrees rather than passing vacuously.
+    expect(() => assertEscalationNoteNotExported(md, parentEscalationNote(brief))).not.toThrow();
+  });
+
+  it("NEGATIVE CONTROL: the egress assertion really fires when the note leaks", () => {
+    const leaked = `# Brief\n\n${brief.crisisEscalationTrigger}\n`;
+    expect(() => assertEscalationNoteNotExported(leaked, parentEscalationNote(brief))).toThrow(
+      ClinicalLanguageError
+    );
+  });
+
+  it("print sections carry the curated fields and nothing else", () => {
+    const ex = buildSchoolBriefExport(brief, { title: "School Brief — Noa", date: "2026-09-04" });
+    const sections = schoolBriefToPrintSections(ex, LABELS);
+    expect(sections.length).toBeGreaterThan(0);
+    expect(sections.map((s) => s.heading)).toEqual([
+      LABELS.overview,
+      LABELS.strengths,
+      LABELS.challenges,
+      LABELS.language,
+      LABELS.strategies,
+    ]);
+    const flat = sections.flatMap((s) => [s.heading, ...s.body]).join("\n");
+    expect(flat).toContain("Curious about books");
+    expect(flat).not.toContain(brief.crisisEscalationTrigger);
+  });
+
+  it("an empty field emits no heading (no blank sections in the teacher's copy)", () => {
+    const thin = buildSchoolBriefExport(
+      { ...brief, keyStrengths: [], classroomChallenges: ["  "] },
+      { title: "t", date: "2026-09-04" }
+    );
+    const headings = schoolBriefToPrintSections(thin, LABELS).map((s) => s.heading);
+    expect(headings).not.toContain(LABELS.strengths);
+    expect(headings).not.toContain(LABELS.challenges);
+    expect(headings).toContain(LABELS.overview);
   });
 });

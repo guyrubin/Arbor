@@ -58,7 +58,13 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
     expect(CHILD_SUBCOLLECTIONS).toContain("savedComics");
   });
 
-  it("the registry is byte-for-byte the pre-W5 list (no additions, no removals, no reorders)", () => {
+  it("the registry is byte-for-byte the expected list (no accidental additions, removals or reorders)", () => {
+    // Entries are added ONLY by a deliberate feature that registers a new
+    // per-child sink, and each addition names its item here so an accidental
+    // one still turns this red. LC-12 added "apptFollowUps" (what the
+    // professional said after a visit, in the parent's own words) — a per-child
+    // sink, so it must ride the GDPR export (Art. 15/20) and erase (Art. 17)
+    // sweeps and be counted in the deletion receipt.
     expect(CHILD_SUBCOLLECTIONS).toEqual([
       "behaviorLogs",
       "milestones",
@@ -90,6 +96,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "bandSnapshots",
       "appointments",
       "apptQuestions",
+      "apptFollowUps", // LC-12
       "wellness",
       "savedComics",
     ]);

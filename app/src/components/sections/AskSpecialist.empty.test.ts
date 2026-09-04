@@ -31,6 +31,12 @@ vi.mock("../ui/Modal", () => ({ Modal: () => null, default: () => null }));
 vi.mock("../../lib/api", () => ({ authHeaders: async () => ({}) }));
 vi.mock("../../lib/loopEvents", () => ({ trackShareInitiated: vi.fn(), trackShareCompleted: vi.fn() }));
 vi.mock("../../services/professionals", () => ({ ARBOR_PROFESSIONALS: [] }));
+// LC-20: the surface now reads the parent's prepared questions and the
+// discipline-specific evidence sinks. Stub the collection hook (it needs the
+// auth/profile providers this static render deliberately does without).
+vi.mock("../../hooks/useChildCollection", () => ({
+  useChildCollection: () => ({ items: [], loaded: true, error: false, remote: false, upsert: vi.fn(), remove: vi.fn(), replaceAll: vi.fn() }),
+}));
 
 describe("LC-06 — AskSpecialist empty state", () => {
   it("a profile-only record mounts the empty state and no export bar", async () => {

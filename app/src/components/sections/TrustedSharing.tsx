@@ -16,6 +16,11 @@ import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
 import { REPORT_SCOPE_BY_TYPE, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
 import { fmtDay } from "../../lib/formatDate";
+// LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
+// function the server uses for them — not a list of scope labels.
+import { buildSharedScopePacket } from "../../consult/packet";
+import { ClinicalLanguageError } from "../../lib/clinicalScan";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 
 // IA W4.5 + CARE-3: the professional share scopes mirror the W4.1 preset
 // audiences one-to-one — derived from the single REPORTS definition
@@ -34,7 +39,7 @@ const ROLE_TONE: Record<ShareRole, PastelKey> = { co_parent: "mint", professiona
  *  from real, server-enforced share grants — scoped, time-boxed, revocable
  *  (incl. co-parents) — plus what's shared with you. */
 export default function TrustedSharing() {
-  const { childProfile, openPaywall, setActiveTab } = useArbor();
+  const { childProfile, openPaywall, setActiveTab, behaviorLogs, milestones, actionPlans, approvedMemoryItems } = useArbor();
   const { deleteChild } = useProfile();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -55,6 +60,56 @@ export default function TrustedSharing() {
   const [adding, setAdding] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [draft, setDraft] = useState({ recipientEmail: "", role: "co_parent" as ShareRole, scopes: [] as ShareScopeId[], duration: DURATIONS[0] as string });
+  // LC-17: after a grant is created there is no server email — the recipient
+  // learns nothing unless they already use Arbor and happen to open #/sharing.
+  // The parent gets a prefilled invite to send themselves, and the copy says
+  // plainly that Arbor does not email them.
+  const [invite, setInvite] = useState<{ email: string } | null>(null);
+
+  /* LC-17 — "Choose exactly who sees what" was only half true: the review step
+     listed scope CHIPS ("Weekly insight", "Milestones"), never the content.
+     This builds the recipient's actual read-only packet with
+     buildSharedScopePacket — the SAME function server/sharedPacket.ts calls for
+     them, with the same fail-closed guards — so the parent consents to what is
+     really shared. A blocked build shows the reason and no text (fail closed).
+     CLINICAL FIREWALL: the packet is counts + parent observations; the guards
+     run here exactly as they do at the server egress. */
+  const previewPacket = React.useMemo(() => {
+    if (draft.scopes.length === 0) return { sections: null as null | { id: string; title: string; items: { id: string; text: string }[] }[], blocked: false };
+    try {
+      const packet = buildSharedScopePacket(draft.scopes, draft.role === "professional", {
+        profile: {
+          name: childProfile.name,
+          age: childProfile.age,
+          languages: childProfile.languages,
+          ageMonths: ageMonthsFromProfile(childProfile) ?? undefined,
+          schoolContext: childProfile.schoolContext,
+          strengths: childProfile.strengths,
+          challenges: childProfile.challenges,
+        },
+        logs: behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, intensity: l.intensity, timestamp: l.timestamp, resolved: l.resolved })),
+        milestones: milestones.map((m) => ({
+          domain: m.domain, title: m.title, checked: m.checked, ageMonths: m.ageMonths,
+          status: m.observationStatus ?? (m.checked ? "yes" : "not_yet"),
+          observedAt: m.observationUpdatedAt,
+        })),
+        plans: actionPlans.map((p) => ({ title: p.title, issue: p.issue })),
+        memory: approvedMemoryItems.map((m) => ({ fact: m.fact, status: m.status })),
+        nowMs: Date.now(),
+      });
+      return { sections: packet.sections, blocked: false };
+    } catch (err) {
+      return { sections: null, blocked: err instanceof ClinicalLanguageError };
+    }
+  }, [draft.scopes, draft.role, childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]);
+
+  /** LC-17: a prefilled invite the PARENT sends. Arbor sends no email. */
+  const inviteHref = (email: string): string => {
+    const link = `${typeof window === "undefined" ? "" : window.location.origin}/#/sharing`;
+    const subject = t("elev.learnCare.share.invite.subject", { child: childProfile.name });
+    const body = t("elev.learnCare.share.invite.body", { child: childProfile.name, link });
+    return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,6 +155,7 @@ export default function TrustedSharing() {
     try {
       await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: draft.role, scopes: draft.scopes, duration: draft.duration });
       toast(t("sec.sharing.audit.shared", { scopes: scopesLabel(draft.scopes), email, role: roleLabel(draft.role) }), "success");
+      setInvite({ email });
       setDraft({ recipientEmail: "", role: "co_parent", scopes: [], duration: DURATIONS[0] });
       setReviewing(false);
       setAdding(false);
@@ -262,6 +318,26 @@ export default function TrustedSharing() {
         />
       )}
 
+      {/* LC-17 — the recipient is never notified: there is no server email on
+          POST /shares and no client invite path existed. The parent gets a
+          prefilled message to send themselves, and the copy says so. */}
+      {invite && (
+        <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
+          <span className="text-sm font-bold break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{invite.email}</span>
+          <a
+            href={inviteHref(invite.email)}
+            className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-2.5 min-h-[44px]"
+            style={{ background: "var(--arbor-clay)" }}
+          >
+            <Icon name="mail" size={16} /> {t("elev.learnCare.share.invite.cta")}
+          </a>
+          <button onClick={() => setInvite(null)} aria-label={t("aria.cancel")} className="inline-flex items-center justify-center min-w-[44px] min-h-[44px]">
+            <Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} />
+          </button>
+          <p className="text-[11.5px] leading-relaxed basis-full" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.invite.hint")}</p>
+        </div>
+      )}
+
       {adding && (
         <div className="space-y-4 border-y py-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="flex items-center justify-between">
@@ -304,6 +380,32 @@ export default function TrustedSharing() {
             <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
               <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.recipient")}</p><p className="text-sm font-extrabold mt-0.5 break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{draft.recipientEmail.trim()}</p></div><Chip tone="mint">{roleLabel(draft.role)}</Chip></div>
               <div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.canSee")}</p><div className="flex flex-wrap gap-1.5 mt-1.5">{draft.scopes.map((scope) => <Chip key={scope} tone="sky">{t(shareScopeLabelKey(scope))}</Chip>)}</div></div>
+
+              {/* LC-17 — THE ACTUAL PREVIEW. A parent consenting to share their
+                  child's data has to see what is being shared, not a label for
+                  it. Built with buildSharedScopePacket — the same function the
+                  server runs for the recipient, with the same fail-closed
+                  guards, so this is the recipient's view and not a mock-up. */}
+              <div data-testid="share-scope-preview" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
+                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.learnCare.share.preview.title")}</p>
+                {previewPacket.blocked ? (
+                  <p role="alert" className="text-[12px] font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.learnCare.share.preview.blocked")}</p>
+                ) : !previewPacket.sections || previewPacket.sections.length === 0 ? (
+                  <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.preview.empty")}</p>
+                ) : (
+                  previewPacket.sections.map((section) => (
+                    <div key={section.id}>
+                      <p className="text-[12.5px] font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{section.title}</p>
+                      <ul className="list-disc ps-5 mt-1 space-y-0.5">
+                        {section.items.map((it) => (
+                          <li key={it.id} className="text-[12px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{it.text}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+                )}
+                <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>{t("elev.learnCare.share.preview.hint")}</p>
+              </div>
               <div className="flex items-center gap-2 text-xs" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={16} /> {t(`share.duration.${draft.duration}`)}</div>
             </div>
             <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "var(--arbor-yellow-soft)", border: "1px solid var(--arbor-rule)" }}><Icon name="verified_user" size={19} style={{ color: "var(--arbor-yellow-ink)" }} /><p className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{t("sec.sharing.review.note")}</p></div>

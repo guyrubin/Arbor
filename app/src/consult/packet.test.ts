@@ -283,13 +283,22 @@ describe("UND-4 — development snapshot preserves observed / not sure / not yet
  * and the computed "Since the last export" delta appears only with a prior
  * export on record. */
 
-describe("CARE-7 — SLP + behavioral-health presets mirror the clinician ceiling exactly", () => {
-  it("both new presets carry the same sections, data ceiling, and term-scan policy as the therapist preset", () => {
+describe("CARE-7 — SLP + behavioral-health presets share the clinician SAFETY ceiling", () => {
+  /* LC-20 UPDATE: these presets used to be asserted IDENTICAL to the therapist
+   * preset, which is precisely the finding — four "professional" reports that
+   * produced byte-identical documents differing only in their title. The
+   * SAFETY half of the ceiling (data ceiling + term-scan policy) is unchanged
+   * and still shared; each discipline now adds the ONE evidence section it
+   * actually reads. See the LC-20 block below for the difference itself. */
+  it("both presets carry the therapist's data ceiling and term-scan policy", () => {
     for (const audience of ["slp", "behavioral_health"] as const) {
       const preset = CONSULT_PRESETS[audience];
-      expect([...preset.sections]).toEqual([...CONSULT_PRESETS.therapist.sections]);
       expect(preset.dataCeiling).toEqual(CONSULT_PRESETS.therapist.dataCeiling);
       expect(preset.clinicalTermScan).toBe(false);
+      // Every therapist section stays in ceiling — the difference is additive.
+      for (const section of CONSULT_PRESETS.therapist.sections) {
+        expect(preset.sections).toContain(section);
+      }
     }
   });
 
@@ -551,5 +560,116 @@ describe("LC-08 — serializeForExport: one seam, audience-capped, note scanned"
   it("NEGATIVE CONTROL: the pre-fix path (serializePacket + appendParentNote) hands a teacher the memory facts", () => {
     const preFix = appendParentNote(serializePacket(buildConsultPacket(base)), "any note", noteHeading);
     expect(preFix).toMatch(/Calms fastest with a countdown/);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * LC-20 — the four "professional" reports are no longer the same document,
+ * and the packet finally states WHY the parent is coming.
+ * LC-12 — the questions prepared in Appointments reach the room.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+const richRecord: BuildPacketInput = {
+  ...base,
+  reason: "He stopped asking for help when he gets stuck, and I want to know if that is worth watching.",
+  questions: ["Is the switch between Hebrew and English normal at this age?", "What should I try first at bedtime?"],
+  langObs: [
+    { phrase: "want the blue one", language: "en", at: new Date(NOW - 2 * DAY).toISOString() },
+    { phrase: "אני רוצה עוד", language: "he", at: new Date(NOW - 5 * DAY).toISOString() },
+  ],
+  growthEntries: [
+    { date: new Date(NOW - 10 * DAY).toISOString(), heightCm: 112, weightKg: 19.4 },
+    { date: new Date(NOW - 200 * DAY).toISOString(), heightCm: 108, weightKg: 18.1 },
+  ],
+  logs: [
+    { behaviorType: "Transition Refusal", intensity: 5, timestamp: new Date(NOW - 1 * DAY).toISOString(), trigger: "screen time ending" },
+    { behaviorType: "Transition Refusal", intensity: 4, timestamp: new Date(NOW - 3 * DAY).toISOString(), trigger: "screen time ending" },
+    { behaviorType: "Sibling Conflict", intensity: 3, timestamp: new Date(NOW - 2 * DAY).toISOString(), trigger: "sharing the tablet" },
+  ],
+};
+
+describe("LC-20 — the clinician presets produce genuinely different documents", () => {
+  it("THE GUARD: an SLP summary is not a pediatrician summary", () => {
+    const slp = serializePresetPacket("slp", buildPresetPacket("slp", richRecord));
+    const ped = serializePresetPacket("pediatrician", buildPresetPacket("pediatrician", richRecord));
+    expect(slp.length).toBeGreaterThan(100);
+    expect(ped.length).toBeGreaterThan(100);
+    expect(slp).not.toBe(ped);
+    expect(slp).toContain("Phrases we have heard");
+    expect(ped).not.toContain("Phrases we have heard");
+    expect(ped).toContain("Measurements we have taken");
+    expect(slp).not.toContain("Measurements we have taken");
+  });
+
+  it("all four clinician documents differ from one another", () => {
+    const audiences: ConsultAudience[] = ["therapist", "pediatrician", "slp", "behavioral_health"];
+    const docs = audiences.map((a) => serializePresetPacket(a, buildPresetPacket(a, richRecord)));
+    expect(new Set(docs).size).toBe(audiences.length);
+  });
+
+  it("behavioural health receives the parent's own words for what came first", () => {
+    const bh = serializePresetPacket("behavioral_health", buildPresetPacket("behavioral_health", richRecord));
+    expect(bh).toContain("What we noticed came first");
+    expect(bh).toContain("screen time ending");
+    // and no other clinician audience does
+    const therapist = serializePresetPacket("therapist", buildPresetPacket("therapist", richRecord));
+    expect(therapist).not.toContain("What we noticed came first");
+  });
+
+  it("NEGATIVE CONTROL: with no discipline-specific data the presets converge again", () => {
+    // Proves the difference comes from the DATA + ceiling, not from a title —
+    // a record with no langObs/growth/triggers yields identical bodies, which
+    // is exactly the pre-change state the guard above catches.
+    const thin: BuildPacketInput = { ...base, reason: "", questions: [] };
+    const slp = serializePresetPacket("slp", buildPresetPacket("slp", thin));
+    const ped = serializePresetPacket("pediatrician", buildPresetPacket("pediatrician", thin));
+    expect(slp).toBe(ped);
+  });
+
+  it("measurements are the parent's raw numbers — never a percentile or verdict", () => {
+    const ped = serializePresetPacket("pediatrician", buildPresetPacket("pediatrician", richRecord));
+    expect(ped).toContain("112 cm");
+    expect(ped).not.toMatch(/percentile|centile|\d+(\.\d+)?\s*%/i);
+  });
+});
+
+describe("LC-20 — the packet states the reason for the visit, first", () => {
+  it("the reason opens the packet, in the parent's own words", () => {
+    const p = buildConsultPacket(richRecord);
+    expect(p.sections[0].id).toBe("reason");
+    expect(p.sections[0].items[0].text).toBe(richRecord.reason);
+  });
+
+  it("every audience — teacher included — receives it", () => {
+    for (const audience of ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"] as const) {
+      const md = serializePresetPacket(audience, buildPresetPacket(audience, richRecord));
+      expect(md).toContain("What I'd like help with");
+    }
+  });
+
+  it("NEGATIVE CONTROL: no reason written → no empty section (the pre-change shape)", () => {
+    const p = buildConsultPacket({ ...base, reason: "   " });
+    expect(p.sections.map((s) => s.id)).not.toContain("reason");
+    expect(p.sections[0].id).toBe("about");
+  });
+});
+
+describe("LC-12 — prepared questions ride into the packet", () => {
+  it("the parent's questions reach every audience", () => {
+    for (const audience of ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"] as const) {
+      const md = serializePresetPacket(audience, buildPresetPacket(audience, richRecord));
+      expect(md).toContain("Questions I want to ask");
+      expect(md).toContain("What should I try first at bedtime?");
+    }
+  });
+
+  it("NEGATIVE CONTROL: no questions → no section", () => {
+    const p = buildConsultPacket({ ...base, questions: [] });
+    expect(p.sections.map((s) => s.id)).not.toContain("questions");
+  });
+
+  it("blank questions are never emitted", () => {
+    const p = buildConsultPacket({ ...base, questions: ["  ", ""] });
+    expect(p.sections.map((s) => s.id)).not.toContain("questions");
   });
 });

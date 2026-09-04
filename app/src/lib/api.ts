@@ -241,7 +241,10 @@ export const api = {
   }) => post<BedtimeStory>("/api/generate-bedtime-story", payload),
   generateHeroJourney: (payload: { storyId: string; childName: string; age: number; language: "en" | "he" }) =>
     post<HeroJourneyRender>("/api/generate-hero-journey", payload),
-  generateBrief: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; audience: string }) =>
+  // LC-11: `language` threads the parent's UI language into the handoff
+  // generation seam (mirroring extractLog/vision). The matching languageDirective
+  // in the /generate-handoff prompt is a server-side change (src/routes/api.ts).
+  generateBrief: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; audience: string; language?: "en" | "he" }) =>
     post<SchoolBrief>("/api/generate-handoff", payload),
   // AI-CAP-2: `language` threads the parent's AI language into the extraction
   // prompt (mirroring /chat's languageDirective) so an HE description yields
