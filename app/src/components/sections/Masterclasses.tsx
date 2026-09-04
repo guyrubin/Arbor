@@ -156,13 +156,20 @@ export default function Masterclasses() {
     childId: childProfile.id,
     dayKey: pickDayKey(new Date()),
   });
+  // Every branch names a signal that DEMONSTRABLY moved this card. The focus
+  // branch reads `todaysRead.fromFocus` — the pick's own re-derivation — and
+  // not `devScore.focusDomain`: a set focus domain says the parent has one, not
+  // that today's winner shares it, so "the area you have been exploring" was
+  // false whenever the winning card's domains did not include it. Do not
+  // reintroduce a raw signal here; if a new why-line is needed, add its
+  // re-derived flag to `todaysLearnPick` (learn/todaysPick.ts).
   const pickWhy = !todaysRead
     ? ""
     : todaysRead.fromSaved
       ? t("elev.learnCare.pick.why.saved")
       : todaysRead.fromConcerns
         ? t("elev.learnCare.pick.why.logs")
-        : devScore.focusDomain
+        : todaysRead.fromFocus
           ? t("elev.learnCare.pick.why.focus", { name: childName })
           : t("elev.learnCare.pick.why.age", { name: childName });
 

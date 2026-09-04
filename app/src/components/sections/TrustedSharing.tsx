@@ -18,9 +18,8 @@ import { REPORT_SCOPE_BY_TYPE, type ShareScopeId, scopeDisplayLabels, shareScope
 import { fmtDay } from "../../lib/formatDate";
 // LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
 // function the server uses for them — not a list of scope labels.
-import { buildSharedScopePacket } from "../../consult/packet";
+import { buildPacketInput, buildSharedScopePacket } from "../../consult/packet";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
-import { ageMonthsFromProfile } from "../../lib/childAge";
 
 // IA W4.5 + CARE-3: the professional share scopes mirror the W4.1 preset
 // audiences one-to-one — derived from the single REPORTS definition
@@ -77,26 +76,20 @@ export default function TrustedSharing() {
   const previewPacket = React.useMemo(() => {
     if (draft.scopes.length === 0) return { sections: null as null | { id: string; title: string; items: { id: string; text: string }[] }[], blocked: false };
     try {
-      const packet = buildSharedScopePacket(draft.scopes, draft.role === "professional", {
-        profile: {
-          name: childProfile.name,
-          age: childProfile.age,
-          languages: childProfile.languages,
-          ageMonths: ageMonthsFromProfile(childProfile) ?? undefined,
-          schoolContext: childProfile.schoolContext,
-          strengths: childProfile.strengths,
-          challenges: childProfile.challenges,
-        },
-        logs: behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, intensity: l.intensity, timestamp: l.timestamp, resolved: l.resolved })),
-        milestones: milestones.map((m) => ({
-          domain: m.domain, title: m.title, checked: m.checked, ageMonths: m.ageMonths,
-          status: m.observationStatus ?? (m.checked ? "yes" : "not_yet"),
-          observedAt: m.observationUpdatedAt,
-        })),
-        plans: actionPlans.map((p) => ({ title: p.title, issue: p.issue })),
-        memory: approvedMemoryItems.map((m) => ({ fact: m.fact, status: m.status })),
-        nowMs: Date.now(),
-      });
+      // LC-17b: the input is assembled by the SHARED assembler the server's
+      // recipient path calls (consult/packet.buildPacketInput) — not by a
+      // hand-rolled object here. A hand-rolled one is exactly how this preview
+      // came to drop every log `trigger` (so the parent approved a preview with
+      // no triggers section while the recipient read their own trigger words)
+      // and to derive an age the server did not.
+      const packet = buildSharedScopePacket(
+        draft.scopes,
+        draft.role === "professional",
+        buildPacketInput(
+          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
+          Date.now()
+        )
+      );
       return { sections: packet.sections, blocked: false };
     } catch (err) {
       return { sections: null, blocked: err instanceof ClinicalLanguageError };

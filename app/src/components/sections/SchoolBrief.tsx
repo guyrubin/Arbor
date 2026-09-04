@@ -141,9 +141,12 @@ export default function SchoolBrief() {
         // LC-11: a Hebrew-speaking gan teacher was handed an English brief —
         // the generation prompt carried no language directive at all. The
         // client now states the parent's language at the seam.
-        // NOTE: the matching "Write in {language}" line in the /generate-handoff
-        // prompt lives in src/routes/api.ts, which is outside this lane's file
-        // ownership. Until it lands this argument is inert, not wrong.
+        // The matching "Write in {language}" line in the /generate-handoff
+        // prompt has LANDED (handoffLanguageDirective, src/routes/api.ts), so
+        // this argument is live: a Hebrew-UI parent gets a Hebrew brief.
+        // Because of that, the Condition-3 clinical scan had to learn Hebrew —
+        // it was an English-only term list, which meant the guarantee was not
+        // weakened for a Hebrew brief but absent. See lib/clinicalScan.ts.
         language: uiLang === "he" ? "he" : "en",
       });
       setDraft(data);

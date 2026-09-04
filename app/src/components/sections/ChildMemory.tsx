@@ -20,6 +20,9 @@ import {
   isPermanentRetention,
   nearestRetentionChoice,
 } from "../../lib/memoryExpiry";
+// The same scanner the share egress fails closed on, run here so the parent who
+// writes the word hears about it instead of a co-parent hitting a blank wall.
+import { findClinicalDiagnosisTerm } from "../../lib/clinicalScan";
 // GP-22 — the memory queue is a why-line surface too: every pending row is a
 // claim about the child, and nothing said where it came from.
 import { ContentWhyLine } from "../ui/ContentActionBar";
@@ -210,11 +213,44 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: 
   // Now: a neutral lav chip carrying the day it actually forgets.
   const permanent = isPermanentRetention(m.retention);
   const forgetsOn = forgetsOnIso({ retention: m.retention, createdAt: m.createdAt });
+  // …and the chip is rendered ONLY on an approved row. Server retention is
+  // enforced on read and drops `status === "approved"` only
+  // (memory/memoryService.enforceMemoryRetention + isMemoryExpired), so a
+  // PENDING proposal is never expired by anything. This row is used for BOTH
+  // the pending queue and the approved list, and it used to promise every
+  // pending row a forget-date that nothing would ever honour — a queue item
+  // left unreviewed sat there displaying a date already in the past.
+  //
+  // NOTE for whoever touches the edit path: client `forgetsOnIso` and server
+  // `isMemoryExpired` read the SAME anchor, `createdAt`, which
+  // `foldMemoryEvents` takes from the LATEST ledger event. Every transition —
+  // including a pure text correction — appends an event with a fresh
+  // `createdAt`, so editing a fact restarts its retention clock. That is the
+  // shipped behaviour on both sides; the date shown stays true, it simply moves.
+  const showsExpiry = m.status === "approved";
   const [editing, setEditing] = useState(false);
   const [factDraft, setFactDraft] = useState(m.fact ?? "");
   const [retentionDraft, setRetentionDraft] = useState(() => nearestRetentionChoice(m.retention));
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+
+  /* The edit box writes parent prose straight into the approved ledger, and the
+     approved ledger is an EGRESS input: `buildSharedScopePacket`
+     (consult/packet.ts) runs `findClinicalDiagnosisTerm` over the assembled
+     packet for every NON-clinician recipient, so one word like "delay" in a
+     memory fact makes a co-parent's or viewer's shared view fail closed with
+     `422 — This share cannot be displayed`. That guard is right and stays
+     exactly as it is. What was wrong is that it was silent and unattributable:
+     the parent who typed the word saw a successful save, and the co-parent saw
+     a wall with no cause and no way to reach one.
+
+     So run the SAME scanner here, at the moment the word is typed. This is
+     ADVICE, not a second guard: the save stays enabled, because a memory fact
+     is the parent's own record of their own child, clinician shares are exempt
+     by policy, and blocking the correction would be a worse trade than the
+     share they may never make. Fail-closed enforcement stays where it belongs,
+     at the egress. */
+  const clinicalTerm = editing ? findClinicalDiagnosisTerm(factDraft) : null;
 
   const openEdit = () => {
     setFactDraft(m.fact ?? "");
@@ -279,6 +315,16 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: 
               ))}
             </select>
           </label>
+          {clinicalTerm && (
+            <p
+              data-testid="memory-edit-clinical-note"
+              dir="auto"
+              className="text-[11px] font-bold leading-snug"
+              style={{ color: "var(--arbor-clay-ink)" }}
+            >
+              {t("elev.waveR.mem.clinicalNote", { term: clinicalTerm })}
+            </p>
+          )}
           {saveFailed && (
             <p className="text-[11px] font-bold" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.waveR.mem.saveFailed")}</p>
           )}
@@ -313,13 +359,15 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
         {m.source && <span className="inline-flex items-center gap-1"><Icon name="link" size={12} /> {m.source}</span>}
         {dated && <span className="inline-flex items-center gap-1"><Icon name="schedule" size={12} /> {dated}</span>}
-        <span data-testid="memory-expiry-chip">
-          <Chip tone="lav">
-            {permanent || !forgetsOn
-              ? t("elev.waveR.mem.keptUntilForget")
-              : t("elev.waveR.mem.forgetsOn", { date: fmtDay(forgetsOn, uiLang) })}
-          </Chip>
-        </span>
+        {showsExpiry && (
+          <span data-testid="memory-expiry-chip">
+            <Chip tone="lav">
+              {permanent || !forgetsOn
+                ? t("elev.waveR.mem.keptUntilForget")
+                : t("elev.waveR.mem.forgetsOn", { date: fmtDay(forgetsOn, uiLang) })}
+            </Chip>
+          </span>
+        )}
         <span className="flex-1" />
         {busy && <Icon name="progress_activity" size={14} className="animate-spin" />}
         {onEdited && !busy && !editing && (

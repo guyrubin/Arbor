@@ -41,6 +41,10 @@ export const en: Record<string, string> = {
   "elev.learnCare.appt.section.past": "Already happened",
   "elev.learnCare.appt.ics": "Add to calendar",
   "elev.learnCare.appt.ics.done": "Calendar file saved. Open it to add the appointment.",
+  // Shown only when NEITHER egress path worked (see careTrack.saveIcsFile).
+  // The old surface claimed "saved" unconditionally, including on a Capacitor
+  // WKWebView where the blob download silently wrote nothing.
+  "elev.learnCare.appt.ics.failed": "We couldn't hand the calendar file to your device. Try again.",
   "elev.learnCare.appt.reminder.title": "Coming up",
   "elev.learnCare.appt.reminder.line": "{who} — {date}",
   "elev.learnCare.appt.reminder.honesty":
@@ -112,6 +116,7 @@ export const he: Record<string, string> = {
   "elev.learnCare.appt.section.past": "כבר התקיימו",
   "elev.learnCare.appt.ics": "להוסיף ליומן",
   "elev.learnCare.appt.ics.done": "קובץ היומן נשמר. פתחו אותו כדי להוסיף את הפגישה.",
+  "elev.learnCare.appt.ics.failed": "לא הצלחנו למסור את קובץ היומן למכשיר. נסו שוב.",
   "elev.learnCare.appt.reminder.title": "מתקרב",
   "elev.learnCare.appt.reminder.line": "{who} — {date}",
   "elev.learnCare.appt.reminder.honesty":

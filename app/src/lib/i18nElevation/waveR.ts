@@ -64,6 +64,11 @@ export const en: Record<string, string> = {
   "elev.waveR.mem.save": "Save",
   "elev.waveR.mem.cancel": "Cancel",
   "elev.waveR.mem.saveFailed": "That change did not save. Try again.",
+  // Advice at edit time, not a block: the fail-closed guard stays at the share
+  // egress (consult/packet.ts). Without this the parent who types the word sees
+  // a clean save and a co-parent later sees an unexplained blank share.
+  "elev.waveR.mem.clinicalNote":
+    "“{term}” reads as clinical language. The fact is kept, and a clinician you share with still sees it — but a co-parent or viewer share that includes your approved facts will not open while it is worded this way.",
   "elev.waveR.mem.forgetsOn": "Forgets on {date}",
   "elev.waveR.mem.keptUntilForget": "Kept until you forget it",
 
@@ -153,6 +158,8 @@ export const he: Record<string, string> = {
   "elev.waveR.mem.save": "שמירה",
   "elev.waveR.mem.cancel": "ביטול",
   "elev.waveR.mem.saveFailed": "השינוי לא נשמר. נסו שוב.",
+  "elev.waveR.mem.clinicalNote":
+    "“{term}” נחשבת שפה קלינית. העובדה נשמרת, ואיש מקצוע טיפולי שתשתפו עדיין רואה אותה — אבל שיתוף עם הורה שותף או עם צופה שכולל את העובדות שאישרתם לא ייפתח כל עוד היא מנוסחת כך.",
   "elev.waveR.mem.forgetsOn": "יישכח ב־{date}",
   "elev.waveR.mem.keptUntilForget": "נשמר עד שתבקשו למחוק",
 

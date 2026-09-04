@@ -23,11 +23,14 @@ import type { ArborConfig } from "../config/env.js";
 import type { MemoryStore } from "../memory/types.js";
 import { foldMemoryEvents, isMemoryExpired } from "../memory/memoryService.js";
 import { grantScopes, isShareActive, type ShareRole, type ShareStore } from "../sharing/shares.js";
-import { buildSharedScopePacket, type BuildPacketInput, type ConsultPacket } from "../consult/packet.js";
+import { buildPacketInput, buildSharedScopePacket, type RawChildRecord, type ConsultPacket } from "../consult/packet.js";
 import { ClinicalLanguageError } from "../lib/clinicalScan.js";
 
-/** The child record inputs the packet builder needs — everything EXCEPT nowMs. */
-export type SharedChildRecord = Omit<BuildPacketInput, "nowMs">;
+/** The RAW child record the recipient view is built from. LC-17b: it is the
+ *  same raw shape the parent's consent preview hands to `buildPacketInput`, so
+ *  both sides run one mapping and cannot diverge field by field (they had:
+ *  the preview dropped `trigger`, this side never derived `ageMonths`). */
+export type SharedChildRecord = RawChildRecord;
 
 /** Read seam for the owner's child record. Injectable so tests (and the local
  *  adapter) never touch Firestore. Returns null when no record exists. */
@@ -97,7 +100,7 @@ export async function resolveSharedPacket(opts: {
   if (!record) return { status: 404, error: "The shared child record is not available" };
 
   try {
-    const packet = buildSharedScopePacket(scopes, grant.role === "professional", { ...record, nowMs: now });
+    const packet = buildSharedScopePacket(scopes, grant.role === "professional", buildPacketInput(record, now));
     return {
       status: 200,
       view: {
@@ -121,10 +124,6 @@ export async function resolveSharedPacket(opts: {
 
 /* ── Child-record sources ──────────────────────────────────────────────────── */
 
-const num = (v: unknown, fallback = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
-const str = (v: unknown): string => (typeof v === "string" ? v : "");
-const strArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
-
 /** Firestore-backed source (Cloud Run via ADC): reads the owner's child doc +
  *  the packet-relevant subcollections the owner's client writes
  *  (users/{uid}/children/{childId}/…) and the approved memory ledger. The raw
@@ -142,7 +141,7 @@ export class FirestoreSharedChildSource implements SharedChildRecordSource {
     const childRef = this.db.doc(`users/${ownerUid}/children/${childId}`);
     const childDoc = await childRef.get();
     if (!childDoc.exists) return null;
-    const profile = childDoc.data() as Record<string, unknown>;
+    const profile = childDoc.data() as RawChildRecord["profile"];
 
     const [logsSnap, milestonesSnap, plansSnap, memoryEvents] = await Promise.all([
       childRef.collection("behaviorLogs").get(),
@@ -151,46 +150,15 @@ export class FirestoreSharedChildSource implements SharedChildRecordSource {
       this.memoryStore.listEvents(childId),
     ]);
 
+    // LC-17b: the raw documents are handed to the SHARED assembler
+    // (consult/packet.buildPacketInput) exactly as the parent's consent
+    // preview hands over its raw context objects — no second field mapping
+    // lives here to drift from the one the parent was shown.
     return {
-      profile: {
-        name: str(profile.name) || "This child",
-        age: num(profile.age),
-        languages: strArr(profile.languages),
-        schoolContext: str(profile.schoolContext) || undefined,
-        strengths: strArr(profile.strengths),
-        challenges: strArr(profile.challenges),
-      },
-      logs: logsSnap.docs.map((d) => {
-        const l = d.data() as Record<string, unknown>;
-        return {
-          behaviorType: str(l.behaviorType),
-          intensity: num(l.intensity),
-          timestamp: str(l.timestamp) || 0,
-          trigger: str(l.trigger) || undefined,
-          response: str(l.response) || undefined,
-          resolved: l.resolved === true,
-        };
-      }),
-      milestones: milestonesSnap.docs.map((d) => {
-        const m = d.data() as Record<string, unknown>;
-        // UND-4: pass the parent's actual response through (validated against
-        // the closed literal set — anything else is dropped, fail quiet).
-        const status =
-          m.observationStatus === "yes" || m.observationStatus === "not_sure" || m.observationStatus === "not_yet"
-            ? m.observationStatus
-            : undefined;
-        return {
-          domain: str(m.domain),
-          title: str(m.title),
-          checked: m.checked === true,
-          status,
-          observedAt: str(m.observationUpdatedAt) || undefined,
-        };
-      }),
-      plans: plansSnap.docs.map((d) => {
-        const p = d.data() as Record<string, unknown>;
-        return { title: str(p.title), issue: str(p.issue) || undefined };
-      }),
+      profile,
+      logs: logsSnap.docs.map((d) => d.data() as RawChildRecord["logs"][number]),
+      milestones: milestonesSnap.docs.map((d) => d.data() as RawChildRecord["milestones"][number]),
+      plans: plansSnap.docs.map((d) => ({ ...(d.data() as Omit<RawChildRecord["plans"][number], "id">), id: d.id })),
       // SPC2: retention-expired approved facts never reach a share recipient.
       // Pure filter (no store handle here); the owning read paths tombstone.
       memory: foldMemoryEvents(memoryEvents, childId)

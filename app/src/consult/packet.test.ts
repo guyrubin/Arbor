@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   appendParentNote,
   buildConsultPacket,
+  buildPacketInput,
   serializePacket,
   countIncluded,
   buildPresetPacket,
@@ -18,6 +19,7 @@ import {
   type BuildPacketInput,
   type ConsultAudience,
   type ConsultPacket,
+  type RawChildRecord,
 } from "./packet";
 import { ClinicalLanguageError } from "../lib/clinicalScan";
 import { ALL_MILESTONES, MILESTONE_AGE_BANDS } from "../lib/milestoneData";
@@ -569,8 +571,43 @@ describe("LC-08 — serializeForExport: one seam, audience-capped, note scanned"
  * LC-12 — the questions prepared in Appointments reach the room.
  * ══════════════════════════════════════════════════════════════════════════ */
 
+/* LC-17b — the RAW child record a production caller holds (a ChildProfile, the
+ * behaviorLogs / milestones / actionPlans / approvedMemoryItems the context
+ * carries, or the equivalent Firestore documents). Every packet call site now
+ * assembles its input from a record of exactly this shape through the ONE
+ * shared assembler, `buildPacketInput` — so a fixture that starts here cannot
+ * prove a behaviour no caller can reach.
+ *
+ * It could before: the previous fixture hand-wrote `PacketInputLog`s carrying
+ * `trigger`, a field NO production caller passed, which is the only reason
+ * "all four clinician documents differ" was green while `behavioral_health`
+ * shipped byte-identical to `therapist`. */
+const RAW_CHILD: RawChildRecord = {
+  profile: {
+    name: "Dylan", age: 5, languages: ["Hebrew", "English"],
+    schoolContext: "Bilingual kindergarten", strengths: ["curious"], challenges: ["transitions"],
+  },
+  logs: [
+    { behaviorType: "Transition Refusal", intensity: 5, timestamp: new Date(NOW - 1 * DAY).toISOString(), trigger: "screen time ending" },
+    { behaviorType: "Transition Refusal", intensity: 4, timestamp: new Date(NOW - 3 * DAY).toISOString(), trigger: "screen time ending" },
+    { behaviorType: "Sibling Conflict", intensity: 3, timestamp: new Date(NOW - 2 * DAY).toISOString(), trigger: "sharing the tablet" },
+  ],
+  milestones: [
+    { domain: "Language", title: "Two-word phrases", checked: true },
+    { domain: "Motor", title: "Hops on one foot", checked: false },
+  ],
+  plans: [{ id: `plan-${NOW - 40 * DAY}`, title: "Smoother mornings", issue: "leaving for school" }],
+  memory: [
+    { fact: "Calms fastest with a countdown.", status: "approved" },
+    { fact: "Pending unreviewed note.", status: "pending" },
+  ],
+};
+
+/** The packet input a production caller actually produces, plus the extras the
+ *  surface holds (reason, questions, langObs, growthEntries) — the same spread
+ *  Reports.useReportExport and AskSpecialist perform. */
 const richRecord: BuildPacketInput = {
-  ...base,
+  ...buildPacketInput(RAW_CHILD, NOW),
   reason: "He stopped asking for help when he gets stuck, and I want to know if that is worth watching.",
   questions: ["Is the switch between Hebrew and English normal at this age?", "What should I try first at bedtime?"],
   langObs: [
@@ -580,11 +617,6 @@ const richRecord: BuildPacketInput = {
   growthEntries: [
     { date: new Date(NOW - 10 * DAY).toISOString(), heightCm: 112, weightKg: 19.4 },
     { date: new Date(NOW - 200 * DAY).toISOString(), heightCm: 108, weightKg: 18.1 },
-  ],
-  logs: [
-    { behaviorType: "Transition Refusal", intensity: 5, timestamp: new Date(NOW - 1 * DAY).toISOString(), trigger: "screen time ending" },
-    { behaviorType: "Transition Refusal", intensity: 4, timestamp: new Date(NOW - 3 * DAY).toISOString(), trigger: "screen time ending" },
-    { behaviorType: "Sibling Conflict", intensity: 3, timestamp: new Date(NOW - 2 * DAY).toISOString(), trigger: "sharing the tablet" },
   ],
 };
 
@@ -601,10 +633,37 @@ describe("LC-20 — the clinician presets produce genuinely different documents"
     expect(slp).not.toContain("Measurements we have taken");
   });
 
-  it("all four clinician documents differ from one another", () => {
+  it("all four clinician documents differ from one another — on PRODUCTION-shaped input", () => {
+    // richRecord is assembled by `buildPacketInput` from RAW_CHILD, i.e. by the
+    // one mapping every caller runs. This assertion is therefore about the app,
+    // not about a fixture only the test could construct.
     const audiences: ConsultAudience[] = ["therapist", "pediatrician", "slp", "behavioral_health"];
     const docs = audiences.map((a) => serializePresetPacket(a, buildPresetPacket(a, richRecord)));
     expect(new Set(docs).size).toBe(audiences.length);
+  });
+
+  it("THE PRODUCTION GUARD: the parent's own trigger words survive the caller's assembly", () => {
+    // The raw record carries `trigger` on a BehaviorLog; the assembler must
+    // pass it through, or the behavioural preset's only distinguishing section
+    // has no source and can never render for a real user.
+    const assembled = buildPacketInput(RAW_CHILD, NOW);
+    expect(assembled.logs.map((l) => l.trigger)).toContain("screen time ending");
+    const bh = serializePresetPacket("behavioral_health", buildPresetPacket("behavioral_health", richRecord));
+    expect(bh).toContain("What we noticed came first");
+    expect(bh).toContain("screen time ending");
+  });
+
+  it("NEGATIVE CONTROL: drop `trigger` on the way in and behavioural health collapses into the therapist summary", () => {
+    // Exactly the shipped defect: every caller built its logs without
+    // `trigger`, so these two "different" reports were byte-identical.
+    const stripped: BuildPacketInput = {
+      ...richRecord,
+      logs: richRecord.logs.map(({ trigger: _dropped, ...rest }) => rest),
+    };
+    const bh = serializePresetPacket("behavioral_health", buildPresetPacket("behavioral_health", stripped));
+    const therapist = serializePresetPacket("therapist", buildPresetPacket("therapist", stripped));
+    expect(bh).not.toContain("What we noticed came first");
+    expect(bh).toBe(therapist);
   });
 
   it("behavioural health receives the parent's own words for what came first", () => {
@@ -640,11 +699,18 @@ describe("LC-20 — the packet states the reason for the visit, first", () => {
     expect(p.sections[0].items[0].text).toBe(richRecord.reason);
   });
 
-  it("every audience — teacher included — receives it", () => {
-    for (const audience of ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"] as const) {
+  it("every CLINICIAN audience receives it — and the teacher never does", () => {
+    for (const audience of ["therapist", "pediatrician", "slp", "behavioral_health"] as const) {
       const md = serializePresetPacket(audience, buildPresetPacket(audience, richRecord));
       expect(md).toContain("What I'd like help with");
     }
+    // LC-11b: the reason is composed in explicitly clinician-facing language
+    // ("The one thing I most want to talk about is…"), so it is not a
+    // teacher-facing line and no teacher export may carry it.
+    const teacher = serializePresetPacket("teacher", buildPresetPacket("teacher", richRecord));
+    expect(teacher).not.toContain("What I'd like help with");
+    expect(teacher).not.toContain(richRecord.reason!);
+    expect(CONSULT_PRESETS.teacher.sections).not.toContain("reason");
   });
 
   it("NEGATIVE CONTROL: no reason written → no empty section (the pre-change shape)", () => {
@@ -655,12 +721,17 @@ describe("LC-20 — the packet states the reason for the visit, first", () => {
 });
 
 describe("LC-12 — prepared questions ride into the packet", () => {
-  it("the parent's questions reach every audience", () => {
-    for (const audience of ["teacher", "therapist", "pediatrician", "slp", "behavioral_health"] as const) {
+  it("the parent's questions reach every CLINICIAN audience, and never the teacher", () => {
+    for (const audience of ["therapist", "pediatrician", "slp", "behavioral_health"] as const) {
       const md = serializePresetPacket(audience, buildPresetPacket(audience, richRecord));
       expect(md).toContain("Questions I want to ask");
       expect(md).toContain("What should I try first at bedtime?");
     }
+    // LC-11b: questions are prepared in Appointments, for the appointment.
+    const teacher = serializePresetPacket("teacher", buildPresetPacket("teacher", richRecord));
+    expect(teacher).not.toContain("Questions I want to ask");
+    expect(teacher).not.toContain("What should I try first at bedtime?");
+    expect(CONSULT_PRESETS.teacher.sections).not.toContain("questions");
   });
 
   it("NEGATIVE CONTROL: no questions → no section", () => {
@@ -671,5 +742,67 @@ describe("LC-12 — prepared questions ride into the packet", () => {
   it("blank questions are never emitted", () => {
     const p = buildConsultPacket({ ...base, questions: ["  ", ""] });
     expect(p.sections.map((s) => s.id)).not.toContain("questions");
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * LC-11b — the parent's clinician-facing words never reach a teacher.
+ *
+ * `PARENT_VOICE_SECTIONS` was prepended to EVERY preset, teacher included.
+ * The reason composer is framed for a clinician ("The one thing I most want to
+ * talk about is..."), and the audience selector on the same screen drives
+ * Copy / Download / Send through `serializeForExport("teacher", ...)` — so
+ * "Should we get him assessed?" reached the teacher's copy verbatim. The
+ * secondary effect was a dead end: a reason containing a scanned word ("delay")
+ * threw inside the teacher ceiling guard and disabled every export verb on the
+ * screen, for a parent typing an ordinary English sentence.
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe("LC-11b — the teacher ceiling excludes the parent's clinician-facing voice", () => {
+  const noteHeading = "Parent note";
+  const CLINICIAN_VOICE = "I want to know if his speech delay is worth watching.";
+  const CLINICIAN_QUESTION = "Should we get him assessed?";
+  const clinicianVoiceRecord: BuildPacketInput = {
+    ...richRecord,
+    reason: CLINICIAN_VOICE,
+    questions: [CLINICIAN_QUESTION],
+  };
+
+  it("Copy / Download / Send to a teacher carry neither the reason nor the questions", () => {
+    const md = serializeForExport("teacher", buildConsultPacket(clinicianVoiceRecord), new Set(), "", noteHeading);
+    expect(md).not.toContain(CLINICIAN_VOICE);
+    expect(md).not.toContain(CLINICIAN_QUESTION);
+    expect(md).not.toContain("What I'd like help with");
+    // ...and the teacher still receives a real document, not an empty one.
+    expect(md).toContain("About Dylan");
+    expect(md).toContain("Smoother mornings");
+  });
+
+  it("a clinician-facing reason no longer dead-ends every export verb on the consult screen", () => {
+    // Pre-change: the reason rode the teacher ceiling, the term scan hit
+    // "delay", `serializeForExport` threw, and Copy / Download / Send all
+    // disabled. The sections are now capped out before the guard sees them.
+    expect(() => serializeForExport("teacher", buildConsultPacket(clinicianVoiceRecord), new Set(), "", noteHeading)).not.toThrow();
+    // The clinician audience still receives the parent's words, verbatim.
+    expect(serializeForExport("clinician", buildConsultPacket(clinicianVoiceRecord), new Set(), "", noteHeading)).toContain(CLINICIAN_VOICE);
+  });
+
+  it("NEGATIVE CONTROL: the scan is intact — the same term in the PARENT NOTE still fails closed", () => {
+    expect(() =>
+      serializeForExport("teacher", buildConsultPacket(richRecord), new Set(), "The gan mentioned a speech delay.", noteHeading)
+    ).toThrow(ClinicalLanguageError);
+  });
+
+  it("NEGATIVE CONTROL: put the parent-voice sections back in the teacher ceiling and the reason leaks", () => {
+    // Proves the assertions above are carried by the ceiling, not by luck:
+    // with "reason"/"questions" allowed through, the clinician-facing text is
+    // right there in the teacher's copy.
+    const preChangeSections = ["reason", "questions", ...CONSULT_PRESETS.teacher.sections];
+    const packet = buildConsultPacket(clinicianVoiceRecord);
+    const text = packet.sections
+      .filter((s) => preChangeSections.includes(s.id))
+      .flatMap((s) => s.items.map((it) => it.text))
+      .join(" | ");
+    expect(text).toContain(CLINICIAN_VOICE);
+    expect(text).toContain(CLINICIAN_QUESTION);
   });
 });

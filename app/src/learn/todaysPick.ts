@@ -74,6 +74,18 @@ export interface TodaysPickResult {
   fromConcerns: boolean;
   /** True when a saved/finished read's topic boosted the winning card. */
   fromSaved: boolean;
+  /**
+   * True when the Development-Map focus domain contributed to the winning
+   * score — i.e. the winning card actually carries that domain.
+   *
+   * Held to the same standard as `fromConcerns`, and for the same reason: the
+   * hub's why-line used to fall through to "chosen for {name}'s age and the
+   * area you have been exploring" whenever `focusDomain` was merely SET, with
+   * no check that it moved this card. A focus domain of "language" and a
+   * winning card about sleep made that sentence false, on a surface whose own
+   * firewall note says the why-line may claim only contributing signals.
+   */
+  fromFocus: boolean;
 }
 
 /**
@@ -101,10 +113,17 @@ export function todaysLearnPick(
   return {
     card,
     tied: winners.length,
-    // Only claim a signal that actually moved this card: the concern overlap is
-    // re-derived here rather than asserted, so the why-line can never overstate.
+    // Only claim a signal that actually moved this card: each contribution is
+    // RE-DERIVED by rescoring the winner with that one signal removed, rather
+    // than asserted from the fact that the signal exists, so the why-line can
+    // never overstate. Every signal the why-line may name belongs here — a
+    // caller that reads a raw signal off its own state has stepped outside this
+    // rule (that is exactly how the focus-domain line came to be false).
     fromConcerns:
       concerns.length > 0 && learnCardScore(card, signals) > learnCardScore(card, { ...signals, recentConcerns: [] }),
+    fromFocus:
+      !!signals.focusDomain &&
+      learnCardScore(card, signals) > learnCardScore(card, { ...signals, focusDomain: null }),
     fromSaved: continuesSaved(card, topics),
   };
 }

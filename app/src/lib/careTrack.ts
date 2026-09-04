@@ -8,9 +8,17 @@
  * Appointments" landed on an empty list.
  *
  * This module is the pure half of the fix: a real date, a real status ladder
- * fed from the consult request, date ordering, in-app reminders, an .ics blob,
+ * fed from the consult request, date ordering, in-app reminders, an .ics file,
  * and a follow-up note record. No React, no network, no storage — so the rules
  * are proven by unit test rather than by inspection.
+ *
+ * ONE deliberate exception: `saveIcsFile` at the bottom, which hands the built
+ * .ics to the platform. Every platform touch it makes is a dependency it is
+ * GIVEN, so it is unit-testable with fakes in the same node environment as the
+ * rest of this file, and the decision it encodes (native share sheet before
+ * browser download) is provable rather than a matter of inspection. Keep it
+ * that way: no direct `document`, `window` or Capacitor reference above the
+ * default-deps factory.
  *
  * ── REMINDER HONESTY (binding) ──────────────────────────────────────────────
  * This app has NO notification infrastructure: no VAPID key, and
@@ -60,7 +68,27 @@ export interface AppointmentFollowUp {
 
 /** Consult-request status → the booking chip a parent understands. Fails to
  *  "requested" for any unknown value: we never over-claim that a booking is
- *  confirmed. */
+ *  confirmed.
+ *
+ *  ── NOT WIRED, ON PURPOSE (2026-09-04) ────────────────────────────────────
+ *  This function has NO production caller. That is a documented state, not a
+ *  missing import: nothing in this repo can move a consult request off
+ *  "requested" in the first place. `buildConsultRequest`
+ *  (server/consultRequests.ts) hard-codes `status: "requested"`, and
+ *  `ConsultStore` exposes only `create` and `listByOwner` — there is no update
+ *  seam, no staffed workflow, and no admin surface behind
+ *  `POST/GET /api/consult-requests`. Mapping today would turn "requested" into
+ *  "requested" and, worse, would overwrite the local "done" a parent earns by
+ *  saving a follow-up note.
+ *
+ *  To wire it, in this order: (1) give `ConsultStore` a status-update seam and
+ *  an authenticated route that drives it; (2) have Appointments read
+ *  `GET /api/consult-requests` and match on `Appointment.requestId`; (3) apply
+ *  this mapping ONLY when it moves the row FORWARD along
+ *  `APPOINTMENT_STATUSES`, so a server still sitting on "requested" can never
+ *  walk back a booking the parent has already completed. Until (1) exists, the
+ *  honest surface is the one shipped: a locally-stamped status, and an
+ *  Appointments header that says so. */
 export function statusFromConsultRequest(status: string): AppointmentStatus {
   switch (status) {
     case "booked":
@@ -214,6 +242,113 @@ export function appointmentToIcs(appt: Appointment, nowMs: number): IcsFile | nu
     mime: "text/calendar;charset=utf-8",
     // RFC 5545 line breaks.
     content: lines.join("\r\n") + "\r\n",
+  };
+}
+
+/* ── Calendar egress, part 2: actually getting the file OFF the device ───────
+ *
+ * Two claims in this repo could not both be true. `schoolBrief.ts` justifies
+ * the LC-11 rewrite of the School Brief export with "on a Capacitor WKWebView a
+ * blob `<a download>` is not reliable egress at all", while Appointments saved
+ * the .ics with exactly that mechanism — `new Blob(...)` + `<a download>` +
+ * `click()`. This app ships through Capacitor 8 (`@capacitor/core` ^8.4.0), so
+ * on iOS the page runs inside a WKWebView where a programmatic download of a
+ * blob: URL has no user-visible destination: nothing is written, nothing opens,
+ * and no error fires — the toast still said the file was saved.
+ *
+ * `lib/reportExport.openPrintableReport` already resolved this for the report
+ * PDF: native → write to Cache with @capacitor/filesystem, then open the OS
+ * share sheet with @capacitor/share; web → the browser path. This function is
+ * the same ladder for the .ics.
+ *
+ * WHY NOT THE PRINT SHELL THE SCHOOL BRIEF CHOSE: that conclusion was about the
+ * FORMAT, not the transport — a teacher cannot open a .md, so the brief became
+ * a printable document. An .ics is not read by a human at all; it is consumed
+ * by a calendar app, which is reached through the OS share/open-in sheet.
+ * Printing an .ics would destroy it. Same transport ladder as the report, same
+ * reason; different final format, for a reason stated here so the next reader
+ * is not left holding two contradicting claims.
+ */
+
+/** Where the .ics actually went. `unavailable` = neither path was possible,
+ *  and the caller must NOT tell the parent the file was saved. */
+export type IcsEgressChannel = "native_share" | "download" | "unavailable";
+
+export interface IcsEgressDeps {
+  /** True inside the Capacitor native runtime (iOS/Android WebView). */
+  isNative: () => boolean;
+  /** Write to cache + open the OS share sheet. Rejects if either half fails. */
+  shareNative: (file: IcsFile) => Promise<void>;
+  /** Browser download. Returns false when the DOM path is not available. */
+  downloadWeb: (file: IcsFile) => boolean;
+}
+
+/**
+ * Hand one .ics to the platform: native share sheet first, browser download
+ * second. Never throws — a failed native share falls through to the browser
+ * path, and only a failure of BOTH reports `unavailable`.
+ */
+export async function saveIcsFile(file: IcsFile, deps: IcsEgressDeps): Promise<IcsEgressChannel> {
+  let native = false;
+  try {
+    native = deps.isNative();
+  } catch {
+    /* an exotic runtime that cannot even be probed is, by definition, not it */
+  }
+  if (native) {
+    try {
+      await deps.shareNative(file);
+      return "native_share";
+    } catch {
+      /* user cancelled, or the plugin is unavailable — try the browser path */
+    }
+  }
+  try {
+    return deps.downloadWeb(file) ? "download" : "unavailable";
+  } catch {
+    return "unavailable";
+  }
+}
+
+/** The real platform deps. Everything that touches Capacitor or the DOM lives
+ *  here, behind dynamic imports, so this module still loads in node. */
+export function defaultIcsEgressDeps(): IcsEgressDeps {
+  return {
+    isNative: () => {
+      try {
+        const cap = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+        return typeof cap?.isNativePlatform === "function" ? cap.isNativePlatform() : false;
+      } catch {
+        return false;
+      }
+    },
+    shareNative: async (f) => {
+      const [{ Share }, { Filesystem, Directory, Encoding }] = await Promise.all([
+        import("@capacitor/share"),
+        import("@capacitor/filesystem"),
+      ]);
+      const written = await Filesystem.writeFile({
+        path: f.filename,
+        data: f.content,
+        directory: Directory.Cache,
+        encoding: Encoding.UTF8,
+      });
+      // No title/text: the calendar entry's own SUMMARY is the label, and this
+      // module never puts the child's name into a calendar file (see above).
+      await Share.share({ files: [written.uri] });
+    },
+    downloadWeb: (f) => {
+      if (typeof document === "undefined" || typeof URL?.createObjectURL !== "function") return false;
+      const url = URL.createObjectURL(new Blob([f.content], { type: f.mime }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = f.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      return true;
+    },
   };
 }
 

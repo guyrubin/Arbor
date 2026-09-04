@@ -22,6 +22,16 @@
  * READ ONLY. No child-data write on enter or exit — the Kid Mode contract. The
  * line carries COUNTS of things the child did, never a score, rating or
  * correctness figure (those fields are not even accepted by kidExitRecapLine).
+ *
+ * ── LANGUAGE (binding) ──────────────────────────────────────────────────────
+ * This toast is read by the PARENT, so it resolves in `uiLang` — the language
+ * of the app's own chrome — exactly as the other `withChildSignals` call sites
+ * do (JournalTab, StoryTimelineTab). It resolved in `aiLang` until 2026-09-04.
+ * `getAiLanguage()` is independent of `uiLang`, so a parent reading a Hebrew UI
+ * with the AI language left on English got ONE sentence in TWO languages: the
+ * childsignals wrapper picked Hebrew phrasing while the count phrases came back
+ * from `t()` in English. `aiLang` belongs to model output; nothing on this
+ * surface is model output.
  */
 import { useEffect, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
@@ -34,7 +44,7 @@ import { countsSince, kidExitRecapLine, type KidActivityLedgers } from "../../li
 export default function KidExitRecap() {
   const { childProfile } = useArbor();
   const { toast } = useToast();
-  const { t, aiLang } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const practice = usePracticeData(childProfile.id);
 
   // The baseline: when this child's Kid Mode session began. Device-local, in
@@ -56,7 +66,7 @@ export default function KidExitRecap() {
     const counts = countsSince(ledgersRef.current, openedAtRef.current);
     const line = kidExitRecapLine(
       counts,
-      withChildSignals(t, aiLang === "he"),
+      withChildSignals(t, uiLang === "he"),
       (childProfile.name || "").split(" ")[0]
     );
     // Nothing happened → no strip. An empty toast is worse than silence.

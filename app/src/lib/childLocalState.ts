@@ -19,9 +19,27 @@
 export const childScopedKey = (namespace: string, childId: string): string =>
   `arbor.${namespace}.${childId}`;
 
-/** True when `key` is an arbor key scoped to `childId`. */
+/**
+ * True when `key` is an arbor key scoped to `childId`.
+ *
+ * The child id must appear as a whole DOT-DELIMITED SEGMENT — either the last
+ * one (`arbor.<ns>.<childId>`, the convention `childScopedKey` mints) or an
+ * interior one (`arbor.<ns>.<childId>.<variant>`). Requiring the id to be the
+ * LAST segment was the original rule, and it leaked twice: keys that append a
+ * per-variant suffix after the id — `arbor.growth.month.seen.<childId>.2026-09`
+ * (one row per month, forever) and `arbor.todaysFocus.<childId>.<aiLang>` —
+ * were `arbor.`-prefixed, unmistakably about one child, and swept by nothing.
+ *
+ * Matching an interior segment is a WIDENING of the sweep, never a weakening:
+ * the dots on both sides keep it a segment match, so a sibling whose id merely
+ * shares a prefix (`kid-abc` vs `kid-a`) still cannot be caught. The mint-side
+ * convention below is unchanged and remains what new stores should follow —
+ * this side simply stops depending on every author remembering it.
+ */
 export const isChildScopedKey = (key: string, childId: string): boolean =>
-  key.startsWith("arbor.") && childId.length > 0 && key.endsWith(`.${childId}`);
+  key.startsWith("arbor.") &&
+  childId.length > 0 &&
+  (key.endsWith(`.${childId}`) || key.includes(`.${childId}.`));
 
 function sweep(storage: Storage | null | undefined, childId: string): number {
   if (!storage) return 0;

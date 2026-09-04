@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
   buildConsultPacket,
+  buildPacketInput,
   countIncluded,
   isConsultPacketEmpty,
   serializeForExport,
@@ -14,7 +15,6 @@ import {
   type ExportAudience,
 } from "../../consult/packet";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
-import { ageMonthsFromProfile } from "../../lib/childAge";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { Modal } from "../ui/Modal";
 import { InitialsTile, InsetRow, PASTEL } from "../ui/kit";
@@ -154,23 +154,16 @@ export default function AskSpecialist() {
 
   const packet = useMemo(
     () => buildConsultPacket({
-      profile: {
-        name: childProfile.name, age: childProfile.age, languages: childProfile.languages,
-        // RUN-01: months-precise age drives the age-windowed milestone denominator.
-        ageMonths: ageMonthsFromProfile(childProfile) ?? undefined,
-        schoolContext: childProfile.schoolContext, strengths: childProfile.strengths, challenges: childProfile.challenges,
-      },
-      logs: behaviorLogs.map((l) => ({ behaviorType: l.behaviorType, intensity: l.intensity, timestamp: l.timestamp, resolved: l.resolved })),
-      // UND-4 (AR-CAP-08): preserve the parent's actual response + date —
-      // observed / not sure / not yet — in the redactable packet card too.
-      milestones: milestones.map((m) => ({
-        domain: m.domain, title: m.title, checked: m.checked, ageMonths: m.ageMonths,
-        status: m.observationStatus ?? (m.checked ? "yes" : "not_yet"),
-        observedAt: m.observationUpdatedAt,
-      })),
-      plans: actionPlans.map((p) => ({ title: p.title, issue: p.issue })),
-      memory: approvedMemoryItems.map((m) => ({ fact: m.fact, status: m.status })),
-      nowMs: Date.now(),
+      // LC-17b: the SHARED input assembler (consult/packet.buildPacketInput) —
+      // one mapping for this surface, the Reports export and both sides of a
+      // share. The hand-rolled version here dropped every log `trigger`, so the
+      // behavioural-health preset's only distinguishing section could never be
+      // reached from the app; RUN-01's months-precise age comes from the same
+      // place now, for everyone.
+      ...buildPacketInput(
+        { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
+        Date.now()
+      ),
       // LC-20 / LC-12 — the parent's own voice and the evidence each preset reads.
       reason,
       questions: preparedQuestions,

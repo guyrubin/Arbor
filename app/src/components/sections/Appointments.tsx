@@ -11,10 +11,12 @@ import {
   appointmentStartMs,
   appointmentStatus,
   appointmentToIcs,
+  defaultIcsEgressDeps,
   dueReminders,
   followUpsFor,
   isFollowUpDue,
   makeFollowUp,
+  saveIcsFile,
   sortAppointments,
   type Appointment,
   type AppointmentFollowUp,
@@ -27,10 +29,26 @@ type PrepQuestion = { id: string; text: string };
  *  localStorage in sandbox) so nothing is lost on refresh.
  *
  *  LC-12: the surface used to keep a name and a free-text string. It now keeps
- *  a real date (`datetime-local` → ISO), orders by that date, carries the
- *  booking status the consult request set (LC-09), offers a calendar file, and
- *  captures what the professional said afterwards into the registered
+ *  a real date (`datetime-local` → ISO), orders by that date, offers a calendar
+ *  file, and captures what the professional said afterwards into the registered
  *  `apptFollowUps` sink (export + erase swept).
+ *
+ *  BOOKING STATUS IS LOCAL, AND ONLY LOCAL. This header used to claim the row
+ *  "carries the booking status the consult request set". It does not, and no
+ *  code ever made it so. `status` is stamped ONCE, client-side: "requested" at
+ *  creation from a consult request (FindProfessional → careTrack
+ *  .appointmentFromConsultRequest), "confirmed" for a booking the parent adds
+ *  by hand, and "done" when they save a follow-up note here. It is never
+ *  reconciled against the server, and `careTrack.statusFromConsultRequest` —
+ *  which exists for exactly that reconciliation — has no production caller.
+ *
+ *  That is not an oversight to wire up on sight: `ConsultStore`
+ *  (server/consultRequests.ts) exposes only `create` and `listByOwner`, and
+ *  `buildConsultRequest` hard-codes `status: "requested"`, so no code path in
+ *  this repo can ever move a consult request off "requested". Reconciling today
+ *  would map "requested" → "requested" while overwriting the one status the
+ *  parent's own action DID earn ("done" after a follow-up). See the note on
+ *  `statusFromConsultRequest` for what has to land server-side first.
  *
  *  REMINDERS ARE IN-APP ONLY. This app has no notification infrastructure —
  *  no VAPID key, and @capacitor/local-notifications is not a dependency. The
@@ -104,18 +122,18 @@ export default function Appointments() {
     return time ? `${day} · ${time}` : day;
   };
 
-  const saveIcs = (a: Appointment) => {
+  /** "Add to calendar" — the transport ladder lives in careTrack.saveIcsFile
+   *  (native share sheet → browser download), because a blob `<a download>` is
+   *  not reliable egress inside a Capacitor WKWebView. This surface used to do
+   *  exactly that and toast "saved" regardless; on iOS nothing was written and
+   *  nothing failed loudly. The toast now follows what actually happened: the
+   *  OS share sheet is its own confirmation, so only the browser path speaks. */
+  const saveIcs = async (a: Appointment) => {
     const file = appointmentToIcs(a, Date.now());
     if (!file) return;
-    const url = URL.createObjectURL(new Blob([file.content], { type: file.mime }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = file.filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    toast(t("elev.learnCare.appt.ics.done"), "success");
+    const channel = await saveIcsFile(file, defaultIcsEgressDeps());
+    if (channel === "download") toast(t("elev.learnCare.appt.ics.done"), "success");
+    else if (channel === "unavailable") toast(t("elev.learnCare.appt.ics.failed"), "error");
   };
 
   const saveFollowUp = (a: Appointment, note: string) => {
@@ -137,7 +155,7 @@ export default function Appointments() {
       followUps={followUpsFor(followUpsCol.items, a.id)}
       followUpDue={isFollowUpDue(a, nowMs)}
       onRemove={() => void apptsCol.remove(a.id)}
-      onCalendar={() => saveIcs(a)}
+      onCalendar={() => void saveIcs(a)}
       onFollowUp={(note) => saveFollowUp(a, note)}
       t={t}
     />

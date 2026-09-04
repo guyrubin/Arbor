@@ -11,7 +11,7 @@
 import { ClinicalLanguageError, findClinicalDiagnosisTerm } from "../lib/clinicalScan";
 import { DOMAIN_LABEL } from "../lib/screening";
 import { bandForAgeMonths, milestoneAgeWindow } from "../lib/milestoneData";
-import { ageLabel } from "../lib/childAge";
+import { ageLabel, ageMonthsFromProfile } from "../lib/childAge";
 
 export interface PacketInputProfile {
   name: string;
@@ -108,6 +108,158 @@ export interface BuildPacketInput {
   /** LC-20: parent-logged measurements — the pediatrician preset's own
    *  evidence. Numbers as entered; never a percentile or growth verdict. */
   growthEntries?: PacketInputGrowthEntry[];
+}
+
+/* ── LC-17b — ONE input assembler for every packet call site ─────────────────
+ *
+ * The consent preview (components/sections/TrustedSharing) and the recipient
+ * view (server/sharedPacket) are only "the same view" if they are built from
+ * the same INPUT. They were not, in three ways:
+ *
+ *  · the client dropped every log `trigger`, so a parent granting
+ *    `report_behavioral_health` approved a preview with NO triggers section
+ *    while the recipient read the parent's own free-text trigger words;
+ *  · only the client derived `ageMonths`, so the age label and the
+ *    age-windowed milestone denominator differed between the two views;
+ *  · only the client passed each milestone's `ageMonths`, which is what that
+ *    denominator is windowed on.
+ *
+ * The two report call sites (Reports.useReportExport, AskSpecialist) dropped
+ * `trigger` too — which made `behavioral_health` byte-identical to `therapist`
+ * for every real user, since the triggers section has no other source.
+ *
+ * So every call site assembles its input HERE, once. The raw shapes below are
+ * the app's own record types (ChildProfile, BehaviorLog, Milestone,
+ * ActionPlan, a folded memory item) narrowed to the fields a packet reads, and
+ * every value is re-validated at runtime — the server's Firestore documents
+ * arrive untyped, so the cast at that boundary must not be trusted. */
+
+/** Raw child-profile fields as a call site holds them (a `ChildProfile`, or a
+ *  Firestore document). Normalized by `buildPacketInput`. */
+export interface RawPacketProfile {
+  name: string;
+  age: number;
+  /** Explicit months, when onboarding captured months rather than a DOB. */
+  ageMonths?: number;
+  /** ISO YYYY-MM-DD — the gold source for the months-precise age. */
+  birthDate?: string;
+  languages: string[];
+  schoolContext?: string;
+  strengths?: string[];
+  challenges?: string[];
+}
+/** Raw behaviour-log fields (a `BehaviorLog`, or a Firestore document). */
+export interface RawPacketLog {
+  behaviorType: string;
+  intensity: number;
+  timestamp: string | number;
+  trigger?: string;
+  response?: string;
+  resolved?: boolean;
+}
+/** Raw milestone fields (a `Milestone`, or a Firestore document) — the
+ *  parent's response is read from `observationStatus`/`observationUpdatedAt`,
+ *  the names the record itself carries, so no call site re-maps them. */
+export interface RawPacketMilestone {
+  domain: string;
+  title: string;
+  checked: boolean;
+  ageMonths?: number;
+  observationStatus?: "yes" | "not_sure" | "not_yet";
+  observationUpdatedAt?: string;
+}
+/** Raw action-plan fields (an `ActionPlan`, or a Firestore document). */
+export interface RawPacketPlan { id?: string; title: string; issue?: string; createdAt?: string | number }
+/** Raw memory-ledger fields (a folded memory item, or a Firestore document). */
+export interface RawPacketMemory { fact: string; status: string }
+
+/** The child record every packet call site holds, before normalization. */
+export interface RawChildRecord {
+  profile: RawPacketProfile;
+  logs: RawPacketLog[];
+  milestones: RawPacketMilestone[];
+  plans: RawPacketPlan[];
+  memory: RawPacketMemory[];
+}
+
+const rawStr = (v: unknown): string => (typeof v === "string" ? v : "");
+const rawNum = (v: unknown, fallback = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+const rawStrArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+const rawOptStr = (v: unknown): string | undefined => rawStr(v) || undefined;
+const rawOptNum = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+const rawTs = (v: unknown): string | number =>
+  typeof v === "number" && Number.isFinite(v) ? v : rawStr(v) || 0;
+
+/** Plan creation time: the stored field when present, else recovered from the
+ *  `plan-<epoch-ms>` id ArborContext mints. Unparseable → undefined (the plan
+ *  simply never counts as "new" in the delta; fail quiet, never guess). */
+const rawPlanCreatedAt = (p: RawPacketPlan): string | number | undefined => {
+  if (typeof p.createdAt === "number" || (typeof p.createdAt === "string" && p.createdAt)) {
+    return p.createdAt;
+  }
+  const m = /^plan-(\d+)$/.exec(rawStr(p.id));
+  if (!m) return undefined;
+  const ms = Number(m[1]);
+  return Number.isFinite(ms) ? ms : undefined;
+};
+
+/** Assemble a `BuildPacketInput` from a raw child record. The ONE mapping —
+ *  preview, recipient view, and both report surfaces call it. Discipline-
+ *  specific extras (reason, questions, langObs, growthEntries, lastExportedAt)
+ *  are spread on by the call site that actually holds them. */
+export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPacketInput {
+  const p = record.profile;
+  const at = new Date(nowMs);
+  return {
+    profile: {
+      name: rawStr(p.name) || "This child",
+      age: rawNum(p.age),
+      // Months-precise age from the best source the record carries (birth date
+      // → explicit months → years × 12). Drives the age LABEL and the
+      // age-windowed milestone denominator, so both share sides derive it.
+      ageMonths:
+        ageMonthsFromProfile(
+          { age: rawNum(p.age), birthDate: rawOptStr(p.birthDate), ageMonths: rawOptNum(p.ageMonths) },
+          at
+        ) ?? undefined,
+      languages: rawStrArr(p.languages),
+      schoolContext: rawOptStr(p.schoolContext),
+      strengths: rawStrArr(p.strengths),
+      challenges: rawStrArr(p.challenges),
+    },
+    logs: record.logs.map((l) => ({
+      behaviorType: rawStr(l.behaviorType),
+      intensity: rawNum(l.intensity),
+      timestamp: rawTs(l.timestamp),
+      // The parent's own words for what came first — the ONLY source of the
+      // behavioural preset's `triggers` section, and of the trigger lines a
+      // share recipient reads. Never drop it on one side of a seam.
+      trigger: rawOptStr(l.trigger),
+      response: rawOptStr(l.response),
+      resolved: l.resolved === true,
+    })),
+    milestones: record.milestones.map((m) => ({
+      domain: rawStr(m.domain),
+      title: rawStr(m.title),
+      checked: m.checked === true,
+      ageMonths: rawOptNum(m.ageMonths),
+      // UND-4: the parent's actual response, validated against the closed
+      // literal set — anything else is dropped (fail quiet) and the legacy
+      // `checked` flag decides.
+      status:
+        m.observationStatus === "yes" || m.observationStatus === "not_sure" || m.observationStatus === "not_yet"
+          ? m.observationStatus
+          : undefined,
+      observedAt: rawOptStr(m.observationUpdatedAt),
+    })),
+    plans: record.plans.map((pl) => ({
+      title: rawStr(pl.title),
+      issue: rawOptStr(pl.issue),
+      createdAt: rawPlanCreatedAt(pl),
+    })),
+    memory: record.memory.map((m) => ({ fact: rawStr(m.fact), status: rawStr(m.status) })),
+    nowMs,
+  };
 }
 
 /** Effective parent response for a milestone: the explicit wave-2 observation
@@ -486,8 +638,19 @@ export interface ConsultPreset {
 }
 
 /** LC-20: the parent's reason for the visit and their prepared questions open
- *  and close EVERY packet — they are the parent's own words, not child data
- *  derived by Arbor, so no audience ceiling excludes them. */
+ *  and close every CLINICIAN packet — the parent's own words, not child data
+ *  derived by Arbor, so no clinician ceiling excludes them.
+ *
+ *  LC-11b — they are NOT in the teacher ceiling. Both are composed on the
+ *  consult surface in explicitly clinician-facing language ("The one thing I
+ *  most want to talk about is…", questions prepared for an appointment), so a
+ *  parent writing "Should we get him assessed?" was writing to a clinician and
+ *  had it carried verbatim into the teacher's copy by Copy / Download / Send.
+ *  A teacher-facing line has ONE door — the School Brief, where the parent
+ *  reviews every field. Removing them from this preset also removes the
+ *  dead-end where a normal English sentence containing "delay" tripped the
+ *  teacher term scan and disabled every export verb on the screen: the
+ *  sections are capped out before the guard ever sees them. */
 const PARENT_VOICE_SECTIONS = ["reason", "questions"] as const;
 
 /** The shared clinician ceiling (CARE-7): same base sections, same data
@@ -507,7 +670,8 @@ const clinicianPreset = (audience: ConsultAudience, extraSections: readonly stri
 export const CONSULT_PRESETS: Record<ConsultAudience, ConsultPreset> = {
   teacher: {
     audience: "teacher",
-    sections: [...PARENT_VOICE_SECTIONS, "about", "tried"],
+    // LC-11b: no parent-voice sections — see PARENT_VOICE_SECTIONS above.
+    sections: ["about", "tried"],
     dataCeiling: { logDerivedPatterns: false, approvedMemoryFacts: false },
     clinicalTermScan: true,
   },

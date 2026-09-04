@@ -86,9 +86,20 @@ export function buildGrowthMonthReview(input: {
 }
 
 /** localStorage marker: this child's parent has already seen this month's card.
- *  Keyed by child AND month so a new month re-offers it exactly once. */
+ *  Keyed by child AND month so a new month re-offers it exactly once.
+ *
+ *  THE CHILD ID GOES LAST, and that ordering is load-bearing, not cosmetic.
+ *  `lib/childLocalState.isChildScopedKey` is the sweep that runs when ONE child
+ *  of several is deleted, and it recognises a key by its `arbor.`-prefix plus
+ *  the child id as a dot-delimited segment. This key was written
+ *  `…seen.${childId}.${monthKey}` and therefore ended in `.2026-09`, so it
+ *  survived the deletion of the child it was about — and it is written once per
+ *  month per child, forever, so a deleted child left a trail that only grew.
+ *  `components/overview/weekAnchor.weekAnchorSeenKey` is the convention this
+ *  now follows. If you add a variant suffix here, put the child id last again.
+ */
 export function monthReviewSeenKey(childId: string, monthKey: string): string {
-  return `arbor.growth.month.seen.${childId}.${monthKey}`;
+  return `arbor.growth.month.seen.${monthKey}.${childId}`;
 }
 
 /** The month label a card renders, in the viewer's language. Derived from the
