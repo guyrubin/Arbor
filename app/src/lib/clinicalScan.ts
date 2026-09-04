@@ -56,13 +56,59 @@ export class ClinicalLanguageError extends Error {
   }
 }
 
-/** Return the first clinical-diagnosis term found (word-boundary,
- *  case-insensitive), or null if the text is clean. */
+/** School Brief Condition 3, Hebrew. The brief is GENERATED in the parent's
+ *  language, and the teacher it is written for is very often a Hebrew-speaking
+ *  gan teacher — so a scanner that only knows English does not merely miss a
+ *  few phrasings, it switches the whole Condition-3 guarantee off for exactly
+ *  the population the feature was built for. A Hebrew brief saying
+ *  "סימנים של עיכוב שפתי" or "חשד להפרעת קשב" used to export clean.
+ *
+ *  Note these are matched as SUBSTRINGS, not with `\b`. That is deliberate on
+ *  two counts. First, JavaScript's `\b` is defined over [A-Za-z0-9_], so a
+ *  Hebrew letter is a non-word character on both sides and `\bאוטיזם\b` can
+ *  never match — adding Hebrew terms to the English matcher would have looked
+ *  like a fix and guarded nothing. Second, Hebrew glues its particles to the
+ *  word (ה/ו/ב/ל/מ/ש prefixes, plural and construct suffixes), so
+ *  "להפרעת", "עיכובים" and "מאובחנת" are the same claim and a boundary match
+ *  would let each of them through. Over-matching is the safe direction for a
+ *  fail-closed egress scan. */
+export const CLINICAL_DIAGNOSIS_TERMS_HE = [
+  // diagnosis / diagnosed
+  "אבחון", "אבחנה", "מאובחן", "לאבחן",
+  // disorder (incl. the construct form used in "הפרעת קשב")
+  "הפרעה", "הפרעת",
+  // autism spectrum
+  "אוטיז", "אוטיסט", "אספרגר",
+  // delay
+  "עיכוב", "מעוכב",
+  // deficit / impairment / disability
+  "ליקוי", "לקות", "פיגור",
+  // named conditions
+  "תסמונת", "דיסלקצי", "דיסגרפי", "היפראקטיב",
+] as const;
+
+/** The scanner's coverage, keyed by the language a document can be GENERATED
+ *  in. `lib/api.ts` defines that set as "en" | "he"; the guard test pins this
+ *  map against it, so adding a third generation language fails the build here
+ *  rather than silently shipping an unscannable export. */
+export const CLINICAL_DIAGNOSIS_TERMS_BY_LANGUAGE = {
+  en: CLINICAL_DIAGNOSIS_TERMS,
+  he: CLINICAL_DIAGNOSIS_TERMS_HE,
+} as const;
+
+/** Return the first clinical-diagnosis term found, or null if the text is
+ *  clean. English matches on a word boundary, case-insensitively, exactly as
+ *  before; Hebrew matches as a substring, for the reasons above. The scan is
+ *  language-agnostic at the call site on purpose — a caller must never have to
+ *  know which language the model replied in to be protected. */
 export function findClinicalDiagnosisTerm(text: string): string | null {
   const lower = text.toLowerCase();
   for (const term of CLINICAL_DIAGNOSIS_TERMS) {
     const re = new RegExp(`\\b${term}\\b`, "i");
     if (re.test(lower)) return term;
+  }
+  for (const term of CLINICAL_DIAGNOSIS_TERMS_HE) {
+    if (text.includes(term)) return term;
   }
   return null;
 }

@@ -150,11 +150,7 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // `avatar` and ids never reach the model. Byte change on every builder.
   coach_chat: { version: "1.2.0", sha256: "d015d9755a34f91f1f31c76716774907f249cf5f107dbeac0aa3aa0aaa87c776" },
   council_synthesis: { version: "1.1.0", sha256: "6c00185e6fb6dde9296345c7b186b32fb4fbe54455e6155cfc92b3d374ae75de" },
-  // 1.2.0 — AI-02: OPTIONAL approvedMemory / knowledgeContext / recentTurns
-  // blocks between the child line and "The parent just said". With all three
-  // absent the rendered prompt is byte-identical to 1.1.0 (sha ef00f7f8…) —
-  // pinned by the legacy-parity test in prompts.test.ts.
-  voice_reply: { version: "1.2.0", sha256: "b9a14f4f8ad3828bcccee77bbb0ae014acbd1f6e87f926682182ac7192a4160e" },
+  voice_reply: { version: "1.1.0", sha256: "ef00f7f8cebe131da356309a503f0aa2f6cf53e0ec5db651c59b45fd0114322c" },
   extract_log: { version: "1.1.0", sha256: "4d30bdb29b6a9b09138e5438cdefb32235cb188b4559af09cca325bf58755b53" },
 };
 
@@ -284,28 +280,6 @@ export type VoiceReplyPromptArgs = {
   childProfile: unknown;
   message: string;
   languageDirective: string;
-  /** AI-02 — parent-approved memory facts, same server-rendered block /chat
-   *  gets. Absent/empty ⇒ the block is omitted and the prompt is byte-identical
-   *  to voice_reply 1.1.0. */
-  approvedMemory?: string;
-  /** AI-02 — the same knowledge-card grounding /chat retrieves, rendered by
-   *  knowledge/wiki renderKnowledgeContext. Absent/empty ⇒ block omitted. */
-  knowledgeContext?: string;
-  /** AI-02 — the sanitized same-thread transcript (sanitizeRecentTurns runs at
-   *  the route seam). Absent/empty ⇒ block omitted. */
-  recentTurns?: RecentTurn[];
-};
-
-/** AI-02: a spoken-register grounding block — "" when the source is empty, so
- *  an ungrounded voice turn renders byte-identical to voice_reply 1.1.0. */
-const renderVoiceGroundingBlock = (label: string, body?: string): string =>
-  body && body.trim() ? `\n${label}\n${body.trim()}` : "";
-
-/** AI-02: the spoken continuity transcript — same shape as the /chat block. */
-const renderVoiceTurnsBlock = (turns?: RecentTurn[]): string => {
-  if (!turns || turns.length === 0) return "";
-  const lines = turns.map((t) => `${t.role === "parent" ? "Parent" : "Coach"}: ${t.text}`);
-  return `\nEarlier in this same spoken conversation, for continuity — resolve pronouns and follow-ups against it, and do not repeat advice already given:\n${lines.join("\n")}`;
 };
 
 /** /voice — the spoken-register reply prompt. */
@@ -315,12 +289,9 @@ export const buildVoiceReplyPrompt = ({
   childProfile,
   message,
   languageDirective,
-  approvedMemory,
-  knowledgeContext,
-  recentTurns,
 }: VoiceReplyPromptArgs): string => `${NON_DIAGNOSTIC_CONTRACT}
 ${persona} Apply this lens: ${scholar.name} — ${scholar.method}
-Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}${renderVoiceGroundingBlock("ARBOR APPROVED CHILD MEMORY:", approvedMemory)}${renderVoiceGroundingBlock("ARBOR AI WIKI SOURCE CARDS:", knowledgeContext)}${renderVoiceTurnsBlock(recentTurns)}
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 The parent just said: "${message}"
 Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, in plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
 
@@ -423,11 +394,6 @@ export const promptFingerprint = (key: PromptKey): string => {
         childProfile: CANONICAL.childProfile,
         message: CANONICAL.message,
         languageDirective: CANONICAL.languageDirective,
-        // AI-02 — the voice_reply fingerprint pins the NEW grounding blocks'
-        // template text (labels, framing line, role labels) too.
-        approvedMemory: CANONICAL.memory,
-        knowledgeContext: CANONICAL.knowledge,
-        recentTurns: CANONICAL.recentTurns,
       }));
     case "extract_log":
       return sha256(buildExtractLogPrompt({

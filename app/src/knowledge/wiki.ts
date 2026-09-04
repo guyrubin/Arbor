@@ -125,6 +125,19 @@ export const filterKnowledgeCards = (cards: KnowledgeCard[], filters: {
   limit?: number;
 }) => {
   const limit = filters.limit ?? 5;
+  // Every filter here is HARD, including ageBand. AI-03 made that consequential:
+  // ageBand and domains used to be undefined at every call site, so the two
+  // filters were skipped; they are now derived from the child and the question,
+  // and ANDing them against a 13-card library has real empty intersections
+  // (a 0-12m child asked about focus, a 9-12y child asked about sensory input).
+  //
+  // Returning zero cards there is the CORRECT answer, and the fallback that
+  // suggests itself — widen when the intersection is empty — was considered and
+  // rejected: it would hand a parent of a 3-month-old an intervention written
+  // for a 3-to-5-year-old, which is worse than answering from the lens cards
+  // alone. Retrieval returning nothing is a graceful degradation here because
+  // /chat always adds scholarCards, so the model is never left with no grounding
+  // at all. See retrievalKeys.ts, which states the same contract.
   const scoped = cards.filter((card) => {
     if (filters.excludeTypes?.includes(card.type)) return false;
     if (filters.allowedUse && !card.allowed_uses.includes(filters.allowedUse)) return false;

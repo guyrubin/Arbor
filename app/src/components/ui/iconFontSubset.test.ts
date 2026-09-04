@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 // Same extraction the generator uses — importing it (rather than re-implementing)
 // is what stops the shipped subset and the guard from drifting apart.
-import { collectIconNames, sourceFiles, readVocabulary, FONT_FILE, NAMES_FILE } from "../../../scripts/build-icon-font.mjs";
+import { collectIconNames, sourceFiles, readVocabulary, FONT_FILE, NAMES_FILE, ICON_IGNORE_PRAGMA } from "../../../scripts/build-icon-font.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.join(here, "..", "..", "..");
@@ -158,6 +158,44 @@ describe("icon extraction follows runtime source", () => {
       // absent from today's shipped manifest.
       writeFileSync(path.join(root, "navigation.ts"), 'export const icon = "height";');
       expect(collectIconNames(vocabulary, sourceFiles(root))).toContain("height");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("the icon-subset opt-out cannot hide a real icon", () => {
+  /**
+   * collectIconNames skips any file declaring @icon-font-ignore, so a module
+   * whose string DATA collides with the ligature vocabulary (retrieval keys,
+   * copy tables) does not drag phantom glyphs into the shipped subset. The
+   * cost of that escape hatch is that a file using it stops being scanned -
+   * so a file using it must not render icons at all. That is the invariant
+   * here; without it the pragma would be a way to smuggle an unsubsetted
+   * name into the UI, i.e. the original defect wearing a comment.
+   */
+  const optedOut = sourceFiles().filter((f) => readFileSync(f, "utf8").includes(ICON_IGNORE_PRAGMA));
+
+  it("stays a short, deliberate list", () => {
+    expect(optedOut.length).toBeLessThanOrEqual(5);
+  });
+
+  it("no opted-out file renders an icon", () => {
+    const offenders = optedOut.filter((f) => {
+      const src = readFileSync(f, "utf8");
+      return /<Icon/.test(src) || /from\s+["'][^"']*\/Icon["']/.test(src) || /material-symbols/i.test(src);
+    });
+    expect(offenders.map((f) => path.basename(f)), "@icon-font-ignore is for data modules, not UI").toEqual([]);
+  });
+
+  it("the pragma actually suppresses collection", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "icon-pragma-"));
+    try {
+      const file = path.join(root, "keys.ts");
+      writeFileSync(file, 'export const k = ["search", "home"];');
+      expect(collectIconNames(new Set(["search", "home"]), [file])).toEqual(["home", "search"]);
+      writeFileSync(file, ["/* " + ICON_IGNORE_PRAGMA + " */", 'export const k = ["search", "home"];'].join("\n"));
+      expect(collectIconNames(new Set(["search", "home"]), [file])).toEqual([]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

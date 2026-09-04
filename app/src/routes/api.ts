@@ -111,10 +111,16 @@ const writeSse = (res: express.Response, event: string, data: unknown) => {
  * raw JSON stream, restore aliases FIRST (the NAME_SUBJECT lexical floor
  * assumes restored names), then release each COMPLETE sentence as its own SSE
  * delta only after `screenModelOutputLexical` passes on the CUMULATIVE restored
- * prose. /council had no streaming at all, so a council answer was a silent
- * spinner until the whole multi-agent orchestration finished. Rather than write
- * a second copy of this (and risk the two screens drifting), both routes now
- * drive the same relay.
+ * prose. /council has no streaming at all, so a council answer is a silent
+ * spinner until the whole multi-agent orchestration finishes.
+ *
+ * SCOPE, STATED HONESTLY: this relay is extracted so /council can be moved onto
+ * it without a second copy of the screening logic drifting from this one — but
+ * that move has NOT happened. The relay is constructed at exactly one site,
+ * inside /chat; /council still ends with res.json(...). AI-07 is the item that
+ * finishes the job. Do not read this docblock as a description of /council's
+ * current behaviour: on a safety-critical screening seam, a comment claiming
+ * coverage that does not exist is worse than no comment.
  *
  * CLINICAL FIREWALL: a flagged span reaches NO SSE frame — `push`/`flush`
  * return the verdict and release nothing further. Structured panels stay gated
@@ -1001,23 +1007,14 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     const budget = createRouteBudget(res, "voice");
     try {
       const scholar = resolveScholar(scholarLens);
-      // AI-02: a spoken turn used to be the ONLY coach surface with no memory,
-      // no source cards and no thread — while the Ask data-contract panel above
-      // the mic told the parent every question carries all three. The claim now
-      // holds on this path: same approved-memory read, same retrieval keys, same
-      // continuity transcript as /chat. The memory read is ownership-gated and
-      // fails CLOSED to "no memory" so a spoken turn never breaks on it.
-      const voiceChildId = toChildId(childProfile);
-      const voiceMemory = (await mayReadChildMemory(req, voiceChildId))
-        ? await getApprovedMemoryContext(memoryStore, voiceChildId, config.memoryPromptMaxFacts)
-        : "";
-      const voiceCards = await retrieveKnowledgeCards({
-        ...retrievalKeysFor(childProfile, message),
-        allowedUse: "coach_context",
-        excludeTypes: COACH_EXCLUDED_CARD_TYPES,
-        limit: 3
-      });
-      const voiceTurns = sanitizeRecentTurns(recentTurns);
+      // AI-02 (grounding a spoken turn with memory + source cards + thread, as
+      // /chat does) is BUILT but NOT wired here. It changes what the model is
+      // asked on a spoken, child-adjacent surface, and the voice-loop-v1
+      // acceptance suite validated voice_reply @1.1.0 only. Shipping the
+      // grounded prompt would mean re-pinning a suite that was never re-run.
+      // Blocked on the judge key (AI-09); until then a spoken turn renders the
+      // exact validated prompt. The Ask data-contract copy must not claim
+      // otherwise for voice.
       // AI-V9: persona + language directive come from the ONE shared spoken
       // persona module (lib/livePersona.ts) — byte-shared with the Live path.
       const languageDirective = spokenLanguageDirective(language);
@@ -1030,12 +1027,13 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         scholar,
         childProfile,
         message,
-        languageDirective,
-        // AI-02 grounding. Each block renders "" when its source is empty, so a
-        // first turn with no memory and no matched card keeps the legacy bytes.
-        approvedMemory: voiceMemory,
-        knowledgeContext: renderKnowledgeContext(voiceCards),
-        recentTurns: voiceTurns
+        languageDirective
+        // AI-02 grounding (approvedMemory / knowledgeContext / recentTurns) is
+        // NOT wired here. Grounding changes what the model is asked on a SPOKEN
+        // child-adjacent surface, and voice-loop-v1 validated voice_reply
+        // @1.1.0 only. Re-pinning the suite without re-running it would assert
+        // a validation that never happened, so the grounded path stays unshipped
+        // until the eval can be re-run (blocked on the judge key, AI-09).
       });
 
       // SAFE-V1 + AI-V1/AIR-2: the output-safety screen (AI-2) MUST gate /voice

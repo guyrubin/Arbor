@@ -37,11 +37,15 @@ export const en: Record<string, string> = {
   "elev.coachcontract.uses.weekly": "This week's moment counts — numbers and categories only, never your written notes",
 
   // AI-02 — the SPOKEN contract. The panel used to describe the typed request
-  // only, while sitting directly above the microphone: a spoken turn shipped
-  // no memory, no source cards and no thread at all. The browser voice loop is
-  // now grounded like a typed question (routes/api /voice), and Live HD — a
-  // direct browser-to-model audio session — is named for what it really sends.
-  "elev.coachcontract.uses.spoken": "Speaking sends the same as typing — your words, the profile, the memory facts you approved, and this conversation",
+  // only, while sitting directly above the microphone, leaving the typed claim
+  // standing over a spoken turn that carries far less. Grounding the spoken
+  // path was built and then held back: it changes the prompt on a spoken,
+  // child-adjacent surface that the voice-loop-v1 suite validated at the
+  // ungrounded version. So the panel states what a spoken turn ACTUALLY
+  // carries. When the suite is re-run against the grounded prompt, this line
+  // and the wiring in routes/api /voice move together — never one without the
+  // other, or the panel is making a promise the server does not keep.
+  "elev.coachcontract.uses.spoken": "Speaking sends less than typing — your words and the profile, but not the memory facts you approved or earlier turns",
   "elev.coachcontract.uses.spokenLive": "Live voice is a direct audio call with the model: it carries your words and the profile, and does not carry your approved memory facts or earlier turns",
 
   // ── What Arbor stores
@@ -68,7 +72,7 @@ export const he: Record<string, string> = {
   "elev.coachcontract.uses.turns": "החילופים האחרונים בשיחה הזו, כדי שהמאמן יעקוב אחרי ההקשר",
   "elev.coachcontract.uses.weekly": "סיכום מספרי של הרגעים מהשבוע — מספרים וקטגוריות בלבד, אף פעם לא ההערות שכתבתם",
 
-  "elev.coachcontract.uses.spoken": "דיבור שולח בדיוק כמו כתיבה — המילים שלכם, הפרופיל, עובדות הזיכרון שאישרתם והשיחה הזו",
+  "elev.coachcontract.uses.spoken": "דיבור שולח פחות מכתיבה — את המילים שלכם ואת הפרופיל, אבל לא את עובדות הזיכרון שאישרתם או את החילופים הקודמים",
   "elev.coachcontract.uses.spokenLive": "שיחת קול חיה היא שיחת אודיו ישירה עם המודל: היא נושאת את המילים שלכם ואת הפרופיל, ולא את עובדות הזיכרון שאישרתם או את החילופים הקודמים",
 
   "elev.coachcontract.stores.thread": "השיחה הזו נשמרת כדי שתוכלו לחזור אליה",

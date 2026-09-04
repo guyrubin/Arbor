@@ -88,10 +88,20 @@ export function readVocabulary(file = VOCAB) {
  * Icon names the codebase can ask for = snake_case string literals ∩ vocabulary.
  * Shared verbatim with the guard test so generation and enforcement cannot drift.
  */
+/** A file-level opt-out for modules whose lowercase string data collides with
+ *  the Material Symbols vocabulary - retrieval keyword lists, copy tables and
+ *  the like, where "tablet" means a device and "texture" a sensory cue, not a
+ *  glyph. Rewording the data to dodge the scanner would degrade the feature,
+ *  so the file declares itself instead. The guard in
+ *  components/ui/iconFontSubset.test.ts holds the other end: a file carrying
+ *  this pragma may not render icons, so the opt-out cannot hide a real usage. */
+export const ICON_IGNORE_PRAGMA = "@icon-font-ignore";
+
 export function collectIconNames(vocabulary, files = sourceFiles()) {
   const names = new Set();
   for (const file of files) {
     const text = readFileSync(file, "utf8");
+    if (text.includes(ICON_IGNORE_PRAGMA)) continue;
     for (const m of text.matchAll(/["'`]([a-z][a-z0-9_]+)["'`]/g)) {
       if (vocabulary.has(m[1])) names.add(m[1]);
     }

@@ -1,4 +1,12 @@
 /**
+ * @icon-font-ignore - this module is a retrieval KEYWORD table, not UI. Some
+ * of its keys ('tablet' for screen time, 'texture' for sensory) happen to be
+ * Material Symbols ligature names; they are search terms, and rewording them
+ * to satisfy the icon-subset scanner would blunt retrieval. The file renders
+ * nothing, which is what iconFontSubset.test.ts verifies before honouring
+ * this pragma.
+ */
+/**
  * AI-03 — the retrieval keys the coach routes actually have.
  *
  * `/chat` and `/council` both called `retrieveKnowledgeCards({ ageBand:
@@ -17,9 +25,18 @@
  *   domains  ← the parent's own question (a small bilingual keyword map) plus
  *              the parent-selected `activeGoals` domains on the profile.
  *
- * Both are UNDEFINED when nothing can be derived, so the filter degrades to
- * today's behaviour rather than to an empty result set — a question that
- * matches no keyword must still retrieve cards.
+ * Both are UNDEFINED when nothing can be derived, so a question that matches no
+ * keyword still retrieves exactly what it used to.
+ *
+ * That is NOT the same as never returning an empty set, and the distinction
+ * matters now that these keys are usually populated. `filterKnowledgeCards`
+ * ANDs age band and domains, and against a 13-card library there are real empty
+ * intersections — a 0-12m child asked about focus, a 9-12y child asked about
+ * sensory input, a 0-12m child asked about first words. Zero cards is the right
+ * answer in those cases: the alternative is offering a parent of a 3-month-old
+ * a card written for a 3-to-5-year-old. It is safe to degrade this way because
+ * /chat always adds the lens cards, so a turn is never ungrounded — any future
+ * caller that has no such floor must supply its own before relying on this.
  *
  * CLINICAL FIREWALL: these are RETRIEVAL keys — they choose which reference
  * cards enter the prompt. Nothing here is scored, surfaced, or stored, and no
