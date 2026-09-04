@@ -28,6 +28,13 @@ import { agefilterText } from "../../lib/i18nElevation/agefilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { getStorySpec } from "../../lib/heroJourneys";
 import { track } from "../../lib/analytics";
+// TJB-28 — the shelf is where an evening actually ends, so this is the surface
+// most likely to be open at the close of a day. It writes the return hook; the
+// hook itself is SHOWN on Growth (components/nextopen/TomorrowReasonCard).
+import { closeDay } from "../../lib/tomorrowReason";
+import { readRitualRecord, ritualOfTheMoment } from "../../lib/familyRitualsCadence";
+import { resolveWatchFocus } from "../../lib/screeningWatch";
+import { countSince } from "../../lib/pulse";
 import type { HeroPackId } from "../../types";
 
 /**
@@ -79,7 +86,7 @@ const STORY_EMOJI: Record<string, string> = {
 };
 
 export default function ComicsTab() {
-  const { childProfile, setActiveTab, openPaywall } = useArbor();
+  const { childProfile, setActiveTab, openPaywall, milestones, behaviorLogs, playLogs } = useArbor();
   const { aiLang } = useLanguage();
   const { url: heroUrl, hasHero, name } = useHeroAvatar();
 
@@ -115,6 +122,23 @@ export default function ComicsTab() {
   // Must match generatePage's cache-key token so rehydration finds its pages.
   const avatarKeyToken = heroDataUrl || "no-hero";
   const savedCount = savedCol.items.length;
+
+  // TJB-28 — the close half. Before the closing hour this is a no-op, and it
+  // writes at most once a day; the shelf itself never renders the hook.
+  useEffect(() => {
+    const now = Date.now();
+    const startOfToday = new Date(now).setHours(0, 0, 0, 0);
+    closeDay(now, {
+      ritualDue: ritualOfTheMoment(now, readRitualRecord()) !== null,
+      watchFocus: resolveWatchFocus(childProfile.id, milestones) != null,
+      unopenedStory: savedCount < ADVENTURES.length,
+      momentsToday:
+        countSince(behaviorLogs, startOfToday, now) + countSince(playLogs, startOfToday, now),
+    });
+    // One write per mount is the whole intent — the day's reason must not be
+    // re-chosen as the parent browses the shelf.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // AIX-S5 honesty layer: per saved adventure, are ALL pages available on this
   // device? Only then does the shelf promise "Read again"; otherwise the badge
