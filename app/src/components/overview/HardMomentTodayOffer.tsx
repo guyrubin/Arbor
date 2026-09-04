@@ -40,11 +40,17 @@ export default function HardMomentTodayOffer() {
             {locText(offer.card.title, locale)}
           </h2>
           <p className="mt-2 break-words text-base leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{doNow}</p>
-          <details className="mt-2 text-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
-            <summary className="min-h-11 cursor-pointer py-3 font-semibold">{t("hm.section.escalation")}</summary>
-            {pilot && <p className="mb-2">{copy.explanation}</p>}
-            <p>{escalationText(offer.card, locale)}</p>
-          </details>
+          {/* Escalation is NOT collapsible here. Today is the surface a parent
+              reaches mid-moment; the immediate-danger sentence must not be one
+              tap away. Matches the always-visible band in the Behaviors guide. */}
+          {pilot && (
+            <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{copy.explanation}</p>
+          )}
+          <div className="mt-2 min-w-0 rounded-xl p-3" role="note" data-testid="hard-moment-today-escalation"
+            style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule-strong)" }}>
+            <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("hm.section.escalation")}</p>
+            <p className="mt-1 break-words text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{escalationText(offer.card, locale)}</p>
+          </div>
           <button type="button" onClick={() => {
             const current = availableHardMomentCards(contextFor()).find((card) => card.id === offer.card.id);
             if (!current) return;

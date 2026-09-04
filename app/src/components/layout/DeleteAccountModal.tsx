@@ -13,6 +13,9 @@ import { commerceAllowed } from "../kidmode/parentGate";
  * device-local stores and signs out; a partial receipt retains the session
  * for retry. Opening the confirmation never reuses a previous authorization.
  */
+/** Upper bound on waiting for a deletion receipt before the parent gets the
+ *  dialog back. Generous — a slow receipt is normal; a stuck one is not. */
+const DELETION_TIMEOUT_MS = 90_000;
 export default function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useLanguage();
   const { user, firebaseEnabled, signOut } = useAuth();
@@ -98,7 +101,16 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
     const ownsAccount = () => active.current && latest.current.firebaseEnabled && latest.current.uid === requestUid;
     const isCurrent = () => ownsAccount() && revision.current === requestRevision && latest.current.open;
     try {
-      const receipt = await api.accountDelete();
+      // The dialog refuses to close while the lease is held, and the dialog
+      // stack inerts the app behind it, so an fetch that never settles used to
+      // leave the parent with no way out but a reload. Bound the wait: on
+      // timeout we surface the same unknown-result state as any other network
+      // failure, the finally releases the lease, and close/retry come back.
+      const receipt = await Promise.race([
+        api.accountDelete(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("account deletion timed out")), DELETION_TIMEOUT_MS)),
+      ]);
       if (!ownsAccount()) return;
       // A forced view close cannot cancel a server deletion. Complete results
       // still clean the same account; only retry feedback belongs to the view.

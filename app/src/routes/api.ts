@@ -487,8 +487,14 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // is untouched and requests without it stay byte-identical (EVAL-6).
   const renderLibraryGrounding = (raw: unknown): string => {
     if (!raw || typeof raw !== "object") return "";
-    const lc = raw as { id?: unknown; title?: unknown; keyPoints?: unknown };
+    const lc = raw as { id?: unknown; title?: unknown; keyPoints?: unknown; editorialPilot?: unknown };
     if (typeof lc.title !== "string" || !Array.isArray(lc.keyPoints)) return "";
+    // Batch-4 reads ship under an editorial pilot with no individual clinical
+    // review. Strict === true, so only that flag adds text; every other request
+    // renders byte-identically to before (EVAL-6).
+    const pilotNote = lc.editorialPilot === true
+      ? " This read is an Arbor editorial pilot: it has not had individual clinical review, so do not describe it as clinician-approved."
+      : "";
     const title = lc.title.slice(0, 200);
     const points = lc.keyPoints
       .filter((p): p is string => typeof p === "string")
@@ -497,7 +503,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     if (!title || points.length === 0) return "";
     return (
       `\n\nARBOR LEARN LIBRARY (curated parent-facing read matched to this question — align your guidance with its stance; if it fits, mention that the "${title}" read is available in Arbor's Library):\n` +
-      `"${title}" — key points: ${points.join(" ")}`
+      `"${title}" — key points: ${points.join(" ")}` + pilotNote
     );
   };
 

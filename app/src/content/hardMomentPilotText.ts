@@ -8,7 +8,9 @@ const text = {
     ageLabel: "Written for ages",
     years: "years",
     sources: "Sources behind this guide",
-    safety: "If anyone is in immediate danger, seek local emergency help. This guide is for everyday parenting support.",
+    // No standalone safety banner: the immediate-danger sentence already opens
+    // every card's escalation band (see the card() factory), and a second copy
+    // that no surface renders would read as shipped protection that is not.
     unavailable: "This guide is no longer available for this child. Choose another moment.",
   },
   he: {
@@ -18,7 +20,6 @@ const text = {
     ageLabel: "נכתב לגילי",
     years: "שנים",
     sources: "מקורות למדריך",
-    safety: "אם מישהו בסכנה מיידית, פנו לעזרת חירום מקומית. המדריך נועד לתמיכה בהורות היומיומית.",
     unavailable: "המדריך הזה כבר לא זמין לילד או לילדה. אפשר לבחור רגע אחר.",
   },
 } as const;

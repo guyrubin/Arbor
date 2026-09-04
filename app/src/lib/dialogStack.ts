@@ -154,7 +154,12 @@ export function createDialogStack(env: Environment) {
     while (branch.parentElement) {
       for (const sibling of Array.from(branch.parentElement.children)) {
         const el = sibling as HTMLElement;
-        if (el !== branch && !el.contains(entry.root) && !el.matches("script,style,link")) undoShield.push(hide(el));
+        // [data-dialog-shield-exempt] opts a layer out of the shield. It exists
+        // for the polite live region: inert/aria-hidden cascades to descendants,
+        // so a toast rendered under a shielded ancestor stops being announced
+        // exactly when a dialog is open — which is when most toasts fire.
+        if (el !== branch && !el.contains(entry.root)
+          && !el.matches("script,style,link,[data-dialog-shield-exempt]")) undoShield.push(hide(el));
       }
       if (branch.parentElement === doc.body) break;
       branch = branch.parentElement;

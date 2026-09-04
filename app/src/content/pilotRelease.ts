@@ -99,8 +99,11 @@ export function hardMomentPublication(card: HardMomentCard, context: HardMomentC
   if (!Array.isArray(card.locales) || !card.locales.includes(locale) || !card.locales.includes("en") || !card.locales.includes("he")) return null;
   const filled = (value: unknown) => typeof value === "string" && value.trim().length > 0;
   if (COPY_FIELDS.some((key) => !filled(card[key]?.en) || !filled(card[key]?.he))) return null;
-  // Withdrawal wins even if a caller supplies a formerly reviewed copy.
-  if (release.withdrawnIds.includes(card.id)) return null;
+  // Withdrawal wins even if a caller supplies a formerly reviewed copy — and it
+  // is checked against the SHIPPED manifest as well as the caller's release, so
+  // pulling a card cannot be undone by passing a stale release object. This is
+  // the incident lever; it has to hold unconditionally.
+  if (release.withdrawnIds.includes(card.id) || HARD_MOMENT_PILOT.withdrawnIds.includes(card.id)) return null;
   const inPilot = Object.hasOwn(HARD_MOMENT_PILOT.entries, card.id);
   if (inPilot && release.status !== "active") return null;
   if (isPublishableContent(card, now)) return "clinical-review";

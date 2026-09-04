@@ -39,6 +39,7 @@ import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
 import { matchLearnCards, type SavedLearnItem } from "../learn/learnLibrary";
 import { LEARN_CARDS } from "../learn/learnCards";
+import { isLearnPilotCard } from "../learn/learnPilotRelease";
 import { concernsForBehaviors } from "../content/selectCards";
 import { ageYearsFromProfile, ageMonthsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
@@ -866,8 +867,16 @@ function useArborState() {
               concerns: concernsForBehaviors([promptValue]),
               ageYears: ageYearsFromProfile(childProfile),
             }, 1)[0];
+            // A batch-4 read ships under the editorial pilot, so the coach must
+            // be told not to present it as clinician-approved — the same
+            // disclosure the hard-moment seed carries. The flag is only set for
+            // pilot cards, so every other request stays byte-identical (EVAL-6).
             return match
-              ? { id: match.id, title: match.title.en, keyPoints: match.keyPoints.map((k) => k.en) }
+              ? {
+                  id: match.id, title: match.title.en,
+                  keyPoints: match.keyPoints.map((k) => k.en),
+                  ...(isLearnPilotCard(match.id) ? { editorialPilot: true } : {}),
+                }
               : undefined;
           })(),
           // Masterplan 1.3: same-thread continuity + consent-gated weekly counts.

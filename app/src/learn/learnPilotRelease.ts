@@ -48,10 +48,10 @@ export const LEARN_PILOT: LearnPilotRelease = Object.freeze({
     "handling-disappointment": "fnv1a64:66533fdad5d967b2",
     "logical-consequences": "fnv1a64:541a4ca29e2a1383",
     // batch 4b — behavior · sleep · play · screens
-    "boundary-testing": "fnv1a64:476f5c9dc46621a5",
+    "boundary-testing": "fnv1a64:38813a4bb4eecbb3",
     "chores-by-development": "fnv1a64:dc88f1aedc9b68cd",
-    "sleep-environment": "fnv1a64:05075439cc147842",
-    "travel-sleep": "fnv1a64:9af3d7da03f087f2",
+    "sleep-environment": "fnv1a64:ffbdbf255d802259",
+    "travel-sleep": "fnv1a64:73a1d18e45f22a9d",
     "rough-and-tumble-play": "fnv1a64:0646cfe0d9d5d998",
     "board-games-learning": "fnv1a64:c72d8f325747512a",
     "nature-play": "fnv1a64:c30b759d08081654",

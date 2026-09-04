@@ -498,7 +498,10 @@ function LearnReader({
 
   const share = async () => {
     const points = card.keyPoints.map((k, i) => `${i + 1}. ${pick(he, k)}`).join("\n");
-    const text = `${pick(he, card.title)}\n\n${points}\n\n— Arbor`;
+    // A pilot read leaving the app keeps its label. Without this, unreviewed
+    // content travels attributed to Arbor with nothing saying it is a pilot.
+    const pilotLine = isLearnPilotCard(card.id) ? `\n\n${learnPilotText(he ? "he" : "en").note}` : "";
+    const text = `${pick(he, card.title)}\n\n${points}${pilotLine}\n\n— Arbor`;
     try { track("learn_share", { card: card.id }); } catch { /* noop */ }
     try {
       if (navigator.share) {

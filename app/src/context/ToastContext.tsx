@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, AlertTriangle, Info, X } from "lucide-react";
 import { useLanguage } from "./LanguageContext";
@@ -61,8 +62,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      {!kidLocked && (
-      <div role="status" aria-live="polite" className="fixed top-4 end-4 z-[80] flex flex-col gap-2 w-[min(92vw,340px)]">
+      {/* Portalled to body and exempted from the dialog shield: rendered inside
+          #root it inherits inert/aria-hidden whenever any dialog is open, which
+          silences exactly the toasts dialogs raise (deletion done, gate blocked,
+          avatar errors) and makes their dismiss button unclickable. */}
+      {!kidLocked && typeof document !== "undefined" && createPortal(
+      <div role="status" aria-live="polite" data-dialog-shield-exempt
+        className="fixed top-4 end-4 z-[80] flex flex-col gap-2 w-[min(92vw,340px)]">
         <AnimatePresence>
           {toasts.map((tc) => (
             <motion.div
@@ -85,8 +91,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
-      )}
+      </div>, document.body)}
     </ToastContext.Provider>
   );
 }
