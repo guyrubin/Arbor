@@ -11,6 +11,7 @@ import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { useHeroAvatar } from "../ui/HeroAvatar";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
+import type { GrowthEntry } from "../../growth/growthEntries";
 
 /** Plan ids are minted as `plan-<epoch-ms>` (ArborContext) — recover the
  *  creation time for the CARE-7 delta counts. Unparseable → undefined (the
@@ -62,7 +63,21 @@ export function useReportExport() {
     orderDir: "desc",
     max: 500,
   });
-  return (type: ReportType, excludedIds?: Set<string>) => {
+  // LC-20: the pediatrician preset's own evidence — the measurements the parent
+  // logged, as entered. Same registered sink the growth card writes.
+  const growthCol = useChildCollection<GrowthEntry>(childProfile.id, "growthEntries", {
+    orderByField: "date",
+    orderDir: "desc",
+    max: 200,
+  });
+  /** LC-20/LC-12: `extras` carries the parent's own voice — the reason for the
+   *  visit and the questions they prepared in Appointments — from whichever
+   *  surface triggered the export. Absent → the packet is unchanged. */
+  return (
+    type: ReportType,
+    excludedIds?: Set<string>,
+    extras?: { reason?: string; questions?: string[] }
+  ) => {
     const heroImageUrl = isGenerated && heroUrl ? heroUrl : undefined;
     if (isProfessionalReportType(type)) {
       const packet = buildPresetPacket(type, {
@@ -84,6 +99,16 @@ export function useReportExport() {
         // CARE-7: the delta section renders only when THIS audience has a
         // prior export on record.
         lastExportedAt: getLastExportedAt(childProfile.id, type) ?? undefined,
+        // LC-20: the four "professional" reports were byte-identical documents.
+        // Each clinician preset now carries the ONE evidence section its own
+        // discipline reads — SLP the phrases, pediatrician the measurements —
+        // and every packet opens with the parent's reason for coming.
+        reason: extras?.reason,
+        questions: extras?.questions,
+        langObs: langObsCol.items
+          .map((o) => ({ phrase: o.phrase ?? "", language: o.language, at: o.timestamp }))
+          .filter((o) => o.phrase.trim().length > 0),
+        growthEntries: growthCol.items.map((g) => ({ date: g.date, heightCm: g.heightCm, weightKg: g.weightKg })),
       });
       const doc: ReportDoc = {
         title: REPORTS.find((r) => r.type === type)!.title,

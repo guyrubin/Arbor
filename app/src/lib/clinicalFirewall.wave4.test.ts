@@ -234,8 +234,18 @@ const COMPONENT_FILES = walk(path.join(SRC_ROOT, "components")).map((f) => ({
 const PRESET_SEAM = "components/sections/Reports.tsx";
 // Raw print SHELL (openPrintableReport) consumers: the seam itself, plus the
 // monitoring printable whose doc builder is clinician-ceiling-bound in
-// lib/monitoring.ts (IA W4.5). Nothing else may open a printable directly.
-const PRINT_SHELL_ALLOWLIST = new Set([PRESET_SEAM, "components/sections/Screening.tsx"]);
+// lib/monitoring.ts (IA W4.5), plus (LC-11) the School Brief, whose doc builder
+// is ceiling-bound in schoolBrief/schoolBrief.ts — buildSchoolBriefExport caps
+// the payload to CURATED_FIELDS and runs the fail-closed clinical-term scan,
+// schoolBriefToPrintSections renders only that capped payload, and
+// assertEscalationNoteNotExported blocks the parent-only escalation note at the
+// same seam. It replaced a raw `.md` blob download, which was no ceiling at
+// all. Nothing else may open a printable directly.
+const PRINT_SHELL_ALLOWLIST = new Set([
+  PRESET_SEAM,
+  "components/sections/Screening.tsx",
+  "components/sections/SchoolBrief.tsx",
+]);
 
 describe("Wave-4 (c) — single-serializer seam (static source scan over src/components)", () => {
   it("the scan actually sees the seam files (guard is not scanning an empty tree)", () => {

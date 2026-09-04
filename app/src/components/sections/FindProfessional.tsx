@@ -12,6 +12,10 @@ import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { isolate } from "../../lib/i18n";
+// LC-09: the "track" leg — a recorded consult request becomes a tracked
+// appointment, so "Track it in Appointments" stops landing on an empty list.
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { appointmentFromConsultRequest, type Appointment } from "../../lib/careTrack";
 
 const SPECIALTIES = [
   "Child Psychologist", "Speech Therapist", "Occupational Therapist", "Parenting Coach",
@@ -72,6 +76,8 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
   const [consultMode, setConsultMode] = useState<"either" | "video" | "in_person">("either");
   const [consultBusy, setConsultBusy] = useState(false);
   const [consultDone, setConsultDone] = useState<{ id: string; mailto: string | null } | null>(null);
+  // LC-09: the same per-child sink the Appointments surface reads.
+  const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
 
   const openConsult = (p: Professional) => {
     setConsultPro(p);
@@ -102,7 +108,19 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
       });
       setConsultDone({ id: request.id, mailto });
       track("consult_send_completed", { proRole: consultPro.role, mode: consultMode });
-      toast(`Consultation request sent for ${consultPro.name}.`, "success");
+      // LC-09: find → share → TRACK. The request now exists as a "requested"
+      // appointment the parent can follow, instead of vanishing into the
+      // server's status model with no client surface.
+      await apptsCol.upsert(
+        appointmentFromConsultRequest({
+          proName: consultPro.name,
+          proRole: consultPro.role,
+          requestId: request.id,
+          mode: consultMode === "in_person" ? "In person" : "Online",
+          nowMs: Date.now(),
+        })
+      );
+      toast(t("elev.learnCare.track.created"), "success");
     } catch (err: any) {
       toast(err.message || "Couldn't record the request — please try again.", "error");
     } finally {
@@ -177,7 +195,7 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
           <Icon name="shield_person" size={34} style={{ color: "var(--arbor-green-ink)" }} />
           <p className="mt-3 text-base font-bold" style={{ color: "var(--arbor-ink)" }}>The verified directory is opening soon.</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Arbor will only show professionals after their identity and credentials have been reviewed. You can still prepare a private summary for someone you already trust.</p>
-          <button onClick={() => setActiveTab("consult")} className="mt-4 rounded-xl px-4 py-2.5 text-xs font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>Prepare a shareable summary</button>
+          {!embedded && <button onClick={() => setActiveTab("consult")} className="mt-4 rounded-xl px-4 py-2.5 text-xs font-bold text-white" style={{ background: "var(--arbor-gradient-primary)" }}>Prepare a shareable summary</button>}
         </div>
       ) : (
         <div className="grid lg:grid-cols-2 gap-5">
@@ -213,13 +231,15 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
                 >
                   <Icon name="send" size={15} /> Request consultation
                 </button>
-                <button
-                  onClick={() => { toast("Build a shareable summary in Consult.", "info"); setActiveTab("consult"); }}
-                  className="inline-flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl px-3 py-2.5 bg-white"
-                  style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
-                >
-                  <Icon name="description" size={15} /> Share Arbor summary
-                </button>
+                {!embedded && (
+                  <button
+                    onClick={() => { toast("Build a shareable summary in Consult.", "info"); setActiveTab("consult"); }}
+                    className="inline-flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl px-3 py-2.5 bg-white"
+                    style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
+                  >
+                    <Icon name="description" size={15} /> Share Arbor summary
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -246,11 +266,13 @@ export default function FindProfessional({ incomingNote, embedded }: FindProfess
                   <Icon name="mail" size={15} /> Send the intro email
                 </a>
               )}
-              <button onClick={() => { setConsultPro(null); setActiveTab("consult"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
-                <Icon name="description" size={15} /> Prepare a shareable summary
-              </button>
+              {!embedded && (
+                <button onClick={() => { setConsultPro(null); setActiveTab("consult"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
+                  <Icon name="description" size={15} /> Prepare a shareable summary
+                </button>
+              )}
               <button onClick={() => { setConsultPro(null); setActiveTab("appointments"); }} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-                Track it in Appointments
+                {t("elev.learnCare.track.open")}
               </button>
             </div>
           </div>

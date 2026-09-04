@@ -16,6 +16,15 @@ import { filterByAge, loadShowAllAges, saveShowAllAges, windowFromYears } from "
 import { agefilterText } from "../../lib/i18nElevation/agefilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
+// LC-04 — the Learn hub's "today's pick" is the REAL ranking, not file order.
+import { useDevScore } from "../../hooks/useDevScore";
+import { ageYearsFromProfile } from "../../lib/childAge";
+import { concernsForBehaviors } from "../../content/selectCards";
+import { recentBehaviorTypes } from "../../content/hardMomentSurface";
+import { readLearnFeedback } from "../../learn/learnFeedback";
+import { LEARN_CARDS } from "../../learn/learnCards";
+import type { LearnRankSignals } from "../../learn/learnLibrary";
+import { pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
 import type { DevelopmentMetricId } from "../../types";
 // AP-055: Scholar Hub weekly concept feed
 import ScholarHubCard from "./ScholarHubCard";
@@ -54,11 +63,13 @@ const loadReflection = (): Record<string, string> => {
  *  the parent's own competence (the calm, competent adult). Text-first, bilingual. */
 export default function Masterclasses() {
   const { t, aiLang } = useLanguage();
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile, setActiveTab, behaviorLogs, savedLearnIds, requestLearnRead } = useArbor();
   const he = aiLang === "he";
   const [openId, setOpenId] = useState<string | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [reflection, setReflection] = useState<Record<string, string>>({});
+  // LC-04: the same shared dev-score derivation the Learn Library ranks on.
+  const devScore = useDevScore();
 
   // W0.7 — default the catalog to the child's age band; "Show all ages"
   // (persisted per surface) keeps every course reachable (UC-1 rule).
@@ -123,10 +134,46 @@ export default function Masterclasses() {
   // W0.7: the ONE CTA points at the next unfinished course the parent can SEE
   // (the age-visible catalog), never at an age-hidden one.
   const nextCourse = catalog.find((m) => !done[m.id]);
+
+  // LC-04 — TODAY'S READ. The hub's ONE move used to be `catalog.find(!done)`:
+  // the first unfinished course in FILE ORDER, identical for every parent until
+  // they marked it done, and 10-13 minutes long against a three-minute job. The
+  // real, explainable ranking already existed one pill away in the Learn
+  // Library (age band, Development-Map focus domain, the concerns the parent
+  // actually logged, their own helpful/not-helpful pulse, saved topics). Same
+  // signals, same scorer — now mounted on the hub, with a per-day seed
+  // (childId + UTC day) so the pick is stable today and rotates tomorrow.
+  // FIREWALL: the signals are the parent's own inputs; no score about the child
+  // is read or shown, and the why-line claims only signals that contributed.
+  const learnSignals: LearnRankSignals = {
+    ageYears: ageYearsFromProfile(childProfile),
+    focusDomain: devScore.focusDomain,
+    recentConcerns: concernsForBehaviors(recentBehaviorTypes(behaviorLogs, new Date())),
+    helpfulness: readLearnFeedback(),
+    savedIds: savedLearnIds,
+  };
+  const todaysRead = todaysLearnPick(LEARN_CARDS, learnSignals, {
+    childId: childProfile.id,
+    dayKey: pickDayKey(new Date()),
+  });
+  const pickWhy = !todaysRead
+    ? ""
+    : todaysRead.fromSaved
+      ? t("elev.learnCare.pick.why.saved")
+      : todaysRead.fromConcerns
+        ? t("elev.learnCare.pick.why.logs")
+        : devScore.focusDomain
+          ? t("elev.learnCare.pick.why.focus", { name: childName })
+          : t("elev.learnCare.pick.why.age", { name: childName });
+
   const heroStats = [
     { value: total, label: t("elev.hero.academy.stat.courses") },
     { value: doneCount, label: t("elev.hero.academy.stat.completed") },
-    ...(nextCourse ? [{ value: nextCourse.durationMin, label: t("elev.hero.academy.stat.minNext") }] : []),
+    ...(todaysRead
+      ? [{ value: todaysRead.card.minutes, label: t("elev.learnCare.pick.stat.minutes") }]
+      : nextCourse
+        ? [{ value: nextCourse.durationMin, label: t("elev.hero.academy.stat.minNext") }]
+        : []),
   ];
 
   return (
@@ -142,7 +189,12 @@ export default function Masterclasses() {
           eyebrow={t("elev.hero.academy.eyebrow")}
           title={t("elev.hero.academy.title", { name: childName })}
           subtitle={t("elev.hero.academy.sub")}
-          cta={nextCourse ? {
+          cta={todaysRead ? {
+            label: t("elev.learnCare.pick.cta"),
+            onClick: () => requestLearnRead({ cardId: todaysRead.card.id, source: "learn-hub-todays-pick" }),
+            icon: <Icon name="menu_book" size={16} />,
+            testId: "academy-hero-cta",
+          } : nextCourse ? {
             label: t("elev.hero.academy.cta"),
             onClick: () => setOpenId(nextCourse.id),
             icon: <Icon name="school" size={16} />,
@@ -152,8 +204,26 @@ export default function Masterclasses() {
           testId="academy-hub-hero"
         />
         {/* Meta row — pulled up under the hero (hero carries its own mb-6). */}
-        <div className="-mt-3 mb-6 flex items-center px-1">
+        <div className="-mt-3 mb-6 flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
           <EvidenceChip />
+          {/* LC-04: the honest why-line for today's read — the same claim
+              discipline as the Learn Library rail (only signals that scored). */}
+          {todaysRead && (
+            <p
+              data-testid="academy-pick-why"
+              dir="auto"
+              className="text-[11.5px] font-semibold leading-relaxed"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              <span className="font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
+                {t("elev.learnCare.pick.eyebrow")}
+              </span>
+              {" · "}
+              {he ? todaysRead.card.title.he : todaysRead.card.title.en}
+              {" — "}
+              {pickWhy}
+            </p>
+          )}
         </div>
       </div>
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">

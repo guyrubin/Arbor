@@ -21,6 +21,10 @@
  */
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { isKidModeActive, setKidModeActive, writeKidModeState } from "../../lib/kidModeGate";
+// KID-12: the parent strip on EXIT. Mounted only while Kid Mode is open, so
+// the practice listeners live exactly as long as the child's session; the
+// component renders nothing and reads only (the no-write contract holds).
+import KidExitRecap from "./KidExitRecap";
 
 interface KidModeContextValue {
   isKidModeOpen: boolean;
@@ -59,6 +63,12 @@ export function KidModeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <KidModeContext.Provider value={{ isKidModeOpen, openKidMode, closeKidMode }}>
+      {/* KID-12 — the parent hands over the device and gets something back.
+          Unmounting on exit is the trigger: the recap diffs the practice
+          ledgers against the moment Kid Mode opened and raises ONE toast, in
+          the PARENT register, after the hold-exit gate has already closed the
+          child surface. */}
+      {isKidModeOpen && <KidExitRecap />}
       {children}
     </KidModeContext.Provider>
   );

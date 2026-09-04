@@ -162,3 +162,72 @@ export function serializeSchoolBrief(ex: SchoolBriefExport, labels: {
   block(labels.strategies, ex.suggestedTeacherStrategies);
   return lines.join("\n").trim() + "\n";
 }
+
+/* ── LC-11 — the teacher gets a document, not a Markdown file ────────────────
+ *
+ * The export used to be a `.md` blob download: a gan teacher cannot open one,
+ * and on a Capacitor WKWebView a blob `<a download>` is not reliable egress at
+ * all. The approved brief now renders through the SAME print shell the
+ * clinical reports use (`lib/reportExport.openPrintableReport`, which is
+ * native-aware). This function is the pure seam between the two, so the
+ * curated-fields ceiling is still provable by unit test at the print egress.
+ */
+
+/** Print-shell section shape — mirrors `ReportDoc.sections` in
+ *  `lib/reportExport` without importing it, so this module stays pure. */
+export interface SchoolBriefPrintSection {
+  heading: string;
+  body: string[];
+}
+
+/** Render the approved export as print-shell sections. Curated fields ONLY —
+ *  built from `SchoolBriefExport`, which `buildSchoolBriefExport` already
+ *  restricted to the allowlist and scanned. Empty fields emit no section. */
+export function schoolBriefToPrintSections(
+  ex: SchoolBriefExport,
+  labels: { overview: string; strengths: string; challenges: string; language: string; strategies: string }
+): SchoolBriefPrintSection[] {
+  const sections: SchoolBriefPrintSection[] = [];
+  if (ex.overview.trim()) sections.push({ heading: labels.overview, body: [ex.overview] });
+  const block = (heading: string, items: string[]) => {
+    const kept = items.filter((i) => i.trim().length > 0);
+    if (kept.length) sections.push({ heading, body: kept });
+  };
+  block(labels.strengths, ex.keyStrengths);
+  block(labels.challenges, ex.classroomChallenges);
+  block(labels.language, ex.languageSupportPlan);
+  block(labels.strategies, ex.suggestedTeacherStrategies);
+  return sections;
+}
+
+/* ── LC-11 — the escalation note the generator returns and nobody ever saw ───
+ *
+ * `/generate-handoff` is REQUIRED by its own response schema to return
+ * `crisisEscalationTrigger` (routes/api.ts, types.ts SchoolBrief). It is
+ * correctly kept OUT of the teacher's copy — it is not classroom content — but
+ * it was also never rendered anywhere, so the model's escalation note was
+ * silently dropped on the floor. It belongs to the PARENT.
+ *
+ * These two helpers keep that rule in one place: the note is shown to the
+ * parent when non-empty, and it can never enter an export payload.
+ */
+
+/** The parent-only escalation note, or null when the generator returned none. */
+export function parentEscalationNote(brief: Partial<SchoolBrief> | Record<string, unknown> | null): string | null {
+  if (!brief) return null;
+  const raw = (brief as Record<string, unknown>).crisisEscalationTrigger;
+  if (typeof raw !== "string") return null;
+  const text = raw.trim();
+  return text.length > 0 ? text : null;
+}
+
+/** Fail-closed assertion for any School Brief egress: the escalation note must
+ *  never appear in what leaves the app. Throws rather than shipping it. */
+export function assertEscalationNoteNotExported(exportText: string, note: string | null): void {
+  if (note && exportText.includes(note)) {
+    throw new ClinicalLanguageError(
+      "crisisEscalationTrigger",
+      "School Brief blocked: the parent-only escalation note must never appear in the teacher's copy."
+    );
+  }
+}
