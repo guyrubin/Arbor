@@ -4,3 +4,7 @@
 
 # Claude preview
 app/.claude/launch.json
+
+# Build logs (CI / Xcode output — never commit to the repo root)
+/*.log
+/*-log*.txt
