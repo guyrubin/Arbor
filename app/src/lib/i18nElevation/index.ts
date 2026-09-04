@@ -27,6 +27,7 @@ import * as carehonesty from "./careHonesty";
 import * as careprofile from "./careprofile";
 import * as celebrate from "./celebrate";
 import * as childsignals from "./childsignals";
+import * as closeloop from "./closeloop";
 import * as coachcontract from "./coachcontract";
 import * as continueModule from "./continue";
 import * as foundation from "./foundation";
@@ -64,6 +65,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   careprofile,
   celebrate,
   childsignals,
+  closeloop,
   coachcontract,
   continueModule,
   foundation,

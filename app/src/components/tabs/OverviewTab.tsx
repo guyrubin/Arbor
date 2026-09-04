@@ -10,6 +10,7 @@ import DailyPlayCard from "../overview/DailyPlayCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import TodayRecommendation from "../overview/TodayRecommendation";
 import TodayActionLoop from "../overview/TodayActionLoop";
+import CarryOverActionAsk from "../overview/CarryOverActionAsk";
 import HardMomentTodayOffer from "../overview/HardMomentTodayOffer";
 import ProgressNarrative from "../overview/ProgressNarrative";
 import QuickLogModal from "../overview/QuickLogModal";
@@ -421,9 +422,12 @@ export default function OverviewTab() {
       playLogs,
       milestones,
       conversations,
+      // TJB-05: the day's step is an EVENT since the last visit too — it used
+      // to write actionLoops and show up nowhere.
+      actions: actionLoop,
       includeNoticedRow: false,
     }),
-    [isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations]
+    [isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations, actionLoop]
   );
 
   // ── Rule A: resolve the ≤5-module budget from the REAL render conditions. ──
@@ -455,10 +459,11 @@ export default function OverviewTab() {
         playLogs,
         milestones,
         conversations,
+        actions: actionLoop,
         includeNoticedRow: true,
       })
       : sinceBase),
-    [foldNoticed, sinceBase, isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations]
+    [foldNoticed, sinceBase, isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations, actionLoop]
   );
 
   const onSinceRowTap = (row: SinceVisitRow) => {
@@ -470,7 +475,8 @@ export default function OverviewTab() {
       setActiveTab("coach");
       return;
     }
-    // moments / plays deep-link to the exact journal timeline signal.
+    // moments / plays / the day's step deep-link to the exact journal
+    // timeline signal (TJB-05 gives the step a real id to land on).
     requestJournalFocus(row.focusId);
     setActiveTab("journal");
   };
@@ -616,6 +622,13 @@ export default function OverviewTab() {
               onCapture={() => setQuickLogOpen(true)}
             />
           )}
+          {/* ENG-12: a step accepted yesterday and never reported on used to
+              vanish at midnight (activeTodayAction keys off today's date), so
+              the outcome was never asked again. This slim strip carries the
+              question forward under the day's anchor — never a second card and
+              never a second gradient CTA, so Rule A's one-primary rule holds.
+              It self-hides when there is nothing still open. */}
+          <CarryOverActionAsk />
           {/* N2-errfocus: a failed focus fetch used to degrade SILENTLY to the
               guaranteed-action fallback. The inline error renders ALONGSIDE the
               fallback (never instead of it — the anchor above always renders),
@@ -750,6 +763,10 @@ export default function OverviewTab() {
           noticedMilestones={checkedMilestones}
           momentsLastWeek={momentsLastWeek}
           actions={actionLoop}
+          // ENG-18: the cold-start countdown Today never showed. predictRhythm
+          // already runs here for the why-line; this passes its `daysNeeded`
+          // instead of leaving a new parent to guess when this starts working.
+          rhythmDaysNeeded={rhythm.daysNeeded}
           onOpenEvidence={(evidenceId) => {
             if (evidenceId) requestJournalFocus(evidenceId); setActiveTab("journal");
           }}

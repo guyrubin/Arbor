@@ -30,7 +30,14 @@ import type {
  * memory-approval logic.
  */
 export function useTimeline(): TimelineSignal[] {
-  const { behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs, childProfile } = useArbor();
+  const {
+    behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs,
+    // TJB-05: the `actionLoops` ledger — Today's accepted/completed step. It
+    // is already read once by ArborContext (sorted, capped at 100); this hook
+    // FOLDS that same list into the thread instead of opening a second read.
+    actionLoop,
+    childProfile,
+  } = useArbor();
   const childId = childProfile.id;
 
   // Child-activity ledgers — limits mirror practice/usePracticeData.ts so the
@@ -62,6 +69,7 @@ export function useTimeline(): TimelineSignal[] {
       memory: memoryReviewItems,
       conversations,
       play: playLogs,
+      actionOutcomes: actionLoop,
       practiceEvents: practiceEvents.items,
       speechAttempts: speechAttempts.items,
       mimicSessions: mimicSessions.items,
@@ -70,7 +78,7 @@ export function useTimeline(): TimelineSignal[] {
       heroRuns: heroRuns.items,
     }),
     [
-      behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs,
+      behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs, actionLoop,
       practiceEvents.items, speechAttempts.items, mimicSessions.items,
       adventureResults.items, missionRecords.items, heroRuns.items,
     ],

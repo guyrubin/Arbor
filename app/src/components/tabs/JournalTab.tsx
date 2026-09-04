@@ -20,6 +20,8 @@ import type { DevelopmentalDomainId } from "../../types";
 import { bandForAge, type PlayDomain } from "../../playbank/content";
 import { dailyPromptKeys } from "../../lib/promptBank";
 import { track } from "../../lib/analytics";
+import { setCaptureCue } from "../../lib/captureCue";
+import JournalEntrySheet from "../journal/JournalEntrySheet";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -97,6 +99,8 @@ const KIND_MS: Record<SignalKind, string> = {
   coach: "chat_bubble",
   play: "toys",
   practice: "rocket_launch",
+  // TJB-05 — Today's accepted/completed step, written back into the thread.
+  action: "task_alt",
 };
 
 function JournalRow({
@@ -109,6 +113,7 @@ function JournalRow({
   title,
   detail,
   focused = false,
+  onOpen,
 }: {
   signal: TimelineSignal;
   domain: DevelopmentalDomainId | null;
@@ -122,14 +127,24 @@ function JournalRow({
   /** TODAY-6: true while this row is the target of an evidence deep-link —
    *  a brief calm highlight so the parent lands on the cited entry. */
   focused?: boolean;
+  /** TJB-13: open this row's detail sheet. The row is the control. */
+  onOpen: () => void;
 }) {
   const tone: PastelKey = domain ? domainVisual(domain).tone : (signal.tone as PastelKey);
   const p = PASTEL[tone];
   const glyph = domain ? DOMAIN_MS[domain] : KIND_MS[signal.kind];
   return (
-    <article
+    /* TJB-13: the whole row is the affordance. It used to be an inert
+       <article>: the feed showed a title and a two-line clamp and there was no
+       way to read the rest, correct a typo, or even confirm what was saved —
+       captured moments were write-only. `button` (not a click handler on a
+       div) so keyboard and screen-reader users get the same door. */
+    <button
+      type="button"
       id={`journal-signal-${signal.id}`}
-      className="flex gap-3.5 border-b py-4 last:border-b-0 rounded-xl transition-colors"
+      onClick={onOpen}
+      aria-label={title}
+      className="flex w-full gap-3.5 border-b py-4 text-start last:border-b-0 rounded-xl transition-colors"
       style={{ borderColor: "var(--arbor-rule)", background: focused ? "var(--arbor-green-soft)" : undefined }}
     >
       {/* Colored icon tile — tone + glyph follow the entry's domain (kind fallback). */}
@@ -183,12 +198,19 @@ function JournalRow({
           style={{ borderColor: "var(--arbor-rule)" }}
         />
       )}
-    </article>
+      <Icon
+        name="chevron_right"
+        size={18}
+        aria-hidden
+        className="mt-1 flex-shrink-0 self-center rtl:-scale-x-100"
+        style={{ color: "var(--arbor-faint)" }}
+      />
+    </button>
   );
 }
 
 export default function JournalTab() {
-  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile } = useArbor();
+  const { setActiveTab, requestCapture, milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile, startEditLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   // elev.childsignals.* keys (practice-kind titles) resolve from the module
@@ -228,6 +250,11 @@ export default function JournalTab() {
    *  "Voice" and "Photo" promised a mode they never opened. `requestCapture`
    *  hands the mode to the capture surface, which acts on it and clears it. */
   const startCapture = (mode: CaptureMode) => {
+    // TJB-12: carry the tapped writing prompt onto the capture form. It rides
+    // its OWN channel, never the capture call — the sanctioned W1 rule is that
+    // the question is a visible cue and never draft content, so the mode
+    // handoff below stays mode-only.
+    setCaptureCue(activePromptKey);
     requestCapture(mode);
     setActiveTab("behaviors");
   };
@@ -258,6 +285,22 @@ export default function JournalTab() {
   const onPromptTap = (key: string) => {
     setActivePromptKey((cur) => (cur === key ? null : key));
     try { track("journal_prompt_tap", { band: bandForAge(childProfile.age) }); } catch { /* noop */ }
+  };
+
+  // TJB-13: the tapped row. Journal rows were inert — a saved moment could be
+  // seen (clamped to two lines) but never read in full or corrected. The sheet
+  // is READ + ROUTE: for the parent's own moments it hands off to the ONE
+  // existing editor (startEditLog + the Behaviors capture form), never a
+  // second copy of the log form.
+  const [openSignal, setOpenSignal] = useState<TimelineSignal | null>(null);
+  const openMomentLogId = (s: TimelineSignal | null): string | null =>
+    s && s.kind === "moment" && s.id.startsWith("moment-") ? s.id.slice("moment-".length) : null;
+  const editOpenSignal = () => {
+    const logId = openMomentLogId(openSignal);
+    if (!logId) return;
+    startEditLog(logId);
+    setOpenSignal(null);
+    setActiveTab("behaviors");
   };
 
   // Per-signal domain: milestones + play carry an explicit domain; moments
@@ -506,6 +549,7 @@ export default function JournalTab() {
                     title={signalTitle(s, tt)}
                     detail={signalDetail(s, tt)}
                     focused={s.id === focusId}
+                    onOpen={() => setOpenSignal(s)}
                   />
                 );
               })}
@@ -513,6 +557,28 @@ export default function JournalTab() {
           ))}
         </section>
       )}
+
+      {/* TJB-13 — the row's detail sheet. Rendered once for the whole feed;
+          `signal === null` keeps it closed. */}
+      <JournalEntrySheet
+        signal={openSignal}
+        domain={openSignal ? (domainOf.get(openSignal.id) ?? KIND_DOMAIN[openSignal.kind] ?? null) : null}
+        domainLabel={(() => {
+          const d = openSignal ? (domainOf.get(openSignal.id) ?? KIND_DOMAIN[openSignal.kind] ?? null) : null;
+          return d ? t(`journal.domain.${d}`) : "";
+        })()}
+        prov={openSignal ? SIGNAL_PROVENANCE[openSignal.kind] : "manual"}
+        provLabel={(() => {
+          if (!openSignal) return manualLabel;
+          const pv = SIGNAL_PROVENANCE[openSignal.kind];
+          return pv === "auto" ? autoLabel : pv === "child" ? childFirstName : manualLabel;
+        })()}
+        when={openSignal?.at ? new Date(openSignal.at).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) : ""}
+        title={openSignal ? signalTitle(openSignal, tt) : ""}
+        detail={openSignal ? signalDetail(openSignal, tt) : ""}
+        onClose={() => setOpenSignal(null)}
+        onEdit={openMomentLogId(openSignal) ? editOpenSignal : undefined}
+      />
     </motion.div>
   );
 }

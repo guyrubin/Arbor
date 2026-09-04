@@ -16,6 +16,13 @@
 export type SinceVisitRow =
   | { kind: "milestone"; at: number; title: string }
   | { kind: "noticed"; at: number }
+  /**
+   * TJB-05 — the day's step, as an EVENT. `done` distinguishes "you set a
+   * step" from "you said how it went"; `focusId` is the JOURNAL TIMELINE
+   * SIGNAL id buildTimeline assigns the same record (`action-<entry id>`), so
+   * the tap deep-links to the row the step wrote in the thread.
+   */
+  | { kind: "action"; at: number; done: boolean; focusId: string }
   | { kind: "moments"; at: number; count: number; focusId: string }
   | { kind: "plays"; at: number; count: number; focusId: string }
   | { kind: "conversations"; at: number; count: number };
@@ -56,6 +63,13 @@ export function buildSinceVisitRows(input: {
   playLogs: ReadonlyArray<{ id: string; timestamp: string }>;
   milestones: ReadonlyArray<{ title: string; checked: boolean; observationUpdatedAt?: string }>;
   conversations: ReadonlyArray<{ id: string; updatedAt: string }>;
+  /** TJB-05: the actionLoops ledger. Optional so existing callers compile. */
+  actions?: ReadonlyArray<{
+    id: string;
+    status: "accepted" | "completed";
+    acceptedAt: string;
+    outcomeAt?: string;
+  }>;
   /** Rule A fold: carry the ArborNoticed card as a strip row instead of a sibling card. */
   includeNoticedRow?: boolean;
   maxRows?: number;
@@ -92,6 +106,20 @@ export function buildSinceVisitRows(input: {
 
   const candidates: SinceVisitRow[] = [...crossings];
   if (input.includeNoticedRow) candidates.push({ kind: "noticed", at: Date.now() });
+
+  // TJB-05: the day's step, newest first. One row per action record — an
+  // accepted-then-completed step within one visit gap is ONE act with a
+  // later stamp, not two events, so the completion's timestamp wins.
+  const actionRows = (input.actions ?? [])
+    .map((a) => {
+      const done = a.status === "completed";
+      const at = parseMs(done ? (a.outcomeAt ?? a.acceptedAt) : a.acceptedAt);
+      return { kind: "action" as const, at, done, focusId: `action-${a.id}` };
+    })
+    .filter((r) => Number.isFinite(r.at) && r.at > sinceMs)
+    .sort((a, b) => b.at - a.at);
+  candidates.push(...actionRows);
+
   if (moments.length > 0) {
     const top = newest(moments)!;
     // The JOURNAL TIMELINE SIGNAL id prefix (`moment-`) — the same ids

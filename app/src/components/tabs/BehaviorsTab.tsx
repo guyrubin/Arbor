@@ -24,6 +24,8 @@ import { uploadChildPhoto } from "../../lib/storage";
 import { useAuth } from "../../context/AuthContext";
 import { weekStartKey, escapeHtml } from "../../lib/behaviorUtils";
 import { BehaviorContext, BehaviorLog } from "../../types";
+import { clearCaptureCue, useCaptureCue } from "../../lib/captureCue";
+import { patternEchoFor } from "../../lib/patternEcho";
 
 const CONTEXTS: BehaviorContext[] = ["Home", "School", "Transit", "Public"];
 const DAY = 86_400_000;
@@ -151,6 +153,20 @@ export default function BehaviorsTab() {
     tried: t("beh.capture.tried"),
     optional: t("beh.capture.optional"),
   };
+
+  // TJB-12: the writing prompt the parent tapped in the Journal before coming
+  // here. Display only — it is never merged into the draft (the answer belongs
+  // in the log, the question does not).
+  const captureCue = useCaptureCue();
+
+  // TJB-06: the behaviorType of the log just saved on this surface. It drives
+  // the pattern echo below; null until the parent actually saves something.
+  const [echoType, setEchoType] = useState<string | null>(null);
+  const [echoDismissed, setEchoDismissed] = useState(false);
+  const patternEcho = useMemo(
+    () => (echoDismissed ? null : patternEchoFor(behaviorLogs, echoType, new Date().toISOString().slice(0, 10))),
+    [behaviorLogs, echoType, echoDismissed],
+  );
 
   // Voice-to-log
   const [listening, setListening] = useState(false);
@@ -296,6 +312,13 @@ export default function BehaviorsTab() {
   // sentence-into-trigger behavior.
   const TYPED_EXTRACT_MIN_CHARS = 25;
   const extractFromTyped = async (text: string) => {
+    // TJB-09: the parent's own words land in a VISIBLE draft in this frame,
+    // before the model is asked anything. Until now Enter cleared the capture
+    // bar and showed nothing at all until the round-trip returned — on a slow
+    // network the sentence they just typed simply vanished. openFromBar is the
+    // existing prefill seam (no new capture path); the extraction below then
+    // enriches the same draft in place.
+    openFromBar(text);
     setParsing(true);
     setEscalationMarkdown(null);
     setCaptureSource("ai-draft");
@@ -307,16 +330,25 @@ export default function BehaviorsTab() {
       setReviewOpen(true);
     } catch (err) {
       if (err instanceof EscalationRequiredError) {
+        // FAIL-CLOSED, and TJB-09 must not weaken it: the optimistic draft
+        // above put the parent's sentence in the form, so an escalation has to
+        // ROLL IT BACK through the SHARED reset seam (the same one
+        // discardReview uses) — an escalated transcript may never survive in
+        // an ordinary editable draft. Post-condition is identical to the old
+        // code path: zero draft fields, and no toast.
+        cancelEditLog();
+        setCaptureOpen(false);
+        setDetailsOpen(false);
         const match =
           escalationCategories.find((c) => c.category === err.category) ??
           escalationCategories[0];
         setEscalationMarkdown(renderEscalationMarkdown({ category: match.category, label: match.label, resources: match.resources }));
       } else {
         // Only AFTER the escalation branch: extraction failure degrades to
-        // today's ungated behavior — the sentence lands in the trigger field.
+        // today's ungated behavior — the sentence is already in the trigger
+        // field from the optimistic draft, so nothing is lost or re-written.
         setNeedsReview(false);
         setCaptureSource("text");
-        openFromBar(text);
         toast(t("beh.toast.voiceFallback"), "info");
       }
     } finally {
@@ -485,8 +517,17 @@ export default function BehaviorsTab() {
       return;
     }
     const wasEditing = !!editingLogId;
+    // TJB-06: snapshot the type BEFORE handleAddLog resets the form, so the
+    // pattern echo below can speak about the log the parent just saved. An
+    // EDIT is not a new occurrence — it must never bump the count.
+    const savedType = wasEditing ? null : newLogType;
     handleAddLog(e);
     toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
+    setEchoDismissed(false);
+    setEchoType(savedType);
+    // TJB-12: the prompt has been answered — retire the cue so it never
+    // greets an unrelated capture later.
+    clearCaptureCue();
     setCaptureOpen(false);
     setDetailsOpen(false);
   };
@@ -511,9 +552,15 @@ export default function BehaviorsTab() {
       trigger: newLogTrigger,
       response: newLogResponse,
     });
+    const savedType = wasEditing ? null : newLogType;
     handleAddLog(e);
     toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
     if (!wasEditing) offerPostCaptureCoach(confirmedPrompt);
+    // TJB-06 / TJB-12 — same contract as submitLog: the echo speaks for a new
+    // log only, and the answered prompt cue retires.
+    setEchoDismissed(false);
+    setEchoType(savedType);
+    clearCaptureCue();
     setReviewOpen(false);
     setNeedsReview(false);
     setCaptureSource("text");
@@ -524,6 +571,7 @@ export default function BehaviorsTab() {
   // TODAY-3: discard — the draft never enters the child's record.
   const discardReview = () => {
     cancelEditLog(); // resetLogForm: clears trigger/response/notes/photo + edit state
+    clearCaptureCue(); // TJB-12: the draft is gone; the question goes with it.
     setReviewOpen(false);
     setNeedsReview(false);
     setCaptureSource("text");
@@ -600,6 +648,38 @@ export default function BehaviorsTab() {
 
       {/* Row 1 — QuickLog tiles (full width under the hero) */}
       <section className="min-w-0" aria-label={t("beh.captureTitle")}>
+        {/* TJB-12 — the writing prompt the parent tapped in the Journal before
+            arriving here. It used to die at the tab switch, leaving them in
+            front of an empty "What happened?" with the question gone. Display
+            ONLY: it is never merged into the draft (the sanctioned W1 rule —
+            the answer belongs in the log, the question does not). */}
+        {captureCue && (
+          <div
+            data-testid="capture-prompt-cue"
+            className="mb-3 flex items-start gap-2.5 rounded-[14px] px-4 py-3"
+            style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
+            dir="auto"
+            aria-live="polite"
+          >
+            <Icon name="lightbulb" size={18} fill={1} className="mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] opacity-80">
+                {t("elev.closeloop.cue.lead")}
+              </p>
+              <p className="mt-0.5 text-[14px] font-bold leading-snug" style={{ fontFamily: "var(--font-display)" }}>
+                {t(captureCue)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={clearCaptureCue}
+              aria-label={t("elev.closeloop.cue.clear")}
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-lg"
+            >
+              <Icon name="close" size={16} />
+            </button>
+          </div>
+        )}
         {/* QuickLog mode tiles — Voice / Photo / Text */}
         <div className="overflow-hidden rounded-[20px] bg-white" style={{ border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
           <input
@@ -632,6 +712,67 @@ export default function BehaviorsTab() {
             <button type="button" onClick={() => focusForm()} aria-label={captureCopy.open} className="ms-auto flex h-10 w-10 items-center justify-center rounded-full text-white transition active:scale-95" style={{ background: T.gradientCta }}><Icon name="arrow_forward" size={18} className="rtl:rotate-180" /></button>
           </div>
         </div>
+
+        {/* TJB-09 — the optimistic-draft receipt. The parent's own words are
+            already in the form below; this only says the rest is still coming,
+            so a slow round-trip reads as "working", never as "lost". */}
+        {parsing && (
+          <p
+            data-testid="capture-drafting"
+            role="status"
+            className="mt-2 flex items-center gap-1.5 px-1 text-[11.5px] font-semibold"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <Icon name="progress_activity" size={14} className="animate-spin" />
+            {t("elev.closeloop.drafting")}
+          </p>
+        )}
+
+        {/* TJB-06 — pattern echo. After a save, if the type the parent just
+            logged has recurred, say the COUNT once and offer the route the
+            surface contract already names (demotionTarget: plans). A count of
+            the parent's own notes — never a severity read, never a verdict. */}
+        {patternEcho && (
+          <div
+            data-testid="behaviors-pattern-echo"
+            className="mt-3 flex flex-col gap-3 rounded-[16px] p-4 sm:flex-row sm:items-center"
+            style={{ background: "var(--arbor-green-soft)" }}
+            role="status"
+          >
+            <Icon name="loop" size={19} className="flex-none" style={{ color: "var(--arbor-green-ink)" }} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13.5px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-green-ink)" }}>
+                {t("elev.closeloop.echo.title", {
+                  type: behaviorTypeLabel(patternEcho.type, t),
+                  n: patternEcho.count,
+                  days: patternEcho.windowDays,
+                })}
+              </p>
+              <p className="mt-1 text-[11.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                {t("elev.closeloop.echo.body")}
+              </p>
+            </div>
+            <div className="flex flex-none items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setEchoDismissed(true); setActiveTab("plans"); }}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-[12.5px] font-extrabold"
+                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}
+              >
+                {t("elev.closeloop.echo.cta")}
+                <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setEchoDismissed(true)}
+                className="min-h-11 px-2 text-[12px] font-bold"
+                style={{ color: "var(--arbor-muted)" }}
+              >
+                {t("elev.closeloop.echo.dismiss")}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* AI-CAP-1 — fail-closed voice-capture escalation surface. When the

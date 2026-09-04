@@ -130,6 +130,9 @@ describe("signal provenance", () => {
       memory: "auto",
       coach: "auto",
       practice: "child",
+      // TJB-05 — accepting the day's step and saying how it went are the
+      // PARENT's acts, even though Arbor offered the step.
+      action: "manual",
     });
     expect(isAutoSignal("moment")).toBe(false);
     expect(isAutoSignal("milestone")).toBe(false);

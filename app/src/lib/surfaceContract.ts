@@ -65,11 +65,14 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     job: "One thing to do now — and what changed since you left.",
     primaryMove: "do-today-action", moduleBudget: 5, demotionTarget: "disclosure",
     // Budget 5 = todayModules.ts TODAY_MODULE_BUDGET (Rule A, already law);
-    // demoted modules land in the collapsed "More" drawer. threadWrite: the
-    // plan wants an "action-outcome" source but NO such source exists in
-    // buildTimeline; the nearest is "play" (only when the offered action is a
-    // Daily Play pick) — "none" until a real source is added, honestly.
-    threadWrite: "none",
+    // demoted modules land in the collapsed "More" drawer.
+    // Wave L TJB-05: the "action-outcome" source the plan wanted NOW EXISTS —
+    // signalTimeline.ts ingests `actionOutcomes` (the actionLoops ledger) as
+    // kind "action", so accepting the day's step writes a real thread row and
+    // recording the outcome updates that same row. This declaration was
+    // "none" while nothing read the ledger; it is a SignalSource now because
+    // buildTimeline genuinely folds it, not because the plan says so.
+    threadWrite: "actionOutcomes",
   },
   {
     route: "day-windows", hub: "today", depth: 1,

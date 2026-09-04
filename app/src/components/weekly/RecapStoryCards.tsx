@@ -34,6 +34,7 @@ import ShareButton from "../ui/ShareButton";
 import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
 import { rcString } from "./recapStrings";
+import { resolveRecapMove } from "../../lib/recapMove";
 import type { WeeklyReport } from "../../hooks/useWeeklyRecap";
 import type { WeeklyDigest } from "../../lib/api";
 
@@ -230,25 +231,49 @@ export default function RecapStoryCards({
             <p className="mt-3 text-[15px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
               {card.text}
             </p>
+            {/* TJB-11: the card's action state is RESOLVED, never a
+                fall-through. The old shape rendered the CTA for `canAccept`,
+                a done-state for `accepted`, and NOTHING otherwise — so a
+                fallback week showed the week's only move with a blank space
+                where the button lives, unexplained. `note` is now a named
+                outcome: the suggestion stays readable and says why it is not
+                a button. TODAY-1 is untouched — only an AI digest gets
+                `accept`, so built-in copy still never reaches actionLoops. */}
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              {accepted ? (
-                <span className="inline-flex items-center gap-1.5 text-[13px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }} role="status">
-                  <Icon name="check_circle" size={16} /> {t("wk.todayStepSet")}
-                </span>
-              ) : canAccept ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    track("recap_try_accept", { week: report.id });
-                    onAccept();
-                  }}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-5 text-[13px] font-extrabold text-white transition active:scale-[0.98]"
-                  style={{ background: "var(--arbor-gradient-primary)" }}
-                >
-                  <Icon name="task_alt" size={16} /> {t("today.action.make")}
-                  <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
-                </button>
-              ) : null}
+              {(() => {
+                const move = resolveRecapMove({ text: card.text, canAccept, accepted });
+                if (move.kind === "accepted") return (
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }} role="status">
+                    <Icon name="check_circle" size={16} /> {t("wk.todayStepSet")}
+                  </span>
+                );
+                if (move.kind === "accept") return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      track("recap_try_accept", { week: report.id });
+                      onAccept();
+                    }}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-5 text-[13px] font-extrabold text-white transition active:scale-[0.98]"
+                    style={{ background: "var(--arbor-gradient-primary)" }}
+                  >
+                    <Icon name="task_alt" size={16} /> {t("today.action.make")}
+                    <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+                  </button>
+                );
+                if (move.kind === "note") return (
+                  <p
+                    data-testid="recap-move-note"
+                    className="basis-full text-[12px] leading-relaxed"
+                    style={{ color: "var(--arbor-muted)" }}
+                    role="note"
+                  >
+                    <Icon name="info" size={13} className="inline-block align-[-1px] me-1.5" style={{ color: "var(--arbor-green-ink)" }} />
+                    {t(move.noteKey)} {t(move.whyKey)}
+                  </p>
+                );
+                return null;
+              })()}
               {/* Parent-mediated share — the FINAL card only. */}
               <ShareButton
                 artifact="growth_card"

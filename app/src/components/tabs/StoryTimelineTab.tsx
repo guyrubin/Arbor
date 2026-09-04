@@ -27,6 +27,8 @@ const KIND_ICON: Record<SignalKind, string> = {
   coach: "chat_bubble",
   play: "eco",
   practice: "rocket_launch",
+  // TJB-05 — Today's accepted/completed step.
+  action: "task_alt",
 };
 
 /** JRNL-3: kind + filter labels resolve through i18n (timeline.* keys) at
@@ -40,6 +42,7 @@ const KIND_LABEL_KEY: Record<SignalKind, string> = {
   play: "timeline.kind.play",
   // Resolves via withChildSignals until childsignals registers in i18nElevation/index.ts.
   practice: "elev.childsignals.kind",
+  action: "elev.closeloop.thread.kind",
 };
 
 const FILTERS: { key: SignalKind | "all"; labelKey: string }[] = [
@@ -49,6 +52,7 @@ const FILTERS: { key: SignalKind | "all"; labelKey: string }[] = [
   { key: "plan", labelKey: "timeline.filter.plan" },
   { key: "play", labelKey: "timeline.filter.play" },
   { key: "practice", labelKey: "elev.childsignals.filter" },
+  { key: "action", labelKey: "elev.closeloop.thread.filter" },
   { key: "memory", labelKey: "timeline.filter.memory" },
   { key: "coach", labelKey: "timeline.filter.coach" },
 ];

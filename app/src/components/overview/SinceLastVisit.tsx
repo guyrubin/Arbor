@@ -50,6 +50,8 @@ import { collectMomentTimestamps, type SinceVisitRow } from "./sinceVisitEvents"
 const ROW_ICON: Record<SinceVisitRow["kind"], string> = {
   milestone: "workspace_premium",
   noticed: "visibility",
+  // TJB-05 — the day's step, set or reported on.
+  action: "task_alt",
   moments: "edit_note",
   plays: "sports_esports",
   conversations: "forum",
@@ -117,6 +119,11 @@ export default function SinceLastVisit({
         return sv("elev.sincevisit.row.milestone", { title: row.title });
       case "noticed":
         return sv("elev.sincevisit.row.noticed");
+      case "action":
+        // TJB-05: the act, stated plainly. Both variants are event language —
+        // no outcome word leaks onto the strip, so a "not today" step can
+        // never read as a coloured judgement on the child.
+        return t(row.done ? "elev.closeloop.since.outcome" : "elev.closeloop.since.accepted");
       case "moments":
         return row.count === 1 ? sv("elev.sincevisit.row.moment.one") : sv("elev.sincevisit.row.moment.many", { n: row.count });
       case "plays":

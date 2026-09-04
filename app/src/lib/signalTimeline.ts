@@ -1,3 +1,4 @@
+import { capacityMinutes, type ActionLoopEntry } from "../actionLoop/model";
 import type {
   ActionPlan,
   AdventureResult,
@@ -25,7 +26,14 @@ import { isolate } from "./i18n";
  * Soft-Daylight PASTEL keys in `ui/kit` without importing React.
  */
 
-export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach" | "play" | "practice";
+/**
+ * Wave L TJB-05 — "action" is Today's primary move written back into the
+ * thread. Until this kind existed, accepting or completing the day's step
+ * wrote `actionLoops` and nothing downstream read it: the one move Today
+ * exists to produce left no trace in the parent's own story, and
+ * surfaceContract declared the overview's threadWrite honestly as "none".
+ */
+export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach" | "play" | "practice" | "action";
 export type SignalTone = "mint" | "coral" | "lav" | "yellow" | "pink" | "sky";
 
 /**
@@ -67,6 +75,15 @@ export interface TimelineSignal {
   /** Which child-activity ledger a kind:"practice" signal came from. */
   practiceType?: ChildActivityType;
   /**
+   * TJB-05 (kind "action" only) — the step's lifecycle as the parent left it.
+   * "accepted" = made today's step and not yet reported on; the three outcome
+   * values are the parent's own read of the SUGGESTION they tried.
+   * FIREWALL: this describes the step, never the child — which is also why
+   * every action signal carries the SAME tone (see buildTimeline): colouring
+   * "helped" green and "not_today" coral would make the row a verdict strip.
+   */
+  actionStatus?: "accepted" | "helped" | "somewhat" | "not_today" | "done";
+  /**
    * Same-day same-type aggregation count (kind:"practice" only) — one warm
    * signal per day per activity type, never one row per raw event.
    * FIREWALL: a flat event count, never a rate or a period-vs-period delta.
@@ -94,6 +111,9 @@ export const SIGNAL_PROVENANCE: Record<SignalKind, SignalProvenance> = {
   memory: "auto",
   coach: "auto",
   practice: "child",
+  // TJB-05: Arbor OFFERED the step, but accepting it and saying how it went
+  // are both the parent's own acts — the badge must read "You".
+  action: "manual",
 };
 
 export const isAutoSignal = (kind: SignalKind): boolean => SIGNAL_PROVENANCE[kind] === "auto";
@@ -124,6 +144,11 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
       const type = s.practiceType ?? "practice";
       return t(`elev.childsignals.title.${type}.${n === 1 ? "one" : "many"}`, { count: n });
     }
+    case "action":
+      // TJB-05: the lifecycle is the TITLE ("You made this today's step" →
+      // "You tried today's step — it helped"); the step text itself is the
+      // detail line, so one row visibly evolves rather than two rows racing.
+      return t(`elev.closeloop.thread.title.${s.actionStatus ?? "accepted"}`);
   }
 };
 
@@ -135,6 +160,8 @@ export const signalDetail = (s: TimelineSignal, t: TranslateFn): string => {
       : "";
   }
   if (s.kind === "coach") return s.refTitle ?? "";
+  // TJB-05: the accepted step's own words — raw record content, never UI copy.
+  if (s.kind === "action") return s.refTitle ?? "";
   return s.detail || "";
 };
 
@@ -161,6 +188,10 @@ export const signalMeta = (s: TimelineSignal, t: TranslateFn): string | undefine
     case "practice":
       // The title already carries the count; no extra meta chip.
       return undefined;
+    case "action":
+      // The capacity the parent chose, in minutes — a plain duration fact
+      // (same key the moment rows use), never a score.
+      return s.durationMinutes ? t("timeline.meta.minutes", { n: s.durationMinutes }) : undefined;
   }
 };
 
@@ -171,6 +202,13 @@ export interface TimelineSources {
   memory?: MemoryReviewItem[];
   conversations?: { id: string; title: string; updatedAt: string }[];
   play?: PlayLog[];
+  /**
+   * TJB-05 — the `actionLoops` ledger: Today's accepted/completed step.
+   * This is the ingest source `surfaceContract`'s `overview` contract names
+   * as its `threadWrite`; without it the day's ONE primary move wrote a
+   * subcollection nobody read.
+   */
+  actionOutcomes?: ActionLoopEntry[];
   // Masterplan 1.4 — the six child-activity ledgers (all registered in
   // CHILD_SUBCOLLECTIONS; read directly via useChildCollection, no derived
   // sink). Folded as kind "practice", provenance "child".
@@ -200,6 +238,7 @@ const TIMELINE_SOURCE_ID_MAP: { [K in keyof Required<TimelineSources>]: true } =
   memory: true,
   conversations: true,
   play: true,
+  actionOutcomes: true,
   practiceEvents: true,
   speechAttempts: true,
   mimicSessions: true,
@@ -365,6 +404,28 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       tone: "mint",
       playDomain: p.domain,
       concernMatch: p.reason === "concern-match",
+    });
+  }
+
+  // TJB-05 — Today's step. ONE signal per accepted step, keyed by the entry
+  // id, so accepting writes the row and recording the outcome REPLACES that
+  // same row's title in the same frame (never a second racing row).
+  // `at` walks forward to the outcome moment so the updated row re-sorts to
+  // the top of the day it was closed out on.
+  for (const entry of sources.actionOutcomes || []) {
+    const status: TimelineSignal["actionStatus"] =
+      entry.status === "completed" ? (entry.outcome ?? "done") : "accepted";
+    signals.push({
+      id: `action-${entry.id}`,
+      kind: "action",
+      at: (entry.status === "completed" ? entry.outcomeAt : null) || entry.acceptedAt || null,
+      refTitle: entry.recommendation || undefined,
+      // FIREWALL: ONE tone for every lifecycle state. Tone-coding the outcome
+      // (green "helped" vs coral "not_today") would turn the parent's read of
+      // a suggestion into a coloured verdict sitting in the child's story.
+      tone: "sky",
+      actionStatus: status,
+      durationMinutes: capacityMinutes[entry.capacity] ?? undefined,
     });
   }
 

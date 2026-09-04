@@ -8,12 +8,32 @@ import type { ActionLoopEntry } from "../../actionLoop/model";
  *  that entry. Carries only id/timestamp/label — never a derived score. */
 type EvidenceItem = { id: string; timestamp: string; label: string };
 
+/**
+ * ENG-18 — the cold-start progress line ("3 more days and Arbor can read her
+ * rhythm"). `predictRhythm` already computes `daysNeeded`, and RhythmStrip
+ * already renders it — but RhythmStrip is not mounted on Today, so a parent in
+ * the first fortnight got no answer to "how long until this is worth it?".
+ *
+ * Pure + exported so the gating is unit-testable in the node harness (same
+ * pattern as RhythmStrip.shouldShowRememberRow). Returns the i18n key to
+ * render, or null when the line has nothing honest to say — a coverage number
+ * of zero is not a promise, and once the rhythm reads there is no countdown.
+ *
+ * FIREWALL: the line states what ARBOR needs, never anything about the child.
+ */
+export function coldStartLineKey(daysNeeded: number | undefined): string | null {
+  if (typeof daysNeeded !== "number" || !Number.isFinite(daysNeeded)) return null;
+  if (daysNeeded <= 0) return null;
+  return daysNeeded === 1 ? "elev.closeloop.coldstart.one" : "elev.closeloop.coldstart.many";
+}
+
 export default function ProgressNarrative({
   childName,
   behaviorLogs,
   playLogs,
   noticedMilestones,
   actions,
+  rhythmDaysNeeded,
   onOpenEvidence,
 }: {
   childName: string;
@@ -31,6 +51,10 @@ export default function ProgressNarrative({
    *  prior-window count is ever interpolated into rendered copy again. */
   momentsLastWeek?: number;
   actions: ActionLoopEntry[];
+  /** ENG-18: days of logging still needed before predictRhythm can read the
+   *  child's daily rhythm (`RhythmPrediction.daysNeeded`). Optional — omit it
+   *  and the cold-start line simply does not render. */
+  rhythmDaysNeeded?: number;
   /** Open the journal: with a signal id → deep-link to that exact entry;
    *  without → the whole journal feed. The id is the only payload (firewall:
    *  evidence deep-links carry no derived scores). */
@@ -79,6 +103,7 @@ export default function ProgressNarrative({
     parentOnly: t("today.narrative.parentOnly"),
   };
   const hasEvidence = evidence.length > 0 || noticedMilestones > 0;
+  const coldStartKey = coldStartLineKey(rhythmDaysNeeded);
 
   return (
     <section className="rounded-[20px] p-5 sm:p-6" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }} aria-labelledby="progress-narrative-title">
@@ -114,6 +139,19 @@ export default function ProgressNarrative({
         </div>
         <NarrativeCell icon="arrow_forward" title={copy.next} body={copy.nextBody} />
       </div>
+      {/* ENG-18 cold-start: what Arbor still needs before it can read the
+          daily rhythm. A quiet footer LINE (Rule A: never a sixth module),
+          and it disappears the moment the rhythm reads. */}
+      {coldStartKey && (
+        <p
+          data-testid="today-coldstart-line"
+          className="mt-4 border-t pt-3 text-[11.5px] leading-relaxed"
+          style={{ borderColor: "var(--arbor-rule)", color: "var(--arbor-muted)" }}
+        >
+          <Icon name="hourglass_top" size={13} className="inline-block align-[-1px] me-1.5" style={{ color: "var(--arbor-clay)" }} />
+          {t(coldStartKey, { n: rhythmDaysNeeded ?? 0, name: childName })}
+        </p>
+      )}
     </section>
   );
 }

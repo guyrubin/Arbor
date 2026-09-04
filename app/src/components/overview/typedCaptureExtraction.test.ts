@@ -49,26 +49,48 @@ describe("AI-CAP-3 — BehaviorsTab typed capture goes through the extraction se
     expect(extract).toMatch(/api\.extractLog\(\{ message: text, childProfile, language: getAiLanguage\(\) \}\)/);
   });
 
-  it("FAIL-CLOSED: the typed 409 branch renders the escalation surface and writes ZERO draft fields", () => {
+  it("FAIL-CLOSED: the typed 409 branch renders the escalation surface and leaves ZERO draft fields", () => {
     const branch = /if \(err instanceof EscalationRequiredError\) \{([\s\S]*?)\} else \{/.exec(extract)?.[1] ?? "";
     expect(branch).toBeTruthy();
+    // Nothing in this branch may WRITE a draft field…
     expect(branch).not.toMatch(/setNewLog/);
+    expect(branch).not.toMatch(/applyExtractedDraft/);
     expect(branch).not.toMatch(/toast\(/);
     expect(branch).toMatch(/setEscalationMarkdown\(renderEscalationMarkdown\(/);
-    // and the sentence-into-trigger degrade is the ELSE of the escalation
-    // check — a 409 can never fall through into the draft.
-    const escalationIdx = extract.indexOf("err instanceof EscalationRequiredError");
-    const fallbackIdx = extract.indexOf("openFromBar(text)");
-    expect(escalationIdx).toBeGreaterThan(-1);
-    expect(fallbackIdx).toBeGreaterThan(-1);
-    expect(escalationIdx).toBeLessThan(fallbackIdx);
+    // …and TJB-09 (optimistic draft) makes the ROLLBACK part of this contract:
+    // the parent's sentence is now prefilled BEFORE the call, so a 409 must
+    // clear it through the shared reset seam (the one discardReview uses)
+    // rather than leaving an escalated transcript editable in the form.
+    expect(branch).toMatch(/cancelEditLog\(\)/);
+    expect(branch).toMatch(/setCaptureOpen\(false\)/);
+  });
+
+  it("TJB-09: the typed sentence is in a VISIBLE draft BEFORE the model is called", () => {
+    const prefillIdx = extract.indexOf("openFromBar(text)");
+    const callIdx = extract.indexOf("api.extractLog(");
+    expect(prefillIdx).toBeGreaterThan(-1);
+    expect(callIdx).toBeGreaterThan(-1);
+    // NEGATIVE CONTROL for this assertion: in the shipped pre-change shape the
+    // ONLY openFromBar(text) sat inside the catch — i.e. AFTER the call — so
+    // this ordering check fails on it. Reconstruct that shape and prove it.
+    const shipped = `const extractFromTyped = async (text) => {
+      setParsing(true);
+      try { const d = await api.extractLog({ message: text }); }
+      catch (err) { openFromBar(text); }
+    };`;
+    expect(shipped.indexOf("openFromBar(text)")).toBeGreaterThan(shipped.indexOf("api.extractLog("));
+    expect(prefillIdx).toBeLessThan(callIdx);
+    // …and it is not awaited, so nothing blocks on the round-trip.
+    expect(extract).not.toMatch(/await\s+openFromBar/);
   });
 
   it("extraction failure (non-escalation) degrades to today's ungated behavior", () => {
     const elseBranch = /\} else \{([\s\S]*?)\}\s*\n\s*\} finally/.exec(extract)?.[1] ?? "";
     expect(elseBranch).toMatch(/setNeedsReview\(false\)/);
     expect(elseBranch).toMatch(/setCaptureSource\(\s*["']text["']\s*\)/);
-    expect(elseBranch).toMatch(/openFromBar\(text\)/);
+    // The sentence is ALREADY in the trigger field from the optimistic
+    // prefill, so this branch must not re-write (and re-scroll) it.
+    expect(elseBranch).not.toMatch(/openFromBar/);
   });
 
   it("the capture bar's Enter routes long input to extraction, short input to today's openFromBar", () => {
