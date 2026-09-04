@@ -16,6 +16,7 @@ import { api } from "../../lib/api";
 import { birthDateFromAgeMonths } from "../../lib/childAge";
 import { promiseText } from "../../lib/i18nElevation/promise";
 import { track } from "../../lib/analytics";
+import { trackOnboardingCompleted } from "../../lib/kpiEvents";
 import AvatarCreator from "../profile/AvatarCreator";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -897,6 +898,10 @@ export default function OnboardingFlow() {
       // overlay) to fire exactly once when Shell mounts. Submit is inherently
       // the real path — the demo replay's exit CTA falls through to this same
       // real completion, so no replay guard belongs here.
+      // ENG-22: setup had `wow_onboarding_*` but no completion event for the
+      // real flow, so the install → activated funnel had no middle. Counts and
+      // a boolean only — never the name, the age, or the domain labels.
+      trackOnboardingCompleted({ domainCount: selectedDomains.length, hasAvatar: !!avatarResult });
       markWowPending();
 
       // Seed the coach if domains were picked.

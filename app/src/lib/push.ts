@@ -11,6 +11,8 @@
  * never in the main bundle for users who don't enable push.
  */
 
+import { trackPushPrompted, trackPushOutcome } from "./kpiEvents";
+
 export const pushCapable = (): boolean =>
   Boolean(import.meta.env.VITE_FIREBASE_VAPID_KEY);
 
@@ -21,8 +23,15 @@ export async function registerPush(
   if (!vapidKey) return "no-vapid";
   if (!("Notification" in window) || !("serviceWorker" in navigator)) return "unavailable";
 
+  // ENG-22: prompted is the DENOMINATOR of opt-in rate — without it a low
+  // grant count is indistinguishable from a prompt nobody ever reached.
+  trackPushPrompted();
   const permission = await Notification.requestPermission();
-  if (permission !== "granted") return "denied";
+  if (permission !== "granted") {
+    trackPushOutcome(false);
+    return "denied";
+  }
+  trackPushOutcome(true);
 
   try {
     const { getMessaging, getToken } = await import("firebase/messaging");

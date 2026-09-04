@@ -3,6 +3,9 @@ import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { useLanguage } from "../../context/LanguageContext";
 import { PASTEL, Chip, domainVisual, type PastelKey } from "../ui/kit";
+import { ShareButton } from "../ui/ShareButton";
+import { useArbor } from "../../context/ArborContext";
+import type { ShareCardOpts } from "../../lib/shareCard";
 import type { TimelineSignal, SignalProvenance } from "../../lib/signalTimeline";
 import type { DevelopmentalDomainId } from "../../types";
 
@@ -49,6 +52,8 @@ export default function JournalEntrySheet({
   onEdit?: () => void;
 }) {
   const { t } = useLanguage();
+  const { childProfile } = useArbor();
+  const childName = (childProfile?.name || "").split(" ")[0];
   const tone: PastelKey = signal
     ? (domain ? domainVisual(domain).tone : (signal.tone as PastelKey))
     : "lav";
@@ -114,6 +119,24 @@ export default function JournalEntrySheet({
 
           {domain && (
             <Chip tone={tone}>{domainLabel}</Chip>
+          )}
+
+          {/* ENG-16: a journal moment had no keepsake at all. Offered only on
+              the parent's OWN moment, and the card carries the parent's words
+              and nothing else — no domain label, no provenance, no time, no
+              photo, nothing Arbor derived. The caption is explicit
+              (elev.share.caption.journal) so the answer_card fallback, which
+              reads "What Arbor told me about {name}", can never claim these
+              words came from Arbor. */}
+          {prov === "manual" && (
+            <ShareButton
+              artifact="answer_card"
+              surface="journal_moment"
+              childName={childName}
+              captionKey="elev.share.caption.journal"
+              label={t("elev.keepsake.journal.share")}
+              getCardOpts={(): ShareCardOpts => ({ name: childName, question: title, takeaway: detail })}
+            />
           )}
 
           {/* The ONE edit route — the existing Behaviors form. Offered only for

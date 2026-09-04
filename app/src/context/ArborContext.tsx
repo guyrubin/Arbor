@@ -34,6 +34,7 @@ import { track } from "../lib/analytics";
 import { isKidModeActive } from "../lib/kidModeGate";
 import { runInstrumented } from "../hooks/useAsyncAction";
 import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
+import { trackCaptureStarted, trackCaptureSaved } from "../lib/kpiEvents";
 import { consumeReferralCode } from "../lib/attribution";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
@@ -183,7 +184,13 @@ function useArborState() {
    * decoys — a bare setActiveTab("behaviors") that ignored the chosen mode.
    */
   const [pendingCaptureMode, setPendingCaptureMode] = useState<CaptureMode | null>(null);
-  const requestCapture = (mode: CaptureMode) => setPendingCaptureMode(mode);
+  // ENG-22: the ONE seam every capture entry goes through (bar, bell nudge,
+  // deep link) — so `capture_started` is emitted once, here, and a new entry
+  // point is instrumented the day it is written. Mode id only, never content.
+  const requestCapture = (mode: CaptureMode) => {
+    trackCaptureStarted(mode);
+    setPendingCaptureMode(mode);
+  };
   const consumeCaptureRequest = () => setPendingCaptureMode(null);
 
   /**
@@ -1042,7 +1049,12 @@ function useArborState() {
     };
 
     void logsCol.upsert(logItem);
-    if (!existing) track("log_created", { type: newLogType, intensity: newLogIntensity, context: newLogContext });
+    if (!existing) {
+      track("log_created", { type: newLogType, intensity: newLogIntensity, context: newLogContext });
+      // ENG-22: closes started → saved. An edit is not a capture, so only a
+      // genuinely new row counts.
+      trackCaptureSaved("log");
+    }
     resetLogForm();
   };
 
@@ -1067,6 +1079,7 @@ function useArborState() {
     };
     void logsCol.upsert(logItem);
     track("log_created", { type: logItem.behaviorType, intensity: logItem.intensity, context: logItem.context });
+    trackCaptureSaved("moment");
     return logItem;
   };
 

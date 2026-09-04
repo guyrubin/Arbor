@@ -10,6 +10,9 @@ import { learnCardById } from "../../learn/learnCards";
 import { learnCategoryById, type LearnCard } from "../../learn/learnLibrary";
 import { fmtDay } from "../../lib/formatDate";
 import { PASTEL } from "../../lib/tokens";
+import ArborKnowsTile from "./ArborKnowsTile";
+import FirstsMoment from "./FirstsMoment";
+import MonthKeepsake from "../weekly/MonthKeepsake";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
@@ -36,6 +39,19 @@ export default function ChildMemory() {
           Hebrew-reading parent was asked to make a privacy decision in a
           language the app had promised not to use on them. */}
       <TrustSafetyBar note={t("elev.childmem.trustNote")} />
+
+      {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
+          once ever per kind and returns null the rest of the time. */}
+      <FirstsMoment />
+
+      {/* ENG-14(a) · what Arbor knows, as a COUNT — answerable on day 0 from
+          the profile alone, which is exactly what nothing else in the app
+          could do. Never a completeness score: see lib/keepsakeCounts. */}
+      <ArborKnowsTile />
+
+      {/* ENG-14(b) · the month keepsake, offered once on the first open of a
+          new month and never for a month the family is still living in. */}
+      <MonthKeepsake />
 
       {/* OWN-1: a failed ledger read renders an honest error + retry card (the
           TrustedSharing twin) INSTEAD of the pending/approved lists — an

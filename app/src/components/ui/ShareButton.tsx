@@ -14,6 +14,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Share2, RefreshCw } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { shareCard } from "../../lib/share";
+import { resolveCaptionKey } from "../../lib/shareCaption";
 import { api } from "../../lib/api";
 import { loadAttribution } from "../../lib/attribution";
 import type { LoopArtifact } from "../../lib/loopEvents";
@@ -63,7 +64,11 @@ export function ShareButton({
   useEffect(() => () => { mounted.current = false; if (spinTimer.current) clearTimeout(spinTimer.current); }, []);
 
   const defaultLabel = label ?? t(`share.cta.${ctaKey(artifact)}`);
-  const caption = captionKey ?? `share.caption.${captionFor(artifact)}`;
+  // ENG-16: the caption is resolved from (artifact, surface), not the artifact
+  // alone. A growth_card shared off a single completed activity used to fall
+  // back to "{name}'s progress this month" — a month-of-progress CLAIM on one
+  // ten-minute play. lib/shareCaption owns the rule and is tested there.
+  const caption = resolveCaptionKey({ artifact, surface, captionKey });
 
   const onShare = async () => {
     if (busy) return;
@@ -131,11 +136,6 @@ export function ShareButton({
 
 /** share.cta.<key> — map the artifact union to the copy keys in i18n. */
 function ctaKey(a: LoopArtifact): string {
-  return a === "answer_card" ? "answer" : a === "growth_card" ? "growth" : a; // avatar | story
-}
-
-/** share.caption.<key> — map the artifact union to the caption keys. */
-function captionFor(a: LoopArtifact): string {
   return a === "answer_card" ? "answer" : a === "growth_card" ? "growth" : a; // avatar | story
 }
 

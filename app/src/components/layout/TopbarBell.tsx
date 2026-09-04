@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useNotifications, writeReadSet } from "../../hooks/useNotifications";
+import { trackBellOpen, trackBellItemTap } from "../../lib/kpiEvents";
 import { Icon } from "../ui/Icon";
 import type { AppNotification } from "../../hooks/useNotifications";
 
@@ -180,6 +181,10 @@ export default function TopbarBell() {
 
   // On open: load read set and mark all currently-visible items as read.
   const openPanel = useCallback(() => {
+    // ENG-22: the bell had no telemetry at all, so its reach was unknown and
+    // the retention rollup could not see it. A COUNT of visible rows only — a
+    // monitoring row carries a verbatim note and never leaves this component.
+    trackBellOpen(items.length);
     const ids = items.map((n) => n.id);
     setReadIds(new Set(ids));
     writeReadSet(ids);
@@ -223,6 +228,7 @@ export default function TopbarBell() {
     (item: AppNotification) => {
       // Lane T: the LOG nudge carries `capture: "text"` — open the composer
       // on arrival (pinned in chromeLayout.test.ts).
+      trackBellItemTap(item.kind, item.action);
       if (item.capture) requestCapture(item.capture);
       setActiveTab(item.action);
       closePanel();
