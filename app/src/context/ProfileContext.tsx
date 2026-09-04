@@ -5,6 +5,7 @@ import { useAuth } from "./AuthContext";
 import { ChildProfile, DeletionReceipt } from "../types";
 import { defaultChildProfile } from "../initialData";
 import { eraseEverything } from "../lib/childData";
+import { clearChildLocalState } from "../lib/childLocalState";
 import { authHeaders } from "../lib/api";
 import { trackProfileCreated } from "../lib/loopEvents";
 import { bandForAge } from "../lib/screening";
@@ -222,6 +223,11 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     async (id: string): Promise<DeletionReceipt | null> => {
       // M9: provable erasure — server wipe (memory + shares + consent) + client wipe.
       const receipt = await eraseEverything(user?.uid, id);
+      // eraseEverything knows only about the server. Device-local per-child
+      // rows (screening draft, watch focus, and any future arbor.<ns>.<childId>
+      // store) live in the browser and used to survive the deletion the parent
+      // asked for — on the very device they can see. Best-effort, never blocks.
+      clearChildLocalState(id);
       setProfiles((prev) => {
         const next = prev.filter((p) => p.id !== id);
         if (id === activeChildId) setActiveChildId(next[0]?.id ?? null);
