@@ -48,7 +48,9 @@ export function HardMomentGuideContent({ card, context, childName, t }: {
           {key === "hm.section.sayThis" && <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{copy.sayThisNote}</p>}
         </div>
       ))}
-      <div className="min-w-0 rounded-xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule-strong)" }} role="note" data-testid="hard-moment-escalation">
+      <div className="min-w-0 rounded-xl p-4" role="note" data-testid="hard-moment-escalation"
+        style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule-strong)",
+          borderInlineStart: "3px solid var(--arbor-green-ink)" }}>
         <h4 className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("hm.section.escalation")}</h4>
         <p className="mt-1 break-words text-base leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{escalationText(card, locale)}</p>
       </div>
@@ -94,13 +96,19 @@ export default function HardMomentsSection() {
         <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{t("hm.sub")}</p>
         {hasPilot && <p className="mt-2 text-xs font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{copy.status}</p>}
       </div>
-      {selectedId && !openCard && <p role="status" className="text-sm" style={{ color: "var(--arbor-ink)" }}>{copy.unavailable}</p>}
+      {/* Persistent live region: mounting a role="status" together with its
+          text is routinely dropped by NVDA/JAWS/VoiceOver. Only the text swaps. */}
+      <p role="status" aria-live="polite" className="text-sm" style={{ color: "var(--arbor-ink)" }}>
+        {selectedId && !openCard ? copy.unavailable : ""}
+      </p>
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("hm.categoriesAria")}>
         {(["all", ...categories] as (HardMomentCategory | "all")[]).map((value) => (
           <button key={value} type="button" onClick={() => setCategory(value)} aria-pressed={value === activeCategory}
             className="min-h-11 min-w-11 rounded-full px-3.5 text-sm font-semibold transition"
             style={value === activeCategory
-              ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)" }
+              // Selected state must not rest on hue alone (1.4.1) or on a
+              // 1.01:1 border (1.4.11): green-ink reads 7.19:1 on both fills.
+              ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", fontWeight: 700 }
               : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}>
             {value === "all" ? t("hm.cat.all") : t(`hm.cat.${value}`)}
           </button>
@@ -132,7 +140,9 @@ export default function HardMomentsSection() {
               setSelectedId(null);
             }}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
-              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}>
+              // rule-strong is a divider token (1.17:1 on white) and cannot
+              // carry a control boundary; green-ink is 7.19:1.
+              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
               <Icon name="forum" size={16} /> {t("hm.talkThrough")}
             </button>
             {(() => {
@@ -144,7 +154,7 @@ export default function HardMomentsSection() {
                 setSelectedId(null);
               }}
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
-                style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)", background: "var(--arbor-lav-soft)" }}>
+                style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}>
                 <Icon name="local_library" size={16} /> {t("learn.understandWhy")}
               </button>;
             })()}

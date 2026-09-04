@@ -144,11 +144,11 @@ export const isLearnPilotCard = (id: string): boolean => Object.hasOwn(LEARN_PIL
 const pilotText = {
   en: {
     status: "Pilot read",
-    note: "This is a pilot read. It has not had individual clinical review. It is general parenting information, not advice about your child.",
+    note: "This read has not had individual clinical review. It is general parenting information, not advice about your child.",
   },
   he: {
     status: "קריאה בפיילוט",
-    note: "זוהי קריאה בפיילוט. היא לא עברה בדיקה קלינית פרטנית. זהו מידע הורי כללי, לא ייעוץ על הילד או הילדה שלכם.",
+    note: "הקריאה הזו לא עברה בדיקה קלינית פרטנית. זהו מידע הורי כללי, לא ייעוץ על הילד או הילדה שלכם.",
   },
 } as const;
 

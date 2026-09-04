@@ -22,7 +22,10 @@ const STYLES: Record<ToastType, { border: string; icon: React.ReactNode }> = {
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  // The layer is pinned with the logical `end-4`, so in Hebrew it sits top-LEFT.
+  // A hardcoded +40 would slide it in from the right, across itself.
+  const enterX = uiLang === "he" ? -40 : 40;
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // KID-LOCK (W0.9, LEAK 4): ToastProvider renders OUTSIDE Shell (App.tsx), so
@@ -69,14 +72,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {!kidLocked && (
       typeof document === "undefined" ? null : createPortal(
       <div role="status" aria-live="polite" data-dialog-shield-exempt
-        className="fixed top-4 end-4 z-[80] flex flex-col gap-2 w-[min(92vw,340px)]">
+        className="fixed top-4 end-4 z-[80] arbor-app flex flex-col gap-2 w-[min(92vw,340px)]">
         <AnimatePresence>
           {toasts.map((tc) => (
             <motion.div
               key={tc.id}
-              initial={{ opacity: 0, x: 40 }}
+              initial={{ opacity: 0, x: enterX }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 40 }}
+              exit={{ opacity: 0, x: enterX }}
               className="border rounded-2xl px-4 py-3 shadow-2xl flex items-start gap-3 text-sm"
               style={{
                 background: "var(--arbor-paper-elevated)",
@@ -86,7 +89,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             >
               {STYLES[tc.type].icon}
               <span className="flex-1 leading-snug" style={{ color: "var(--arbor-ink)" }}>{tc.message}</span>
-              <button onClick={() => remove(tc.id)} className="arbor-toast-dismiss" aria-label={t("aria.dismiss")}>
+              {/* touch-target gives the real 44px box: the icon alone is 14px.
+                  The `arbor-app` class on the layer above scopes this button's
+                  dismiss colour and focus ring, which never matched before
+                  because the toast layer has always sat above Shell. */}
+              <button onClick={() => remove(tc.id)} className="touch-target arbor-toast-dismiss -me-1.5" aria-label={t("aria.dismiss")}>
                 <X className="w-3.5 h-3.5" />
               </button>
             </motion.div>

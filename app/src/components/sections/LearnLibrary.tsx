@@ -572,7 +572,7 @@ function LearnReader({
         </p>
         {isLearnPilotCard(card.id) && (
           <p
-            className="mt-3 rounded-xl px-3 py-2 text-[12.5px] leading-relaxed"
+            className="mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed"
             dir="auto"
             data-testid="learn-pilot-note"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink-soft)" }}

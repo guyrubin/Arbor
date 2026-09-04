@@ -47,8 +47,9 @@ export default function HardMomentTodayOffer() {
             <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{copy.explanation}</p>
           )}
           <div className="mt-2 min-w-0 rounded-xl p-3" role="note" data-testid="hard-moment-today-escalation"
-            style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule-strong)" }}>
-            <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("hm.section.escalation")}</p>
+            style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule-strong)",
+              borderInlineStart: "3px solid var(--arbor-green-ink)" }}>
+            <h3 className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("hm.section.escalation")}</h3>
             <p className="mt-1 break-words text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{escalationText(offer.card, locale)}</p>
           </div>
           <button type="button" onClick={() => {
@@ -57,7 +58,9 @@ export default function HardMomentTodayOffer() {
             acceptTodayAction(locText(current.doNow, locale), "standard");
           }}
             className="mt-3 inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-bold transition"
-            style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)", background: "transparent" }}>
+            // Transparent on a white card, so this border is the ONLY thing
+            // separating the control from body copy: it has to clear 3:1.
+            style={{ border: "1px solid var(--arbor-green-ink)", color: "var(--arbor-green-ink)", background: "transparent" }}>
             {t("today.action.make")} <Icon name="arrow_forward" size={16} className="flex-shrink-0 rtl:-scale-x-100" />
           </button>
         </div>
