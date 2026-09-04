@@ -23,6 +23,7 @@ import * as actionbar from "./actionbar";
 import * as agefilter from "./agefilter";
 import * as aierrors from "./aierrors";
 import * as aiHonesty from "./aiHonesty";
+import * as arborTree from "./arborTree";
 import * as auth from "./auth";
 import * as carehonesty from "./careHonesty";
 import * as careNetwork from "./careNetwork";
@@ -74,6 +75,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   agefilter,
   aierrors,
   aiHonesty,
+  arborTree,
   auth,
   carehonesty,
   careNetwork,

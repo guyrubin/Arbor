@@ -22,6 +22,11 @@ import { coachContractText } from "../../lib/i18nElevation/coachcontract";
 import { buildVoiceContext, readWeeklyContextConsent, writeWeeklyContextConsent } from "../../ai/chatContext";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
+// ENG-21: the in-context value preview — the quiet, dismissible free-vs-Plus
+// card shown BEFORE the coach meter's 402, never after it. Placement, timing
+// and frequency are owned entirely by components/billing/valuePreviewModel.ts; this
+// surface only reports whether it is calm enough to host it.
+import ValuePreview from "../billing/ValuePreview";
 import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
@@ -1026,6 +1031,21 @@ export default function CoachTab() {
           );
         })()}
       </div>
+
+      {/* ENG-21 — the value preview. Mounted LAST on the fresh-thread stack:
+          below the composer, the fast-start scenarios, the hard-moment door and
+          the lens row, so it can never sit above something a parent came here
+          to use. It renders only on an EMPTY conversation (no turn at all, so
+          this can never be a hard-moment or escalation thread), only while this
+          surface is idle, and only for a server-VERIFIED free parent whose day's
+          coach allowance is nearly spent — never at zero, where the paywall
+          already owns the moment. Every other case returns null: see
+          decideValuePreview's named reasons. */}
+      <ValuePreview
+        threadEmpty={chatMessages.length === 0}
+        surfaceIdle={!isChatLoading && !failureCopy && voicePhase === "off" && !visionMode}
+        online={online}
+      />
 
       {/* Conversation threads */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">

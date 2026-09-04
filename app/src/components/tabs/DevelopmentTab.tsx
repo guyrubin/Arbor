@@ -39,6 +39,9 @@ import { ContentWhyLine } from "../ui/ContentActionBar";
 // GP-32 / GP-33 — the month the parent just lived, and the words ledger.
 import MonthInReview from "../growth/MonthInReview";
 import FirstWordsLedger from "../growth/FirstWordsLedger";
+// GP-30 — one leaf per milestone the parent noticed; counts only, never a
+// picture of the child (the rule lives in lib/arborTree.ts).
+import ArborTreeCard from "../growth/ArborTreeCard";
 
 /** Masterplan 1.7 — module-local string resolution for the Full Picture entry
  *  card (same recipe as Screening.tsx × screeningcalm: i18nElevation/index.ts
@@ -463,6 +466,13 @@ export default function DevelopmentTab() {
           `langObs` for months and the record never showed it; the words are a
           keepsake, not an aggregate. Counts and dates only. */}
       <FirstWordsLedger />
+      {/* GP-30 — the tree of what the PARENT has noticed. Homed here, beside
+          the other all-time keepsake ledger, rather than beside DevScoreCard:
+          that card's count is age-windowed by design and this one spans the
+          whole record, so the two sit in different bands of the hub and the
+          tree states its own basis in words. No new route — the Growth hub is
+          already the record's home. */}
+      <ArborTreeCard />
       {/* E3 — the spine, made visible (first mount): what this surface's
           noticing feeds. One direction only; plain activity fact, no verdicts.
           The Academy hub's landing route is "masterclasses" (navigation.ts). */}

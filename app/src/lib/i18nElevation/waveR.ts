@@ -165,6 +165,22 @@ export const en: Record<string, string> = {
     "Last week is written up and waiting — a few cards, counts only, then one thing to carry into this week.",
   "elev.waveR.recap.cta": "Open last week",
   "elev.waveR.recap.later": "Not now",
+
+  // ── ENG-24 · the week-open anchor — the variant that SHIPS ────────────────
+  //
+  // Every line below is true on a device that knows nothing except the date:
+  // it names the calendar, never a report. A parent who logged nothing at all
+  // last week reads a fresh start and an invitation — no report that is not
+  // there, no gap named, no count of what was missed. Read alongside the
+  // recap.* block above, which claims a written report EXISTS and is therefore
+  // reachable only once Today can verify one.
+  "elev.waveR.weekopen.eyebrow": "This week",
+  "elev.waveR.weekopen.title": "A new week with {name} begins",
+  "elev.waveR.weekopen.titleGeneric": "A new week begins",
+  "elev.waveR.weekopen.body":
+    "The whole ritual is one small thing, noticed. A word, a mood, a moment from today — write it down and the week has started.",
+  "elev.waveR.weekopen.cta": "Note one moment",
+  "elev.waveR.weekopen.later": "Not now",
 };
 
 export const he: Record<string, string> = {
@@ -310,4 +326,13 @@ export const he: Record<string, string> = {
     "השבוע שעבר כבר כתוב ומחכה — כמה כרטיסים, ספירות בלבד, ואז דבר אחד לקחת אל השבוע הזה.",
   "elev.waveR.recap.cta": "לפתוח את השבוע שעבר",
   "elev.waveR.recap.later": "לא עכשיו",
+
+  // ── ENG-24 · עוגן פתיחת השבוע — הגרסה שנשלחת ──────────────────────────────
+  "elev.waveR.weekopen.eyebrow": "השבוע הזה",
+  "elev.waveR.weekopen.title": "שבוע חדש עם {name} מתחיל",
+  "elev.waveR.weekopen.titleGeneric": "שבוע חדש מתחיל",
+  "elev.waveR.weekopen.body":
+    "כל הטקס הוא דבר אחד קטן ששמתם לב אליו. מילה, מצב רוח, רגע מהיום — כותבים אותו, והשבוע יצא לדרך.",
+  "elev.waveR.weekopen.cta": "לכתוב רגע אחד",
+  "elev.waveR.weekopen.later": "לא עכשיו",
 };

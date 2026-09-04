@@ -40,6 +40,9 @@ import { resolveTodayModules } from "../overview/todayModules";
 import FirstStepsRail, { useFirstStepsRail } from "../onboarding/FirstStepsRail";
 import LifecycleMomentCard from "../overview/LifecycleMomentCard";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
+import WeekOpenAnchorCard from "../overview/WeekOpenAnchorCard";
+import { readWeekAnchorSeen, weekOpenAnchorDue } from "../overview/weekAnchor";
+import { recapWeekId } from "../../hooks/useWeeklyRecap";
 import { track } from "../../lib/analytics";
 
 const DAY = 86_400_000;
@@ -287,15 +290,56 @@ export default function OverviewTab() {
     () => dailyPromptKeys({ ageYears: childProfile.age, childId: childProfile.id, date: new Date() }),
     [childProfile.age, childProfile.id]
   );
+  // ── ENG-24: the weekly ritual's Monday anchor. The week identity is the
+  //    recap's own (recapWeekId is a PURE date function — importing it opens no
+  //    listener and reads no report), and the "already offered" marker is the
+  //    recap anchor's own localStorage row, so one week yields one anchor
+  //    whichever variant fires and no new `arbor.` key enters the tree.
+  //
+  //    Both facts are read ONCE into state, not per render: the card writes the
+  //    marker on the frame it appears, so a re-derivation mid-session would see
+  //    its own write and pull the card out from under the parent. `dismissed`
+  //    is the same slot's escape hatch — flipping it falls through to the day's
+  //    normal anchor in the same frame.
+  const [weekOpen, setWeekOpen] = useState(() => ({
+    childId: childProfile.id,
+    weekId: recapWeekId(new Date()),
+    dayOfWeek: new Date().getDay(),
+    seenWeekId: readWeekAnchorSeen(childProfile.id),
+    dismissed: false,
+  }));
+  useEffect(() => {
+    setWeekOpen((prev) =>
+      prev.childId === childProfile.id
+        ? prev
+        : {
+            childId: childProfile.id,
+            weekId: recapWeekId(new Date()),
+            dayOfWeek: new Date().getDay(),
+            seenWeekId: readWeekAnchorSeen(childProfile.id),
+            dismissed: false,
+          }
+    );
+  }, [childProfile.id]);
+  const weekOpenDue =
+    !weekOpen.dismissed &&
+    weekOpen.childId === childProfile.id &&
+    weekOpenAnchorDue({
+      weekId: weekOpen.weekId,
+      dayOfWeek: weekOpen.dayOfWeek,
+      anchorSeenWeekId: weekOpen.seenWeekId,
+    });
+
   const todayChoice = useMemo(
     () => chooseTodayAction({
       hasActiveAction: !!activeTodayAction,
+      hasWeekOpenAnchor: weekOpenDue,
       focusHeadline,
       focusPending: focusLoading && !focus && recentCount > 0,
       promptKeys,
       hasDailyPlay: !!dailyPlay,
     }),
-    [activeTodayAction, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay]
+    [activeTodayAction, weekOpenDue, focusHeadline, focusLoading, focus, recentCount, promptKeys, dailyPlay]
   );
   // KPI 0.8: % opens ending in an offered action (target 100%).
   useEffect(() => {
@@ -619,7 +663,19 @@ export default function OverviewTab() {
               {svString(t, uiLang, "elev.sincevisit.resume")}
             </p>
           )}
-          {activeTodayAction ? (
+          {/* ENG-24: the week-open anchor takes the slot at the top of a new
+              week. It sits FIRST in this chain only because chooseTodayAction
+              already ranked it below an accepted action — kind "weekOpen" is
+              unreachable while one exists — so the loop still wins. */}
+          {todayChoice.kind === "weekOpen" ? (
+            <WeekOpenAnchorCard
+              weekId={weekOpen.weekId}
+              childId={childProfile.id}
+              childName={firstName}
+              onCapture={() => setQuickLogOpen(true)}
+              onDismiss={() => setWeekOpen((prev) => ({ ...prev, dismissed: true }))}
+            />
+          ) : activeTodayAction ? (
             <TodayActionLoop />
           ) : todayChoice.kind === "focus" ? (
             <TodayRecommendation
