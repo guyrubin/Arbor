@@ -146,8 +146,10 @@ describe("AI-CAP-3 — QuickLogModal typed capture", () => {
 describe("AI-CAP-4 — coach Create-log lands in a VISIBLE, review-gated form", () => {
   it("onCreateLog routes through requestCapture('ai-draft') — never a bare tab switch", () => {
     expect(coach).toMatch(/requestCapture\(\s*["']ai-draft["']\s*\)/);
-    // Both the success and the note-prefill fallback route through the seam.
-    expect(count(coach, /requestCapture\(\s*["']ai-draft["']\s*\)/g)).toBe(2);
+    // Success + note-prefill fallback + (AI-05) the two sites that used to do a
+    // bare setActiveTab("behaviors") and skip the gate: the overflow "Log" menu
+    // item and the Arbor Vision onGoBehaviors hand-off.
+    expect(count(coach, /requestCapture\(\s*["']ai-draft["']\s*\)/g)).toBe(4);
   });
 
   it("the extraction call threads the parent's AI language and clamps through the shared taxonomy", () => {

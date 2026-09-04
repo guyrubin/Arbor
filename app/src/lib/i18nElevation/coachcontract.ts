@@ -19,10 +19,10 @@
  *    request payload — not stretched to cover this panel.
  *
  * Register: parent, calm, plural Israeli-parent address; no AI/tech jargon.
- * NOTE: this module is intentionally NOT registered in i18nElevation/index.ts
- * (that file is owned by a parallel stream); CoachTab consumes it directly via
- * `coachContractText`. When the index owner adds the two registration lines,
- * these keys also become resolvable through t() with zero changes here. */
+ * NOTE: the module IS registered in i18nElevation/index.ts (so every key here
+ * is in the clinical-firewall dictionary scan); CoachTab still reads it through
+ * `coachContractText` below, which is a direct lookup with identical semantics
+ * to t(). Keep both working. */
 
 export const en: Record<string, string> = {
   "elev.coachcontract.title": "What the coach sees",
@@ -35,6 +35,14 @@ export const en: Record<string, string> = {
   "elev.coachcontract.uses.memoryNone": "Memory facts — only ones you approved",
   "elev.coachcontract.uses.turns": "The recent turns of this conversation, so the coach can follow the thread",
   "elev.coachcontract.uses.weekly": "This week's moment counts — numbers and categories only, never your written notes",
+
+  // AI-02 — the SPOKEN contract. The panel used to describe the typed request
+  // only, while sitting directly above the microphone: a spoken turn shipped
+  // no memory, no source cards and no thread at all. The browser voice loop is
+  // now grounded like a typed question (routes/api /voice), and Live HD — a
+  // direct browser-to-model audio session — is named for what it really sends.
+  "elev.coachcontract.uses.spoken": "Speaking sends the same as typing — your words, the profile, the memory facts you approved, and this conversation",
+  "elev.coachcontract.uses.spokenLive": "Live voice is a direct audio call with the model: it carries your words and the profile, and does not carry your approved memory facts or earlier turns",
 
   // ── What Arbor stores
   "elev.coachcontract.stores.thread": "This conversation is saved so you can come back to it",
@@ -59,6 +67,9 @@ export const he: Record<string, string> = {
   "elev.coachcontract.uses.memoryNone": "עובדות זיכרון — רק מה שאישרתם",
   "elev.coachcontract.uses.turns": "החילופים האחרונים בשיחה הזו, כדי שהמאמן יעקוב אחרי ההקשר",
   "elev.coachcontract.uses.weekly": "סיכום מספרי של הרגעים מהשבוע — מספרים וקטגוריות בלבד, אף פעם לא ההערות שכתבתם",
+
+  "elev.coachcontract.uses.spoken": "דיבור שולח בדיוק כמו כתיבה — המילים שלכם, הפרופיל, עובדות הזיכרון שאישרתם והשיחה הזו",
+  "elev.coachcontract.uses.spokenLive": "שיחת קול חיה היא שיחת אודיו ישירה עם המודל: היא נושאת את המילים שלכם ואת הפרופיל, ולא את עובדות הזיכרון שאישרתם או את החילופים הקודמים",
 
   "elev.coachcontract.stores.thread": "השיחה הזו נשמרת כדי שתוכלו לחזור אליה",
 

@@ -12,8 +12,12 @@ import { PROMPT_VERSIONS, buildChatPrompt, buildCouncilSynthesisPrompt, buildExt
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
-import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
+import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
+// AI-03: the retrieval keys the routes actually have. `childProfile.ageBand`
+// and `childProfile.domains` do not exist on ChildProfile and were never on
+// the wire, so both filters were permanently inert — see knowledge/retrievalKeys.
+import { COACH_EXCLUDED_CARD_TYPES, retrievalKeysFor } from "../knowledge/retrievalKeys.js";
 import { resolveScholar } from "../services/scholars.js";
 import { selectCouncil, runScholarTakes, renderCouncilForSynthesis } from "../services/council.js";
 import { buildGrant, isShareActive, type ShareStore } from "../sharing/shares.js";
@@ -98,6 +102,61 @@ const beginSse = (res: express.Response) => {
 const writeSse = (res: express.Response, event: string, data: unknown) => {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(data)}\n\n`);
+};
+
+/**
+ * AI-07 — the screened sentence relay, as ONE seam.
+ *
+ * /chat grew this inline: tail the contract's leading `text` prose out of the
+ * raw JSON stream, restore aliases FIRST (the NAME_SUBJECT lexical floor
+ * assumes restored names), then release each COMPLETE sentence as its own SSE
+ * delta only after `screenModelOutputLexical` passes on the CUMULATIVE restored
+ * prose. /council had no streaming at all, so a council answer was a silent
+ * spinner until the whole multi-agent orchestration finished. Rather than write
+ * a second copy of this (and risk the two screens drifting), both routes now
+ * drive the same relay.
+ *
+ * CLINICAL FIREWALL: a flagged span reaches NO SSE frame — `push`/`flush`
+ * return the verdict and release nothing further. Structured panels stay gated
+ * at `done`, where the full pre-cadence screen still runs on the complete
+ * rendered answer.
+ */
+const createScreenedProseRelay = (
+  res: express.Response,
+  restorer: { push: (chunk: string) => string; flush: () => string },
+  enabled: boolean,
+) => {
+  const proseExtractor = createJsonTextFieldExtractor("text");
+  let released = "";
+  let pending = "";
+  const release = (): OutputScreenVerdict | null => {
+    for (;;) {
+      const boundary = SENTENCE_BOUNDARY_SCAN.exec(pending);
+      if (!boundary) return null;
+      const sliceEnd = boundary.index + boundary[0].length;
+      const bytes = pending.slice(0, sliceEnd);
+      // Cumulative alias-restored screen — never a sentence in isolation.
+      const verdict = screenModelOutputLexical((released + bytes).trim());
+      if (verdict.flagged) return verdict;
+      writeSse(res, "delta", { text: bytes });
+      released += bytes;
+      pending = pending.slice(sliceEnd);
+    }
+  };
+  return {
+    push(chunk: string): OutputScreenVerdict | null {
+      if (!enabled) return null;
+      pending += restorer.push(proseExtractor.push(chunk));
+      return release();
+    },
+    /** The trailing fragment (no sentence boundary yet) is NOT emitted — the
+     *  full, screened text arrives in `done` and the client swaps it in. */
+    flush(): OutputScreenVerdict | null {
+      if (!enabled) return null;
+      pending += restorer.flush();
+      return release();
+    },
+  };
 };
 
 const parseJson = <T>(value: unknown) => {
@@ -201,6 +260,25 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
+
+  /**
+   * AI-02: the ownership predicate behind requireOwnership, usable INSIDE a
+   * route that must not 403 on it. /voice grounds a spoken turn in the child's
+   * approved memory; a caller who does not own that childId simply gets no
+   * memory block (the turn still answers) rather than another family's facts.
+   * Fails CLOSED on any lookup error — the same posture as the middleware.
+   */
+  const mayReadChildMemory = async (req: express.Request, childId: string): Promise<boolean> => {
+    if (!memoryStore.ownsChild) return true;       // single-tenant store
+    const { uid } = actorOf(req);
+    if (uid === "local-sandbox") return true;      // unauthenticated local/dev
+    if (!childId) return false;
+    try {
+      return await memoryStore.ownsChild(uid, childId);
+    } catch {
+      return false;
+    }
+  };
 
   /**
    * OWN-1: the familyId that reaches ownership-bearing ledger writes is derived
@@ -564,9 +642,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // guaranteed into the context and lead, alongside age/domain matches.
       const scholar = resolveScholar(scholarLens);
       const retrievedCards = await retrieveKnowledgeCards({
-        ageBand: childProfile?.ageBand,
-        domains: Array.isArray(childProfile?.domains) ? childProfile.domains : undefined,
+        // AI-03: derived from the child's real age + this question's own
+        // subject, not from two fields the client never sends.
+        ...retrievalKeysFor(childProfile, message),
         allowedUse: "coach_context",
+        excludeTypes: COACH_EXCLUDED_CARD_TYPES,
         limit: 4
       });
       const scholarCards = await loadCardsByIds(scholar.cardIds);
@@ -633,24 +713,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // pre-cadence screen (lexical + optional semantic classifier) still runs
       // on the complete rendered answer — a done-time flag makes the client
       // RETRACT the streamed bubble and replace it (firewall CONDITIONS 1-3).
-      const restorer = privacy.createStreamRestorer();
-      const proseExtractor = createJsonTextFieldExtractor("text");
-      let released = "";
-      let pending = "";
-      const releaseCompleteSentences = (): OutputScreenVerdict | null => {
-        for (;;) {
-          const boundary = SENTENCE_BOUNDARY_SCAN.exec(pending);
-          if (!boundary) return null;
-          const sliceEnd = boundary.index + boundary[0].length;
-          const bytes = pending.slice(0, sliceEnd);
-          // Cumulative alias-restored screen — never a sentence in isolation.
-          const verdict = screenModelOutputLexical((released + bytes).trim());
-          if (verdict.flagged) return verdict;
-          writeSse(res, "delta", { text: bytes });
-          released += bytes;
-          pending = pending.slice(sliceEnd);
-        }
-      };
+      // AI-07: this relay is now the SHARED seam (see createScreenedProseRelay
+      // above) — /council drives the identical screen, so the two cannot drift.
+      const relay = createScreenedProseRelay(res, privacy.createStreamRestorer(), streamResponse);
 
       let rawResponse = "";
       if (streamResponse) writeSse(res, "status", { stage: "plan" });
@@ -667,26 +732,20 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }), budget.signal)) {
         if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
         rawResponse += chunk;
-        if (!streamResponse) continue;
-        pending += restorer.push(proseExtractor.push(chunk));
-        const verdict = releaseCompleteSentences();
+        const verdict = relay.push(chunk);
         if (verdict) {
           writeSse(res, "done", buildBlockedPayload(verdict));
           res.end();
           return;
         }
       }
-      if (streamResponse) {
-        pending += restorer.flush();
-        const verdict = releaseCompleteSentences();
+      {
+        const verdict = relay.flush();
         if (verdict) {
           writeSse(res, "done", buildBlockedPayload(verdict));
           res.end();
           return;
         }
-        // The trailing prose fragment (no sentence boundary yet) is NOT
-        // emitted as a delta — the full, screened text arrives in `done` and
-        // the client swaps it in.
       }
       if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
 
@@ -787,7 +846,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const { context: approvedMemory, factsUsed: approvedMemoryFactsUsed } =
         await getApprovedMemoryContextDetail(memoryStore, childId, config.memoryPromptMaxFacts);
       const lead = resolveScholar(scholarLens);
-      const childDomains = Array.isArray(childProfile?.domains) ? childProfile.domains : [];
+      // AI-03: council selection was keyed on childProfile.domains too — a
+      // field that does not exist, so every council was the lead scholar plus
+      // the same default pair regardless of what the parent asked.
+      const retrievalKeys = retrievalKeysFor(childProfile, message);
+      const childDomains = retrievalKeys.domains ?? [];
       const council = selectCouncil(lead, childDomains, 3);
 
       // SEC/CMP P0: scholar agents and the synthesizer only ever see redacted input.
@@ -805,9 +868,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // 2) Ground the synthesis in the council's cards + approved memory.
       const scholarCards = await loadCardsByIds(council.flatMap((s) => s.cardIds));
       const retrievedCards = await retrieveKnowledgeCards({
-        ageBand: childProfile?.ageBand,
-        domains: childDomains.length ? childDomains : undefined,
+        // AI-03: same derived keys as /chat. `childDomains` (the old source)
+        // read childProfile.domains, which no client has ever sent.
+        ...retrievalKeys,
         allowedUse: "coach_context",
+        excludeTypes: COACH_EXCLUDED_CARD_TYPES,
         limit: 4
       });
       const seen = new Set<string>();
@@ -905,7 +970,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // reply. Cadence contract pinned by evals/voice-loop-v1
   // (routes/voiceLoopEval.test.ts) + routes/voiceCadence.test.ts.
   router.post("/voice", async (req, res) => {
-    const { message, childProfile, scholarLens, language } = req.body;
+    // AI-02: `recentTurns` joins the existing fields — the SAME sanitized
+    // same-thread transcript /chat accepts (masterplan 1.3), re-capped here.
+    const { message, childProfile, scholarLens, language, recentTurns } = req.body;
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "A message is required" });
       return;
@@ -934,6 +1001,23 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     const budget = createRouteBudget(res, "voice");
     try {
       const scholar = resolveScholar(scholarLens);
+      // AI-02: a spoken turn used to be the ONLY coach surface with no memory,
+      // no source cards and no thread — while the Ask data-contract panel above
+      // the mic told the parent every question carries all three. The claim now
+      // holds on this path: same approved-memory read, same retrieval keys, same
+      // continuity transcript as /chat. The memory read is ownership-gated and
+      // fails CLOSED to "no memory" so a spoken turn never breaks on it.
+      const voiceChildId = toChildId(childProfile);
+      const voiceMemory = (await mayReadChildMemory(req, voiceChildId))
+        ? await getApprovedMemoryContext(memoryStore, voiceChildId, config.memoryPromptMaxFacts)
+        : "";
+      const voiceCards = await retrieveKnowledgeCards({
+        ...retrievalKeysFor(childProfile, message),
+        allowedUse: "coach_context",
+        excludeTypes: COACH_EXCLUDED_CARD_TYPES,
+        limit: 3
+      });
+      const voiceTurns = sanitizeRecentTurns(recentTurns);
       // AI-V9: persona + language directive come from the ONE shared spoken
       // persona module (lib/livePersona.ts) — byte-shared with the Live path.
       const languageDirective = spokenLanguageDirective(language);
@@ -946,7 +1030,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         scholar,
         childProfile,
         message,
-        languageDirective
+        languageDirective,
+        // AI-02 grounding. Each block renders "" when its source is empty, so a
+        // first turn with no memory and no matched card keeps the legacy bytes.
+        approvedMemory: voiceMemory,
+        knowledgeContext: renderKnowledgeContext(voiceCards),
+        recentTurns: voiceTurns
       });
 
       // SAFE-V1 + AI-V1/AIR-2: the output-safety screen (AI-2) MUST gate /voice

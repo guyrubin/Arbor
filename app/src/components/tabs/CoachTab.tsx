@@ -19,7 +19,7 @@ import { TrustSafetyBar, cardCls } from "../ui/kit";
 // each coach request sends, and hosts the weekly-context consent toggle.
 import { TrustPanel } from "../ui/TrustPanel";
 import { coachContractText } from "../../lib/i18nElevation/coachcontract";
-import { readWeeklyContextConsent, writeWeeklyContextConsent } from "../../ai/chatContext";
+import { buildVoiceContext, readWeeklyContextConsent, writeWeeklyContextConsent } from "../../ai/chatContext";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import { ShareButton } from "../ui/ShareButton";
@@ -439,7 +439,19 @@ export default function CoachTab() {
     const ownsTurn = () => attempt.isCurrent() && !controller.signal.aborted && voiceAbortRef.current === controller;
     try {
       await streamVoice(
-        { message: text, childProfile, scholarLens: selectedLens, language: getAiLanguage() },
+        {
+          message: text,
+          childProfile,
+          scholarLens: selectedLens,
+          language: getAiLanguage(),
+          // AI-02: a spoken turn is the SAME conversation as a typed one — it
+          // now carries this thread's settled turns, so a spoken follow-up
+          // resolves against what the parent just heard instead of arriving
+          // at a coach with no memory of the previous turn. The server also
+          // grounds it in approved memory + source cards (routes/api /voice),
+          // which is what the data-contract panel above the mic promises.
+          ...buildVoiceContext(chatMessages),
+        },
         (delta) => {
           if (!ownsTurn()) return;
           // COACH-2: caption + persist the SAME screened text that is spoken —
@@ -1110,6 +1122,15 @@ export default function CoachTab() {
                 ).uses,
                 tcc("elev.coachcontract.uses.turns"),
                 ...(weeklyOn ? [tcc("elev.coachcontract.uses.weekly")] : []),
+                // AI-02: the panel sits directly above the microphone, so it
+                // must describe a SPOKEN turn too. The browser voice loop is
+                // grounded exactly like a typed question now; Live HD is a
+                // direct browser↔model audio session that carries neither the
+                // approved memory facts nor earlier turns, so when that is the
+                // path a mic tap will take, the panel says so rather than
+                // leaving the typed-request claim standing over it.
+                tcc("elev.coachcontract.uses.spoken"),
+                ...(liveAvail ? [tcc("elev.coachcontract.uses.spokenLive")] : []),
               ]}
               stores={[
                 // Reused dead key — still accurate: durable facts wait for
@@ -1255,7 +1276,13 @@ export default function CoachTab() {
                           toast(t("coach.toast.notePrefilled"), "info");
                         }
                       }}
-                      onAddToHandoff={() => {
+                      // AI-05: the teacher note is CONSUMED, not dropped. The
+                      // card handed a real note string and this callback threw
+                      // it away, so "Teacher note" was a bare tab switch into an
+                      // empty Consult composer — the same defect AIX-S3(a) fixed
+                      // for ArborVision's handoff. Same seam, same contract.
+                      onAddToHandoff={(note) => {
+                        requestConsultPrefill(note);
                         setActiveTab("consult");
                         toast(t("coach.toast.teacherNoteCopied"), "info");
                       }}
@@ -1304,6 +1331,16 @@ export default function CoachTab() {
                             role="menuitem"
                             onClick={() => {
                               setNewLogNotes(msg.text.replace(/[#*]/g, "").trim().slice(0, 400));
+                              // AI-05: the overflow "Log" wrote model-authored
+                              // prose into the draft and then did a BARE tab
+                              // switch — bypassing the ai-draft gate the
+                              // answer-card path goes through (AI-CAP-4). The
+                              // gate is fail-closed by design: it arms the
+                              // review flag, stamps 'ai-draft' provenance and
+                              // opens the form into view. An AI-authored draft
+                              // must never reach the log store un-reviewed, so
+                              // this entry point routes through the SAME seam.
+                              requestCapture("ai-draft");
                               setActiveTab("behaviors");
                               setOpenMenuIdx(null);
                               toast(t("coach.toast.logPrefilled"), "info");
@@ -1614,7 +1651,11 @@ export default function CoachTab() {
         // approved propose seam — they land ONLY in the pending-approval queue
         // (Profile › Child Memory); nothing auto-approves.
         onProposeMemory={(fact) => proposeMemory(fact, { source: "vision", prompt: "vision:document" })}
-        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); setActiveTab("behaviors"); toast(t("coach.toast.photoCaptured"), "info"); }}
+        // AI-05: the Vision hand-off writes a MODEL-AUTHORED note into the log
+        // draft, so it goes through the same fail-closed ai-draft gate as every
+        // other AI-authored draft — armed BEFORE the tab switch, because the
+        // Behaviors consumer reads pendingCaptureMode on arrival.
+        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); requestCapture("ai-draft"); setActiveTab("behaviors"); toast(t("coach.toast.photoCaptured"), "info"); }}
       />
     </motion.div>
   );

@@ -33,6 +33,12 @@ export const resolveKnowledgeRoots = () => {
 };
 
 const parseFrontMatter = (text: string) => {
+  // AI-03: the delimiters were matched against `\n` only, so a CRLF checkout of
+  // knowledge/ (git's default on Windows) matched NOTHING — every card lost its
+  // `id`, `loadKnowledgeCardsWithMetadata` dropped all of them, and the whole
+  // coach knowledge base silently loaded ZERO cards. Normalize first; on an LF
+  // checkout this is a no-op, so the parsed result is byte-identical there.
+  text = text.replace(/\r\n/g, "\n");
   const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match) return { meta: {}, body: text };
   const meta: Record<string, any> = {};
@@ -114,10 +120,13 @@ export const filterKnowledgeCards = (cards: KnowledgeCard[], filters: {
   domains?: string[];
   allowedUse?: string;
   riskLevel?: string;
+  /** Card `type` values to leave out entirely (AI-03: see COACH_EXCLUDED_CARD_TYPES). */
+  excludeTypes?: readonly string[];
   limit?: number;
 }) => {
   const limit = filters.limit ?? 5;
   const scoped = cards.filter((card) => {
+    if (filters.excludeTypes?.includes(card.type)) return false;
     if (filters.allowedUse && !card.allowed_uses.includes(filters.allowedUse)) return false;
     if (filters.ageBand && !card.age_bands.includes(filters.ageBand)) return false;
     if (filters.domains?.length && !filters.domains.some((domain) => card.domains.includes(domain))) return false;

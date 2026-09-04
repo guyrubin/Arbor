@@ -160,7 +160,16 @@ const del = <T>(url: string) => request<T>(url, "DELETE");
  * `handleVoiceDone` (lib/voiceSafetyEvents.ts).
  */
 export async function streamVoice(
-  payload: { message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" },
+  // AI-02: `recentTurns` is the same optional same-thread transcript /api/chat
+  // accepts (ai/chatContext) — a spoken turn is the same conversation, so it
+  // carries the same continuity. Absent ⇒ byte-identical to the legacy request.
+  payload: {
+    message: string;
+    childProfile: ChildProfile;
+    scholarLens?: string;
+    language?: "en" | "he";
+    recentTurns?: { role: "parent" | "coach"; text: string }[];
+  },
   onDelta: (text: string) => void,
   opts: { signal?: AbortSignal; onEvent?: (event: string, data: Record<string, unknown>) => void } = {},
 ): Promise<void> {

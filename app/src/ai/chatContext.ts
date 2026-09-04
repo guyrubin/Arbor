@@ -196,6 +196,34 @@ export const computeWeeklyContext = (sources: WeeklyContextSources, now: Date = 
  * empty) when they carry nothing, so the legacy request body — and therefore
  * the server prompt — stays byte-identical.
  */
+/**
+ * Settled real turns only: the local ack bubble and still-streaming live
+ * bubbles (chat or voice caption) never enter a transcript. Shared by the
+ * typed and SPOKEN context builders so the two cannot drift.
+ */
+const settledTurns = (thread: ReadonlyArray<ThreadTurnLike>): RecentTurn[] =>
+  sanitizeRecentTurns(
+    thread
+      .filter((m) => !m.chatAck && !m.chatLive && !m.voiceLive && m.text.trim())
+      .map<RecentTurn>((m) => ({ role: m.sender === "user" ? "parent" : "coach", text: m.text })),
+  );
+
+/**
+ * AI-02 — the SPOKEN counterpart of `buildChatContext`. A voice turn is the
+ * same conversation as the typed one (both write into `chatMessages`), so it
+ * carries the same same-thread continuity and needs no new consent surface.
+ * The weekly digest is deliberately NOT included: it is consent-gated per
+ * child for the typed path and a spoken turn must not silently widen it.
+ * Absent (not empty) when the thread carries nothing, so a first spoken turn
+ * produces a request byte-identical to today's.
+ */
+export const buildVoiceContext = (
+  thread: ReadonlyArray<ThreadTurnLike>,
+): { recentTurns?: RecentTurn[] } => {
+  const recentTurns = settledTurns(thread);
+  return recentTurns.length > 0 ? { recentTurns } : {};
+};
+
 export const buildChatContext = (input: {
   thread: ReadonlyArray<ThreadTurnLike>;
   behaviorLogs: WeeklyContextSources["behaviorLogs"];
@@ -204,12 +232,7 @@ export const buildChatContext = (input: {
   weeklyContextEnabled: boolean;
   now?: Date;
 }): { recentTurns?: RecentTurn[]; weeklyContext?: WeeklyContext } => {
-  // Settled real turns only: the local ack bubble and still-streaming live
-  // bubbles (chat or voice caption) never enter the transcript.
-  const settled = input.thread
-    .filter((m) => !m.chatAck && !m.chatLive && !m.voiceLive && m.text.trim())
-    .map<RecentTurn>((m) => ({ role: m.sender === "user" ? "parent" : "coach", text: m.text }));
-  const recentTurns = sanitizeRecentTurns(settled);
+  const recentTurns = settledTurns(input.thread);
 
   const out: { recentTurns?: RecentTurn[]; weeklyContext?: WeeklyContext } = {};
   if (recentTurns.length > 0) out.recentTurns = recentTurns;
