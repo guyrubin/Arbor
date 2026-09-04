@@ -19,7 +19,7 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
   const { toast } = useToast();
   const [confirmText, setConfirmText] = useState("");
   const [partial, setPartial] = useState<AccountDeletionReceipt | null>(null);
-  const [error, setError] = useState<"network" | "gate" | null>(null);
+  const [error, setError] = useState<"network" | "parental-gate" | null>(null);
   const inputId = useId();
   const statusId = useId();
   const errorId = useId();
@@ -85,7 +85,7 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
     if (accountDeletionLeases.isPending(current.uid)) return;
     // STORE-3: a math-exit browsing session cannot authorize account deletion.
     if (!commerceAllowed()) {
-      setError("gate");
+      setError("parental-gate");
       toast(t("elev.gate.blocked"), "info");
       return;
     }
@@ -190,7 +190,7 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
         </div>
         {error && (
           <p id={errorId} role="alert" className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-            {t(error === "gate" ? "elev.gate.blocked" : "elev.accountSettings.network")}
+            {t(error === "parental-gate" ? "elev.gate.blocked" : "elev.accountSettings.network")}
           </p>
         )}
         <p id={statusId} role="status" aria-live="polite" className="text-xs" style={{ color: "var(--arbor-muted)" }}>

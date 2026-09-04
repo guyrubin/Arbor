@@ -182,6 +182,9 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
       "lib/childData.ts", // GDPR erase purge
       "context/AuthContext.tsx", // sign-out purge
       "components/layout/DeleteAccountModal.tsx", // STORE-4 account-deletion purge (erase path, not upload)
+      // Mocks the store to assert deletion actually calls purgeAllComicPages.
+      // Verifies the erase path; introduces no network or upload consumer.
+      "components/layout/accountDeletionFlow.test.ts",
       "components/tabs/ComicsTab.tsx", // doc comment only (consumes via heroComics)
     ]);
     const offenders: string[] = [];
