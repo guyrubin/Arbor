@@ -35,9 +35,11 @@ import { X, Sparkles, BookOpen } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { api } from "../../lib/api";
 import { track } from "../../lib/analytics";
-import { STORY_COMIC, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
+import { toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
+// MOB-22 — the first comic is defined once (lib/firstComic) so the domain
+// step can start drawing it and this step can take the finished page.
+import { generateFirstComic, takeFirstComic } from "../../lib/firstComic";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 import { renderHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
@@ -50,16 +52,6 @@ import { ShareButton } from "../ui/ShareButton";
 
 type WowStep = "avatar" | "comic" | "closing";
 const STEP_ORDER: readonly WowStep[] = ["avatar", "comic", "closing"];
-
-/**
- * First-story comic prompt copy (EN+HE). This is AI-PROMPT PAYLOAD for the
- * existing /api/generate-comic path — read straight from the canonical
- * STORY_COMIC registry in lib/heroComics (the "david-and-goliath" entry,
- * i.e. HERO_STORIES[0]). A local mirror used to live here only because the
- * registry was module-private inside the hero-comics grid (retired in IA
- * W5.5); now that it is public there is one source of truth.
- */
-const FIRST_STORY_COMIC = STORY_COMIC["david-and-goliath"];
 
 export function WowOnboarding() {
   const { setActiveTab } = useArbor();
@@ -135,35 +127,39 @@ export function WowOnboarding() {
     let alive = true;
     void (async () => {
       let result: { url: string | null; fallback: boolean };
-      try {
-        const res = await api.generateComic({
-          ...(heroDataUrl ? { avatar: { dataUrl: heroDataUrl } } : {}),
-          heroName: name,
-          theme: he ? FIRST_STORY_COMIC.themeHe : FIRST_STORY_COMIC.theme,
-          dialogue: he ? FIRST_STORY_COMIC.dialogueHe : FIRST_STORY_COMIC.dialogue,
-          sfx: he ? [...FIRST_STORY_COMIC.sfxHe] : [...FIRST_STORY_COMIC.sfx],
-          style: "comichero",
-        });
-        result = { url: res.dataUrl, fallback: false };
-      } catch {
-        // Calm fallback — a pre-composed branded page via the shared template
-        // registry (no new compositing code). A PaywallError lands here too:
-        // the front door never opens onto a paywall.
+      // MOB-22: the onboarding domain step may already have drawn this exact
+      // page while the parent was choosing — taking it makes the wow instant.
+      // A miss (a hero created since, paywall, offline, or no prewarm at all)
+      // is null, and the normal generation below runs untouched.
+      const identity = { name, he, ...(heroDataUrl ? { heroDataUrl } : {}) };
+      const prewarmed = await (takeFirstComic(identity) ?? Promise.resolve(null));
+      let camePrewarmed = false;
+      if (prewarmed?.dataUrl) {
+        result = { url: prewarmed.dataUrl, fallback: false };
+        camePrewarmed = true;
+      } else {
         try {
-          const card = await renderHeroAvatarCanvas("comic", {
-            imageUrl: heroDataUrl,
-            name,
-            title: storyTitle,
-          });
-          result = { url: card.dataUrl, fallback: true };
+          result = { url: await generateFirstComic(identity), fallback: false };
         } catch {
-          result = { url: null, fallback: true }; // final DOM fallback below
+          // Calm fallback — a pre-composed branded page via the shared template
+          // registry (no new compositing code). A PaywallError lands here too:
+          // the front door never opens onto a paywall.
+          try {
+            const card = await renderHeroAvatarCanvas("comic", {
+              imageUrl: heroDataUrl,
+              name,
+              title: storyTitle,
+            });
+            result = { url: card.dataUrl, fallback: true };
+          } catch {
+            result = { url: null, fallback: true }; // final DOM fallback below
+          }
         }
       }
       if (!alive) return;
       setComic(result);
       setStep("closing");
-      track("wow_comic_shown", { fallback: result.fallback });
+      track("wow_comic_shown", { fallback: result.fallback, prewarmed: camePrewarmed });
 
       // W5 seed — runs for the real page AND the pre-composed fallback page
       // (both are pages the parent actually saw); the null final-DOM fallback

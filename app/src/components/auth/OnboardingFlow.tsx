@@ -13,6 +13,8 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 import { api } from "../../lib/api";
+// MOB-22 — pre-generate the first comic while the parent picks domains.
+import { heroFirstName, prewarmFirstComic } from "../../lib/firstComic";
 import { birthDateFromAgeMonths } from "../../lib/childAge";
 import { promiseText } from "../../lib/i18nElevation/promise";
 import { track } from "../../lib/analytics";
@@ -740,7 +742,7 @@ export function StepReady({
 export default function OnboardingFlow() {
   const { addChild, updateChild, profiles } = useProfile();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, aiLang } = useLanguage();
   // MOB-12: the "Relaunch onboarding demo" replay is a QA affordance, never a
   // parent-facing control — DEV builds or admin accounts only.
   const { entitlement } = useEntitlement();
@@ -785,6 +787,24 @@ export default function OnboardingFlow() {
   // childId is available after addChild; for Avatar step we create the profile first.
   // On resume, preset it to the in-flight child so we never create a duplicate.
   const [createdChildId, setCreatedChildId] = useState<string | null>(resumeChild?.id ?? null);
+
+  // MOB-22 — time-to-wow. The domain step is ~30 unhurried seconds with an idle
+  // network, and the very next thing this account sees is the wow overlay
+  // waiting on an image generation. Start that exact page now (lib/firstComic
+  // owns the request, so the two sides cannot drift) and the overlay takes the
+  // finished one. GATES: the PLAIN variant only — no avatar, therefore no photo
+  // and no face_processing consent involved, and the prewarm key records that,
+  // so a parent who creates an avatar at step 4 gets a fresh generation instead.
+  // Never in replay mode (a demo pass writes nothing and must cost nothing) and
+  // never before a real child exists. Fire-and-forget: a failure is a miss.
+  const prewarmStarted = useRef(false);
+  useEffect(() => {
+    if (step !== 3 || replaying || !createdChildId || prewarmStarted.current) return;
+    const first = heroFirstName(name);
+    if (!first.trim()) return;
+    prewarmStarted.current = true;
+    prewarmFirstComic({ name: first, he: aiLang === "he" });
+  }, [step, replaying, createdChildId, name, aiLang]);
 
   // Step 5 state
   const [saving, setSaving] = useState(false);

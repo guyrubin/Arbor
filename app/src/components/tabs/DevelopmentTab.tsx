@@ -19,6 +19,15 @@ import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevatio
 import { tGCare } from "../../lib/growthCareText";
 // GP-34 — the thing the parent chose to watch for after a Development Check.
 import { clearWatchFocus, resolveWatchFocus } from "../../lib/screeningWatch";
+// Wave E — the three return hooks that live on this surface: an honest
+// reminders card (ENG-23), the family ritual whose turn has come (ENG-25),
+// and the one thing the parent left themselves at the close of a day (TJB-28).
+import PushPrimingCard from "../nextopen/PushPrimingCard";
+import RitualTurnCard from "../nextopen/RitualTurnCard";
+import TomorrowReasonCard from "../nextopen/TomorrowReasonCard";
+import { readPushPermission, type PushPermission } from "../../lib/pushPriming";
+import { readRitualRecord, ritualOfTheMoment } from "../../lib/familyRitualsCadence";
+import { ADVENTURES, type SavedComicMeta } from "../../lib/heroComics";
 import { fmtDay } from "../../lib/formatDate";
 
 /** Masterplan 1.7 — module-local string resolution for the Full Picture entry
@@ -37,35 +46,6 @@ function tFP(uiLang: string, key: string, vars?: Record<string, string | number>
    link cards to their own routes (the Growth pill row already carries
    Milestones); the child Profile belongs to the Profile category. Every old
    route (#/copilot, #/milestones, #/journey, #/profile) stays valid. */
-
-/** Inline push opt-in toggle — renders null unless pushCapable() (no VAPID key). */
-function PushOptInToggle({
-  enabled, pending, onToggle, label, sublabel,
-}: {
-  enabled: boolean; pending: boolean; onToggle: () => void; label: string; sublabel: string;
-}) {
-  const [capable, setCapable] = useState(false);
-  useEffect(() => {
-    import("../../lib/push.js").then(({ pushCapable }) => setCapable(pushCapable()));
-  }, []);
-  if (!capable) return null;
-  return (
-    <div className="flex items-center justify-between rounded-2xl px-4 py-3"
-      style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-      <div>
-        <p className="text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}>{label}</p>
-        <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{sublabel}</p>
-      </div>
-      <button role="switch" aria-checked={enabled} disabled={pending} onClick={onToggle}
-        aria-label={label}
-        className="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition-colors focus-visible:outline focus-visible:outline-2"
-        style={{ background: enabled ? "var(--arbor-clay)" : "var(--arbor-rule)", opacity: pending ? 0.6 : 1, cursor: pending ? "wait" : "pointer" }}>
-        <span className="inline-block h-5 w-5 rounded-full bg-white shadow transition-transform mt-0.5"
-          style={{ marginLeft: 2, transform: enabled ? "translateX(20px)" : "translateX(0)" }} />
-      </button>
-    </div>
-  );
-}
 
 export default function DevelopmentTab() {
   const { t, uiLang } = useLanguage();
@@ -189,14 +169,25 @@ export default function DevelopmentTab() {
     return { noticed, total: inWindow.length, domainsActive, momentsWeek };
   }, [milestones, comparisonMonths, behaviorLogs, playLogs]);
 
-  // C2 — push opt-in state. The toggle is hidden when pushCapable() is false
-  // (no VITE_FIREBASE_VAPID_KEY in the build).
-  const [pushEnabled, setPushEnabled] = useState(false);
+  // ENG-23 — reminders. The card ALWAYS renders and always states the truth of
+  // this build: `pushCapable()` is false without a VAPID key, and in that build
+  // the card says Arbor sends nothing rather than showing a switch that cannot
+  // deliver. Capability is resolved async (lib/push is lazily imported so
+  // firebase/messaging never enters the main bundle).
+  const [pushCapableNow, setPushCapableNow] = useState(false);
+  const [pushPermission, setPushPermission] = useState<PushPermission>("unsupported");
+  const [pushRegistered, setPushRegistered] = useState(false);
   const [pushPending, setPushPending] = useState(false);
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      setPushEnabled(Notification.permission === "granted");
-    }
+    setPushPermission(readPushPermission());
+    let alive = true;
+    void import("../../lib/push.js").then(({ pushCapable }) => {
+      if (!alive) return;
+      const capable = pushCapable();
+      setPushCapableNow(capable);
+      setPushRegistered(capable && readPushPermission() === "granted");
+    });
+    return () => { alive = false; };
   }, []);
   const handlePushToggle = useCallback(async () => {
     const { pushCapable, registerPush, unregisterPush } = await import("../../lib/push.js");
@@ -204,17 +195,33 @@ export default function DevelopmentTab() {
     const apiBase = (window as unknown as { __ARBOR_API_BASE__?: string }).__ARBOR_API_BASE__ || "/api";
     setPushPending(true);
     try {
-      if (pushEnabled) {
+      if (pushRegistered) {
         await unregisterPush(apiBase);
-        setPushEnabled(false);
+        setPushRegistered(false);
       } else {
         const result = await registerPush(apiBase);
-        setPushEnabled(result === "granted");
+        setPushRegistered(result === "granted");
       }
+      setPushPermission(readPushPermission());
     } finally {
       setPushPending(false);
     }
-  }, [pushEnabled]);
+  }, [pushRegistered]);
+
+  // TJB-28 — the facts the close-of-day write chooses from. Every one of them
+  // is about the PARENT's next move, never a reading of the child.
+  const savedComics = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
+  const returnSignals = useMemo(() => {
+    const now = Date.now();
+    const startOfToday = new Date(now).setHours(0, 0, 0, 0);
+    return {
+      ritualDue: ritualOfTheMoment(now, readRitualRecord()) !== null,
+      watchFocus: chosenWatch != null,
+      unopenedStory: savedComics.items.length < ADVENTURES.length,
+      momentsToday:
+        countSince(behaviorLogs, startOfToday, now) + countSince(playLogs, startOfToday, now),
+    };
+  }, [chosenWatch, savedComics.items.length, behaviorLogs, playLogs]);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
@@ -248,6 +255,9 @@ export default function DevelopmentTab() {
           <EvidenceChip />
         </div>
       </div>
+      {/* TJB-28 — the one thing this parent left themselves at the close of a
+          previous day. Renders null on the day it was written and once acted on. */}
+      <TomorrowReasonCard signals={returnSignals} childName={firstName} />
       {/* One action first, then the neutral development picture. */}
       <section className="overflow-hidden rounded-[24px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }} aria-labelledby="growth-weekly-focus">
         <div className="grid min-w-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
@@ -422,14 +432,17 @@ export default function DevelopmentTab() {
       {/* C4 — Physical growth: parent-logged measurements → longitudinal
           trajectory. Raw data only; pediatrician holds the reference charts. */}
       <PhysicalGrowthCard />
+      {/* ENG-25 — the family ritual whose turn has come round. The cadence was
+          prose in Academy and nothing acted on it; this is where it comes back. */}
+      <RitualTurnCard />
       <ScreeningSheet open={checkOpen} onClose={() => setCheckOpen(false)} />
-      {/* C2 — parent-facing push opt-in. Hidden unless pushCapable(). AADC: no guilt framing. */}
-      <PushOptInToggle
-        enabled={pushEnabled}
+      {/* ENG-23 — reminders, primed and honest about what this build can do. */}
+      <PushPrimingCard
+        capable={pushCapableNow}
+        permission={pushPermission}
+        registered={pushRegistered}
         pending={pushPending}
         onToggle={handlePushToggle}
-        label={t("push.optin.label")}
-        sublabel={t("push.optin.sublabel")}
       />
     </div>
   );

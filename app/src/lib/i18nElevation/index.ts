@@ -47,6 +47,7 @@ import * as personal from "./personal";
 import * as planclarity from "./planclarity";
 import * as promise from "./promise";
 import * as recap from "./recap";
+import * as returnhooks from "./returnhooks";
 import * as safety from "./safety";
 import * as screeningcalm from "./screeningcalm";
 import * as searchnav from "./searchnav";
@@ -92,6 +93,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   planclarity,
   promise,
   recap,
+  returnhooks,
   safety,
   screeningcalm,
   searchnav,
