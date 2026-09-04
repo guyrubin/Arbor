@@ -123,7 +123,9 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
       toast("Can't delete your only child profile", "error");
       return;
     }
-    if (!window.confirm(`Permanently delete ${activeChild.name} and ALL of their data? This cannot be undone.`)) return;
+    // GP-18: translated — an irreversible deletion must never be confirmed
+    // in a language the parent did not choose.
+    if (!window.confirm(t("confirm.deleteChild", { name: activeChild.name }))) return;
     setBusy(true);
     try {
       await deleteChild(activeChild.id);

@@ -19,7 +19,7 @@ import type { Market } from "./attribution";
  * swaps it in one place. Mirrors lib/runtime.ts PROD_API_ORIGIN (kept local to
  * avoid importing the Capacitor runtime into the pure URL builder).
  */
-export const SHARE_URL = "https://arborprd-westeu.web.app";
+export const SHARE_URL = "https://arborparentingapp.com";
 
 export type ShareChannel = "native" | "web_share" | "download";
 

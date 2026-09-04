@@ -2680,7 +2680,7 @@ Milestone Context: ${JSON.stringify(milestones)}
 Return JSON with title, date, overview, keyStrengths, classroomChallenges, languageSupportPlan, suggestedTeacherStrategies, crisisEscalationTrigger.
 `;
       const privacy = createRedaction(childProfile?.name);
-      res.json(privacy.restoreDeep(await modelProvider.generateJson({
+      const brief = privacy.restoreDeep(await modelProvider.generateJson({
         route: "handoff_structured",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         schema: {
@@ -2697,7 +2697,30 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
             crisisEscalationTrigger: { type: Type.STRING }
           }
         }
-      })));
+      }));
+
+      // AI-2 parity. This was the ONE parent-facing generative route that
+      // returned model output unscreened — and it is the output a parent hands
+      // to a teacher or clinician. Every other generative route in this file
+      // screens before it reaches a person; so does this one now.
+      const brf = (brief ?? {}) as Record<string, unknown>;
+      const briefText = [
+        brf.title, brf.overview, brf.crisisEscalationTrigger,
+        ...([brf.keyStrengths, brf.classroomChallenges, brf.languageSupportPlan, brf.suggestedTeacherStrategies]
+          .flatMap((list) => (Array.isArray(list) ? list : []))),
+      ].filter((span): span is string => typeof span === "string" && span.trim().length > 0).join("\n");
+      const briefVerdict = await screenModelOutput(modelProvider, briefText);
+      if (briefVerdict.flagged) {
+        // Same 409 + escalationCategory contract the input screen above uses,
+        // which lib/api.ts already surfaces as a typed error to the UI.
+        res.status(409).json({
+          error: "Professional support recommended",
+          details: "Arbor could not produce a routine brief for this history. Please review it with a qualified adult.",
+          escalationCategory: briefVerdict.category ?? "output-screen",
+        });
+        return;
+      }
+      res.json(brief);
     } catch (error: any) {
       logger.error("Arbor Handoff Brief Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor handoff brief", details: error.message });
@@ -2963,8 +2986,31 @@ tryThisWeek (ONE concrete, doable suggestion grounded in the stats). Return only
       const memoryEvents = await memoryStore.eraseChild(childId);
       const shares = await shareStore.eraseByChild(uid, childId);
       const consents = await consentStore.eraseByChild(childId);
-      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents });
-      res.json({ erased: { memoryEvents, shares, consents }, childId, erasedAt: new Date().toISOString() });
+      // GDPR Art. 17 parity with /account/delete, which purges Storage. Erasing
+      // ONE child left that child's uploaded photos in the bucket — Firestore
+      // was swept, the images were not. Scoped to this child's own prefix
+      // (lib/storage.ts writes users/{uid}/children/{childId}/photos/...), so a
+      // sibling's data is never touched.
+      let storageFiles = 0;
+      let storageNote: string | undefined;
+      const bucketName = config.storageBucket;
+      if (!bucketName) {
+        storageNote = "skipped: no storage bucket configured";
+      } else {
+        try {
+          const { getStorage } = await import("firebase-admin/storage");
+          await getStorage().bucket(bucketName).deleteFiles({ prefix: `users/${uid}/children/${childId}/` });
+          storageFiles = 1;
+          storageNote = `storage prefix users/{uid}/children/${childId}/ removed`;
+        } catch (err: unknown) {
+          // A bucket that was never provisioned is a clean no-op, not a failure.
+          const message = err instanceof Error ? err.message : String(err);
+          if (!/not exist|notFound|404/i.test(message)) throw err;
+          storageNote = "bucket not provisioned";
+        }
+      }
+      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents, storageFiles });
+      res.json({ erased: { memoryEvents, shares, consents, storageFiles }, storageNote, childId, erasedAt: new Date().toISOString() });
     } catch (error: any) {
       logger.error("Arbor Privacy Erasure Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to erase server-side data", details: error.message });

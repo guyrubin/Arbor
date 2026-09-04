@@ -656,37 +656,14 @@ body {
    Tint, shadow and decorative progress values retain the existing palette.
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ── Teal accent — aligned to 2035 sapphire for coherence ───────────────── */
-[data-theme="teal"] {
-  --arbor-clay:             #1558c0;   /* AA normal text on paper and tinted wells; solid CTA fill */
-  --arbor-clay-deep:        #124da8;   /* darker sapphire for hover and accent ink */
-  --arbor-clay-ink:       var(--arbor-clay-deep);
-  --arbor-clay-dim:         rgba(88, 166, 255, 0.12);
-  --arbor-green-soft:       linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));
-  --arbor-green-ink:        #066446;   /* AA text on green-soft, including recessed wells */
-  --arbor-sage:             #10b981;   /* emerald accent */
-  --arbor-green-cta-start:  #1a6be8;
-  --arbor-green-mid:        #79b8ff;
-  --gradient-cta:           linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8);
-  --shadow-green:           0 0 24px rgba(52,211,153,0.25);
-  --ring:                   0 0 0 3px rgba(88, 166, 255, 0.18);
-}
-
-/* ── Blue accent — aligned to 2035 sapphire for coherence ───────────────── */
-[data-theme="blue"] {
-  --arbor-clay:             #1558c0;   /* AA normal text on paper and tinted wells; solid CTA fill */
-  --arbor-clay-deep:        #124da8;   /* darker sapphire for hover and accent ink */
-  --arbor-clay-ink:       var(--arbor-clay-deep);
-  --arbor-clay-dim:         rgba(88, 166, 255, 0.12);
-  --arbor-green-soft:       linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));
-  --arbor-green-ink:        #066446;   /* AA text on green-soft, including recessed wells */
-  --arbor-sage:             #10b981;   /* emerald accent */
-  --arbor-green-cta-start:  #1a6be8;
-  --arbor-green-mid:        #79b8ff;
-  --gradient-cta:           linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8);
-  --shadow-green:           0 0 24px rgba(52,211,153,0.25);
-  --ring:                   0 0 0 3px rgba(88, 166, 255, 0.18);
-}
+/* ── Accent themes retired (CR-19) ───────────────────────────────────────
+   [data-theme="teal"] and [data-theme="blue"] were byte-identical to each
+   other and to :root after the CR-01 sapphire retint, so the Settings
+   picker offered three visually identical choices. The blocks are removed
+   rather than left as dead overrides. Adding a REAL second theme means a
+   new [data-theme] block here plus an entry in lib/theme.ts ACCENT_THEMES
+   — the picker re-appears on its own. Palette itself is GD-1/GD-2.
+   ──────────────────────────────────────────────────────────────────── */
 
 /* ════════════════════════════════════════════════════════════════════════════
    PARENT VIEW SCOPE — .arbor-parent

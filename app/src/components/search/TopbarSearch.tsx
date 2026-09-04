@@ -28,13 +28,15 @@ import React, {
 } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { ageMonthsFromProfile } from "../../lib/childAge";
+import type { HardMomentContext } from "../../content/pilotRelease";
 import { track } from "../../lib/analytics";
 import { searchnavText } from "../../lib/i18nElevation/searchnav";
 import type { SearchEntry, SearchKind } from "../../lib/searchIndex";
 import { Icon } from "../ui/Icon";
 
 type SearchIndexModule = {
-  searchCatalog: (query: string, limit?: number) => SearchEntry[];
+  searchCatalog: (query: string, limit?: number, context?: HardMomentContext) => SearchEntry[];
 };
 
 const KIND_TOKEN: Partial<Record<SearchKind, string>> = {
@@ -52,7 +54,7 @@ const KIND_TOKEN: Partial<Record<SearchKind, string>> = {
 
 /** AP-045 global search input + results overlay (topbar slot 1). */
 export default function TopbarSearch() {
-  const { setActiveTab } = useArbor();
+  const { setActiveTab, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const heLang = uiLang === "he";
   const [query, setQuery]       = useState("");
@@ -81,9 +83,17 @@ export default function TopbarSearch() {
     wasOpen.current = open;
   }, [open]);
 
+  // Same child context as SearchModal — the hard-moment catalogue is
+  // fail-closed on age + locale and stays invisible without it.
   const results = useMemo(
-    () => (indexMod && query.trim() ? indexMod.searchCatalog(query, 10) : []),
-    [indexMod, query],
+    () => {
+      if (!indexMod || !query.trim()) return [];
+      const now = new Date();
+      return indexMod.searchCatalog(query, 10, {
+        locale: heLang ? "he" : "en", now, ageMonths: ageMonthsFromProfile(childProfile, now),
+      });
+    },
+    [indexMod, query, heLang, childProfile],
   );
 
   // Reset active index whenever results change.

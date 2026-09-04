@@ -118,7 +118,7 @@ export default function PlanKanban({ plan }: { plan: ActionPlan }) {
             <span className="text-[11px] font-black" style={{ color: "var(--arbor-green-ink)" }}>{pct}%</span>
           </ProgressRing>
           <button
-            onClick={() => { if (window.confirm(`Delete the plan "${plan.title}"?`)) deletePlan(plan.id); }}
+            onClick={() => { if (window.confirm(t("confirm.deletePlan", { title: plan.title }))) deletePlan(plan.id); }}
             aria-label={t("aria.deletePlan")}
             className="p-1.5 rounded-lg transition self-start"
             style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}

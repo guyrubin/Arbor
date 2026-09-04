@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { T } from "./tokens";
+import { ACCENT_THEMES } from "./theme";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(path.join(here, "..", "index.css"), "utf8");
@@ -326,17 +327,26 @@ const scopes = runtimeScopes(css);
 
 describe("CR-01 — declared runtime contrast", () => {
   it("covers root, inherited themes, flat app/parent and nested parent cascades", () => {
-    expect(scopes).toHaveLength(18);
     const rules = rulesOf(css);
     expect(rules.some((r) => r.selectors.includes(":root"))).toBe(true);
-    for (const selector of ['[data-theme="teal"]', '[data-theme="blue"]', ".arbor-app", ".arbor-parent"]) {
+    // Theme cascades are derived from ACCENT_THEMES, not hardcoded. "green" is
+    // :root (no attribute), so only the non-default themes need their own
+    // block. This used to name teal and blue literally, which meant retiring
+    // them broke the test — and, worse, re-adding a theme WITHOUT contrast
+    // coverage would not have. Every offered theme now has to be audited.
+    const themeSelectors = ACCENT_THEMES.filter((theme) => theme !== "green").map((theme) => `[data-theme="${theme}"]`);
+    for (const selector of [...themeSelectors, ".arbor-app", ".arbor-parent"]) {
       expect(rules.some((r) => r.selectors.includes(selector)), selector).toBe(true);
     }
+    // No magic total: every audited scope must belong to a cascade we support,
+    // and the audit must actually be covering something. An exact integer here
+    // only ever encoded "how many themes shipped the day this was written".
+    expect(scopes.length).toBeGreaterThanOrEqual(12);
     const checked = new Set([...PAPER, ...TINTS, ...TEXT, ...CTA, ...FLAT_TINTS, "--accent",
       "--arbor-on-accent", "--arbor-green-cta-start", "--arbor-subtab-active", "--arbor-subtab-on-ink",
       ...FUNCTIONAL.map((tone) => "--arbor-" + tone + "-ink")]);
     const supported = new Set([":root", ".arbor-app", ".arbor-parent",
-      '[data-theme="green"]', '[data-theme="teal"]', '[data-theme="blue"]']);
+      ...ACCENT_THEMES.map((theme) => `[data-theme="${theme}"]`)]);
     const unsupported = rules.filter((r) => Object.keys(r.declarations).some((name) => checked.has(name)) &&
       (r.conditional || r.selectors.some((s) => !supported.has(s))));
     expect(unsupported, "Add explicit scenarios for new colour scopes; never silently skip them").toEqual([]);

@@ -34,7 +34,7 @@ const FUNNEL = [
 ] as const;
 
 const CANONICAL_EXAMPLE =
-  "https://arborprd-westeu.web.app/?utm_source=instagram&utm_medium=social&utm_campaign=launch_il&utm_content=bio_link";
+  "https://arborparentingapp.com/?utm_source=instagram&utm_medium=social&utm_campaign=launch_il&utm_content=bio_link";
 
 function emptyCounts() {
   return { install: 0, first_plan: 0, paid: 0 };

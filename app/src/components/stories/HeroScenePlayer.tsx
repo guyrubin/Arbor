@@ -154,7 +154,8 @@ export function HeroScenePlayer({
         </div>
       )}
 
-      {/* S4: make the model's SynthID + C2PA provenance visible on generated art. */}
+      {/* S4: label generated art as AI-made. The badge claims only that — Arbor
+          does not verify any embedded watermark, so it must not imply one. */}
       {sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="-mt-2" />}
 
       <h3 className={`font-extrabold tracking-tight ${immersive ? "text-lg" : "text-base"}`} style={{ color: "var(--arbor-ink)" }}>

@@ -1,5 +1,14 @@
 /* ════════════════════════════════════════════════════════════════════════════
-   theme.ts — AP-052 accent theme switching (Green / Teal / Blue)
+   theme.ts — AP-052 accent theme switching
+
+   ⚠ ONE theme ships today. The CR-01 AA retint aligned every accent to the
+   same sapphire, which left [data-theme="teal"] and [data-theme="blue"] as
+   byte-identical copies of each other AND of :root — so the Settings picker
+   offered three options that rendered identically. Rather than invent two new
+   palettes (that is GD-1/GD-2, an open decision, and inventing design here is
+   exactly what we do not do), the choice is retired until a real second theme
+   exists. The machinery below is intact: add an entry to ACCENT_THEMES with a
+   matching [data-theme] block and the picker returns on its own.
 
    Design rules:
    - "green" is the DEFAULT and is byte-for-byte identical to the existing
@@ -14,7 +23,9 @@
 
 export type AccentTheme = "green" | "teal" | "blue";
 
-export const ACCENT_THEMES: readonly AccentTheme[] = ["green", "teal", "blue"];
+/** Themes offered in Settings. The picker hides itself while this has one
+ *  entry — a control whose options are indistinguishable is worse than none. */
+export const ACCENT_THEMES: readonly AccentTheme[] = ["green"];
 
 const LS_KEY = "arbor-accent-theme";
 const ATTR = "data-theme";
@@ -23,7 +34,9 @@ const ATTR = "data-theme";
 export function getSavedTheme(): AccentTheme {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw === "teal" || raw === "blue") return raw;
+    // Only honour a theme that is still offered: a parent who picked "teal"
+    // before it was retired must not be pinned to a now-deleted CSS block.
+    if (ACCENT_THEMES.includes(raw as AccentTheme) && raw !== "green") return raw as AccentTheme;
   } catch {
     // localStorage unavailable (SSR / private mode) — fall through to default
   }

@@ -648,6 +648,11 @@ export const en: Dict = {
   "beh.expertInsights": "Expert Insights:",
   "beh.theoryFallback": "Development theory",
   "beh.deleteConfirm": "Delete this log?",
+  // GP-18: destructive confirms were hardcoded English, so a Hebrew
+  // parent was asked to approve an irreversible deletion in a language
+  // they had not chosen. {name} is the child; {title} is the plan.
+  "confirm.deleteChild": "Permanently delete {name} and ALL of their data? This cannot be undone.",
+  "confirm.deletePlan": "Delete the plan \"{title}\"?",
   // Hard moments (hm.*) — CONT-2 / AR-CONT-01 chrome labels. The card COPY
   // itself is governed LocalizedText (content/hardMomentCards.ts), fail-closed
   // until named clinical review; these keys are UI chrome only.
@@ -2958,6 +2963,8 @@ export const he: Dict = {
   "beh.expertInsights": "תובנות מומחים:",
   "beh.theoryFallback": "תיאוריה התפתחותית",
   "beh.deleteConfirm": "למחוק את התיעוד?",
+  "confirm.deleteChild": "למחוק לצמיתות את {name} ואת כל הנתונים? אי אפשר לבטל את הפעולה.",
+  "confirm.deletePlan": "למחוק את התוכנית \"{title}\"?",
   // Hard moments (hm.*) — CONT-2 / AR-CONT-01 chrome labels
   "hm.title": "רגעים קשים",
   "hm.sub": "מדריכים קצרים שנבדקו, לרגעים שהכי קשים בבית.",

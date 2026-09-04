@@ -3,6 +3,8 @@ import { Modal } from "../ui/Modal";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { ageMonthsFromProfile } from "../../lib/childAge";
+import type { HardMomentContext } from "../../content/pilotRelease";
 import { track } from "../../lib/analytics";
 import { searchnavText } from "../../lib/i18nElevation/searchnav";
 // LAZY CONTRACT (W2.4): type-only — the searchIndex module (and the content
@@ -13,7 +15,7 @@ import type { SearchEntry, SearchKind } from "../../lib/searchIndex";
 /** The searchIndex module surface we consume after dynamic import. */
 type SearchIndexModule = {
   getSearchIndex: () => readonly SearchEntry[];
-  searchCatalog: (query: string, limit?: number) => SearchEntry[];
+  searchCatalog: (query: string, limit?: number, context?: HardMomentContext) => SearchEntry[];
 };
 
 /* ── Cross-surface open requests (W1.9 mobile entry points) ────────────────
@@ -61,7 +63,7 @@ const KIND_ICON: Partial<Record<SearchKind, string>> = {
  *  active child's logs, conversations, milestones and plans. Full-screen-ish
  *  on mobile (375px: input top, scrollable results, 44px rows). */
 export default function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { behaviorLogs, milestones, actionPlans, conversations, setActiveTab, openConversation } = useArbor();
+  const { behaviorLogs, milestones, actionPlans, conversations, childProfile, setActiveTab, openConversation } = useArbor();
   const { t, uiLang } = useLanguage();
   const heLang = uiLang === "he";
   const [q, setQ] = useState("");
@@ -104,10 +106,16 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
   }, [indexMod, toResult]);
 
   // Query: forgiving HE+EN catalog search across every content library.
+  // The governed hard-moment catalogue is fail-closed on age + locale, so it
+  // only appears in search when the child context is supplied. Without this the
+  // 25 published guides were unreachable from search entirely.
   const catalogResults = useMemo<Result[]>(() => {
     if (!indexMod || !q.trim()) return [];
-    return indexMod.searchCatalog(q, 12).map(toResult);
-  }, [indexMod, q, toResult]);
+    const now = new Date();
+    return indexMod.searchCatalog(q, 12, {
+      locale: heLang ? "he" : "en", now, ageMonths: ageMonthsFromProfile(childProfile, now),
+    }).map(toResult);
+  }, [indexMod, q, toResult, heLang, childProfile]);
 
   // Child-data results (existing behavior, unchanged): logs, threads,
   // recorded milestones, action plans from the active child's context.

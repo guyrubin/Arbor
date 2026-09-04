@@ -298,7 +298,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </div>
         </Row>
 
-        {/* AP-052: Accent theme picker */}
+        {/* AP-052: Accent theme picker — rendered ONLY when there is a real
+            choice. It shipped offering three options whose palettes were
+            byte-identical after the CR-01 retint. Restoring a second theme to
+            ACCENT_THEMES brings this row back automatically. */}
+        {ACCENT_THEMES.length > 1 && (
         <Row icon={<Icon name="palette" size={18} />} title={t("set.theme.title")} sub={t("set.theme.sub")}>
           <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             {(ACCENT_THEMES as readonly AccentTheme[]).map((theme) => (
@@ -314,6 +318,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             ))}
           </div>
         </Row>
+        )}
         </Section>
 
         <Section title={t("set.section.privacyTrust")} sub={t("set.section.privacyTrustSub")}>

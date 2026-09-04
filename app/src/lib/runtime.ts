@@ -17,7 +17,7 @@ import { Capacitor } from "@capacitor/core";
 export const isNativePlatform = Capacitor.isNativePlatform();
 export const nativePlatform = Capacitor.getPlatform(); // "ios" | "android" | "web"
 
-const PROD_API_ORIGIN = "https://arborprd-westeu.web.app";
+const PROD_API_ORIGIN = "https://arborparentingapp.com";
 
 export const API_BASE = (
   (import.meta.env.VITE_API_BASE as string | undefined) ??

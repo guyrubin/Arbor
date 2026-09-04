@@ -375,7 +375,7 @@ export default function SpeechCoachTab() {
                     >
                       {s.id.toUpperCase()}
                       {st && st.attempts > 0 && (
-                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : st.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow-ink)" }}>{st.recentAccuracy}%</span>
+                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : "var(--arbor-clay)" }}>{st.recentAccuracy}%</span>
                       )}
                     </button>
                   );
@@ -656,8 +656,12 @@ export default function SpeechCoachTab() {
                   <span className="text-xl font-extrabold w-10 text-center" style={{ color: "var(--arbor-lav-ink)" }}>{s.sound.toUpperCase()}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{entry?.label ?? s.sound}</p>
+                    {/* Clinical firewall: the fill is ONE accent at every value.
+                        It previously flipped clay/yellow at 70%, which made a
+                        practice score a chromatic verdict about the child on a
+                        parent surface. The number stays — the judgement goes. */}
                     <div className="h-2 rounded-full mt-1.5" style={{ background: "rgba(41,51,63,0.08)" }}>
-                      <div className="h-2 rounded-full transition-all" style={{ width: `${s.recentAccuracy}%`, background: s.recentAccuracy >= 70 ? "var(--arbor-clay)" : "var(--arbor-yellow)" }} />
+                      <div className="h-2 rounded-full transition-all" style={{ width: `${s.recentAccuracy}%`, background: "var(--arbor-clay)" }} />
                     </div>
                     <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>
                       {t("prac.speech.progress.stat", { tries: s.attempts, accuracy: s.recentAccuracy, level: s.levelReached })}

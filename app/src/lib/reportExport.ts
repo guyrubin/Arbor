@@ -9,6 +9,7 @@ import type { ChildProfile, BehaviorLog, ActionPlan } from "../types";
 import type { LangObservation } from "../growth/vocabAgg";
 import { fmtDay } from "./formatDate";
 import { topMomentDisplay } from "../hooks/useWeeklyRecap";
+import { isNativePlatform } from "./runtime";
 
 export type ReportSection = { heading: string; body: string | string[] };
 export type ReportDoc = {
@@ -168,12 +169,61 @@ function buildReportBody(type: ParentReportType, ctx: ReportContext): ReportDoc 
   }
 }
 
-export function openPrintableReport(doc: ReportDoc, childName: string) {
+/**
+ * Export the report.
+ *
+ * MOB-06: this used to be `window.open` + `window.print()` with a hardcoded
+ * English `alert()` on failure. Inside the Capacitor WebView `window.open`
+ * yields no printable window and `window.print` does nothing, so on mobile the
+ * whole feature was dead and the only feedback was an untranslated pop-up
+ * warning. Now: native shares the report file through the existing
+ * @capacitor/share pipeline, and web falls back to downloading the same file
+ * when the print window is blocked — no alert, no dead end, nothing to
+ * translate. Never rejects; callers may fire-and-forget as before.
+ */
+export async function openPrintableReport(doc: ReportDoc, childName: string): Promise<void> {
+  const html = renderPrintableHtml(doc, childName);
+  const filename = `${slugForFile(doc.title)}-${slugForFile(childName)}.html`;
+
+  if (isNativePlatform) {
+    try {
+      const [{ Share }, { Filesystem, Directory, Encoding }] = await Promise.all([
+        import("@capacitor/share"),
+        import("@capacitor/filesystem"),
+      ]);
+      const written = await Filesystem.writeFile({
+        path: filename, data: html, directory: Directory.Cache, encoding: Encoding.UTF8,
+      });
+      await Share.share({ title: doc.title, files: [written.uri] });
+      return;
+    } catch {
+      /* fall through to the browser path below */
+    }
+  }
+
   const w = window.open("", "_blank", "noopener,noreferrer");
   if (!w) {
-    alert("Please allow pop-ups to export the report, then try again.");
+    // Popup blocked: hand the parent the file instead of a dead-end alert.
+    try {
+      const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch { /* nothing further we can honestly offer */ }
     return;
   }
+  w.document.write(html);
+  w.document.close();
+}
+
+/** Filesystem-safe slug; keeps the report name recognisable in a share sheet.
+ *  Fallback is hyphenated on purpose: a bare lowercase word that happens to be
+ *  a Material Symbols ligature trips the icon-subset guard as a phantom icon. */
+const slugForFile = (value: string) =>
+  (value || "arbor-report").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "arbor-report";
+
+function renderPrintableHtml(doc: ReportDoc, childName: string): string {
   const sectionsHtml = doc.sections.map((s) => {
     const items = Array.isArray(s.body) ? s.body.filter(Boolean) : [s.body];
     const body = items.length
@@ -184,7 +234,7 @@ export function openPrintableReport(doc: ReportDoc, childName: string) {
     return `<section><h2>${esc(s.heading)}</h2>${body}</section>`;
   }).join("");
 
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(doc.title)} — ${esc(childName)}</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(doc.title)} — ${esc(childName)}</title>
   <style>
     @page { margin: 24mm 18mm; }
     * { box-sizing: border-box; }
@@ -213,6 +263,5 @@ export function openPrintableReport(doc: ReportDoc, childName: string) {
   ${sectionsHtml}
   <div class="footer">Arbor is non-diagnostic and does not replace professional advice. This report reflects parent observations and is shared with the parent's consent.</div>
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
-  </body></html>`);
-  w.document.close();
+  </body></html>`;
 }
