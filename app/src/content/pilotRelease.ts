@@ -79,16 +79,33 @@ export function computePilotDigest(card: HardMomentCard): string {
   return "fnv1a64:" + digest.toString(16).padStart(16, "0");
 }
 
+/** A card's authored age band as a half-open month range: [startMonths, endMonths). */
+export interface HardMomentAgeRange {
+  readonly startMonths: number;
+  /** Exclusive. `Infinity` for an open "N+" band. */
+  readonly endMonths: number;
+}
+
+/**
+ * THE band parser — one implementation, so the age-fit explanation a parent
+ * reads can never drift from the gate that decides what they are shown.
+ * Years are inclusive: "2-5" means 24 <= months < 72. Unparseable band => null,
+ * and an unparseable band closes the whole card (see `fitsHardMomentAge`).
+ */
+export function parseHardMomentAgeBand(band: string): HardMomentAgeRange | null {
+  const closed = /^(\d+)[–-](\d+)$/.exec(band);
+  if (closed && Number(closed[1]) <= Number(closed[2])) {
+    return { startMonths: Number(closed[1]) * 12, endMonths: (Number(closed[2]) + 1) * 12 };
+  }
+  const open = /^(\d+)\+$/.exec(band);
+  return open ? { startMonths: Number(open[1]) * 12, endMonths: Infinity } : null;
+}
+
 /** Years are inclusive: 2–5 means 24 <= months < 72. Unknown metadata closes. */
 export function fitsHardMomentAge(card: HardMomentCard, months?: number | null): boolean {
   if (typeof months !== "number" || !Number.isFinite(months) || months < 0 || !Array.isArray(card.ageBands) || !card.ageBands.length) return false;
-  const ranges = card.ageBands.map((band) => {
-    const closed = /^(\d+)[–-](\d+)$/.exec(band);
-    if (closed && Number(closed[1]) <= Number(closed[2])) return [Number(closed[1]) * 12, (Number(closed[2]) + 1) * 12];
-    const open = /^(\d+)\+$/.exec(band);
-    return open ? [Number(open[1]) * 12, Infinity] : null;
-  });
-  return ranges.every(Boolean) && ranges.some((range) => range && months >= range[0] && months < range[1]);
+  const ranges = card.ageBands.map(parseHardMomentAgeBand);
+  return ranges.every(Boolean) && ranges.some((range) => !!range && months >= range.startMonths && months < range.endMonths);
 }
 
 /** One call-time policy for lists, detail/actions, Search, Today and coach seeds. */

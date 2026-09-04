@@ -26,6 +26,9 @@ import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonA
 import { isRenderableMilestoneMedia } from "../../content/governance";
 // B0 — months-precise age spine
 import { ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+// GP-10 — the record keeps DATES and "first time" language; Wave G strings.
+import { tGCare } from "../../lib/growthCareText";
+import { fmtDay } from "../../lib/formatDate";
 // LL-A3 — milestone → Learn Library "why this matters" door
 import { bestCardForDomain } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
@@ -244,20 +247,36 @@ export default function MilestonesTab() {
               </figcaption>
             </figure>
           )}
-          {/* UND-1 — observation labels resolve through i18n keys (were inline ternaries). */}
-          <div className="grid grid-cols-3 gap-1.5 pt-2" role="group" aria-label={t("ms.observePrompt")}>
+          {/* UND-1 — observation labels resolve through i18n keys (were inline ternaries).
+              GP-10 — "Yes" answered a question nobody asked; the act is noticing
+              something for the FIRST TIME, so the control says "Seen it" and the
+              group label says what marking means.
+              GP-12 — min-h-11 (44px): this is the surface's primary move, and a
+              mis-tap between "Not sure" and "Not yet" changes what monitoring
+              counts as an answer (lib/monitoring.ts isMilestoneAnswered). */}
+          <div className="grid grid-cols-3 gap-1.5 pt-2" role="group" aria-label={tGCare(uiLang, "elev.gcare.ms.observePrompt")}>
             {([
-              ["yes", t("ms.observe.yes")],
+              ["yes", tGCare(uiLang, "elev.gcare.ms.observe.yes")],
               ["not_sure", t("ms.observe.notSure")],
               ["not_yet", t("ms.observe.notYet")],
             ] as const).map(([status, label]) => {
               const selected = (item.observationStatus ?? (item.checked ? "yes" : undefined)) === status;
-              return <button key={status} type="button" onClick={() => observeMilestone(item, status)} aria-pressed={selected} className="min-h-9 rounded-lg px-1.5 text-[11px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "rgba(52,178,119,0.30)" : "var(--arbor-rule)"}` }}>{label}</button>;
+              return <button key={status} type="button" onClick={() => observeMilestone(item, status)} aria-pressed={selected} className="min-h-11 rounded-lg px-1.5 text-[11px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "rgba(52,178,119,0.30)" : "var(--arbor-rule)"}` }}>{label}</button>;
             })}
           </div>
           {item.observationStatus === "not_sure" && <p className="pt-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
           <div className="flex items-center gap-2 flex-wrap pt-1">
-            {item.checked && <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{t("ms.observed")}</span>}
+            {/* GP-10 — `observationUpdatedAt` has been written on every mark since
+                ArborContext setMilestoneObservation, but nothing ever rendered it:
+                a milestone without a date is a checkbox, with one it is a keepsake
+                ("First steps — 14 Aug"). Dates only; the chip never grades. */}
+            {item.checked && (
+              <span data-testid="ms-noticed-chip" className="text-[11px] font-extrabold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
+                {item.observationUpdatedAt
+                  ? tGCare(uiLang, "elev.gcare.ms.noticedOn", { date: fmtDay(item.observationUpdatedAt, uiLang) })
+                  : tGCare(uiLang, "elev.gcare.ms.noticedUndated")}
+              </span>
+            )}
             {item.ageGroup && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.age")} {item.ageGroup}</span>}
             {item.custom && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
             {item.custom && (

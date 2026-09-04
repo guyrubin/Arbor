@@ -16,6 +16,9 @@ import ScreeningSheet from "../sections/ScreeningSheet";
 import { SpineRibbon } from "../ui/SpineRibbon";
 import { DOMAIN_META } from "../../practice/content";
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
+import { tGCare } from "../../lib/growthCareText";
+// GP-34 — the thing the parent chose to watch for after a Development Check.
+import { clearWatchFocus, resolveWatchFocus } from "../../lib/screeningWatch";
 import { fmtDay } from "../../lib/formatDate";
 
 /** Masterplan 1.7 — module-local string resolution for the Full Picture entry
@@ -91,7 +94,28 @@ export default function DevelopmentTab() {
     return comparisonAgeMonths(chronoMonths, childProfile.preterm?.gestationalWeeks);
   }, [childProfile]);
 
+  // GP-34 — the parent's own pick wins over the derived one. Re-read when the
+  // check sheet closes (that is where the choice is made) and when the record
+  // changes, so a milestone that has since been noticed retires itself.
+  const [watchTick, setWatchTick] = useState(0);
+  useEffect(() => { if (!checkOpen) setWatchTick((n) => n + 1); }, [checkOpen]);
+  const chosenWatch = useMemo(
+    () => resolveWatchFocus(childProfile.id, milestones),
+    // watchTick is the storage-read trigger; it has no value of its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [childProfile.id, milestones, watchTick],
+  );
+
   const weeklyFocus = useMemo(() => {
+    if (chosenWatch) {
+      return {
+        title: chosenWatch.title,
+        body: chosenWatch.skillLooksLike || chosenWatch.description,
+        hint: t("growth.focus.watchHint"),
+        action: "daily-play" as const,
+        chosen: true,
+      };
+    }
     const selected = selectWeeklyFocus(milestones, comparisonMonths);
     if (selected) {
       return {
@@ -100,6 +124,7 @@ export default function DevelopmentTab() {
         // "watch for" vs "try" — observational framing only, never a verdict.
         hint: selected.mode === "watch" ? t("growth.focus.watchHint") : t("growth.focus.tryHint"),
         action: "daily-play" as const,
+        chosen: false,
       };
     }
     return {
@@ -107,11 +132,26 @@ export default function DevelopmentTab() {
       body: t("growth.focus.empty.body"),
       hint: null,
       action: "check" as const,
+      chosen: false,
     };
-  }, [milestones, comparisonMonths, t]);
+  }, [chosenWatch, milestones, comparisonMonths, t]);
 
+  // GP-07 (felt response) + GP-10 (dates): noticing a milestone used to move a
+  // COUNTER and nothing else — the one act the hub exists for left no visible
+  // trace. Noticed milestones now enter the same "recently" list as moments and
+  // play, carrying the date they were noticed, so the record visibly grows in
+  // the frame the parent marks it. Counts, titles and dates only — no verdicts.
   const recentMoments = useMemo(() => {
     const moments = [
+      ...milestones
+        .filter((m) => m.checked && m.observationUpdatedAt)
+        .map((m) => ({
+          id: `milestone-${m.id}`,
+          at: new Date(m.observationUpdatedAt as string).getTime(),
+          icon: "check_circle",
+          title: m.title,
+          meta: tGCare(uiLang, "elev.gcare.ms.noticedOn", { date: fmtDay(m.observationUpdatedAt as string, uiLang) }),
+        })),
       ...behaviorLogs.map((log) => ({
         id: `behavior-${log.id}`,
         at: new Date(log.timestamp).getTime(),
@@ -127,8 +167,11 @@ export default function DevelopmentTab() {
         meta: fmtDay(log.timestamp, uiLang),
       })),
     ];
-    return moments.sort((a, b) => b.at - a.at).slice(0, 3);
-  }, [behaviorLogs, playLogs, uiLang]);
+    return moments
+      .filter((m) => Number.isFinite(m.at))
+      .sort((a, b) => b.at - a.at)
+      .slice(0, 3);
+  }, [milestones, behaviorLogs, playLogs, uiLang]);
 
   // E2 hero stat trio — CLINICAL FIREWALL: counts and plain activity facts
   // only ("x of y noticed", active-domain count, moments-this-week count).
@@ -209,8 +252,9 @@ export default function DevelopmentTab() {
       <section className="overflow-hidden rounded-[24px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }} aria-labelledby="growth-weekly-focus">
         <div className="grid min-w-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
           <div className="min-w-0 p-4 sm:p-6 lg:p-7">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>
-              <Icon name="explore" size={16} /> {t("growth.focus.eyebrow")}
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }} data-testid="growth-focus-eyebrow">
+              <Icon name={weeklyFocus.chosen ? "visibility" : "explore"} size={16} />
+              {weeklyFocus.chosen ? tGCare(uiLang, "elev.gcare.growth.watch.eyebrow") : t("growth.focus.eyebrow")}
             </span>
             <h2 id="growth-weekly-focus" className="mt-2 break-words text-xl font-semibold leading-tight sm:text-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{weeklyFocus.title}</h2>
             {weeklyFocus.hint && (
@@ -225,6 +269,12 @@ export default function DevelopmentTab() {
               <button type="button" onClick={() => setActiveTab("milestones")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
                 <Icon name="edit_note" size={18} /> {t("growth.focus.review")}
               </button>
+              {/* A choice the parent made has to be a choice they can unmake. */}
+              {weeklyFocus.chosen && (
+                <button type="button" data-testid="growth-focus-unwatch" onClick={() => { clearWatchFocus(childProfile.id); setWatchTick((n) => n + 1); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition" style={{ color: "var(--arbor-muted)" }}>
+                  {tGCare(uiLang, "elev.gcare.growth.watch.clear")}
+                </button>
+              )}
             </div>
           </div>
           <div className="min-w-0 border-t p-4 sm:p-6 xl:border-s xl:border-t-0" style={{ background: "var(--arbor-paper-deep)", borderColor: "var(--arbor-rule)" }}>
@@ -343,7 +393,14 @@ export default function DevelopmentTab() {
       <div className="grid gap-3 sm:grid-cols-2">
         {([
           { tab: "milestones", glyph: "check_circle", label: t("hub.milestones"), sub: t("elev.growth.link.milestones.sub") },
-          { tab: "journey", glyph: "calendar_month", label: t("hub.journey"), sub: t("elev.growth.link.journey.sub") },
+          // GP-07: this door was labelled "the month-by-month development
+          // timeline" and pointed at `journey` — the PRACTICE hub, whose first
+          // tile is a numeric "practice consistency score". A parent tapping a
+          // timeline from the calm Growth hub landed on a score. The
+          // month-by-month layer actually lives in the Story density of the
+          // timeline surface (MonthsSpine), so the door now points there and
+          // says what it opens.
+          { tab: "timeline", glyph: "calendar_month", label: tGCare(uiLang, "elev.gcare.growth.link.timeline.label"), sub: tGCare(uiLang, "elev.gcare.growth.link.timeline.sub") },
         ] as const).map((l) => (
           <button
             key={l.tab}
