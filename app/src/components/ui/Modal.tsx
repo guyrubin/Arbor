@@ -1,10 +1,10 @@
-import React, { useEffect, useId, useRef } from "react";
+import React, { useId } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { useDialog } from "../../hooks/useDialog";
 
 /** Centered modal dialog with backdrop, focus trap, and focus restore (WCAG 2.4.3). */
 export function Modal({
@@ -20,51 +20,9 @@ export function Modal({
   children: React.ReactNode;
   maxWidth?: string;
 }) {
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose });
   const titleId = useId();
   const { t } = useLanguage();
-
-  // Keyboard: Escape closes; Tab cycles inside the dialog (focus trap).
-  useEffect(() => {
-    if (!open) return;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
-      if (e.key === "Tab" && dialogRef.current) {
-        const focusables = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
-          .filter((el) => el.offsetParent !== null);
-        if (focusables.length === 0) return;
-        const firstEl = focusables[0];
-        const lastEl = focusables[focusables.length - 1];
-        const active = document.activeElement;
-        if (e.shiftKey && (active === firstEl || !dialogRef.current.contains(active))) {
-          e.preventDefault();
-          lastEl.focus();
-        } else if (!e.shiftKey && active === lastEl) {
-          e.preventDefault();
-          firstEl.focus();
-        }
-      }
-    };
-    window.addEventListener("keydown", onKey);
-
-    // Move focus into the dialog once it mounts.
-    const focusTimer = window.setTimeout(() => {
-      const focusables = dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE);
-      (focusables && focusables.length > 0 ? focusables[0] : dialogRef.current)?.focus();
-    }, 0);
-
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.clearTimeout(focusTimer);
-      // WCAG: return focus to the control that opened the dialog.
-      previouslyFocused?.focus?.();
-    };
-  }, [open, onClose]);
 
   // Render to document.body so the fixed overlay is positioned against the
   // viewport, not against a transformed ancestor (the page's motion.div applies
@@ -79,7 +37,8 @@ export function Modal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={onBackdropClick}
+          data-arbor-dialog-layer
         >
           <motion.div
             ref={dialogRef}
@@ -97,9 +56,9 @@ export function Modal({
             <div className="flex items-center justify-between mb-4">
               {title && <h3 id={titleId} className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h3>}
               <button
-                onClick={onClose}
-                className="ms-auto p-1.5 rounded-lg transition"
-                style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
+                onClick={requestClose}
+                className="touch-target ms-auto p-1.5 rounded-lg transition"
+                style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 aria-label={t("aria.close")}
               >
                 <X className="w-4 h-4" />

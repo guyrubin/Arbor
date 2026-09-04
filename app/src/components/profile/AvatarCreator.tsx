@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Sparkles, Camera, Wand2, ShieldCheck } from "lucide-react";
@@ -36,13 +37,15 @@ export default function AvatarCreator({
   childId,
   childName,
   onClose,
-  onCreated
+  onCreated,
+  parentDialogRef,
 }: {
   open: boolean;
   childId: string;
   childName: string;
   onClose: () => void;
   onCreated: (result: Result) => void;
+  parentDialogRef?: React.RefObject<HTMLElement | null>;
 }) {
   const [mode, setMode] = useState<"describe" | "photo">("describe");
   const [style, setStyle] = useState<AvatarStyle>("comichero");
@@ -82,6 +85,7 @@ export default function AvatarCreator({
     setRefPhoto(undefined); setResult(undefined); setPhotoError(undefined); avatar.clearError();
   };
   const close = () => { reset(); onClose(); };
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose: close, parentRef: parentDialogRef });
 
   const onPickPhoto = async (file?: File) => {
     if (!file) return;
@@ -126,8 +130,10 @@ export default function AvatarCreator({
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div className="arbor-app fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(41,51,63,0.45)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={close}>
+        <motion.div className="arbor-app fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(41,51,63,0.45)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onBackdropClick} data-arbor-dialog-layer>
           <motion.div
+            ref={dialogRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-label={t("aria.createAvatar")}
@@ -140,7 +146,7 @@ export default function AvatarCreator({
               <h3 className="text-lg font-extrabold tracking-tight flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                 <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} /> Create {isolate(childName)}&apos;s avatar
               </h3>
-              <button onClick={close} className="p-1.5 rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
+              <button onClick={requestClose} className="touch-target p-1.5 rounded-lg transition" style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
                 <X className="w-4 h-4" />
               </button>
             </div>

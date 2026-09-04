@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Download, Trash2, Camera, Sparkles, Check, Plus } from "lucide-react";
@@ -88,13 +89,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     }
   };
 
-  // Escape closes the drawer (keyboard parity with the backdrop click).
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose });
 
   // Re-sync the form whenever the drawer opens or the active child changes.
   useEffect(() => {
@@ -201,8 +196,10 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div className="arbor-app fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(41,51,63,0.4)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+        <motion.div className="arbor-app fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(41,51,63,0.4)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onBackdropClick} data-arbor-dialog-layer>
           <motion.div
+            ref={dialogRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-label={t("aria.editChildProfile")}
@@ -216,7 +213,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Edit profile</h3>
-              <button onClick={onClose} className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg transition" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
+              <button onClick={requestClose} className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg transition" style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -418,6 +415,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
             </div>
           </motion.div>
           <AvatarCreator
+            parentDialogRef={dialogRef}
             open={showCreator}
             childId={activeChild.id}
             childName={name || activeChild.name}

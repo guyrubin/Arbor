@@ -116,7 +116,7 @@ export function HeroScenePlayer({
         <span>
           Beat {beatNumber} of {beatTotal}
         </span>
-        {scene.narration && <SpeakButton text={scene.narration} lang={uiLang} />}
+        {scene.narration && <SpeakButton text={scene.narration} lang={uiLang} className="touch-target" />}
         {/* KID-26: file downloads are a parent affordance — never reachable from inside Kid Mode. */}
         {sceneArt && !isKidModeActive() && (
           <button
@@ -126,7 +126,7 @@ export function HeroScenePlayer({
                 { imageUrl: sceneArt, name: heroName, title: scene.title },
                 `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`,
               )
-            } className="flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
+            } className="touch-target flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
             <Download className="w-3.5 h-3.5" /> Save
           </button>
         )}

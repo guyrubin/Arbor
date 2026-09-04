@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useDialog } from "../../hooks/useDialog";
 import Icon from "../ui/Icon";
 import { translate, type UiLang } from "../../lib/i18n";
 
@@ -128,12 +130,17 @@ export default function VoiceOverlay({
 }) {
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const mode = orbMode(phase, reducedMotion);
+  const { ref: dialogRef, requestClose } = useDialog<HTMLElement>({ open: true, onClose });
   const haloRef = useRef<HTMLDivElement | null>(null);
   useMicLevel(phase === "listening" && !reducedMotion, haloRef);
   const phaseLabel = t(`coach.voice.${phase}`);
 
-  return (
+  const overlay = (
     <section
+      ref={dialogRef}
+      tabIndex={-1}
+      data-arbor-dialog-layer
+      aria-modal="true"
       role="dialog"
       aria-label={t("coach.voice.overlay.aria")}
       dir={lang === "he" ? "rtl" : "ltr"}
@@ -158,10 +165,10 @@ export default function VoiceOverlay({
         </span>
         <button
           type="button"
-          onClick={onClose}
+          onClick={requestClose}
           aria-label={t("coach.voice.end")}
           className="touch-target ms-auto flex h-11 w-11 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+          style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
         >
           <Icon name="close" size={18} />
         </button>
@@ -240,5 +247,9 @@ export default function VoiceOverlay({
         </p>
       </div>
     </section>
+  );
+  // Keep static markup tests/server rendering free of DOM and media effects.
+  return typeof document === "undefined" ? overlay : createPortal(
+    <div className="arbor-app arbor-parent" style={{ display: "contents" }}>{overlay}</div>, document.body,
   );
 }
