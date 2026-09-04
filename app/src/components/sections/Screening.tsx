@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -15,6 +15,11 @@ import { useMonitoring } from "../../hooks/useMonitoring";
 import { openPrintableReport } from "../../lib/reportExport";
 import { en as screenCalmEn, he as screenCalmHe } from "../../lib/i18nElevation/screeningcalm";
 import { fmtDay } from "../../lib/formatDate";
+// GP-11 / GP-34 — answers survive a refresh; an uncertain answer becomes
+// something the parent can actually watch for this week.
+import { clearScreeningDraft, readScreeningDraft, writeScreeningDraft } from "../../lib/screeningDraft";
+import { watchOffersForScreening, writeWatchFocus } from "../../lib/screeningWatch";
+import { tGCare } from "../../lib/growthCareText";
 
 /** W0.3 — module-local string resolution for the calm-result reframe.
  *  i18nElevation/index.ts registration is that file's own recipe (one line per
@@ -149,7 +154,7 @@ export default function Screening() {
  *  run as a full page OR inside an inline sheet (b2 My Child story spine). The
  *  optional `onClose` lets the sheet dismiss itself before routing to Care. */
 export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
-  const { childProfile, setActiveTab } = useArbor();
+  const { childProfile, milestones, setActiveTab } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
@@ -171,9 +176,38 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
     [col.items]
   );
 
-  const [phase, setPhase] = useState<"intro" | "questions" | "result">("intro");
-  const [answers, setAnswers] = useState<Record<string, ScreenAnswer>>({});
+  // GP-11 — the questions phase is restored from sessionStorage on mount, so a
+  // phone call mid-check no longer costs the parent every answer. Keyed by
+  // child + band; unknown ids and values are dropped on read. A restored draft
+  // also lands the parent back ON the questions — showing the intro again,
+  // silently pre-filled, would read as if the answers were lost.
+  const itemIds = useMemo(() => band.items.map((it) => it.id), [band]);
+  const initialDraft = useMemo(
+    () => readScreeningDraft(childProfile.id, band.id, itemIds) ?? {},
+    // Read ONCE per mount; later reads go through the child/band effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const [phase, setPhase] = useState<"intro" | "questions" | "result">(
+    Object.keys(initialDraft).length > 0 ? "questions" : "intro",
+  );
+  const [answers, setAnswers] = useState<Record<string, ScreenAnswer>>(initialDraft);
+  const [restored, setRestored] = useState(Object.keys(initialDraft).length > 0);
   const [result, setResult] = useState<ScreeningResult | null>(null);
+  // GP-34 — the milestone the parent chose to watch for after this check.
+  const [watchingId, setWatchingId] = useState<string | null>(null);
+
+  // Persist on every change (cheap: a handful of keys), and follow a child or
+  // band switch rather than leaking one child's answers into another's check.
+  useEffect(() => {
+    writeScreeningDraft(childProfile.id, band.id, answers);
+  }, [childProfile.id, band.id, answers]);
+  useEffect(() => {
+    const draft = readScreeningDraft(childProfile.id, band.id, itemIds);
+    setAnswers(draft ?? {});
+    setRestored(Object.keys(draft ?? {}).length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childProfile.id, band.id]);
   // Id of the saved screening record the result screen is showing — the
   // re-check reminder is written onto THIS record (UND-2: no fake done-state).
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -187,6 +221,9 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
     const id = `screen-${Date.now()}`;
     setActiveId(id);
     void col.upsert({ ...r, id });
+    // The answers are now a saved record; the draft has done its job.
+    clearScreeningDraft(childProfile.id, band.id);
+    setRestored(false);
   };
 
   // Live view of the active saved record (sandbox state / Firestore snapshot),
@@ -205,7 +242,29 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
     toast(t("screen.recheck.toast"), "success");
   };
 
-  const restart = () => { setAnswers({}); setResult(null); setPhase("questions"); };
+  const restart = () => {
+    setAnswers({});
+    setRestored(false);
+    clearScreeningDraft(childProfile.id, band.id);
+    setResult(null);
+    setWatchingId(null);
+    setPhase("questions");
+  };
+
+  // GP-34 — carry ONE uncertain answer forward as this week's thing to watch
+  // for, and book the re-check in the same tap. The offers are derived from
+  // the answers the parent just gave (never from a score): "sometimes"/"not
+  // yet" items mapped to an open milestone in the SAME domain inside the
+  // child's corrected age window.
+  const watchOffers = useMemo(
+    () => (result ? watchOffersForScreening(band.items, answers, milestones, comparisonMonths).slice(0, 3) : []),
+    [result, band.items, answers, milestones, comparisonMonths],
+  );
+  const chooseWatch = (milestoneId: string, screenItemId: string) => {
+    writeWatchFocus(childProfile.id, { milestoneId, screenItemId, chosenAt: new Date().toISOString() });
+    setWatchingId(milestoneId);
+    if (!reminderDueAt) remind();
+  };
 
   // From the sheet, close first then route so the parent lands on the Care surface.
   const routeTo = (tab: "reports" | "find-pro") => { onClose?.(); setActiveTab(tab); };
@@ -239,7 +298,13 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                 <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>
                   {t("screen.last.line", {
                     date: fmtDay(last.answeredAt, uiLang),
-                    status: last.elevated ? t("screen.last.flagged", { n: last.watchAreas.length }) : t("screen.last.calm"),
+                    // GP-11 — the calm reframe reworded the RESULT screen but
+                    // left "flagged" on the line above it. One register.
+                    status: last.elevated
+                      ? (last.watchAreas.length === 1
+                        ? tGCare(uiLang, "elev.gcare.screen.last.worth.one")
+                        : tGCare(uiLang, "elev.gcare.screen.last.worth.many", { n: last.watchAreas.length }))
+                      : t("screen.last.calm"),
                   })}
                 </span>
                 <button onClick={() => { setActiveId(last.id); setResult(last); setPhase("result"); }} className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("screen.viewLast")}</button>
@@ -273,6 +338,27 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
 
       {phase === "questions" && (
         <div className="space-y-3">
+          {/* GP-11 — say that the answers came back; a silently pre-filled form
+              reads as a bug. The escape hatch is right next to it. */}
+          {restored && (
+            <div
+              data-testid="screen-draft-restored"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3"
+              style={{ background: "var(--arbor-paper-deep)" }}
+            >
+              <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>
+                {tGCare(uiLang, "elev.gcare.screen.draft.restored")}
+              </span>
+              <button
+                type="button"
+                onClick={() => { setAnswers({}); setRestored(false); clearScreeningDraft(childProfile.id, band.id); }}
+                className="inline-flex min-h-11 items-center text-xs font-bold"
+                style={{ color: "var(--arbor-green-ink)" }}
+              >
+                {tGCare(uiLang, "elev.gcare.screen.draft.clear")}
+              </button>
+            </div>
+          )}
           {band.items.map((it, idx) => (
             <div key={it.id} className={`${cardCls} p-4`}>
               <div className="flex items-start gap-3">
@@ -286,7 +372,11 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                         <button
                           key={a}
                           onClick={() => setAnswers((p) => ({ ...p, [it.id]: a }))}
-                          className="px-3 py-1.5 rounded-full text-xs font-bold transition"
+                          // GP-12 — 44px. These chips were ~30px tall and are
+                          // the surface's primary move on a 390px phone; a
+                          // mis-tap between "Not sure" and "Not yet" changes
+                          // what monitoring counts as an answer.
+                          className="min-h-11 px-4 rounded-full text-xs font-bold transition"
                           style={on
                             ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
                             : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
@@ -357,6 +447,75 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                 </div>
               ))}
             </div>
+
+            {/* GP-34 — close the loop. Every "sometimes"/"not yet" answer that
+                maps to an open milestone in the SAME domain and the child's own
+                age window becomes one concrete thing to watch for this week.
+                Choosing one writes the Development hub's focus and books the
+                re-check in the same tap. Observational language only; the offer
+                exists whether or not the check came back calm. */}
+            {watchOffers.length > 0 && (
+              <SectionCard title={tGCare(uiLang, "elev.gcare.screen.watch.title")} icon={<Icon name="visibility" size={20} />} tone="mint">
+                <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                  {tGCare(uiLang, "elev.gcare.screen.watch.body")}
+                </p>
+                <ul className="mt-3 space-y-2" data-testid="screen-watch-offers">
+                  {watchOffers.map(({ item, milestone }) => {
+                    const chosen = watchingId === milestone.id;
+                    return (
+                      <li key={item.id} className={`${cardCls} flex flex-wrap items-center justify-between gap-3 p-3.5`}>
+                        <span className="min-w-0 flex-1">
+                          <span className="block break-words text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{milestone.title}</span>
+                          <span className="mt-0.5 block break-words text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t(`screen.domain.${item.domain}`)}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => chooseWatch(milestone.id, item.id)}
+                          disabled={chosen}
+                          aria-pressed={chosen}
+                          data-testid="screen-watch-cta"
+                          className="inline-flex min-h-11 flex-shrink-0 items-center gap-2 rounded-2xl px-4 text-sm font-bold disabled:opacity-70"
+                          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+                        >
+                          <Icon name={chosen ? "check" : "visibility"} size={16} />
+                          {chosen
+                            ? tGCare(uiLang, "elev.gcare.screen.watch.chosen")
+                            : tGCare(uiLang, "elev.gcare.screen.watch.cta")}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </SectionCard>
+            )}
+
+            {/* GP-11 — a calm result used to dead-end: "nothing asks for action"
+                and then only "remind me" / "Retake". Most checks come back calm,
+                so that was the common case with nowhere to go. The offered next
+                move is the ordinary one — play together, or open the record. */}
+            {!result.elevated && (
+              <SectionCard title={tGCare(uiLang, "elev.gcare.screen.calm.title")} icon={<Icon name="wb_sunny" size={20} />} tone="mint">
+                <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                  {tGCare(uiLang, "elev.gcare.screen.calm.body")}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2" data-testid="screen-calm-next">
+                  <button
+                    onClick={() => { onClose?.(); setActiveTab("daily-play"); }}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white"
+                    style={{ background: "var(--arbor-gradient-primary)" }}
+                  >
+                    <Icon name="toys" size={16} /> {tGCare(uiLang, "elev.gcare.screen.calm.play")}
+                  </button>
+                  <button
+                    onClick={() => { onClose?.(); setActiveTab("milestones"); }}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold"
+                    style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}
+                  >
+                    <Icon name="edit_note" size={16} /> {tGCare(uiLang, "elev.gcare.screen.calm.record")}
+                  </button>
+                </div>
+              </SectionCard>
+            )}
 
             {/* Next steps */}
             <SectionCard title={t("screen.next.title")} icon={<Icon name="verified_user" size={20} />} tone="sky">

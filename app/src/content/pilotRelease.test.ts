@@ -208,7 +208,14 @@ describe("real parent surface markup", () => {
       expect(today).toContain('min-h-11');
       expect(today).not.toContain("gradient-primary");
       ui.childProfile.ageMonths = 12;
-      expect(renderToStaticMarkup(createElement(HardMomentsSection))).toBe("");
+      // WAVE-G · THE AGE GAP — an out-of-band child still gets ZERO guides, but
+      // the catalogue surface now says why instead of vanishing (the Today
+      // offer, an interruption rather than a destination, stays silent).
+      // See components/behaviors/hardMomentAgeGap.test.ts.
+      const outOfBand = renderToStaticMarkup(createElement(HardMomentsSection));
+      expect(outOfBand).not.toContain(find("hitting").title[locale]);
+      expect(outOfBand).not.toContain('data-testid="hard-moments-section"');
+      expect(outOfBand).toContain('data-testid="hard-moments-age-notice"');
       expect(renderToStaticMarkup(createElement(HardMomentTodayOffer))).toBe("");
     });
   }

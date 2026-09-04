@@ -8,6 +8,8 @@ import { renderSayThis, type HardMomentCard, type HardMomentCategory } from "../
 import { HARD_MOMENT_CATEGORIES, buildHardMomentSeedPrompt, escalationText, locText } from "../../content/hardMomentSurface";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { hardMomentPublication, type HardMomentContext } from "../../content/pilotRelease";
+import { hardMomentAgeFit, explainsEmptyHardMoments } from "../../content/hardMomentAgeFit";
+import HardMomentAgeNotice from "./HardMomentAgeNotice";
 import { hardMomentPilotText } from "../../content/hardMomentPilotText";
 import { matchLearnCards } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
@@ -86,6 +88,15 @@ export default function HardMomentsSection() {
   const activeCategory = category === "all" || categories.includes(category) ? category : "all";
   const visible = activeCategory === "all" ? cards : cards.filter((card) => card.category === activeCategory);
 
+  // WAVE-G · THE AGE GAP — an empty list caused by the child's AGE explains
+  // itself; the guides are written for a bounded range and the gate is
+  // fail-closed, so a younger/older child matched nothing and got a blank
+  // feature. The notice renders only when guides exist for SOME age (see
+  // hardMomentAgeFit): a withdrawn or expired pack still renders nothing.
+  const ageVerdict = hardMomentAgeFit(context);
+  if (cards.length === 0 && explainsEmptyHardMoments(ageVerdict.fit)) {
+    return <HardMomentAgeNotice verdict={ageVerdict} uiLang={uiLang} childName={childFirst} />;
+  }
   if (cards.length === 0) return null;
   const hasPilot = cards.some((card) => hardMomentPublication(card, context) === "editorial-pilot");
 
