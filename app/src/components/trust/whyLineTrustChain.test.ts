@@ -183,3 +183,78 @@ describe("TJB-04 — the Behaviors analysis card carries the why-line → Trust 
     for (const line of en) expect(line).not.toMatch(/%|score|on track|delay/i);
   });
 });
+
+/* ── GP-22: the Growth lane's remaining why-lines join the chain ────────────
+   Audit 2026-09-03: grep for TrustLink/EvidenceChip across the Growth lane
+   returned ZERO matches outside DevelopmentTab's hero EvidenceChip. The
+   screener, the watch points, the Full Picture's weekly recommendation, each
+   "worth a conversation" row and the memory queue all rendered a why WITHOUT a
+   door — the highest-stakes explanations in the app were the ones a parent
+   could not interrogate.
+
+   These surfaces mount through the SHARED slot (ContentWhyLine why=… trustLink
+   surface=…) rather than a bare <TrustLink/>, so they are pinned by the slot
+   matcher plus their own surface tag. Same rule, one component. */
+describe("GP-22 — the Growth lane why-lines reach the Trust Center", () => {
+  /** A ContentWhyLine carrying BOTH trustLink and this surface tag, in either
+   *  prop order (the slot takes them as siblings). */
+  const slot = (surface: string) =>
+    new RegExp(
+      `<ContentWhyLine[^>]*\\btrustLink\\b[^>]*surface="${surface}"|<ContentWhyLine[^>]*surface="${surface}"[^>]*\\btrustLink\\b`,
+    );
+
+  it("NEGATIVE CONTROL — the pre-fix inert why-lines fail every matcher", () => {
+    // Verbatim pre-change shapes from the audit.
+    const oldWatchPoints = `            <p style={{ color: "var(--arbor-muted)" }}>
+              {watchPoints.length > 0 ? (<>{...}</>) : (t("ms.watch.none"))}
+            </p>`;
+    const oldCopilotFocus = `            <p className="text-xs mt-1.5 leading-relaxed max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{recommendation.why}</p>`;
+    const oldCopilotWatch = `                    {evidence.map((e, i) => (<p key={i}>Evidence: {e}</p>))}`;
+    const oldSlotWithoutTrust = `<ContentWhyLine why={why} surface="milestone-watch" />`;
+    for (const [src, surface] of [
+      [oldWatchPoints, "milestone-watch"],
+      [oldCopilotFocus, "copilot-focus"],
+      [oldCopilotWatch, "copilot-watch"],
+      [oldSlotWithoutTrust, "milestone-watch"],
+    ] as [string, string][]) {
+      expect(src).toBeTruthy();
+      expect(slot(surface).test(src)).toBe(false);
+    }
+  });
+
+  const GROWTH_SURFACES: [string, RegExp, string][] = [
+    // The hub's weekly-focus card — the pick the parent is asked to act on.
+    ["components/tabs/DevelopmentTab.tsx", /t\("growth\.focus\.eyebrow"\)/, "growth-focus"],
+    // "Gentle watch points" — a COUNT of things not marked yet, on the map.
+    ["components/tabs/MilestonesTab.tsx", /t\("ms\.watchPoints"\)/, "milestone-watch"],
+    // The Full Picture's weekly recommendation + each conversation row.
+    ["components/practice/DevelopmentCopilot.tsx", /\{recommendation\.why\}/, "copilot-focus"],
+    ["components/practice/DevelopmentCopilot.tsx", /elev\.fullpicture\.watch\.title/, "copilot-watch"],
+    // The memory queue: every pending row is a claim about the child.
+    ["components/sections/ChildMemory.tsx", /t\("elev\.childmem\.trustNote"\)/, "child-memory"],
+    // GP-32 / GP-33 — the two new Growth records carry the chain from day one.
+    ["components/growth/MonthInReview.tsx", /elev\.waveR\.month\.eyebrow/, "growth-month-review"],
+    ["components/growth/FirstWordsLedger.tsx", /elev\.waveR\.words\.eyebrow/, "growth-first-words"],
+  ];
+
+  for (const [file, whyLine, surface] of GROWTH_SURFACES) {
+    it(`${file} keeps its why-line and mounts the chain as "${surface}"`, () => {
+      const src = read(file).replace(/\r\n/g, "\n");
+      expect(src, `${file} is empty or unreadable`).toBeTruthy();
+      expect(src).toMatch(whyLine);
+      expect(src).toMatch(slot(surface));
+      expect(src).toContain('from "../ui/ContentActionBar"');
+    });
+  }
+
+  it("GP-23 — the milestone AI answers carry the chain through the action bar", () => {
+    const src = read("components/tabs/MilestonesTab.tsx").replace(/\r\n/g, "\n");
+    expect(src).toBeTruthy();
+    for (const surface of ["milestone-explain", "milestone-gaps"]) {
+      const bar = src.match(new RegExp(`<ContentActionBar[\\s\\S]{0,600}?surface="${surface}"[\\s\\S]{0,600}?/>`));
+      expect(bar, `no ContentActionBar for ${surface}`).toBeTruthy();
+      expect(bar![0]).toMatch(/\btrustLink\b/);
+      expect(bar![0]).toMatch(/\bwhy=/);
+    }
+  });
+});

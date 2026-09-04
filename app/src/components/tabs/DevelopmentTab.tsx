@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Sprout } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
@@ -29,6 +29,16 @@ import { readPushPermission, type PushPermission } from "../../lib/pushPriming";
 import { readRitualRecord, ritualOfTheMoment } from "../../lib/familyRitualsCadence";
 import { ADVENTURES, type SavedComicMeta } from "../../lib/heroComics";
 import { fmtDay } from "../../lib/formatDate";
+// GP-06 — the hub's declared primaryMove is "notice-milestone"; until now the
+// hero opened the SCREENER and marking a milestone took four taps through the
+// Milestones map. The observe row below puts the move on the hub.
+import { celebrate as fireCelebration } from "../../lib/celebrate";
+// GP-22 — the why-line on this card had no door to "how Arbor decides".
+// The shared slot mounts the TrustLink itself (trustLink prop).
+import { ContentWhyLine } from "../ui/ContentActionBar";
+// GP-32 / GP-33 — the month the parent just lived, and the words ledger.
+import MonthInReview from "../growth/MonthInReview";
+import FirstWordsLedger from "../growth/FirstWordsLedger";
 
 /** Masterplan 1.7 — module-local string resolution for the Full Picture entry
  *  card (same recipe as Screening.tsx × screeningcalm: i18nElevation/index.ts
@@ -49,7 +59,7 @@ function tFP(uiLang: string, key: string, vars?: Record<string, string | number>
 
 export default function DevelopmentTab() {
   const { t, uiLang } = useLanguage();
-  const { milestones, behaviorLogs, playLogs, childProfile, setActiveTab } = useArbor();
+  const { milestones, behaviorLogs, playLogs, childProfile, setActiveTab, setMilestoneObservation } = useArbor();
   const [checkOpen, setCheckOpen] = useState(false);
   const firstName = (childProfile.name || "").split(" ")[0];
 
@@ -94,6 +104,9 @@ export default function DevelopmentTab() {
         hint: t("growth.focus.watchHint"),
         action: "daily-play" as const,
         chosen: true,
+        // GP-06: the id is what makes this card actionable in place.
+        milestoneId: chosenWatch.id as string | null,
+        observationStatus: (chosenWatch.observationStatus ?? (chosenWatch.checked ? "yes" : undefined)) as string | undefined,
       };
     }
     const selected = selectWeeklyFocus(milestones, comparisonMonths);
@@ -105,6 +118,8 @@ export default function DevelopmentTab() {
         hint: selected.mode === "watch" ? t("growth.focus.watchHint") : t("growth.focus.tryHint"),
         action: "daily-play" as const,
         chosen: false,
+        milestoneId: selected.milestone.id as string | null,
+        observationStatus: selected.milestone.observationStatus as string | undefined,
       };
     }
     return {
@@ -113,6 +128,8 @@ export default function DevelopmentTab() {
       hint: null,
       action: "check" as const,
       chosen: false,
+      milestoneId: null as string | null,
+      observationStatus: undefined as string | undefined,
     };
   }, [chosenWatch, milestones, comparisonMonths, t]);
 
@@ -168,6 +185,34 @@ export default function DevelopmentTab() {
     const momentsWeek = countSince(behaviorLogs, weekAgo, nowMs) + countSince(playLogs, weekAgo, nowMs);
     return { noticed, total: inWindow.length, domainsActive, momentsWeek };
   }, [milestones, comparisonMonths, behaviorLogs, playLogs]);
+
+  // GP-06 — THE primary move of this hub, performed ON this hub. The Growth
+  // contract declares primaryMove "notice-milestone" (lib/surfaceContract.ts),
+  // but the hero opened the SCREENER — the anxiety surface — and marking a
+  // milestone meant Growth → Milestones → domain row → expand band → "Seen it".
+  // The observe row below is the same three-state control the Milestones map
+  // uses, wired to the same setMilestoneObservation seam and the same capped
+  // celebration; the hero now focuses it instead of opening the check sheet.
+  const observeRowRef = useRef<HTMLDivElement | null>(null);
+  const [justNoticedId, setJustNoticedId] = useState<string | null>(null);
+  const focusObserveRow = useCallback(() => {
+    const el = observeRowRef.current;
+    if (!el) return;
+    try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch { /* jsdom / old webview */ }
+    const firstControl = el.querySelector<HTMLButtonElement>("button");
+    firstControl?.focus();
+  }, []);
+  const observeFocusMilestone = useCallback(
+    (milestoneId: string, status: "yes" | "not_sure" | "not_yet", wasChecked: boolean) => {
+      setMilestoneObservation(milestoneId, status);
+      if (status !== "yes" || wasChecked) return;
+      // Law 7 caps (≤12 particles / ≤800ms) + the reduced-motion gate live in
+      // lib/celebrate — same burst the Milestones map fires.
+      fireCelebration({ kind: "milestone" });
+      setJustNoticedId(milestoneId);
+    },
+    [setMilestoneObservation],
+  );
 
   // ENG-23 — reminders. The card ALWAYS renders and always states the truth of
   // this build: `pushCapable()` is false without a VAPID key, and in that build
@@ -235,10 +280,12 @@ export default function DevelopmentTab() {
           eyebrow={t("elev.hero.growth.eyebrow")}
           title={t("elev.hero.growth.title")}
           subtitle={t("elev.hero.growth.sub")}
+          // GP-06: the hero CTA IS the contract's primaryMove ("notice-milestone").
+          // The Development Check keeps its own home on the pointer row below.
           cta={{
-            label: t("elev.hero.growth.cta"),
-            onClick: () => setCheckOpen(true),
-            icon: <Icon name="assignment_turned_in" size={16} />,
+            label: t("elev.waveR.growth.hero.cta"),
+            onClick: focusObserveRow,
+            icon: <Icon name="check_circle" size={16} />,
             testId: "growth-hero-cta",
           }}
           stats={[
@@ -258,6 +305,11 @@ export default function DevelopmentTab() {
       {/* TJB-28 — the one thing this parent left themselves at the close of a
           previous day. Renders null on the day it was written and once acted on. */}
       <TomorrowReasonCard signals={returnSignals} childName={firstName} />
+      {/* GP-32 — the month the family just finished, as COUNTS of what the
+          PARENT noticed and kept. Never a progress report on the child: no
+          scores, no deltas, no "areas needing work". Renders once per month
+          and returns null the rest of the time. */}
+      <MonthInReview />
       {/* One action first, then the neutral development picture. */}
       <section className="overflow-hidden rounded-[24px]" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }} aria-labelledby="growth-weekly-focus">
         <div className="grid min-w-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
@@ -271,6 +323,54 @@ export default function DevelopmentTab() {
               <p className="mt-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>{weeklyFocus.hint}</p>
             )}
             <p className="mt-2 max-w-2xl break-words text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{weeklyFocus.body}</p>
+            {/* GP-06 — the observe row: the hub's primary move, in place.
+                Same three states and the same seam as the Milestones map
+                (setMilestoneObservation → observationUpdatedAt), so a mark made
+                here is the same record entry made there. CLINICAL FIREWALL:
+                three equally-weighted answers, one tone, no grade — "Not yet"
+                is never styled as a failure. GP-12: 44px targets. */}
+            {weeklyFocus.milestoneId && (
+              <div ref={observeRowRef} className="mt-5" data-testid="growth-observe-row">
+                <p className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+                  {t("elev.waveR.growth.observe.prompt")}
+                </p>
+                <div
+                  className="mt-2 grid max-w-md grid-cols-3 gap-1.5"
+                  role="group"
+                  aria-label={t("elev.waveR.growth.observe.aria")}
+                >
+                  {([
+                    ["yes", tGCare(uiLang, "elev.gcare.ms.observe.yes")],
+                    ["not_sure", t("ms.observe.notSure")],
+                    ["not_yet", t("ms.observe.notYet")],
+                  ] as const).map(([status, label]) => {
+                    const selected = weeklyFocus.observationStatus === status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        data-testid={`growth-observe-${status}`}
+                        aria-pressed={selected}
+                        onClick={() => observeFocusMilestone(weeklyFocus.milestoneId as string, status, weeklyFocus.observationStatus === "yes")}
+                        className="min-h-11 rounded-lg px-1.5 text-[11px] font-bold transition active:scale-[0.98]"
+                        style={{
+                          background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-deep)",
+                          color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)",
+                          border: `1px solid ${selected ? "var(--arbor-green-ink)" : "var(--arbor-rule)"}`,
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+                  {justNoticedId === weeklyFocus.milestoneId
+                    ? t("elev.waveR.growth.observe.noticed", { date: fmtDay(new Date().toISOString(), uiLang) })
+                    : t("elev.waveR.growth.observe.hint")}
+                </p>
+              </div>
+            )}
             <div className="mt-5 flex flex-wrap gap-2">
               <button type="button" onClick={() => weeklyFocus.action === "check" ? setCheckOpen(true) : setActiveTab("daily-play")} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-white transition active:scale-[0.98]" style={{ background: "var(--arbor-clay)" }}>
                 <Icon name={weeklyFocus.action === "check" ? "assignment_turned_in" : "play_arrow"} size={18} />
@@ -285,6 +385,13 @@ export default function DevelopmentTab() {
                   {tGCare(uiLang, "elev.gcare.growth.watch.clear")}
                 </button>
               )}
+            </div>
+            {/* GP-22 — this card has always said WHAT to watch for and never
+                where the pick came from. The why-line names its inputs and the
+                TrustLink opens the Trust Center: a why-line that cannot show
+                its inputs is an assertion. */}
+            <div className="mt-3">
+              <ContentWhyLine why={t("elev.waveR.why.focus")} trustLink surface="growth-focus" />
             </div>
           </div>
           <div className="min-w-0 border-t p-4 sm:p-6 xl:border-s xl:border-t-0" style={{ background: "var(--arbor-paper-deep)", borderColor: "var(--arbor-rule)" }}>
@@ -352,6 +459,10 @@ export default function DevelopmentTab() {
       </section>
       {/* The Map — the record's home (counts only). */}
       <DevScoreCard />
+      {/* GP-33 — the first-words ledger. The Language Lab has been writing to
+          `langObs` for months and the record never showed it; the words are a
+          keepsake, not an aggregate. Counts and dates only. */}
+      <FirstWordsLedger />
       {/* E3 — the spine, made visible (first mount): what this surface's
           noticing feeds. One direction only; plain activity fact, no verdicts.
           The Academy hub's landing route is "masterclasses" (navigation.ts). */}

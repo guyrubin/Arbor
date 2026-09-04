@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -10,6 +10,19 @@ import { learnCardById } from "../../learn/learnCards";
 import { learnCategoryById, type LearnCard } from "../../learn/learnLibrary";
 import { fmtDay } from "../../lib/formatDate";
 import { PASTEL } from "../../lib/tokens";
+// GP-13 — the flagship trust mechanic let a parent DELETE but not CORRECT
+// ("she is 3" → "she is 4"), and coloured the safest property the ledger has
+// (it forgets on its own) in the delete tone with no date attached.
+import { authHeaders } from "../../lib/api";
+import {
+  RETENTION_CHOICES,
+  forgetsOnIso,
+  isPermanentRetention,
+  nearestRetentionChoice,
+} from "../../lib/memoryExpiry";
+// GP-22 — the memory queue is a why-line surface too: every pending row is a
+// claim about the child, and nothing said where it came from.
+import { ContentWhyLine } from "../ui/ContentActionBar";
 import ArborKnowsTile from "./ArborKnowsTile";
 import FirstsMoment from "./FirstsMoment";
 import MonthKeepsake from "../weekly/MonthKeepsake";
@@ -39,6 +52,7 @@ export default function ChildMemory() {
           Hebrew-reading parent was asked to make a privacy decision in a
           language the app had promised not to use on them. */}
       <TrustSafetyBar note={t("elev.childmem.trustNote")} />
+      <ContentWhyLine why={t("elev.waveR.why.memory")} trustLink surface="child-memory" />
 
       {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
           once ever per kind and returns null the rest of the time. */}
@@ -77,6 +91,7 @@ export default function ChildMemory() {
                 busy={isMemoryUpdating === m.memoryId}
                 onApprove={() => handleMemoryDecision(m.memoryId, "approved")}
                 onReject={() => handleMemoryDecision(m.memoryId, "rejected")}
+                onEdited={retryMemoryReview}
               />
             ))}
           </div>
@@ -93,6 +108,7 @@ export default function ChildMemory() {
                 m={m}
                 busy={isMemoryUpdating === m.memoryId}
                 onForget={() => handleMemoryDecision(m.memoryId, "deleted")}
+                onEdited={retryMemoryReview}
               />
             ))}
           </div>
@@ -174,25 +190,149 @@ export default function ChildMemory() {
   );
 }
 
-export function MemoryRow({ m, busy, onApprove, onReject, onForget }: {
+export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited }: {
   m: MemoryReviewItem;
   busy?: boolean;
   onApprove?: () => void;
   onReject?: () => void;
   onForget?: () => void;
+  /** GP-13 — supplied by the surface that owns the ledger read: enables the
+   *  inline edit and is called once the corrected row has been written, so the
+   *  list re-reads. Surfaces that only DISPLAY a row (the Story timeline
+   *  overlay) omit it and keep exactly the controls they had. */
+  onEdited?: () => void;
 }) {
   const { t, uiLang } = useLanguage();
   const dated = m.createdAt ? fmtDay(m.createdAt, uiLang) : null;
-  const timeBoxed = m.retention && !/permanent|indefinite/i.test(m.retention);
+  // GP-13 — the expiry was a raw retention string in a PINK chip. Pink is this
+  // row's delete tone, so the one property that protects the parent (the fact
+  // forgets itself) read as danger; and "Time-boxed · 90 days" is not a date.
+  // Now: a neutral lav chip carrying the day it actually forgets.
+  const permanent = isPermanentRetention(m.retention);
+  const forgetsOn = forgetsOnIso({ retention: m.retention, createdAt: m.createdAt });
+  const [editing, setEditing] = useState(false);
+  const [factDraft, setFactDraft] = useState(m.fact ?? "");
+  const [retentionDraft, setRetentionDraft] = useState(() => nearestRetentionChoice(m.retention));
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+
+  const openEdit = () => {
+    setFactDraft(m.fact ?? "");
+    setRetentionDraft(nearestRetentionChoice(m.retention));
+    setSaveFailed(false);
+    setEditing(true);
+  };
+
+  /** The server has accepted { fact, retention, source } on this transition
+   *  since the ledger was written (memory/memoryService.transitionMemory) —
+   *  the UI simply never sent them. Editing keeps the row's CURRENT status, so
+   *  correcting an approved fact does not silently re-queue it. */
+  const saveEdit = async () => {
+    const fact = factDraft.trim();
+    if (!fact) return;
+    setSaving(true);
+    setSaveFailed(false);
+    try {
+      const res = await fetch(`/api/memory/${encodeURIComponent(m.memoryId)}`, {
+        method: "PATCH",
+        headers: await authHeaders(),
+        body: JSON.stringify({ status: m.status, fact, retention: retentionDraft }),
+      });
+      if (!res.ok) throw new Error("edit failed");
+      setEditing(false);
+      onEdited?.();
+    } catch {
+      setSaveFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className={`${cardCls} p-4 ${busy ? "opacity-60" : ""}`}>
-      <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>{m.fact}</p>
+    <div className={`${cardCls} p-4 ${busy ? "opacity-60" : ""}`} data-testid="memory-row">
+      {editing ? (
+        <div className="space-y-2.5">
+          <label className="block text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+            {t("elev.waveR.mem.edit.factLabel")}
+            <textarea
+              autoFocus
+              rows={3}
+              dir="auto"
+              value={factDraft}
+              onChange={(e) => setFactDraft(e.target.value)}
+              data-testid="memory-edit-fact"
+              className="mt-1 w-full rounded-xl px-3 py-2 text-sm font-normal focus:outline-none"
+              style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+            />
+          </label>
+          <label className="block text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+            {t("elev.waveR.mem.edit.retentionLabel")}
+            <select
+              value={retentionDraft}
+              onChange={(e) => setRetentionDraft(e.target.value)}
+              data-testid="memory-edit-retention"
+              className="mt-1 block w-full rounded-xl px-3 py-2 text-xs font-normal"
+              style={{ minHeight: 44, background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+            >
+              {RETENTION_CHOICES.map((c) => (
+                <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
+              ))}
+            </select>
+          </label>
+          {saveFailed && (
+            <p className="text-[11px] font-bold" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.waveR.mem.saveFailed")}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void saveEdit()}
+              disabled={saving || !factDraft.trim()}
+              data-testid="memory-edit-save"
+              // The row is a quiet ledger row and its other controls are token-ink
+              // text buttons; a solid white-on-clay button would shout, and a
+              // white label inside the row's busy-opacity wrapper has no
+              // white-label proof (CR-01 ratchet). Soft-fill + ink instead.
+              className="rounded-xl px-4 text-xs font-extrabold transition disabled:opacity-60"
+              style={{ minHeight: 44, background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
+            >
+              {t("elev.waveR.mem.save")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="px-2 text-xs font-bold"
+              style={{ minHeight: 44, color: "var(--arbor-muted)" }}
+            >
+              {t("elev.waveR.mem.cancel")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm" dir="auto" style={{ color: "var(--arbor-ink)" }}>{m.fact}</p>
+      )}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
         {m.source && <span className="inline-flex items-center gap-1"><Icon name="link" size={12} /> {m.source}</span>}
         {dated && <span className="inline-flex items-center gap-1"><Icon name="schedule" size={12} /> {dated}</span>}
-        {timeBoxed && <Chip tone="pink">{t("elev.childmem.timeBoxed", { retention: m.retention ?? "" })}</Chip>}
+        <span data-testid="memory-expiry-chip">
+          <Chip tone="lav">
+            {permanent || !forgetsOn
+              ? t("elev.waveR.mem.keptUntilForget")
+              : t("elev.waveR.mem.forgetsOn", { date: fmtDay(forgetsOn, uiLang) })}
+          </Chip>
+        </span>
         <span className="flex-1" />
         {busy && <Icon name="progress_activity" size={14} className="animate-spin" />}
+        {onEdited && !busy && !editing && (
+          <button
+            onClick={openEdit}
+            aria-label={t("elev.waveR.mem.edit.aria")}
+            data-testid="memory-edit-open"
+            className="inline-flex items-center gap-1 font-bold"
+            style={{ color: "var(--arbor-lav-ink)" }}
+          >
+            <Icon name="edit" size={14} /> {t("elev.waveR.mem.edit")}
+          </button>
+        )}
         {onApprove && !busy && (
           <button onClick={onApprove} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-green-ink)" }}>
             <Icon name="check" size={14} /> {t("elev.childmem.action.approve")}

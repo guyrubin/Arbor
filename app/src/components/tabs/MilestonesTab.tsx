@@ -17,6 +17,11 @@ import PrideMomentCard from "../overview/PrideMomentCard";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
+// GP-23 — the two AI answers a parent reads WHILE marking milestones were the
+// least structured AI in the app: raw markdown, an English-only failure
+// string, no why-line, no provenance, nothing to keep. They now ride the same
+// shared action cluster every other content object uses.
+import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { cardCls, ProgressBar, RadialProgress, Split, domainVisual, PASTEL } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
@@ -62,6 +67,9 @@ export default function MilestonesTab() {
     deleteMilestone,
     updateMilestoneTitle,
     requestLearnRead,
+    // GP-23 "Keep this": the canonical save verb writes the answer into the
+    // child's `insights` record (the TJB-04 seam) — one tap, no new sink.
+    keepBehaviorInsight,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -72,6 +80,11 @@ export default function MilestonesTab() {
   const [openDomain, setOpenDomain] = useState<string | null>(null);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [explaining, setExplaining] = useState<Record<string, boolean>>({});
+  // GP-23: a failed explain is a STATE, not a fake answer. It used to be a
+  // hard-coded English markdown heading rendered through
+  // MarkdownBlock — untranslated, unstyled, and indistinguishable from real
+  // guidance to anything downstream.
+  const [explainFailed, setExplainFailed] = useState<Record<string, boolean>>({});
   // UND-8 — inline rename/delete for custom milestones (replaces the native
   // window.prompt/window.confirm dialogs — jarring, untranslated, un-themeable).
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -142,15 +155,17 @@ export default function MilestonesTab() {
   };
 
   const explain = async (item: Milestone) => {
-    if (explanations[item.id]) {
+    if (explanations[item.id] || explainFailed[item.id]) {
       setExplanations((p) => {
         const n = { ...p };
         delete n[item.id];
         return n;
       });
+      setExplainFailed((p) => ({ ...p, [item.id]: false }));
       return;
     }
     setExplaining((p) => ({ ...p, [item.id]: true }));
+    setExplainFailed((p) => ({ ...p, [item.id]: false }));
     try {
       // Wave-T (lane A/T): the inline explainer uses the dedicated explain
       // route — never the chat route, the heaviest in the app — and renders
@@ -173,9 +188,12 @@ export default function MilestonesTab() {
       const explanation = String(data?.explanation ?? "").trim();
       const tryToday = String(data?.tryToday ?? "").trim();
       const markdown = [explanation, tryToday ? `### ${t("explain.tryToday")}\n${tryToday}` : ""].filter(Boolean).join("\n\n");
-      setExplanations((p) => ({ ...p, [item.id]: markdown || "### Unavailable\nCould not load guidance right now." }));
+      if (!markdown) throw new Error("empty");
+      setExplanations((p) => ({ ...p, [item.id]: markdown }));
     } catch {
-      setExplanations((p) => ({ ...p, [item.id]: "### Unavailable\nCould not load guidance right now." }));
+      // GP-23: an honest, translated failure state rendered by the card
+      // below — never a markdown heading masquerading as guidance.
+      setExplainFailed((p) => ({ ...p, [item.id]: true }));
     } finally {
       setExplaining((p) => ({ ...p, [item.id]: false }));
     }
@@ -326,7 +344,7 @@ export default function MilestonesTab() {
               style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
             >
               {explaining[item.id] ? <Icon name="progress_activity" size={11} className="animate-spin" /> : <Icon name="menu_book" size={11} />}
-              {explanations[item.id] ? t("ms.hide") : t("ms.explain")}
+              {explanations[item.id] || explainFailed[item.id] ? t("ms.hide") : t("ms.explain")}
             </button>
             {/* LL-A3 — one tap from a milestone to its "why this matters" read */}
             {(() => {
@@ -384,10 +402,45 @@ export default function MilestonesTab() {
         )}
       </div>
       <AnimatePresence initial={false}>
-        {explanations[item.id] && (
+        {(explanations[item.id] || explainFailed[item.id]) && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="mt-2 p-3 rounded-xl text-[11px] leading-relaxed select-text" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              <MarkdownBlock text={explanations[item.id]} className="space-y-1.5" />
+            {/* GP-23 — the answer a parent reads WHILE marking a milestone.
+                Structure (the /api/explain contract's explanation + one "try
+                today" step), provenance (the why-line names what it was
+                written from), a door to the Trust Center, and ONE tap to keep
+                it in the child's record. Failure is its own honest, translated
+                state — not a markdown heading pretending to be guidance. */}
+            <div data-testid={`ms-explain-${item.id}`} className="mt-2 p-3 rounded-xl text-[11px] leading-relaxed select-text" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              {explainFailed[item.id] ? (
+                <div data-testid="ms-explain-error">
+                  <p className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.waveR.ms.explain.error.title")}</p>
+                  <p className="mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.waveR.ms.explain.error.body")}</p>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setExplainFailed((prev) => ({ ...prev, [item.id]: false })); void explain(item); }}
+                    className="mt-2 min-h-11 text-[11px] font-extrabold"
+                    style={{ color: "var(--arbor-green-ink)" }}
+                  >
+                    {t("err.retry")}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <MarkdownBlock text={explanations[item.id]} className="space-y-1.5" />
+                  <ContentActionBar
+                    variant="inline"
+                    surface="milestone-explain"
+                    why={firstName
+                      ? t("elev.waveR.ms.explain.why", { name: firstName })
+                      : t("elev.waveR.ms.explain.whyGeneric")}
+                    trustLink
+                    className="mt-2.5"
+                    actions={[
+                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(`${item.title} — ${explanations[item.id]}`) },
+                    ]}
+                  />
+                </>
+              )}
             </div>
           </motion.div>
         )}
@@ -752,11 +805,24 @@ export default function MilestonesTab() {
         {milestoneAnalysisOfGaps ? (
           <div className="p-4 rounded-xl text-xs leading-relaxed space-y-3 select-text bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
             <MarkdownBlock text={milestoneAnalysisOfGaps} className="space-y-2" />
-            <div className="pt-2.5 flex justify-end" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-              <button type="button" onClick={() => seedCoach({ prompt: t("seed.milestoneGaps", { analysis: milestoneAnalysisOfGaps }), lens: "Vygotsky's Scaffolding", source: "milestones-gap" })} className="text-[11px] font-bold transition flex items-center gap-1" style={{ color: "var(--arbor-green-ink)" }}>
-                {t("ms.discussCoach")}
-              </button>
-            </div>
+            {/* GP-23 — "Find next steps" produced markdown whose only exit was
+                "Discuss in Coach": nothing said where it came from, and the
+                parent could not keep it. Same shared cluster as the inline
+                explainer: why-line → Trust Center → one-tap Keep, with the
+                coach hand-off demoted to a surface-specific extra. */}
+            <ContentActionBar
+              variant="inline"
+              surface="milestone-gaps"
+              why={t("elev.waveR.ms.gaps.why")}
+              trustLink
+              className="pt-2.5"
+              actions={[
+                { verb: "save", label: t("elev.waveR.ms.gaps.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(milestoneAnalysisOfGaps) },
+              ]}
+              extras={[
+                { id: "coach", label: t("ms.discussCoach"), icon: "forum", onClick: () => seedCoach({ prompt: t("seed.milestoneGaps", { analysis: milestoneAnalysisOfGaps }), lens: "Vygotsky's Scaffolding", source: "milestones-gap" }) },
+              ]}
+            />
           </div>
         ) : (
           <div className="p-4 rounded-xl text-center text-xs bg-white" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
@@ -794,6 +860,12 @@ export default function MilestonesTab() {
                 t("ms.watch.none")
               )}
             </p>
+            {/* GP-22 — the highest-stakes why-line on this surface: it says a
+                count of things not marked yet. It now says what it was built
+                from, and opens the Trust Center. */}
+            <div className="pt-1">
+              <ContentWhyLine why={t("elev.waveR.why.watch")} trustLink surface="milestone-watch" />
+            </div>
           </div>
         </div>
       )}

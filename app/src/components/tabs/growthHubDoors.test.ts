@@ -34,7 +34,10 @@ const state = {
   setActiveTab: vi.fn(),
 };
 
-vi.mock("../../context/ArborContext", () => ({ useArbor: () => state }));
+// useArborOptional is what the shared TrustLink chip reads (GP-22 mounts it
+// on this hub's why-line through ContentWhyLine); without it here the whole
+// static render throws inside the chip.
+vi.mock("../../context/ArborContext", () => ({ useArbor: () => state, useArborOptional: () => state }));
 vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({ t: (k: string, v?: Record<string, unknown>) => (v ? `${k}|${Object.values(v).join("|")}` : k), uiLang: "en" }),
 }));
