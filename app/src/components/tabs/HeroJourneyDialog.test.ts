@@ -19,7 +19,12 @@ function focusSlice(input: string) {
   const names = new Set(["immersive", "immersiveTriggerRef", "wasImmersive"]);
   const statements = component.body.statements.filter(node => {
     if (ts.isVariableStatement(node)) return node.declarationList.declarations.some(declaration => {
-      const bindings = ts.isIdentifier(declaration.name) ? [declaration.name.text] : declaration.name.elements
+      // `.elements` is NodeArray<BindingElement> | NodeArray<ArrayBindingElement>;
+      // filtering a union of arrays drops the type predicate, so widen to Node[]
+      // first and let isBindingElement do the narrowing (array patterns can hold
+      // OmittedExpression holes, which have no `name`).
+      const elements: readonly ts.Node[] = ts.isIdentifier(declaration.name) ? [] : declaration.name.elements;
+      const bindings = ts.isIdentifier(declaration.name) ? [declaration.name.text] : elements
         .filter(ts.isBindingElement).map(element => element.name.getText(file));
       return bindings.some(name => names.has(name)) || (declaration.initializer && ts.isCallExpression(declaration.initializer)
         && declaration.initializer.expression.getText(file) === "useDialog");
