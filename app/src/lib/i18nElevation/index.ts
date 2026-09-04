@@ -57,6 +57,7 @@ import * as storeShell from "./storeShell";
 import * as syncstatus from "./syncstatus";
 import * as today from "./today";
 import * as trustcenter from "./trustcenter";
+import * as waveE from "./waveE";
 import * as wow from "./wow";
 
 // ── Module registry: ONE entry per line, same ALPHABETICAL order. ─────────────
@@ -100,6 +101,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   syncstatus,
   today,
   trustcenter,
+  waveE,
   wow,
 ];
 

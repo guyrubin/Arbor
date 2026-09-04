@@ -31,6 +31,8 @@ import { api, EscalationRequiredError } from "../../lib/api";
 import { isolate } from "../../lib/i18n";
 import type { BedtimeStory } from "../../types";
 import { cardCls } from "../ui/kit";
+import { ShareButton } from "../ui/ShareButton";
+import type { ShareCardOpts } from "../../lib/shareCard";
 
 // ── Day event input ────────────────────────────────────────────────────────────
 
@@ -48,7 +50,7 @@ const emptyEvent = (): LocalDayEvent => ({
 
 export default function BedtimeStoriesTab() {
   const { childProfile, behaviorLogs } = useArbor();
-  const { aiLang } = useLanguage();
+  const { aiLang, t } = useLanguage();
   const { toast } = useToast();
   const he = aiLang === "he";
 
@@ -319,6 +321,23 @@ export default function BedtimeStoriesTab() {
                 {q}
               </p>
             ))}
+          </div>
+        )}
+
+        {/* ENG-16: the most shareable artefact in the app had no share button
+            at all (grep for ShareButton in this file returned nothing). The
+            keepsake is the COVER — title and hero only. The story body, the
+            goodnight questions and the parent-only summary never reach the
+            card, and nothing is persisted: this stays generate-and-discard. */}
+        {isLast && (
+          <div className="pt-1">
+            <ShareButton
+              artifact="story"
+              surface="bedtime_story"
+              childName={name}
+              label={t("elev.keepsake.story.share")}
+              getCardOpts={(): ShareCardOpts => ({ name, title: story.title })}
+            />
           </div>
         )}
 
