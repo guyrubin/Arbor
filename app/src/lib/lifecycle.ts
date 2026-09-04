@@ -21,10 +21,16 @@
                       before anything else competes for the screen (ENG-L5).
      2. birthday      a once-a-year calendar fact about the child (ENG-20b).
      3. age-band      the child moved into a new age band (ENG-20c).
-     4. first-week    the day-7 keepsake (ENG-L3).
-     5. first-moment  the day-0/1 payoff for the very first capture (ENG-L0).
-     6. interest-ask  the day-3 "tell Arbor one thing they love" (ENG-L2).
-     7. day-one       the day-1 return (ENG-L1).
+     4. first-month   the day-30 keepsake (ENG-L4). Above first-week on
+                      purpose: when BOTH are still unshown — a parent whose
+                      first open is week six — the truer thing to hand them is
+                      the month they have actually had, not the week they had
+                      five weeks ago. The week keepsake is not discarded; it
+                      simply follows on a later open.
+     5. first-week    the day-7 keepsake (ENG-L3).
+     6. first-moment  the day-0/1 payoff for the very first capture (ENG-L0).
+     7. interest-ask  the day-3 "tell Arbor one thing they love" (ENG-L2).
+     8. day-one       the day-1 return (ENG-L1).
 
    Each moment carries an OCCURRENCE KEY. The caller keeps a ledger of keys it
    has already shown (lib/lifecycleState.ts) and passes it back in as `seen`,
@@ -55,6 +61,21 @@ export const FIRST_WEEK_DAY = 7;
 /** A first-week keepsake needs something to be a keepsake OF. */
 export const FIRST_WEEK_MIN_MOMENTS = 3;
 
+/** The day the first-month keepsake unlocks (ENG-L4) — the first month is over. */
+export const FIRST_MONTH_DAY = 30;
+
+/**
+ * A first-month keepsake needs something to be a keepsake OF — but the floor is
+ * ONE, not three.
+ *
+ * The week card asks for three because a week with one entry is barely a week.
+ * A month is different: a parent who wrote one line in thirty days still wrote
+ * a line, and a keepsake of exactly that is honest. Below the floor there is
+ * genuinely nothing to hand over, and the right answer is silence, never a card
+ * that congratulates an empty record or notes that it is empty.
+ */
+export const FIRST_MONTH_MIN_MOMENTS = 1;
+
 /** A birthday stays offerable for a few days, so a Tuesday open still lands. */
 export const BIRTHDAY_WINDOW_DAYS = 3;
 
@@ -75,6 +96,9 @@ export type LifecycleMomentKind =
   | "welcome-back"
   | "birthday"
   | "age-band"
+  /** ENG-L4. Distinct from the `first-month` STAGE below, which is days 7–29:
+   *  the moment fires once the first month is COMPLETE. */
+  | "first-month"
   | "first-week"
   | "first-moment"
   | "interest-ask"
@@ -272,24 +296,34 @@ export function resolveLifecycle(input: LifecycleInput): LifecycleState {
     candidates.push(offer("age-band", `age-band.${band}`));
   }
 
-  // 4 — ENG-L3. Once ever, and only with enough captured to be a keepsake of.
+  // 4 — ENG-L4. The first month is over. Once ever, and only when the parent
+  // kept at least one thing: a keepsake of an empty record is not a keepsake.
+  // `day !== null` matters — a legacy account (null day) has no knowable first
+  // month, and handing a five-year customer "your first month" is a lie about
+  // when they arrived. What the CARD may say about that month is derived
+  // separately, inside the window, by lib/firstMonthKeepsake.ts.
+  if (day !== null && day >= FIRST_MONTH_DAY && counts.total >= FIRST_MONTH_MIN_MOMENTS) {
+    candidates.push(offer("first-month", "first-month"));
+  }
+
+  // 5 — ENG-L3. Once ever, and only with enough captured to be a keepsake of.
   if (day !== null && day >= FIRST_WEEK_DAY && counts.total >= FIRST_WEEK_MIN_MOMENTS) {
     candidates.push(offer("first-week", "first-week"));
   }
 
-  // 5 — ENG-L0. The payoff for the very first capture: the record exists now,
+  // 6 — ENG-L0. The payoff for the very first capture: the record exists now,
   // and tonight's story can be read from it.
   if (day !== null && day <= 1 && counts.total >= 1) {
     candidates.push(offer("first-moment", "first-moment"));
   }
 
-  // 6 — ENG-L2. Skipped for good once ANY interest is recorded (the profile is
+  // 7 — ENG-L2. Skipped for good once ANY interest is recorded (the profile is
   // server-side, so answering on one device silences the ask on every device).
   if (input.interestCount <= 0 && atLeastDay(day, INTEREST_ASK_DAY)) {
     candidates.push(offer("interest-ask", "interest-ask"));
   }
 
-  // 7 — ENG-L1. Day one, framed forward: yesterday's moment is kept, today's
+  // 8 — ENG-L1. Day one, framed forward: yesterday's moment is kept, today's
   // one thing is waiting. Never "you did not come back".
   if (day === 1) {
     candidates.push(offer("day-one", "day-one"));

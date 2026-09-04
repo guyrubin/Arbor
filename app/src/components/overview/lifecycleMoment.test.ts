@@ -239,7 +239,14 @@ describe("ENG-L2 — the interests capture is wired to the field that already wo
     );
     // Negative control: the announcements really are NOT sticky, so the line
     // above is not vacuously true for every kind.
-    for (const announcement of ["welcome-back", "birthday", "age-band", "first-week", "day-one"] as const) {
+    for (const announcement of [
+      "welcome-back",
+      "birthday",
+      "age-band",
+      "first-month",
+      "first-week",
+      "day-one",
+    ] as const) {
       expect(LIFECYCLE_STICKY_KINDS.has(announcement), `${announcement} must retire after one render`).toBe(false);
     }
   });

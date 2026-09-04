@@ -35,6 +35,7 @@ import * as coachcontract from "./coachcontract";
 import * as continueModule from "./continue";
 import * as evening from "./evening";
 import * as firstMoment from "./firstMoment";
+import * as firstMonth from "./firstMonth";
 import * as growthCare from "./growthCare";
 import * as foundation from "./foundation";
 import * as fullpicture from "./fullpicture";
@@ -85,6 +86,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   continueModule,
   evening,
   firstMoment,
+  firstMonth,
   growthCare,
   foundation,
   fullpicture,

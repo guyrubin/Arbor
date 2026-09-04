@@ -5,6 +5,8 @@
  *   · back.*     — ENG-L5 / ENG-20(a): a return after fourteen quiet days.
  *   · birthday.* — ENG-20(b): the child's birthday, as a calendar fact.
  *   · band.*     — ENG-20(c): the child moved into a new age band.
+ *   · month.*    — ENG-L4: the day-30 keepsake. Its count lines and its share
+ *                  caption live in i18nElevation/firstMonth.ts.
  *   · week.*     — ENG-L3: the first-week keepsake, plus the first recap.
  *   · first.*    — ENG-L0: the first captured moment, and tonight's story.
  *   · loves.*    — ENG-L2: "tell Arbor one thing {name} loves".
@@ -67,6 +69,16 @@ export const en: Record<string, string> = {
     "A week of paying attention, kept in one place. This is what you built.",
   "elev.lifecycle.week.cta": "Read the first recap",
 
+  // ── ENG-L4: the first-month keepsake ──────────────────────────────────────
+  // The body has to be true for a parent who kept twenty things and for one
+  // who kept one, so it claims neither. What they actually did is counted on
+  // the card itself (i18nElevation/firstMonth.ts), inside a closed window.
+  "elev.lifecycle.month.eyebrow": "One month together",
+  "elev.lifecycle.month.title": "{name}'s first month",
+  "elev.lifecycle.month.body":
+    "Whatever you kept in these first weeks is here, and it stays here. Yours to keep, or to hand on.",
+  "elev.lifecycle.month.cta": "Open what you kept",
+
   // ── ENG-L0: the first captured moment ─────────────────────────────────────
   "elev.lifecycle.first.eyebrow": "The first one",
   "elev.lifecycle.first.title": "{name}'s story has its first moment",
@@ -128,6 +140,13 @@ export const he: Record<string, string> = {
   "elev.lifecycle.week.body":
     "שבוע של תשומת לב, שמור במקום אחד. זה מה שבניתם.",
   "elev.lifecycle.week.cta": "לקרוא את הסיכום הראשון",
+
+  // ── ENG-L4 ────────────────────────────────────────────────────────────────
+  "elev.lifecycle.month.eyebrow": "חודש יחד",
+  "elev.lifecycle.month.title": "החודש הראשון של {name}",
+  "elev.lifecycle.month.body":
+    "כל מה ששמרתם בשבועות האלה נמצא כאן, וכאן הוא יישאר. שלכם לשמור, או להעביר הלאה.",
+  "elev.lifecycle.month.cta": "לראות מה שמרתם",
 
   // ── ENG-L0 ────────────────────────────────────────────────────────────────
   "elev.lifecycle.first.eyebrow": "הראשון",

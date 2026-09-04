@@ -8,6 +8,7 @@ import { track } from "../../lib/analytics";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import type { ShareCardOpts } from "../../lib/shareCard";
 import type { LifecycleMoment, LifecycleMomentKind } from "../../lib/lifecycle";
+import { buildFirstMonthKeepsake } from "../../lib/firstMonthKeepsake";
 import {
   FIRST_MOMENT_STEPS,
   dismissFirstMomentChain,
@@ -19,15 +20,21 @@ import {
 } from "../../lib/firstMomentChain";
 
 /**
- * LifecycleMomentCard — Wave E (ENG-09/L0/L1/L2/L3/L5, ENG-20): the ONE
+ * LifecycleMomentCard — Wave E (ENG-09/L0/L1/L2/L3/L4/L5, ENG-20): the ONE
  * lifecycle module on Today.
  *
  * Today used to be byte-identical on day 1 and day 40 except for data volume.
  * This card is the single slot where the account's own age gets to say
  * something: the first captured moment and tonight's story (ENG-L0), day one
  * framed forward (ENG-L1), the "one thing they love" ask (ENG-L2), the
- * first-week keepsake (ENG-L3), a birthday or a new age band (ENG-20), and the
- * warm re-entry after a lapse (ENG-L5).
+ * first-week keepsake (ENG-L3), the first-month keepsake (ENG-L4), a birthday
+ * or a new age band (ENG-20), and the warm re-entry after a lapse (ENG-L5).
+ *
+ * ENG-L4 SHIPS HALF AN ITEM ON PURPOSE. The backlog item is "first-month
+ * keepsake + honest Plus value moment". The keepsake is built here; the Plus
+ * value moment needs a benefit statement and a price position that are the
+ * owner's to make, so this file carries a named empty seam rather than an
+ * invented claim. See the block comment in the first-month branch below.
  *
  * Which one renders is decided upstream by the pure resolver (lib/lifecycle.ts)
  * and the ledger (lib/lifecycleState.ts). This file only draws it, so a copy or
@@ -57,6 +64,7 @@ const KIND_STYLE: Record<LifecycleMomentKind, { icon: string; soft: string; ink:
   "welcome-back": { icon: "favorite", soft: "var(--arbor-green-soft)", ink: "var(--arbor-green-ink)" },
   birthday: { icon: "cake", soft: "var(--arbor-pink-soft)", ink: "var(--arbor-pink-ink)" },
   "age-band": { icon: "child_care", soft: "var(--arbor-sky-soft)", ink: "var(--arbor-sky-ink)" },
+  "first-month": { icon: "calendar_month", soft: "var(--arbor-lav-soft)", ink: "var(--arbor-lav-ink)" },
   "first-week": { icon: "celebration", soft: "var(--arbor-lav-soft)", ink: "var(--arbor-lav-ink)" },
   "first-moment": { icon: "auto_stories", soft: "var(--arbor-peach-soft)", ink: "var(--arbor-peach-ink)" },
   "interest-ask": { icon: "interests", soft: "var(--arbor-yellow-soft)", ink: "var(--arbor-yellow-ink)" },
@@ -68,6 +76,7 @@ const KIND_KEY: Record<LifecycleMomentKind, string> = {
   "welcome-back": "back",
   birthday: "birthday",
   "age-band": "band",
+  "first-month": "month",
   "first-week": "week",
   "first-moment": "first",
   "interest-ask": "loves",
@@ -117,7 +126,7 @@ export default function LifecycleMomentCard({
   onCapture: () => void;
 }) {
   const { t } = useLanguage();
-  const { setActiveTab, childProfile, behaviorLogs } = useArbor();
+  const { setActiveTab, childProfile, behaviorLogs, playLogs } = useArbor();
   const [picked, setPicked] = useState<string[]>([]);
   const [typed, setTyped] = useState("");
   const [saving, setSaving] = useState(false);
@@ -129,6 +138,51 @@ export default function LifecycleMomentCard({
 
   const isAsk = moment.kind === "interest-ask";
   const isChain = moment.kind === "first-moment";
+  const isMonth = moment.kind === "first-month";
+
+  // ── ENG-L4: the first month's OWN numbers, derived from its OWN window ──
+  // The three resolver counts are not usable here. `counts.week` is a rolling
+  // seven-day figure that falls in a quiet week; `counts.noticed` is windowed
+  // to the child's CDC band and falls when the child ages into a new one; and
+  // `counts.total` keeps growing after day 30, so on a late render it would
+  // count weeks that were never part of the first month. lib/firstMonthKeepsake
+  // counts inside a closed window instead, so neither number can fall and
+  // neither can drift.
+  const monthKeepsake = useMemo(
+    () =>
+      buildFirstMonthKeepsake({
+        onboardingCompletedAt: childProfile.onboardingCompletedAt,
+        timestamps: isMonth
+          ? [...behaviorLogs.map((l) => l.timestamp), ...playLogs.map((p) => p.timestamp)]
+          : [],
+      }),
+    [isMonth, childProfile.onboardingCompletedAt, behaviorLogs, playLogs],
+  );
+
+  // A parent who kept almost nothing gets a line that is warm and TRUE, not a
+  // manufactured achievement and not a note about what is missing. Which line
+  // renders is decided by the window, never by a threshold on the child.
+  const monthLines: ReadonlyArray<{ id: string; icon: string; text: string }> =
+    monthKeepsake.tone === "kept"
+      ? [
+          {
+            id: "moments",
+            icon: "edit_note",
+            text:
+              monthKeepsake.momentsKept === 1
+                ? t("elev.l4.moments.one")
+                : t("elev.l4.moments.many", { n: monthKeepsake.momentsKept }),
+          },
+          {
+            id: "days",
+            icon: "calendar_month",
+            text:
+              monthKeepsake.daysWritten === 1
+                ? t("elev.l4.days.one")
+                : t("elev.l4.days.many", { n: monthKeepsake.daysWritten }),
+          },
+        ]
+      : [{ id: "quiet", icon: "favorite", text: t("elev.l4.quiet") }];
 
   // ── ENG-L0 chain state. Seeded from the device record so a parent who did
   //    one step yesterday resumes where they stopped; writes go straight back
@@ -190,6 +244,10 @@ export default function LifecycleMomentCard({
         return () => go("daily-play");
       case "first-week":
         return () => go("weekly");
+      case "first-month":
+        // What they kept, not what a period "showed" — the journal is the
+        // record itself, and it is the only place this card points.
+        return () => go("journal");
       case "first-moment":
         return () => go("bedtime-stories");
       case "day-one":
@@ -426,6 +484,120 @@ export default function LifecycleMomentCard({
             {t("elev.lifecycle.loves.save")}
             <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
           </button>
+        </div>
+      ) : /* ENG-L4: the day-30 keepsake. The card hands over the first month
+          the parent actually had — counts of what they kept and how many days
+          they wrote on, both from lib/firstMonthKeepsake's closed window — and
+          the keepsake itself through the SAME ShareButton/renderShareCard
+          pipeline ENG-L0 and the month keepsake already use. No new share
+          path, no new store: being offered once is the lifecycle ledger's job
+          (lib/lifecycleState.ts), which is why this card mints no key of its
+          own.
+
+          It is NOT components/growth/MonthInReview (GP-32) and not
+          components/weekly/MonthKeepsake (ENG-14b): both are keyed to a
+          CALENDAR month on their own hub, and a parent who joined on the 20th
+          has a first month that no calendar month describes. */
+      isMonth ? (
+        <div className="mt-4">
+          <ul
+            className="space-y-2"
+            aria-label={t("elev.l4.aria", { name: childName })}
+            data-testid="l4-month-lines"
+          >
+            {monthLines.map((line) => (
+              <li
+                key={line.id}
+                data-testid={`l4-line-${line.id}`}
+                className="flex items-start gap-2.5 rounded-xl px-3 py-2.5"
+                style={{ background: "var(--arbor-paper-deep)" }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex h-7 w-7 flex-none items-center justify-center rounded-full"
+                  style={{ background: style.soft, color: style.ink }}
+                >
+                  <Icon name={line.icon} size={15} />
+                </span>
+                <span
+                  className="min-w-0 flex-1 text-[12.5px] font-bold leading-snug"
+                  style={{ color: "var(--arbor-ink)" }}
+                  dir="auto"
+                >
+                  {line.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {/* A keepsake needs something to be a keepsake OF — the same rule
+                ENG-L3 applies at the resolver. When the window is empty there
+                is no card to hand over, so none is offered; the parent still
+                gets the warm line and the way in to what they kept.
+
+                `captionKey` is declared, never inherited: the growth_card
+                fallback is `share.caption.growth` — "{name}'s progress this
+                month" — and a first month is an elapsed month, not a measured
+                one. That mislabel is exactly what lib/shareCaption.ts (ENG-16)
+                exists to stop. */}
+            {monthKeepsake.tone === "kept" && (
+            <span data-testid="l4-keepsake-share">
+              <ShareButton
+                artifact="growth_card"
+                surface="l4_first_month"
+                childName={childName}
+                captionKey="elev.l4.share.caption"
+                label={t("elev.l4.keepsake.cta")}
+                getCardOpts={(): ShareCardOpts => ({
+                  name: childName,
+                  headline: t("elev.l4.keepsake.title", { name: childName }),
+                  sub: monthLines[0].text,
+                })}
+              />
+            </span>
+            )}
+            {onPrimary && (
+              <button
+                type="button"
+                onClick={onPrimary}
+                data-testid="l4-cta"
+                className="inline-flex min-h-[44px] items-center gap-1.5 px-1 text-[12.5px] font-extrabold"
+                style={{ color: "var(--arbor-clay)" }}
+              >
+                {t(`elev.lifecycle.${k}.cta`)}
+                <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+              </button>
+            )}
+          </div>
+
+          {/* ══ DELIBERATELY UNBUILT — the other half of ENG-L4 ══════════════
+              ENG-L4 is "first-month keepsake + honest Plus value moment". The
+              keepsake above is built. The Plus value moment is NOT, and the
+              gap is left open rather than filled with a guess.
+
+              WHAT IS MISSING, precisely:
+                · the value statement — what a paying month actually gives this
+                  parent, in their words, stated so it is true for a parent who
+                  kept one thing as well as for one who kept twenty;
+                · the price position for that statement (amount, currency,
+                  trial or no trial, and whether day 30 is where Arbor asks at
+                  all).
+              Both are commercial positions, not engineering choices. Inventing
+              them here would put a claim about what Arbor is worth into the
+              product in the owner's name, which is worse than shipping nothing.
+
+              WHERE IT ATTACHES when the owner has settled it: this slot, below
+              the keepsake row and inside the same card — one appearance, still
+              dismissible by the same X, still marked seen by the same ledger,
+              so it can never become a recurring ask. Its copy belongs in
+              lib/i18nElevation/firstMonth.ts under an `elev.l4.plus.*` prefix,
+              which deliberately does not exist yet.
+
+              Until then this card carries NO upsell, no placeholder, no
+              price-shaped empty state, and no teaser. The guard in
+              firstMonthKeepsake.wiring.test.ts fails if commercial copy
+              appears here without that decision. ══════════════════════════ */}
         </div>
       ) : (
         <>
