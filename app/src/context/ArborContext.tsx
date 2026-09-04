@@ -28,7 +28,7 @@ import {
   sampleBedtimeStory,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
-import { api, authHeaders, getAiLanguage, PaywallError } from "../lib/api";
+import { api, ApiError, authHeaders, getAiLanguage, PaywallError } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
 import { track } from "../lib/analytics";
 import { isKidModeActive } from "../lib/kidModeGate";
@@ -907,7 +907,16 @@ function useArborState() {
           ]);
           return;
         }
-        throw new Error(errData.details || errData.error || "Server response failed");
+        // AI-06: throw the STATUS, not just a message. /chat is the one AI path
+        // that used a raw fetch and a bare Error, so a 429 (quota) and a 451
+        // (consent refused) both arrived at the coach statusless and collapsed
+        // into a generic "try again" — offering a retry on a consent decision
+        // the parent owns. lib/aiErrorCopy.ts classifies on status alone.
+        throw new ApiError(
+          errData.details || errData.error || "Server response failed",
+          res.status,
+          Number(res.headers.get("retry-after")) || undefined,
+        );
       }
 
       const data = await readChatPayload(res);

@@ -11,6 +11,7 @@ import QuickCaptureBar from "../overview/QuickCaptureBar";
 import TodayRecommendation from "../overview/TodayRecommendation";
 import TodayActionLoop from "../overview/TodayActionLoop";
 import CarryOverActionAsk from "../overview/CarryOverActionAsk";
+import RhythmCue from "../coach/RhythmCue";
 import HardMomentTodayOffer from "../overview/HardMomentTodayOffer";
 import ProgressNarrative from "../overview/ProgressNarrative";
 import QuickLogModal from "../overview/QuickLogModal";
@@ -629,6 +630,11 @@ export default function OverviewTab() {
               never a second gradient CTA, so Rule A's one-primary rule holds.
               It self-hides when there is nothing still open. */}
           <CarryOverActionAsk />
+          {/* ENG-11: the JITAI nudge reaches Today, not just the bell and Ask.
+              RhythmCue renders whatever the engine already decided — quiet
+              hours, the per-day ceiling and prefs all stay owned by the engine,
+              and it deliberately does not spend the shown-ledger here. */}
+          <RhythmCue surface="today" />
           {/* N2-errfocus: a failed focus fetch used to degrade SILENTLY to the
               guaranteed-action fallback. The inline error renders ALONGSIDE the
               fallback (never instead of it — the anchor above always renders),
