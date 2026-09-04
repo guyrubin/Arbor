@@ -25,7 +25,7 @@ import CoachAnswerCards from "../coach/CoachAnswerCards";
 import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import ArborVision from "../coach/ArborVision";
-import { api, streamVoice, getAiLanguage, EscalationRequiredError, PaywallError } from "../../lib/api";
+import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
 import { normalizeExtractedLog } from "../../content/behaviorTaxonomy";
 import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { BehaviorContext } from "../../types";
@@ -40,6 +40,15 @@ import { createVoiceLifetime, type VoiceAttempt } from "../../lib/voiceLifetime"
 // voicePhase !== "off". The chip below stays the ONLY entry point.
 import VoiceOverlay from "../coach/VoiceOverlay";
 import ConversationProposalTray from "../coach/ConversationProposalTray";
+// ENG-10 / ENG-11: the JITAI cue, rendered where the parent already is and
+// instrumented — and in the evening it is the Bedtime Stories door.
+import RhythmCue from "../coach/RhythmCue";
+// AI-06 / AI-24: one classifier from a thrown transport error (or from being
+// offline) to the honest, ACTIONABLE thing to say — never a generic retry.
+import { browserOnline, classifyAiFailure, type AiFailureCopy } from "../../lib/aiErrorCopy";
+// GP-14: the disclosure names WHICH approved facts and WHICH profile fields
+// travel with a question, not just how many.
+import { coachDisclosure } from "../../lib/coachDisclosure";
 import { attachProposalConflicts, normalizeConversationProposals, type ConversationProposal } from "../../lib/conversationProposals";
 // AI-V3: recognition restart with backoff + circuit breaker lives in the pure
 // dictation loop, so the phase label is always truthful (see lib/dictationLoop).
@@ -105,8 +114,8 @@ export default function CoachTab() {
     handleCancelChat,
     chatInput,
     setChatInput,
-    handleChatSend,
-    handleCouncilSend,
+    handleChatSend: sendToCoach,
+    handleCouncilSend: convenceCouncil,
     appendVoiceUserTurn,
     appendVoiceAiDelta,
     finalizeVoiceAiTurn,
@@ -203,6 +212,67 @@ export default function CoachTab() {
         ?.contract?.approvedMemoryFactsUsed,
     [chatMessages],
   );
+
+  // AI-24: being offline is a STATE of this surface, not a failure of Arbor.
+  // The composer used to stay fully live with no connection, so the parent
+  // typed a question, pressed send, and got the same "something went wrong"
+  // card a server outage produces. Now the surface says so BEFORE the send,
+  // and drafting stays possible (the words are not thrown away).
+  const [online, setOnline] = useState(() => browserOnline());
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => {
+      window.removeEventListener("online", up);
+      window.removeEventListener("offline", down);
+    };
+  }, []);
+
+  // AI-06: a typed transport failure raised on THIS surface (the voice stream
+  // now preserves its status — see lib/api streamVoice). Held separately from
+  // the context's `apiError` string, which carries no status at all.
+  const [aiFailure, setAiFailure] = useState<AiFailureCopy | null>(null);
+  useEffect(() => { if (!apiError) setAiFailure(null); }, [apiError]);
+
+  // AI-24: ONE offline seam, wrapping the context's send. Every entry point on
+  // this surface — the composer button, Enter, a follow-up chip, a fast-start
+  // scenario, the council — goes through it, so an offline parent gets the
+  // honest "no connection" card instead of watching a request die into the
+  // generic "something went wrong". Typing is never blocked: the draft is the
+  // parent's words and they survive the outage.
+  //
+  // Why a wrapper and not `disabled` on the send button: that button's opening
+  // element is a FROZEN white-label contrast-debt fingerprint
+  // (lib/whiteLabelContrast.test.ts, CR-01 ratchet — it hashes the whole
+  // element, not just its fill). Editing it registers as new unresolved debt,
+  // and that ratchet may only be retired by proving the fill. Wrapping the
+  // handler covers strictly more entry points anyway.
+  const handleChatSend = (customPrompt?: string, opts?: { displayText?: string }) => {
+    if (!online) {
+      setAiFailure(classifyAiFailure(null, { online: false, childName: childFirst }));
+      return;
+    }
+    setAiFailure(null);
+    return sendToCoach(customPrompt, opts);
+  };
+  const handleCouncilSend = (customPrompt?: string) => {
+    if (!online) {
+      setAiFailure(classifyAiFailure(null, { online: false, childName: childFirst }));
+      return;
+    }
+    setAiFailure(null);
+    return convenceCouncil(customPrompt);
+  };
+
+  // The ONE thing the failure card should say. A 429 (wait, nothing is lost),
+  // a 451 (your permission is needed, waiting will never help) and being
+  // offline are three different problems with three different next steps —
+  // they must never share one sentence, and none of them may render the
+  // server's own English `details` string.
+  const failureCopy: AiFailureCopy | null =
+    aiFailure ?? (apiError && !isChatLoading ? classifyAiFailure(null, { online, childName: childFirst }) : null);
 
   // F-08: text for the ALWAYS-mounted polite chat-status live region (twin:
   // VoiceOverlay's caption block — "always mounted so aria-live announces
@@ -651,6 +721,17 @@ export default function CoachTab() {
           openPaywall(err.feature || "coach_unlimited", err.plan);
           return;
         }
+        // AI-06: a quota (429) or consent (451) refusal is NOT a transport
+        // hiccup — the browser-voice fallback calls the same server and gets
+        // the same refusal, so "falling back" was a silent dead end. Now the
+        // status survives (lib/api streamVoice) and the parent is told which
+        // of the two happened, and what to do about it.
+        if (err instanceof ApiError && (err.status === 429 || err.status === 451)) {
+          attempt.end();
+          setVoicePhase("off");
+          setAiFailure(classifyAiFailure(err, { online, childName: childFirst, retryAfterSeconds: err.retryAfterSeconds }));
+          return;
+        }
         console.warn("Live voice start failed — falling back to browser voice", err);
         toast(t("coach.toast.voiceFallback"), "info");
       }
@@ -731,6 +812,18 @@ export default function CoachTab() {
               <Icon name={uiLang === "he" ? "arrow_back" : "arrow_forward"} size={20} />
             </button>
           </div>
+          {/* AI-24: the honest offline line, on the composer itself, so the
+              parent learns it before pressing send rather than after. */}
+          {!online && (
+            <p
+              data-testid="coach-offline-note"
+              role="status"
+              className="mt-2 flex items-center gap-1.5 text-[11px] font-bold"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              <Icon name="cloud_off" size={13} /> {t("elev.aierrors.offline.composer")}
+            </p>
+          )}
           {/* Multimodal capture entry points (photo / document / voice) — the ONLY
               instances on the surface (COACH-4 firewall condition: they survive
               the composer consolidation). */}
@@ -779,6 +872,15 @@ export default function CoachTab() {
             docks sticky at the bottom of the page instead (see below). */}
         {!composerDocked && composerSection}
       </div>
+
+      {/* ENG-10 / ENG-11 — the one cue the engine is allowed to spend today,
+          rendered on a surface the parent actually opens (the bell alone was
+          a badge nobody hunts for) and measured. In the evening this IS the
+          Bedtime Stories door: lib/timeOfDay bedtimeDoorOpen → the BEDTIME
+          kind → the "bedtime-stories" route. Quiet hours, the parent's Smart
+          Reminders toggles and the max-2/day ceiling stay owned by the engine;
+          this renders nothing when the engine says stay quiet. */}
+      {!userTurnExists && <RhythmCue surface="coach" />}
 
       {/* Fast-start scenarios (IA-2) — calm bordered chips on a fresh conversation */}
       {!userTurnExists && (
@@ -985,10 +1087,19 @@ export default function CoachTab() {
             <TrustPanel
               uses={[
                 tcc("elev.coachcontract.uses.message"),
-                tcc("elev.coachcontract.uses.profile", { name: childFirst || childProfile.name }),
-                typeof lastFactsUsed === "number"
-                  ? tcc("elev.coachcontract.uses.memory", { count: lastFactsUsed })
-                  : tcc("elev.coachcontract.uses.memoryNone"),
+                // GP-14: the profile line and the memory line now NAME what
+                // travels — which allow-listed fields, and the parent's own
+                // approved facts verbatim — instead of reporting a bare count
+                // the parent cannot check, correct or withdraw.
+                ...coachDisclosure(
+                  {
+                    profile: childProfile,
+                    approvedFacts: approvedMemoryItems.map((m) => ({ memoryId: m.memoryId, fact: m.fact })),
+                    factsUsedInLastAnswer: lastFactsUsed,
+                    childFirstName: childFirst || childProfile.name,
+                  },
+                  t,
+                ).uses,
                 tcc("elev.coachcontract.uses.turns"),
                 ...(weeklyOn ? [tcc("elev.coachcontract.uses.weekly")] : []),
               ]}
@@ -1321,26 +1432,50 @@ export default function CoachTab() {
             </div>
           )}
 
-          {/* Error state — the previously-missing recovery affordance on the pillar. */}
-          {apiError && !isChatLoading && (
+          {/* AI-06 / AI-24 — the failure card. It used to say ONE sentence
+              (t("coach.error") + Retry) for every failure, so "the account has
+              used its hour of AI" and "you have not given permission for a
+              photo of your child" were indistinguishable, and Retry was
+              offered on the one of them retrying can never fix. The copy and
+              the affordance now come from the classifier
+              (lib/aiErrorCopy) — and Retry appears ONLY when re-sending the
+              same request could actually succeed. */}
+          {failureCopy && !isChatLoading && (
             <div
               role="alert"
+              data-testid="coach-failure-card"
+              data-failure-kind={failureCopy.kind}
               className="flex items-start gap-3 rounded-2xl p-4 me-auto max-w-[85%]"
               style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
             >
-              <Icon name="warning" size={16} className="flex-shrink-0 mt-0.5" />
+              <Icon name={failureCopy.kind === "offline" ? "cloud_off" : failureCopy.kind === "consent" ? "lock" : "warning"} size={16} className="flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
-                <p className="text-xs leading-relaxed font-bold">{t("coach.error")}</p>
-                {lastUserText && (
-                  <button
-                    type="button"
-                    onClick={() => handleChatSend(lastUserText)}
-                    className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-xs font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                    style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-                  >
-                    <Icon name="sync" size={14} /> {t("coach.retry")}
-                  </button>
-                )}
+                <p className="text-xs leading-relaxed font-extrabold" dir="auto">{t(failureCopy.titleKey)}</p>
+                <p className="text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                  {t(failureCopy.bodyKey, failureCopy.bodyParams)}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {failureCopy.retryable && lastUserText && (
+                    <button
+                      type="button"
+                      onClick={() => handleChatSend(lastUserText)}
+                      className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-xs font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                      style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+                    >
+                      <Icon name="sync" size={14} /> {t("elev.aierrors.retry")}
+                    </button>
+                  )}
+                  {failureCopy.actionKey && failureCopy.actionRoute && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab(failureCopy.actionRoute!)}
+                      className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-xs font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                      style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+                    >
+                      <Icon name="shield" size={14} /> {t(failureCopy.actionKey)}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}

@@ -140,3 +140,71 @@ describe("TJB-03 — nextNudge honours the parent's preferences", () => {
     expect(nextNudge({ nowMs: at(16), rhythm: baseRhythm({ confidence: "low" }), loggedToday: 0, recent7d: 4, childName: "Dylan" }, p)?.kind).toBe("log");
   });
 });
+
+/* ── ENG-10 — the app finally has an evening ────────────────────────────────
+ * Before this the engine's whole evening was ONE cue: CALM, and only at the
+ * exact wind-down hour, and only once the rhythm read was "dependable". A
+ * family without 7+ logged days had no evening at all, and Bedtime Stories
+ * had no cue anywhere in the app. */
+describe("ENG-10 — the BEDTIME cue is the evening door", () => {
+  const settledEvening = { loggedToday: 2, recent7d: 6, childName: "Dylan" } as const;
+
+  it("FAILS WITHOUT THE CHANGE — at 19:00 a settled day used to produce NOTHING", () => {
+    const n = nextNudge({ ...settledEvening, nowMs: at(19), rhythm: baseRhythm({ confidence: "low" }) });
+    expect(n?.kind).toBe("bedtime");
+    expect(n?.action).toBe("bedtime-stories");
+    // No prep (no peak), no calm (not dependable, no wind-down), no log (day
+    // captured), no practice (engagement healthy) — every other branch is shut,
+    // which is exactly why the pre-change engine returned null here.
+  });
+
+  it("does NOT need a dependable rhythm read — the evening is the clock, not a prediction", () => {
+    for (const confidence of ["none", "low", "medium", "high"] as const) {
+      const n = nextNudge({ ...settledEvening, nowMs: at(20), rhythm: baseRhythm({ confidence }) });
+      expect(n?.kind, `confidence=${confidence}`).toBe("bedtime");
+    }
+  });
+
+  it("opens early only on the family's OWN wind-down hour, never on a guess", () => {
+    // 17:00 is afternoon: shut with no wind-down…
+    expect(nextNudge({ ...settledEvening, nowMs: at(17), rhythm: baseRhythm({ confidence: "low" }) })).toBeNull();
+    // …open when this family's wind-down says 17:00 (rhythm confidence still low).
+    expect(
+      nextNudge({ ...settledEvening, nowMs: at(17), rhythm: baseRhythm({ confidence: "low", windDownHour: 17 }) })?.kind,
+    ).toBe("bedtime");
+  });
+
+  it("never steals the CALM slot, and never fires before noon", () => {
+    // At a dependable wind-down hour CALM still wins — it is the more specific cue.
+    expect(
+      nextNudge({ ...settledEvening, nowMs: at(19), rhythm: baseRhythm({ confidence: "high", windDownHour: 19 }) })?.kind,
+    ).toBe("calm");
+    for (let h = 0; h < 12; h++) {
+      const n = nextNudge({ ...settledEvening, nowMs: at(h), rhythm: baseRhythm({ confidence: "low" }) });
+      expect(n?.kind, `${h}:00`).not.toBe("bedtime");
+    }
+  });
+
+  it("leaves the 15:00–17:59 LOG window intact", () => {
+    const n = nextNudge({ nowMs: at(16), rhythm: baseRhythm({ confidence: "low" }), loggedToday: 0, recent7d: 4, childName: "Dylan" });
+    expect(n?.kind).toBe("log");
+  });
+
+  it("stays inside the existing contracts: quiet hours and the max-2 ceiling", () => {
+    const inp = { ...settledEvening, nowMs: at(22), rhythm: baseRhythm({ confidence: "low" }) };
+    // 22:00 is inside the default 21–08 quiet window.
+    expect(nextNudge(inp, prefs())).toBeNull();
+    // Two other kinds already spent today → the door stays shut.
+    expect(nextNudge({ ...inp, nowMs: at(19), shownToday: ["prep", "calm"] }, prefs())).toBeNull();
+    // …and is allowed as the second distinct kind.
+    expect(nextNudge({ ...inp, nowMs: at(19), shownToday: ["prep"] }, prefs())?.kind).toBe("bedtime");
+  });
+
+  it("its copy resolves through the elev.* namespace (HE parity is guarded by the module test)", () => {
+    const n = nextNudge({ ...settledEvening, nowMs: at(19), rhythm: baseRhythm({ confidence: "low" }) });
+    expect(n?.headlineKey).toBe("elev.evening.nudge.headline");
+    expect(n?.bodyKey).toBe("elev.evening.nudge.body");
+    expect(n?.ctaKey).toBe("elev.evening.nudge.cta");
+    expect(n?.vars?.name).toBe("Dylan");
+  });
+});

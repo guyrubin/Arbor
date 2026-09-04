@@ -86,10 +86,23 @@ export class EscalationRequiredError extends Error {
  * fragile message matching. Message behavior is unchanged for existing catches.
  */
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  /**
+   * AI-06: the server's `Retry-After` (seconds), preserved for the ONE status
+   * where waiting is the correct advice — 429. Without it the quota screen can
+   * only say "later", which is exactly the vagueness the generic error had.
+   */
+  constructor(message: string, readonly status: number, readonly retryAfterSeconds?: number) {
     super(message);
     this.name = "ApiError";
   }
+}
+
+/** `Retry-After` in seconds, or undefined when absent/not a number. */
+function retryAfterOf(res: { headers: { get(name: string): string | null } }): number | undefined {
+  const raw = res.headers.get("Retry-After");
+  if (!raw) return undefined;
+  const n = Number(raw.trim());
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
 async function request<T>(url: string, method: string, body?: unknown): Promise<T> {
@@ -118,7 +131,7 @@ async function request<T>(url: string, method: string, body?: unknown): Promise<
         typeof errData?.escalationCategory === "string" ? errData.escalationCategory : undefined;
       throw new EscalationRequiredError(detail, { category });
     }
-    throw new ApiError(detail, res.status);
+    throw new ApiError(detail, res.status, retryAfterOf(res));
   }
   return (await res.json()) as T;
 }
@@ -158,7 +171,23 @@ export async function streamVoice(
     body: JSON.stringify(payload),
     signal,
   });
-  if (!res.ok || !res.body) throw new Error("Voice stream failed to start");
+  // AI-06: the voice stream used to throw a bare Error here, DESTROYING the
+  // status. So a 429 (this account's hour of AI is spent) and a 451 (no
+  // parental consent for this child's voice) both arrived at CoachTab as one
+  // unrecognisable failure, which silently "fell back" to browser voice — a
+  // fallback that hits the same refusal. The status is now preserved so the
+  // caller can say which of the two happened, and what to do about it.
+  if (!res.ok) {
+    let detail = "Voice stream failed to start";
+    try {
+      const errData = await res.json();
+      detail = errData?.details || errData?.error || detail;
+    } catch {
+      /* non-JSON error body — keep the neutral default */
+    }
+    throw new ApiError(detail, res.status, retryAfterOf(res));
+  }
+  if (!res.body) throw new Error("Voice stream failed to start");
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";

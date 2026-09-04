@@ -28,9 +28,14 @@ export default function ChildMemory() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[920px]">
-      <PageHeader eyebrow="My Child" title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />
+      <PageHeader eyebrow={t("elev.childmem.eyebrow")} title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />
 
-      <TrustSafetyBar note="You control everything here. Nothing is shared without your approval." />
+      {/* AI-11: this is the surface where a parent APPROVES or FORGETS what
+          Arbor may remember about their child. Its titles, its empty state and
+          — worst — its three decision buttons were hard-coded English, so a
+          Hebrew-reading parent was asked to make a privacy decision in a
+          language the app had promised not to use on them. */}
+      <TrustSafetyBar note={t("elev.childmem.trustNote")} />
 
       {/* OWN-1: a failed ledger read renders an honest error + retry card (the
           TrustedSharing twin) INSTEAD of the pending/approved lists — an
@@ -47,7 +52,7 @@ export default function ChildMemory() {
 
       {/* Pending review first — this is the parent's action queue */}
       {!memoryReviewError && pendingMemoryItems.length > 0 && (
-        <SectionCard title={`Pending your review (${pendingMemoryItems.length})`} icon={<Icon name="verified_user" size={20} />} tone="yellow">
+        <SectionCard title={t("elev.childmem.pending.title", { count: pendingMemoryItems.length })} icon={<Icon name="verified_user" size={20} />} tone="yellow">
           <div className="space-y-3">
             {pendingMemoryItems.map((m: MemoryReviewItem) => (
               <MemoryRow
@@ -63,7 +68,7 @@ export default function ChildMemory() {
       )}
 
       {!memoryReviewError && (
-      <SectionCard title="Approved memory" icon={<Icon name="bookmark" size={20} />} tone="lav">
+      <SectionCard title={t("elev.childmem.approved.title")} icon={<Icon name="bookmark" size={20} />} tone="lav">
         {approvedMemoryItems.length > 0 ? (
           <div className="space-y-3">
             {approvedMemoryItems.map((m: MemoryReviewItem) => (
@@ -80,9 +85,9 @@ export default function ChildMemory() {
             <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
               <Icon name="bookmark" size={24} />
             </div>
-            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>No memory yet</p>
-            <p className="text-xs mt-1 max-w-sm mx-auto" style={{ color: "var(--arbor-muted)" }}>
-              As you log moments and talk with Arbor, it will propose facts about {first} for you to approve. Approved facts make every answer more personal.
+            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.childmem.empty.title")}</p>
+            <p className="text-xs mt-1 max-w-sm mx-auto" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.childmem.empty.body", { name: first })}
             </p>
           </div>
         )}
@@ -160,7 +165,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget }: {
   onReject?: () => void;
   onForget?: () => void;
 }) {
-  const { uiLang } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const dated = m.createdAt ? fmtDay(m.createdAt, uiLang) : null;
   const timeBoxed = m.retention && !/permanent|indefinite/i.test(m.retention);
   return (
@@ -169,22 +174,22 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget }: {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
         {m.source && <span className="inline-flex items-center gap-1"><Icon name="link" size={12} /> {m.source}</span>}
         {dated && <span className="inline-flex items-center gap-1"><Icon name="schedule" size={12} /> {dated}</span>}
-        {timeBoxed && <Chip tone="pink">Time-boxed · {m.retention}</Chip>}
+        {timeBoxed && <Chip tone="pink">{t("elev.childmem.timeBoxed", { retention: m.retention ?? "" })}</Chip>}
         <span className="flex-1" />
         {busy && <Icon name="progress_activity" size={14} className="animate-spin" />}
         {onApprove && !busy && (
           <button onClick={onApprove} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-            <Icon name="check" size={14} /> Approve
+            <Icon name="check" size={14} /> {t("elev.childmem.action.approve")}
           </button>
         )}
         {onReject && !busy && (
           <button onClick={onReject} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-muted)" }}>
-            <Icon name="close" size={14} /> Dismiss
+            <Icon name="close" size={14} /> {t("elev.childmem.action.dismiss")}
           </button>
         )}
         {onForget && !busy && (
           <button onClick={onForget} className="inline-flex items-center gap-1 font-bold" style={{ color: "var(--arbor-pink-ink)" }}>
-            <Icon name="delete" size={14} /> Forget
+            <Icon name="delete" size={14} /> {t("elev.childmem.action.forget")}
           </button>
         )}
       </div>

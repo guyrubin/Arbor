@@ -21,14 +21,17 @@
 import * as accountSettings from "./accountSettings";
 import * as actionbar from "./actionbar";
 import * as agefilter from "./agefilter";
+import * as aierrors from "./aierrors";
 import * as aiHonesty from "./aiHonesty";
 import * as auth from "./auth";
 import * as carehonesty from "./careHonesty";
 import * as careprofile from "./careprofile";
 import * as celebrate from "./celebrate";
+import * as childmemory from "./childmemory";
 import * as childsignals from "./childsignals";
 import * as coachcontract from "./coachcontract";
 import * as continueModule from "./continue";
+import * as evening from "./evening";
 import * as foundation from "./foundation";
 import * as fullpicture from "./fullpicture";
 import * as gate from "./gate";
@@ -36,6 +39,7 @@ import * as growth from "./growth";
 import * as growthTruth from "./growthTruth";
 import * as journal from "./journal";
 import * as kidRegister from "./kidRegister";
+import * as memorydisclosure from "./memorydisclosure";
 import * as personal from "./personal";
 import * as planclarity from "./planclarity";
 import * as promise from "./promise";
@@ -58,14 +62,17 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   accountSettings,
   actionbar,
   agefilter,
+  aierrors,
   aiHonesty,
   auth,
   carehonesty,
   careprofile,
   celebrate,
+  childmemory,
   childsignals,
   coachcontract,
   continueModule,
+  evening,
   foundation,
   fullpicture,
   gate,
@@ -73,6 +80,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   growthTruth,
   journal,
   kidRegister,
+  memorydisclosure,
   personal,
   planclarity,
   promise,
