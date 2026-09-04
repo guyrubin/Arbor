@@ -31,10 +31,11 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, rel), "utf8").replace(/\r\n/g, "\n");
 
-const PLAIN = prewarmKey({ story: "david-and-goliath", lang: "en", hero: heroFingerprint(undefined) });
+const PLAIN = prewarmKey({ story: "david-and-goliath", lang: "en", name: "Noa", hero: heroFingerprint(undefined) });
 const WITH_AVATAR = prewarmKey({
   story: "david-and-goliath",
   lang: "en",
+  name: "Noa",
   hero: heroFingerprint("data:image/png;base64,AAAABBBBCCCCDDDDEEEEFFFFGGGG"),
 });
 
@@ -82,8 +83,27 @@ describe("MOB-22 — the key keeps the gating honest", () => {
     expect((await takePrewarmedComic(PLAIN)!).dataUrl).toBe("data:image/png;base64,PLAIN");
   });
 
+  it("the hero's NAME is part of the page's identity", () => {
+    // generateFirstComic draws the name into the page. Without the name in the
+    // key, a page prewarmed for one child was served to the next: onboard A
+    // (plain page cached), create an avatar so the take misses and the slot
+    // survives, later add B — B's key matched and B's first comic arrived with
+    // A's name drawn on it, seeded into B's shelf.
+    const a = prewarmKey({ story: "david-and-goliath", lang: "en", name: "Noa", hero: heroFingerprint(undefined) });
+    const b = prewarmKey({ story: "david-and-goliath", lang: "en", name: "Dylan", hero: heroFingerprint(undefined) });
+    expect(a).not.toBe(b);
+  });
+
+  it("sign-out drops the slot, so a shared tab cannot hand it to the next account", () => {
+    const auth = read("../context/AuthContext.tsx");
+    expect(auth.length).toBeGreaterThan(1000);
+    expect(auth).toContain("clearPrewarmedComic()");
+    // Negative control: the pre-change sign-out purged only the page store.
+    expect("await purgeAllComicPages(); if (!firebaseEnabled) return;").not.toContain("clearPrewarmedComic");
+  });
+
   it("language is part of the page's identity", () => {
-    const heKey = prewarmKey({ story: "david-and-goliath", lang: "he", hero: heroFingerprint(undefined) });
+    const heKey = prewarmKey({ story: "david-and-goliath", lang: "he", name: "Noa", hero: heroFingerprint(undefined) });
     expect(heKey).not.toBe(PLAIN);
   });
 

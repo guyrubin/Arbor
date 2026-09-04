@@ -56,6 +56,15 @@ export const en: Record<string, string> = {
   // ── ENG-16 · The honest single-activity caption (lib/shareCaption.ts) ────
   "elev.share.caption.play": "{name} played today — one small thing that worked. {url}",
   "elev.share.caption.journal": "A moment with {name} that I kept. {url}",
+  // A "first" is one moment, not a month of progress. Falling through to the
+  // growth caption published "{name}'s progress this month" from a card whose
+  // count is 1, on day 0, in the parent's name.
+  "elev.share.caption.firsts": "A first for {name}, kept. {url}",
+  // A month, honestly: what was kept, not a verdict on how the child is doing.
+  "elev.share.caption.month": "{name}'s month, as we kept it. {url}",
+  // Pre-existing, found by the growth_card guard: the WEEKLY recap shared
+  // with the month caption, publishing a week as a month of progress.
+  "elev.share.caption.week": "{name}'s week, as we kept it. {url}",
   "elev.share.cta.play": "Share this moment",
 
   // ── ENG-16 · Keepsakes that had no share affordance ──────────────────────
@@ -100,6 +109,9 @@ export const he: Record<string, string> = {
   // ── ENG-16 · The honest single-activity caption ──────────────────────────
   "elev.share.caption.play": "{name} שיחק/ה היום — דבר קטן אחד שעבד. {url}",
   "elev.share.caption.journal": "רגע עם {name} ששמרתי. {url}",
+  "elev.share.caption.firsts": "פעם ראשונה של {name}, שמור. {url}",
+  "elev.share.caption.month": "החודש של {name}, כפי ששמרנו אותו. {url}",
+  "elev.share.caption.week": "השבוע של {name}, כפי ששמרנו אותו. {url}",
   "elev.share.cta.play": "שתפו את הרגע",
 
   // ── ENG-16 · Keepsakes that had no share affordance ──────────────────────

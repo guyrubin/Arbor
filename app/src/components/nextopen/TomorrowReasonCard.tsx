@@ -39,34 +39,34 @@ export interface TomorrowReasonCardProps {
 
 export default function TomorrowReasonCard({ signals, childName, nowMs }: TomorrowReasonCardProps) {
   const { t } = useLanguage();
-  const { setActiveTab } = useArbor();
+  const { setActiveTab, childProfile } = useArbor();
   const now = useMemo(() => nowMs ?? Date.now(), [nowMs]);
 
   // What was left for today, resolved once per mount so the card cannot flicker
   // away mid-read when an unrelated state change re-renders the page.
-  const [reason, setReason] = useState<StoredReason | null>(() => reasonForThisOpen(now));
+  const [reason, setReason] = useState<StoredReason | null>(() => reasonForThisOpen(childProfile.id, now));
 
   // The CLOSE half. Runs after paint, writes at most once a day, and never
   // touches the reason currently on screen (which belongs to an earlier day).
   useEffect(() => {
-    closeDay(now, signals);
+    closeDay(childProfile.id, now, signals);
     // `signals` is read once at close; re-running on every signal tick would
     // let a reason chosen at 19:30 be rewritten at 19:31.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now]);
+  }, [now, childProfile.id]);
 
   const dismiss = useCallback(() => {
-    markReasonSeen(now);
+    markReasonSeen(childProfile.id, now);
     setReason(null);
-  }, [now]);
+  }, [now, childProfile.id]);
 
   const act = useCallback(
     (tab: Parameters<typeof setActiveTab>[0]) => {
-      markReasonSeen(now);
+      markReasonSeen(childProfile.id, now);
       setReason(null);
       setActiveTab(tab);
     },
-    [now, setActiveTab],
+    [now, childProfile.id, setActiveTab],
   );
 
   if (!reason) return null;

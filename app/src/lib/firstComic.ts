@@ -48,10 +48,19 @@ export interface FirstComicIdentity {
   heroDataUrl?: string;
 }
 
+/**
+ * The cache key MUST include the hero's name, because generateFirstComic bakes
+ * that name into the drawing. Without it, a page generated for one child could
+ * be handed to the next: onboard child A (plain page prewarmed), create an
+ * avatar so the take misses and the slot survives, later add child B — B's key
+ * matched, and B's first comic arrived with A's name on it, seeded into B's
+ * shelf. The same slot outlived a sign-out on a shared tab.
+ */
 export function firstComicKey(id: FirstComicIdentity): string {
   return prewarmKey({
     story: FIRST_STORY.id,
     lang: id.he ? "he" : "en",
+    name: id.name,
     hero: heroFingerprint(id.heroDataUrl),
   });
 }

@@ -128,7 +128,7 @@ export default function ComicsTab() {
   useEffect(() => {
     const now = Date.now();
     const startOfToday = new Date(now).setHours(0, 0, 0, 0);
-    closeDay(now, {
+    closeDay(childProfile.id, now, {
       ritualDue: ritualOfTheMoment(now, readRitualRecord()) !== null,
       watchFocus: resolveWatchFocus(childProfile.id, milestones) != null,
       unopenedStory: savedCount < ADVENTURES.length,

@@ -267,12 +267,25 @@ export default function LifecycleMomentCard({
         <>
           {/* COUNTS ONLY — what the parent captured and noticed. Never a score,
               a percentage, or a comparison between two periods. */}
+          {/* A parent returning after a fortnight has week === 0 BY
+              CONSTRUCTION. A bold 0 under "this week" is a counter of their
+              absence — the same fact the days-away figure was deliberately
+              withheld to avoid, leaking through the back door. The welcome-back
+              card shows what they have, never what the gap cost.
+              "Milestones noticed" is windowed to the child's CDC band plus one
+              earlier, so it FALLS when the child ages into a new band — and the
+              age-band card is exactly the moment that happens. A count that can
+              go down is not a count of what you noticed; it is a verdict. */}
           <div className="mt-4 flex gap-2">
             {(
               [
                 { v: moment.counts.total, label: t("elev.lifecycle.stat.total") },
-                { v: moment.counts.week, label: t("elev.lifecycle.stat.week") },
-                { v: moment.counts.noticed, label: t("elev.lifecycle.stat.noticed") },
+                ...(moment.kind === "welcome-back"
+                  ? []
+                  : [{ v: moment.counts.week, label: t("elev.lifecycle.stat.week") }]),
+                ...(moment.kind === "age-band"
+                  ? []
+                  : [{ v: moment.counts.noticed, label: t("elev.lifecycle.stat.noticed") }]),
               ] as const
             ).map((s) => (
               <div key={s.label} className="flex-1 rounded-xl py-2.5 text-center" style={{ background: "var(--arbor-paper-deep)" }}>

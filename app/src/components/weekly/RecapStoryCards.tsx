@@ -278,6 +278,7 @@ export default function RecapStoryCards({
               <ShareButton
                 artifact="growth_card"
                 surface="weekly-recap"
+                captionKey="elev.share.caption.week"
                 childName={first}
                 getCardOpts={() => ({
                   name: first,

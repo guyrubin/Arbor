@@ -16,6 +16,7 @@ import { initNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
 import { trackSessionOpen } from "../lib/loopEvents";
 import { purgeAllComicPages } from "../lib/comicPageStore";
+import { clearPrewarmedComic } from "../lib/comicPrewarm";
 import { clearMathExit } from "../components/kidmode/parentGate";
 
 export type AuthUser = {
@@ -131,6 +132,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* best effort */
     }
+    // Same rule for the in-memory prewarm slot: it holds a generated page with
+    // a child's NAME drawn into it. clearPrewarmedComic() documented that it
+    // was called here and had no call site anywhere, so on a shared tab the
+    // next account's onboarding could take the previous child's comic.
+    clearPrewarmedComic();
     if (!firebaseEnabled || !auth) return;
     await firebaseSignOut(auth);
   };

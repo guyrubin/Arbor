@@ -150,6 +150,7 @@ export default function FirstsMoment() {
       <div className="mt-3">
         <ShareButton
           artifact="growth_card"
+          captionKey="elev.share.caption.firsts"
           surface="firsts"
           childName={firstName}
           label={t("elev.firsts.share")}

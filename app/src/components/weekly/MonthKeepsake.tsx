@@ -75,7 +75,15 @@ export default function MonthKeepsake() {
     return buildMonthKeepsake({
       monthKey: previousKey,
       moments: monthLogs.length,
-      milestones: (milestones ?? []).filter((m) => m.checked).length,
+      // Windowed to the SAME month as the moments. Unfiltered, this reported a
+      // year of noticing as August's, so a parent who noticed nothing that
+      // month was handed "12 milestones you noticed" for it.
+      milestones: (milestones ?? []).filter(
+        (m) =>
+          m.checked &&
+          typeof m.observationUpdatedAt === "string" &&
+          m.observationUpdatedAt.slice(0, 7) === previousKey,
+      ).length,
       stories: 0,
       parentQuote: quote,
     });
@@ -172,6 +180,7 @@ export default function MonthKeepsake() {
       <div className="mt-3">
         <ShareButton
           artifact="growth_card"
+          captionKey="elev.share.caption.month"
           surface="month_keepsake"
           childName={firstName}
           label={t("elev.keepsake.month.share")}

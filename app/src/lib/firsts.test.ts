@@ -32,9 +32,13 @@ const base: FirstsInput = {
 };
 
 describe("a first fires at ONE, on day zero", () => {
-  it("the very first moment is a celebration (prideMoment needs 5 and a prior snapshot)", () => {
+  it("the first moment belongs to the lifecycle spine, not here", () => {
+    // ONE OWNER PER CELEBRATION. lib/lifecycle.ts stages the time-based
+    // moments on Today. Detecting them here as well showed a parent the
+    // IDENTICAL sentence twice, on two surfaces, from two ledgers that cannot
+    // see each other.
     const firsts = detectFirsts({ ...base, momentCount: 1, momentDays: ["2026-09-01"] }, EMPTY_FIRSTS_STATE);
-    expect(firsts).toEqual([{ kind: "first_moment", count: 1 }]);
+    expect(firsts).toEqual([]);
   });
 
   it("the first milestone and the first story each fire at one", () => {
@@ -54,13 +58,12 @@ describe("a first fires at ONE, on day zero", () => {
 describe("the first week is cumulative, never a streak", () => {
   const scattered = ["2026-09-01", "2026-09-04", "2026-09-07"]; // Mon, Thu, Sun
 
-  it("three NON-consecutive days across the week is a real first week", () => {
+  it("the first week belongs to the lifecycle spine, not here", () => {
     const firsts = detectFirsts(
       { ...base, momentCount: 3, momentDays: scattered, daysSinceStart: 6 },
       EMPTY_FIRSTS_STATE,
     );
-    expect(firsts.some((f) => f.kind === "first_week")).toBe(true);
-    expect(firsts.find((f) => f.kind === "first_week")?.count).toBe(3);
+    expect(firsts.some((f) => f.kind === "first_week")).toBe(false);
   });
 
   it("does not fire before the week has actually passed", () => {
@@ -95,15 +98,15 @@ describe("the first week is cumulative, never a streak", () => {
 });
 
 describe("idempotency — a first can never happen twice", () => {
-  const input: FirstsInput = { ...base, momentCount: 1, momentDays: ["2026-09-01"] };
+  const input: FirstsInput = { ...base, milestoneCount: 1 };
 
   it("re-detecting after merging the state yields nothing", () => {
     const first = detectFirsts(input, EMPTY_FIRSTS_STATE);
     expect(first).toHaveLength(1);
     const next = mergeFirsts(EMPTY_FIRSTS_STATE, first);
     expect(detectFirsts(input, next)).toEqual([]);
-    // Still nothing when more moments arrive — the FIRST already happened.
-    expect(detectFirsts({ ...input, momentCount: 12 }, next)).toEqual([]);
+    // Still nothing when more arrive — the FIRST already happened.
+    expect(detectFirsts({ ...input, milestoneCount: 12 }, next)).toEqual([]);
   });
 
   it("merge is pure and de-duplicates", () => {
@@ -133,8 +136,10 @@ describe("only one card at a time", () => {
       },
       EMPTY_FIRSTS_STATE,
     );
+    // first_week and first_moment are the lifecycle spine's; what remains here
+    // is the milestone and the story, and only one card shows.
     expect(firsts.length).toBeGreaterThan(1);
-    expect(pickFirst(firsts)?.kind).toBe("first_week");
+    expect(pickFirst(firsts)?.kind).toBe("first_milestone");
   });
 
   it("returns null when nothing fired", () => {
@@ -152,12 +157,12 @@ describe("only one card at a time", () => {
 
 describe("clinical firewall: a first carries a count and a kind, nothing else", () => {
   it("emits no score, ratio, target or delta field", () => {
-    const firsts = detectFirsts({ ...base, momentCount: 4 }, EMPTY_FIRSTS_STATE);
+    const firsts = detectFirsts({ ...base, milestoneCount: 4 }, EMPTY_FIRSTS_STATE);
     expect(Object.keys(firsts[0]).sort()).toEqual(["count", "kind"]);
   });
 
   it("junk counts degrade to nothing rather than to a wrong celebration", () => {
-    expect(detectFirsts({ ...base, momentCount: Number.NaN }, EMPTY_FIRSTS_STATE)).toEqual([]);
-    expect(detectFirsts({ ...base, momentCount: -3 }, EMPTY_FIRSTS_STATE)).toEqual([]);
+    expect(detectFirsts({ ...base, milestoneCount: Number.NaN }, EMPTY_FIRSTS_STATE)).toEqual([]);
+    expect(detectFirsts({ ...base, milestoneCount: -3 }, EMPTY_FIRSTS_STATE)).toEqual([]);
   });
 });

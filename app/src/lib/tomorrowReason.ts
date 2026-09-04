@@ -49,7 +49,15 @@ export interface DayCloseSignals {
   momentsToday: number;
 }
 
-const STORE = "arbor.tomorrowReason";
+/**
+ * Child-scoped on the sweepable `arbor.<ns>.<childId>` convention, for TWO
+ * reasons. A reason is derived from ONE child's signals (their watch focus,
+ * their unopened book, their day's moments) — under a single global key a
+ * parent who closed the day on one child would open on a sibling and be handed
+ * the first child's reason. And a key that does not end in the child id is not
+ * swept by lib/childLocalState when that child is deleted.
+ */
+const storeKey = (childId: string) => `arbor.tomorrowReason.${childId}`;
 
 /** The hour a day is treated as closing. Local time, deliberately late. */
 export const DAY_CLOSE_HOUR = 19;
@@ -69,9 +77,10 @@ export function isDayClosing(nowMs: number): boolean {
 
 /* ── Storage (best-effort, never throws) ────────────────────────────────── */
 
-export function readStoredReason(): StoredReason | null {
+export function readStoredReason(childId: string): StoredReason | null {
   try {
-    const raw = localStorage.getItem(STORE);
+    if (!childId) return null;
+    const raw = localStorage.getItem(storeKey(childId));
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
@@ -84,18 +93,20 @@ export function readStoredReason(): StoredReason | null {
   }
 }
 
-function write(reason: StoredReason): StoredReason {
+function write(childId: string, reason: StoredReason): StoredReason {
   try {
-    localStorage.setItem(STORE, JSON.stringify(reason));
+    if (!childId) return;
+    localStorage.setItem(storeKey(childId), JSON.stringify(reason));
   } catch {
     /* private mode / quota — the hook simply does not persist */
   }
   return reason;
 }
 
-export function clearStoredReason(): void {
+export function clearStoredReason(childId: string): void {
   try {
-    localStorage.removeItem(STORE);
+    if (!childId) return;
+    localStorage.removeItem(storeKey(childId));
   } catch {
     /* nothing to do */
   }
@@ -108,11 +119,15 @@ export function clearStoredReason(): void {
  * the thing the parent chose to watch for, which beats an unopened book, and a
  * day with nothing written falls back to writing one moment down.
  */
-export function chooseReason(signals: DayCloseSignals): ReasonKind {
+export function chooseReason(signals: DayCloseSignals): ReasonKind | null {
   if (signals.ritualDue) return "ritual";
   if (signals.watchFocus) return "focus";
   if (signals.unopenedStory) return "story";
-  return "moment";
+  // momentsToday was collected by both call sites and never read, so the
+  // fallback told a parent "write down one thing you saw — that is the whole
+  // ask" on an evening they had already written five. A day that WAS written
+  // needs no reason to come back and write it.
+  return signals.momentsToday > 0 ? null : "moment";
 }
 
 /**
@@ -121,12 +136,15 @@ export function chooseReason(signals: DayCloseSignals): ReasonKind {
  * hour. Idempotent within a day: re-opening the app at 21:00 does not rewrite
  * (and so cannot flip) a reason chosen at 19:30.
  */
-export function closeDay(nowMs: number, signals: DayCloseSignals): StoredReason | null {
-  if (!isDayClosing(nowMs)) return null;
+export function closeDay(childId: string, nowMs: number, signals: DayCloseSignals): StoredReason | null {
+  if (!childId || !isDayClosing(nowMs)) return null;
   const today = dayStamp(nowMs);
-  const existing = readStoredReason();
+  const existing = readStoredReason(childId);
   if (existing && existing.setOn === today) return existing;
-  return write({ kind: chooseReason(signals), setOn: today });
+  const kind = chooseReason(signals);
+  // No honest reason tonight is a real answer — better than inventing one.
+  if (!kind) return null;
+  return write(childId, { kind, setOn: today });
 }
 
 /**
@@ -134,20 +152,24 @@ export function closeDay(nowMs: number, signals: DayCloseSignals): StoredReason 
  * the one it was written on (that is what makes it a return hook rather than a
  * nag), and only once — putting it away or acting on it stamps it seen.
  */
-export function reasonForThisOpen(nowMs: number): StoredReason | null {
-  const stored = readStoredReason();
+export function reasonForThisOpen(childId: string, nowMs: number): StoredReason | null {
+  const stored = readStoredReason(childId);
   if (!stored) return null;
   const today = dayStamp(nowMs);
   if (stored.setOn >= today) return null;
-  if (stored.seenOn === today) return null;
+  // Seen at all — not merely seen TODAY. Suppressing only same-day meant a
+  // reason written Thursday and dismissed Friday came back Saturday, Sunday and
+  // every day after, until the parent happened to be inside Growth or the shelf
+  // after 19:00 to overwrite it. A return hook that cannot be put down is a nag.
+  if (stored.seenOn) return null;
   return stored;
 }
 
 /** Stamp the current reason as seen, so it does not follow the parent around. */
-export function markReasonSeen(nowMs: number): void {
-  const stored = readStoredReason();
+export function markReasonSeen(childId: string, nowMs: number): void {
+  const stored = readStoredReason(childId);
   if (!stored) return;
-  write({ ...stored, seenOn: dayStamp(nowMs) });
+  write(childId, { ...stored, seenOn: dayStamp(nowMs) });
 }
 
 /* ── Copy + destination contract ────────────────────────────────────────── */

@@ -88,24 +88,22 @@ export function detectFirsts(input: FirstsInput, state: FirstsState): FirstMomen
   const daysWithMoments = new Set(input.momentDays ?? []).size;
   const elapsed = Math.max(0, Math.trunc(input.daysSinceStart) || 0);
 
-  // The first week comes first: it is the biggest thing that can be true, and
-  // pickFirst never shows two cards at once.
-  if (
-    !seen.has("first_week") &&
-    elapsed >= FIRST_WEEK_DAYS - 1 &&
-    daysWithMoments >= FIRST_WEEK_MIN_DAYS_WITH_MOMENTS
-  ) {
-    out.push({ kind: "first_week", count: daysWithMoments });
-  }
+  // ONE OWNER PER CELEBRATION. `first_week` and `first_moment` are TIME-staged
+  // and belong to the lifecycle spine (lib/lifecycle.ts), which shows them on
+  // Today. Detecting them here too meant a parent met the identical sentence
+  // twice on day 7 — once on Today, once on Child Memory — from two ledgers
+  // that could not see each other. This module keeps the EVENT-staged firsts:
+  // the first milestone and the first story, which lifecycle does not stage.
+  // The kinds stay in FIRST_KINDS so an already-written ledger still parses.
+  void elapsed;
+  void daysWithMoments;
   if (!seen.has("first_milestone") && milestones >= 1) {
     out.push({ kind: "first_milestone", count: milestones });
   }
   if (!seen.has("first_story") && stories >= 1) {
     out.push({ kind: "first_story", count: stories });
   }
-  if (!seen.has("first_moment") && moments >= 1) {
-    out.push({ kind: "first_moment", count: moments });
-  }
+  void moments;
 
   return out;
 }

@@ -38,6 +38,9 @@ export interface PrewarmKeyParts {
   story: string;
   /** "he" | "en" — a Hebrew page is a different page. */
   lang: string;
+  /** The hero's name. It is DRAWN INTO the page, so two children with
+   *  different names are two different pages even with identical avatars. */
+  name: string;
   /** Hero identity: an avatar fingerprint, or "plain" for the no-avatar page. */
   hero: string;
 }
@@ -48,7 +51,7 @@ export interface PrewarmKeyParts {
  * creates an avatar after the prewarm started.
  */
 export function prewarmKey(parts: PrewarmKeyParts): string {
-  return `${parts.story}|${parts.lang}|${parts.hero}`;
+  return `${parts.story}|${parts.lang}|${parts.name}|${parts.hero}`;
 }
 
 /** A stable, cheap fingerprint for an avatar data URL (never the URL itself). */

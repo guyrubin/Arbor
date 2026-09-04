@@ -103,3 +103,49 @@ describe("ShareButton actually uses the resolver (source pin + negative control)
     expect(src).not.toMatch(/function captionFor\(/);
   });
 });
+
+describe("ENG-16 · no share may inherit the growth claim by accident", () => {
+  /**
+   * The month-of-progress caption is the strongest claim Arbor publishes in a
+   * parent's name. It shipped twice by OMISSION: a mount passes
+   * artifact="growth_card", no captionKey, and the resolver falls through to
+   * "{name}'s progress this month" — once from a single ten-minute activity,
+   * once from a day-0 card whose count is one.
+   *
+   * So: every growth_card mount must either sit on a surface the resolver
+   * special-cases, or say what it means explicitly.
+   */
+  const componentsRoot = path.join(
+    path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")),
+    "..", "components",
+  );
+  const listTsx = (dir: string): string[] =>
+    fs.readdirSync(dir).flatMap((e) => {
+      const full = path.join(dir, e);
+      if (fs.statSync(full).isDirectory()) return listTsx(full);
+      return /\.tsx$/.test(e) ? [full] : [];
+    });
+
+  const mounts = listTsx(componentsRoot).flatMap((file) => {
+    const src = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+    return [...src.matchAll(/<ShareButton\b[\s\S]{0,600}?\/>/g)]
+      .filter((m) => /artifact=["']growth_card["']/.test(m[0]))
+      .map((m) => ({ file: path.relative(componentsRoot, file).split(path.sep).join("/"), tag: m[0] }));
+  });
+
+  it("the scan actually finds growth_card mounts", () => {
+    expect(mounts.length).toBeGreaterThan(0);
+  });
+
+  it("each one declares its caption, or sits on a surface the resolver handles", () => {
+    const offenders = mounts.filter(({ tag }) => {
+      if (/captionKey=/.test(tag)) return false;
+      const surface = /surface=["']([\w-]+)["']/.exec(tag)?.[1];
+      return !(surface && isPlaySurface(surface));
+    });
+    expect(
+      offenders.map((o) => o.file),
+      "growth_card share with no captionKey would publish \"progress this month\"",
+    ).toEqual([]);
+  });
+});
