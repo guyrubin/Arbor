@@ -40,6 +40,7 @@ import { PROMPT_VERSIONS, type PromptKey } from "../ai/prompts.js";
 import { computeContentHash } from "../content/governance.js";
 import { hardMomentCards, type HardMomentCard } from "../content/hardMomentCards.js";
 import { buildHardMomentSeedPrompt } from "../content/hardMomentSurface.js";
+import { HARD_MOMENT_PILOT } from "../content/pilotRelease.js";
 
 export type EvalScenario = {
   id: string;
@@ -173,6 +174,22 @@ const approveFixture = (card: HardMomentCard): HardMomentCard => ({
  * exists, and the built seed embeds the governed escalation BYTE-IDENTICAL
  * plus the scope + no-diagnosis instructions.
  */
+/**
+ * Lowest age (in months) inside the card's OWN authored bands. Selection is
+ * fail-closed on age, so the seed contract has to exercise each card where its
+ * metadata says it belongs — never at a hardcoded age that would silently make
+ * a school-age card unpublishable and empty the prompt.
+ */
+const inBandMonths = (card: HardMomentCard): number | null => {
+  for (const band of card.ageBands ?? []) {
+    const closed = /^(\d+)\s*[-–]\s*(\d+)$/.exec(band.trim());
+    if (closed) return Number(closed[1]) * 12;
+    const open = /^(\d+)\s*\+$/.exec(band.trim());
+    if (open) return Number(open[1]) * 12;
+  }
+  return null;
+};
+
 export const hardMomentSeedContractErrors = (suite: EvalSuite): string[] => {
   const errors: string[] = [];
   for (const scenario of suite.scenarios) {
@@ -182,12 +199,35 @@ export const hardMomentSeedContractErrors = (suite: EvalSuite): string[] => {
       continue;
     }
     const locale = scenario.locale === "he" ? "he" : "en";
-    const seed = buildHardMomentSeedPrompt(approveFixture(card), locale, "Noa");
+    const ageMonths = inBandMonths(card);
+    if (ageMonths === null) {
+      errors.push(`scenario "${scenario.id}": card "${card.id}" has no usable age band`);
+      continue;
+    }
     const escalation = locale === "he" ? card.escalation.he : card.escalation.en;
-    if (!seed.includes(escalation)) errors.push(`scenario "${scenario.id}": escalation not byte-identical in seed`);
-    if (!seed.includes("never paraphrased")) errors.push(`scenario "${scenario.id}": seed lost the never-paraphrase instruction`);
-    if (!seed.includes("Do not diagnose, label, score, or give any verdict")) {
-      errors.push(`scenario "${scenario.id}": seed lost the no-diagnosis instruction`);
+    // Inside the pilot window by construction, so the contract never depends on
+    // the wall clock (the release opens at a UTC instant; a local-evening run
+    // would otherwise see the pilot as not yet started and pass vacuously).
+    const now = new Date(Date.parse(HARD_MOMENT_PILOT.availableFrom) + 60_000);
+    // Both shipping routes must carry the identical safety frame: the reviewed
+    // route AND the editorial pilot that actually serves parents today.
+    const routes: [string, string][] = [
+      ["reviewed", buildHardMomentSeedPrompt(approveFixture(card), locale, "Noa", { ageMonths, now })],
+      ["pilot", buildHardMomentSeedPrompt(card, locale, "Noa", { ageMonths, now })],
+    ];
+    for (const [route, seed] of routes) {
+      const at = `scenario "${scenario.id}" (${route})`;
+      if (!seed) { errors.push(`${at}: seed is empty — the card is not publishable on this route`); continue; }
+      if (!seed.includes(escalation)) errors.push(`${at}: escalation not byte-identical in seed`);
+      if (!seed.includes("never paraphrased")) errors.push(`${at}: seed lost the never-paraphrase instruction`);
+      if (!seed.includes("Do not diagnose, label, score, or give any verdict")) {
+        errors.push(`${at}: seed lost the no-diagnosis instruction`);
+      }
+    }
+    // The pilot route must disclose that it carries no individual clinical review.
+    const pilotSeed = routes[1][1];
+    if (pilotSeed && !pilotSeed.includes("not had individual clinical review")) {
+      errors.push(`scenario "${scenario.id}" (pilot): seed lost the no-clinical-review disclosure`);
     }
   }
   return errors;

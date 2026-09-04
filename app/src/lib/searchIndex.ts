@@ -12,8 +12,8 @@
  *   - app/src/lib/masterclasses.ts        (masterclass catalog)
  *   - app/src/lib/routines.ts             (ready-made routine catalog)
  *   - app/src/initialData.ts              (scholarsInfo static roster only)
- *   - app/src/content/hardMomentCards.ts  (publishedHardMomentCards ONLY —
- *     the fail-closed isPublishableContent gate; drafts NEVER index)
+ *   - app/src/content/selectCards.ts (contextual reviewed/editorial-pilot gate;
+ *     only explicitly released cards index)
  *   - app/src/lib/navigation.ts + i18n.ts (route/tab entries + their labels)
  *
  * It NEVER imports: memory/, families/, behaviors data, childData,
@@ -23,7 +23,7 @@
  *
  * arbor-sec WILL grep this file's imports. Do NOT add imports here.
  *
- * LAZY CONTRACT (perf budget, masterplan 4.6): the index is built ONCE, on
+ * LAZY CONTRACT (perf budget, masterplan 4.6): the static index is built ONCE, on
  * first use (module memo in getSearchIndex()) — and this MODULE itself must
  * only ever be loaded via dynamic import() from the search surfaces
  * (SearchModal / TopbarSearch on open), so the catalogs above never join the
@@ -40,7 +40,8 @@ import { LEARN_CATEGORIES } from "../learn/learnLibrary";
 import { MASTERCLASSES, FRAME_LABELS } from "./masterclasses";
 import { ROUTINES } from "./routines";
 import { scholarsInfo } from "../initialData";
-import { publishedHardMomentCards } from "../content/hardMomentCards";
+import { availableHardMomentCards } from "../content/selectCards";
+import type { HardMomentContext } from "../content/pilotRelease";
 import { SECTIONS } from "./navigation";
 import { translate } from "./i18n";
 import type { ActiveTab } from "../context/ArborContext";
@@ -208,18 +209,7 @@ function buildIndex(): readonly SearchEntry[] {
     ));
   }
 
-  // 6. Hard-moment cards — PUBLISHED ONLY. publishedHardMomentCards is the
-  //    fail-closed CONT-1 gate output; drafts/retired can never appear here.
-  for (const card of publishedHardMomentCards) {
-    entries.push(entry(
-      `hard-moment:${card.id}`,
-      "hard-moment",
-      pair(card.title.en, card.title.he),
-      pair(card.category, card.category),
-      { en: [card.category], he: [] },
-      "behaviors",
-    ));
-  }
+  // Hard-moment entries are resolved per call below, outside the static memo.
 
   // 7. Bedtime stories: generate-and-discard (lib/bedtimeStories.ts exports a
   //    prompt builder, no static preset catalog) — nothing static to index;
@@ -279,9 +269,17 @@ function buildIndex(): readonly SearchEntry[] {
 /** Module memo — the index is built exactly once, on first use. */
 let memo: readonly SearchEntry[] | undefined;
 
-/** The full static index, built lazily on first call and cached. */
-export function getSearchIndex(): readonly SearchEntry[] {
-  return (memo ??= buildIndex());
+/** Static metadata is cached; governed hard-moment entries are revalidated each call. */
+export function getSearchIndex(context?: HardMomentContext): readonly SearchEntry[] {
+  const base = (memo ??= buildIndex());
+  // Missing child context leaves this catalog out; never index an age guess.
+  if (!context) return base;
+  return [...base, ...availableHardMomentCards(context).map((card) => entry(
+    `hard-moment:${card.id}`, "hard-moment",
+    pair(card.title.en, card.title.he),
+    pair(translate("en", "hm.cat." + card.category), translate("he", "hm.cat." + card.category)),
+    { en: [card.category], he: [] }, "behaviors",
+  ))];
 }
 
 /* ── Forgiving matching + simple ranking ─────────────────────────────────── */
@@ -311,11 +309,11 @@ function scoreEntry(e: SearchEntry, q: string): number {
  * always, ranked title-startsWith > word-startsWith > title-substring >
  * keyword. Stable within a rank (catalog order). Returns up to `limit`.
  */
-export function searchCatalog(query: string, limit = 12): SearchEntry[] {
+export function searchCatalog(query: string, limit = 12, context?: HardMomentContext): SearchEntry[] {
   const q = normalizeSearchText(query);
   if (!q) return [];
   const scored: { e: SearchEntry; s: number; i: number }[] = [];
-  const index = getSearchIndex();
+  const index = getSearchIndex(context);
   for (let i = 0; i < index.length; i++) {
     const s = scoreEntry(index[i], q);
     if (s > 0) scored.push({ e: index[i], s, i });

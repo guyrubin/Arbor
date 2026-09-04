@@ -18,25 +18,25 @@ const find = (id: string): HardMomentCard => hardMomentCards.find((item) => item
 
 describe("selectCards — fail-closed selector (CONT-6)", () => {
   it("returns nothing from the real all-draft pack", () => {
-    expect(byCategory("big-feelings", hardMomentCards, NOW)).toHaveLength(0);
-    expect(byConcern("aggression", hardMomentCards, NOW)).toHaveLength(0);
-    expect(matchToRecentBehaviors(["Sibling Conflict", "Food Refusal"], hardMomentCards, NOW)).toHaveLength(0);
+    expect(byCategory("big-feelings", hardMomentCards, NOW, 36)).toHaveLength(0);
+    expect(byConcern("aggression", hardMomentCards, NOW, 36)).toHaveLength(0);
+    expect(matchToRecentBehaviors(["Sibling Conflict", "Food Refusal"], hardMomentCards, NOW, 36)).toHaveLength(0);
   });
 
   it("byCategory returns approved fixtures only", () => {
     const fixtures = [approve(find("tantrum")), approve(find("hitting")), find("public-meltdown")];
-    const result = byCategory("big-feelings", fixtures, NOW);
+    const result = byCategory("big-feelings", fixtures, NOW, 36);
     expect(result.map((c) => c.id)).toEqual(["tantrum", "hitting"]);
   });
 
   it("byConcern returns approved fixtures only", () => {
     const fixtures = [approve(find("hitting")), find("teasing")];
-    expect(byConcern("aggression", fixtures, NOW).map((c) => c.id)).toEqual(["hitting"]);
+    expect(byConcern("aggression", fixtures, NOW, 36).map((c) => c.id)).toEqual(["hitting"]);
   });
 
   it("never returns a draft record, even when it matches best", () => {
     const fixtures = [find("sibling-conflict"), approve(find("waiting"))];
-    const matched = matchToRecentBehaviors(["Sibling Conflict"], fixtures, NOW);
+    const matched = matchToRecentBehaviors(["Sibling Conflict"], fixtures, NOW, 36);
     expect(matched.some((c) => c.reviewStatus !== "approved")).toBe(false);
     expect(matched.map((c) => c.id)).not.toContain("sibling-conflict");
   });
@@ -44,15 +44,15 @@ describe("selectCards — fail-closed selector (CONT-6)", () => {
   it("never returns a retired record", () => {
     const retired = { ...approve(find("hitting")), reviewStatus: "retired" as const };
     const fixtures = [retired, approve(find("teasing"))];
-    expect(byConcern("aggression", fixtures, NOW).map((c) => c.id)).toEqual(["teasing"]);
-    expect(byCategory("big-feelings", fixtures, NOW)).toHaveLength(0);
-    expect(matchToRecentBehaviors(["Hitting"], fixtures, NOW).map((c) => c.id)).toEqual(["teasing"]);
+    expect(byConcern("aggression", fixtures, NOW, 36).map((c) => c.id)).toEqual(["teasing"]);
+    expect(byCategory("big-feelings", fixtures, NOW, 36)).toHaveLength(0);
+    expect(matchToRecentBehaviors(["Hitting"], fixtures, NOW, 36).map((c) => c.id)).toEqual(["teasing"]);
   });
 
   it("never returns a stamped record whose copy was edited after approval", () => {
     const approved = approve(find("hitting"));
     const edited = { ...approved, sayThis: { ...approved.sayThis, en: "Edited after the stamp." } };
-    expect(byConcern("aggression", [edited], NOW)).toHaveLength(0);
+    expect(byConcern("aggression", [edited], NOW, 36)).toHaveLength(0);
   });
 
   it("maps free-text behavior-log categories to the controlled concern vocabulary", () => {
@@ -67,7 +67,7 @@ describe("selectCards — fail-closed selector (CONT-6)", () => {
 
   it("matchToRecentBehaviors ranks stronger concern overlap first", () => {
     const fixtures = [approve(find("getting-dressed")), approve(find("school-dropoff")), approve(find("clinging"))];
-    const matched = matchToRecentBehaviors(["School Dropoff Distress", "Transition Refusal"], fixtures, NOW);
+    const matched = matchToRecentBehaviors(["School Dropoff Distress", "Transition Refusal"], fixtures, NOW, 36);
     // school-dropoff matches separation + transitions (+ moment), clinging matches separation only.
     expect(matched[0]?.id).toBe("school-dropoff");
     expect(matched.map((c) => c.id)).toContain("clinging");
@@ -76,25 +76,25 @@ describe("selectCards — fail-closed selector (CONT-6)", () => {
 
   it("returns nothing for unmatched or empty behavior lists", () => {
     const fixtures = hardMomentCards.map(approve);
-    expect(matchToRecentBehaviors([], fixtures, NOW)).toHaveLength(0);
-    expect(matchToRecentBehaviors(["Quantum Entanglement"], fixtures, NOW)).toHaveLength(0);
+    expect(matchToRecentBehaviors([], fixtures, NOW, 36)).toHaveLength(0);
+    expect(matchToRecentBehaviors(["Quantum Entanglement"], fixtures, NOW, 36)).toHaveLength(0);
   });
 });
 
 // W0 age fix — the governed ageBands metadata now filters selection when the
-// caller passes the child's age (months). No age → byte-identical behavior.
+// caller passes the child's age (months). Missing age closes personalized selection.
 describe("selectCards — ageBands filter", () => {
-  it("inAgeBand parses year ranges/open bands in months, fail-open on absence", () => {
+  it("inAgeBand parses year ranges/open bands in months, fail-closed on missing or malformed metadata", () => {
     const losingGame = find("losing-game"); // ageBands ["6-9", "10-12"]
     expect(inAgeBand(losingGame, 36)).toBe(false);         // 3y — out of band
     expect(inAgeBand(losingGame, 6 * 12)).toBe(true);      // 6y — lower edge in
     expect(inAgeBand(losingGame, 9 * 12 + 11)).toBe(true); // 9y11m — "6-9" spans through age 9
     expect(inAgeBand(losingGame, 13 * 12)).toBe(false);    // 13y — past "10-12"
-    // No age / no bands / unparseable band → in-band (behavior unchanged).
-    expect(inAgeBand(losingGame, null)).toBe(true);
-    expect(inAgeBand(losingGame, undefined)).toBe(true);
-    expect(inAgeBand({ ...losingGame, ageBands: [] }, 36)).toBe(true);
-    expect(inAgeBand({ ...losingGame, ageBands: ["weird"] }, 36)).toBe(true);
+    // Missing age or malformed metadata cannot establish applicability.
+    expect(inAgeBand(losingGame, null)).toBe(false);
+    expect(inAgeBand(losingGame, undefined)).toBe(false);
+    expect(inAgeBand({ ...losingGame, ageBands: [] }, 36)).toBe(false);
+    expect(inAgeBand({ ...losingGame, ageBands: ["weird"] }, 36)).toBe(false);
     expect(inAgeBand({ ...losingGame, ageBands: ["6+"] }, 36)).toBe(false);
     expect(inAgeBand({ ...losingGame, ageBands: ["6+"] }, 7 * 12)).toBe(true);
   });
@@ -115,9 +115,9 @@ describe("selectCards — ageBands filter", () => {
     expect(byConcern("peer-conflict", fixtures, NOW, 5 * 12).map((c) => c.id)).toEqual(["sibling-conflict"]);
   });
 
-  it("keeps behavior byte-identical when no age is passed", () => {
+  it("returns no personalized cards when no age is passed", () => {
     const fixtures = [approve(find("losing-game")), approve(find("sibling-conflict"))];
-    expect(matchToRecentBehaviors(["Sibling Conflict"], fixtures, NOW).map((c) => c.id).sort())
-      .toEqual(["losing-game", "sibling-conflict"]);
+    expect(matchToRecentBehaviors(["Sibling Conflict"], fixtures, NOW).map((c) => c.id))
+      .toEqual([]);
   });
 });
