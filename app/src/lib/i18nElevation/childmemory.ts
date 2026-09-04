@@ -9,8 +9,11 @@
  * language the rest of the app had already promised them it would not use.
  *
  * Register: parent, calm, plural Israeli-parent address. The buttons are
- * verbs, short, and unambiguous about direction — "forget" must never read as
- * "hide".
+ * verbs, short, and unambiguous about direction: forget must never read as
+ * merely concealing. (Prose deliberately unquoted — the icon-subset extractor
+ * matches quoted lowercase words anywhere in a file, comments included, and a
+ * quoted word that collides with a Material Symbols ligature is reported as a
+ * phantom icon.)
  */
 
 export const en: Record<string, string> = {

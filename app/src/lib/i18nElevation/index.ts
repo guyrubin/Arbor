@@ -33,6 +33,7 @@ import * as closeloop from "./closeloop";
 import * as coachcontract from "./coachcontract";
 import * as continueModule from "./continue";
 import * as evening from "./evening";
+import * as growthCare from "./growthCare";
 import * as foundation from "./foundation";
 import * as fullpicture from "./fullpicture";
 import * as gate from "./gate";
@@ -75,6 +76,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   coachcontract,
   continueModule,
   evening,
+  growthCare,
   foundation,
   fullpicture,
   gate,

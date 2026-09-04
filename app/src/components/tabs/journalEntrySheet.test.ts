@@ -17,7 +17,12 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, rel), "utf8");
-const strip = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+// Normalise line endings FIRST. Git checks these files out with CRLF on
+// Windows, so a source scan whose extraction regex anchors on a newline +
+// closing brace matches nothing there: the extraction returns "" and every
+// assertion below would pass vacuously were they not guarded by toBeTruthy().
+const strip = (code: string) =>
+  code.replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 const journal = strip(read("./JournalTab.tsx"));
 const sheet = strip(read("../journal/JournalEntrySheet.tsx"));

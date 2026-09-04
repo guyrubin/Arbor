@@ -525,7 +525,7 @@ export function ScreeningFlow({ onClose }: { onClose?: () => void }) {
                     <button onClick={() => { routeTo("reports"); toast(t("screen.toast.handoff"), "info"); }} className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-2xl px-5 py-3" style={{ background: "var(--arbor-gradient-primary)" }}>
                       <Icon name="description" size={16} /> {t("screen.next.summary")}
                     </button>
-                    <button onClick={() => routeTo("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.30)" }}>
+                    <button onClick={() => routeTo("find-pro")} className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 bg-white" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}>
                       <Icon name="search" size={16} /> {t("screen.next.findPro")}
                     </button>
                   </>
