@@ -38,6 +38,8 @@ import { buildSinceVisitRows, type SinceVisitRow } from "../overview/sinceVisitE
 import { chooseTodayAction } from "../overview/chooseTodayAction";
 import { resolveTodayModules } from "../overview/todayModules";
 import FirstStepsRail, { useFirstStepsRail } from "../onboarding/FirstStepsRail";
+import LifecycleMomentCard from "../overview/LifecycleMomentCard";
+import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import { track } from "../../lib/analytics";
 
 const DAY = 86_400_000;
@@ -431,10 +433,28 @@ export default function OverviewTab() {
     [isReturning, previousVisitAt, behaviorLogs, playLogs, milestones, conversations, actionLoop]
   );
 
+  // ── ENG-09 (Wave E): the lifecycle spine. `onboardingCompletedAt` finally
+  //    has a reader — the pure resolver in lib/lifecycle.ts turns the account's
+  //    own age (plus the child's calendar and the visit gap) into AT MOST ONE
+  //    moment per open: the first captured moment and tonight's story (ENG-L0),
+  //    day one framed forward (ENG-L1), the "one thing they love" ask (ENG-L2),
+  //    the first-week keepsake (ENG-L3), a birthday or a new age band (ENG-20),
+  //    and the warm, age-anchored return after a lapse (ENG-L5 — never a loss
+  //    frame). It is surfaced IN-APP on the next open: there is no push, email
+  //    or local-notification path in this app and nothing here pretends there
+  //    is. `previousVisitAt` comes from the SINGLE useLastVisit mount above —
+  //    that hook writes, so it must never be mounted twice. ──
+  const lifecycle = useLifecycleMoment({ previousVisitAt });
+  const lifecycleMoment = lifecycle.moment;
+
   // ── Rule A: resolve the ≤5-module budget from the REAL render conditions. ──
   const modulePlan = useMemo(
     () => resolveTodayModules(
       {
+        // The module's REAL render condition: a moment was resolved for this
+        // open. Day-0 with no data still shows nothing — the resolver cannot
+        // produce a moment before the first capture (P1-C day-0 shape).
+        lifecycle: lifecycleMoment !== null,
         since: isReturning && sinceBase.rows.length > 0,
         rail: railWould,
         noticed: !dayZero && noticedWould,
@@ -443,7 +463,7 @@ export default function OverviewTab() {
       },
       { noticedCanFold: isReturning && sinceBase.rows.length > 0 },
     ),
-    [isReturning, sinceBase.rows.length, railWould, dayZero, noticedWould, todayChoice.kind]
+    [isReturning, sinceBase.rows.length, railWould, dayZero, noticedWould, todayChoice.kind, lifecycleMoment]
   );
 
   // The watch signal degrades by FOLDING into a since-strip row ("Arbor noticed
@@ -451,6 +471,7 @@ export default function OverviewTab() {
   // only demotable while the strip is there to receive it).
   const foldNoticed = modulePlan.demoted.includes("noticed");
   const showSinceStrip = modulePlan.visible.has("since");
+  const showLifecycle = modulePlan.visible.has("lifecycle");
 
   const sinceVisit = useMemo(
     () => (foldNoticed
@@ -719,6 +740,22 @@ export default function OverviewTab() {
           );
         })()}
       </div>
+
+      {/* ── ENG-09 / Wave E: the lifecycle moment. BELOW the anchor row (P1-A —
+             nothing outranks the day's action) and ABOVE the since-strip: a
+             parent returning after a fortnight needs the warm, age-anchored
+             re-entry before a list of events they were not there for. At most
+             one renders, each occurrence once, and it counts against the ≤5
+             Rule-A budget like any other module. ── */}
+      {showLifecycle && lifecycleMoment && (
+        <LifecycleMomentCard
+          moment={lifecycleMoment}
+          childName={firstName}
+          onDismiss={lifecycle.dismiss}
+          onSaveInterests={lifecycle.saveInterests}
+          onCapture={() => setQuickLogOpen(true)}
+        />
+      )}
 
       {/* ── W1 1.1: "Since your last visit" — returning parents only. It sits
              BELOW the anchor row (P1-A): continuity is warm, but it is not the

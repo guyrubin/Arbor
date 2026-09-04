@@ -28,6 +28,7 @@ const stripComments = (code: string) =>
 
 const ALL: Record<TodayModuleId, boolean> = {
   anchor: true,
+  lifecycle: true,
   since: true,
   noticed: true,
   narrative: true,
@@ -35,13 +36,15 @@ const ALL: Record<TodayModuleId, boolean> = {
   play: true,
 };
 
+/** Every module the caller may actually request (the anchor is implicit). */
+const OPTIONAL: TodayModuleId[] = ["lifecycle", "since", "noticed", "narrative", "rail", "play"];
+
 describe("Rule A module budget — resolveTodayModules", () => {
   it("never exceeds the budget, in ANY combination of wants", () => {
-    const optional: TodayModuleId[] = ["since", "noticed", "narrative", "rail", "play"];
-    for (let mask = 0; mask < 1 << optional.length; mask++) {
+    for (let mask = 0; mask < 1 << OPTIONAL.length; mask++) {
       for (const noticedCanFold of [false, true]) {
         const wants: Partial<Record<TodayModuleId, boolean>> = {};
-        optional.forEach((id, i) => { wants[id] = Boolean(mask & (1 << i)); });
+        OPTIONAL.forEach((id, i) => { wants[id] = Boolean(mask & (1 << i)); });
         const plan = resolveTodayModules(wants, { noticedCanFold });
         expect(plan.visible.size, `mask ${mask} fold=${noticedCanFold}`).toBeLessThanOrEqual(TODAY_MODULE_BUDGET);
         // Nothing is invented, nothing is lost.
@@ -58,7 +61,8 @@ describe("Rule A module budget — resolveTodayModules", () => {
   });
 
   it("the audited state (returning + rail + noticed + narrative + play) fits in five", () => {
-    const plan = resolveTodayModules(ALL, { noticedCanFold: true });
+    // The audited shape, with NO lifecycle moment to say — the ordinary open.
+    const plan = resolveTodayModules({ ...ALL, lifecycle: false }, { noticedCanFold: true });
     expect(plan.visible.size).toBe(5);
     // The watch signal degrades by FOLDING into the since-strip row — the only
     // demotion here that keeps the parent informed.
@@ -67,19 +71,37 @@ describe("Rule A module budget — resolveTodayModules", () => {
     expect(plan.visible.has("play")).toBe(true);
   });
 
+  it("ENG-09: a lifecycle moment holds a slot and costs the TAIL, never the strip", () => {
+    const plan = resolveTodayModules(ALL, { noticedCanFold: true });
+    expect(plan.visible.size).toBe(TODAY_MODULE_BUDGET);
+    expect(plan.visible.has("lifecycle")).toBe(true);
+    // It outranks the since-strip (a returning parent gets the warm re-entry
+    // first) and everything it displaces still lands somewhere: play in the
+    // More drawer, the watch signal folded into the strip.
+    expect(plan.visible.has("since")).toBe(true);
+    expect(plan.demoted).toEqual(["play", "noticed"]);
+    expect(plan.visible.has("play")).toBe(false);
+  });
+
+  it("ENG-09: the lifecycle module is optional — no moment, no slot", () => {
+    const plan = resolveTodayModules({ ...ALL, lifecycle: false }, { noticedCanFold: true });
+    expect(plan.visible.has("lifecycle")).toBe(false);
+    expect(plan.demoted).not.toContain("lifecycle");
+  });
+
   it("with no strip to fold into, the watch signal keeps its slot and play is cut instead", () => {
     const plan = resolveTodayModules({ ...ALL, since: false }, { noticedCanFold: false });
     expect(plan.visible.has("noticed")).toBe(true);
     expect(plan.visible.size).toBeLessThanOrEqual(TODAY_MODULE_BUDGET);
-    // Five wants incl. the anchor — everything fits, nothing is demoted.
-    expect(plan.demoted).toEqual([]);
+    // Six wants incl. the anchor and a lifecycle moment: only play is cut, and
+    // it lands in the More drawer.
+    expect(plan.demoted).toEqual(["play"]);
   });
 
   it("at the real budget, a demoted watch signal ALWAYS has a strip to fold into", () => {
-    const optional: TodayModuleId[] = ["since", "noticed", "narrative", "rail", "play"];
-    for (let mask = 0; mask < 1 << optional.length; mask++) {
+    for (let mask = 0; mask < 1 << OPTIONAL.length; mask++) {
       const wants: Partial<Record<TodayModuleId, boolean>> = {};
-      optional.forEach((id, i) => { wants[id] = Boolean(mask & (1 << i)); });
+      OPTIONAL.forEach((id, i) => { wants[id] = Boolean(mask & (1 << i)); });
       const plan = resolveTodayModules(wants, { noticedCanFold: wants.since === true });
       if (plan.demoted.includes("noticed")) {
         expect(plan.visible.has("since"), `mask ${mask}: watch signal demoted with nowhere to fold`).toBe(true);
@@ -152,6 +174,10 @@ describe("P1-B firewall — the budget counts modules, never a governance gate",
     expect(overview).toMatch(/showPlayInline\s*=\s*modulePlan\.visible\.has\("play"\)/);
     expect(overview).toMatch(/foldNoticed\s*=\s*modulePlan\.demoted\.includes\("noticed"\)/);
     expect(overview).toMatch(/showSinceStrip\s*=\s*modulePlan\.visible\.has\("since"\)/);
+    // ENG-09: the lifecycle module's real render condition is "the pure
+    // resolver produced a moment for this open" — never a proxy for it.
+    expect(overview).toMatch(/showLifecycle\s*=\s*modulePlan\.visible\.has\("lifecycle"\)/);
+    expect(overview).toMatch(/lifecycle:\s*lifecycleMoment\s*!==\s*null/);
   });
 
   it("the hard-moment offer is not a sibling module (it lives inside the anchor)", () => {

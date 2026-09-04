@@ -36,7 +36,17 @@
  *  - the hard-moment offer — it renders INSIDE the anchor row's left column,
  *    so it is never a sibling module (the very confusion that produced P1-B).
  */
-export type TodayModuleId = "anchor" | "since" | "noticed" | "narrative" | "rail" | "play";
+/*
+ * `lifecycle` (ENG-09, Wave E) sits directly below the anchor in both orders.
+ * It is the AT MOST ONE lifecycle moment lib/lifecycle.ts resolves for this
+ * open — a first-week keepsake, a birthday, a welcome back after a lapse. It
+ * outranks the since-strip deliberately: a parent returning after a fortnight
+ * needs the warm, age-anchored re-entry before a list of events they were not
+ * there for. It is rare by construction (each occurrence fires once), so it
+ * costs the tail a slot only on the handful of opens where it has something
+ * to say.
+ */
+export type TodayModuleId = "anchor" | "lifecycle" | "since" | "noticed" | "narrative" | "rail" | "play";
 
 /** Rule A: at most five visible modules on Today, in every state. */
 export const TODAY_MODULE_BUDGET = 5;
@@ -57,8 +67,8 @@ export const TODAY_MODULE_BUDGET = 5;
  */
 export function todayModulePriority(opts: { noticedCanFold: boolean }): readonly TodayModuleId[] {
   return opts.noticedCanFold
-    ? ["anchor", "since", "narrative", "rail", "play", "noticed"]
-    : ["anchor", "since", "narrative", "noticed", "rail", "play"];
+    ? ["anchor", "lifecycle", "since", "narrative", "rail", "play", "noticed"]
+    : ["anchor", "lifecycle", "since", "narrative", "noticed", "rail", "play"];
 }
 
 export type TodayModuleWants = Partial<Record<TodayModuleId, boolean>>;
