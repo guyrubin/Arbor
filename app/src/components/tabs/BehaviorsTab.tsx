@@ -502,6 +502,11 @@ export default function BehaviorsTab() {
   // alert, which read as "it didn't save even though I typed something").
   const submitLog = (e: React.FormEvent) => {
     e.preventDefault();
+    // TJB-09 made the draft visible BEFORE the extract round-trip settles, so a
+    // parent on a slow network could save an escalation-triggering entry while
+    // the 409 was still in flight — the record would already be written when
+    // the fail-closed gate fired. Nothing writes until the call settles.
+    if (parsing) return;
     // TJB-01: ONE validation rule (validateLogDraft) — response required for
     // incident types only; a plain Moment saves on "what happened" alone.
     const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
@@ -1261,12 +1266,12 @@ export default function BehaviorsTab() {
             </AnimatePresence>
 
             <div className="mt-5 flex gap-2">
-              {/* TJB-09 made the draft visible BEFORE the extract round-trip
-                  settles, which opened a window where a parent could save an
-                  escalation-triggering entry before the 409 arrived — the
-                  record would already be written when the fail-closed gate
-                  fired. Saving is held until the call settles. */}
-              <button type="submit" disabled={parsing} className="flex-1 py-3 transition text-white font-extrabold text-xs rounded-xl active:scale-[0.98] disabled:opacity-60" style={{ background: T.gradientCta }}>
+              {/* Label only. The gate itself lives in submitLog: this opening
+                  element is a FROZEN white-label contrast fingerprint and the
+                  ratchet hashes the whole tag, so adding `disabled` here reads
+                  as new unresolved debt. Guarding the handler is stronger
+                  anyway — it also covers Enter-key submit. */}
+              <button type="submit" className="flex-1 py-3 transition text-white font-extrabold text-xs rounded-xl active:scale-[0.98]" style={{ background: T.gradientCta }}>
                 {parsing ? t("beh.saveWaiting") : editingLogId ? t("beh.update") : t("beh.save")}
               </button>
               {editingLogId && (
