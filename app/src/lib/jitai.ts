@@ -21,9 +21,10 @@
 import type { RhythmPrediction } from "../rhythm/predict";
 import { hourLabel } from "../rhythm/predict";
 import type { ActiveTab } from "./routes";
+import { bedtimeDoorOpen } from "./timeOfDay";
 import { isInQuietHours, isUnderDailyCeiling, type JitaiPrefs, type NudgeTypeKey } from "../growth/jitaiPrefs";
 
-export type NudgeKind = "prep" | "calm" | "log" | "practice";
+export type NudgeKind = "prep" | "calm" | "log" | "practice" | "bedtime";
 
 export interface Nudge {
   kind: NudgeKind;
@@ -91,8 +92,9 @@ function kindAllowed(kind: NudgeKind, inp: JitaiInputs, prefs?: JitaiPrefs): boo
 /**
  * Choose the single best nudge for right now, or null (stay quiet — silence is a
  * feature, not a gap). Priority: an anticipatory PREP cue before a predicted hard
- * window > a wind-down CALM cue at the wind-down hour > a gentle LOG cue if the
- * day is uncaptured > a PRACTICE cue if engagement is thin.
+ * window > a wind-down CALM cue at the wind-down hour > a BEDTIME cue once the
+ * evening door is open (ENG-10) > a gentle LOG cue if the day is uncaptured >
+ * a PRACTICE cue if engagement is thin.
  *
  * `prefs` (TJB-03): the parent's Smart Reminders preferences. Quiet hours win
  * over everything; a disabled kind is skipped and the next one considered.
@@ -136,7 +138,28 @@ export function nextNudge(inp: JitaiInputs, prefs?: JitaiPrefs): Nudge | null {
     };
   }
 
-  // 3) LOG — afternoon/evening and nothing captured yet today → Today, with
+  // 3) BEDTIME — ENG-10, the evening door. `bedtimeDoorOpen` consumes
+  //    dayPartFor: from 18:00 for everyone, and earlier only when the family's
+  //    OWN wind-down hour says so. Deliberately NOT gated on rhythm
+  //    confidence — the evening is a fact of the clock, not a prediction, and a
+  //    day-1 family deserves the bedtime surface as much as a day-30 one.
+  //    It sits ABOVE the LOG cue because after 18:00 the honest next move is
+  //    tonight's story, not "capture the day you are still living"; the
+  //    15:00–17:59 LOG window is untouched. Quiet hours (default 21:00) close
+  //    it again, and the max-2 ceiling applies like every other kind.
+  if (bedtimeDoorOpen(hour, rhythm.windDownHour) && kindAllowed("bedtime", inp, prefs)) {
+    return {
+      kind: "bedtime",
+      headlineKey: "elev.evening.nudge.headline",
+      bodyKey: "elev.evening.nudge.body",
+      ctaKey: "elev.evening.nudge.cta",
+      vars: { name },
+      action: "bedtime-stories",
+      tone: "lav",
+    };
+  }
+
+  // 4) LOG — afternoon and nothing captured yet today → Today, with
   //    the quick-log asked to open there.
   if (inp.loggedToday === 0 && hour >= 15 && kindAllowed("log", inp, prefs)) {
     return {
@@ -151,7 +174,7 @@ export function nextNudge(inp: JitaiInputs, prefs?: JitaiPrefs): Nudge | null {
     };
   }
 
-  // 4) PRACTICE — thin engagement this week, during the day → the
+  // 5) PRACTICE — thin engagement this week, during the day → the
   //    parent-mediated Daily Play hub (not the kid Practice Studio).
   if (inp.recent7d < 3 && hour >= 8 && hour <= 19 && kindAllowed("practice", inp, prefs)) {
     return {

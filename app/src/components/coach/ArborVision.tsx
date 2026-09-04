@@ -1,7 +1,12 @@
 import React, { useRef, useState } from "react";
 import Icon from "../ui/Icon";
 import { Modal } from "../ui/Modal";
-import { api, getAiLanguage, type VisionResult, type VisionObserve, type VisionDocument } from "../../lib/api";
+import { api, ApiError, getAiLanguage, type VisionResult, type VisionObserve, type VisionDocument } from "../../lib/api";
+// AI-06: /api/vision is the ONE surface that can return both a 429 (this
+// account's hour of AI is spent) and a 451 (fail-closed — no `face_processing`
+// consent grant for this child). They need opposite advice, and neither may be
+// spoken in the server's own English.
+import { browserOnline, classifyAiFailure, type AiFailureCopy } from "../../lib/aiErrorCopy";
 import { useLanguage } from "../../context/LanguageContext";
 import { fileToThumbnail } from "../../lib/image";
 import type { ChildProfile } from "../../types";
@@ -44,6 +49,8 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VisionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** AI-06: a CLASSIFIED failure — outranks the plain `error` string above. */
+  const [failure, setFailure] = useState<AiFailureCopy | null>(null);
   const [copied, setCopied] = useState(false);
   // Per-item propose state for the suggestedMemory list (index-keyed).
   const [memoryState, setMemoryState] = useState<Record<number, "busy" | "done" | "error">>({});
@@ -59,12 +66,12 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
     }
   };
 
-  const reset = () => { setDataUrl(""); setNote(""); setResult(null); setError(null); setLoading(false); setMemoryState({}); };
+  const reset = () => { setDataUrl(""); setNote(""); setResult(null); setError(null); setFailure(null); setLoading(false); setMemoryState({}); };
   const close = () => { reset(); onClose(); };
 
   const onPick = async (file?: File) => {
     if (!file) return;
-    setError(null); setResult(null);
+    setError(null); setFailure(null); setResult(null);
     try {
       const url = await fileToThumbnail(file, mode === "document" ? 1280 : 800, 0.82);
       setDataUrl(url);
@@ -75,12 +82,23 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
 
   const analyze = async () => {
     if (!dataUrl) return;
-    setLoading(true); setError(null); setResult(null);
+    setLoading(true); setError(null); setFailure(null); setResult(null);
     try {
       const r = await api.vision({ childId: childProfile.id, image: { dataUrl }, mode, note: note.trim() || undefined, childProfile, language: getAiLanguage() });
       setResult(r);
     } catch (e: any) {
-      setError(e?.message || t("vis.analyzeError"));
+      // AI-06: this used to render `e.message` — the server's raw English
+      // `details` string — straight at the parent, so a Hebrew reader got
+      // "You've reached the hourly AI limit (25 requests)" or "Parental
+      // consent required." verbatim, in the wrong language, with no way to
+      // tell which problem they had or what to do about it.
+      setFailure(
+        classifyAiFailure(e, {
+          online: browserOnline(),
+          childName: (childProfile.name || "").split(" ")[0],
+          retryAfterSeconds: e instanceof ApiError ? e.retryAfterSeconds : undefined,
+        }),
+      );
     } finally {
       setLoading(false);
     }
@@ -145,9 +163,37 @@ export default function ArborVision({ open, mode, onClose, childProfile, onSeedC
         </div>
       )}
 
-      {error && (
+      {error && !failure && (
         <div className="mt-3 p-3 rounded-xl text-[12px] flex items-start gap-2" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
           <Icon name="warning" size={16} className="flex-shrink-0 mt-0.5" /> {error}
+        </div>
+      )}
+
+      {/* AI-06: quota / consent / offline each get their OWN sentence, and a
+          retry appears only where retrying could actually succeed. */}
+      {failure && (
+        <div
+          role="alert"
+          data-testid="vision-failure"
+          data-failure-kind={failure.kind}
+          className="mt-3 p-3 rounded-xl text-[12px] flex items-start gap-2"
+          style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
+        >
+          <Icon name={failure.kind === "offline" ? "cloud_off" : failure.kind === "consent" ? "lock" : "warning"} size={16} className="flex-shrink-0 mt-0.5" />
+          <div className="space-y-1.5" dir="auto">
+            <p className="font-extrabold">{t(failure.titleKey)}</p>
+            <p style={{ color: "var(--arbor-ink)" }}>{t(failure.bodyKey, failure.bodyParams)}</p>
+            {failure.retryable && (
+              <button
+                type="button"
+                onClick={analyze}
+                className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl font-extrabold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name="sync" size={14} /> {t("elev.aierrors.retry")}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
