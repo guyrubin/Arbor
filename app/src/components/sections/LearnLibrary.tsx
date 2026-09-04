@@ -41,6 +41,7 @@ import {
 } from "../../learn/learnLibrary";
 import { continueText } from "../../lib/i18nElevation/continue";
 import { LEARN_CARDS, learnCardById } from "../../learn/learnCards";
+import { isLearnPilotCard, learnPilotText } from "../../learn/learnPilotRelease";
 import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { TrustLink } from "../trust/TrustLink";
 
@@ -566,6 +567,20 @@ function LearnReader({
         <p className="text-[13.5px] mt-2 leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
           {pick(he, card.hook)}
         </p>
+        {isLearnPilotCard(card.id) && (
+          <p
+            className="mt-3 rounded-xl px-3 py-2 text-[12.5px] leading-relaxed"
+            dir="auto"
+            data-testid="learn-pilot-note"
+            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink-soft)" }}
+          >
+            <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>
+              {learnPilotText(he ? "he" : "en").status}
+            </span>
+            {" — "}
+            {learnPilotText(he ? "he" : "en").note}
+          </p>
+        )}
       </div>
 
       {/* Action bar — the shared ContentActionBar: canonical done · save ·
