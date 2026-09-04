@@ -57,6 +57,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     }
   }, [open, uiLang, aiLang]);
 
+  // A closed Settings session must never reopen the destructive confirmation.
+  useEffect(() => {
+    if (!open || !firebaseEnabled || !user) setDeleteOpen(false);
+  }, [open, firebaseEnabled, user?.uid]);
+
   const handleSaveLanguage = () => {
     setUiLang(draftUiLang); // sets uiLang AND aiLang := draftUiLang (whole-app cascade)
     if (effectiveAiLang !== draftUiLang) setAiLang(effectiveAiLang); // override AI only when it should differ
@@ -102,7 +107,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
   return (
     <>
-    <Modal open={open} onClose={onClose} title={t("set.title")}>
+    <Modal open={open && !deleteOpen} onClose={onClose} title={t("set.title")}>
       <div className="space-y-5 text-sm">
         <Section title={t("set.section.billing")} sub={t("set.section.billingSub")}>
         {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
@@ -385,22 +390,22 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         )}
 
         {firebaseEnabled && user && (
-          <div className="pt-4" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-            <div className="flex items-center justify-between gap-3">
+          <Section title={t("elev.accountSettings.title")} sub={t("elev.accountSettings.sub")}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user.displayName || t("set.signedIn")}</p>
                 {user.email && <p className="text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
               </div>
-              <button onClick={() => void signOut()} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+              <button onClick={() => void signOut()} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
                 <Icon name="logout" size={16} /> {t("set.signOut")}
               </button>
             </div>
             {/* STORE-4: full account deletion (Apple 5.1.1(v) / Play / GDPR
                 Art. 17) — quiet entry, heavy type-to-confirm inside the modal. */}
-            <button onClick={() => setDeleteOpen(true)} className="mt-3 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
+            <button type="button" onClick={() => setDeleteOpen(true)} aria-haspopup="dialog" className="inline-flex items-center min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
               {t("set.acctDel.open")}
             </button>
-          </div>
+          </Section>
         )}
 
         {/* MOB-01: Privacy · Terms · Support — reachable in-app (Apple 5.1.1(i),
@@ -411,7 +416,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
       </div>
     </Modal>
     {entitlement.isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} />}
-    <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} />
+    <DeleteAccountModal open={open && deleteOpen && firebaseEnabled && Boolean(user)} onClose={() => setDeleteOpen(false)} />
     </>
   );
 }
