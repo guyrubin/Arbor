@@ -15,6 +15,10 @@
  *   - app/src/content/selectCards.ts (contextual reviewed/editorial-pilot gate;
  *     only explicitly released cards index)
  *   - app/src/lib/navigation.ts + i18n.ts (route/tab entries + their labels)
+ *   - app/src/lib/routes.ts               (ROUTE_IDS — the canonical route-id
+ *     list the router itself uses; ids only, no child record anywhere near it.
+ *     Added for IA-20: deriving coverage from the router is what stops a route
+ *     becoming unfindable because nobody remembered a hand-kept list.)
  *
  * It NEVER imports: memory/, families/, behaviors data, childData,
  * ChildMemory, observation logs, ProfileContext, or any child-record field.
@@ -31,6 +35,7 @@
  * `import type` is fine (erased at build).
  */
 
+import { ROUTE_IDS } from "./routes";
 import { PLAY_ACTIVITIES } from "../playbank/content";
 import { ALL_MILESTONES } from "./milestoneData";
 import { HERO_STORIES } from "./heroJourneys";
@@ -124,6 +129,15 @@ function entry(
 /** Consolidated views reachable only via search (labels: sm.extra.*). */
 const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly", "handoff", "scholar"];
 
+/** IA-20: routes deliberately NOT offered in search, each with the reason it
+ *  would be wrong to surface. Absence is a product decision recorded here, not
+ *  an oversight — searchRouteCoverage.test.ts requires every other route in
+ *  ROUTE_IDS to be findable by name. */
+export const UNSEARCHABLE_ROUTES: Partial<Record<ActiveTab, string>> = {
+  attribution: "Legal/credits surface reached from Settings; not somewhere a parent navigates to by name.",
+  science: "Evidence and credits, reached from a trust link in context rather than as a destination.",
+};
+
 function buildIndex(): readonly SearchEntry[] {
   const entries: SearchEntry[] = [];
 
@@ -152,6 +166,39 @@ function buildIndex(): readonly SearchEntry[] {
       "route",
       pair(translate("en", "sm.extra." + tab), translate("he", "sm.extra." + tab)),
       pair(translate("en", "sm.extra." + tab + "Sub"), translate("he", "sm.extra." + tab + "Sub")),
+      { en: [], he: [] },
+      tab,
+    ));
+  }
+
+  // IA-20, properly. The two loops above cover routes that are section items,
+  // plus three that somebody remembered to hand-list. Everything else the app
+  // can navigate to was unreachable by name: a parent could open Screening,
+  // Find a professional, Care team, Reports or Timeline from a hub and then
+  // never find it again by typing it. Fifteen routes were in that state.
+  //
+  // A hand-maintained list is the shape that failed here: it is only ever as
+  // complete as the last person to remember it. So the remainder is derived
+  // from ROUTE_IDS — the canonical list the router itself uses — and a route
+  // is absent from search ONLY if it is named in UNSEARCHABLE_ROUTES with a
+  // reason. searchRouteCoverage.test.ts holds the other end, so a new route
+  // either gets a name or gets an explicit decision, and cannot quietly
+  // become unfindable.
+  for (const tab of ROUTE_IDS) {
+    if (seenTabs.has(tab) || tab in UNSEARCHABLE_ROUTES) continue;
+    const en = translate("en", "nav.tab." + tab);
+    const he = translate("he", "nav.tab." + tab);
+    // translate() falls back to the KEY when a string is missing, which would
+    // print "nav.tab.foo" to a parent. An unlabelled route is left out and the
+    // coverage guard fails, which is the right way round: a missing label is a
+    // job to do, never something to render.
+    if (en === "nav.tab." + tab) continue;
+    seenTabs.add(tab);
+    entries.push(entry(
+      `route:${tab}`,
+      "route",
+      pair(en, he),
+      pair(translate("en", "nav.short.more"), translate("he", "nav.short.more")),
       { en: [], he: [] },
       tab,
     ));

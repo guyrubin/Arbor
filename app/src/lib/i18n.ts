@@ -64,6 +64,10 @@ export const en: Dict = {
   "nav.tab.profile": "Development Profile",
   "nav.tab.milestones": "Development Milestones",
   "nav.tab.screening": "Development Check",
+  // IA-20: every route needs a searchable name. These two had none, so a
+  // parent could reach them from a hub but never find them by name.
+  "nav.tab.strengths": "Strengths & challenges",
+  "nav.tab.care-team": "Care team",
   "nav.tab.behaviors": "Moments",
   "nav.tab.language": "Language & Communication",
   "nav.tab.memory": "Child Memory",
@@ -2434,6 +2438,8 @@ export const he: Dict = {
   "nav.tab.profile": "פרופיל התפתחותי",
   "nav.tab.milestones": "אבני דרך התפתחותיות",
   "nav.tab.screening": "בדיקת התפתחות",
+  "nav.tab.strengths": "חוזקות ואתגרים",
+  "nav.tab.care-team": "צוות הטיפול",
   "nav.tab.behaviors": "רגעים",
   "nav.tab.language": "שפה ותקשורת",
   "nav.tab.memory": "זיכרון הילד",
