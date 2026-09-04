@@ -9,6 +9,7 @@ import {
   signalDetail,
   signalMeta,
   signalTitle,
+  TIMELINE_SOURCE_IDS,
   type SignalKind,
   type TranslateFn,
 } from "./signalTimeline.js";
@@ -59,13 +60,13 @@ describe("buildTimeline", () => {
       milestones: [milestone({ checked: true }), milestone({ checked: false })],
       plans: [plan()],
       memory: [{ memoryId: "m1", childId: "c", status: "approved", fact: "Loves trains", source: "chat", retention: "30 days", createdAt: daysAgo(2), latestEventId: "e" }],
-      conversations: [{ id: "conv1", title: "Bedtime help", updatedAt: daysAgo(0) }],
     });
 
-    // 2 logs + 1 checked milestone (unchecked excluded) + 1 plan + 1 memory + 1 coach = 6
-    expect(signals).toHaveLength(6);
+    // 2 logs + 1 checked milestone (unchecked excluded) + 1 plan + 1 memory = 5
+    expect(signals).toHaveLength(5);
     // newest dated first
-    expect(signals[0].kind).toBe("coach");
+    expect(signals[0].kind).toBe("moment");
+    expect(signals[0].at).toBe(daysAgo(1));
     // undated (milestone, plan) sink to the end
     expect(signals[signals.length - 1].at).toBeNull();
     // unresolved moment is coral, resolved is mint
@@ -104,12 +105,11 @@ describe("buildTimeline", () => {
       milestones: [milestone({ checked: true, observationUpdatedAt: daysAgo(0) })],
       plans: [plan()],
       memory: [{ memoryId: "m1", childId: "c", status: "approved", fact: "Loves trains", source: "chat", retention: "30 days", createdAt: daysAgo(2), latestEventId: "e" }],
-      conversations: [{ id: "conv1", title: "Bedtime help", updatedAt: daysAgo(0) }],
       play: [{ id: "pl1", activityId: "a", title: "Freeze dance", domain: "motor", reason: "concern-match", source: "today", timestamp: daysAgo(1) }],
     }));
     for (const baked of [
       "Logged moment", "Observed:", "Growth plan", " steps",
-      "Approved to memory", "Coach session", "Played:", "Builds ",
+      "Approved to memory", "Played:", "Builds ",
       "matched to a recent pattern",
     ]) {
       expect(serialized).not.toContain(baked);
@@ -117,8 +117,75 @@ describe("buildTimeline", () => {
   });
 });
 
+/* ── AI-04 — the consent gate over Ask threads ────────────────────────────── */
+
+describe("AI-04 consent gate: an Ask thread never folds itself into the child's stream", () => {
+  /**
+   * The exact row ArborContext.commitConversationProposal writes when the
+   * parent taps "Keep this" on a typed answer: a behaviorLogs document whose
+   * id is `typed-<proposalId>`, whose trigger is the kept sentence and whose
+   * notes carry the parent's own question. Nothing else about it is special —
+   * which is the whole point of the design: consent is expressed by the row
+   * existing at all.
+   */
+  const keptRow = (): BehaviorLog => ({
+    id: "typed-prop-1",
+    timestamp: daysAgo(0),
+    behaviorType: "Journal moment",
+    intensity: 1,
+    durationMinutes: 0,
+    trigger: "Move bathtime fifteen minutes earlier tonight.",
+    response: "Parent-confirmed from a typed coach conversation",
+    notes: "Bedtime is a battle every night. What do I do?",
+    context: "Home",
+    conversationProposalId: "prop-1",
+    sourceExcerpt: "Bedtime is a battle every night. What do I do?",
+  });
+
+  it("POSITIVE: what the parent KEPT still reaches the timeline, via its Journal row", () => {
+    const row = keptRow();
+    // NEGATIVE CONTROL for vacuity: the fixture genuinely carries the kept
+    // sentence, so an empty-in/empty-out pass cannot green-light this.
+    expect(row.trigger.trim().length).toBeGreaterThan(0);
+
+    const signals = buildTimeline({ behaviorLogs: [row] });
+    expect(signals).toHaveLength(1);
+    // buildTimeline ingests behaviorLogs and keys the signal `moment-<logId>`
+    // — the same prefix captureProvenance.provenanceForSignal resolves, so the
+    // kept row can still show where it came from.
+    expect(signals[0].id).toBe("moment-typed-prop-1");
+    expect(signals[0].kind).toBe("moment");
+    expect(signalDetail(signals[0], (k) => `[${k}]`)).toBe(row.trigger);
+  });
+
+  it("NEGATIVE CONTROL: a raw conversation handed in as a source produces NOTHING", () => {
+    // The key is gone from TimelineSources, so this is deliberately cast: the
+    // assertion is about the RUNTIME, not the types. A gate that only exists
+    // in the type system would still fold the rows at runtime, which is the
+    // exact defect this test exists to catch.
+    const withThreads = {
+      conversations: [{ id: "conv1", title: "Bedtime help", updatedAt: daysAgo(0) }],
+    } as unknown as Parameters<typeof buildTimeline>[0];
+    // The fixture is real and non-empty — otherwise "no signals" proves nothing.
+    expect((withThreads as unknown as { conversations: unknown[] }).conversations).toHaveLength(1);
+    expect(buildTimeline(withThreads)).toEqual([]);
+    // …and the same builder DOES produce a row from a real source, so the
+    // empty result above is the gate, not a broken call.
+    expect(buildTimeline({ behaviorLogs: [keptRow()] })).toHaveLength(1);
+  });
+
+  it("the ingest registry no longer offers 'conversations' as a declarable source", () => {
+    // SC-4 in surfaceContract.test.ts resolves every threadWrite against this
+    // list; leaving a key nothing reads would let a future surface declare a
+    // thread write into a void and still pass.
+    expect(TIMELINE_SOURCE_IDS.length).toBeGreaterThan(0);
+    expect(TIMELINE_SOURCE_IDS).toContain("behaviorLogs");
+    expect(TIMELINE_SOURCE_IDS as readonly string[]).not.toContain("conversations");
+  });
+});
+
 // JRNL-4 — provenance honesty: the parent authored moments, confirmed
-// milestones and play; Arbor authored coach sessions, memory facts and plans;
+// milestones and play; Arbor authored memory facts and plans;
 // the CHILD authored practice-kind activity (masterplan 1.4).
 describe("signal provenance", () => {
   it("locks the kind → provenance table (MANUAL = moment/milestone/play, CHILD = practice)", () => {
@@ -128,7 +195,8 @@ describe("signal provenance", () => {
       play: "manual",
       plan: "auto",
       memory: "auto",
-      coach: "auto",
+      // AI-04 (consent gate): there is no "coach" kind. A kept line is the
+      // parent's own act and rides in as kind "moment" / provenance manual.
       practice: "child",
       // TJB-05 — accepting the day's step and saying how it went are the
       // PARENT's acts, even though Arbor offered the step.
@@ -139,7 +207,6 @@ describe("signal provenance", () => {
     expect(isAutoSignal("play")).toBe(false);
     expect(isAutoSignal("plan")).toBe(true);
     expect(isAutoSignal("memory")).toBe(true);
-    expect(isAutoSignal("coach")).toBe(true);
     // Child activity is neither the parent's manual log nor an Arbor derivation.
     expect(isAutoSignal("practice")).toBe(false);
   });
@@ -155,7 +222,6 @@ describe("signal render labels", () => {
       milestones: [milestone({ id: "m1", checked: true, title: "First words" })],
       plans: [plan({ id: "p1", title: "" })],
       memory: [{ memoryId: "mem1", childId: "c", status: "approved", fact: "Loves trains", source: "chat", retention: "30 days", createdAt: daysAgo(2), latestEventId: "e" }],
-      conversations: [{ id: "c1", title: "Bedtime help", updatedAt: daysAgo(0) }],
       play: [{ id: "pl1", activityId: "a", title: "Freeze dance", domain: "motor", reason: "stage-match", source: "today", timestamp: daysAgo(1) }],
     });
     const byId = (id: string) => signals.find((s) => s.id === id)!;
@@ -165,7 +231,6 @@ describe("signal render labels", () => {
     expect(signalTitle(byId("milestone-m1"), t)).toBe("[timeline.title.observed|title=First words]");
     expect(signalTitle(byId("plan-p1"), t)).toBe("[timeline.title.plan]");
     expect(signalTitle(byId("memory-mem1"), t)).toBe("[timeline.title.memory]");
-    expect(signalTitle(byId("coach-c1"), t)).toBe("[timeline.title.coach]");
     expect(signalTitle(byId("play-pl1"), t)).toBe("[timeline.title.played|title=Freeze dance]");
   });
 

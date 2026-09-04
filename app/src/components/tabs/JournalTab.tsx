@@ -93,7 +93,6 @@ const PLAY_TO_DOMAIN: Record<PlayDomain, DevelopmentalDomainId> = {
 const KIND_DOMAIN: Partial<Record<SignalKind, DevelopmentalDomainId>> = {
   plan: "independence_adaptive_skills",
   memory: "cognition_executive_function",
-  coach: "ecosystem_stressors",
 };
 
 /** Fallback glyph when a row has no domain (unclassifiable moment). */
@@ -102,7 +101,6 @@ const KIND_MS: Record<SignalKind, string> = {
   milestone: "check_circle",
   plan: "eco",
   memory: "bookmark",
-  coach: "chat_bubble",
   play: "toys",
   practice: "rocket_launch",
   // TJB-05 — Today's accepted/completed step, written back into the thread.

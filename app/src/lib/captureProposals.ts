@@ -45,21 +45,23 @@
    cannot silently leave kept rows attributed to a prompt that no longer
    exists.
 
-   WHAT IS DELIBERATELY NOT DONE HERE (AI-04's third clause)
-   ─────────────────────────────────────────────────────────
-   "Flip the contract to `consented`" is NOT done, and flipping it today would
-   be false. `surfaceContract.ts` says the coach's `threadWrite` may become
-   "consented" only "when the consent gate actually ships", and the gate has
-   two halves:
-     (a) "Keep this" writes a Journal row with provenance — THIS ships it;
-     (b) coach turns are private by default — NOT shipped. `signalTimeline.ts`
-         still folds `sources.conversations` unconditionally, so every coach
-         thread already lands in the thread with no consent step, and
-         `hooks/useTimeline` feeds it that list on every render.
-   Until (b) is gated, "consented" would front-run a manifest that later waves
-   read as fact. Both files sit outside this wave's ownership; the guard in
-   captureProposals.test.ts makes an early flip fail loudly instead of quietly
-   shipping a false declaration.
+   AI-04's THIRD CLAUSE — NOW CLOSED
+   ─────────────────────────────────
+   "Flip the contract to `consented`" is done, and it is now a true statement.
+   The gate had two halves:
+     (a) "Keep this" writes a Journal row with provenance — this module and
+         ArborContext.commitConversationProposal ship it;
+     (b) coach turns are private by default — `signalTimeline.ts` no longer
+         has an Ask-thread ingest source at all (the key is gone from
+         TimelineSources, not merely left unread), and `hooks/useTimeline`
+         no longer hands it that list.
+   With (b) shipped, `surfaceContract.ts` declares the coach surface's
+   `threadWrite` as "consented". The guard in captureProposals.test.ts still
+   stands, pointing the other way now: it fails loudly if that declaration
+   says "consented" while an unconditional ingest loop is reintroduced.
+   Nothing was deleted to get there — the conversations subcollection is
+   untouched, still on the GDPR export and erase sweeps, and the threads stay
+   readable in the coach's own history.
 
    Pure, clock-injected, framework-free.
    ════════════════════════════════════════════════════════════════════════════ */

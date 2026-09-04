@@ -31,7 +31,10 @@ import type {
  */
 export function useTimeline(): TimelineSignal[] {
   const {
-    behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs,
+    // AI-04 (consent gate): `conversations` is deliberately NOT read here.
+    // buildTimeline has no Ask-thread source any more; a kept line arrives
+    // through `behaviorLogs` because "Keep this" commits a behaviorLogs row.
+    behaviorLogs, milestones, actionPlans, memoryReviewItems, playLogs,
     // TJB-05: the `actionLoops` ledger — Today's accepted/completed step. It
     // is already read once by ArborContext (sorted, capped at 100); this hook
     // FOLDS that same list into the thread instead of opening a second read.
@@ -67,7 +70,6 @@ export function useTimeline(): TimelineSignal[] {
       milestones,
       plans: actionPlans,
       memory: memoryReviewItems,
-      conversations,
       play: playLogs,
       actionOutcomes: actionLoop,
       practiceEvents: practiceEvents.items,
@@ -78,7 +80,7 @@ export function useTimeline(): TimelineSignal[] {
       heroRuns: heroRuns.items,
     }),
     [
-      behaviorLogs, milestones, actionPlans, memoryReviewItems, conversations, playLogs, actionLoop,
+      behaviorLogs, milestones, actionPlans, memoryReviewItems, playLogs, actionLoop,
       practiceEvents.items, speechAttempts.items, mimicSessions.items,
       adventureResults.items, missionRecords.items, heroRuns.items,
     ],

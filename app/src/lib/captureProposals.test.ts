@@ -248,17 +248,18 @@ describe("the prompt pin tracks the server, so provenance cannot go stale", () =
 
 describe("the coach contract cannot be flipped to 'consented' before the gate exists", () => {
   /**
-   * AI-04's third clause is "flip contract to `consented`". Half of the gate
-   * now ships — a typed turn produces keepable proposals and "Keep this"
-   * writes a Journal row with recorded provenance. The OTHER half does not:
-   * buildTimeline still folds `sources.conversations` unconditionally, so
-   * every coach thread lands in the thread with no consent step at all. Until
-   * that auto-ingest is gated, `threadWrite: "consented"` would be a false
-   * statement in a manifest the surfaceContract header itself says later waves
-   * read as fact.
+   * AI-04's third clause is "flip contract to `consented`". BOTH halves of the
+   * gate now ship: a typed turn produces keepable proposals and "Keep this"
+   * writes a Journal row with recorded provenance, AND buildTimeline no longer
+   * folds Ask threads at all — the source key is gone from TimelineSources, so
+   * the removal cannot be undone by a caller quietly passing the list again.
+   * `threadWrite: "consented"` is therefore a true statement in a manifest the
+   * surfaceContract header says later waves read as fact.
    *
-   * This guard does not decide WHEN the flip happens; it makes flipping
-   * without the gate fail loudly.
+   * This guard is UNCHANGED and still bidirectional. It does not decide WHEN
+   * the flip happens; it makes the two halves impossible to separate — flip
+   * without the gate and it fails, restore the auto-ingest under a "consented"
+   * declaration and it fails the same way.
    */
   const contractSrc = read("lib/surfaceContract.ts");
   const timelineSrc = read("lib/signalTimeline.ts");

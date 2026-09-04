@@ -24,7 +24,6 @@ const KIND_ICON: Record<SignalKind, string> = {
   milestone: "check_circle",
   plan: "eco",
   memory: "bookmark",
-  coach: "chat_bubble",
   play: "eco",
   practice: "rocket_launch",
   // TJB-05 — Today's accepted/completed step.
@@ -38,7 +37,6 @@ const KIND_LABEL_KEY: Record<SignalKind, string> = {
   milestone: "timeline.kind.milestone",
   plan: "timeline.kind.plan",
   memory: "timeline.kind.memory",
-  coach: "timeline.kind.coach",
   play: "timeline.kind.play",
   // Resolves via withChildSignals until childsignals registers in i18nElevation/index.ts.
   practice: "elev.childsignals.kind",
@@ -54,7 +52,8 @@ const FILTERS: { key: SignalKind | "all"; labelKey: string }[] = [
   { key: "practice", labelKey: "elev.childsignals.filter" },
   { key: "action", labelKey: "elev.closeloop.thread.filter" },
   { key: "memory", labelKey: "timeline.filter.memory" },
-  { key: "coach", labelKey: "timeline.filter.coach" },
+  // AI-04 (consent gate): the Ask-thread filter is gone with its source. A
+  // chip whose count can only ever read zero is a dead end, not a filter.
 ];
 
 function StatTile({ tone, icon, value, label, foot }: {
@@ -197,7 +196,7 @@ function MonthsSpine({ nodes, locale, tt }: { nodes: MonthNode[]; locale: string
 
 export default function StoryTimelineTab() {
   const {
-    behaviorLogs, milestones, actionPlans, conversations, memoryReviewItems,
+    behaviorLogs, milestones, actionPlans, memoryReviewItems,
     childProfile, setActiveTab, seedCoach,
     pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
     playLogs,

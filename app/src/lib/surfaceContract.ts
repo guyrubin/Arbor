@@ -104,13 +104,16 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     job: "Help me right now.",
     primaryMove: "ask", moduleBudget: 3, demotionTarget: "disclosure",
     // Budget 3 per plan §4: composer · answer · history-as-record-rows.
-    // SHIPPED behavior, honestly: buildTimeline ingests "conversations"
-    // automatically today (signalTimeline.ts has no consent filter on that
-    // source). The M1.3 TARGET is "consented" — coach turns private by
-    // default, "Keep this" writes a Journal row with provenance. Flip this
-    // declaration to "consented" ONLY when the consent gate actually ships;
-    // the manifest is read as fact by later waves and must not front-run it.
-    threadWrite: "conversations",
+    // SHIPPED behavior, honestly: coach turns are private by default. AI-04
+    // closed both halves of the gate — buildTimeline no longer has an ingest
+    // source for Ask threads at all (the `conversations` key is gone from
+    // TimelineSources, not merely unread), and the ONE way an answer reaches
+    // the child's thread is the parent tapping "Keep this", which commits a
+    // behaviorLogs row through commitConversationProposal with its origin
+    // recorded. So this surface's primary move writes nothing on its own:
+    // "consented" is now the true statement, and the threads themselves stay
+    // in Ask, in the account, and on the GDPR export exactly as before.
+    threadWrite: "consented",
   },
   {
     route: "scholar", hub: "ask", depth: 1,

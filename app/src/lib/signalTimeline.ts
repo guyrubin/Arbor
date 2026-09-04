@@ -18,7 +18,7 @@ import { isolate } from "./i18n";
  * The Signal Timeline — Arbor's unified developmental activity stream.
  *
  * Every capability writes its own data (behavior logs, milestones, growth plans,
- * approved child memory, coach sessions). This module folds all of those sources
+ * approved child memory). This module folds all of those sources
  * into ONE chronological stream plus a derived "momentum" read, so the parent can
  * see the whole story in one place and each feature visibly feeds the next.
  *
@@ -33,7 +33,16 @@ import { isolate } from "./i18n";
  * exists to produce left no trace in the parent's own story, and
  * surfaceContract declared the overview's threadWrite honestly as "none".
  */
-export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "coach" | "play" | "practice" | "action";
+/**
+ * AI-04 (consent gate) — there is no "coach" kind any more. A raw Ask thread
+ * used to fold itself into the child's stream the moment it was updated; it
+ * now stays where the parent had it, and the ONLY way an answer reaches this
+ * stream is the parent tapping "Keep this", which files a behaviorLog and so
+ * arrives here as kind "moment" like any other thing the parent chose to keep.
+ * A kind nothing can produce is a dead filter chip and four dead render
+ * branches, so it was removed with its source rather than left standing.
+ */
+export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "play" | "practice" | "action";
 export type SignalTone = "mint" | "coral" | "lav" | "yellow" | "pink" | "sky";
 
 /**
@@ -94,8 +103,8 @@ export interface TimelineSignal {
 /**
  * JRNL-4: provenance is DERIVED read-only from who authored the entry.
  * MANUAL ("You") = the parent acted: logged a moment, confirmed a milestone
- * observation, played an activity. AUTO ("Arbor") = Arbor derived it: a coach
- * session, an approved memory fact, a generated growth plan. No new flag is
+ * observation, played an activity. AUTO ("Arbor") = Arbor derived it: an
+ * approved memory fact, a generated growth plan. No new flag is
  * written to the ledger; this maps the existing signal kind at render time.
  * CHILD (the child's first name at render) = the child acted in a practice/
  * play surface: a speech round, a mimic session, an adventure scene, a daily
@@ -109,7 +118,6 @@ export const SIGNAL_PROVENANCE: Record<SignalKind, SignalProvenance> = {
   play: "manual",
   plan: "auto",
   memory: "auto",
-  coach: "auto",
   practice: "child",
   // TJB-05: Arbor OFFERED the step, but accepting it and saying how it went
   // are both the parent's own acts — the badge must read "You".
@@ -132,8 +140,6 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
       return s.refTitle || t("timeline.title.plan");
     case "memory":
       return t("timeline.title.memory");
-    case "coach":
-      return t("timeline.title.coach");
     case "play":
       return t("timeline.title.played", { title: s.refTitle ?? "" });
     case "practice": {
@@ -159,7 +165,6 @@ export const signalDetail = (s: TimelineSignal, t: TranslateFn): string => {
       ? t("timeline.detail.builds", { domain: t(`timeline.playdomain.${s.playDomain}`) })
       : "";
   }
-  if (s.kind === "coach") return s.refTitle ?? "";
   // TJB-05: the accepted step's own words — raw record content, never UI copy.
   if (s.kind === "action") return s.refTitle ?? "";
   return s.detail || "";
@@ -183,8 +188,6 @@ export const signalMeta = (s: TimelineSignal, t: TranslateFn): string | undefine
       return s.memorySource || undefined;
     case "play":
       return s.concernMatch ? t("timeline.meta.match") : undefined;
-    case "coach":
-      return undefined;
     case "practice":
       // The title already carries the count; no extra meta chip.
       return undefined;
@@ -200,7 +203,27 @@ export interface TimelineSources {
   milestones?: Milestone[];
   plans?: ActionPlan[];
   memory?: MemoryReviewItem[];
-  conversations?: { id: string; title: string; updatedAt: string }[];
+  /**
+   * AI-04 (consent gate) — `conversations` USED TO BE A SOURCE HERE, and is
+   * deliberately not one any more. Every Ask thread folded itself into the
+   * child's stream as soon as it was updated: the parent never chose that, and
+   * a thread they opened to think out loud became part of the child's record
+   * by the act of opening it.
+   *
+   * The consented path is the one AI-04 shipped first: "Keep this" runs
+   * ArborContext.commitConversationProposal, which files a behaviorLogs row
+   * (plus a conversationChanges audit row) — so a kept line arrives through
+   * `behaviorLogs` above, as kind "moment", with recorded provenance. Nothing
+   * is deleted: the `conversations` subcollection is untouched, still a
+   * registered CHILD_SUBCOLLECTION, still read by CoachTab's own history, and
+   * still on the GDPR export and erase sweeps. It simply stops being an ingest
+   * source for the child's timeline.
+   *
+   * The key is gone from the interface on purpose rather than left unread:
+   * SignalSource is `keyof TimelineSources` and surfaceContract's SC-4 guard
+   * resolves every declared `threadWrite` against it, so a key nothing ingests
+   * would let a future surface declare a thread write into a void and pass.
+   */
   play?: PlayLog[];
   /**
    * TJB-05 — the `actionLoops` ledger: Today's accepted/completed step.
@@ -236,7 +259,6 @@ const TIMELINE_SOURCE_ID_MAP: { [K in keyof Required<TimelineSources>]: true } =
   milestones: true,
   plans: true,
   memory: true,
-  conversations: true,
   play: true,
   actionOutcomes: true,
   practiceEvents: true,
@@ -385,15 +407,11 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
     });
   }
 
-  for (const c of sources.conversations || []) {
-    signals.push({
-      id: `coach-${c.id}`,
-      kind: "coach",
-      at: c.updatedAt || null,
-      refTitle: c.title,
-      tone: "pink",
-    });
-  }
+  // AI-04 (consent gate): the unconditional Ask-thread ingest that used to sit
+  // here is GONE, not disabled behind a flag. An answer reaches this stream
+  // only when the parent keeps a line from it, and that arrives above through
+  // `behaviorLogs`. See the note on TimelineSources for what happens to the
+  // threads themselves (nothing — they stay in Ask, and in the export).
 
   for (const p of sources.play || []) {
     signals.push({

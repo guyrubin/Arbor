@@ -30,7 +30,11 @@ const DENSITIES: { key: Density; tab: "journal" | "timeline"; icon: string; labe
 ];
 
 export default function TimelineTab() {
-  const { activeTab, setActiveTab } = useArbor();
+  // `conversations` is read here for a COUNT ONLY — to decide whether the
+  // privacy line has an audience. Nothing about a thread is rendered, and it
+  // is emphatically not handed to buildTimeline: useTimeline no longer has a
+  // parameter for it (AI-04 consent gate).
+  const { activeTab, setActiveTab, conversations } = useArbor();
   const { t } = useLanguage();
   const density: Density = activeTab === "timeline" ? "story" : "feed";
 
@@ -65,6 +69,21 @@ export default function TimelineTab() {
           );
         })}
       </div>
+
+      {/*
+        AI-04 (consent gate) — one quiet, always-true line, said once for both
+        densities because both read the same stream. An Ask thread is no longer
+        folded into this stream on its own, so a parent who remembers seeing
+        those rows here deserves to be told where they went (nowhere: they are
+        still in Ask) rather than left to notice an absence. Deliberately NOT a
+        dismissible "what changed" banner — that would need a per-child device
+        key for no lasting benefit, and this sentence stays true forever.
+      */}
+      {conversations.length > 0 && (
+        <p className="text-[11.5px] font-semibold px-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
+          {t("timeline.privacy.ask")}
+        </p>
+      )}
 
       {density === "feed" ? <JournalTab /> : <StoryTimelineTab />}
     </motion.div>
