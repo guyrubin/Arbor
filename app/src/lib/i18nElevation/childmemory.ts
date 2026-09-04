@@ -26,7 +26,6 @@ export const en: Record<string, string> = {
   "elev.childmem.empty.title": "No memory yet",
   "elev.childmem.empty.body": "As you log moments and talk with Arbor, it will suggest facts about {name} for you to approve. Approved facts make every answer more personal.",
 
-  "elev.childmem.timeBoxed": "Time-boxed · {retention}",
 
   "elev.childmem.action.approve": "Approve",
   "elev.childmem.action.dismiss": "Dismiss",
@@ -43,7 +42,6 @@ export const he: Record<string, string> = {
   "elev.childmem.empty.title": "עדיין אין זיכרון",
   "elev.childmem.empty.body": "ככל שתתעדו רגעים ותשוחחו עם ארבור, הוא יציע עובדות על {name} שתוכלו לאשר. עובדות מאושרות הופכות כל תשובה לאישית יותר.",
 
-  "elev.childmem.timeBoxed": "מוגבל בזמן · {retention}",
 
   "elev.childmem.action.approve": "אישור",
   "elev.childmem.action.dismiss": "לא רלוונטי",

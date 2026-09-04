@@ -5,6 +5,11 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, TrustSafetyBar, cardCls, Chip } from "../ui/kit";
+// GP-22 — the Full Picture carries the two highest-stakes why-lines in Growth
+// ("this week's focus" and each "worth a conversation" row) and neither had a
+// door to how Arbor decides. A why-line that cannot show its inputs is an
+// assertion; the shared slot mounts the TrustLink beside the why text.
+import { ContentWhyLine } from "../ui/ContentActionBar";
 import { DOMAIN_META } from "../../practice/content";
 import { usePracticeData, useCopilot } from "../../practice/usePracticeData";
 import { domainMilestoneCounts } from "../../practice/signals";
@@ -285,6 +290,9 @@ export default function DevelopmentCopilot() {
           <div>
             <p className="text-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{recommendation.headline}</p>
             <p className="text-xs mt-1.5 leading-relaxed max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{recommendation.why}</p>
+            <div className="mt-2">
+              <ContentWhyLine why={t("elev.waveR.why.copilotFocus")} trustLink surface="copilot-focus" />
+            </div>
           </div>
         </div>
       </SectionCard>
@@ -320,6 +328,9 @@ export default function DevelopmentCopilot() {
                     {evidence.map((e, i) => (
                       <p key={i} className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Evidence: {e}</p>
                     ))}
+                  </div>
+                  <div className="mt-2">
+                    <ContentWhyLine why={t("elev.waveR.why.copilotWatch")} trustLink surface="copilot-watch" />
                   </div>
                   <button onClick={() => setActiveTab("reports")} className="mt-3 text-[11px] font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>
                     Prepare a professional summary →

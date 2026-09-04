@@ -55,3 +55,73 @@ describe("chooseTodayAction — deterministic fallback chain", () => {
     }
   });
 });
+
+/* ── ENG-24: the Monday anchor ──────────────────────────────────────────────
+   The weekly recap is generated on app open and is firewall-clean, but it only
+   ever surfaced as ONE LINE inside the since-last-visit strip — and only for
+   returning parents WITH since-visit rows (that component's own "known v1
+   limitation"). A week-boundary ritual is the cheapest habit anchor there is,
+   and Today's chain had no `recap` kind at all.
+
+   The rule pinned here: `recap` outranks prompt / play / focus, and NEVER an
+   action the parent has already accepted. */
+describe("ENG-24 — the week's recap can be the day's anchor", () => {
+  it("does nothing when the caller does not raise the flag (every existing caller)", () => {
+    expect(chooseTodayAction({ ...BASE })).toEqual({ kind: "prompt", promptKey: "elev.prompt.toddler.3" });
+    expect(chooseTodayAction({ ...BASE, hasWeekAnchorRecap: false })).toEqual({
+      kind: "prompt",
+      promptKey: "elev.prompt.toddler.3",
+    });
+  });
+
+  it("outranks the capture prompt", () => {
+    expect(chooseTodayAction({ ...BASE, hasWeekAnchorRecap: true })).toEqual({ kind: "recap" });
+  });
+
+  it("outranks the daily-play fallback", () => {
+    expect(chooseTodayAction({ ...BASE, promptKeys: [], hasWeekAnchorRecap: true })).toEqual({ kind: "recap" });
+  });
+
+  it("outranks the bare capture floor", () => {
+    expect(
+      chooseTodayAction({ ...BASE, promptKeys: [], hasDailyPlay: false, hasWeekAnchorRecap: true }),
+    ).toEqual({ kind: "recap" });
+  });
+
+  it("outranks the AI focus hero and its pending state", () => {
+    expect(
+      chooseTodayAction({ ...BASE, focusHeadline: "One calm handoff before school", hasWeekAnchorRecap: true }),
+    ).toEqual({ kind: "recap" });
+    expect(chooseTodayAction({ ...BASE, focusPending: true, hasWeekAnchorRecap: true })).toEqual({ kind: "recap" });
+  });
+
+  it("NEVER outranks an action the parent already accepted", () => {
+    expect(chooseTodayAction({ ...BASE, hasActiveAction: true, hasWeekAnchorRecap: true })).toEqual({ kind: "loop" });
+  });
+
+  it("still yields exactly ONE choice across the whole input space (Rule A)", () => {
+    for (const hasActiveAction of [true, false]) {
+      for (const hasWeekAnchorRecap of [true, false]) {
+        for (const focusHeadline of ["Do X", null]) {
+          for (const focusPending of [true, false]) {
+            for (const promptKeys of [["k"], []]) {
+              for (const hasDailyPlay of [true, false]) {
+                const choice = chooseTodayAction({
+                  hasActiveAction,
+                  hasWeekAnchorRecap,
+                  focusHeadline,
+                  focusPending,
+                  promptKeys,
+                  hasDailyPlay,
+                });
+                expect(choice.kind).toBeTruthy();
+                if (hasActiveAction) expect(choice.kind).toBe("loop");
+                else if (hasWeekAnchorRecap) expect(choice.kind).toBe("recap");
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+});

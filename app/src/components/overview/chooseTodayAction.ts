@@ -6,6 +6,14 @@
    Deterministic chain, pure function (all branches unit-tested):
 
      1. loop    — an accepted action is already active → TodayActionLoop card.
+     1a. recap  — ENG-24: the week has turned and last week's recap is written
+                  and unopened → the recap IS the day's anchor (the 3-5 story
+                  cards, last card = the accepted step). Outranks everything
+                  except an action the parent has already accepted; a
+                  week-boundary ritual is the cheapest habit anchor there is,
+                  and the recap already exists and is firewall-clean. The
+                  CALLER owns "the week has turned" (weekAnchorRecapDue) so
+                  this stays a pure ranking function.
      2. focus   — a real AI focus headline exists (or is still being fetched
                   for a child WITH data: `focusPending` keeps the hero+skeleton
                   so the slot never flickers prompt→focus mid-load).
@@ -21,6 +29,7 @@
 
 export type TodayActionChoice =
   | { kind: "loop" }
+  | { kind: "recap" }
   | { kind: "focus" }
   | { kind: "prompt"; promptKey: string }
   | { kind: "play" }
@@ -29,6 +38,10 @@ export type TodayActionChoice =
 export function chooseTodayAction(input: {
   /** An accepted today-action already exists (actionLoop owns the slot). */
   hasActiveAction: boolean;
+  /** ENG-24: a new week has started AND last week's recap is generated and
+   *  still unopened (weekAnchorRecapDue). Defaults to false, so every existing
+   *  caller keeps its exact behaviour. */
+  hasWeekAnchorRecap?: boolean;
   /** The scrubbed AI focus headline (focusHeadlineFrom), or null. */
   focusHeadline: string | null;
   /** True while a focus fetch is in flight for a child with signals. */
@@ -39,6 +52,7 @@ export function chooseTodayAction(input: {
   hasDailyPlay: boolean;
 }): TodayActionChoice {
   if (input.hasActiveAction) return { kind: "loop" };
+  if (input.hasWeekAnchorRecap) return { kind: "recap" };
   if (input.focusHeadline || input.focusPending) return { kind: "focus" };
   if (input.promptKeys.length > 0) return { kind: "prompt", promptKey: input.promptKeys[0] };
   if (input.hasDailyPlay) return { kind: "play" };
