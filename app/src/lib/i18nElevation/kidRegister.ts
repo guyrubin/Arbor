@@ -100,6 +100,12 @@ export const en: Record<string, string> = {
   // ── elev.play.beat — Beat Keeper (no % readout)
   "elev.play.beat.scoredAria": "Round scored",
 
+  // ── Builder C ─────────────────────────────────────────────────────────
+  // OBJ-KID-04: an AI-backed start that fails must ANSWER the child inside
+  // `.arbor-play`. Pairs with the existing `elev.states.hero.opening` label.
+  "elev.play.hero.rest": "The story is resting — let's pick another one!",
+  "elev.play.adventures.napping": "The adventure is napping. Try one of these!",
+
   // ── elev.practice — PARENT register (moved out of the kid register)
   "elev.practice.door.aria": "What Kid Mode promises",
   "elev.practice.door.locked": "Parent locked",
@@ -107,16 +113,16 @@ export const en: Record<string, string> = {
   "elev.practice.door.stars": "Stars, never streaks",
   "elev.practice.journey.missionsDone": "Missions done",
   "elev.practice.journey.earned": "Earned",
+
+  // ── Builder B (object backlog wave 1) — parent-register counts that replaced
+  //    a percentage or an unearned-badge wall on a parent door.
+  "elev.practice.feelings.named": "Feelings named",
 };
 
 export const he: Record<string, string> = {
   "elev.kid.greeting.ready": "Ready for today's adventure?", // GD-6
   "elev.kid.greeting.playedYesterday": "You played {world} yesterday", // GD-6
   "elev.kid.crash.title": "Oops — let's go back to the map", // GD-6
-
-  // ── Builder B (object backlog wave 1) — parent-register counts that replaced
-  //    a percentage or an unearned-badge wall on a parent door.
-  "elev.practice.feelings.named": "Feelings named",
   "elev.kid.crash.home": "Home", // GD-6
 
   "elev.play.arcade.allWorlds": "All worlds", // GD-6
@@ -188,13 +194,17 @@ export const he: Record<string, string> = {
 
   "elev.play.beat.scoredAria": "Round scored", // GD-6
 
+  // ── Builder C ─────────────────────────────────────────────────────────
+  "elev.play.hero.rest": "הסיפור נח עכשיו — בואו נבחר סיפור אחר!",
+  "elev.play.adventures.napping": "ההרפתקה נמנמת עכשיו — בואו ננסה אחת מאלה!",
+
   "elev.practice.door.aria": "מה מצב ילדים מבטיח",
   "elev.practice.door.locked": "נעול להורים",
   "elev.practice.door.private": "פרטי כברירת מחדל",
   "elev.practice.door.stars": "כוכבים, אף פעם לא רצפים",
   "elev.practice.journey.missionsDone": "משימות שהושלמו",
   "elev.practice.journey.earned": "הושג",
-};
 
   // ── Builder B (object backlog wave 1)
   "elev.practice.feelings.named": "רגשות שזוהו",
+};

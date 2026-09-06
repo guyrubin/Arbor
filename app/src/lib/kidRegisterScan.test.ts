@@ -302,6 +302,7 @@ describe("kid-register scan — no verdicts, parent chrome, dead nav, file saves
 
 /* ── The kid dictionary ────────────────────────────────────────────────── */
 
+const HEBREW = /[\u0590-\u05FF]/;
 const LOSS_FRAMED = /in a row|streak|don'?t break|days? straight|consecutiv|hurry|time'?s up|missed|you lost/i;
 const KID_KEY = /^elev\.(?:kid|play)\./;
 
@@ -323,12 +324,32 @@ describe("kid dictionary (lib/i18nElevation/kidRegister.ts) — counts never ver
     }
   });
 
-  it("every HE placeholder for a kid key is marked for the GD-6 native reviewer", () => {
+  it("every HE kid line is either transcreated Hebrew or an EN placeholder marked for GD-6", () => {
+    // The marker means "a native reviewer still owes this line" (GD-6). A line
+    // that HAS been transcreated must therefore lose it — otherwise the GD-6
+    // worklist grows a permanent tail of already-done keys and the reviewer can
+    // no longer grep what is actually outstanding.
     const src = readFileSync(path.join(SRC, "lib", "i18nElevation", "kidRegister.ts"), "utf8");
     const heBlock = src.slice(src.indexOf("export const he"));
-    const placeholderLines = heBlock.split("\n").filter((l) => /^\s*"elev\.(?:kid|play)\./.test(l));
-    expect(placeholderLines.length).toBe(kidKeys.length);
-    for (const l of placeholderLines) expect(l, `unmarked placeholder: ${l.trim()}`).toContain("// GD-6");
+    const heLines = heBlock.split("\n").filter((l) => /^\s*"elev\.(?:kid|play)\./.test(l));
+    expect(heLines.length).toBe(kidKeys.length);
+    for (const l of heLines) {
+      const key = /^\s*"([^"]+)"/.exec(l)![1];
+      const value = kidHe[key];
+      if (HEBREW.test(value)) {
+        expect(l, `transcreated line still marked GD-6: ${l.trim()}`).not.toContain("// GD-6");
+      } else {
+        expect(l, `unmarked EN placeholder: ${l.trim()}`).toContain("// GD-6");
+      }
+    }
+  });
+
+  it("negative control — both marker failure shapes are detectable", () => {
+    // A transcreated line that kept the marker, and a placeholder that lost it.
+    const transcreatedButMarked = '"elev.play.hero.rest": "הסיפור נח עכשיו!", // GD-6';
+    const placeholderUnmarked = '"elev.play.hero.rest": "The story is resting",';
+    expect(HEBREW.test("הסיפור נח עכשיו!") && transcreatedButMarked.includes("// GD-6")).toBe(true);
+    expect(HEBREW.test("The story is resting") || placeholderUnmarked.includes("// GD-6")).toBe(false);
   });
 
   it("negative control — the copy the scanner replaced would have failed", () => {

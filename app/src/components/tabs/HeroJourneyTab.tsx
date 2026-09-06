@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useDialog } from "../../hooks/useDialog";
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
@@ -37,6 +37,8 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import { track } from "../../lib/analytics";
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { MascotSay } from "../ui/playkit";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
@@ -99,6 +101,12 @@ export default function HeroJourneyTab() {
   const kidNav = useKidSafeNav();
   const { aiLang, t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // OBJ-KID-04: ToastContext QUEUES toasts while kid-locked, so a failed start
+  // inside Kid Mode was silent — the child tapped Play and nothing moved. Branch
+  // at the call site (never in ToastContext, which the parent shell relies on).
+  const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
+  /** Kid-register answer to a failed generate: the story is resting. */
+  const [storyResting, setStoryResting] = useState(false);
 
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
   const runs = runsCol.items;
@@ -175,6 +183,7 @@ export default function HeroJourneyTab() {
 
   const startJourney = async (story: HeroStorySpec) => {
     setLoadingId(story.id);
+    setStoryResting(false);
     try {
       const r = await api.generateHeroJourney({
         storyId: story.id,
@@ -191,7 +200,10 @@ export default function HeroJourneyTab() {
       setSaved(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to start the journey.";
-      toast(msg, "error");
+      // Inside Kid Mode the answer is a kid-register line in `.arbor-play` — no
+      // error code, no "AI", no "try again later", and no queued parent toast.
+      if (kidMode) setStoryResting(true);
+      else toast(msg, "error");
     } finally {
       setLoadingId(null);
     }
@@ -480,6 +492,15 @@ export default function HeroJourneyTab() {
               </span>
             )}
           </div>
+          {/* OBJ-KID-04 — a failed generate ANSWERS the child, inside
+              `.arbor-play`, in the kid register. role=status so the line is
+              announced; the tapped card is already back in its idle state
+              (setLoadingId(null) in the finally), so a second tap retries. */}
+          {storyResting && (
+            <div role="status" aria-live="polite" className="mb-3">
+              <MascotSay mood="think" tone="yellow">{t("elev.play.hero.rest")}</MascotSay>
+            </div>
+          )}
           {/* W0.7 — honest empty state: the catalog is written for older ages. */}
           {displayStories.length === 0 && ageHiddenStories.length > 0 && (
             <div className="comic-panel p-5 text-center" data-testid="agefilter-empty-hero-journeys">

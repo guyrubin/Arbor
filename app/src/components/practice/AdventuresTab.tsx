@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -13,6 +13,7 @@ import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { isolate } from "../../lib/i18n";
 import { PlayShell, PlayHeader, PlayButton, PlayPanel, ChoiceTile, ProgressPips, MascotSay, Celebrate } from "../ui/playkit";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
 const SKILL_LABEL: Record<string, string> = {
   vocabulary: "Vocabulary",
@@ -33,6 +34,9 @@ export default function AdventuresTab() {
   const { t } = useLanguage();
   // KID-05: the comic CTA on the win screen needs the parent shell; null in Kid Mode → not rendered.
   const nav = useKidSafeNav();
+  // OBJ-KID-04 / OBJ-KID-03: the child sees a kid-register answer; the parent
+  // keeps the diagnostic string. Branch here, never inside ToastContext.
+  const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
   const data = usePracticeData(childProfile.id);
   const first = childProfile.name.split(" ")[0];
   const vars = { name: first, age: childProfile.age };
@@ -137,7 +141,17 @@ export default function AdventuresTab() {
           <PlayButton onClick={createAdventure} disabled={generating} tone="lav">
             <Icon name="auto_awesome" size={16} /> {generating ? "Creating…" : "Create"}
           </PlayButton>
-          {genError && <p className="w-full text-[13px] font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{genError}</p>}
+          {genError &&
+            (kidMode ? (
+              /* OBJ-KID-04: no error code, no "AI", no "try again later" — the
+                 adventure is simply napping, and the four curated stories below
+                 are still one tap away. */
+              <div role="status" aria-live="polite" className="w-full">
+                <MascotSay mood="think" tone="yellow">{t("elev.play.adventures.napping")}</MascotSay>
+              </div>
+            ) : (
+              <p className="w-full text-[13px] font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{genError}</p>
+            ))}
         </PlayPanel>
       )}
 
