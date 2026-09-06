@@ -19,6 +19,7 @@ import type { PracticeDomain } from "../../types";
 import { assertClinicianExportCeiling } from "../../consult/packet";
 import { track } from "../../lib/analytics";
 import { en as fullPictureEn, he as fullPictureHe } from "../../lib/i18nElevation/fullpicture";
+import { en as growthTruthEn } from "../../lib/i18nElevation/growthTruth";
 // GP-01 / GP-08: months-precise age label + the shared age window.
 import { ageLabel, ageMonthsFromProfile } from "../../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../../lib/milestoneData";
@@ -49,6 +50,15 @@ const MECHANISM_NOTE = "More play and observation will add to the picture.";
  *  computation is untouched — the signal still fires and still counts). */
 const BAND_WORD = /\b(?:emerging|developing|on[\s-]?track|strong)\b/i;
 const parentSafeEvidence = (evidence: string[]): string[] => evidence.filter((e) => !BAND_WORD.test(e));
+
+/** OBJ-GROWTH-06 - watch evidence arrives as an i18n KEY (`elev.`) wherever the
+ *  sentence is parent-facing, so the row reads in the parent's own language
+ *  instead of the English literal the module used to hard-code. Anything that
+ *  is not a key is already display text (a count line built from the child's
+ *  own data). The clinician EXPORT resolves the same keys against the English
+ *  dictionary - a professional reads one stable language. */
+const isElevKey = (e: string) => e.startsWith("elev.");
+const exportEvidence = (e: string): string => (isElevKey(e) ? growthTruthEn[e] ?? e : e);
 
 /**
  * The Full Picture (route id: "copilot") — the connective layer the
@@ -93,9 +103,12 @@ export default function DevelopmentCopilot() {
     () => [...screeningsCol.items].sort((a, b) => (a.answeredAt < b.answeredAt ? 1 : -1))[0],
     [screeningsCol.items]
   );
+  // OBJ-GROWTH-06: each "worth a conversation" area carries its OWN domain id
+  // and the label the screening result screen itself renders (`screen.domain.*`,
+  // EN + HE) - watch.ts no longer re-guesses the domain from the label text.
   const screeningWatchLabels = useMemo(
-    () => lastScreening?.watchAreas.map((w) => w.label) ?? [],
-    [lastScreening]
+    () => lastScreening?.watchAreas.map((w) => ({ domain: w.domain, label: t(`screen.domain.${w.domain}`) })) ?? [],
+    [lastScreening, t]
   );
   const watch = useMemo(
     () => watchSignals({
@@ -183,7 +196,7 @@ export default function DevelopmentCopilot() {
         // contributing observations, never a graded level tag.
         lines.push(``, `Non-diagnostic patterns worth a conversation:`);
         watch.forEach((w) => {
-          const evidence = parentSafeEvidence(w.evidence);
+          const evidence = parentSafeEvidence(w.evidence).map(exportEvidence);
           const n = Math.max(evidence.length, 1);
           lines.push(`  • ${w.area}: ${n} contributing observation${n === 1 ? "" : "s"}${evidence.length > 0 ? `; evidence: ${evidence.join("; ")}` : ""}`);
         });
@@ -313,8 +326,12 @@ export default function DevelopmentCopilot() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {watch.map((w) => {
-              const evidence = parentSafeEvidence(w.evidence);
+              const evidence = parentSafeEvidence(w.evidence).map((e) => (isElevKey(e) ? t(e) : e));
               const n = Math.max(evidence.length, 1);
+              // The row's own domain, in the reader's language. Suppressed when
+              // it repeats the title verbatim (screening rows ARE their domain).
+              const meta = w.domain ? DOMAIN_META[w.domain] : null;
+              const subLabel = w.domainLabel !== w.area ? w.domainLabel : null;
               return (
                 <div key={w.id} className={`${cardCls} p-4`}>
                   <div className="flex items-center justify-between gap-2 mb-2">
@@ -323,7 +340,9 @@ export default function DevelopmentCopilot() {
                       {tFP(uiLang, n === 1 ? "elev.fullpicture.watch.row.one" : "elev.fullpicture.watch.row.many", { n })}
                     </Chip>
                   </div>
-                  <p className="text-[11px] font-bold mb-1" style={{ color: DOMAIN_META[w.domain].color }}>{DOMAIN_META[w.domain].label}</p>
+                  {subLabel && (
+                    <p className="text-[11px] font-bold mb-1" style={{ color: meta?.color ?? "var(--arbor-muted)" }}>{subLabel}</p>
+                  )}
                   <div className="space-y-1.5">
                     {evidence.map((e, i) => (
                       <p key={i} className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>Evidence: {e}</p>

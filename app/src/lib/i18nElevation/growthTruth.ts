@@ -42,6 +42,10 @@ export const en: Record<string, string> = {
   // ── RUN-08 · day-0 hub hero: a teach line instead of a wall of zeros
   "elev.growthTruth.hero.empty": "Nothing noticed yet — one moment starts the picture.",
 
+  // ── OBJ-GROWTH-06 · "worth a conversation" rows speak the check's own voice
+  "elev.growthTruth.watch.fromCheck": "From your latest Development Check",
+  "elev.growthTruth.watch.soundsTypical": "Some sounds usually arrive later than this age — a speech-language professional is the right person to look",
+
   // ── GP-15 / RUN-20 · Profile hub CTA = the contract's primary move
   "elev.growthTruth.profile.cta.review": "Review what Arbor remembers",
   "elev.growthTruth.profile.cta.addFact": "Add a fact about {name}",
@@ -76,6 +80,9 @@ export const he: Record<string, string> = {
   "elev.growthTruth.lang.count.none": "עדיין לא תועד דבר",
 
   "elev.growthTruth.hero.empty": "עדיין לא שמתם לב לכלום — רגע אחד מתחיל את התמונה.",
+
+  "elev.growthTruth.watch.fromCheck": "מבדיקת ההתפתחות האחרונה שלכם",
+  "elev.growthTruth.watch.soundsTypical": "חלק מהצלילים מגיעים בדרך כלל מאוחר יותר מהגיל הזה — קלינאי/ת תקשורת היא הכתובת לבדוק",
 
   "elev.growthTruth.profile.cta.review": "לסקור מה ארבור זוכרת",
   "elev.growthTruth.profile.cta.addFact": "להוסיף עובדה על {name}",

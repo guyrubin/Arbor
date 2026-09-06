@@ -81,3 +81,90 @@ describe("clinical firewall — no score-thresholded colour on any component", (
     ).toEqual([]);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KID-03 / KID-04 / GP-20 — the parent DRILL routes print no percentage.
+
+   The chromatic guard above bans a colour that grades a child. It said nothing
+   about the number itself, which is why three parent surfaces still printed one
+   the moment a family had data (all three are invisible against the empty seed,
+   which is how the Wave T pass missed them):
+     #/speech   "P 83%" on the sound chip, "recent 83%" + a width:83% fill bar,
+                and an up/down trend glyph coloured pink on "down";
+     #/feelings "100% Recognition" in a stat bubble;
+     #/language "100% … in Hebrew, 0% in English" plus a role=progressbar whose
+                aria-valuenow re-published the same share to a screen reader.
+
+   Law 1 allows counts on a parent surface and nothing else. This guard pins the
+   four drill files at zero for: a percentage interpolated from a performance
+   identifier, a trend glyph, and the progressbar role (which is how a removed
+   percentage comes back as an accessible-name percentage).
+   ═════════════════════════════════════════════════════════════════════════ */
+
+const DRILL_FILES = [
+  "practice/SpeechCoachTab.tsx",
+  "practice/FeelingsLabTab.tsx",
+  "../components/tabs/LanguageLabVocabView.tsx",
+  "../components/tabs/LanguageLabTab.tsx",
+] as const;
+
+/** `{…accuracy…}%` / `{…pct…}%` / `{…percent…}%` — a rendered performance share. */
+const PERF_PERCENT = /\{[^}]*(accuracy|pct|percent)[^}]*\}%/gi;
+/** An up/down trend glyph: a delta verdict wearing an icon. */
+const TREND_GLYPH = /trending_(up|down)/g;
+/** The progressbar role — aria-valuenow is a percentage by definition. */
+const PROGRESSBAR_ROLE = /role=["'{\s]*["']?progressbar/g;
+
+const readDrill = (rel: string): string =>
+  readFileSync(path.join(componentsRoot, rel), "utf8");
+
+describe("clinical firewall — parent drill routes report counts, never percentages", () => {
+  it("negative control: the regexes catch the exact strings that shipped", () => {
+    // SpeechCoachTab.tsx:378 before the fix, and its progress row + trend icon.
+    const chip = '<span className="text-[11px] font-bold" style={{ color: on ? "#fff" : "var(--arbor-clay)" }}>{st.recentAccuracy}%</span>';
+    const bar = 'style={{ width: `${s.recentAccuracy}%`, background: "var(--arbor-clay)" }}';
+    const feelings = 'value={emotionAccuracy === null ? "–" : `${emotionAccuracy}%`}';
+    const language = 'style={{ width: `${pct}%`, background: langColor(idx) }}';
+    for (const shipped of [chip, bar, feelings, language]) {
+      expect([...shipped.matchAll(PERF_PERCENT)].length, shipped).toBeGreaterThan(0);
+    }
+    const icon = 'const trendIconName = s.trend === "up" ? "trending_up" : s.trend === "down" ? "trending_down" : "remove";';
+    expect([...icon.matchAll(TREND_GLYPH)].length).toBe(2);
+    expect([...'role="progressbar"'.matchAll(PROGRESSBAR_ROLE)].length).toBe(1);
+  });
+
+  it("negative control: a count, a dose bar and a category colour all pass", () => {
+    const count = "<span>{st.attempts}</span>";
+    // The parent's OWN session dose (trials today / target) is not a child grade.
+    const dose = "style={{ width: `${Math.min(100, Math.round((dose.trialsToday / dose.perSessionTarget) * 100))}%` }}";
+    for (const ok of [count, dose]) {
+      expect([...ok.matchAll(PERF_PERCENT)].length, ok).toBe(0);
+      expect([...ok.matchAll(TREND_GLYPH)].length, ok).toBe(0);
+    }
+  });
+
+  it("the four drill files are all readable (sanity — a renamed file must fail loudly)", () => {
+    for (const rel of DRILL_FILES) expect(readDrill(rel).length).toBeGreaterThan(500);
+  });
+
+  it("no drill file renders a performance percentage, trend glyph or progressbar", () => {
+    const violations: string[] = [];
+    for (const rel of DRILL_FILES) {
+      const src = readDrill(rel)
+        // Comments explain the removed shape; they render nothing.
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "");
+      for (const [re, id] of [
+        [PERF_PERCENT, "performance %"],
+        [TREND_GLYPH, "trend glyph"],
+        [PROGRESSBAR_ROLE, "progressbar role"],
+      ] as const) {
+        for (const m of src.matchAll(re)) violations.push(`${rel} — ${id}: ${m[0]}`);
+      }
+    }
+    expect(
+      violations,
+      `parent drill route grades the child:\n${violations.join("\n")}`,
+    ).toEqual([]);
+  });
+});

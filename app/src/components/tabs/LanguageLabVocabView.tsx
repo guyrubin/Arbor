@@ -38,7 +38,6 @@ import { T } from "../../lib/tokens";
 import {
   aggregateLangCounts,
   combinedTotal,
-  mixPct,
   buildVocabTrend,
   type LangObservation,
 } from "../../growth/vocabAgg";
@@ -210,8 +209,6 @@ export default function LanguageLabVocabView() {
   // to handle variations like "Hebrew", "עברית", "English", "אנגלית".
   const heCount = counts.find((c) => /hebrew|עברית/i.test(c.language))?.count ?? 0;
   const enCount = counts.find((c) => /english|אנגלית/i.test(c.language))?.count ?? 0;
-  const hePct = mixPct(heCount, total);
-  const enPct = mixPct(enCount, total);
 
   // If fewer than 2 languages configured, show a gentle prompt.
   if (languages.length < 2) {
@@ -299,40 +296,28 @@ export default function LanguageLabVocabView() {
 
               {/* Mix value — verbatim format */}
               <p className="text-xs" style={{ color: T.ink }}>
-                {t("vl.mixValue", { hePct, enPct })}
+                {t("vl.mixValue", { heCount, enCount })}
               </p>
 
-              {/* Per-language bars — NO warning/amber/red token on either bar */}
-              <div className="space-y-2 pt-1">
-                {counts.map((c, idx) => {
-                  const pct = mixPct(c.count, total);
-                  return (
-                    <div key={c.language} className="space-y-0.5">
-                      <div className="flex justify-between text-[10px]" style={{ color: T.muted }}>
-                        <span>{c.language}</span>
-                        <span>{pct}% · {c.count}</span>
-                      </div>
-                      <div
-                        className="h-2 rounded-full overflow-hidden"
-                        style={{ background: T.rule }}
-                        role="progressbar"
-                        aria-valuenow={pct}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-label={`${c.language}: ${pct}%`}
-                      >
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{
-                            width: `${pct}%`,
-                            background: langColor(idx),
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {/* GP-20 clinical firewall: per-language COUNTS. The share
+                  percentage, its proportional bar and the `progressbar` role
+                  (aria-valuenow carried the same percentage to a screen reader)
+                  all graded one language against another on a parent surface. */}
+              <ul className="space-y-1 pt-1">
+                {counts.map((c, idx) => (
+                  <li key={c.language} className="flex justify-between text-[10px]">
+                    <span style={{ color: T.muted }}>
+                      <span
+                        aria-hidden="true"
+                        className="inline-block w-1.5 h-1.5 rounded-full me-1.5 align-middle"
+                        style={{ background: langColor(idx) }}
+                      />
+                      {c.language}
+                    </span>
+                    <span style={{ color: T.ink }}>{c.count}</span>
+                  </li>
+                ))}
+              </ul>
 
               {/* Interpretation caption — REQUIRED adjacent, verbatim board-cleared */}
               <p

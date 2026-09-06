@@ -1,12 +1,17 @@
 import type { BehaviorLog, MissionRecord, PracticeDomain } from "../types";
-import { SOUND_LIBRARY } from "./content";
+import { DOMAIN_META, SOUND_LIBRARY } from "./content";
+import type { ScreenDomainId } from "../lib/screening";
 import type { DomainBand, SoundStats } from "./signals";
 
 /* Watch Signals (Epic 2) — continuous, non-diagnostic pattern awareness.
  *
  * HARD RULES:
- *  - Never a condition name. We describe observable patterns ("speech sounds
- *    behind typical ages", "frequent intense moments"), never "ASD/ADHD risk".
+ *  - Never a condition name. We describe observable patterns (the domain the
+ *    observations sit in, "frequent intense moments"), never "ASD/ADHD risk".
+ *  - OBJ-GROWTH-06: no verdict vocabulary anywhere in the strings this module
+ *    emits. Parent-facing sentences are i18n KEYS (elev.growthTruth.watch.*),
+ *    resolved by the rendering surface in the reader's language, so a Hebrew
+ *    family never meets an English literal here (law 7).
  *  - Never a diagnosis or probability. Levels are about ATTENTION, not illness:
  *    steady → monitor → worth discussing with a professional.
  *  - Every signal lists its evidence so the parent (and any professional)
@@ -20,16 +25,41 @@ export type WatchLevel = "steady" | "monitor" | "discuss";
 export interface WatchSignal {
   id: string;
   area: string;                 // observable-pattern label, parent-facing
-  domain: PracticeDomain;
+  /** Practice domain this signal ranks against. `null` when the observation
+   *  comes from a screening domain with no practice counterpart (independence,
+   *  sensory) — inventing one is what printed "Language" on a sensory row. */
+  domain: PracticeDomain | null;
+  /** The label to SHOW for this row. Always the row's own domain. */
+  domainLabel: string;
   level: WatchLevel;
-  evidence: string[];           // the exact observations that fired the rule
+  /** The observations that fired the rule. An entry beginning `elev.` is an
+   *  i18n key the surface resolves; anything else is already display text. */
+  evidence: string[];
   plan: string[];               // monitoring plan: activity, tracking step, professional step
 }
 
+/** One flagged-free carry-over from the Development Check: the screening's own
+ *  domain id plus the label the screening itself renders for it. */
+export interface ScreeningWatchArea {
+  domain: ScreenDomainId;
+  label: string;
+}
+
+/** Screening domains that have a practice-signal counterpart. Independence and
+ *  sensory deliberately have none — they map to `undefined`, the row keeps its
+ *  own label, and the level falls back to the calm default. */
+const SCREEN_TO_PRACTICE: Partial<Record<ScreenDomainId, PracticeDomain>> = {
+  language_communication: "language",
+  social_development: "social",
+  attachment_regulation: "emotional",
+  cognition_executive_function: "cognition",
+};
+
 export interface WatchInput {
   age: number;
-  /** Latest screening's flagged domain labels (already non-diagnostic), if any. */
-  screeningWatchLabels: string[];
+  /** Latest screening's "worth a conversation" areas, each carrying its OWN
+   *  domain id — never a label the caller has to re-guess by regex. */
+  screeningWatchLabels: ScreeningWatchArea[];
   logs: BehaviorLog[];          // behavior moments (most recent first or any order)
   stats: SoundStats[];          // per-sound practice stats
   bands: DomainBand[];
@@ -60,8 +90,9 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
     const level: WatchLevel = lagging.length >= 3 ? "discuss" : "monitor";
     out.push({
       id: "speech-sounds",
-      area: "Speech sounds behind typical ages",
+      area: DOMAIN_META.speech.label,
       domain: "speech",
+      domainLabel: DOMAIN_META.speech.label,
       level,
       evidence: lagging.map((s) => {
         const e = SOUND_LIBRARY.find((x) => x.id === s.sound);
@@ -74,7 +105,7 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
         "Keep 5 minutes of daily Speech Coach play on one lagging sound — model, don't correct.",
         "Re-check the trend here in 3 weeks; rising accuracy is the goal, not perfection.",
         ...(level === "discuss"
-          ? ["Several sounds are behind their typical window — this is exactly what a speech-language professional assesses well. Arbor can prepare the practice report."]
+          ? ["elev.growthTruth.watch.soundsTypical"]
           : []),
       ],
     });
@@ -90,6 +121,7 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
       id: "regulation",
       area: "Frequent intense moments",
       domain: "emotional",
+      domainLabel: DOMAIN_META.emotional.label,
       level,
       evidence: [
         `${intense.length} high-intensity moments logged in the last 28 days`,
@@ -113,6 +145,7 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
       id: "attention",
       area: "Attention & task completion",
       domain: "cognition",
+      domainLabel: DOMAIN_META.cognition.label,
       level: "monitor",
       evidence: [
         // Counts, never percentages (IA W4.5): evidence rides into clinician exports.
@@ -126,22 +159,22 @@ export function watchSignals(input: WatchInput): WatchSignal[] {
     });
   }
 
-  // 4) Screening-flagged areas carry over (the questionnaire's voice).
-  for (const label of input.screeningWatchLabels) {
-    const domain: PracticeDomain =
-      /language/i.test(label) ? "language" :
-      /social/i.test(label) ? "social" :
-      /attach|regul/i.test(label) ? "emotional" :
-      /think|attention|cognit/i.test(label) ? "cognition" : "language";
-    const b = band(domain);
+  // 4) The Development Check's own "worth a conversation" areas carry over, in
+  //    the questionnaire's own vocabulary. OBJ-GROWTH-06: the area arrives with
+  //    its OWN domain id, so a sensory or independence row is never relabelled
+  //    "Language" by a regex fallback, and the evidence line is an i18n key.
+  for (const area of input.screeningWatchLabels) {
+    const domain = SCREEN_TO_PRACTICE[area.domain] ?? null;
+    const b = domain ? band(domain) : undefined;
     const level: WatchLevel = b && b.band === "emerging" ? "discuss" : "monitor";
     out.push({
-      id: `screening-${domain}-${label.toLowerCase().replace(/\W+/g, "-")}`,
-      area: label,
+      id: `screening-${area.domain}`,
+      area: area.label,
       domain,
+      domainLabel: area.label,
       level,
       evidence: [
-        "Flagged in your latest Development Check",
+        "elev.growthTruth.watch.fromCheck",
         ...(b && b.band === "emerging" ? [`Daily practice signal in this domain is also still ${b.band}`] : []),
       ],
       plan: [

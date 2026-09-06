@@ -375,7 +375,8 @@ export default function SpeechCoachTab() {
                     >
                       {s.id.toUpperCase()}
                       {st && st.attempts > 0 && (
-                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : "var(--arbor-clay)" }}>{st.recentAccuracy}%</span>
+                        {/* KID-03/GP-20: a COUNT of tries, never an accuracy percentage. */}
+                        <span className="text-[11px] font-bold" style={{ color: on ? "#fff" : "var(--arbor-clay)" }}>{st.attempts}</span>
                       )}
                     </button>
                   );
@@ -635,9 +636,9 @@ export default function SpeechCoachTab() {
       <EarlyReadingTrack age={childProfile.age} first={first} onLog={savePracticeEvent} />
 
       {/* Sound Progress Tracking (feature 3) */}
-      <SectionCard title={t("prac.speech.progress.title", { name: first })} icon={<Icon name="trending_up" size={20} />} tone="lav"
+      <SectionCard title={t("prac.speech.progress.title", { name: first })} icon={<Icon name="insights" size={20} />} tone="lav"
         action={
-          <button onClick={() => askCoach(t("prac.speech.progress.coachPrompt", { name: first, age: ageLabel(childProfile, t), sound: sound.label, score: statForActive?.recentAccuracy ?? 0, level }))}
+          <button onClick={() => askCoach(t("prac.speech.progress.coachPrompt", { name: first, age: ageLabel(childProfile, t), sound: sound.label, tries: statForActive?.attempts ?? 0, level }))}
             className="inline-flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
             <Icon name="auto_awesome" size={14} /> {t("prac.speech.progress.coachCta")}
           </button>
@@ -650,24 +651,20 @@ export default function SpeechCoachTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {data.stats.map((s) => {
               const entry = SOUND_LIBRARY.find((x) => x.id === s.sound);
-              const trendIconName = s.trend === "up" ? "trending_up" : s.trend === "down" ? "trending_down" : "remove";
               return (
                 <div key={s.sound} className={`${cardCls} p-4 flex items-center gap-4`}>
                   <span className="text-xl font-extrabold w-10 text-center" style={{ color: "var(--arbor-lav-ink)" }}>{s.sound.toUpperCase()}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{entry?.label ?? s.sound}</p>
-                    {/* Clinical firewall: the fill is ONE accent at every value.
-                        It previously flipped clay/yellow at 70%, which made a
-                        practice score a chromatic verdict about the child on a
-                        parent surface. The number stays — the judgement goes. */}
-                    <div className="h-2 rounded-full mt-1.5" style={{ background: "rgba(41,51,63,0.08)" }}>
-                      <div className="h-2 rounded-full transition-all" style={{ width: `${s.recentAccuracy}%`, background: "var(--arbor-clay)" }} />
-                    </div>
+                    {/* Clinical firewall (KID-03/KID-04/GP-20): the row is a
+                        COUNT of tries and the ladder level reached. The accuracy
+                        percentage, its fill bar and the up/down trend glyph all
+                        graded the child on a parent surface — they are gone, not
+                        moved to a tooltip or an aria value. */}
                     <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>
-                      {t("prac.speech.progress.stat", { tries: s.attempts, accuracy: s.recentAccuracy, level: s.levelReached })}
+                      {t("prac.speech.progress.stat", { tries: s.attempts, level: s.levelReached })}
                     </p>
                   </div>
-                  <Icon name={trendIconName} size={16} className="flex-shrink-0" style={{ color: s.trend === "up" ? "var(--arbor-clay)" : s.trend === "down" ? "var(--arbor-pink-ink)" : "var(--arbor-muted)" }} />
                 </div>
               );
             })}

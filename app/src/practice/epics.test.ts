@@ -94,7 +94,7 @@ describe("watch signals (non-diagnostic guardrails)", () => {
   });
 
   it("carries screening flags with observable language only", () => {
-    const signals = watchSignals({ ...base, screeningWatchLabels: ["Social development"] });
+    const signals = watchSignals({ ...base, screeningWatchLabels: [{ domain: "social_development", label: "Social development" }] });
     expect(signals).toHaveLength(1);
     expect(signals[0].domain).toBe("social");
     expect(signals[0].level).toBe("monitor");

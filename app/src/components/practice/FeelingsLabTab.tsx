@@ -44,11 +44,10 @@ export default function FeelingsLabTab() {
 
   const emotionRounds = data.events.items.filter((e) => e.kind === "emotion-id" || e.kind === "emotion-why").length;
   const calmRounds = data.events.items.filter((e) => e.kind === "calm").length;
-  const emotionAccuracy = useMemo(() => {
-    const graded = data.events.items.filter((e) => e.kind === "emotion-id" && e.correct !== undefined);
-    if (graded.length === 0) return null;
-    return Math.round((graded.filter((e) => e.correct).length / graded.length) * 100);
-  }, [data.events.items]);
+  // KID-04/GP-20 clinical firewall: the middle tile used to be a "Recognition"
+  // PERCENTAGE derived from which emotions the child got right. A parent surface
+  // reports counts; a recognition rate is a graded verdict about the child.
+  const feelingsNamed = data.events.items.filter((e) => e.kind === "emotion-id").length;
 
   const record = (kind: PracticeEvent["kind"], correct?: boolean, meta?: string) => {
     const event: PracticeEvent = {
@@ -134,7 +133,7 @@ export default function FeelingsLabTab() {
 
       <div className="grid grid-cols-3 gap-3">
         <StatBubble tone="yellow" value={emotionRounds} label="Emotion rounds" />
-        <StatBubble tone="clay" value={emotionAccuracy === null ? "–" : `${emotionAccuracy}%`} label="Recognition" />
+        <StatBubble tone="clay" value={feelingsNamed} label={t("elev.practice.feelings.named")} />
         <StatBubble tone="sky" value={calmRounds} label="Calm practices" />
       </div>
 
