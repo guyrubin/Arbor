@@ -11,6 +11,7 @@
  * "missed" state. A day with no play is simply the invitation.
  */
 import type { PracticeEventKind } from "../../types";
+import { dayKey } from "../../practice/signals";
 
 /** The minimal ledger shape the greeting reads (a structural subset of
  *  usePracticeData, so the helper stays node-testable). */
@@ -55,7 +56,12 @@ export function dayBefore(today: string): string {
  */
 export function lastPlayedWorldYesterday(ledgers: GreetingLedgers, today: string): GreetingWorldId | null {
   const yesterday = dayBefore(today);
-  const onDay = (ts: string) => ts.slice(0, 10) === yesterday;
+  // OBJ-KID-01: the ledger stores ISO-UTC timestamps; the day a child EXPERIENCED
+  // a game is its LOCAL day. Comparing `ts.slice(0,10)` (UTC) against a local
+  // dayKey made tonight's play read as "yesterday" between local and UTC midnight
+  // (2 h CEST / 3 h IL summer). Derive the key locally, from the same helper the
+  // rest of the practice lane uses (practice/signals.ts dayKey).
+  const onDay = (ts: string) => dayKey(new Date(ts)) === yesterday;
   const candidates: { ts: string; world: GreetingWorldId }[] = [];
   for (const s of ledgers.speech) if (onDay(s.timestamp)) candidates.push({ ts: s.timestamp, world: "sound-lab" });
   for (const m of ledgers.mimic) if (onDay(m.timestamp)) candidates.push({ ts: m.timestamp, world: "mimic-studio" });

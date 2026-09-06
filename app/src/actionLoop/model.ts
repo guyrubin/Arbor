@@ -1,3 +1,5 @@
+import { dayKey } from "../practice/signals";
+
 export type ActionCapacity = "tiny" | "standard" | "roomy";
 export type ActionOutcome = "helped" | "somewhat" | "not_today";
 
@@ -20,8 +22,13 @@ export interface ActionLoopEntry {
 
 export const capacityMinutes: Record<ActionCapacity, number> = { tiny: 2, standard: 5, roomy: 10 };
 
+/** The one accepted-step id for a child's LOCAL calendar day. OBJ-TODAY-03: the
+ *  id used to derive from `toISOString()` (UTC) while Today's greeting and
+ *  `dayPartFor` read the local hour — so between local and UTC midnight an
+ *  accepted step belonged to "yesterday" and the carry-over strip never
+ *  rendered. Same local key helper as the practice lane (practice/signals.ts). */
 export function todayActionId(childId: string, at = new Date()): string {
-  return `today.${childId}.${at.toISOString().slice(0, 10)}`;
+  return `today.${childId}.${dayKey(at)}`;
 }
 
 export function sortActionLoop(items: ActionLoopEntry[]): ActionLoopEntry[] {
