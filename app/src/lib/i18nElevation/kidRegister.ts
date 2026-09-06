@@ -113,6 +113,10 @@ export const he: Record<string, string> = {
   "elev.kid.greeting.ready": "Ready for today's adventure?", // GD-6
   "elev.kid.greeting.playedYesterday": "You played {world} yesterday", // GD-6
   "elev.kid.crash.title": "Oops — let's go back to the map", // GD-6
+
+  // ── Builder B (object backlog wave 1) — parent-register counts that replaced
+  //    a percentage or an unearned-badge wall on a parent door.
+  "elev.practice.feelings.named": "Feelings named",
   "elev.kid.crash.home": "Home", // GD-6
 
   "elev.play.arcade.allWorlds": "All worlds", // GD-6
@@ -191,3 +195,6 @@ export const he: Record<string, string> = {
   "elev.practice.journey.missionsDone": "משימות שהושלמו",
   "elev.practice.journey.earned": "הושג",
 };
+
+  // ── Builder B (object backlog wave 1)
+  "elev.practice.feelings.named": "רגשות שזוהו",
