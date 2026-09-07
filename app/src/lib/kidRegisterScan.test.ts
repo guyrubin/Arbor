@@ -103,9 +103,6 @@ const FROZEN: Partial<Record<string, Partial<Record<RuleId, { count: number; rea
   "components/kidmode/KidDashboard.tsx": {
     adultWords: { count: 2, reason: "the same two hold-to-exit labels, rendered in the kid home header" },
   },
-  "components/practice/SpeechCoachTab.tsx": {
-    adultWords: { count: 1, reason: "OBJ-KID-03 Speech half (prac.speech.micError 'score it yourself below') — another builder's file in this wave" },
-  },
   "components/practice/MimicMatch.tsx": {
     adultWords: { count: 4, reason: "OBJ-KID-03 Face Match half (prac.mimic.face.sub/privacy/warming/unavailable) — another builder's file in this wave" },
   },

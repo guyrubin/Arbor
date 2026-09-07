@@ -216,7 +216,10 @@ export default function SpeechCoachTab() {
         recog.start();
       }
     } catch {
-      setMicError(t("prac.speech.micError"));
+      // OBJ-KID-03 (law 2): the parent's line ("…practice out loud and score it
+      // yourself below") named a control that only exists on the parent branch,
+      // and used the grown-up's word for it. The child gets a kid line.
+      setMicError(t(kidMode ? "elev.play.soundlab.micOff" : "prac.speech.micError"));
       setRecState("idle");
     }
   };
