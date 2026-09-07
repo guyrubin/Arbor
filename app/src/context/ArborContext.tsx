@@ -18,7 +18,7 @@ import {
   InsightRecord,
 } from "../types";
 import { useToastOptional } from "./ToastContext";
-import { validateLogDraft, momentLogFields, isIncidentType } from "../content/behaviorTaxonomy";
+import { validateLogDraft, momentLogFields, isIncidentType, MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
 import type { ScoredActivity } from "../playbank/select";
 import { ROUTE_IDS, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
 import {
@@ -1147,7 +1147,17 @@ function useArborState() {
       id: existing ? existing.id : `log-${Date.now()}`,
       timestamp: existing ? existing.timestamp : new Date().toISOString(),
       behaviorType: newLogType,
-      intensity: newLogIntensity,
+      // OBJ-BEH-03: a Moment is "she said butterfly for the first time" — it
+      // has no severity to grade, and the form never asks for one. The
+      // newLogIntensity default (3) was written regardless, so a joyful
+      // capture was stored as a mid-intensity incident, drew a 3/5 meter and
+      // answered the "intensity 3" filter. It now takes the SAME neutral
+      // `momentLogFields` already writes on the addMoment path (1 — outside
+      // the friction rhythm, which counts intensity >= 4), so both capture
+      // routes agree; Behaviors excludes non-incident types from the
+      // intensity filter and renders no meter or level for them, so nothing
+      // intensity-shaped reaches the parent for a moment.
+      intensity: newLogType === MOMENT_BEHAVIOR_TYPE ? momentLogFields("").intensity : newLogIntensity,
       durationMinutes: newLogDuration,
       trigger: newLogTrigger,
       // A moment carries a response only if the parent actually wrote one.
@@ -1161,7 +1171,7 @@ function useArborState() {
 
     void logsCol.upsert(logItem);
     if (!existing) {
-      track("log_created", { type: newLogType, intensity: newLogIntensity, context: newLogContext });
+      track("log_created", { type: newLogType, intensity: logItem.intensity, context: newLogContext });
       // ENG-22: closes started → saved. An edit is not a capture, so only a
       // genuinely new row counts.
       trackCaptureSaved("log");

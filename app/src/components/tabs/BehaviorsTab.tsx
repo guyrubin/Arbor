@@ -159,6 +159,17 @@ export default function BehaviorsTab() {
     optional: t("beh.capture.optional"),
   };
 
+  /* OBJ-BEH-02: the validation toast named fields this form does not show.
+     "Fill in \"What triggered this?\" and \"What was your response?\"" quotes
+     the OLD labels; the form asks captureCopy.happened and captureCopy.tried.
+     A parent was told to fill in something not on the screen. The toast is now
+     built FROM the two label keys the form renders, so the two can never drift
+     apart again. validateLogDraft still owns the rule. */
+  const validationToast = (invalid: "beh.toast.fillTrigger" | "beh.toast.fillBoth"): string =>
+    invalid === "beh.toast.fillBoth"
+      ? t("elev.closeloop.validate.both", { happened: captureCopy.happened, tried: captureCopy.tried })
+      : t("elev.closeloop.validate.one", { happened: captureCopy.happened });
+
   // TJB-12: the writing prompt the parent tapped in the Journal before coming
   // here. Display only — it is never merged into the draft (the answer belongs
   // in the log, the question does not).
@@ -421,7 +432,10 @@ export default function BehaviorsTab() {
     const q = search.trim().toLowerCase();
     return behaviorLogs.filter((l) => {
       if (typeFilter !== "all" && l.behaviorType !== typeFilter) return false;
-      if (intensityFilter !== "all" && l.intensity !== Number(intensityFilter)) return false;
+      // OBJ-BEH-03: a Moment carries no graded intensity, so it can never
+      // satisfy a specific level — filtering by one excludes it BY TYPE
+      // rather than by whatever neutral value happens to be stored.
+      if (intensityFilter !== "all" && (!isIncidentType(l.behaviorType) || l.intensity !== Number(intensityFilter))) return false;
       if (resolvedFilter === "resolved" && !l.resolved) return false;
       if (resolvedFilter === "open" && l.resolved) return false;
       if (q && !(`${l.behaviorType} ${l.trigger} ${l.response} ${l.notes || ""}`.toLowerCase().includes(q))) return false;
@@ -520,7 +534,7 @@ export default function BehaviorsTab() {
     // incident types only; a plain Moment saves on "what happened" alone.
     const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
     if (invalid) {
-      toast(t(invalid), "error");
+      toast(validationToast(invalid), "error");
       return;
     }
     // TODAY-3: while the gate is armed (voice-originated or a Today/Journal
@@ -553,7 +567,7 @@ export default function BehaviorsTab() {
     const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
     if (invalid) {
       e.preventDefault();
-      toast(t(invalid), "error");
+      toast(validationToast(invalid), "error");
       return;
     }
     const wasEditing = !!editingLogId;
@@ -962,7 +976,7 @@ export default function BehaviorsTab() {
                                       <span className="truncate">{log.context ? `${log.context} · ` : ""}{new Date(log.timestamp).toLocaleString()}</span>
                                     </div>
                                   </div>
-                                  <span className="hidden min-[520px]:inline-flex"><IntensityMeter intensity={log.intensity} tone={tv.tone} /></span>
+                                  {isIncidentType(log.behaviorType) && <span className="hidden min-[520px]:inline-flex"><IntensityMeter intensity={log.intensity} tone={tv.tone} /></span>}
                                   {/* Status icon — resolved (mint check_circle) / open (amber pending) */}
                                   {log.resolved
                                     ? <Icon name="check_circle" size={20} fill={1} style={{ color: "var(--arbor-green-ink)" }} aria-label={t("beh.resolved")} />
@@ -980,7 +994,7 @@ export default function BehaviorsTab() {
                                           <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: tonePal.soft, color: tonePal.ink }}>{t(domainKeyOf(log.behaviorType))}</span>
                                           {log.context && <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: T.paperElevated, color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>{log.context}</span>}
                                           <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10px]" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>{log.durationMinutes}m</span>
-                                          <span className="inline-flex items-center px-2.5 py-1 rounded-full font-extrabold text-[10px]" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>{t("beh.level", { n: log.intensity })}</span>
+                                          {isIncidentType(log.behaviorType) && <span className="inline-flex items-center px-2.5 py-1 rounded-full font-extrabold text-[10px]" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>{t("beh.level", { n: log.intensity })}</span>}
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>

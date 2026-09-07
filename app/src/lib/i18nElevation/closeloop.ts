@@ -91,6 +91,12 @@ export const en: Record<string, string> = {
   "elev.closeloop.routines.newName": "New routine name…",
   "elev.closeloop.routines.addStep": "Add a step…",
   "elev.closeloop.routines.stepsDone": "{done} of {total} done",
+
+  // ── Builder E2 · OBJ-BEH-02: the capture form's validation toast, built from
+  //    the labels the form actually renders (beh.capture.happened / .tried) so
+  //    it can never again name a field that is not on the screen.
+  "elev.closeloop.validate.one": "Add “{happened}” to save this.",
+  "elev.closeloop.validate.both": "Add “{happened}” and “{tried}” to save this.",
 };
 
 export const he: Record<string, string> = {
@@ -144,4 +150,8 @@ export const he: Record<string, string> = {
   "elev.closeloop.routines.newName": "שם השגרה החדשה…",
   "elev.closeloop.routines.addStep": "להוסיף צעד…",
   "elev.closeloop.routines.stepsDone": "{done} מתוך {total} הושלמו",
+
+  // ── Builder E2 · OBJ-BEH-02
+  "elev.closeloop.validate.one": "מלאו את “{happened}” כדי לשמור.",
+  "elev.closeloop.validate.both": "מלאו את “{happened}” וגם את “{tried}” כדי לשמור.",
 };
