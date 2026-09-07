@@ -14,7 +14,7 @@ export default function AiRail() {
   return (
     <aside
       className="hidden 2xl:flex flex-col gap-5 p-5 h-screen sticky top-0 overflow-y-auto z-20 w-full bg-white"
-      style={{ borderLeft: "1px solid var(--arbor-rule)" }}
+      style={{ borderInlineStart: "1px solid var(--arbor-rule)" }}
     >
       <div className="flex items-center justify-between pb-4" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
         <div className="flex items-center gap-2.5">
@@ -28,7 +28,7 @@ export default function AiRail() {
         </div>
         {/* VIS-2: icon-only → min 44×44 hit area */}
         <button onClick={() => setShowAiRail(false)} title={t("aria.hidePanel")} aria-label={t("aria.hidePanel")} className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition" style={{ color: "var(--arbor-muted)" }}>
-          <Icon name="chevron_right" size={18} />
+          <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
         </button>
       </div>
 
@@ -55,7 +55,7 @@ export default function AiRail() {
           {t("airail.privacy.body")}
         </p>
         <button onClick={() => setActiveTab("memory")} className="inline-flex items-center gap-1 text-[12px] font-bold mt-2.5" style={{ color: "var(--arbor-green-ink)" }}>
-          {t("airail.seeMemory")} <Icon name="arrow_forward" size={16} />
+          {t("airail.seeMemory")} <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
         </button>
       </div>
 
