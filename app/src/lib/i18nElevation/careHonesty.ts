@@ -43,6 +43,7 @@ export const en: Record<string, string> = {
   "elev.charter.remove": "Remove {value}",
   "elev.carehonesty.pro.verified": "Verified by Arbor",
   "elev.learnCare.receipt.clientDocs": "Records removed from this device",
+  "elev.learnCare.saved.browse": "Browse picks for {name}",
   // ── Builder G · item 8 — the consult PACKET's own scaffold ────────────────
   // serializePacket used to hardcode English headings, so a gan teacher opened
   // a Hebrew family's packet and read an English skeleton.
@@ -134,6 +135,7 @@ export const he: Record<string, string> = {
   "elev.charter.remove": "הסרת {value}",
   "elev.carehonesty.pro.verified": "מאומת על ידי ארבור",
   "elev.learnCare.receipt.clientDocs": "רשומות שנמחקו מהמכשיר הזה",
+  "elev.learnCare.saved.browse": "לעיין בהמלצות עבור {name}",
   // ── Builder G · item 8 — the consult PACKET's own scaffold ────────────────
   "elev.packet.header": "{name} — הקשר לשיחה שלנו",
   "elev.packet.prepared": "הוכן ב-{date} דרך ארבור. ההורים בחרו מה נכלל; זהו תיאור, לא הערכה מקצועית.",

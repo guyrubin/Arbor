@@ -234,29 +234,14 @@ export default function Masterclasses() {
         </div>
       </div>
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
-      <section aria-label={he ? "בחרו חוויה" : "Choose an Academy experience"} className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="relative overflow-hidden border-y p-5 sm:col-span-2 lg:col-span-1" style={{ borderColor: "var(--arbor-rule)" }}>
-          <IconBadge tone="sky" size={42}><Icon name="school" size={22} fill={1} /></IconBadge>
-          <p className="mt-4 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-sky-ink)" }}>{he ? "בשבילכם" : "For parents"}</p>
-          <h2 className="mt-1 text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "ללמוד ולהרגיש בטוחים יותר" : "Learn and feel more confident"}</h2>
-          <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{he ? "שיעורים קצרים, תסריטים וכלים לרגעים אמיתיים." : "Short lessons, exact scripts, and tools for real moments."}</p>
-          <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold" style={{ color: "var(--arbor-sky-ink)" }}><Icon name="arrow_downward" size={15} /> {he ? "המשיכו לשיעורים" : "Continue to lessons"}</span>
-        </div>
-        <button type="button" onClick={() => setActiveTab("journey")} className={`${cardCls} min-w-0 p-5 text-start transition motion-safe:hover:-translate-y-0.5`} style={{ background: "linear-gradient(135deg, var(--arbor-lav-soft), var(--arbor-paper-elevated))" }}>
-          <IconBadge tone="lav" size={42}><Icon name="auto_stories" size={22} fill={1} /></IconBadge>
-          <p className="mt-4 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-lav-ink)" }}>{he ? `ביחד עם ${childName}` : `Together with ${childName}`}</p>
-          <h2 className="mt-1 text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "מסעות וסיפורים" : "Story journeys"}</h2>
-          <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{he ? "חוויה משותפת שבה הילד הוא הגיבור." : "Shared adventures where your child becomes the hero."}</p>
-          <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>{he ? "פתחו מסעות" : "Open journeys"} <Icon name={he ? "arrow_back" : "arrow_forward"} size={15} /></span>
-        </button>
-        <button type="button" onClick={() => setActiveTab("comics")} className={`${cardCls} min-w-0 p-5 text-start transition motion-safe:hover:-translate-y-0.5`} style={{ background: "linear-gradient(135deg, var(--arbor-yellow-soft), var(--arbor-paper-elevated))" }}>
-          <IconBadge tone="yellow" size={42}><Icon name="comic_bubble" size={22} fill={1} /></IconBadge>
-          <p className="mt-4 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-yellow-ink)" }}>{he ? "נוצר במיוחד עבורכם" : "Made for your family"}</p>
-          <h2 className="mt-1 text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "ספריית הקומיקס" : "Comic library"}</h2>
-          <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{he ? "סיפורים אישיים לשמירה ולקריאה חוזרת." : "Personalized stories to save and revisit together."}</p>
-          <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold" style={{ color: "var(--arbor-yellow-ink)" }}>{he ? "פתחו את הספרייה" : "Open library"} <Icon name={he ? "arrow_back" : "arrow_forward"} size={15} /></span>
-        </button>
-      </section>
+      {/* LC-05 / RUN-11 — the two kid-register doors that stood here ("Story
+          journeys" → #/journey, "Comic library" → #/comics) are DELETED. This
+          is the parent-learning hub: a comic shelf and a hero-story catalogue
+          are the child's register (law 2), and they pushed the first actual
+          course to 3,300 px behind three modules that were not courses. Both
+          destinations remain reachable from the Stories hub, which is their
+          home — no capability is lost (law 6). The surviving third tile said
+          only "continue to lessons", which is what the page already does. */}
 
       <header className="border-b px-1 pb-4" style={{ borderColor: "var(--arbor-rule)" }}>
         <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>{t("sec.master.eyebrow")}</p>

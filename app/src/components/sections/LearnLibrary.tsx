@@ -22,7 +22,9 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDevScore } from "../../hooks/useDevScore";
 import { useArborVoice } from "../../hooks/useArborVoice";
-import { ageYearsFromProfile } from "../../lib/childAge";
+import { ageMonthsFromProfile, ageYearsFromProfile } from "../../lib/childAge";
+import { filterByAge, loadShowAllAges, saveShowAllAges, windowFromYears } from "../../lib/ageFilter";
+import { agefilterText } from "../../lib/i18nElevation/agefilter";
 import { track } from "../../lib/analytics";
 import { concernsForBehaviors } from "../../content/selectCards";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
@@ -123,22 +125,73 @@ export default function LearnLibrary() {
 
   const ranked = useMemo(() => rankLearnCards(LEARN_CARDS, signals), [signals]);
 
+  // OBJ-LEARN-01 — the surface contract says the shelf is age-banded, and it
+  // was not: 93 cards, 0–1 bands included, in one 23,000 px column for a
+  // five-year-old. This is the SAME mechanism Masterclasses already uses
+  // (lib/ageFilter `filterByAge` + `windowFromYears`, the per-surface
+  // "Show all ages" preference, and the "N hidden by age" toggle) — ported,
+  // not reinvented, so both shelves behave identically. LearnCard states its
+  // band in YEARS, which is exactly what `windowFromYears` takes.
+  const [showAllAges, setShowAllAges] = useState<boolean>(() => loadShowAllAges("learn"));
+  const childMonths = ageMonthsFromProfile(childProfile);
+  const { visible: ageVisible, hidden: ageHidden } = useMemo(
+    () => filterByAge(ranked, (c) => windowFromYears(c.ageMin, c.ageMax), childMonths),
+    [ranked, childMonths]
+  );
+  const toggleShowAllAges = () => {
+    setShowAllAges((prev) => {
+      const next = !prev;
+      saveShowAllAges("learn", next);
+      try { track("agefilter_toggle", { surface: "learn", showAll: next }); } catch { /* noop */ }
+      return next;
+    });
+  };
+  const inScope = showAllAges ? ranked : ageVisible;
+
   const visible = useMemo(() => {
-    let list = ranked;
+    let list = inScope;
     if (filter === "saved") list = list.filter((c) => savedLearnIds.includes(c.id));
     else if (filter !== "all") list = list.filter((c) => c.category === filter);
     return searchLearnCards(list, query, he);
-  }, [ranked, filter, query, he, savedLearnIds]);
+  }, [inScope, filter, query, he, savedLearnIds]);
 
-  const featured = ranked.slice(0, 2);
+  const featured = inScope.slice(0, 2);
   const browsing = filter === "all" && query.trim() === "";
   // The featured rail already shows these two; don't repeat them in the grid.
   const gridCards = browsing ? visible.filter((c) => !featured.some((f) => f.id === c.id)) : visible;
 
+  // OBJ-LEARN-02 — a read used to open in place: focus stayed on the card the
+  // parent had just left, and the browser Back button left the library
+  // entirely. The reader now pushes ONE history entry carrying the card id, so
+  // Back closes the read and returns to the shelf. The entry keeps the CURRENT
+  // hash on purpose: ArborContext owns `#/<tab>` and rewrites anything else, so
+  // a `#/learn/<cardId>` hash would be fought back within a tick. The card id
+  // rides in history state instead, and only `popstate` (never `hashchange`)
+  // drives this, so the two mechanisms never collide.
   const openCard = (id: string) => {
     setOpenId(id);
     markRead(id);
+    try {
+      window.history.pushState({ ...(window.history.state ?? {}), arborLearnCard: id }, "", window.location.href);
+    } catch { /* history unavailable — the reader still opens */ }
     try { track("learn_open_card", { card: id }); } catch { /* noop */ }
+  };
+
+  useEffect(() => {
+    const onPop = () => {
+      const state = (window.history.state ?? {}) as { arborLearnCard?: string };
+      setOpenId(state.arborLearnCard && learnCardById(state.arborLearnCard) ? state.arborLearnCard : null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  /** Closing from inside the reader must retire the history entry it pushed,
+   *  or Back would re-open the read the parent just closed. */
+  const closeCard = () => {
+    setOpenId(null);
+    const state = (window.history.state ?? {}) as { arborLearnCard?: string };
+    if (state.arborLearnCard) { try { window.history.back(); } catch { /* noop */ } }
   };
 
   // A count of what the PARENT read. Intersected with the catalogue so a read
@@ -163,7 +216,7 @@ export default function LearnLibrary() {
         he={he}
         isRtl={isRtl}
         saved={savedLearnIds.includes(open.id)}
-        onBack={() => setOpenId(null)}
+        onBack={closeCard}
         onToggleSave={() => toggleSavedLearn(open.id)}
         onAsk={() => seedCoach({ prompt: askPrompt, source: "learn-library" })}
         pulse={feedback[open.id]}
@@ -303,9 +356,39 @@ export default function LearnLibrary() {
               <h2 className="text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
                 {t("learn.allReads")}
               </h2>
-              <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                {t("learn.count", { n: LEARN_CARDS.length })}
-                {readCount > 0 && ` · ${t("elev.learnCare.read.count", { n: readCount })}`}
+              <span className="inline-flex items-center gap-2">
+                <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  {t("learn.count", { n: inScope.length })}
+                  {readCount > 0 && ` · ${t("elev.learnCare.read.count", { n: readCount })}`}
+                </span>
+                {/* OBJ-LEARN-01 — the Masterclasses toggle, verbatim: rendered
+                    only when the age view actually hides something (or the
+                    parent already opted in), so every card stays reachable. */}
+                {(ageHidden.length > 0 || showAllAges) && (
+                  <>
+                    {!showAllAges && ageHidden.length > 0 && (
+                      <span className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }} dir="auto">
+                        {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={showAllAges}
+                      onClick={toggleShowAllAges}
+                      data-testid="agefilter-toggle-learn"
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 min-h-11 text-[11.5px] font-extrabold transition"
+                      style={
+                        showAllAges
+                          ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 25%, transparent)" }
+                          : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+                      }
+                    >
+                      <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
+                      {agefilterText("elev.agefilter.showAll", he)}
+                    </button>
+                  </>
+                )}
               </span>
             </div>
           )}
@@ -334,7 +417,11 @@ export default function LearnLibrary() {
               : t("learn.emptySearch", { q: query.trim() })
           }
           action={
-            filter === "saved" ? undefined : { label: t("learn.clearSearch"), onClick: () => setQuery("") }
+            // LC-33: the saved shelf's empty state was a dead end — the one
+            // state a parent reaches by tapping "Saved" before saving anything.
+            filter === "saved"
+              ? { label: t("elev.learnCare.saved.browse", { name: firstName }), onClick: () => { setFilter("all"); setQuery(""); } }
+              : { label: t("learn.clearSearch"), onClick: () => setQuery("") }
           }
         />
       )}
@@ -568,6 +655,9 @@ function LearnReader({
     } catch { /* noop */ }
   };
 
+  const headingRef = React.useRef<HTMLHeadingElement | null>(null);
+  useEffect(() => { headingRef.current?.focus(); }, [card.id]);
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 12 }}
@@ -612,8 +702,14 @@ function LearnReader({
             </span>
           </div>
         </div>
+        {/* OBJ-LEARN-02: focus moves here on open, so a screen reader announces
+            the read instead of leaving the cursor on the shelf behind it. It is
+            an h2, not an h1 — the page's one h1 belongs to the hub (CR-21). */}
         <h2
-          className="text-xl md:text-[1.55rem] leading-tight tracking-tight"
+          ref={headingRef}
+          tabIndex={-1}
+          data-testid="learn-reader-heading"
+          className="text-xl md:text-[1.55rem] leading-tight tracking-tight focus:outline-none"
           dir="auto"
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >
@@ -704,7 +800,7 @@ function LearnReader({
               >
                 {i + 1}
               </span>
-              <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
+              <p className="t-base leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
                 {pick(he, point)}
               </p>
             </li>
@@ -721,7 +817,7 @@ function LearnReader({
           {pick(he, card.body)
             .split("\n\n")
             .map((para, i) => (
-              <p key={i} className="text-[14.5px] leading-relaxed max-w-[72ch]" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
+              <p key={i} className="t-base leading-relaxed max-w-[72ch]" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
                 {para}
               </p>
             ))}
@@ -740,7 +836,7 @@ function LearnReader({
             {t("learn.tryToday")}
           </h3>
         </div>
-        <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+        <p className="t-base leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
           {pick(he, card.tryToday)}
         </p>
         {/* LL-A6 — one tap into the Today action loop, honest provenance */}

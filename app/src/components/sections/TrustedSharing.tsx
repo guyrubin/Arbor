@@ -57,6 +57,10 @@ export default function TrustedSharing() {
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // OBJ-LEARN-02: the wizard opened inline with focus still on the button that
+  // opened it, so a keyboard or screen-reader user had to hunt for the form
+  // they had just asked for. Focus moves to its first control instead.
+  const recipientRef = React.useRef<HTMLInputElement | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [draft, setDraft] = useState({ recipientEmail: "", role: "co_parent" as ShareRole, scopes: [] as ShareScopeId[], duration: DURATIONS[0] as string });
   // LC-17: after a grant is created there is no server email — the recipient
@@ -129,6 +133,7 @@ export default function TrustedSharing() {
   }, [childProfile.id]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (adding) recipientRef.current?.focus(); }, [adding]);
 
   // CARE-6 + CARE-8: the roster shows only live grants; revoked/expired grants
   // move to the persistent "Sharing history" card — the grant records
@@ -338,7 +343,7 @@ export default function TrustedSharing() {
             <button onClick={() => { setAdding(false); setReviewing(false); }} aria-label={t("aria.cancel")} className="inline-flex items-center justify-center min-h-11 min-w-11"><Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} /></button>
           </div>
           {!reviewing && <>
-          <input value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder={t("sec.sharing.form.emailPlaceholder")} type="email" inputMode="email" autoComplete="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+          <input ref={recipientRef} value={draft.recipientEmail} onChange={(e) => setDraft({ ...draft, recipientEmail: e.target.value })} placeholder={t("sec.sharing.form.emailPlaceholder")} aria-label={t("sec.sharing.form.emailPlaceholder")} type="email" inputMode="email" autoComplete="email" className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
           <div>
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.role")}</p>
             <div className="flex flex-wrap gap-1.5">
