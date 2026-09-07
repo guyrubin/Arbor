@@ -8,9 +8,20 @@
  * re-implementing them.
  *
  * The bar for that extraction is ZERO visual regression, so this file freezes
- * the markup the component shipped BEFORE the extraction. The snapshot was
- * generated against the pre-extraction source; if moving a block into a shared
- * primitive changes one class, one attribute or one text node, this fails.
+ * the markup the component ships; if moving a block into a shared primitive
+ * changes one class, one attribute or one text node, this fails.
+ *
+ * Re-pinned once, deliberately, after three source changes that the snapshot
+ * exists to make visible and that were each reviewed here:
+ *   OBJ-TODAY-01  the TrustLink chip is an OUTLINE, not a `--arbor-*-soft`
+ *                 wash (every soft token is a gradient, so the filled chip
+ *                 read as a second gradient CTA);
+ *   OBJ-TODAY-04  that chip carries `touch-target` for the 44 px floor;
+ *   OBJ-ASK/M     `isolate()` wraps Latin runs inside Hebrew copy in
+ *                 FSI/PDI so a name cannot flip the sentence direction.
+ * No text node was lost, no frame was unwrapped and no verdict word entered;
+ * the two matchers at the end of the negative-control block pin exactly those
+ * three properties so the re-pin cannot silently absorb a fourth change.
  *
  * The explicit assertions below the snapshot are the negative controls: each
  * one names a structural property the extraction could plausibly break, and
@@ -131,6 +142,28 @@ describe("AI-17 negative controls — the structural matchers reject a regressed
     expect(html).toContain("border:1px solid var(--arbor-rule-strong)");
     const mutant = html.split("var(--arbor-rule-strong)").join("var(--arbor-rule)");
     expect(mutant).not.toContain("var(--arbor-rule-strong)");
+  });
+
+  it("the trust chip stays an OUTLINE — a soft (gradient) wash is rejected", () => {
+    expect(html).toContain('data-testid="trust-link"');
+    expect(html).toContain("background:var(--arbor-paper-elevated);border:1px solid var(--arbor-rule)");
+    expect(html).toContain("touch-target relative !inline-flex");
+    // The chip must not carry the gradient wash it shipped with before OBJ-TODAY-01.
+    expect(html).not.toContain("var(--arbor-lav-soft)");
+    // Mutant: the pre-fix filled chip is what this matcher has to reject.
+    const mutant = html
+      .split("background:var(--arbor-paper-elevated);border:1px solid var(--arbor-rule)")
+      .join("background:var(--arbor-lav-soft)");
+    expect(mutant).toContain("var(--arbor-lav-soft)");
+    expect(mutant).not.toContain("background:var(--arbor-paper-elevated);border:1px solid var(--arbor-rule)");
+  });
+
+  it("Hebrew copy isolates a Latin lens name in FSI/PDI", () => {
+    const he = render({ lang: "he", council, lens: "Bowlby's Attachment Model" });
+    expect(he).toContain("⁨Bowlby&#x27;s Attachment Model⁩");
+    // Mutant: the unisolated name is what the bidi fix removed.
+    const mutant = he.split("⁨Bowlby&#x27;s Attachment Model⁩").join("Bowlby&#x27;s Attachment Model");
+    expect(mutant).not.toContain("⁨Bowlby&#x27;s Attachment Model⁩");
   });
 
   it("an action row that lost the accent keep button is rejected", () => {
