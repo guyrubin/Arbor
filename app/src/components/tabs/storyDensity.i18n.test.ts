@@ -99,7 +99,9 @@ describe("TJB-23 · EN and HE land together", () => {
     }
     // Both call sites choose the branch by the count.
     expect(STORY).toMatch(/story\.factCount === 1 \? "one" : "many"/);
-    expect(STORY).toMatch(/pendingMemoryItems\.length === 1 \? "one" : "many"/);
+    // OBJ-JOURNAL-05 moved the queue onto the SCRUBBED list; the branch
+    // rule is the same, on the list the parent actually sees.
+    expect(STORY).toMatch(/memoryQueue\.length === 1 \? "one" : "many"/);
   });
 
   it("no elev.childsignals string leaks an unresolved token", () => {

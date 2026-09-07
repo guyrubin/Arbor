@@ -16,6 +16,11 @@ import { MemoryRow } from "../sections/ChildMemory";
 import ScreeningSheet from "../sections/ScreeningSheet";
 import { composeChildStory, childStoryToText } from "../../lib/childStory";
 import { isolate } from "../../lib/i18n";
+// OBJ-JOURNAL-05 (render half): the shared parent-words scrub. Pure and
+// deterministic — its only dependency is lib/clinicalScan, no node builtins,
+// no network — so the client can run the SAME rule the egress runs rather
+// than trusting that the prompt held.
+import { scrubMemoryProposals } from "../../server/parentWordsScrub";
 import { track } from "../../lib/analytics";
 
 /** Per-kind Material Symbols ligature — mirrors JournalTab's domain glyphs so the
@@ -272,6 +277,17 @@ export default function StoryTimelineTab() {
     };
   }, [signals, momentum.planSteps.done, momentum.planSteps.total, checkedMilestones, totalMilestones]);
 
+  /* OBJ-JOURNAL-05 — the memory queue proposed "Dylan experiences severe
+     transition anxiety, which manifest as refusal": a severity adjective and a
+     clinical noun, printed to a parent as a fact to approve. The prompt asks
+     for plain words and the egress enforces them (server/parentWordsScrub);
+     this is the same rule applied where it renders, so a proposal that
+     predates the prompt change — or arrives from anywhere else — still cannot
+     reach the parent in an assessment register. A fact that does not survive
+     is DROPPED, never softened: a parent is not asked to approve a sentence
+     Arbor cannot state in their words. */
+  const memoryQueue = useMemo(() => scrubMemoryProposals(pendingMemoryItems), [pendingMemoryItems]);
+
   const shown = filter === "all" ? signals : signals.filter((s) => s.kind === filter);
   // JRNL-3: day-group labels localize via Intl; "Ongoing" comes from i18n.
   const groups = useMemo(
@@ -433,14 +449,14 @@ export default function StoryTimelineTab() {
           there are pending facts. Reuses MemoryRow verbatim — single source of
           truth with the full ChildMemory page (deep-link "manage all" survives).
           Reads + writes the memory moat: provenance chips are preserved. */}
-      {pendingMemoryItems.length > 0 && (
+      {memoryQueue.length > 0 && (
         <SectionCard
-          title={tt(`elev.childsignals.story.memory.title.${pendingMemoryItems.length === 1 ? "one" : "many"}`, { count: pendingMemoryItems.length })}
+          title={tt(`elev.childsignals.story.memory.title.${memoryQueue.length === 1 ? "one" : "many"}`, { count: memoryQueue.length })}
           icon={<Icon name="verified_user" size={20} fill={1} />}
           tone="yellow"
         >
           <div className="space-y-3">
-            {pendingMemoryItems.slice(0, 3).map((m) => (
+            {memoryQueue.slice(0, 3).map((m) => (
               <MemoryRow
                 key={m.memoryId}
                 m={m}
@@ -450,13 +466,13 @@ export default function StoryTimelineTab() {
               />
             ))}
           </div>
-          {pendingMemoryItems.length > 3 && (
+          {memoryQueue.length > 3 && (
             <button
               onClick={() => setActiveTab("memory")}
               className="mt-3 text-xs font-bold"
               style={{ color: "var(--arbor-green-ink)" }}
             >
-              {tt("elev.childsignals.story.memory.all", { count: pendingMemoryItems.length })}
+              {tt("elev.childsignals.story.memory.all", { count: memoryQueue.length })}
             </button>
           )}
         </SectionCard>
