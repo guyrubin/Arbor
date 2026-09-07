@@ -116,6 +116,7 @@ if (leaves.size < 40) {
 }
 
 const staleExemptions = [];
+const measured = new Map();
 for (const [route, file] of leaves) {
   if (!fs.existsSync(file)) {
     failures.push(`Surface-contract rule: leaf file missing for route "${route}": ${path.relative(appRoot, file)}`);
@@ -135,6 +136,11 @@ for (const [route, file] of leaves) {
   if (moves !== 1) {
     failures.push(`Surface-contract rule: route "${route}" (${path.relative(appRoot, file)}) has ${moves} data-primary-move stamps, expected exactly 1`);
   }
+  // R25: a demoted module carries BOTH `data-module` and `data-module-demoted`,
+  // so the top-level count — what moduleBudget actually caps — is the difference.
+  const demoted = (source.match(/\bdata-module-demoted\b/g) || []).length;
+  const disclosures = (source.match(/\bdata-module-disclosure=/g) || []).length;
+  measured.set(route, { file, modules, demoted, disclosures, topLevel: modules - demoted });
 }
 
 for (const route of KNOWN_UNSTAMPED) {
@@ -142,6 +148,76 @@ for (const route of KNOWN_UNSTAMPED) {
     failures.push(`Surface-contract rule: KNOWN_UNSTAMPED lists "${route}", which is not a route in Shell's tabRegistry`);
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   R25 — moduleBudget stops being a declaration and becomes a gate.
+
+   Item 11 stamped all 43 leaves, which made the counts readable for the first
+   time; ten of them rendered MORE top-level sibling modules than
+   `lib/surfaceContract.ts` declares (profile 9/3, safety 7/2, memory 6/3,
+   weekly 6/3, copilot 6/2, sharing 5/2, appointments 5/2, smart-reminders 5/3,
+   language 4/3, find-pro 3/2). Nothing failed, because nothing compared the
+   stamp count to the budget beside it.
+
+   HOW THE COUNT IS HONEST. A demoted module keeps its own `data-module` stamp
+   and adds `data-module-demoted`; the collapsed wrapper carries
+   `data-module-disclosure` and is deliberately NOT a `data-module`. So:
+
+       top-level = data-module stamps − data-module-demoted stamps
+
+   The alternative — deleting the stamp of everything you fold away — would let
+   any leaf reach its budget by going quiet, which is the failure mode that made
+   these ten invisible in the first place. Here, folding a module away is
+   RECORDED, and the only way to lower the number is to actually demote.
+
+   It is a CEILING, as the source counts already were: a module inside a
+   conditional branch renders sometimes and never raises the total, so a leaf
+   that passes here cannot be over budget in the DOM (surfaceContract.render.test.ts
+   documents the same for the practiceDoors block this generalises).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** route → moduleBudget, parsed from the contract file the app itself reads. */
+function surfaceBudgets() {
+  const src = fs.readFileSync(path.join(appRoot, "src", "lib", "surfaceContract.ts"), "utf8");
+  const out = new Map();
+  for (const m of src.matchAll(/route: "([a-zA-Z-]+)",[\s\S]{0,400}?moduleBudget: (\d+),/g)) {
+    out.set(m[1], Number(m[2]));
+  }
+  return out;
+}
+
+/**
+ * #/overview is budgeted at RUNTIME, not in the markup: OverviewTab stamps seven
+ * slots and components/overview/todayModules.ts lets at most TODAY_MODULE_BUDGET
+ * of them render, so the number on screen IS the budget while the source ceiling
+ * is higher. It is the ONE surface built that way and the model the plan cites.
+ * FROZEN AT ONE ENTRY — surfaceContract.render.test.ts fails if this set grows,
+ * and separately asserts that todayModules.ts still enforces the same number the
+ * contract declares. Any other route must reach its budget in the markup.
+ */
+const RUNTIME_BUDGETED = new Set(["overview"]);
+
+const budgets = surfaceBudgets();
+if (budgets.size < 40) {
+  failures.push(`Surface-contract budgets: only ${budgets.size} moduleBudget values parsed from surfaceContract.ts — the parser has drifted from the source`);
+}
+
+for (const [route, m] of measured) {
+  const budget = budgets.get(route);
+  if (budget === undefined) {
+    failures.push(`Surface-contract budgets: route "${route}" has no moduleBudget in surfaceContract.ts`);
+    continue;
+  }
+  if (m.demoted > 0 && m.disclosures !== 1) {
+    failures.push(`Surface-contract budgets: route "${route}" (${path.relative(appRoot, m.file)}) demotes ${m.demoted} module(s) but carries ${m.disclosures} data-module-disclosure wrappers — demoted modules live in exactly ONE collapsed disclosure`);
+  }
+  if (RUNTIME_BUDGETED.has(route)) continue;
+  if (m.topLevel > budget) {
+    failures.push(`Surface-contract budgets: route "${route}" (${path.relative(appRoot, m.file)}) renders ${m.topLevel} top-level modules (${m.modules} stamped, ${m.demoted} demoted) against a declared moduleBudget of ${budget} — demote the tail into the disclosure its demotionTarget names; never raise the budget`);
+  }
+}
+
+console.log(`Surface-contract budgets: ${measured.size} routes counted, ${RUNTIME_BUDGETED.size} budgeted at runtime.`);
 
 console.log(`\nSurface-contract stamps: ${leaves.size - KNOWN_UNSTAMPED.size}/${leaves.size} routes enforced (${KNOWN_UNSTAMPED.size} on the shrink-only ratchet).`);
 if (staleExemptions.length > 0) {

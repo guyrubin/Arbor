@@ -248,3 +248,166 @@ describe("R24 — the coach composer is stamped in BOTH of its positions", () =>
     expect(slice).not.toContain('data-primary-move="ask"');
   });
 });
+
+/* ── 5 · R25 · the budget is counted, not just declared ───────────────────── */
+
+/**
+ * `moduleBudget` sat in the contract for 43 routes and was enforced on ONE
+ * (#/overview, at runtime, via components/overview/todayModules.ts). Item 11
+ * stamped every leaf, which made the counts readable — and ten leaves were over:
+ * profile 9/3, safety 7/2, memory 6/3, weekly 6/3, copilot 6/2, sharing 5/2,
+ * appointments 5/2, smart-reminders 5/3, language 4/3, find-pro 3/2.
+ *
+ * The counting rule has to survive the obvious cheat. If demotion meant deleting
+ * a module's stamp, any leaf could reach its budget by going quiet — which is
+ * exactly how these ten stayed invisible. So a demoted module KEEPS its
+ * `data-module` and adds `data-module-demoted`, the collapsed wrapper carries
+ * `data-module-disclosure` and is deliberately not a module, and
+ *
+ *     top-level = data-module − data-module-demoted
+ *
+ * Folding something away is therefore recorded, and the only way to lower the
+ * number is to actually demote. This block measures the real tree with that
+ * rule (not a substring of the check), pins the ONE runtime-budgeted exemption,
+ * and proves the arithmetic on a fixture that is one stamp over budget.
+ *
+ * It generalises practiceDoors.copy.test.ts's per-route budget assertions, which
+ * did this for the nine routes of item 6, to all 43.
+ */
+const SURFACE_CONTRACT_SRC = read("src/lib/surfaceContract.ts");
+const TODAY_MODULES = read("src/components/overview/todayModules.ts");
+
+/** The same leaf resolution framework-check.mjs does, from Shell's own registry. */
+function routeLeafSources(): Map<string, string> {
+  const lazyPaths = new Map<string, string>();
+  for (const m of SHELL.matchAll(/const (\w+) = lazy\(\(\) => import\("([^"]+)"\)\);/g)) {
+    lazyPaths.set(m[1], m[2]);
+  }
+  const start = SHELL.indexOf("const tabRegistry");
+  const registry = SHELL.slice(start, SHELL.indexOf("};", start));
+  const out = new Map<string, string>();
+  for (const m of registry.matchAll(/^\s*"?([a-zA-Z-]+)"?:\s*(\w+),/gm)) {
+    const rel = lazyPaths.get(m[2]);
+    if (!rel) continue;
+    out.set(m[1], read(path.join("src/components/layout", rel + ".tsx").split(path.sep).join("/")));
+  }
+  return out;
+}
+
+const stripJsComments = (code: string) =>
+  code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+function countModules(source: string) {
+  const src = stripJsComments(source);
+  const modules = (src.match(/\bdata-module\b(?!-)/g) || []).length;
+  const demoted = (src.match(/\bdata-module-demoted\b/g) || []).length;
+  const disclosures = (src.match(/\bdata-module-disclosure=/g) || []).length;
+  return { modules, demoted, disclosures, topLevel: modules - demoted };
+}
+
+/** #/overview is capped at render time, not in the markup — see the check. */
+const RUNTIME_BUDGETED = ["overview"];
+
+describe("R25 — every leaf renders within its declared moduleBudget", () => {
+  const leaves = routeLeafSources();
+
+  it("the leaf resolution really reads Shell's registry", () => {
+    expect(leaves.size).toBeGreaterThanOrEqual(40);
+    expect(leaves.has("coach")).toBe(true);
+    expect(leaves.get("coach")).toContain('data-module="coach-composer"');
+  });
+
+  it("no route stamps more top-level modules than its contract allows", () => {
+    const over: string[] = [];
+    for (const [route, source] of leaves) {
+      if (RUNTIME_BUDGETED.includes(route)) continue;
+      const contract = contractFor(route as ActiveTab);
+      expect(contract, `no contract for route ${route}`).toBeTruthy();
+      const c = countModules(source);
+      if (c.topLevel > contract!.moduleBudget) {
+        over.push(`${route}: ${c.topLevel} top-level (${c.modules} stamped, ${c.demoted} demoted) > budget ${contract!.moduleBudget}`);
+      }
+    }
+    expect(over, `over budget — demote the tail into ONE collapsed disclosure, never raise the budget:\n${over.join("\n")}`).toEqual([]);
+  });
+
+  it("demoted modules live in exactly one collapsed disclosure per route", () => {
+    const wrong: string[] = [];
+    for (const [route, source] of leaves) {
+      const c = countModules(source);
+      if (c.demoted > 0 && c.disclosures !== 1) {
+        wrong.push(`${route}: ${c.demoted} demoted module(s) in ${c.disclosures} disclosure wrapper(s)`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it("the ten measured leaves really demote — they did not reach budget by going quiet", () => {
+    // Every route R25 named, with the disclosure it now carries. find-pro is the
+    // exception ON PURPOSE: its two stamps were one module in two mutually
+    // exclusive branches, so the fix was one wrapper stamp and zero demotions.
+    for (const route of ["profile", "safety", "memory", "weekly", "copilot", "sharing", "appointments", "smart-reminders", "language"]) {
+      const c = countModules(leaves.get(route)!);
+      expect(c.demoted, `${route} must demote, not delete, the modules it folded away`).toBeGreaterThan(0);
+      expect(c.disclosures, `${route} must carry exactly one disclosure`).toBe(1);
+    }
+    const findPro = countModules(leaves.get("find-pro")!);
+    expect(findPro.topLevel).toBe(2);
+    expect(findPro.demoted).toBe(0);
+  });
+
+  it("negative control: a leaf one stamp over budget is rejected by the same arithmetic", () => {
+    const budget = contractFor("language" as ActiveTab)!.moduleBudget;
+    const overBudget = Array.from({ length: budget + 1 }, (_, i) => `<div data-module="m${i}" />`).join("\n");
+    expect(countModules(overBudget).topLevel).toBe(budget + 1);
+    expect(countModules(overBudget).topLevel > budget).toBe(true);
+    // …and the same source, with the tail demoted into one disclosure, passes.
+    const demoted = [
+      ...Array.from({ length: budget }, (_, i) => `<div data-module="m${i}" />`),
+      `<details data-module-disclosure="x-more"><div data-module="m${budget}" data-module-demoted /></details>`,
+    ].join("\n");
+    expect(countModules(demoted).topLevel).toBe(budget);
+    expect(countModules(demoted).disclosures).toBe(1);
+  });
+
+  it("negative control: deleting a stamp instead of demoting does NOT satisfy the rule", () => {
+    // The cheat the attribute exists to block: the count drops, but so does the
+    // demotion evidence, and the per-route disclosure assertion above is what
+    // catches a leaf that quietly stopped stamping what it still renders.
+    const quiet = `<div data-module="m0" />\n<div />`;
+    expect(countModules(quiet).topLevel).toBe(1);
+    expect(countModules(quiet).demoted).toBe(0);
+    expect(countModules(quiet).disclosures).toBe(0);
+  });
+});
+
+describe("R25 — the shipped check enforces exactly this, and its one exemption", () => {
+  it("framework-check computes top-level as stamps minus demoted", () => {
+    expect(CHECK).toContain('const demoted = (source.match(/\\bdata-module-demoted\\b/g) || []).length;');
+    expect(CHECK).toContain("topLevel: modules - demoted");
+    expect(CHECK).toContain("against a declared moduleBudget of");
+    expect(CHECK).toContain("never raise the budget");
+  });
+
+  it("it reads the budgets from surfaceContract.ts and fails if that parse drifts", () => {
+    expect(CHECK).toContain("function surfaceBudgets()");
+    expect(CHECK).toContain("the parser has drifted from the source");
+    const parsed = [...SURFACE_CONTRACT_SRC.matchAll(/route: "([a-zA-Z-]+)",[\s\S]{0,400}?moduleBudget: (\d+),/g)];
+    expect(parsed.length, "the regex the check uses must resolve every contract").toBe(SURFACE_CONTRACTS.length);
+  });
+
+  it("the runtime-budgeted exemption is #/overview and nothing else", () => {
+    const set = CHECK.match(/const RUNTIME_BUDGETED = new Set\(\[([\s\S]*?)\]\);/);
+    expect(set, "RUNTIME_BUDGETED not found in framework-check.mjs").toBeTruthy();
+    const routes = [...set![1].matchAll(/"([a-zA-Z-]+)"/g)].map((m) => m[1]);
+    expect(routes).toEqual(RUNTIME_BUDGETED);
+  });
+
+  it("#/overview's exemption is real: todayModules caps renders at the declared budget", () => {
+    const contract = contractFor("overview" as ActiveTab)!;
+    const declared = Number(TODAY_MODULES.match(/export const TODAY_MODULE_BUDGET = (\d+);/)?.[1]);
+    expect(declared, "TODAY_MODULE_BUDGET not found").not.toBeNaN();
+    expect(declared, "the runtime cap must equal the contract, or the exemption is a hole").toBe(contract.moduleBudget);
+    expect(TODAY_MODULES).toContain("const budget = opts.budget ?? TODAY_MODULE_BUDGET;");
+  });
+});
