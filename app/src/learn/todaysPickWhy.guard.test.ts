@@ -115,8 +115,10 @@ const PRE_CHANGE = `
 `.replace(/\r\n/g, "\n");
 
 const WHY_BLOCK = /const pickWhy = !todaysRead[\s\S]*?why\.age", \{ name: childName \}\);/;
-const FOCUS_FROM_PICK = /todaysRead\.fromFocus\s*\n?\s*\?\s*t\("elev\.learnCare\.pick\.why\.focus"/;
+const FOCUS_FROM_PICK = /todaysRead\.fromFocus[^?]*\?\s*t\("elev\.learnCare\.pick\.why\.focus"/;
 const FOCUS_FROM_RAW_SIGNAL = /:\s*devScore\.focusDomain\s*\n?\s*\?\s*t\("elev\.learnCare\.pick\.why\.focus"/;
+/** R2: the hero's focus branch must ALSO carry the day-0 gate. */
+const FOCUS_GATED_ON_MAP_SIGNAL = /todaysRead\.fromFocus\s*&&\s*devMapHasSignal\(devScore\)\s*\n?\s*\?\s*t\("elev\.learnCare\.pick\.why\.focus"/;
 
 describe("Masterclasses gates the focus why-line on the re-derived flag", () => {
   it("the source was really read", () => {
@@ -139,6 +141,54 @@ describe("Masterclasses gates the focus why-line on the re-derived flag", () => 
 
   it("devScore.focusDomain is still fed to the RANKER (only the claim moved)", () => {
     expect(HUB).toMatch(/focusDomain:\s*devScore\.focusDomain/);
+  });
+});
+
+/**
+ * R2 — the SAME day-0 gate the Library rail got in ENG-07, on the hero line.
+ *
+ * `fromFocus` proves the focus domain moved THIS card. It does not prove the
+ * parent has explored anything: `focusDomain` is the lowest-scoring domain with
+ * room to grow, measured against the CATALOGUE, so a profile with zero noticed
+ * milestones and zero logs in the window still has one — and whenever today's
+ * winner happened to carry it, `#/masterclasses` said "Chosen for {name}'s age
+ * and the area you have been exploring" to a parent who had explored nothing.
+ * Builder D fixed learn/todaysPick.ts + LearnLibrary in 3b037bfe; the hero kept
+ * its own path. It must now fall to the age-only variant at zero data.
+ */
+describe("R2 · the Masterclasses hero why-line falls to age-only at zero data", () => {
+  it("fromFocus can be TRUE at zero data — which is why the extra gate exists", () => {
+    // The winning card carries the focus domain, so the re-derivation is true…
+    const shelf = [card("focus-hit", ["language_communication"]), card("other", ["motor"])];
+    const pick = todaysLearnPick(shelf, signals({ focusDomain: "language_communication" }), {
+      childId: CHILD,
+      dayKey: DAY,
+    });
+    expect(pick!.fromFocus).toBe(true);
+    expect(pick!.fromConcerns).toBe(false);
+    // …and yet the parent has noticed nothing, so the claim is still false.
+    const dayZero = { focusDomain: "language_communication", domains: [{ reached: 0 }, { reached: 0 }] };
+    expect(devMapHasSignal(dayZero)).toBe(false);
+    // The shipped hero condition was `fromFocus` alone — the negative control.
+    expect(pick!.fromFocus && devMapHasSignal(dayZero)).toBe(false);
+    expect(pick!.fromFocus).toBe(true);
+  });
+
+  it("one noticed milestone re-opens the focus claim (the gate is not a mute)", () => {
+    const seeded = { focusDomain: "language_communication", domains: [{ reached: 1 }, { reached: 0 }] };
+    expect(devMapHasSignal(seeded)).toBe(true);
+  });
+
+  it("the hero source gates the focus branch on devMapHasSignal(devScore)", () => {
+    expect(FOCUS_GATED_ON_MAP_SIGNAL.exec(HUB), "hero focus branch is not day-0 gated").toBeTruthy();
+    expect(HUB).toMatch(/import \{[^}]*devMapHasSignal[^}]*\} from "\.\.\/\.\.\/learn\/todaysPick"/);
+    // Negative control: the matcher does NOT fire on the pre-change source, so
+    // a match above means the gate landed, not that the pattern is unmatchable.
+    expect(FOCUS_GATED_ON_MAP_SIGNAL.exec(PRE_CHANGE)).toBeNull();
+    expect(FOCUS_GATED_ON_MAP_SIGNAL.exec(`
+        : todaysRead.fromFocus
+          ? t("elev.learnCare.pick.why.focus", { name: childName })
+    `)).toBeNull();
   });
 });
 

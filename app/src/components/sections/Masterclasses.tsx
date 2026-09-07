@@ -24,7 +24,7 @@ import { recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { readLearnFeedback } from "../../learn/learnFeedback";
 import { LEARN_CARDS } from "../../learn/learnCards";
 import type { LearnRankSignals } from "../../learn/learnLibrary";
-import { pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
+import { devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
 import type { DevelopmentMetricId } from "../../types";
 // AP-055: Scholar Hub weekly concept feed
 import ScholarHubCard from "./ScholarHubCard";
@@ -163,13 +163,21 @@ export default function Masterclasses() {
   // false whenever the winning card's domains did not include it. Do not
   // reintroduce a raw signal here; if a new why-line is needed, add its
   // re-derived flag to `todaysLearnPick` (learn/todaysPick.ts).
+  // R2 (ENG-07 applied to the hero): `fromFocus` proves the focus domain moved
+  // THIS card — it does not prove the parent has explored anything. focusDomain
+  // is the lowest-scoring domain with room to grow, and "room to grow" is
+  // measured against the catalogue, so a day-0 profile (0 noticed milestones,
+  // 0 logs in window) still has one, and the hero said "the area you have been
+  // exploring" to a parent who had explored nothing. `devMapHasSignal` is the
+  // same gate LearnLibrary's rail already carries: at least one milestone
+  // actually noticed, or the claim falls to the age-only variant.
   const pickWhy = !todaysRead
     ? ""
     : todaysRead.fromSaved
       ? t("elev.learnCare.pick.why.saved")
       : todaysRead.fromConcerns
         ? t("elev.learnCare.pick.why.logs")
-        : todaysRead.fromFocus
+        : todaysRead.fromFocus && devMapHasSignal(devScore)
           ? t("elev.learnCare.pick.why.focus", { name: childName })
           : t("elev.learnCare.pick.why.age", { name: childName });
 
