@@ -67,7 +67,7 @@ export default function MimicStudioTab() {
       track("mimic_mirror_on", {});
     } catch {
       // OBJ-KID-03: the parent gets the diagnosis, the child gets a kid line.
-      // No "camera", no instruction written for the grown-up in the room.
+      // No device words, no instruction written for the grown-up in the room.
       let msg = t("elev.play.mimic.mirrorRest");
       if (!kidMode) { msg = "Camera unavailable — the game works just as well face-to-face. You be the mirror!"; }
       setCamError(msg);
